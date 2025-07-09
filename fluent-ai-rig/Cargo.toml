@@ -1,0 +1,9 @@
+[package]
+name = "fluent-ai-rig"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+fluent-ai = { version = "0.1.0", path = "../fluent-ai" }
+rig-core = { version = "0.14.0", features = ["mcp"] }
+tokio = { version = "1.46.1", features = ["full"] }

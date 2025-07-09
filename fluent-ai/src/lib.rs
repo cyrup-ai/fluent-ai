@@ -29,6 +29,7 @@ pub mod workflow;
 pub mod domain;
 pub mod providers;
 pub mod fluent;
+pub mod engine;
 
 // Re-export commonly used sugars items
 pub use sugars::*;
@@ -50,6 +51,10 @@ pub use domain::tool_v2::ExecToText;
 pub use domain::{Context, Library, NamedTool, Perplexity, Stdio, ToolV2 as Tool};
 // Re-export context marker types
 pub use domain::context::{Directory, File, Files, Github};
+
+// Re-export engine types
+pub use engine::{Engine, EngineRegistry, AgentConfig, ExtractionConfig, CompletionResponse, Usage};
+pub use engine::{register_engine, set_default_engine, get_default_engine, get_engine, registry};
 
 // Memory and workflow modules are already defined above as pub mod
 
