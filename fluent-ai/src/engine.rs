@@ -44,7 +44,7 @@ pub trait Agent {
 }
 
 /// Core trait for backend engines - object-safe version
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 pub trait Engine: Send + Sync + 'static {
     async fn create_agent(&self, config: AgentConfig) -> Result<Box<dyn Agent + Send>, Box<dyn StdError + Send + Sync>>;
     async fn complete(&self, request: crate::domain::completion::CompletionRequest) -> Result<CompletionResponse, Box<dyn StdError + Send + Sync>>;
@@ -138,7 +138,7 @@ pub fn get_engine(name: &str) -> Result<Arc<dyn Engine>, Box<dyn StdError + Send
 /// No-op engine for testing and default behavior
 pub struct NoOpEngine;
 
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 impl Engine for NoOpEngine {
     async fn create_agent(&self, _config: AgentConfig) -> Result<Box<dyn Agent + Send>, Box<dyn StdError + Send + Sync>> {
         Err("No-op engine: agent creation not implemented".into())
