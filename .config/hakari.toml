@@ -1,0 +1,16 @@
+# Hakari configuration for fluent-ai workspace
+hakari-package = "workspace-hack"
+resolver = "2"
+dep-format-version = "4"
+
+# Platform optimization - target common development platforms
+platforms = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-apple-darwin", 
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+
+# Optimization settings
+unify-target-host = "auto"
+output-single-feature = false

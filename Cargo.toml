@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = [
+    "fluent-ai",
+    "workspace-hack",
+    "provider",
+]
