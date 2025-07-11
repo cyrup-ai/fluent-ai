@@ -116,19 +116,23 @@ fn generate_provider_enum(providers: &[ProviderInfo]) -> Result<ItemEnum, Box<dy
 }
 
 fn generate_model_enum(providers: &[ProviderInfo]) -> Result<ItemEnum, Box<dyn std::error::Error>> {
-    let mut variants = std::collections::HashSet::new();
+    let mut variants = Vec::new();
     
     for provider in providers {
+        let provider_prefix = to_pascal_case(&provider.provider);
+        
         for model in &provider.models {
-            let variant_name = to_pascal_case(&model.name);
-            variants.insert(variant_name);
+            let model_name = to_pascal_case(&model.name);
+            // Create provider-prefixed variant name to ensure uniqueness
+            let variant_name = format!("{}{}", provider_prefix, model_name);
+            variants.push(variant_name);
         }
     }
     
-    let mut variant_list: Vec<_> = variants.into_iter().collect();
-    variant_list.sort();
+    // Sort variants for consistent output
+    variants.sort();
     
-    let variant_tokens: Vec<_> = variant_list.iter().map(|name| {
+    let variant_tokens: Vec<_> = variants.iter().map(|name| {
         let ident = Ident::new(name, proc_macro2::Span::call_site());
         quote! { #ident }
     }).collect();
@@ -171,7 +175,9 @@ fn generate_provider_models_function(providers: &[ProviderInfo]) -> Result<Token
         
         let model_variants: Vec<_> = provider.models.iter()
             .map(|model| {
-                let variant_name = to_pascal_case(&model.name);
+                let model_name = to_pascal_case(&model.name);
+                // Create provider-prefixed variant name to match generate_model_enum()
+                let variant_name = format!("{}{}", provider_variant, model_name);
                 let ident = Ident::new(&variant_name, proc_macro2::Span::call_site());
                 quote! { Model::#ident }
             })
@@ -205,7 +211,9 @@ fn generate_model_info_function(providers: &[ProviderInfo]) -> Result<TokenStrea
         let provider_ident = Ident::new(&provider_variant, proc_macro2::Span::call_site());
         
         for model in &provider.models {
-            let model_variant = to_pascal_case(&model.name);
+            let model_name = to_pascal_case(&model.name);
+            // Create provider-prefixed variant name to match generate_model_enum()
+            let model_variant = format!("{}{}", provider_variant, model_name);
             let model_ident = Ident::new(&model_variant, proc_macro2::Span::call_site());
             
             let name = &model.name;
