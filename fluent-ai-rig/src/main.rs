@@ -73,7 +73,7 @@ fn validate_temperature(temp: f32) -> Result<f32, String> {
     }
 }
 
-async fn load_context(context_refs: &[String]) -> Result<Vec<String>, Box<dyn Error>> {
+async fn load_context(context_refs: &[String]) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
     let mut context_data = Vec::new();
 
     for context_ref in context_refs {
@@ -121,7 +121,7 @@ async fn interactive_mode(
     temperature: f32,
     agent_role: &str,
     context: &[String],
-) -> Result<(), Box<dyn Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("🤖 FluentAI Interactive Mode");
     println!("Provider: {}", provider.name());
     println!("Model: {}", model.name());
@@ -136,7 +136,7 @@ async fn interactive_mode(
 
     println!("Type 'quit' or 'exit' to end the session\n");
 
-    let engine = create_fluent_engine_with_model(*provider, *model)?;
+    let engine = create_fluent_engine_with_model(provider.clone(), model.clone())?;
 
     loop {
         print!("👤 You: ");
@@ -177,7 +177,7 @@ async fn interactive_mode(
         full_prompt.push_str(input);
 
         // For now, echo the prompt since we need to implement the actual completion
-        println!("[Processing with model: {}, temp: {}]", model, temperature);
+        println!("[Processing with model: {}, temp: {}]", model.name(), temperature);
         println!("Full prompt would be: {}", full_prompt);
         println!("[TODO: Implement actual completion call]\n");
     }
@@ -192,14 +192,14 @@ async fn single_prompt_mode(
     temperature: f32,
     agent_role: &str,
     context: &[String],
-) -> Result<(), Box<dyn Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!(
         "🤖 Processing single prompt with provider: {} and model: {}",
         provider.name(),
         model.name()
     );
 
-    let engine = create_fluent_engine_with_model(*provider, *model)?;
+    let engine = create_fluent_engine_with_model(provider.clone(), model.clone())?;
 
     let mut full_prompt = String::new();
 
@@ -225,7 +225,7 @@ async fn single_prompt_mode(
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 

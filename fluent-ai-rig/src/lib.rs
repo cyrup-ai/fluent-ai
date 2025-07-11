@@ -8,6 +8,8 @@ use fluent_ai::async_task::AsyncTask;
 use fluent_ai::domain::completion::CompletionBackend;
 use fluent_ai_provider::{Models, Providers, Provider as ProviderTrait, Model as ModelTrait};
 use rig::providers::{openai, anthropic};
+use rig::completion::Prompt;
+use rig::client::CompletionClient;
 use std::env;
 use std::sync::Arc;
 use tracing::error;
@@ -26,8 +28,8 @@ impl RigCompletionBackend {
 
 impl CompletionBackend for RigCompletionBackend {
     fn submit_completion(&self, prompt: &str, tools: &[String]) -> AsyncTask<String> {
-        let provider = self.provider;
-        let model = self.model;
+        let provider = self.provider.clone();
+        let model = self.model.clone();
         let prompt_text = prompt.to_string();
         let _tools = tools.to_vec(); // Store for future tool support
         AsyncTask::from_future(async move {
@@ -49,7 +51,7 @@ impl CompletionBackend for RigCompletionBackend {
                         }
                     }
                 },
-                "anthropic" | "claude" => {
+                "claude" => {
                     let api_key = env::var("ANTHROPIC_API_KEY")
                         .expect("ANTHROPIC_API_KEY environment variable must be set");
                     let client = anthropic::ClientBuilder::new(&api_key).build();
@@ -75,7 +77,7 @@ impl CompletionBackend for RigCompletionBackend {
 
 /// Create a FluentEngine with the specified provider and model
 pub fn create_fluent_engine_with_model(provider: Providers, model: Models) -> Result<Arc<FluentEngine>, Box<dyn std::error::Error + Send + Sync>> {
-    let backend = Arc::new(RigCompletionBackend::new(provider, model));
+    let backend = Arc::new(RigCompletionBackend::new(provider, model.clone()));
     let engine = Arc::new(FluentEngine::new(backend, model));
     
     engine_builder()
