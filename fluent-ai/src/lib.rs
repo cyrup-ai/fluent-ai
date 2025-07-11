@@ -27,16 +27,15 @@ pub mod memory;
 pub mod workflow;
 
 pub mod domain;
-pub mod providers;
-pub mod fluent;
 pub mod engine;
+pub mod fluent;
+pub mod providers;
 
 // Re-export commonly used sugars items
 pub use sugars::*;
 
-
 // Re-export generated providers
-pub use providers::{Provider, Model, ModelInfo};
+pub use providers::{Model, ModelInfo, Provider};
 // Re-export domain types
 pub use domain::{
     audio::{AudioMediaType, ContentFormat as AudioContentFormat},
@@ -53,8 +52,10 @@ pub use domain::{Context, Library, NamedTool, Perplexity, Stdio, ToolV2 as Tool}
 pub use domain::context::{Directory, File, Files, Github};
 
 // Re-export engine types
-pub use engine::{Engine, EngineRegistry, AgentConfig, ExtractionConfig, CompletionResponse, Usage};
-pub use engine::{register_engine, set_default_engine, get_default_engine, get_engine, registry};
+pub use engine::{get_default_engine, get_engine, register_engine, registry, set_default_engine};
+pub use engine::{
+    AgentConfig, CompletionResponse, Engine, EngineRegistry, ExtractionConfig, Usage,
+};
 
 // Memory and workflow modules are already defined above as pub mod
 

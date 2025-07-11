@@ -210,25 +210,27 @@ impl CompletionRequestBuilderWithHandler {
     where
         F: Fn(String) + Send + Sync + 'static,
     {
-        AsyncTask::spawn(async move {
-            let engine = crate::engine::get_default_engine()
-                .map_err(|e| format!("Engine error: {}", e))?;
-            
-            let request = CompletionRequest {
-                system_prompt: self.system_prompt.unwrap_or_default(),
-                chat_history: self.chat_history,
-                documents: self.documents,
-                tools: self.tools,
-                temperature: self.temperature,
-                max_tokens: self.max_tokens,
-                chunk_size: self.chunk_size,
-                additional_params: self.additional_params,
-            };
-            
-            let response = engine.complete(request).await
-                .map_err(|e| format!("Completion error: {}", e))?;
-            
-            Ok(response.content)
+        AsyncTask::from_future(async move {
+            match crate::engine::get_default_engine() {
+                Ok(engine) => {
+                    let request = CompletionRequest {
+                        system_prompt: self.system_prompt.unwrap_or_default(),
+                        chat_history: self.chat_history,
+                        documents: self.documents,
+                        tools: self.tools,
+                        temperature: self.temperature,
+                        max_tokens: self.max_tokens,
+                        chunk_size: self.chunk_size,
+                        additional_params: self.additional_params,
+                    };
+
+                    match engine.complete(request).await {
+                        Ok(response) => response.content,
+                        Err(e) => format!("Completion error: {}", e),
+                    }
+                }
+                Err(e) => format!("Engine error: {}", e),
+            }
         })
     }
 

@@ -473,7 +473,7 @@ macro_rules! conversation_history {
     ($($role:path => $msg:expr),* $(,)?) => {{
         let mut history = $crate::ZeroOneOrMany::None;
         $(
-            history = history.push(($role, $msg.to_string()));
+            history.push(($role, $msg.to_string()));
         )*
         history
     }};

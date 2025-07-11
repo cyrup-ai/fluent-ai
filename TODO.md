@@ -41,99 +41,98 @@
 ### 8. Act as an Objective QA Rust developer and rate the work performed on EngineBuilder core implementation, ensuring proper generic constraints and phantom type handling.
 
 ### 9. Implement model configuration methods
-- Add with_model() method transitioning NeedsModel -> NeedsConfiguration
-- Support multiple model types (string, enum, custom types)
-- Validate model parameters at compile time
-- Return new builder instance with updated state
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-### 10. Act as an Objective QA Rust developer and rate the work performed on model configuration methods, ensuring type safety and proper state transitions.
+### 2. Missing Type Errors
 
-### 11. Implement configuration parameter methods
-- Add temperature(), max_tokens(), timeout() methods
-- Implement tools configuration with type safety
-- Add system_prompt configuration
-- Ensure all methods return new builder instances
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+- [ ] **Fix missing AgentConfig in domain::agent**
+  - Error: `unresolved import crate::domain::agent::AgentConfig: no AgentConfig in domain::agent`
+  - Locations: `engine.rs:9:35` and `fluent_engine.rs:8:35`
+  - Fix: Locate actual AgentConfig definition or create if missing
 
-### 12. Act as an Objective QA Rust developer and rate the work performed on configuration parameter methods, ensuring immutability and proper builder state management.
+- [ ] **QA: Rate AgentConfig resolution quality (1-10 scale)**
+  - Verify AgentConfig exists and is properly exported
+  - Confirm all AgentConfig usage compiles correctly
+  - Check AgentConfig has all required fields and methods
 
-### 13. Implement terminal build methods
-- Create build() method for Ready state only
-- Add register_as() method for automatic registration
-- Implement set_as_default() terminal method
-- Ensure compile-time prevention of incomplete builds
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+- [ ] **Fix missing CompletionResponse in domain::completion**
+  - Error: `unresolved import crate::domain::completion::CompletionResponse: no CompletionResponse in domain::completion`
+  - Location: `fluent-ai/src/engine/fluent_engine.rs:9:52`
+  - Fix: Locate actual CompletionResponse or create if missing
 
-### 14. Act as an Objective QA Rust developer and rate the work performed on terminal build methods, ensuring only complete configurations can be built and proper integration with engine registry.
+- [ ] **QA: Rate CompletionResponse resolution quality (1-10 scale)**
+  - Verify CompletionResponse exists and is properly exported
+  - Confirm all completion logic uses correct response type
+  - Check response structure matches usage patterns
 
-## Phase 3: Integration with Existing fluent-ai Patterns
+- [ ] **Fix missing NoOpAgent in domain::agent**
+  - Error: `failed to resolve: could not find NoOpAgent in agent`
+  - Location: `fluent-ai/src/engine.rs:198:47`
+  - Fix: Locate actual NoOpAgent implementation or create if missing
 
-### 15. Create ergonomic entry points
-- Add Engine::builder() static method
-- Implement From<Model> for EngineBuilder<NeedsConfiguration>
-- Create convenience methods for common configurations
-- Ensure consistency with existing fluent-ai API patterns
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+- [ ] **QA: Rate NoOpAgent resolution quality (1-10 scale)**
+  - Verify NoOpAgent implements required Agent trait
+  - Confirm NoOpAgent provides appropriate no-op behavior
+  - Check NoOpAgent is properly exported from agent module
 
-### 16. Act as an Objective QA Rust developer and rate the work performed on ergonomic entry points, ensuring API consistency with existing fluent-ai patterns and ease of use.
+### 3. Type Errors
 
-### 17. Implement error handling and validation
-- Add comprehensive error types for configuration issues
-- Implement validation for parameter combinations
-- Create helpful error messages with suggestions
-- Add Result types for fallible operations
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+- [ ] **Fix Agent trait vs struct confusion in fluent_engine.rs**
+  - Error: `expected trait, found struct Agent: not a trait`
+  - Locations: Lines 86, 93, 96 in `fluent-ai/src/engine/fluent_engine.rs`
+  - Fix: Use correct Agent trait reference, not struct
 
-### 18. Act as an Objective QA Rust developer and rate the work performed on error handling, ensuring comprehensive coverage, helpful messages, and proper error propagation.
+- [ ] **QA: Rate Agent trait usage fix quality (1-10 scale)**
+  - Verify Agent trait is used correctly in all contexts
+  - Confirm no struct/trait confusion remains
+  - Check all Agent implementations compile correctly
 
-### 19. Add builder chain validation
-- Implement compile-time checks for required fields
-- Add runtime validation for parameter compatibility
-- Create validation for model-specific requirements
-- Ensure clear error reporting for invalid chains
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+## Phase 2: Configuration Warnings (4 Total) ⚙️
 
-### 20. Act as an Objective QA Rust developer and rate the work performed on builder chain validation, ensuring both compile-time and runtime safety measures are properly implemented.
+- [ ] **Fix unexpected cfg condition pdf warnings**
+  - Warning: `unexpected cfg condition value: pdf`
+  - Locations: `loaders/mod.rs:18:7` and `loaders/mod.rs:21:7`
+  - Fix: Add pdf feature to Cargo.toml or remove unused cfg conditions
 
-## Phase 4: Advanced Builder Features
+- [ ] **QA: Rate pdf cfg condition fix quality (1-10 scale)**
+  - Verify pdf feature is properly configured if needed
+  - Confirm no unused conditional compilation remains
+  - Check feature flags align with actual usage
 
-### 21. Implement conditional configuration methods
-- Add when() method for conditional configuration
-- Implement if_model() for model-specific settings
-- Create environment-based configuration options
-- Support configuration profiles and presets
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+- [ ] **Fix unexpected cfg condition epub warnings**
+  - Warning: `unexpected cfg condition value: epub`
+  - Locations: `loaders/mod.rs:24:7` and `loaders/mod.rs:27:7`
+  - Fix: Add epub feature to Cargo.toml or remove unused cfg conditions
 
-### 22. Act as an Objective QA Rust developer and rate the work performed on conditional configuration methods, ensuring proper type safety and intuitive usage patterns.
+- [ ] **QA: Rate epub cfg condition fix quality (1-10 scale)**
+  - Verify epub feature is properly configured if needed
+  - Confirm conditional compilation logic is correct
+  - Check feature dependencies are properly specified
 
-### 23. Add configuration serialization support  
-- Implement Serialize/Deserialize for builder states
-- Add save_config() and load_config() methods
-- Support JSON, TOML, and YAML configuration formats
-- Ensure serialized configs maintain type safety on load
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+## Phase 3: Unused Import Warnings (22 Total) 🧹
 
-### 24. Act as an Objective QA Rust developer and rate the work performed on configuration serialization, ensuring proper format support and type safety preservation.
+### Domain Module Unused Imports
 
-### 25. Implement builder composition and extension
-- Add extend() method for combining builders
-- Support builder inheritance patterns
-- Implement override mechanisms for configuration
-- Create builder templates and presets system
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+- [ ] **Fix unused ChatMessageChunk import in completion.rs:3:28**
+  - Warning: `unused import: ChatMessageChunk`
+  - Fix: Remove import or implement usage as intended
 
-### 26. Act as an Objective QA Rust developer and rate the work performed on builder composition, ensuring proper inheritance patterns and override mechanisms work correctly.
+- [ ] **QA: Rate ChatMessageChunk fix quality (1-10 scale)**
+  - Verify removal doesn't break intended functionality
+  - Confirm no missing implementation was intended
+  - Check import cleanup follows project conventions
 
-## Phase 5: Documentation and Testing
+- [ ] **Fix unused CompletionRequest and Message imports in extractor.rs:4:21**
+  - Warning: `unused imports: CompletionRequest and Message`
+  - Fix: Remove imports or implement extraction functionality
 
-### 27. Create comprehensive documentation
-- Add module-level documentation with examples
-- Document each builder state and transition
-- Create usage examples for common patterns
-- Add troubleshooting guide for compilation errors
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+- [ ] **QA: Rate extractor imports fix quality (1-10 scale)**
+  - Verify extractor functionality is complete or properly stubbed
+  - Confirm no missing extractor features
+  - Check extractor module serves its intended purpose
 
+- [ ] **Fix unused AsyncTask import in image.rs:2:26**
+  - Warning: `unused import: AsyncTask`
+  - Fix: Remove import or implement async image processing
 ### 28. Act as an Objective QA Rust developer and rate the work performed on documentation, ensuring completeness, clarity, and practical examples for users.
 
 ### 29. Implement comprehensive test suite

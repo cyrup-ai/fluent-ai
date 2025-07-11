@@ -48,6 +48,8 @@ cargo test -p fluent-ai        # Test only the core library
 ```bash
 cargo check -p fluent-ai                    # Type check core library
 cargo test -p fluent-ai architecture_api    # Run API design verification tests
+cargo test -p fluent-ai                     # Run all tests for core library
+cargo build -p fluent-ai --release          # Build optimized core library
 ```
 
 ### Implementation Crate Commands
@@ -59,16 +61,18 @@ cargo run --example agent_openai            # Run example from implementation cr
 
 ## Current Development Status
 
-The project is actively in development with compilation errors present. Before making changes:
+The project is actively in development with some compilation warnings present. Before making changes:
 
-1. Check `TODO.md` for current implementation priorities
-2. Review `ARCHITECTURE.md` for API design specifications
+1. Check `fluent-ai/TODO.md` for current implementation priorities
+2. Review `fluent-ai/ARCHITECTURE.md` for API design specifications  
 3. Run `cargo check` to see current compilation status
+4. The core fluent-ai library compiles with warnings but errors due to trait compilation issues
 
 ### Known Issues
-- Multiple compilation errors (trait implementations, module conflicts)
-- Duplicate module definitions in `lib.rs`
-- Missing concrete implementations for many fluent builders
+- Some unused imports and unreachable pattern warnings
+- Missing feature flags for PDF/EPUB loaders in Cargo.toml
+- Trait compilation errors in provider implementations
+- Large match arms in providers.rs causing compilation limits
 
 ## Key Components
 
@@ -184,3 +188,31 @@ When creating a new implementation crate (e.g., `fluent-ai-openai`):
 ## Nightly Features
 
 The project uses Rust nightly features. Ensure you're using a compatible nightly toolchain when developing.
+
+## Important File Paths
+
+### Key Documentation Files
+- `fluent-ai/TODO.md` - Current implementation priorities and status
+- `fluent-ai/ARCHITECTURE.md` - API design specifications and examples  
+- `fluent-ai/spec/AI-TRAIT.md` - AI trait specifications
+- `CARGO_HAKARI.md` - Complete hakari dependency management guide
+
+### Test Files
+- `fluent-ai/tests/architecture_api_test.rs` - API design verification tests
+
+## Troubleshooting Common Issues
+
+### Compilation Errors
+If you encounter compilation errors:
+1. Run `cargo hakari generate && cargo hakari manage-deps` to update dependencies
+2. Check for unused imports causing warnings
+3. Verify feature flags are properly defined in Cargo.toml
+4. Large match arms may hit compiler limits - consider refactoring
+
+### Feature Flags Missing
+Add missing feature flags to `fluent-ai/Cargo.toml`:
+```toml
+[features]
+pdf = ["dep:pdf_extract"]
+epub = ["dep:epub"]
+```

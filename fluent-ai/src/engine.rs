@@ -1,8 +1,23 @@
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::error::Error as StdError;
+use std::sync::{Arc, RwLock};
+use std::future::Future;
+use std::pin::Pin;
+// AgentConfig is defined locally below
+// Agent trait is defined locally to avoid conflict with domain::agent::Agent struct
+use crate::domain::completion::CompletionRequest;
+
+// Typesafe builder module
+pub mod builder;
+// Concrete engine implementations
+pub mod fluent_engine;
+
+// Re-export builder items for convenience
+pub use builder::{engine_builder, states, EngineBuilder, EngineConfig};
+// Re-export concrete engines
+pub use fluent_engine::FluentEngine;
 
 /// Configuration for creating an agent
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,14 +58,30 @@ pub trait Agent {
     fn name(&self) -> &str;
 }
 
-/// Core trait for backend engines - object-safe version
-#[async_trait::async_trait(?Send)]
+/// Core trait for backend engines - object-safe version using boxed futures
 pub trait Engine: Send + Sync + 'static {
-    async fn create_agent(&self, config: AgentConfig) -> Result<Box<dyn Agent + Send>, Box<dyn StdError + Send + Sync>>;
-    async fn complete(&self, request: crate::domain::completion::CompletionRequest) -> Result<CompletionResponse, Box<dyn StdError + Send + Sync>>;
-    async fn extract_json(&self, config: ExtractionConfig) -> Result<Value, Box<dyn StdError + Send + Sync>>;
-    async fn execute_tool(&self, tool_name: &str, args: Value) -> Result<Value, Box<dyn StdError + Send + Sync>>;
-    async fn available_tools(&self) -> Result<Vec<String>, Box<dyn StdError + Send + Sync>>;
+    fn create_agent(
+        &self,
+        config: AgentConfig,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Agent + Send>, Box<dyn StdError + Send + Sync>>> + Send + '_>>;
+
+    fn complete(
+        &self,
+        request: CompletionRequest,
+    ) -> Pin<Box<dyn Future<Output = Result<CompletionResponse, Box<dyn StdError + Send + Sync>>> + Send + '_>>;
+
+    fn extract_json(
+        &self,
+        config: ExtractionConfig,
+    ) -> Pin<Box<dyn Future<Output = Result<Value, Box<dyn StdError + Send + Sync>>> + Send + '_>>;
+
+    fn execute_tool(
+        &self,
+        tool_name: &str,
+        args: Value,
+    ) -> Pin<Box<dyn Future<Output = Result<Value, Box<dyn StdError + Send + Sync>>> + Send + '_>>;
+    
+    fn available_tools(&self) -> Pin<Box<dyn Future<Output = Result<Vec<String>, Box<dyn StdError + Send + Sync>>> + Send + '_>>;
 }
 
 /// Engine registry for managing multiple engines
@@ -68,7 +99,11 @@ impl EngineRegistry {
     }
 
     /// Register a new engine with a given name
-    pub fn register(&self, name: &str, engine: Arc<dyn Engine>) -> Result<(), Box<dyn StdError + Send + Sync>> {
+    pub fn register(
+        &self,
+        name: &str,
+        engine: Arc<dyn Engine>,
+    ) -> Result<(), Box<dyn StdError + Send + Sync>> {
         let mut engines = self.engines.write().map_err(|_| "Lock poisoned")?;
         engines.insert(name.to_string(), engine);
         Ok(())
@@ -81,7 +116,10 @@ impl EngineRegistry {
     }
 
     /// Set the default engine
-    pub fn set_default(&self, engine: Arc<dyn Engine>) -> Result<(), Box<dyn StdError + Send + Sync>> {
+    pub fn set_default(
+        &self,
+        engine: Arc<dyn Engine>,
+    ) -> Result<(), Box<dyn StdError + Send + Sync>> {
         let mut default = self.default_engine.write().map_err(|_| "Lock poisoned")?;
         *default = Some(engine);
         Ok(())
@@ -95,7 +133,10 @@ impl EngineRegistry {
 
     /// List all registered engine names
     pub fn list_engines(&self) -> Vec<String> {
-        let engines = self.engines.read().unwrap_or_else(|_| panic!("Lock poisoned"));
+        let engines = self
+            .engines
+            .read()
+            .unwrap_or_else(|_| panic!("Lock poisoned"));
         engines.keys().cloned().collect()
     }
 }
@@ -114,7 +155,10 @@ pub fn registry() -> &'static EngineRegistry {
 }
 
 /// Convenience function to register an engine globally
-pub fn register_engine(name: &str, engine: Arc<dyn Engine>) -> Result<(), Box<dyn StdError + Send + Sync>> {
+pub fn register_engine(
+    name: &str,
+    engine: Arc<dyn Engine>,
+) -> Result<(), Box<dyn StdError + Send + Sync>> {
     registry().register(name, engine)
 }
 
@@ -125,38 +169,70 @@ pub fn set_default_engine(engine: Arc<dyn Engine>) -> Result<(), Box<dyn StdErro
 
 /// Get the default engine or return an error
 pub fn get_default_engine() -> Result<Arc<dyn Engine>, Box<dyn StdError + Send + Sync>> {
-    registry().get_default()
-        .ok_or_else(|| "No default engine set. Use set_default_engine() or register an engine first.".into())
+    registry().get_default().ok_or_else(|| {
+        "No default engine set. Use set_default_engine() or register an engine first.".into()
+    })
 }
 
 /// Get a specific engine by name
 pub fn get_engine(name: &str) -> Result<Arc<dyn Engine>, Box<dyn StdError + Send + Sync>> {
-    registry().get(name)
-        .ok_or_else(|| format!("Engine '{}' not found. Available engines: {:?}", name, registry().list_engines()).into())
+    registry().get(name).ok_or_else(|| {
+        format!(
+            "Engine '{}' not found. Available engines: {:?}",
+            name,
+            registry().list_engines()
+        )
+        .into()
+    })
 }
 
 /// No-op engine for testing and default behavior
 pub struct NoOpEngine;
 
-#[async_trait::async_trait(?Send)]
 impl Engine for NoOpEngine {
-    async fn create_agent(&self, _config: AgentConfig) -> Result<Box<dyn Agent + Send>, Box<dyn StdError + Send + Sync>> {
-        Err("No-op engine: agent creation not implemented".into())
+    fn create_agent(
+        &self,
+        config: AgentConfig,
+    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Agent + Send>, Box<dyn StdError + Send + Sync>>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(Box::new(crate::domain::agent::NoOpAgent::new(config)) as Box<dyn Agent + Send>)
+        })
     }
 
-    async fn complete(&self, _request: crate::domain::completion::CompletionRequest) -> Result<CompletionResponse, Box<dyn StdError + Send + Sync>> {
-        Err("No-op engine: completion not implemented".into())
+    fn complete(
+        &self,
+        _request: CompletionRequest,
+    ) -> Pin<Box<dyn Future<Output = Result<CompletionResponse, Box<dyn StdError + Send + Sync>>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(CompletionResponse {
+                content: "No-op response".to_string(),
+                usage: None,
+            })
+        })
     }
 
-    async fn extract_json(&self, _config: ExtractionConfig) -> Result<Value, Box<dyn StdError + Send + Sync>> {
-        Err("No-op engine: extraction not implemented".into())
+    fn extract_json(
+        &self,
+        _config: ExtractionConfig,
+    ) -> Pin<Box<dyn Future<Output = Result<Value, Box<dyn StdError + Send + Sync>>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(Value::Object(serde_json::Map::new()))
+        })
     }
 
-    async fn execute_tool(&self, _tool_name: &str, _args: Value) -> Result<Value, Box<dyn StdError + Send + Sync>> {
-        Err("No-op engine: tool execution not implemented".into())
+    fn execute_tool(
+        &self,
+        _tool_name: &str,
+        _args: Value,
+    ) -> Pin<Box<dyn Future<Output = Result<Value, Box<dyn StdError + Send + Sync>>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(Value::Null)
+        })
     }
 
-    async fn available_tools(&self) -> Result<Vec<String>, Box<dyn StdError + Send + Sync>> {
-        Ok(vec![])
+    fn available_tools(&self) -> Pin<Box<dyn Future<Output = Result<Vec<String>, Box<dyn StdError + Send + Sync>>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(vec![])
+        })
     }
 }

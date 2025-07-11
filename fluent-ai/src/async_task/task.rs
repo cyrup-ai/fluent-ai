@@ -64,20 +64,21 @@ where
         let _ = tx.send(value);
         Self { receiver: rx }
     }
-
-    /// Create an AsyncTask that spawns a blocking task
-    pub fn spawn<F>(f: F) -> Self
+    
+    /// Create an AsyncTask by spawning a closure
+    pub fn spawn<F>(closure: F) -> Self
     where
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,
     {
         let (tx, rx) = oneshot::channel();
-        tokio::task::spawn_blocking(move || {
-            let result = f();
+        tokio::spawn(async move {
+            let result = closure();
             let _ = tx.send(result);
         });
         Self { receiver: rx }
     }
+
 }
 
 impl<T> Future for AsyncTask<T>
