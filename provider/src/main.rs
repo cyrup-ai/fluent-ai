@@ -116,7 +116,7 @@ fn generate_provider_enum(providers: &[ProviderInfo]) -> Result<ItemEnum, Box<dy
 }
 
 fn generate_model_enum(providers: &[ProviderInfo]) -> Result<ItemEnum, Box<dyn std::error::Error>> {
-    let mut variants = Vec::new();
+    let mut variants = std::collections::HashSet::new();
     
     for provider in providers {
         let provider_prefix = to_pascal_case(&provider.provider);
@@ -125,11 +125,12 @@ fn generate_model_enum(providers: &[ProviderInfo]) -> Result<ItemEnum, Box<dyn s
             let model_name = to_pascal_case(&model.name);
             // Create provider-prefixed variant name to ensure uniqueness
             let variant_name = format!("{}{}", provider_prefix, model_name);
-            variants.push(variant_name);
+            variants.insert(variant_name);
         }
     }
     
-    // Sort variants for consistent output
+    // Convert to sorted Vec for consistent output
+    let mut variants: Vec<_> = variants.into_iter().collect();
     variants.sort();
     
     let variant_tokens: Vec<_> = variants.iter().map(|name| {
