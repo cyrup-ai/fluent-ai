@@ -397,3 +397,36 @@ impl Provider for Providers {
         }
     }
 }
+
+impl Providers {
+    /// Create a Providers enum from a string name
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name.to_lowercase().as_str() {
+            "openai" => Some(Providers::Openai),
+            "gemini" => Some(Providers::Gemini),
+            "claude" => Some(Providers::Claude),
+            "mistral" => Some(Providers::Mistral),
+            "ai21" => Some(Providers::Ai21),
+            "cohere" => Some(Providers::Cohere),
+            "xai" => Some(Providers::Xai),
+            "perplexity" => Some(Providers::Perplexity),
+            "groq" => Some(Providers::Groq),
+            "vertexai" => Some(Providers::Vertexai),
+            "bedrock" => Some(Providers::Bedrock),
+            "cloudflare" => Some(Providers::Cloudflare),
+            "ernie" => Some(Providers::Ernie),
+            "qianwen" => Some(Providers::Qianwen),
+            "hunyuan" => Some(Providers::Hunyuan),
+            "moonshot" => Some(Providers::Moonshot),
+            "deepseek" => Some(Providers::Deepseek),
+            "zhipuai" => Some(Providers::Zhipuai),
+            "minimax" => Some(Providers::Minimax),
+            "openrouter" => Some(Providers::Openrouter),
+            "github" => Some(Providers::Github),
+            "deepinfra" => Some(Providers::Deepinfra),
+            "jina" => Some(Providers::Jina),
+            "voyageai" => Some(Providers::Voyageai),
+            _ => None,
+        }
+    }
+}

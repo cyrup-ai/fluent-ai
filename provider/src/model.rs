@@ -3692,3 +3692,11 @@ impl Model for Models {
         }
     }
 }
+
+impl Models {
+    /// Create a Models enum from a string name
+    pub fn from_name(name: &str) -> Option<Self> {
+        // Use serde to deserialize from the model name
+        serde_json::from_str(&format!("\"{}\"", name)).ok()
+    }
+}

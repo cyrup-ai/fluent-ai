@@ -1,4 +1,4 @@
-use clap::{Arg, Command, Parser};
+use clap::Parser;
 use fluent_ai_provider::{Model, Models, Provider, Providers};
 use fluent_ai_rig::create_fluent_engine_with_model;
 use std::error::Error;
@@ -43,34 +43,9 @@ fn validate_provider_and_model(
     provider: &str,
     model: &str,
 ) -> Result<(Providers, Models), String> {
-    // Find provider enum by name matching
-    let provider_enum = match provider.to_lowercase().as_str() {
-        "openai" => Providers::Openai,
-        "gemini" | "google" => Providers::Gemini,
-        "claude" | "anthropic" => Providers::Claude,
-        "mistral" => Providers::Mistral,
-        "ai21" => Providers::Ai21,
-        "cohere" => Providers::Cohere,
-        "xai" => Providers::Xai,
-        "perplexity" => Providers::Perplexity,
-        "groq" => Providers::Groq,
-        "vertexai" | "vertex" => Providers::Vertexai,
-        "bedrock" => Providers::Bedrock,
-        "cloudflare" => Providers::Cloudflare,
-        "ernie" => Providers::Ernie,
-        "qianwen" => Providers::Qianwen,
-        "hunyuan" => Providers::Hunyuan,
-        "moonshot" => Providers::Moonshot,
-        "deepseek" => Providers::Deepseek,
-        "zhipuai" => Providers::Zhipuai,
-        "minimax" => Providers::Minimax,
-        "openrouter" => Providers::Openrouter,
-        "github" => Providers::Github,
-        "deepinfra" => Providers::Deepinfra,
-        "jina" => Providers::Jina,
-        "voyageai" => Providers::Voyageai,
-        _ => return Err(format!("Unsupported provider: {}", provider)),
-    };
+    // Use generated enum method for provider validation
+    let provider_enum = Providers::from_name(provider)
+        .ok_or_else(|| format!("Unsupported provider: {}", provider))?;
 
     // Find model enum by checking provider and model combination
     let model_enum = find_model_for_provider(&provider_enum, model)
@@ -80,59 +55,14 @@ fn validate_provider_and_model(
 }
 
 fn find_model_for_provider(provider: &Providers, model_name: &str) -> Option<Models> {
-    let model_name_lower = model_name.to_lowercase().replace("-", "").replace("_", "");
-    
-    // Get all models for this provider and check if any match
+    // Get all models for this provider and check if any match by name
     for model_box in provider.models() {
-        let model_display_name = model_box.name().to_lowercase().replace("-", "").replace("_", "");
-        if model_display_name == model_name_lower {
-            // Convert Box<dyn Model> back to Models enum
-            return model_box_to_enum(&**model_box);
+        if model_box.name().eq_ignore_ascii_case(model_name) {
+            // Convert Box<dyn Model> back to Models enum using generated method
+            return Models::from_name(model_box.name());
         }
     }
     None
-}
-
-// Helper to convert Box<dyn Model> back to Models enum
-fn model_box_to_enum(model: &dyn Model) -> Option<Models> {
-    let model_name = model.name();
-    
-    // Match against all possible Models enum variants
-    // This is auto-generated enum so we need to check all variants
-    use Models::*;
-    let all_models = [
-        // OpenAI models
-        OpenaiGpt41, OpenaiGpt41Mini, OpenaiGpt41Nano, OpenaiGpt4o, OpenaiGpt4oMini,
-        OpenaiGpt4oSearchPreview, OpenaiGpt4oMiniSearchPreview, OpenaiChatgpt4oLatest,
-        OpenaiO3, OpenaiO3Mini, OpenaiO3MiniHigh, OpenaiO4Mini, OpenaiO4MiniHigh,
-        OpenaiGpt4Turbo, OpenaiGpt35Turbo, OpenaiTextEmbedding3Large, OpenaiTextEmbedding3Small,
-        // Gemini models
-        GeminiGemini25Flash, GeminiGemini25Pro, GeminiGemini25FlashLitePreview0617,
-        GeminiGemini20Flash, GeminiGemini20FlashLite, GeminiGemma327bIt, GeminiTextEmbedding004,
-        // Claude models
-        ClaudeClaudeOpus420250514, ClaudeClaudeOpus420250514Thinking,
-        ClaudeClaudeSonnet420250514, ClaudeClaudeSonnet420250514Thinking,
-        ClaudeClaude37Sonnet20250219, ClaudeClaude37Sonnet20250219Thinking,
-        ClaudeClaude35Sonnet20241022, ClaudeClaude35Haiku20241022,
-        // Add more models as needed - this covers the most common ones
-    ];
-    
-    for candidate in &all_models {
-        if candidate.name() == model_name {
-            return Some(*candidate);
-        }
-    }
-    None
-}
-
-fn validate_provider(provider: &str) -> Result<String, String> {
-    match provider.to_lowercase().as_str() {
-        "openai" | "anthropic" | "github" | "openrouter" | "mistral" => Ok(provider.to_string()),
-        _ => {
-            // Allow custom providers
-            Ok(provider.to_string())
-        }
-    }
 }
 
 fn validate_temperature(temp: f32) -> Result<f32, String> {
@@ -186,8 +116,8 @@ async fn load_context(context_refs: &[String]) -> Result<Vec<String>, Box<dyn Er
 }
 
 async fn interactive_mode(
-    provider: &ProviderImpl,
-    model: &ModelImpl,
+    provider: &Providers,
+    model: &Models,
     temperature: f32,
     agent_role: &str,
     context: &[String],
@@ -206,7 +136,7 @@ async fn interactive_mode(
 
     println!("Type 'quit' or 'exit' to end the session\n");
 
-    let engine = create_fluent_engine_with_model(model)?;
+    let engine = create_fluent_engine_with_model(*provider, *model)?;
 
     loop {
         print!("👤 You: ");
@@ -257,8 +187,8 @@ async fn interactive_mode(
 
 async fn single_prompt_mode(
     prompt: &str,
-    provider: &ProviderImpl,
-    model: &ModelImpl,
+    provider: &Providers,
+    model: &Models,
     temperature: f32,
     agent_role: &str,
     context: &[String],
@@ -269,7 +199,7 @@ async fn single_prompt_mode(
         model.name()
     );
 
-    let engine = create_fluent_engine_with_model(model)?;
+    let engine = create_fluent_engine_with_model(*provider, *model)?;
 
     let mut full_prompt = String::new();
 

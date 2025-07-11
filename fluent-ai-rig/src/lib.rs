@@ -3,56 +3,125 @@
 //! This crate provides factory functions and utilities for using the fluent-ai
 //! chat system from command-line applications.
 
-use fluent_ai_provider::{Models, Providers};
+use fluent_ai::engine::{engine_builder, FluentEngine};
+use fluent_ai::async_task::AsyncTask;
+use fluent_ai::domain::completion::CompletionBackend;
+use fluent_ai_provider::{Models, Providers, Provider as ProviderTrait, Model as ModelTrait};
+use rig::providers::{openai, anthropic};
+use std::env;
+use std::sync::Arc;
+use tracing::error;
 
-/// Re-export fluent-ai types for CLI usage
-pub use fluent_ai::{
-    agent::ChunkHandler,
-    domain::completion::CompletionBackend,
-    engine::{Engine, FluentEngine},
-    async_task::AsyncTask,
-};
+/// Rig-based CompletionBackend implementation
+pub struct RigCompletionBackend {
+    provider: Providers,
+    model: Models,
+}
+
+impl RigCompletionBackend {
+    pub fn new(provider: Providers, model: Models) -> Self {
+        Self { provider, model }
+    }
+}
+
+impl CompletionBackend for RigCompletionBackend {
+    fn submit_completion(&self, prompt: &str, tools: &[String]) -> AsyncTask<String> {
+        let provider = self.provider;
+        let model = self.model;
+        let prompt_text = prompt.to_string();
+        let _tools = tools.to_vec(); // Store for future tool support
+        AsyncTask::from_future(async move {
+            // Get rig client by provider name
+            let provider_name = provider.name();
+            let model_name = model.name();
+            
+            let result = match provider_name {
+                "openai" => {
+                    let api_key = env::var("OPENAI_API_KEY")
+                        .expect("OPENAI_API_KEY environment variable must be set");
+                    let client = openai::Client::new(&api_key);
+                    let agent = client.agent(model_name).build();
+                    match agent.prompt(&prompt_text).await {
+                        Ok(response) => response.to_string(),
+                        Err(e) => {
+                            error!("OpenAI completion failed: {}", e);
+                            format!("Error: {}", e)
+                        }
+                    }
+                },
+                "anthropic" | "claude" => {
+                    let api_key = env::var("ANTHROPIC_API_KEY")
+                        .expect("ANTHROPIC_API_KEY environment variable must be set");
+                    let client = anthropic::ClientBuilder::new(&api_key).build();
+                    let agent = client.agent(model_name).build();
+                    match agent.prompt(&prompt_text).await {
+                        Ok(response) => response.to_string(),
+                        Err(e) => {
+                            error!("Anthropic completion failed: {}", e);
+                            format!("Error: {}", e)
+                        }
+                    }
+                },
+                _ => {
+                    error!("Unsupported provider: {}", provider_name);
+                    format!("Unsupported provider: {}", provider_name)
+                }
+            };
+            
+            result
+        })
+    }
+}
+
+/// Create a FluentEngine with the specified provider and model
+pub fn create_fluent_engine_with_model(provider: Providers, model: Models) -> Result<Arc<FluentEngine>, Box<dyn std::error::Error + Send + Sync>> {
+    let backend = Arc::new(RigCompletionBackend::new(provider, model));
+    let engine = Arc::new(FluentEngine::new(backend, model));
+    
+    engine_builder()
+        .engine(engine.clone())
+        .name("fluent-ai-rig-engine")
+        .build_and_register()?;
+    
+    Ok(engine)
+}
 
 /// Utility functions for CLI integration
 pub mod cli {
-    use super::*;
-    use fluent_ai_provider::{Models, Providers};
+    use fluent_ai_provider::{Models, Providers, Provider, Model};
     
     /// Validate that a provider supports a given model
     pub fn validate_provider_model_combination(
         provider: Providers,
         model: Models,
     ) -> Result<(), String> {
-        // Use the generated provider/model validation logic
-        match (provider, model) {
-            // OpenAI models
-            (Providers::Openai, Models::OpenaiGpt4o) => Ok(()),
-            (Providers::Openai, Models::OpenaiGpt4oMini) => Ok(()),
-            (Providers::Openai, Models::OpenaiGpt35Turbo) => Ok(()),
-            // Anthropic models
-            (Providers::Anthropic, Models::AnthropicClaude35Sonnet) => Ok(()),
-            (Providers::Anthropic, Models::AnthropicClaude3Haiku) => Ok(()),
-            // Mistral models
-            (Providers::Mistral, Models::MistralLarge) => Ok(()),
-            (Providers::Mistral, Models::MistralSmall) => Ok(()),
-            // Invalid combinations
-            _ => Err(format!(
-                "Model {:?} is not supported by provider {:?}",
-                model, provider
-            )),
+        use fluent_ai_provider::{Provider, Model};
+        
+        // Get all models supported by this provider
+        let supported_models = provider.models();
+        
+        // Check if the requested model is supported
+        let model_name = model.name();
+        let is_supported = supported_models.iter()
+            .any(|supported| supported.name() == model_name);
+            
+        if is_supported {
+            Ok(())
+        } else {
+            Err(format!(
+                "Model '{}' is not supported by provider '{}'",
+                model_name, provider.name()
+            ))
         }
     }
     
-    /// Get the default model for a given provider
-    pub fn get_default_model_for_provider(provider: Providers) -> Models {
-        match provider {
-            Providers::Openai => Models::OpenaiGpt4oMini,
-            Providers::Anthropic => Models::AnthropicClaude35Sonnet,
-            Providers::Mistral => Models::MistralLarge,
-            Providers::Cohere => Models::CohereCommandRPlus,
-            Providers::Google => Models::GoogleGemini15Pro,
-            Providers::Groq => Models::GroqLlama370b8192,
-        }
+    /// Get the default model for a given provider (first model in the list)
+    pub fn get_default_model_for_provider(provider: Providers) -> Option<Models> {
+        use fluent_ai_provider::Provider;
+        
+        provider.models().first().and_then(|model| {
+            Models::from_name(model.name())
+        })
     }
 }
 
