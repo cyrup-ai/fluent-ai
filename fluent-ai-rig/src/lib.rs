@@ -90,7 +90,7 @@ pub fn create_fluent_engine_with_model(provider: Providers, model: Models) -> Re
 
 /// Utility functions for CLI integration
 pub mod cli {
-    use fluent_ai_provider::{Models, Providers, Provider, Model};
+    use fluent_ai_provider::{Models, Providers};
     
     /// Validate that a provider supports a given model
     pub fn validate_provider_model_combination(

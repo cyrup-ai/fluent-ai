@@ -1,7 +1,6 @@
 use clap::Parser;
 use fluent_ai_provider::{Model, Models, Provider, Providers};
 use fluent_ai_rig::create_fluent_engine_with_model;
-use std::error::Error;
 use std::io::{self, Write};
 use tokio;
 use tracing::{error, info};
@@ -136,7 +135,7 @@ async fn interactive_mode(
 
     println!("Type 'quit' or 'exit' to end the session\n");
 
-    let engine = create_fluent_engine_with_model(provider.clone(), model.clone())?;
+    let _engine = create_fluent_engine_with_model(provider.clone(), model.clone())?;
 
     loop {
         print!("👤 You: ");
@@ -189,7 +188,7 @@ async fn single_prompt_mode(
     prompt: &str,
     provider: &Providers,
     model: &Models,
-    temperature: f32,
+    _temperature: f32,
     agent_role: &str,
     context: &[String],
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -199,7 +198,7 @@ async fn single_prompt_mode(
         model.name()
     );
 
-    let engine = create_fluent_engine_with_model(provider.clone(), model.clone())?;
+    let _engine = create_fluent_engine_with_model(provider.clone(), model.clone())?;
 
     let mut full_prompt = String::new();
 
