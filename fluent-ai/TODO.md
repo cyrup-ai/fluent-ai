@@ -1,168 +1,163 @@
-# TODO.md - Complete Implementation Plan for Fluent-AI
+## Current Status: 145 WARNINGS, 0 ERRORS
 
-## Overview
-This document maps EVERY single action method for every fluent chain in fluent-ai, including all chunk types and polymorphic builders. FileLoader is removed as Document API handles all loading scenarios.
+## SUCCESS CRITERIA: 0 WARNINGS, 0 ERRORS
 
-## 1. Chunk Types to Implement
+---
 
-### Core Chunk Types
-- **DocumentChunk** - for file/document content
-  - path: Option<PathBuf>
-  - content: String
-  - metadata: HashMap<String, Value>
-  - byte_range: Option<(usize, usize)>
-  
-- **ImageChunk** - for image data
-  - data: Vec<u8>
-  - format: ImageFormat (PNG, JPEG, GIF, WebP)
-  - dimensions: Option<(u32, u32)>
-  - metadata: HashMap<String, Value>
-  
-- **VoiceChunk** - for audio/voice data
-  - audio_data: Vec<u8>
-  - format: AudioFormat
-  - duration_ms: Option<u64>
-  - sample_rate: Option<u32>
-  - metadata: HashMap<String, Value>
-  
-- **ChatMessageChunk** - for streaming chat responses (renamed to avoid conflict with existing MessageChunk)
-  - content: String
-  - role: MessageRole
-  - is_final: bool
-  - metadata: HashMap<String, Value>
-  
-- **CompletionChunk** - for streaming completions
-  - text: String
-  - finish_reason: Option<FinishReason>
-  - usage: Option<Usage>
-  
-- **EmbeddingChunk** - for streaming embeddings
-  - embeddings: Vec<f32>
-  - index: usize
-  - metadata: HashMap<String, Value>
+## CATEGORY A: CRITICAL UNREACHABLE PATTERNS (85 warnings) 🚨
 
-## 2. Document API Enhancements
+### A1. Fix providers.rs unreachable pattern at line 1322
+### A2. Fix providers.rs unreachable pattern at line 1333
+### A3. Fix providers.rs unreachable pattern at line 1344
+### A4. Fix providers.rs unreachable pattern at line 1377
+### A5. Fix providers.rs unreachable pattern at line 1388
+### A6. Fix providers.rs unreachable pattern at line 1399
+### A7. Fix providers.rs unreachable pattern at line 1410
+### A8. Fix providers.rs unreachable pattern at line 1421
+### A9. Fix providers.rs unreachable pattern at line 1432
+### A10. Fix providers.rs unreachable pattern at line 1454
+### A11. Fix providers.rs unreachable pattern at line 2829
+### A12. Fix providers.rs unreachable pattern at line 2840
+### A13. Fix providers.rs unreachable pattern at line 3049
+### A14. Fix providers.rs unreachable pattern at line 3060
+### A15. Fix providers.rs unreachable pattern at line 3071
+### A16. Fix providers.rs unreachable pattern at line 3082
+### A17. Fix providers.rs unreachable pattern at line 3093
+### A18. Fix providers.rs unreachable pattern at line 3104
+### A19. Fix providers.rs unreachable pattern at line 3115
+### A20. Fix providers.rs unreachable pattern at line 3126
+### A21. Fix providers.rs unreachable pattern at line 3137
+### A22. Fix providers.rs unreachable pattern at line 3148
+### A23. Fix providers.rs unreachable pattern at line 3159
+### A24. Fix providers.rs unreachable pattern at line 3170
+### A25. Fix providers.rs unreachable pattern at line 3225
+### A26. Fix providers.rs unreachable pattern at line 3236
+### A27. Fix providers.rs unreachable pattern at line 3269
+### A28. Fix providers.rs unreachable pattern at line 3379
+### A29. Fix providers.rs unreachable pattern at line 3390
+### A30. Fix providers.rs unreachable pattern at line 3401
+### A31. Fix providers.rs unreachable pattern at line 3456
+### A32. Fix providers.rs unreachable pattern at line 3489
+### A33. Fix providers.rs unreachable pattern at line 3522
+### A34. Fix providers.rs unreachable pattern at line 3632
+### A35. Fix providers.rs unreachable pattern at line 3775
+### A36. Fix providers.rs unreachable pattern at line 3776
+### A37. Fix providers.rs unreachable pattern at line 3777
+### A38. Fix providers.rs unreachable pattern at line 3780
+### A39. Fix providers.rs unreachable pattern at line 3781
+### A40. Fix providers.rs unreachable pattern at line 3782
+### A41. Fix providers.rs unreachable pattern at line 3783
+### A42. Fix providers.rs unreachable pattern at line 3784
+### A43. Fix providers.rs unreachable pattern at line 3785
+### A44. Fix providers.rs unreachable pattern at line 3787
+### A45. Fix providers.rs unreachable pattern at line 3932
+### A46. Fix providers.rs unreachable pattern at line 3933
+### A47. Fix providers.rs unreachable pattern at line 3952
+### A48. Fix providers.rs unreachable pattern at line 3953
+### A49. Fix providers.rs unreachable pattern at line 3954
+### A50. Fix providers.rs unreachable pattern at line 3955
+### A51. Fix providers.rs unreachable pattern at line 3956
+### A52. Fix providers.rs unreachable pattern at line 3957
+### A53. Fix providers.rs unreachable pattern at line 3958
+### A54. Fix providers.rs unreachable pattern at line 3959
+### A55. Fix providers.rs unreachable pattern at line 3960
+### A56. Fix providers.rs unreachable pattern at line 3961
+### A57. Fix providers.rs unreachable pattern at line 3962
+### A58. Fix providers.rs unreachable pattern at line 3963
+### A59. Fix providers.rs unreachable pattern at line 3968
+### A60. Fix providers.rs unreachable pattern at line 3969
+### A61. Fix providers.rs unreachable pattern at line 3972
+### A62. Fix providers.rs unreachable pattern at line 3984
+### A63. Fix providers.rs unreachable pattern at line 3987
+### A64. Fix providers.rs unreachable pattern at line 3988
+### A65. Fix providers.rs unreachable pattern at line 3989
+### A66. Fix providers.rs unreachable pattern at line 3990
+### A67. Fix providers.rs unreachable pattern at line 3991
+### A68. Fix providers.rs unreachable pattern at line 3992
+### A69. Fix providers.rs unreachable pattern at line 3993
+### A70. Fix providers.rs unreachable pattern at line 3996
+### A71. Fix providers.rs unreachable pattern at line 4001
+### A72. Fix providers.rs unreachable pattern at line 4011
 
-### Remove FileLoader - Document handles all loading
-```rust
-// File operations
-Document::from_file("path/to/file.txt")
-    .on_error(|e| eprintln!("Error: {}", e))
-    .load_async() -> AsyncTask<Document>
+---
 
-Document::from_glob("**/*.md")
-    .on_error(|e| eprintln!("Error: {}", e))
-    .stream() -> AsyncStream<Document>
+## CATEGORY B: UNUSED IMPORTS (8 warnings) 📦
 
-// URL operations
-Document::from_url("https://example.com/data.json")
-    .on_error(|e| eprintln!("Error: {}", e))
-    .load_async() -> AsyncTask<Document>
+### B1. Remove unused import `ToolDefinition` from fluent_engine.rs:1
+### B2. Remove unused import `std::collections::HashMap` from fluent_engine.rs:4
+### B3. Remove unused import `std::collections::HashMap` from providers.rs:6
+### B4. Remove unused import `macros::*` from lib.rs:63
+### B5. Remove unused import `futures::StreamExt` from async_task/stream.rs:5
+### B6. Remove unused import `Conversation` from domain/agent.rs:5
 
-// GitHub operations
-Document::from_github("owner/repo/path/to/file.rs")
-    .on_error(|e| eprintln!("Error: {}", e))
-    .load_async() -> AsyncTask<Document>
+---
 
-// Streaming operations
-Document::from_glob("**/*.txt")
-    .on_error(|e| eprintln!("Error: {}", e))
-    .stream_chunks(1024) -> AsyncStream<DocumentChunk>
-```
+## CATEGORY C: UNUSED VARIABLES (15 warnings) 🔧
 
-## 3. Polymorphic Builder Pattern Requirements
+### C1. Fix unused variable `task` in workflow.rs line 428
+### C2. Fix unused variable `stream` in workflow.rs line 441
+### C3. Fix unused variable `agent` in domain/agent.rs line 212
+### C4. Fix unused variable `request` in domain/agent.rs line 239
+### C5. Fix unused variable `agent` in domain/agent.rs line 281
+### C6. Fix unused variable `chunk_size` in domain/agent.rs line 270
+### C7. Fix unused variable `agent` in domain/agent.rs line 321
+### C8. Fix unused variable `message` in domain/agent.rs line 317
+### C9. Fix unused variable `last_user_message` in domain/agent.rs line 374
+### C10. Fix unused variable `handler` in domain/completion.rs line 209
+### C11. Fix unused variable `pattern` in domain/document.rs line 393
+### C12. Fix unused variable `f` in domain/image.rs line 165
+### C13. Fix unused variable `model_name` in fluent_engine.rs line 100
+### C14. Fix unused variable `default_temperature` in fluent_engine.rs line 101
+### C15. Fix unused variable `default_max_tokens` in fluent_engine.rs line 102
 
-### Core Principle
-Users MUST provide error handlers (on_result/on_error/on_chunk) BEFORE accessing terminal methods.
+---
 
-### Implementation Pattern
-```rust
-// Stage 1: Initial builder - NO terminal methods available
-let builder = Document::from_glob("*.txt")?;
+## CATEGORY D: UNUSED FIELDS (20 warnings) 📋
 
-// Stage 2: After error handler - terminal methods NOW available
-let stream = builder
-    .on_error(|e| eprintln!("Error: {}", e))
-    .stream(); // Returns AsyncStream<Document>
-```
+### D1. Fix unused fields `stream` and `f` in sugars.rs line 312
+### D2. Fix unused fields `stream` and `f` in sugars.rs line 317
+### D3. Fix unused field `error_handler` in domain/agent.rs line 42
+### D4. Fix unused field `agent` in domain/agent.rs line 333
+### D5. Fix unused field `name` in domain/agent_role.rs line 11
+### D6. Fix unused fields `server_type`, `bin_path`, and `init_command` in domain/agent_role.rs line 29
+### D7. Fix unused field `inner` in domain/agent_role.rs line 251
+### D8. Fix unused fields `format` and `error_handler` in domain/audio.rs line 36
+### D9. Fix unused field `error_handler` in domain/completion.rs line 61
+### D10. Fix unused field `source` in domain/context.rs line 22
+### D11. Fix unused field `pattern` in domain/context.rs line 132
+### D12. Fix unused field `error_handler` in domain/document.rs line 48
+### D13. Fix unused field `error_handler` in domain/embedding.rs line 44
+### D14. Fix unused field `error_handler` in domain/extractor.rs line 22
+### D15. Fix unused field `error_handler` in domain/image.rs line 49
+### D16. Fix unused field `config` in domain/tool_v2.rs line 13
+### D17. Fix unused field `name` in domain/tool_v2.rs line 31
 
-## 4. Complete Action Method Mapping
+---
 
-### Document Action Methods
-- **Terminal methods (require error handler first)**:
-  - `load() -> Document` (sync)
-  - `load_async() -> AsyncTask<Document>`
-  - `stream() -> AsyncStream<Document>`
-  - `stream_chunks(size: usize) -> AsyncStream<DocumentChunk>`
-  - `stream_lines() -> AsyncStream<DocumentChunk>`
+## CATEGORY E: UNUSED FUNCTIONS/STRUCTS (5 warnings) 🏗️
 
-### Image Action Methods
-- **Terminal methods (require error handler first)**:
-  - `load_async() -> AsyncTask<Image>`
-  - `stream() -> AsyncStream<ImageChunk>`
-  - `stream_thumbnails(size: (u32, u32)) -> AsyncStream<ImageChunk>`
-  - `detect_objects() -> AsyncTask<Vec<DetectedObject>>`
+### E1. Fix unused function `passthrough` in domain/memory_workflow.rs line 39
+### E2. Fix unused function `run_both` in domain/memory_workflow.rs line 59
+### E3. Fix unused function `new` in domain/memory_workflow.rs line 25
+### E4. Fix unused struct `WorkflowBuilder` in domain/memory_workflow.rs line 29
+### E5. Fix unused method `chain` in domain/memory_workflow.rs line 32
 
-### Audio Action Methods
-- **Terminal methods (require error handler first)**:
-  - `load_async() -> AsyncTask<Audio>`
-  - `stream() -> AsyncStream<VoiceChunk>`
-  - `transcribe() -> AsyncTask<String>`
-  - `stream_transcription() -> AsyncStream<DocumentChunk>`
+---
 
-### Agent Action Methods
-- **Direct terminal methods**:
-  - `chat(message: &str) -> AsyncStream<MessageChunk>`
-  - `stream_completion(prompt: &str) -> AsyncStream<CompletionChunk>`
-  - `on_response<F>(message: &str, handler: F) -> AsyncTask<String>`
-  
-- **Builder methods** (return new builders):
-  - `completion(prompt: &str) -> CompletionRequestBuilder`
-  - `conversation() -> ConversationBuilder<M>`
+## CATEGORY F: MISC STYLE/LINT WARNINGS (12 warnings) 🎨
 
-### CompletionRequestBuilder Action Methods
-- **Terminal methods (with polymorphic error handling)**:
-  - `complete<F>(handler: F) -> AsyncStream<CompletionChunk>`
-  - `on_completion<F>(handler: F) -> AsyncTask<String>`
-  - `stream() -> AsyncStream<CompletionChunk>`
-  - `request() -> CompletionRequest` (builds request object)
-
-### Extractor<T> Action Methods
-- **Terminal methods**:
-  - `extract(text: &str) -> AsyncTask<T>`
-  - `extract_with_context(text: &str, context: Vec<Document>) -> AsyncTask<T>`
-  - `on_extraction<F>(text: &str, handler: F) -> AsyncTask<T>`
-  - `stream_extract(text: &str) -> AsyncStream<T>`
-
-### Memory Action Methods
-- **Direct action methods (not builders)**:
-  - `create_memory(node: MemoryNode) -> AsyncTask<MemoryNode>`
-  - `get_memory(id: &str) -> AsyncTask<Option<MemoryNode>>`
-  - `update_memory(node: MemoryNode) -> AsyncTask<MemoryNode>`
-  - `delete_memory(id: &str) -> AsyncTask<bool>`
-  - `query_all() -> AsyncStream<MemoryNode>`
-  - `query_by_type(memory_type: MemoryType) -> AsyncStream<MemoryNode>`
-  - `search_by_content(query: &str) -> AsyncStream<MemoryNode>`
-  - `search_by_vector(embedding: Vec<f32>, limit: usize) -> AsyncStream<MemoryNode>`
-
-### Workflow<In, Out> Action Methods
-- **Builder methods** (after on_error):
-  - `build() -> Workflow<In, Out>` (creates reusable workflow)
-  
-- **Workflow execution methods**:
-  - `execute(input: In) -> AsyncTask<Out>`
-  - `stream(inputs: AsyncStream<In>) -> AsyncStream<Out>`
-  - `then<Out2>(other: Workflow<Out, Out2>) -> Workflow<In, Out2>` (composition)
-
-### EmbeddingModel Action Methods
-- **Terminal methods**:
-  - `embed(text: &str) -> AsyncTask<Vec<f32>>`
-  - `embed_batch(texts: Vec<String>) -> AsyncStream<EmbeddingChunk>`
-  - `on_embedding<F>(text: &str, handler: F) -> AsyncTask<Vec<f32>>`
-
-## 5. Implementation Order
-
-### Phase 1: Core Infrastructure
+### F1. Fix ambiguous glob re-export `ContentFormat` in domain/mod.rs line 26
+### F2. Fix ambiguous glob re-export `Prompt` in domain/mod.rs line 39
+### F3. Fix ambiguous glob re-export `Tool` in domain/mod.rs line 42
+### F4. Fix unnecessary mutable variable in collection_ext.rs line 510
+### F5. Fix unnecessary mutable variable in domain/agent_role.rs line 212
+### F6. Fix confusing lifetime flow in sugars.rs line 67
+### F7. Fix confusing lifetime flow in domain/memory.rs line 47
+### F8. Fix unused import `std::collections::HashMap` in fluent_engine.rs line 4
+### F9. Fix unused import `std::collections::HashMap` in providers.rs line 6
+### F10. Fix unused import `macros::*` in lib.rs line 63
+### F11. Fix unused import `futures::StreamExt` in async_task/stream.rs line 5
+### F12. Fix unused import `Conversation` in domain/agent.rs line 5
 - [x] NotResult trait preventing Result in AsyncTask/AsyncStream
 - [ ] Remove FileLoader completely
 - [ ] Implement chunk types in domain module

@@ -7,6 +7,7 @@ use std::future::Future;
 use std::pin::Pin;
 // AgentConfig, Agent trait, and CompletionResponse are defined in engine.rs
 use crate::engine::{Engine, ExtractionConfig, AgentConfig, Agent, CompletionResponse};
+use crate::providers::Model;
 
 /// A concrete engine implementation that integrates with the existing fluent-ai domain system
 pub struct FluentEngine {
@@ -274,7 +275,7 @@ mod tests {
         let engine = FluentEngine::new(backend, "test-model");
         
         let config = AgentConfig {
-            model: "test_model".to_string(),
+            model: Model::OpenaiGpt4o, // Using a real model enum variant instead of string
             system_prompt: Some("You are a helpful assistant".to_string()),
             temperature: Some(0.8),
             max_tokens: Some(500),

@@ -17,8 +17,8 @@ pub struct RigBackend {
 impl RigBackend {
     /// Create a new RigBackend with OpenAI API key
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let api_key = env::var("OPENAI_API_KEY")
-            .map_err(|_| "OPENAI_API_KEY environment variable not set")?;
+        let api_key = env::var("MISTRAL_API_KEY")
+            .map_err(|_| "MISTRAL_API_KEY environment variable not set")?;
         
         let client = openai::Client::new(&api_key);
         
@@ -26,14 +26,14 @@ impl RigBackend {
         
         Ok(RigBackend {
             client,
-            model: "gpt-4o-mini".to_string(),
+            model: Model::MagistralSmall.to_string(),
         })
     }
     
     /// Create RigBackend with custom model
     pub fn with_model(model_name: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let api_key = env::var("OPENAI_API_KEY")
-            .map_err(|_| "OPENAI_API_KEY environment variable not set")?;
+        let api_key = env::var("MISTRAL_API_KEY")
+            .map_err(|_| "MISTRAL_API_KEY environment variable not set")?;
         
         let client = openai::Client::new(&api_key);
         
@@ -107,15 +107,15 @@ mod tests {
     #[test]
     fn test_create_engine_without_api_key() {
         // Temporarily unset the API key
-        let original = env::var("OPENAI_API_KEY").ok();
-        env::remove_var("OPENAI_API_KEY");
+        let original = env::var("MISTRAL_API_KEY").ok();
+        env::remove_var("MISTRAL_API_KEY");
         
         let result = create_fluent_engine();
         assert!(result.is_err());
         
         // Restore original value if it existed
         if let Some(key) = original {
-            env::set_var("OPENAI_API_KEY", key);
+            env::set_var("MISTRAL_API_KEY", key);
         }
     }
 }

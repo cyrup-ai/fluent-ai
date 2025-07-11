@@ -8,6 +8,7 @@ use std::pin::Pin;
 // AgentConfig is defined locally below
 // Agent trait is defined locally to avoid conflict with domain::agent::Agent struct
 use crate::domain::completion::CompletionRequest;
+use crate::providers::Model;
 
 // Typesafe builder module
 pub mod builder;
@@ -22,7 +23,7 @@ pub use fluent_engine::FluentEngine;
 /// Configuration for creating an agent
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentConfig {
-    pub model: String,
+    pub model: Model,
     pub system_prompt: Option<String>,
     pub temperature: Option<f64>,
     pub max_tokens: Option<u64>,
@@ -32,7 +33,7 @@ pub struct AgentConfig {
 /// Configuration for extraction
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtractionConfig {
-    pub model: String,
+    pub model: Model,
     pub prompt: String,
     pub schema: Option<Value>,
     pub temperature: Option<f64>,
