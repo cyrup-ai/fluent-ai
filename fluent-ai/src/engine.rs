@@ -58,6 +58,25 @@ pub trait Agent {
     fn name(&self) -> &str;
 }
 
+/// A no-op agent implementation
+pub struct NoOpAgent {
+    name: String,
+}
+
+impl NoOpAgent {
+    pub fn new(config: AgentConfig) -> Self {
+        Self {
+            name: format!("NoOpAgent-{}", config.model),
+        }
+    }
+}
+
+impl Agent for NoOpAgent {
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
 /// Core trait for backend engines - object-safe version using boxed futures
 pub trait Engine: Send + Sync + 'static {
     fn create_agent(
@@ -195,7 +214,7 @@ impl Engine for NoOpEngine {
         config: AgentConfig,
     ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Agent + Send>, Box<dyn StdError + Send + Sync>>> + Send + '_>> {
         Box::pin(async move {
-            Ok(Box::new(crate::domain::agent::NoOpAgent::new(config)) as Box<dyn Agent + Send>)
+            Ok(Box::new(NoOpAgent::new(config)) as Box<dyn Agent + Send>)
         })
     }
 

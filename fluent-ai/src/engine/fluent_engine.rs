@@ -102,7 +102,38 @@ impl Engine for FluentEngine {
         let default_max_tokens = self.default_max_tokens;
         
         Box::pin(async move {
-            Self::complete_impl(backend, request, model_name, default_temperature, default_max_tokens).await
+            // Convert CompletionRequest to the format expected by the backend
+            let prompt = format!(
+                "System: {}\n\nChat History:\n{}\n\nDocuments:\n{}\n\nPlease provide a response.",
+                request.system_prompt,
+                request.chat_history.iter()
+                    .map(|msg| format!("{:?}: {}", msg.role, msg.content))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+                request.documents.iter()
+                    .map(|doc| format!("Document: {}", doc.content()))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            );
+            
+            let tools: Vec<String> = request.tools.iter().map(|t| t.name.clone()).collect();
+            
+            // Submit completion to backend
+            let result = backend.submit_completion(&prompt, &tools).await;
+            
+            match result {
+                Ok(content) => {
+                    Ok(CompletionResponse {
+                        content,
+                        usage: Some(crate::engine::Usage {
+                            prompt_tokens: 0, // Backend doesn't provide this info
+                            completion_tokens: 0, // Backend doesn't provide this info
+                            total_tokens: 0, // Backend doesn't provide this info
+                        }),
+                    })
+                },
+                Err(e) => Err(format!("Completion failed: {}", e).into()),
+            }
         })
     }
 
@@ -120,6 +151,8 @@ impl Engine for FluentEngine {
     }
 
     fn execute_tool(&self, tool_name: &str, args: Value) -> Pin<Box<dyn Future<Output = Result<Value, Box<dyn StdError + Send + Sync>>> + Send + '_>> {
+        let backend = Arc::clone(&self.backend);
+        let tool_name = tool_name.to_string();
         Box::pin(async move {
             // For now, we'll create a completion request that asks the backend to execute the tool
             let prompt = format!(
@@ -128,7 +161,7 @@ impl Engine for FluentEngine {
                 args
             );
             
-            let result = self.backend.submit_completion(&prompt, &[tool_name.to_string()]).await;
+            let result = backend.submit_completion(&prompt, &[tool_name.clone()]).await;
             
             match result {
                 Ok(content) => {
