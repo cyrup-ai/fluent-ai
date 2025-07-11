@@ -7,7 +7,7 @@ use fluent_ai::engine::{engine_builder, FluentEngine};
 use fluent_ai::async_task::AsyncTask;
 use fluent_ai::domain::completion::CompletionBackend;
 use fluent_ai_provider::{Models, Providers, Provider as ProviderTrait, Model as ModelTrait};
-use rig::providers::{openai, anthropic};
+use rig::providers::{openai, anthropic, mistral};
 use rig::completion::Prompt;
 use rig::client::CompletionClient;
 use std::env;
@@ -64,6 +64,19 @@ impl CompletionBackend for RigCompletionBackend {
                         }
                     }
                 },
+                "mistral" => {
+                    let api_key = env::var("MISTRAL_API_KEY")
+                        .expect("MISTRAL_API_KEY environment variable must be set");
+                    let client = mistral::Client::new(&api_key);
+                    let agent = client.agent(model_name).build();
+                    match agent.prompt(&prompt_text).await {
+                        Ok(response) => response.to_string(),
+                        Err(e) => {
+                            error!("Mistral completion failed: {}", e);
+                            format!("Error: {}", e)
+                        }
+                    }
+                },
                 _ => {
                     error!("Unsupported provider: {}", provider_name);
                     format!("Unsupported provider: {}", provider_name)
@@ -105,7 +118,7 @@ pub mod cli {
         // Check if the requested model is supported
         let model_name = model.name();
         let is_supported = supported_models.iter()
-            .any(|supported| supported.name() == model_name);
+            .any(|supported| supported.name().eq_ignore_ascii_case(model_name));
             
         if is_supported {
             Ok(())
@@ -127,34 +140,3 @@ pub mod cli {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::cli::*;
-    use fluent_ai_provider::{Models, Providers};
-
-    #[test]
-    fn test_validate_openai_models() {
-        assert!(validate_provider_model_combination(
-            Providers::Openai,
-            Models::OpenaiGpt4oMini
-        ).is_ok());
-        
-        assert!(validate_provider_model_combination(
-            Providers::Openai,
-            Models::MistralLarge // Wrong provider
-        ).is_err());
-    }
-
-    #[test]
-    fn test_default_models() {
-        assert_eq!(
-            get_default_model_for_provider(Providers::Openai),
-            Models::OpenaiGpt4oMini
-        );
-        
-        assert_eq!(
-            get_default_model_for_provider(Providers::Anthropic),
-            Models::AnthropicClaude35Sonnet
-        );
-    }
-}

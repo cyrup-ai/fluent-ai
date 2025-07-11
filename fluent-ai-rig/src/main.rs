@@ -1,6 +1,7 @@
 use clap::Parser;
 use fluent_ai_provider::{Model, Models, Provider, Providers};
-use fluent_ai_rig::create_fluent_engine_with_model;
+use fluent_ai_rig::{create_fluent_engine_with_model, RigCompletionBackend};
+use fluent_ai::domain::completion::CompletionBackend;
 use std::io::{self, Write};
 use tokio;
 use tracing::{error, info};
@@ -10,11 +11,11 @@ use tracing::{error, info};
 #[command(about = "A CLI for interacting with FluentAI using various models")]
 struct Cli {
     /// Provider to use (e.g., openai, anthropic, github, openrouter)
-    #[arg(short, long, default_value = "openai")]
+    #[arg(short, long, default_value = "mistral")]
     provider: String,
 
     /// Model to use for completions (e.g., gpt-4o-mini, claude-3-sonnet)
-    #[arg(short, long, default_value = "gpt-4o-mini")]
+    #[arg(short, long, default_value = "magistral-medium-latest")]
     model: String,
 
     /// Temperature for generation (0.0 to 2.0)
@@ -38,27 +39,52 @@ struct Cli {
     prompt: Option<String>,
 }
 
-fn validate_provider_and_model(
-    provider: &str,
-    model: &str,
-) -> Result<(Providers, Models), String> {
+fn validate_provider_and_model(provider: &str, model: &str) -> Result<(Providers, Models), String> {
     // Use generated enum method for provider validation
     let provider_enum = Providers::from_name(provider)
         .ok_or_else(|| format!("Unsupported provider: {}", provider))?;
 
-    // Find model enum by checking provider and model combination
-    let model_enum = find_model_for_provider(&provider_enum, model)
-        .ok_or_else(|| format!("Unsupported model '{}' for provider '{}'", model, provider))?;
-
+    // Validate that the model is supported by the provider
+    if !is_model_supported_by_provider(&provider_enum, model) {
+        return Err(format!("Unsupported model '{}' for provider '{}'", model, provider));
+    }
+    
+    // Find the matching Models enum variant
+    let model_enum = find_models_enum_by_name(model)
+        .ok_or_else(|| format!("Unknown model: {}", model))?;
+    
     Ok((provider_enum, model_enum))
 }
 
-fn find_model_for_provider(provider: &Providers, model_name: &str) -> Option<Models> {
+fn is_model_supported_by_provider(provider: &Providers, model_name: &str) -> bool {
     // Get all models for this provider and check if any match by name
     for model_box in provider.models() {
         if model_box.name().eq_ignore_ascii_case(model_name) {
-            // Convert Box<dyn Model> back to Models enum using generated method
-            return Models::from_name(model_box.name());
+            return true;
+        }
+    }
+    false
+}
+
+fn find_models_enum_by_name(model_name: &str) -> Option<Models> {
+    // Create instances of all Models variants and check their names
+    let all_models = [
+        Models::OpenaiGpt4o,
+        Models::OpenaiGpt4oMini,
+        Models::ClaudeClaude35Sonnet20241022,
+        Models::MistralMistralMediumLatest,
+        Models::MistralMistralSmallLatest,
+        Models::MistralMagistralMediumLatest,
+        Models::MistralMagistralSmallLatest,
+        Models::MistralDevstralSmallLatest,
+        Models::MistralCodestralLatest,
+        Models::MistralMistralEmbed,
+        // Add more as needed...
+    ];
+    
+    for model in &all_models {
+        if model.name().eq_ignore_ascii_case(model_name) {
+            return Some(model.clone());
         }
     }
     None
@@ -175,10 +201,16 @@ async fn interactive_mode(
 
         full_prompt.push_str(input);
 
-        // For now, echo the prompt since we need to implement the actual completion
+        // Create backend and submit completion
+        let backend = crate::RigCompletionBackend::new(provider.clone(), model.clone());
         println!("[Processing with model: {}, temp: {}]", model.name(), temperature);
-        println!("Full prompt would be: {}", full_prompt);
-        println!("[TODO: Implement actual completion call]\n");
+        
+        // Submit completion request
+        let completion_task = backend.submit_completion(&full_prompt, &[]);
+        match completion_task.await {
+            Ok(response) => println!("Response: {}", response),
+            Err(e) => println!("Error: {}", e),
+        }
     }
 
     Ok(())
@@ -217,8 +249,15 @@ async fn single_prompt_mode(
 
     full_prompt.push_str(prompt);
 
-    println!("Response: [TODO: Implement actual completion call]");
-    println!("Full prompt would be: {}", full_prompt);
+    // Create backend and submit completion
+    let backend = crate::RigCompletionBackend::new(provider.clone(), model.clone());
+    
+    // Submit completion request
+    let completion_task = backend.submit_completion(&full_prompt, &[]);
+    match completion_task.await {
+        Ok(response) => println!("Response: {}", response),
+        Err(e) => println!("Error: {}", e),
+    }
 
     Ok(())
 }
