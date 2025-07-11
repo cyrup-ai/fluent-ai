@@ -47,5 +47,5 @@ pub mod model;
 pub mod provider;
 
 // Re-export generated implementations for convenience
-pub use model::ModelImpl;
-pub use provider::ProviderImpl;
+pub use model::Models;
+pub use provider::Providers;
