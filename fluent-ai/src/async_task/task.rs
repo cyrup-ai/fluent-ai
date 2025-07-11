@@ -64,7 +64,7 @@ where
         let _ = tx.send(value);
         Self { receiver: rx }
     }
-    
+
     /// Create an AsyncTask by spawning a closure
     pub fn spawn<F>(closure: F) -> Self
     where
@@ -78,7 +78,6 @@ where
         });
         Self { receiver: rx }
     }
-
 }
 
 impl<T> Future for AsyncTask<T>

@@ -2,13 +2,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::error::Error as StdError;
-use std::sync::{Arc, RwLock};
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::{Arc, RwLock};
 // AgentConfig is defined locally below
 // Agent trait is defined locally to avoid conflict with domain::agent::Agent struct
 use crate::domain::completion::CompletionRequest;
 use crate::providers::Model;
+use fluent_ai_provider::{Models, Providers};
 
 // Typesafe builder module
 pub mod builder;
@@ -23,7 +24,7 @@ pub use fluent_engine::FluentEngine;
 /// Configuration for creating an agent
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentConfig {
-    pub model: Model,
+    pub model: Models,
     pub system_prompt: Option<String>,
     pub temperature: Option<f64>,
     pub max_tokens: Option<u64>,
@@ -56,25 +57,25 @@ pub struct Usage {
 
 /// A dummy agent trait for the interface
 pub trait Agent {
-    fn name(&self) -> &str;
+    fn model(&self) -> &Models;
 }
 
 /// A no-op agent implementation
 pub struct NoOpAgent {
-    name: String,
+    model: Models,
 }
 
 impl NoOpAgent {
     pub fn new(config: AgentConfig) -> Self {
         Self {
-            name: format!("NoOpAgent-{}", config.model),
+            model: config.model,
         }
     }
 }
 
 impl Agent for NoOpAgent {
-    fn name(&self) -> &str {
-        &self.name
+    fn model(&self) -> &Models {
+        &self.model
     }
 }
 
@@ -83,12 +84,24 @@ pub trait Engine: Send + Sync + 'static {
     fn create_agent(
         &self,
         config: AgentConfig,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Agent + Send>, Box<dyn StdError + Send + Sync>>> + Send + '_>>;
+    ) -> Pin<
+        Box<
+            dyn Future<Output = Result<Box<dyn Agent + Send>, Box<dyn StdError + Send + Sync>>>
+                + Send
+                + '_,
+        >,
+    >;
 
     fn complete(
         &self,
         request: CompletionRequest,
-    ) -> Pin<Box<dyn Future<Output = Result<CompletionResponse, Box<dyn StdError + Send + Sync>>> + Send + '_>>;
+    ) -> Pin<
+        Box<
+            dyn Future<Output = Result<CompletionResponse, Box<dyn StdError + Send + Sync>>>
+                + Send
+                + '_,
+        >,
+    >;
 
     fn extract_json(
         &self,
@@ -100,8 +113,12 @@ pub trait Engine: Send + Sync + 'static {
         tool_name: &str,
         args: Value,
     ) -> Pin<Box<dyn Future<Output = Result<Value, Box<dyn StdError + Send + Sync>>> + Send + '_>>;
-    
-    fn available_tools(&self) -> Pin<Box<dyn Future<Output = Result<Vec<String>, Box<dyn StdError + Send + Sync>>> + Send + '_>>;
+
+    fn available_tools(
+        &self,
+    ) -> Pin<
+        Box<dyn Future<Output = Result<Vec<String>, Box<dyn StdError + Send + Sync>>> + Send + '_>,
+    >;
 }
 
 /// Engine registry for managing multiple engines
@@ -213,16 +230,26 @@ impl Engine for NoOpEngine {
     fn create_agent(
         &self,
         config: AgentConfig,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn Agent + Send>, Box<dyn StdError + Send + Sync>>> + Send + '_>> {
-        Box::pin(async move {
-            Ok(Box::new(NoOpAgent::new(config)) as Box<dyn Agent + Send>)
-        })
+    ) -> Pin<
+        Box<
+            dyn Future<Output = Result<Box<dyn Agent + Send>, Box<dyn StdError + Send + Sync>>>
+                + Send
+                + '_,
+        >,
+    > {
+        Box::pin(async move { Ok(Box::new(NoOpAgent::new(config)) as Box<dyn Agent + Send>) })
     }
 
     fn complete(
         &self,
         _request: CompletionRequest,
-    ) -> Pin<Box<dyn Future<Output = Result<CompletionResponse, Box<dyn StdError + Send + Sync>>> + Send + '_>> {
+    ) -> Pin<
+        Box<
+            dyn Future<Output = Result<CompletionResponse, Box<dyn StdError + Send + Sync>>>
+                + Send
+                + '_,
+        >,
+    > {
         Box::pin(async move {
             Ok(CompletionResponse {
                 content: "No-op response".to_string(),
@@ -234,25 +261,25 @@ impl Engine for NoOpEngine {
     fn extract_json(
         &self,
         _config: ExtractionConfig,
-    ) -> Pin<Box<dyn Future<Output = Result<Value, Box<dyn StdError + Send + Sync>>> + Send + '_>> {
-        Box::pin(async move {
-            Ok(Value::Object(serde_json::Map::new()))
-        })
+    ) -> Pin<Box<dyn Future<Output = Result<Value, Box<dyn StdError + Send + Sync>>> + Send + '_>>
+    {
+        Box::pin(async move { Ok(Value::Object(serde_json::Map::new())) })
     }
 
     fn execute_tool(
         &self,
         _tool_name: &str,
         _args: Value,
-    ) -> Pin<Box<dyn Future<Output = Result<Value, Box<dyn StdError + Send + Sync>>> + Send + '_>> {
-        Box::pin(async move {
-            Ok(Value::Null)
-        })
+    ) -> Pin<Box<dyn Future<Output = Result<Value, Box<dyn StdError + Send + Sync>>> + Send + '_>>
+    {
+        Box::pin(async move { Ok(Value::Null) })
     }
 
-    fn available_tools(&self) -> Pin<Box<dyn Future<Output = Result<Vec<String>, Box<dyn StdError + Send + Sync>>> + Send + '_>> {
-        Box::pin(async move {
-            Ok(vec![])
-        })
+    fn available_tools(
+        &self,
+    ) -> Pin<
+        Box<dyn Future<Output = Result<Vec<String>, Box<dyn StdError + Send + Sync>>> + Send + '_>,
+    > {
+        Box::pin(async move { Ok(vec![]) })
     }
 }
