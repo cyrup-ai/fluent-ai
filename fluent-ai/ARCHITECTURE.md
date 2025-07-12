@@ -50,7 +50,55 @@ let stream = FluentAi::agent_role("rusty-squire")
     .conversation_history(MessageRole::User => "What time is it in Paris, France",
             MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
             MessageRole::Assistant => "It’s 1:45 AM CEST on July 7, 2025, in Paris, France. That’s 9 hours ahead of your current time in Las Vegas.")
-    .chat("Hello")? // AsyncStream<MessageChunk
+    .chat(|conversation| {
+        let user_input = conversation.latest_user_message();
+        
+        if user_input.contains("finished") {
+            ChatLoop::Break
+        } else {
+            ChatLoop::Reprompt("continue. use sequential thinking")
+        }
+    })?
+
+// Full Example with Pure ChatLoop Pattern:
+FluentAi::agent_role("helpful assistant")
+    .completion_provider(Providers::OpenAI)
+    .model(Models::Gpt4OMini)
+    .temperature(0.7)
+    .on_chunk(|chunk| {
+        // Real-time streaming - print each token as it arrives
+        // All formatting and coloring happens automatically here
+        print!("{}", chunk);
+        io::stdout().flush().unwrap();
+    })
+    .chat(|conversation| {
+        let user_input = conversation.latest_user_message();
+        
+        // Pure logic - no formatting, just conversation flow control
+        match user_input.to_lowercase().as_str() {
+            "quit" | "exit" | "bye" => {
+                ChatLoop::Break
+            },
+            input if input.starts_with("/help") => {
+                ChatLoop::Reprompt("Available commands: /help, quit/exit/bye, or just chat normally!".to_string())
+            },
+            input if input.contains("code") => {
+                let response = format!(
+                    "I see you mentioned code! Here's a Rust example: fn main() {{ println!(\"Hello!\"); }} Need help with a specific language?"
+                );
+                ChatLoop::Reprompt(response)
+            },
+            _ => {
+                // Simple response - builder handles all formatting automatically
+                let response = format!(
+                    "I understand: '{}'. How can I help you further?", 
+                    user_input
+                );
+                ChatLoop::Reprompt(response)
+            }
+        }
+    })?
+    .collect()
     .collect()
 ```
 

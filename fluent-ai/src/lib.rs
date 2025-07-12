@@ -22,6 +22,8 @@ pub mod loaders;
 pub mod prelude;
 
 pub mod agent;
+pub mod chat_loop;
+pub mod conversation;
 pub mod macros;
 pub mod memory;
 pub mod workflow;

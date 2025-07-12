@@ -108,6 +108,7 @@ pub enum FinishReason {
     Length,
     ContentFilter,
     ToolCalls,
+    Error,
 }
 
 /// Token usage information

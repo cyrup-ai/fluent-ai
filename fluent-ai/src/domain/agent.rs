@@ -3,6 +3,7 @@ use crate::async_task::AsyncTask;
 use crate::domain::chunk::{ChatMessageChunk, CompletionChunk};
 use crate::domain::completion::CompletionRequestBuilder;
 use crate::domain::{CompletionRequest, Conversation, Document, Message, MessageRole};
+use crate::chat_loop::ChatLoop;
 use crate::memory::Memory;
 use crate::sugars::{ByteSize, ByteSizeExt};
 use crate::{McpTool, ZeroOneOrMany};
@@ -207,30 +208,91 @@ impl AgentBuilderWithHandler {
         }
     }
 
-    // Terminal method - chat interaction
-    pub fn chat(self, message: impl Into<String>) -> AsyncStream<ChatMessageChunk> {
-        let agent = self.agent();
-        let message = message.into();
+    // Terminal method - chat interaction with closure
+    pub fn chat<F>(self, chat_closure: F) -> AsyncStream<ChatMessageChunk> 
+    where 
+        F: Fn(crate::conversation::Conversation) -> crate::chat_loop::ChatLoop + Send + Sync + 'static,
+    {
+        let _agent = self.agent();
 
         // Create channel for streaming chunks
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
-        // Spawn task to handle chat with tool looping
+        // Spawn task to handle conversation loop
         tokio::spawn(async move {
-            // Initial user message
-            let user_chunk = ChatMessageChunk::new(message.clone(), MessageRole::User);
-            let _ = tx.send(user_chunk);
-
-            // TODO: Implement actual agent chat logic with tool calling loop
-            // For now, just send a simple response
-            let response_chunk = ChatMessageChunk::new(
-                "I'm an agent that will handle tool calling internally",
-                MessageRole::Assistant,
-            );
-            let _ = tx.send(response_chunk);
+            let mut conversation = crate::conversation::Conversation::new("");
+            let mut awaiting_user_input = true;
+            
+            loop {
+                // If we need user input, we'll need to handle that externally
+                // For now, we'll simulate initial user input
+                if awaiting_user_input {
+                    // Request initial user input (this would be handled by the I/O layer)
+                    let user_prompt_chunk = ChatMessageChunk::new(
+                        "[Waiting for user input...]".to_string(),
+                        MessageRole::System,
+                    );
+                    if tx.send(user_prompt_chunk).is_err() {
+                        break;
+                    }
+                    awaiting_user_input = false;
+                    continue;
+                }
+                
+                // Call the user's chat closure
+                let chat_result = chat_closure(conversation.clone());
+                
+                match chat_result {
+                    crate::chat_loop::ChatLoop::Reprompt(response) => {
+                        // Add response to conversation
+                        conversation.add_assistant_response(&response);
+                        
+                        // Send the response as chunks
+                        let response_chunk = ChatMessageChunk::new(
+                            response,
+                            MessageRole::Assistant,
+                        );
+                        if tx.send(response_chunk).is_err() {
+                            break;
+                        }
+                        
+                        // Continue the loop for next user input
+                        awaiting_user_input = true;
+                    }
+                    crate::chat_loop::ChatLoop::UserPrompt(prompt) => {
+                        // Send user prompt request
+                        let prompt_text = prompt.unwrap_or_else(|| "Please enter your message:".to_string());
+                        let prompt_chunk = ChatMessageChunk::new(
+                            format!("[{}]", prompt_text),
+                            MessageRole::System,
+                        );
+                        if tx.send(prompt_chunk).is_err() {
+                            break;
+                        }
+                        awaiting_user_input = true;
+                    }
+                    crate::chat_loop::ChatLoop::Break => {
+                        // End the conversation
+                        let end_chunk = ChatMessageChunk::new(
+                            "[Conversation ended]".to_string(),
+                            MessageRole::System,
+                        );
+                        let _ = tx.send(end_chunk);
+                        break;
+                    }
+                }
+            }
         });
 
         AsyncStream::new(rx)
+    }
+    
+    // Keep the original string-based chat method for backward compatibility
+    pub fn chat_message(self, message: impl Into<String>) -> AsyncStream<ChatMessageChunk> {
+        let message = message.into();
+        self.chat(move |_conversation| {
+            crate::chat_loop::ChatLoop::Reprompt(format!("Received: {}", message))
+        })
     }
 
     // Terminal method - stream completion

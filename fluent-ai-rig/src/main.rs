@@ -178,16 +178,53 @@ async fn interactive_mode(
         agent_builder = agent_builder.context_text(ctx);
     }
 
-    // Use ergonomic chat loop with proper error handling and stream consumption
+    // Use ergonomic ChatLoop pattern for interactive conversation
     let mut chat_stream = agent_builder
         .on_error(|err| eprintln!("❌ Error: {}", err))
-        .conversation()
-        .converse();
+        .chat(|conversation| {
+            // Interactive mode: always prompt for user input after each assistant response
+            match conversation.message_count() {
+                0 => {
+                    // First interaction - prompt for initial user input
+                    fluent_ai::prelude::ChatLoop::UserPrompt(Some("Enter your message: ".to_string()))
+                }
+                _ => {
+                    // After assistant responses, continue asking for user input
+                    fluent_ai::prelude::ChatLoop::UserPrompt(Some("Enter your message (or 'quit' to exit): ".to_string()))
+                }
+            }
+        });
 
-    // Consume the stream to handle chat messages
+    // Consume the stream to handle chat messages and user prompts
     while let Some(msg_chunk) = chat_stream.next().await {
-        print!("{}", msg_chunk.content);
-        io::stdout().flush().unwrap_or(());
+        match msg_chunk.role {
+            fluent_ai::MessageRole::System => {
+                // Handle system messages (user prompts, etc.)
+                if msg_chunk.content.contains("Enter your message") {
+                    print!("{}", msg_chunk.content);
+                    io::stdout().flush().unwrap_or(());
+                    
+                    // Read user input
+                    let mut input = String::new();
+                    if io::stdin().read_line(&mut input).is_ok() {
+                        let input = input.trim();
+                        if input.eq_ignore_ascii_case("quit") || input.eq_ignore_ascii_case("exit") {
+                            break;
+                        }
+                        // TODO: Send user input back to conversation
+                        // This requires extending the ChatLoop pattern to handle dynamic input
+                    }
+                } else {
+                    print!("{}", msg_chunk.content);
+                    io::stdout().flush().unwrap_or(());
+                }
+            }
+            _ => {
+                // Handle assistant and user messages
+                print!("{}", msg_chunk.content);
+                io::stdout().flush().unwrap_or(());
+            }
+        }
     }
 
     println!("Goodbye! 👋");
@@ -235,10 +272,19 @@ async fn single_prompt_mode(
         agent_builder = agent_builder.context_text(ctx);
     }
 
-    // Use streaming chat for the single prompt
+    // Use streaming chat with ChatLoop closure pattern
+    let prompt_text = prompt.to_string();
     let mut chat_stream = agent_builder
         .on_error(|err| eprintln!("❌ Error: {}", err))
-        .chat(prompt);
+        .chat(move |conversation| {
+            if conversation.message_count() == 0 {
+                // First interaction - use the provided prompt
+                fluent_ai::prelude::ChatLoop::Reprompt(prompt_text.clone())
+            } else {
+                // For single prompt mode, end after first response
+                fluent_ai::prelude::ChatLoop::Break
+            }
+        });
 
     // Consume the stream to handle the response and implement ChatLoop pattern
     while let Some(msg_chunk) = chat_stream.next().await {

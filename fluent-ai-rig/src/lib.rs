@@ -4,17 +4,24 @@
 //! chat system from command-line applications.
 
 use fluent_ai::engine::{engine_builder, FluentEngine};
-use fluent_ai::async_task::AsyncTask;
-use fluent_ai::domain::completion::CompletionBackend;
+use fluent_ai::async_task::{AsyncTask, AsyncStream};
+use fluent_ai::domain::completion::{CompletionBackend, CompletionModel};
+use fluent_ai::domain::chunk::{CompletionChunk, FinishReason};
+use fluent_ai::domain::prompt::Prompt as FluentPrompt;
 use fluent_ai_provider::{Models, Providers, Provider as ProviderTrait, Model as ModelTrait};
 use rig::providers::{openai, anthropic, mistral};
-use rig::completion::Prompt;
+
 use rig::client::CompletionClient;
+use rig::streaming::StreamingPrompt;
+use rig::completion::message::AssistantContent;
 use std::env;
 use std::sync::Arc;
-use tracing::error;
+use tokio::sync::mpsc;
+use futures::StreamExt;
+use tracing::{error, debug};
 
 /// Rig-based CompletionBackend implementation
+#[derive(Clone)]
 pub struct RigCompletionBackend {
     provider: Providers,
     model: Models,
@@ -26,64 +33,169 @@ impl RigCompletionBackend {
     }
 }
 
-impl CompletionBackend for RigCompletionBackend {
-    fn submit_completion(&self, prompt: &str, tools: &[String]) -> AsyncTask<String> {
+impl CompletionModel for RigCompletionBackend {
+    fn prompt(&self, prompt: FluentPrompt) -> AsyncStream<CompletionChunk> {
         let provider = self.provider.clone();
         let model = self.model.clone();
-        let prompt_text = prompt.to_string();
-        let _tools = tools.to_vec(); // Store for future tool support
-        AsyncTask::from_future(async move {
-            // Get rig client by provider name
+        let prompt_text = prompt.content;
+        
+        let (tx, rx) = mpsc::unbounded_channel();
+        let stream = AsyncStream::new(rx);
+        
+        tokio::spawn(async move {
             let provider_name = provider.name();
             let model_name = model.name();
             
-            let result = match provider_name {
-                "openai" => {
-                    let api_key = env::var("OPENAI_API_KEY")
-                        .expect("OPENAI_API_KEY environment variable must be set");
+            debug!("Starting streaming completion for provider={}, model={}", provider_name, model_name);
+            
+            match provider_name {
+                "gpt" => {
+                    let api_key = match env::var("OPENAI_API_KEY") {
+                        Ok(key) => key,
+                        Err(_) => {
+                            let _ = tx.send(CompletionChunk::new("Error: OPENAI_API_KEY environment variable must be set").finished(FinishReason::Stop));
+                            return;
+                        }
+                    };
                     let client = openai::Client::new(&api_key);
                     let agent = client.agent(model_name).build();
-                    match agent.prompt(&prompt_text).await {
-                        Ok(response) => response.to_string(),
+                    match agent.stream_prompt(&prompt_text).await {
+                        Ok(mut stream) => {
+                            debug!("Successfully created OpenAI stream, consuming chunks...");
+                            while let Some(chunk) = stream.next().await {
+                                match chunk {
+                                    Ok(AssistantContent::Text(text)) => {
+                                        debug!("Streaming chunk: {}", text.text);
+                                        if tx.send(CompletionChunk::new(text.text)).is_err() {
+                                            debug!("Receiver dropped, stopping stream");
+                                            break;
+                                        }
+                                    },
+                                    Ok(AssistantContent::ToolCall(_tool_call)) => {
+                                        debug!("Tool call received but not yet supported");
+                                    },
+                                    Err(e) => {
+                                        error!("Stream error: {}", e);
+                                        let _ = tx.send(CompletionChunk::new(format!("Error: {}", e)).finished(FinishReason::Stop));
+                                        break;
+                                    }
+                                }
+                            }
+                            // Stream completed successfully
+                            let _ = tx.send(CompletionChunk::new("").finished(FinishReason::Stop));
+                        },
                         Err(e) => {
-                            error!("OpenAI completion failed: {}", e);
-                            format!("Error: {}", e)
+                            error!("OpenAI streaming failed: {}", e);
+                            let _ = tx.send(CompletionChunk::new(format!("Error: {}", e)).finished(FinishReason::Stop));
                         }
                     }
                 },
                 "claude" => {
-                    let api_key = env::var("ANTHROPIC_API_KEY")
-                        .expect("ANTHROPIC_API_KEY environment variable must be set");
+                    let api_key = match env::var("ANTHROPIC_API_KEY") {
+                        Ok(key) => key,
+                        Err(_) => {
+                            let _ = tx.send(CompletionChunk::new("Error: ANTHROPIC_API_KEY environment variable must be set").finished(FinishReason::Stop));
+                            return;
+                        }
+                    };
                     let client = anthropic::ClientBuilder::new(&api_key).build();
                     let agent = client.agent(model_name).build();
-                    match agent.prompt(&prompt_text).await {
-                        Ok(response) => response.to_string(),
+                    match agent.stream_prompt(&prompt_text).await {
+                        Ok(mut stream) => {
+                            debug!("Successfully created Anthropic stream, consuming chunks...");
+                            while let Some(chunk) = stream.next().await {
+                                match chunk {
+                                    Ok(AssistantContent::Text(text)) => {
+                                        debug!("Streaming chunk: {}", text.text);
+                                        if tx.send(CompletionChunk::new(text.text)).is_err() {
+                                            debug!("Receiver dropped, stopping stream");
+                                            break;
+                                        }
+                                    },
+                                    Ok(AssistantContent::ToolCall(_tool_call)) => {
+                                        debug!("Tool call received but not yet supported");
+                                    },
+                                    Err(e) => {
+                                        error!("Stream error: {}", e);
+                                        let _ = tx.send(CompletionChunk::new(format!("Error: {}", e)).finished(FinishReason::Stop));
+                                        break;
+                                    }
+                                }
+                            }
+                            // Stream completed successfully
+                            let _ = tx.send(CompletionChunk::new("").finished(FinishReason::Stop));
+                        },
                         Err(e) => {
-                            error!("Anthropic completion failed: {}", e);
-                            format!("Error: {}", e)
+                            error!("Anthropic streaming failed: {}", e);
+                            let _ = tx.send(CompletionChunk::new(format!("Error: {}", e)).finished(FinishReason::Stop));
                         }
                     }
                 },
                 "mistral" => {
-                    let api_key = env::var("MISTRAL_API_KEY")
-                        .expect("MISTRAL_API_KEY environment variable must be set");
+                    let api_key = match env::var("MISTRAL_API_KEY") {
+                        Ok(key) => key,
+                        Err(_) => {
+                            let _ = tx.send(CompletionChunk::new("Error: MISTRAL_API_KEY environment variable must be set").finished(FinishReason::Stop));
+                            return;
+                        }
+                    };
                     let client = mistral::Client::new(&api_key);
                     let agent = client.agent(model_name).build();
-                    match agent.prompt(&prompt_text).await {
-                        Ok(response) => response.to_string(),
+                    match agent.stream_prompt(&prompt_text).await {
+                        Ok(mut stream) => {
+                            debug!("Successfully created Mistral stream, consuming chunks...");
+                            while let Some(chunk) = stream.next().await {
+                                match chunk {
+                                    Ok(AssistantContent::Text(text)) => {
+                                        debug!("Streaming chunk: {}", text.text);
+                                        if tx.send(CompletionChunk::new(text.text)).is_err() {
+                                            debug!("Receiver dropped, stopping stream");
+                                            break;
+                                        }
+                                    },
+                                    Ok(AssistantContent::ToolCall(_tool_call)) => {
+                                        debug!("Tool call received but not yet supported");
+                                    },
+                                    Err(e) => {
+                                        error!("Stream error: {}", e);
+                                        let _ = tx.send(CompletionChunk::new(format!("Error: {}", e)).finished(FinishReason::Stop));
+                                        break;
+                                    }
+                                }
+                            }
+                            // Stream completed successfully
+                            let _ = tx.send(CompletionChunk::new("").finished(FinishReason::Stop));
+                        },
                         Err(e) => {
-                            error!("Mistral completion failed: {}", e);
-                            format!("Error: {}", e)
+                            error!("Mistral streaming failed: {}", e);
+                            let _ = tx.send(CompletionChunk::new(format!("Error: {}", e)).finished(FinishReason::Stop));
                         }
                     }
                 },
                 _ => {
-                    error!("Unsupported provider: {}", provider_name);
-                    format!("Unsupported provider: {}", provider_name)
+                    let _ = tx.send(CompletionChunk::new(format!("Error: Unsupported provider: {}", provider_name)).finished(FinishReason::Stop));
                 }
-            };
+            }
             
-            result
+            debug!("Streaming completion finished for provider={}", provider_name);
+        });
+        
+        stream
+    }
+}
+
+// Legacy CompletionBackend support for backward compatibility
+impl CompletionBackend for RigCompletionBackend {
+    fn submit_completion(&self, prompt: &str, tools: &[String]) -> AsyncTask<String> {
+        let fluent_prompt = FluentPrompt::new(prompt);
+        let stream = self.prompt(fluent_prompt);
+        
+        AsyncTask::from_future(async move {
+            let chunks: Vec<CompletionChunk> = stream.collect().await;
+            chunks.into_iter()
+                .map(|chunk| chunk.text)
+                .collect::<Vec<_>>()
+                .join("")
         })
     }
 }
