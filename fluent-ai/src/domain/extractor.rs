@@ -1,7 +1,7 @@
 use crate::async_task::AsyncTask;
 use crate::domain::agent::Agent;
 use crate::domain::completion::CompletionModel;
-use crate::domain::{CompletionRequest, Message};
+
 use serde::de::DeserializeOwned;
 use std::marker::PhantomData;
 

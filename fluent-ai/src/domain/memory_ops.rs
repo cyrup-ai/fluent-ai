@@ -1,6 +1,5 @@
 use futures::stream::StreamExt;
-use std::future::Future;
-use std::pin::Pin;
+
 // Define Op trait locally - no external dependencies
 pub trait Op {
     type Input;
@@ -8,9 +7,8 @@ pub trait Op {
 
     fn call(&self, input: Self::Input) -> impl std::future::Future<Output = Self::Output> + Send;
 }
-use crate::memory::{
-    Error as MemoryError, MemoryManager, MemoryMetadata, MemoryNode, MemoryRelationship, MemoryType,
-};
+
+use crate::memory::{Error as MemoryError, MemoryManager, MemoryNode, MemoryRelationship, MemoryType};
 
 /// Store a piece of content as a memory node
 pub struct StoreMemory<M> {

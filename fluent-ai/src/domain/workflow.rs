@@ -1,10 +1,7 @@
 // Define traits locally - no external dependencies
-use super::memory_ops::Op;
-use crate::memory::{Error as MemoryError, MemoryManager, MemoryNode, MemoryType};
 use serde::{Deserialize, Serialize};
+// use serde_json::Value; // Commented out - unused
 use std::collections::HashMap;
-
-use super::memory_ops;
 
 /// A workflow step that can be stored and executed
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -27,6 +27,8 @@ pub mod conversation;
 pub mod macros;
 pub mod memory;
 pub mod workflow;
+pub mod markdown;
+pub mod streaming;
 
 pub mod domain;
 pub mod engine;
@@ -61,8 +63,6 @@ pub use engine::{
 
 // Memory and workflow modules are already defined above as pub mod
 
-// Re-export macros
-pub use macros::*;
 // Macros with #[macro_export] are already available at crate root
 
 // HashMap is available through collection_ext::prelude
@@ -72,9 +72,7 @@ pub use fluent::{Ai, FluentAi};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::async_task::{AsyncStream, AsyncTask};
-    use crate::domain::{completion::CompletionRequest, Agent, Document};
+    use crate::async_task::AsyncTask;
 
     /// Test that Result types cannot be used in AsyncTask - this should fail to compile
     #[test]

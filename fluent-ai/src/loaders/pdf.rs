@@ -17,7 +17,7 @@ use glob::glob;
 use lopdf::{Document, Error as LopdfError};
 use thiserror::Error;
 
-use super::file::FileLoaderError;
+use crate::loaders::file::FileLoaderError;
 
 // ---------------------------------------------------------------------------
 // 0. Error tier – exhaustive, non-exhaustive for forward-compat.

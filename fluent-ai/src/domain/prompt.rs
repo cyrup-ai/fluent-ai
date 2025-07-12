@@ -1,7 +1,4 @@
-use crate::async_task::AsyncTask;
-use crate::domain::agent::Agent;
-use crate::domain::completion::CompletionModel;
-use crate::domain::{Message, MessageRole};
+use crate::domain::MessageRole;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

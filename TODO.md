@@ -1,46 +1,61 @@
-# TODO.md - Typesafe Typestate Engine Builder Implementation
+# TODO.md - Comprehensive Warning & Error Cleanup
 
-## Phase 1: Fix Core Engine Compilation Issues
+**OBJECTIVE: Achieve 0 Errors and 0 Warnings in cargo check**
 
-### 1. Resolve async trait object safety compilation errors
-- Fix async_trait macro usage for trait objects
-- Ensure Send + Sync bounds are properly handled  
-- Test trait object creation and usage
-- Verify engine registry compilation
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+## Current Status: 0 ERRORS, 40+ WARNINGS ⚠️
 
-### 2. Act as an Objective QA Rust developer and rate the work performed on fixing engine trait compilation issues, ensuring async trait object safety is properly implemented and all bounds are correctly specified.
+## Category 1: Configuration Condition Warnings (4 warnings)
 
-### 3. Validate engine registry functionality
-- Test engine registration and retrieval
-- Verify default engine setting and getting
-- Ensure thread safety of global registry
-- Test error handling for missing engines
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+### 1. Fix unexpected cfg condition 'pdf' warnings in loaders/mod.rs
+- **File**: `src/loaders/mod.rs:18:7` and `src/loaders/mod.rs:21:7`
+- **Issue**: `unexpected cfg condition value: pdf`
+- **Action**: Add pdf feature to Cargo.toml or remove unused cfg conditions
 
-### 4. Act as an Objective QA Rust developer and rate the work performed on engine registry validation, ensuring thread safety, proper error handling, and correct global state management.
+### 2. **QA Step**: Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work.
 
-## Phase 2: Typesafe Typestate Engine Builder Design
+### 3. Fix unexpected cfg condition 'epub' warnings in loaders/mod.rs
+- **File**: `src/loaders/mod.rs:24:7` and `src/loaders/mod.rs:27:7`
+- **Issue**: `unexpected cfg condition value: epub`
+- **Action**: Add epub feature to Cargo.toml or remove unused cfg conditions
 
-### 5. Design phantom type states for engine builder
-- Create NeedsModel, NeedsConfiguration, Ready states
-- Define state transition methods with phantom types
-- Ensure compile-time validation of required fields
-- Design immutable builder pattern with new instance returns
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+### 4. **QA Step**: Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work.
 
-### 6. Act as an Objective QA Rust developer and rate the work performed on typestate builder design, ensuring proper phantom type usage, compile-time safety, and immutable patterns.
+## Category 2: Unused Import Warnings (6 warnings)
 
-### 7. Implement EngineBuilder core structure
-- Create EngineBuilder<State> generic struct
-- Implement state marker traits (ModelState, ConfigState, etc.)
-- Add phantom type field to builder struct
-- Create initial builder constructor method
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+### 5. Fix unused imports in domain/memory_workflow.rs
+- **File**: `src/domain/memory_workflow.rs:19:31`
+- **Issue**: unused imports: `RetrieveMemories`, `SearchMemories`, and `StoreMemory`
+- **Action**: Remove unused imports or implement functionality that uses them
 
-### 8. Act as an Objective QA Rust developer and rate the work performed on EngineBuilder core implementation, ensuring proper generic constraints and phantom type handling.
+### 6. **QA Step**: Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work.
 
-### 9. Implement model configuration methods
+### 7. Fix unused super import in domain/memory_workflow.rs
+- **File**: `src/domain/memory_workflow.rs:23:9`
+- **Issue**: unused import: `super::*`
+- **Action**: Remove unused import or identify what needs to be imported
+
+### 8. **QA Step**: Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work.
+
+### 9. Fix unused Providers import in engine.rs
+- **File**: `src/engine.rs:12:34`
+- **Issue**: unused import: `Providers`
+- **Action**: Remove unused import or implement functionality that uses it
+
+### 10. **QA Step**: Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work.
+
+### 11. Fix unused imports in engine/fluent_engine.rs
+- **File**: `src/engine/fluent_engine.rs:1:71`, `src/engine/fluent_engine.rs:10:5`, `src/engine/fluent_engine.rs:11:34`
+- **Issue**: unused imports: `ToolDefinition`, `crate::providers::Model`, `Providers`
+- **Action**: Remove unused imports or implement functionality that uses them
+
+### 12. **QA Step**: Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work.
+
+### 13. Fix unused StreamExt import in async_task/stream.rs
+- **File**: `src/async_task/stream.rs:5:5`
+- **Issue**: unused import: `futures::StreamExt`
+- **Action**: Remove unused import or implement functionality that uses it
+
+### 14. **QA Step**: Act as an Objective Rust Expert and rate the quality of the fix on a scale of 1-10. Provide specific feedback on any issues or truly great work.
 
 ### 2. Missing Type Errors
 

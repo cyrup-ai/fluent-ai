@@ -1,9 +1,8 @@
-use crate::async_task::AsyncStream;
-use crate::async_task::AsyncTask;
+use crate::async_task::{AsyncStream, AsyncTask};
 use crate::domain::chunk::{ChatMessageChunk, CompletionChunk};
 use crate::domain::completion::CompletionRequestBuilder;
-use crate::domain::{CompletionRequest, Conversation, Document, Message, MessageRole};
-use crate::chat_loop::ChatLoop;
+use crate::domain::{CompletionRequest, Document, Message, MessageRole};
+
 use crate::memory::Memory;
 use crate::sugars::{ByteSize, ByteSizeExt};
 use crate::{McpTool, ZeroOneOrMany};
@@ -298,7 +297,7 @@ impl AgentBuilderWithHandler {
     // Terminal method - stream completion
     pub fn stream_completion(self, prompt: impl Into<String>) -> AsyncStream<CompletionChunk> {
         let agent = self.agent();
-        let request = CompletionRequest::prompt(prompt)
+        let _request = CompletionRequest::prompt(prompt)
             .temperature(agent.temperature.unwrap_or(0.7))
             .max_tokens(agent.max_tokens.unwrap_or(1000))
             .additional_params(agent.additional_params.clone().unwrap_or_default())
@@ -329,7 +328,7 @@ impl AgentBuilderWithHandler {
         self,
         message: impl Into<String>,
         handler: F,
-        chunk_size: ByteSize,
+        _chunk_size: ByteSize,
     ) -> AsyncStream<ChatMessageChunk>
     where
         F: Fn(ChatMessageChunk) + Send + Sync + 'static,
@@ -340,7 +339,7 @@ impl AgentBuilderWithHandler {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         // Spawn task to handle chat with tool looping
-        let agent = self.agent();
+        let _agent = self.agent();
         tokio::spawn(async move {
             // Initial user message
             let user_chunk = ChatMessageChunk::new(message.clone(), MessageRole::User);
@@ -376,11 +375,11 @@ impl AgentBuilderWithHandler {
     }
 
     // Terminal method with handler
-    pub fn on_response<F>(self, message: impl Into<String>, handler: F) -> AsyncTask<String>
+    pub fn on_response<F>(self, _message: impl Into<String>, handler: F) -> AsyncTask<String>
     where
         F: FnOnce(Result<String, String>) -> String + Send + 'static,
     {
-        let agent = self.agent();
+        let _agent = self.agent();
         // TODO: Implement actual completion with the model
         // For now, return a placeholder response
         AsyncTask::spawn(move || {
@@ -433,7 +432,7 @@ impl ConversationBuilder {
     pub fn converse(self) -> AsyncStream<ChatMessageChunk> {
         // For conversation, we need to convert messages to a prompt
         // Taking the last user message as the prompt
-        let last_user_message = self
+        let _last_user_message = self
             .messages
             .iter()
             .rev()

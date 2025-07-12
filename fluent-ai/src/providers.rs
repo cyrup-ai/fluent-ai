@@ -3,7 +3,7 @@
 #![doc = r" This file is auto-generated. Do not edit manually."]
 #![doc = r" Generated from: https://github.com/sigoden/aichat/blob/main/models.yaml"]
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+// use std::collections::HashMap; // Commented out - unused
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModelInfo {
     pub provider: Provider,

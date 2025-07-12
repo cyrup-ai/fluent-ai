@@ -1,6 +1,6 @@
 use crate::domain::completion::{CompletionBackend, CompletionRequest, ToolDefinition};
 use serde_json::Value;
-use std::collections::HashMap;
+// use std::collections::HashMap; // Commented out - unused
 use std::error::Error as StdError;
 use std::future::Future;
 use std::pin::Pin;
@@ -117,9 +117,9 @@ impl Engine for FluentEngine {
         >,
     > {
         let backend = Arc::clone(&self.backend);
-        let model = self.model.clone();
-        let default_temperature = self.default_temperature;
-        let default_max_tokens = self.default_max_tokens;
+        let _model = self.model.clone();
+        let _default_temperature = self.default_temperature;
+        let _default_max_tokens = self.default_max_tokens;
 
         Box::pin(async move {
             // Convert CompletionRequest to the format expected by the backend

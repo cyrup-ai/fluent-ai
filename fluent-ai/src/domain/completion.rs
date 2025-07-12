@@ -1,6 +1,5 @@
-use crate::async_task::AsyncStream;
-use crate::async_task::AsyncTask;
-use crate::domain::chunk::{ChatMessageChunk, CompletionChunk};
+use crate::async_task::{AsyncStream, AsyncTask};
+use crate::domain::chunk::CompletionChunk;
 use crate::domain::prompt::Prompt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -206,7 +205,7 @@ impl CompletionRequestBuilderWithHandler {
     }
 
     // Terminal method - submits request and returns stream
-    pub fn complete<F>(self, handler: F) -> AsyncTask<String>
+    pub fn complete<F>(self, _handler: F) -> AsyncTask<String>
     where
         F: Fn(String) + Send + Sync + 'static,
     {
@@ -241,6 +240,7 @@ impl CompletionRequestBuilderWithHandler {
     {
         AsyncTask::spawn(move || {
             // Simulate completion
+            let _handler = move |_chunk: CompletionChunk| { /* unused */ };
             let result = Ok("Completion response".to_string());
             f(result)
         })

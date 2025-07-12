@@ -1,5 +1,5 @@
 use crate::domain::chunk::ImageChunk;
-use crate::{AsyncStream, AsyncTask};
+use crate::AsyncStream;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,7 +162,7 @@ impl ImageBuilderWithHandler {
     }
 
     // Terminal method - async load with processing
-    pub fn process<F>(self, f: F) -> AsyncStream<ImageChunk>
+    pub fn process<F>(self, _f: F) -> AsyncStream<ImageChunk>
     where
         F: FnOnce(ImageChunk) -> ImageChunk + Send + 'static,
     {

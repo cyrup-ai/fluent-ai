@@ -15,14 +15,9 @@
 //!
 //! Note: The [EpubFileLoader] requires the `epub` feature to be enabled in the `Cargo.toml` file.
 
-#[cfg(feature = "pdf")]
+pub mod file;
 pub mod pdf;
-
-#[cfg(feature = "pdf")]
 pub use pdf::PdfFileLoader;
 
-#[cfg(feature = "epub")]
 pub mod epub;
-
-#[cfg(feature = "epub")]
 pub use epub::{EpubFileLoader, RawTextProcessor, StripXmlProcessor, TextProcessor};

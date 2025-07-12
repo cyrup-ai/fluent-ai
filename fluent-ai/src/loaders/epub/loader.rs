@@ -19,7 +19,7 @@ use glob::glob;
 
 use super::{
     errors::EpubLoaderError,
-    text_processors::{RawTextProcessor, TextProcessor},
+    text_processor::{RawTextProcessor, TextProcessor},
 };
 use crate::loaders::file::FileLoaderError;
 
