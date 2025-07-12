@@ -1,4 +1,5 @@
-use crate::domain::completion::{CompletionBackend, CompletionRequest, ToolDefinition};
+use crate::domain::completion::{CompletionBackend, CompletionRequest};
+use fluent_ai_provider::Models;
 use serde_json::Value;
 // use std::collections::HashMap; // Commented out - unused
 use std::error::Error as StdError;
@@ -7,8 +8,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 // AgentConfig, Agent trait, and CompletionResponse are defined in engine.rs
 use crate::engine::{Agent, AgentConfig, CompletionResponse, Engine, ExtractionConfig};
-use crate::providers::Model;
-use fluent_ai_provider::{Models, Providers};
+// Removed unused imports: crate::providers::Model and fluent_ai_provider::Providers
 
 /// A concrete engine implementation that integrates with the existing fluent-ai domain system
 pub struct FluentEngine {

@@ -17,11 +17,11 @@ use std::{
 use epub::doc::EpubDoc;
 use glob::glob;
 
+use super::super::file::FileLoaderError;
 use super::{
     errors::EpubLoaderError,
     text_processor::{RawTextProcessor, TextProcessor},
 };
-use crate::loaders::file::FileLoaderError;
 
 /* -------------------------------------------------------------------------
  * 0. Internal low-level helper – open an EPUB archive.
@@ -138,7 +138,7 @@ impl<'a, P> EpubFileLoader<'a, Result<PathBuf, FileLoaderError>, P> {
 }
 
 /* -- state helper: Result<T, E> iterators → ignore_errors() -------------- */
-impl<'a, P, T> EpubFileLoader<'a, Result<T, EpubLoaderError>, P> {
+impl<'a, P, T: 'a> EpubFileLoader<'a, Result<T, EpubLoaderError>, P> {
     #[inline]
     pub fn ignore_errors(self) -> EpubFileLoader<'a, T, P> {
         EpubFileLoader {
@@ -161,13 +161,13 @@ where
     }
 }
 
-pub type ChaptersByPath<'a, P> = (PathBuf, Vec<(usize, Result<String, EpubLoaderError>)>);
+pub type ChaptersByPath<'a> = (PathBuf, Vec<(usize, Result<String, EpubLoaderError>)>);
 
 impl<'a, P> EpubFileLoader<'a, (PathBuf, EpubDoc<BufReader<File>>), P>
 where
     P: TextProcessor,
 {
-    pub fn by_chapter(self) -> EpubFileLoader<'a, ChaptersByPath<'a, P>, P> {
+    pub fn by_chapter(self) -> EpubFileLoader<'a, ChaptersByPath<'a>, P> {
         EpubFileLoader {
             it: Box::new(self.it.map(|(path, doc)| {
                 let chapters = EpubChapterIter::<P>::from(doc).enumerate().collect();

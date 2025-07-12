@@ -4,11 +4,11 @@ pub enum ChatLoop {
     /// Continue the conversation with a response message
     /// All formatting and rendering happens automatically by the builder
     Reprompt(String),
-    
+
     /// Request user input with an optional prompt message
     /// Builder handles stdin/stdout automatically behind the scenes
     UserPrompt(Option<String>),
-    
+
     /// Terminate the chat loop
     Break,
 }
@@ -18,7 +18,7 @@ impl ChatLoop {
     pub fn should_continue(&self) -> bool {
         matches!(self, ChatLoop::Reprompt(_) | ChatLoop::UserPrompt(_))
     }
-    
+
     /// Extract the response message if this is a Reprompt
     pub fn message(&self) -> Option<&str> {
         match self {
@@ -26,7 +26,7 @@ impl ChatLoop {
             ChatLoop::UserPrompt(_) | ChatLoop::Break => None,
         }
     }
-    
+
     /// Extract the user prompt message if this is a UserPrompt
     pub fn user_prompt(&self) -> Option<&str> {
         match self {
@@ -34,7 +34,7 @@ impl ChatLoop {
             ChatLoop::UserPrompt(None) | ChatLoop::Reprompt(_) | ChatLoop::Break => None,
         }
     }
-    
+
     /// Check if this requests user input
     pub fn needs_user_input(&self) -> bool {
         matches!(self, ChatLoop::UserPrompt(_))

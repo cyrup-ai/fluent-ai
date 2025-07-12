@@ -80,27 +80,26 @@ pub struct PdfFileLoader<'a, T> {
 /* -------------------------------------------------------------------------
  * Constructor helpers – glob / dir.
  * ---------------------------------------------------------------------- */
-impl PdfFileLoader<'_, Result<PathBuf, FileLoaderError>> {
+impl PdfFileLoader<'static, Result<PathBuf, FileLoaderError>> {
     /// Build a loader from a glob pattern (`**/*.pdf` etc.).
     pub fn with_glob(
         pattern: &str,
-    ) -> Result<PdfFileLoader<Result<PathBuf, PdfLoaderError>>, PdfLoaderError> {
-        let paths = glob(pattern).map_err(FileLoaderError::PatternError)?;
+    ) -> Result<PdfFileLoader<'static, Result<PathBuf, FileLoaderError>>, PdfLoaderError> {
+        let paths =
+            glob(pattern).map_err(|e| PdfLoaderError::File(FileLoaderError::PatternError(e)))?;
         Ok(Self {
-            iterator: Box::new(
-                paths.map(|res| res.map_err(FileLoaderError::GlobError).map_err(Into::into)),
-            ),
+            iterator: Box::new(paths.map(|res| res.map_err(FileLoaderError::GlobError))),
         })
     }
 
     /// Build a loader from every entry inside a directory (non-recursive).
     pub fn with_dir(
         dir: &str,
-    ) -> Result<PdfFileLoader<Result<PathBuf, PdfLoaderError>>, PdfLoaderError> {
+    ) -> Result<PdfFileLoader<'static, Result<PathBuf, FileLoaderError>>, PdfLoaderError> {
         Ok(Self {
             iterator: Box::new(
                 fs::read_dir(dir)
-                    .map_err(FileLoaderError::IoError)?
+                    .map_err(|e| PdfLoaderError::File(FileLoaderError::IoError(e)))?
                     .map(|e| Ok(e.map_err(FileLoaderError::IoError)?.path())),
             ),
         })
@@ -183,7 +182,7 @@ impl<'a> PdfFileLoader<'a, (PathBuf, Document)> {
 /* -------------------------------------------------------------------------
  * Error-ignoring helpers – available at any stage where `Item = Result<…>`.
  * ---------------------------------------------------------------------- */
-impl<'a, T> PdfFileLoader<'a, Result<T, PdfLoaderError>> {
+impl<'a, T: 'a> PdfFileLoader<'a, Result<T, PdfLoaderError>> {
     #[inline(always)]
     pub fn ignore_errors(self) -> PdfFileLoader<'a, T> {
         PdfFileLoader {

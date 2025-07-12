@@ -53,7 +53,7 @@ impl StreamingOutput {
             // Plain text output
             print!("{}", chunk);
         }
-        
+
         // Flush immediately for real-time streaming
         use std::io::{self, Write};
         let _ = io::stdout().flush();
@@ -63,7 +63,7 @@ impl StreamingOutput {
     pub fn output_message(&mut self, message: &str) {
         self.buffer.clear();
         self.buffer.push_str(message);
-        
+
         if self.enable_colors && self.markdown_renderer.is_some() {
             let rendered = render_markdown_to_string(&self.buffer);
             println!("{}", rendered);
@@ -146,7 +146,7 @@ impl StreamProcessor for TextStreamProcessor {
 }
 
 /// Adapter to make any Stream compatible with StreamProcessor
-pub struct StreamAdapter<S, P> 
+pub struct StreamAdapter<S, P>
 where
     S: Stream,
     P: StreamProcessor,
@@ -170,11 +170,11 @@ where
         S: Stream<Item = P::Item> + Unpin,
     {
         use futures::StreamExt;
-        
+
         while let Some(item) = self.stream.next().await {
             self.processor.process_item(item)?;
         }
-        
+
         self.processor.finish()
     }
 }
@@ -231,10 +231,10 @@ mod tests {
         output.newline();
     }
 
-    #[tokio::test]  
+    #[tokio::test]
     async fn test_text_stream_processor() {
         let mut processor = TextStreamProcessor::new();
-        
+
         assert!(processor.process_item("Hello".to_string()).is_ok());
         assert!(processor.process_item(" World".to_string()).is_ok());
         assert!(processor.finish().is_ok());
@@ -244,13 +244,13 @@ mod tests {
     async fn test_stream_adapter() {
         let text_stream = stream::iter(vec![
             "Hello".to_string(),
-            " ".to_string(), 
+            " ".to_string(),
             "World!".to_string(),
         ]);
-        
+
         let processor = TextStreamProcessor::new();
         let adapter = StreamAdapter::new(text_stream, processor);
-        
+
         assert!(adapter.process_all().await.is_ok());
     }
 }

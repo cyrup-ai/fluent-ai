@@ -15,6 +15,10 @@
 .idea
 ./rig
 ./rig/*
+**/rig/*
+**/.claude/*
+**/.claude
+**/.lsp-cargo/*
 
 # ==============================
 # Rust Specific

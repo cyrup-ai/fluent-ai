@@ -16,11 +16,11 @@ pub enum PromptError {
 use super::memory_ops::Op;
 use crate::memory::{Error as MemoryError, MemoryManager, MemoryNode, MemoryType};
 
-use super::memory_ops::{self, RetrieveMemories, SearchMemories, StoreMemory};
+use super::memory_ops;
 
 // Workflow builder module
 mod workflow {
-    use super::*;
+    // Remove unused super::* import - specify needed imports explicitly
 
     pub fn new() -> WorkflowBuilder {
         WorkflowBuilder

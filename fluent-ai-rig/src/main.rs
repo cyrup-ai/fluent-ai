@@ -1,7 +1,7 @@
 use clap::Parser;
 use fluent_ai_provider::{Model, Models, Provider, Providers};
-use std::io::{self, Write};
 use futures::StreamExt;
+use std::io::{self, Write};
 use tokio;
 use tracing::{error, info};
 
@@ -45,13 +45,16 @@ fn validate_provider_and_model(provider: &str, model: &str) -> Result<(Providers
 
     // Validate that the model is supported by the provider
     if !is_model_supported_by_provider(&provider_enum, model) {
-        return Err(format!("Unsupported model '{}' for provider '{}'", model, provider));
+        return Err(format!(
+            "Unsupported model '{}' for provider '{}'",
+            model, provider
+        ));
     }
-    
+
     // Find the matching Models enum variant
-    let model_enum = find_models_enum_by_name(model)
-        .ok_or_else(|| format!("Unknown model: {}", model))?;
-    
+    let model_enum =
+        find_models_enum_by_name(model).ok_or_else(|| format!("Unknown model: {}", model))?;
+
     Ok((provider_enum, model_enum))
 }
 
@@ -80,7 +83,7 @@ fn find_models_enum_by_name(model_name: &str) -> Option<Models> {
         Models::MistralMistralEmbed,
         // Add more as needed...
     ];
-    
+
     for model in &all_models {
         if model.name().eq_ignore_ascii_case(model_name) {
             return Some(model.clone());
@@ -97,7 +100,9 @@ fn validate_temperature(temp: f32) -> Result<f32, String> {
     }
 }
 
-async fn load_context(context_refs: &[String]) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
+async fn load_context(
+    context_refs: &[String],
+) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
     let mut context_data = Vec::new();
 
     for context_ref in context_refs {
@@ -165,8 +170,8 @@ async fn interactive_mode(
     println!("Type 'quit' or 'exit' to end the session\n");
 
     // Use the existing FluentAI builder API instead of manual backend calls
-    let mut agent_builder = fluent_ai::FluentAi::agent(model.clone())
-        .temperature(temperature as f64);
+    let mut agent_builder =
+        fluent_ai::FluentAi::agent(model.clone()).temperature(temperature as f64);
 
     // Set agent role as system prompt if provided
     if !agent_role.is_empty() && agent_role != "assistant" {
@@ -186,11 +191,15 @@ async fn interactive_mode(
             match conversation.message_count() {
                 0 => {
                     // First interaction - prompt for initial user input
-                    fluent_ai::prelude::ChatLoop::UserPrompt(Some("Enter your message: ".to_string()))
+                    fluent_ai::prelude::ChatLoop::UserPrompt(Some(
+                        "Enter your message: ".to_string(),
+                    ))
                 }
                 _ => {
                     // After assistant responses, continue asking for user input
-                    fluent_ai::prelude::ChatLoop::UserPrompt(Some("Enter your message (or 'quit' to exit): ".to_string()))
+                    fluent_ai::prelude::ChatLoop::UserPrompt(Some(
+                        "Enter your message (or 'quit' to exit): ".to_string(),
+                    ))
                 }
             }
         });
@@ -203,12 +212,13 @@ async fn interactive_mode(
                 if msg_chunk.content.contains("Enter your message") {
                     print!("{}", msg_chunk.content);
                     io::stdout().flush().unwrap_or(());
-                    
+
                     // Read user input
                     let mut input = String::new();
                     if io::stdin().read_line(&mut input).is_ok() {
                         let input = input.trim();
-                        if input.eq_ignore_ascii_case("quit") || input.eq_ignore_ascii_case("exit") {
+                        if input.eq_ignore_ascii_case("quit") || input.eq_ignore_ascii_case("exit")
+                        {
                             break;
                         }
                         // TODO: Send user input back to conversation
@@ -259,8 +269,8 @@ async fn single_prompt_mode(
     io::stdout().flush()?;
 
     // Use the existing FluentAI builder API for single prompt
-    let mut agent_builder = fluent_ai::FluentAi::agent(model.clone())
-        .temperature(temperature as f64);
+    let mut agent_builder =
+        fluent_ai::FluentAi::agent(model.clone()).temperature(temperature as f64);
 
     // Set agent role as system prompt if provided
     if !agent_role.is_empty() && agent_role != "assistant" {

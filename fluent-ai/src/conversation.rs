@@ -15,29 +15,29 @@ impl Conversation {
             latest_user_message: message,
         }
     }
-    
+
     /// Get the latest user message
     pub fn latest_user_message(&self) -> &str {
         &self.latest_user_message
     }
-    
+
     /// Add a new user message to the conversation
     pub fn add_user_message(&mut self, message: impl Into<String>) {
         let message = message.into();
         self.messages.push(message.clone());
         self.latest_user_message = message;
     }
-    
+
     /// Add an assistant response to the conversation
     pub fn add_assistant_response(&mut self, response: impl Into<String>) {
         self.messages.push(response.into());
     }
-    
+
     /// Get all messages in the conversation
     pub fn messages(&self) -> &[String] {
         &self.messages
     }
-    
+
     /// Get the number of messages in the conversation
     pub fn message_count(&self) -> usize {
         self.messages.len()
@@ -60,7 +60,7 @@ mod tests {
         let mut conversation = Conversation::new("First message");
         conversation.add_assistant_response("AI response");
         conversation.add_user_message("Second message");
-        
+
         assert_eq!(conversation.latest_user_message(), "Second message");
         assert_eq!(conversation.message_count(), 3);
     }
@@ -70,7 +70,7 @@ mod tests {
         let mut conversation = Conversation::new("User 1");
         conversation.add_assistant_response("Assistant 1");
         conversation.add_user_message("User 2");
-        
+
         let messages = conversation.messages();
         assert_eq!(messages.len(), 3);
         assert_eq!(messages[0], "User 1");

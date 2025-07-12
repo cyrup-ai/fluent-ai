@@ -21,7 +21,7 @@ use quick_xml::{events::Event, Reader};
 /// });
 /// ```
 pub trait TextProcessor: Sized {
-    type Error: Error + 'static;
+    type Error: Error + Send + Sync + 'static;
 
     /// Return a **fresh `String`** containing the processed text.
     fn process(text: &str) -> Result<String, Self::Error>;
@@ -59,7 +59,7 @@ impl TextProcessor for StripXmlProcessor {
 
     fn process(xml: &str) -> Result<String, Self::Error> {
         let mut reader = Reader::from_str(xml.trim());
-        reader.trim_text(true);
+        reader.config_mut().trim_text(true);
 
         // Heuristic: ~½ original size is plenty for most chapters.
         let mut out = String::with_capacity(xml.len() / 2);
@@ -67,8 +67,18 @@ impl TextProcessor for StripXmlProcessor {
 
         loop {
             match reader.read_event()? {
-                Event::Text(t) | Event::CData(t) => {
+                Event::Text(t) => {
                     let txt = t.unescape()?.into_owned();
+                    if !txt.trim().is_empty() {
+                        if last_was_txt {
+                            out.push(' ');
+                        }
+                        out.push_str(&txt);
+                        last_was_txt = true;
+                    }
+                }
+                Event::CData(t) => {
+                    let txt = String::from_utf8(t.to_vec())?;
                     if !txt.trim().is_empty() {
                         if last_was_txt {
                             out.push(' ');

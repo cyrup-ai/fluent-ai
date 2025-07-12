@@ -137,12 +137,17 @@ impl MarkdownRenderer {
                             self.span_buffer.clear();
                         }
                     }
-                    Tag::Heading { level, id: _, classes: _, attrs: _ } => {
+                    Tag::Heading {
+                        level,
+                        id: _,
+                        classes: _,
+                        attrs: _,
+                    } => {
                         let heading_style = Style::default()
                             .fg(self.theme.heading)
                             .add_modifier(Modifier::BOLD);
                         current_style = heading_style;
-                        
+
                         // Add heading prefix based on level
                         let prefix = match level {
                             pulldown_cmark::HeadingLevel::H1 => "# ",
@@ -177,7 +182,12 @@ impl MarkdownRenderer {
                             .fg(self.theme.strong)
                             .add_modifier(Modifier::BOLD);
                     }
-                    Tag::Link { link_type: _, dest_url, title: _, id: _ } => {
+                    Tag::Link {
+                        link_type: _,
+                        dest_url,
+                        title: _,
+                        id: _,
+                    } => {
                         current_style = Style::default()
                             .fg(self.theme.link)
                             .add_modifier(Modifier::UNDERLINED);
@@ -190,14 +200,16 @@ impl MarkdownRenderer {
                     Tag::Item => {
                         let indent_level = (list_stack.len().saturating_sub(1)) * 2;
                         let indent = SPACE.repeat(indent_level);
-                        
+
                         if let Some(Some(num)) = list_stack.last_mut() {
                             // Ordered list
-                            self.span_buffer.push(Span::raw(format!("{}{}. ", indent, num)));
+                            self.span_buffer
+                                .push(Span::raw(format!("{}{}. ", indent, num)));
                             *num += 1;
                         } else {
                             // Unordered list
-                            self.span_buffer.push(Span::raw(format!("{}{}", indent, BULLET)));
+                            self.span_buffer
+                                .push(Span::raw(format!("{}{}", indent, BULLET)));
                         }
                     }
                     _ => {}
@@ -245,7 +257,8 @@ impl MarkdownRenderer {
                     if in_code_block {
                         code_block_content.push_str(&text);
                     } else {
-                        self.span_buffer.push(Span::styled(text.to_string(), current_style));
+                        self.span_buffer
+                            .push(Span::styled(text.to_string(), current_style));
                     }
                 }
                 Event::Code(text) => {
@@ -253,7 +266,8 @@ impl MarkdownRenderer {
                     let code_style = Style::default()
                         .fg(self.theme.accent)
                         .bg(self.theme.code_background);
-                    self.span_buffer.push(Span::styled(text.to_string(), code_style));
+                    self.span_buffer
+                        .push(Span::styled(text.to_string(), code_style));
                 }
 
                 Event::Html(html) => {
@@ -283,7 +297,7 @@ impl MarkdownRenderer {
     /// Render a code block with syntax highlighting
     fn render_code_block(&mut self, code: &str, language: Option<&str>) {
         let border_style = Style::default().fg(self.theme.secondary);
-        
+
         // Add top border
         let lang_display = language.unwrap_or("text").to_string();
         self.line_buffer.push(Line::from(vec![
@@ -304,8 +318,9 @@ impl MarkdownRenderer {
 
         // Add bottom border
         let bottom_line = format!("{}{}", CODE_BORDER_BOTTOM, CODE_BORDER_LINE.repeat(50));
-        self.line_buffer.push(Line::from(Span::styled(bottom_line, border_style)));
-        
+        self.line_buffer
+            .push(Line::from(Span::styled(bottom_line, border_style)));
+
         // Add empty line after code block
         self.line_buffer.push(Line::from(""));
     }
@@ -313,10 +328,10 @@ impl MarkdownRenderer {
     /// Highlight code lines with syntect
     fn highlight_code_lines(&mut self, code: &str, syntax: &SyntaxReference, border_style: Style) {
         let mut highlighter = HighlightLines::new(syntax, &TERMINAL_THEME);
-        
+
         for line in LinesWithEndings::from(code) {
             let mut spans = vec![Span::styled(CODE_BORDER_SIDE, border_style)];
-            
+
             if let Ok(highlighted) = highlighter.highlight_line(line, &SYNTAX_SET) {
                 for (style, text) in highlighted {
                     let ratatui_color = self.syntect_color_to_ratatui(style.foreground);
@@ -325,9 +340,12 @@ impl MarkdownRenderer {
                 }
             } else {
                 // Fallback to plain text
-                spans.push(Span::styled(line.to_string(), Style::default().fg(self.theme.text)));
+                spans.push(Span::styled(
+                    line.to_string(),
+                    Style::default().fg(self.theme.text),
+                ));
             }
-            
+
             self.line_buffer.push(Line::from(spans));
         }
     }
@@ -335,7 +353,7 @@ impl MarkdownRenderer {
     /// Render plain code without syntax highlighting
     fn render_plain_code(&mut self, code: &str, border_style: Style) {
         let code_style = Style::default().fg(self.theme.text);
-        
+
         for line in code.lines() {
             let spans = vec![
                 Span::styled(CODE_BORDER_SIDE, border_style),
@@ -354,7 +372,7 @@ impl MarkdownRenderer {
 /// Simple function to render markdown to string with basic terminal colors
 pub fn render_markdown_to_string(markdown: &str) -> String {
     use crossterm::style::{Color as TermColor, Stylize};
-    
+
     let mut output = String::new();
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
@@ -363,11 +381,11 @@ pub fn render_markdown_to_string(markdown: &str) -> String {
     options.insert(Options::ENABLE_TASKLISTS);
 
     let parser = Parser::new_ext(markdown, options);
-    
+
     let mut in_code_block = false;
     let mut code_lang: Option<String> = None;
     let mut heading_level = 0;
-    
+
     for event in parser {
         match event {
             Event::Start(tag) => match tag {
@@ -387,20 +405,27 @@ pub fn render_markdown_to_string(markdown: &str) -> String {
                     in_code_block = true;
                     code_lang = match kind {
                         pulldown_cmark::CodeBlockKind::Fenced(lang) => {
-                            if lang.is_empty() { None } else { Some(lang.to_string()) }
+                            if lang.is_empty() {
+                                None
+                            } else {
+                                Some(lang.to_string())
+                            }
                         }
                         pulldown_cmark::CodeBlockKind::Indented => None,
                     };
-                    
+
                     let lang_display = code_lang.as_deref().unwrap_or("text");
-                    output.push_str(&format!("╭─ {}\n", lang_display.stylize().with(TermColor::Cyan)));
+                    output.push_str(&format!(
+                        "╭─ {}\n",
+                        lang_display.stylize().with(TermColor::Cyan)
+                    ));
                 }
                 // Inline code is handled by Event::Code, not Tag
                 Tag::Emphasis => {
                     // Handled in text
                 }
                 Tag::Strong => {
-                    // Handled in text  
+                    // Handled in text
                 }
                 Tag::Link { .. } => {
                     // Handled in text
@@ -448,7 +473,7 @@ pub fn render_markdown_to_string(markdown: &str) -> String {
             _ => {}
         }
     }
-    
+
     output
 }
 
@@ -460,14 +485,14 @@ mod tests {
     fn test_basic_markdown_rendering() {
         let mut renderer = MarkdownRenderer::default();
         let markdown = "# Hello World\n\nThis is a **bold** text with `code`.\n\n```rust\nfn main() {\n    println!(\"Hello!\");\n}\n```";
-        
+
         let lines = renderer.render(markdown);
         assert!(!lines.is_empty());
-        
+
         // Check that we have some content
-        let has_heading = lines.iter().any(|line| {
-            line.spans.iter().any(|span| span.content.contains('#'))
-        });
+        let has_heading = lines
+            .iter()
+            .any(|line| line.spans.iter().any(|span| span.content.contains('#')));
         assert!(has_heading);
     }
 
@@ -475,7 +500,7 @@ mod tests {
     fn test_string_markdown_rendering() {
         let markdown = "# Test\n\nHello **world**!\n\n```rust\nlet x = 42;\n```";
         let result = render_markdown_to_string(markdown);
-        
+
         assert!(result.contains("# Test"));
         assert!(result.contains("Hello"));
         assert!(result.contains("╭─"));

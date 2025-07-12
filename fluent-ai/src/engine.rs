@@ -8,8 +8,7 @@ use std::sync::{Arc, RwLock};
 // AgentConfig is defined locally below
 // Agent trait is defined locally to avoid conflict with domain::agent::Agent struct
 use crate::domain::completion::CompletionRequest;
-use crate::providers::Model;
-use fluent_ai_provider::{Models, Providers};
+use fluent_ai_provider::{Model, Models};
 
 // Typesafe builder module
 pub mod builder;
@@ -34,7 +33,7 @@ pub struct AgentConfig {
 /// Configuration for extraction
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtractionConfig {
-    pub model: Model,
+    pub model: Models,
     pub prompt: String,
     pub schema: Option<Value>,
     pub temperature: Option<f64>,

@@ -11,7 +11,7 @@ use std::error::Error;
 use epub::doc::DocError;
 use thiserror::Error;
 
-use crate::loaders::file::FileLoaderError;
+use super::super::file::FileLoaderError;
 
 /// Fatal condition surfaced by the EPUB loading pipeline.
 #[derive(Error, Debug)]

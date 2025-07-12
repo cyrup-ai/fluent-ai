@@ -44,8 +44,14 @@ pub trait ModelInfo: std::fmt::Debug + Send + Sync {
 }
 
 pub mod model;
+pub mod models;
 pub mod provider;
+pub mod providers;
 
-// Re-export generated implementations for convenience
-pub use model::Models;
-pub use provider::Providers;
+// Re-export all types for convenience
+pub use model::{Model, ModelInfo, ModelInfoData};
+// TODO: Uncomment after generation
+// pub use models::Models;
+pub use provider::Provider;
+// TODO: Uncomment after generation
+// pub use providers::Providers;

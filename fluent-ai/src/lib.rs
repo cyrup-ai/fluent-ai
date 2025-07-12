@@ -25,10 +25,10 @@ pub mod agent;
 pub mod chat_loop;
 pub mod conversation;
 pub mod macros;
-pub mod memory;
-pub mod workflow;
 pub mod markdown;
+pub mod memory;
 pub mod streaming;
+pub mod workflow;
 
 pub mod domain;
 pub mod engine;

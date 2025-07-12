@@ -208,9 +208,12 @@ impl AgentBuilderWithHandler {
     }
 
     // Terminal method - chat interaction with closure
-    pub fn chat<F>(self, chat_closure: F) -> AsyncStream<ChatMessageChunk> 
-    where 
-        F: Fn(crate::conversation::Conversation) -> crate::chat_loop::ChatLoop + Send + Sync + 'static,
+    pub fn chat<F>(self, chat_closure: F) -> AsyncStream<ChatMessageChunk>
+    where
+        F: Fn(crate::conversation::Conversation) -> crate::chat_loop::ChatLoop
+            + Send
+            + Sync
+            + 'static,
     {
         let _agent = self.agent();
 
@@ -221,7 +224,7 @@ impl AgentBuilderWithHandler {
         tokio::spawn(async move {
             let mut conversation = crate::conversation::Conversation::new("");
             let mut awaiting_user_input = true;
-            
+
             loop {
                 // If we need user input, we'll need to handle that externally
                 // For now, we'll simulate initial user input
@@ -237,30 +240,29 @@ impl AgentBuilderWithHandler {
                     awaiting_user_input = false;
                     continue;
                 }
-                
+
                 // Call the user's chat closure
                 let chat_result = chat_closure(conversation.clone());
-                
+
                 match chat_result {
                     crate::chat_loop::ChatLoop::Reprompt(response) => {
                         // Add response to conversation
                         conversation.add_assistant_response(&response);
-                        
+
                         // Send the response as chunks
-                        let response_chunk = ChatMessageChunk::new(
-                            response,
-                            MessageRole::Assistant,
-                        );
+                        let response_chunk =
+                            ChatMessageChunk::new(response, MessageRole::Assistant);
                         if tx.send(response_chunk).is_err() {
                             break;
                         }
-                        
+
                         // Continue the loop for next user input
                         awaiting_user_input = true;
                     }
                     crate::chat_loop::ChatLoop::UserPrompt(prompt) => {
                         // Send user prompt request
-                        let prompt_text = prompt.unwrap_or_else(|| "Please enter your message:".to_string());
+                        let prompt_text =
+                            prompt.unwrap_or_else(|| "Please enter your message:".to_string());
                         let prompt_chunk = ChatMessageChunk::new(
                             format!("[{}]", prompt_text),
                             MessageRole::System,
@@ -285,7 +287,7 @@ impl AgentBuilderWithHandler {
 
         AsyncStream::new(rx)
     }
-    
+
     // Keep the original string-based chat method for backward compatibility
     pub fn chat_message(self, message: impl Into<String>) -> AsyncStream<ChatMessageChunk> {
         let message = message.into();
