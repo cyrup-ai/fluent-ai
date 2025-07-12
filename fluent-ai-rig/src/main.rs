@@ -1,8 +1,7 @@
 use clap::Parser;
 use fluent_ai_provider::{Model, Models, Provider, Providers};
-use fluent_ai_rig::{create_fluent_engine_with_model, RigCompletionBackend};
-use fluent_ai::domain::completion::CompletionBackend;
 use std::io::{self, Write};
+use futures::StreamExt;
 use tokio;
 use tracing::{error, info};
 
@@ -153,66 +152,45 @@ async fn interactive_mode(
     println!("Temperature: {}", temperature);
     println!("Agent Role: {}", agent_role);
 
-    if !context.is_empty() {
+    // Load context if provided
+    let context_data = if !context.is_empty() {
         println!("Context loaded from: {:?}", context);
-        let context_data = load_context(context).await?;
-        println!("Context summary: {} items loaded", context_data.len());
-    }
+        let data = load_context(context).await?;
+        println!("Context summary: {} items loaded", data.len());
+        Some(data.join("\n"))
+    } else {
+        None
+    };
 
     println!("Type 'quit' or 'exit' to end the session\n");
 
-    let _engine = create_fluent_engine_with_model(provider.clone(), model.clone())?;
+    // Use the existing FluentAI builder API instead of manual backend calls
+    let mut agent_builder = fluent_ai::FluentAi::agent(model.clone())
+        .temperature(temperature as f64);
 
-    loop {
-        print!("👤 You: ");
-        io::stdout().flush()?;
-
-        let mut input = String::new();
-        io::stdin().read_line(&mut input)?;
-        let input = input.trim();
-
-        if input.is_empty() {
-            continue;
-        }
-
-        if input.eq_ignore_ascii_case("quit") || input.eq_ignore_ascii_case("exit") {
-            println!("Goodbye! 👋");
-            break;
-        }
-
-        print!("🤖 Assistant: ");
-        io::stdout().flush()?;
-
-        // Create a prompt that incorporates agent role and context
-        let mut full_prompt = String::new();
-
-        if !agent_role.is_empty() && agent_role != "assistant" {
-            full_prompt.push_str(&format!("You are a {}. ", agent_role));
-        }
-
-        if !context.is_empty() {
-            full_prompt.push_str("Consider the following context: ");
-            let context_data = load_context(context).await?;
-            for ctx in context_data {
-                full_prompt.push_str(&format!("{}\n", ctx));
-            }
-            full_prompt.push_str("\nNow respond to: ");
-        }
-
-        full_prompt.push_str(input);
-
-        // Create backend and submit completion
-        let backend = crate::RigCompletionBackend::new(provider.clone(), model.clone());
-        println!("[Processing with model: {}, temp: {}]", model.name(), temperature);
-        
-        // Submit completion request
-        let completion_task = backend.submit_completion(&full_prompt, &[]);
-        match completion_task.await {
-            Ok(response) => println!("Response: {}", response),
-            Err(e) => println!("Error: {}", e),
-        }
+    // Set agent role as system prompt if provided
+    if !agent_role.is_empty() && agent_role != "assistant" {
+        agent_builder = agent_builder.system_prompt(format!("You are a {}.", agent_role));
     }
 
+    // Add context if available
+    if let Some(ctx) = context_data {
+        agent_builder = agent_builder.context_text(ctx);
+    }
+
+    // Use ergonomic chat loop with proper error handling and stream consumption
+    let mut chat_stream = agent_builder
+        .on_error(|err| eprintln!("❌ Error: {}", err))
+        .conversation()
+        .converse();
+
+    // Consume the stream to handle chat messages
+    while let Some(msg_chunk) = chat_stream.next().await {
+        print!("{}", msg_chunk.content);
+        io::stdout().flush().unwrap_or(());
+    }
+
+    println!("Goodbye! 👋");
     Ok(())
 }
 
@@ -220,45 +198,55 @@ async fn single_prompt_mode(
     prompt: &str,
     provider: &Providers,
     model: &Models,
-    _temperature: f32,
+    temperature: f32,
     agent_role: &str,
     context: &[String],
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!(
-        "🤖 Processing single prompt with provider: {} and model: {}",
-        provider.name(),
-        model.name()
-    );
+    println!("🤖 FluentAI Single Prompt Mode");
+    println!("Provider: {}", provider.name());
+    println!("Model: {}", model.name());
+    println!("Agent Role: {}", agent_role);
 
-    let _engine = create_fluent_engine_with_model(provider.clone(), model.clone())?;
+    // Load context if provided
+    let context_data = if !context.is_empty() {
+        println!("Context loaded from: {:?}", context);
+        let data = load_context(context).await?;
+        println!("Context summary: {} items loaded", data.len());
+        Some(data.join("\n"))
+    } else {
+        None
+    };
 
-    let mut full_prompt = String::new();
+    println!("\n👤 You: {}", prompt);
+    print!("🤖 Assistant: ");
+    io::stdout().flush()?;
 
+    // Use the existing FluentAI builder API for single prompt
+    let mut agent_builder = fluent_ai::FluentAi::agent(model.clone())
+        .temperature(temperature as f64);
+
+    // Set agent role as system prompt if provided
     if !agent_role.is_empty() && agent_role != "assistant" {
-        full_prompt.push_str(&format!("You are a {}. ", agent_role));
+        agent_builder = agent_builder.system_prompt(format!("You are a {}.", agent_role));
     }
 
-    if !context.is_empty() {
-        full_prompt.push_str("Consider the following context: ");
-        let context_data = load_context(context).await?;
-        for ctx in context_data {
-            full_prompt.push_str(&format!("{}\n", ctx));
-        }
-        full_prompt.push_str("\nNow respond to: ");
+    // Add context if available
+    if let Some(ctx) = context_data {
+        agent_builder = agent_builder.context_text(ctx);
     }
 
-    full_prompt.push_str(prompt);
+    // Use streaming chat for the single prompt
+    let mut chat_stream = agent_builder
+        .on_error(|err| eprintln!("❌ Error: {}", err))
+        .chat(prompt);
 
-    // Create backend and submit completion
-    let backend = crate::RigCompletionBackend::new(provider.clone(), model.clone());
-    
-    // Submit completion request
-    let completion_task = backend.submit_completion(&full_prompt, &[]);
-    match completion_task.await {
-        Ok(response) => println!("Response: {}", response),
-        Err(e) => println!("Error: {}", e),
+    // Consume the stream to handle the response and implement ChatLoop pattern
+    while let Some(msg_chunk) = chat_stream.next().await {
+        print!("{}", msg_chunk.content);
+        io::stdout().flush().unwrap_or(());
     }
 
+    println!(); // Add newline after response
     Ok(())
 }
 

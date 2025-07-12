@@ -15,6 +15,7 @@ path = "src/main.rs"
 clap = { version = "4.5.29", features = ["derive"] }
 fluent-ai = { version = "0.1.0", path = "../fluent-ai" }
 fluent_ai_provider = { version = "0.1.0", path = "../provider" }
+futures = "0.3.30"
 rig-core = { git = "https://github.com/0xPlaygrounds/rig.git", branch = "main", features = ["all", "mcp", "reqwest-rustls", "audio", "image", "worker"] }
 rig-surrealdb = { git = "https://github.com/0xPlaygrounds/rig.git", branch = "main" }
 serde = "1.0.219"
