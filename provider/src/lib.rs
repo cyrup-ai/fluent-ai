@@ -5,14 +5,16 @@
 
 // Module declarations
 pub mod model;
+pub mod model_info;
 pub mod models;
 pub mod provider;
 pub mod providers;
 
+
 // Re-export all types for convenience
-pub use model::{Model, ModelInfoData};
+pub use model::Model;
+pub use model_info::ModelInfoData;
 pub use models::Models;
-pub use provider::{Provider, ZeroOneOrMany};
+pub use provider::Provider;
 pub use providers::Providers;
-
-
+pub use cyrup_sugars::ZeroOneOrMany;

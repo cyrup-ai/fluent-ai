@@ -4,10 +4,29 @@ use serde::{Serialize, Deserialize};
 // AUTO-GENERATED START
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Providers {
-    Unknown,
     Openai,
-    Anthropic,
-    Meta,
-    Google,
+    Gemini,
+    Claude,
+    Mistral,
+    Ai21,
+    Cohere,
+    Xai,
+    Perplexity,
+    Groq,
+    Vertexai,
+    Bedrock,
+    Cloudflare,
+    Ernie,
+    Qianwen,
+    Hunyuan,
+    Moonshot,
+    Deepseek,
+    Zhipuai,
+    Minimax,
+    Openrouter,
+    Github,
+    Deepinfra,
+    Jina,
+    Voyageai,
 }
 // AUTO-GENERATED END

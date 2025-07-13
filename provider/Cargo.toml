@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
+cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars" }
 
 [build-dependencies]
 reqwest = { version = "0.12", features = ["json", "blocking"] }
@@ -12,6 +13,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
 tokio = { version = "1.0", features = ["full"] }
 serde_json = "1.0.140"
+syn = { version = "2.0.104", features = ["full", "parsing"] }
+quote = "1.0.40"
+proc-macro2 = "1.0.95"
 
 [lib]
 name = "fluent_ai_provider"

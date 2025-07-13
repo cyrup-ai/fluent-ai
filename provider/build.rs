@@ -1,12 +1,10 @@
-// Removed proc_macro2 and quote - using direct string generation for better control
 use serde::{Deserialize, Serialize};
+use syn::{parse_quote, ItemImpl, Arm};
+use quote::{quote, format_ident};
 use std::collections::BTreeSet;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use std::time::Duration;
-use reqwest::Client;
-use tokio;
 
 /// The models.yaml is a top-level array of providers, not a struct with providers field
 type ModelYaml = Vec<ProviderInfo>;
@@ -98,73 +96,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=models.yaml");
     println!("cargo:rerun-if-changed=build.rs");
     
-    let _rt = tokio::runtime::Handle::current();
-    
-    // Download latest models.yaml
-    let client = Client::builder()
-        .timeout(Duration::from_secs(30))
+    // Download models.yaml from sigoden/aichat
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
         .build()?;
     
     let response = client
-        .get("https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json")
+        .get("https://raw.githubusercontent.com/sigoden/aichat/refs/heads/main/models.yaml")
         .send()
         .await?;
     
     if !response.status().is_success() {
-        eprintln!("Warning: Failed to download models file, using existing local copy if available");
+        eprintln!("Warning: Failed to download models.yaml, using existing local copy if available");
         if !Path::new("models.yaml").exists() {
             return Err("No models.yaml found and download failed".into());
         }
     } else {
         let content = response.text().await?;
-        
-        // Parse JSON and convert to our YAML format
-        let json_data: serde_json::Value = serde_json::from_str(&content)?;
-        let mut providers: Vec<ProviderInfo> = Vec::new();
-        
-        if let Some(obj) = json_data.as_object() {
-            for (model_name, model_data) in obj {
-                if let Some(model_obj) = model_data.as_object() {
-                    // Extract provider from model name (e.g., "gpt-4" -> "openai")
-                    let provider = if model_name.starts_with("gpt-") || model_name.starts_with("text-") {
-                        "openai"
-                    } else if model_name.starts_with("claude-") {
-                        "anthropic"
-                    } else if model_name.contains("gemini") || model_name.contains("palm") {
-                        "google"
-                    } else if model_name.contains("llama") {
-                        "meta"
-                    } else {
-                        "unknown"
-                    };
-                    
-                    let model_config = ModelConfig {
-                        name: model_name.clone(),
-                        max_input_tokens: model_obj.get("max_input_tokens").and_then(|v| v.as_u64()),
-                        max_output_tokens: model_obj.get("max_output_tokens").and_then(|v| v.as_u64()),
-                        input_price: model_obj.get("input_cost_per_token").and_then(|v| v.as_f64()),
-                        output_price: model_obj.get("output_cost_per_token").and_then(|v| v.as_f64()),
-                        supports_vision: model_obj.get("supports_vision").and_then(|v| v.as_bool()),
-                        supports_function_calling: model_obj.get("supports_function_calling").and_then(|v| v.as_bool()),
-                        require_max_tokens: None,
-                    };
-                    
-                    // Find or create provider
-                    if let Some(provider_info) = providers.iter_mut().find(|p| p.provider == provider) {
-                        provider_info.models.push(model_config);
-                    } else {
-                        providers.push(ProviderInfo {
-                            provider: provider.to_string(),
-                            models: vec![model_config],
-                        });
-                    }
-                }
-            }
-        }
-        
-        // Write to models.yaml
-        let yaml_content = serde_yaml::to_string(&providers)?;
-        fs::write("models.yaml", yaml_content)?;
+        fs::write("models.yaml", content)?;
     }
     
     // Load providers from YAML
@@ -187,8 +136,11 @@ fn generate_all_files(
 ) -> Result<(), Box<dyn std::error::Error>> {
     generate_models_enum_file(providers, file_manager)?;
     generate_providers_enum_file(providers, file_manager)?;
-    generate_model_implementations(providers, file_manager)?;
-    generate_provider_implementations(providers, file_manager)?;
+    generate_model_info_data(providers, file_manager)?;
+    
+    // NOTE: Trait implementations are now permanent code, not auto-generated
+    // generate_model_implementations(providers, file_manager)?; // DISABLED
+    // generate_provider_implementations(providers, file_manager)?; // DISABLED
     
     println!("✅ All files generated with surgical precision");
     Ok(())
@@ -249,54 +201,60 @@ pub enum Providers {{
     Ok(())
 }
 
-/// Generate Model trait implementations with surgical precision
-fn generate_model_implementations(
+/// Generate Model info data in model_info.rs (without trait implementations)
+fn generate_model_info_data(
     providers: &[ProviderInfo],
     file_manager: &SurgicalFileManager,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let impl_code = generate_model_info_implementation_optimized(providers);
+    let info_data = generate_model_info_data_only(providers);
     
     let content = format!(
-        "// AUTO-GENERATED START\nuse crate::models::Models;\n\n{}\n// AUTO-GENERATED END\n",
-        impl_code
+        "// AUTO-GENERATED START\n{}\n// AUTO-GENERATED END\n",
+        info_data
     );
     
-    file_manager.update_file_surgical(Path::new("src/model.rs"), &content, true)?;
+    file_manager.update_file_surgical(Path::new("src/model_info.rs"), &content, true)?;
     Ok(())
 }
 
-/// Generate Provider trait implementations with surgical precision
+// NOTE: This function is no longer used as Provider implementations are now permanent code
+#[allow(dead_code)]
 fn generate_provider_implementations(
     providers: &[ProviderInfo],
     file_manager: &SurgicalFileManager,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let (models_match_arms, name_match_arms) = generate_provider_match_arms_optimized(providers);
+    let (models_match_arms, name_match_arms) = generate_provider_match_arms_ast(providers);
     
-    let impl_code = format!(
-        "use crate::ZeroOneOrMany;\nuse crate::models::Models;\n\n\
-        #[inline(always)]\n\
-        impl crate::Provider for Providers {{\n\
-            fn models(&self) -> ZeroOneOrMany<Models> {{\n\
-                match self {{\n\
-{}\n\
-                }}\n\
-            }}\n\n\
-            #[inline(always)]\n\
-            fn name(&self) -> &'static str {{\n\
-                match self {{\n\
-{}\n\
-                }}\n\
-            }}\n\
-        }}",
-        models_match_arms.join(",\n"),
-        name_match_arms.join(",\n")
-    );
+    // Generate the Provider trait implementation using syn/quote
+    let provider_impl: ItemImpl = parse_quote! {
+        impl crate::Provider for Providers {
+            #[inline(always)]
+            fn models(&self) -> ZeroOneOrMany<Models> {
+                match self {
+                    #(#models_match_arms)*
+                }
+            }
+
+            #[inline(always)]
+            fn name(&self) -> &'static str {
+                match self {
+                    #(#name_match_arms)*
+                }
+            }
+        }
+    };
     
-    let content = format!(
-        "// AUTO-GENERATED START\nuse crate::providers::Providers;\n\n{}\n// AUTO-GENERATED END\n",
-        impl_code
-    );
+    // Generate the complete file content with imports
+    let tokens = quote! {
+        // AUTO-GENERATED START
+        use crate::providers::Providers;
+        use crate::models::Models;
+        
+        #provider_impl
+        // AUTO-GENERATED END
+    };
     
+    let content = tokens.to_string();
     file_manager.update_file_surgical(Path::new("src/provider.rs"), &content, true)?;
     Ok(())
 }
@@ -354,13 +312,21 @@ fn to_pascal_case_optimized(input: &str) -> String {
     result
 }
 
-/// Generate optimized Model info implementation with proper formatting
-fn generate_model_info_implementation_optimized(providers: &[ProviderInfo]) -> String {
-    let mut match_arms = Vec::new();
+/// Generate model info data only (no trait implementations) 
+fn generate_model_info_data_only(providers: &[ProviderInfo]) -> String {
+    let mut model_data = Vec::new();
+    let mut seen_models = std::collections::HashSet::new();
     
     for provider in providers {
         for model in &provider.models {
             let variant_name = to_pascal_case_optimized(&model.name);
+            let function_name = format!("get_{}_info", variant_name.to_lowercase());
+            
+            // Skip if we've already generated this model function
+            if seen_models.contains(&function_name) {
+                continue;
+            }
+            seen_models.insert(function_name.clone());
             
             // Generate properly formatted field values with correct Option handling
             let max_input_tokens = match model.max_input_tokens {
@@ -392,19 +358,22 @@ fn generate_model_info_implementation_optimized(providers: &[ProviderInfo]) -> S
                 None => "None".to_string(),
             };
             
-            let match_arm = format!(
-                "            Models::{} => crate::ModelInfoData {{\n\
-                 provider_name: \"{}\".to_string(),\n\
-                 name: \"{}\".to_string(),\n\
-                 max_input_tokens: {},\n\
-                 max_output_tokens: {},\n\
-                 input_price: {},\n\
-                 output_price: {},\n\
-                 supports_vision: {},\n\
-                 supports_function_calling: {},\n\
-                 require_max_tokens: {},\n\
-            }}",
-                variant_name,
+            let model_info = format!(
+                "/// Get model info for {}\npub fn get_{}_info() -> ModelInfoData {{\n\
+                    ModelInfoData {{\n\
+                        provider_name: \"{}\".to_string(),\n\
+                        name: \"{}\".to_string(),\n\
+                        max_input_tokens: {},\n\
+                        max_output_tokens: {},\n\
+                        input_price: {},\n\
+                        output_price: {},\n\
+                        supports_vision: {},\n\
+                        supports_function_calling: {},\n\
+                        require_max_tokens: {},\n\
+                    }}\n\
+                }}",
+                model.name,
+                variant_name.to_lowercase(),
                 provider.provider,
                 model.name,
                 max_input_tokens,
@@ -415,66 +384,50 @@ fn generate_model_info_implementation_optimized(providers: &[ProviderInfo]) -> S
                 supports_function_calling,
                 require_max_tokens
             );
-            match_arms.push(match_arm);
+            model_data.push(model_info);
         }
     }
     
-    format!(
-        "#[inline(always)]\n\
-        impl crate::Model for Models {{\n\
-            fn info(&self) -> crate::ModelInfoData {{\n\
-                match self {{\n\
-{}\n\
-                }}\n\
-            }}\n\
-        }}",
-        match_arms.join(",\n")
-    )
+    model_data.join("\n\n")
 }
 
-/// Generate optimized Provider match arms with proper string formatting
-fn generate_provider_match_arms_optimized(
+// NOTE: This function is no longer used as Provider implementations are now permanent code
+#[allow(dead_code)]
+fn generate_provider_match_arms_ast(
     providers: &[ProviderInfo],
-) -> (Vec<String>, Vec<String>) {
+) -> (Vec<Arm>, Vec<Arm>) {
     let mut models_arms = Vec::new();
     let mut name_arms = Vec::new();
     
     for provider in providers {
-        let provider_variant = to_pascal_case_optimized(&provider.provider);
+        let provider_variant = format_ident!("{}", to_pascal_case_optimized(&provider.provider));
         let provider_name = &provider.provider;
         
         let model_variants: Vec<_> = provider.models
             .iter()
-            .map(|m| to_pascal_case_optimized(&m.name))
+            .map(|m| format_ident!("{}", to_pascal_case_optimized(&m.name)))
             .collect();
         
+        // Generate models() match arm
         let models_arm = if model_variants.len() == 1 {
             let model = &model_variants[0];
-            format!(
-                "            Providers::{} => ZeroOneOrMany::One(Models::{})",
-                provider_variant, model
-            )
+            parse_quote! {
+                Providers::#provider_variant => ZeroOneOrMany::One(Models::#model),
+            }
         } else if model_variants.is_empty() {
-            format!(
-                "            Providers::{} => ZeroOneOrMany::Zero",
-                provider_variant
-            )
+            parse_quote! {
+                Providers::#provider_variant => ZeroOneOrMany::Zero,
+            }
         } else {
-            let model_list = model_variants
-                .iter()
-                .map(|m| format!("Models::{}", m))
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!(
-                "            Providers::{} => ZeroOneOrMany::Many(vec![{}])",
-                provider_variant, model_list
-            )
+            parse_quote! {
+                Providers::#provider_variant => ZeroOneOrMany::Many(vec![#(Models::#model_variants),*]),
+            }
         };
         
-        let name_arm = format!(
-            "            Providers::{} => \"{}\"",
-            provider_variant, provider_name
-        );
+        // Generate name() match arm
+        let name_arm: Arm = parse_quote! {
+            Providers::#provider_variant => #provider_name,
+        };
         
         models_arms.push(models_arm);
         name_arms.push(name_arm);
