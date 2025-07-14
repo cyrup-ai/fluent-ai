@@ -17,6 +17,7 @@ pub struct ModelInfoData {
 }
 
 // AUTO-GENERATED START
+// AUTO-GENERATED START
 /// Get model info for gpt-4.1
 pub fn get_gpt41_info() -> ModelInfoData {
 ModelInfoData {
@@ -3648,8 +3649,28 @@ require_max_tokens: None,
 }
 // AUTO-GENERATED END
 
+// AUTO-GENERATED END
 
+// AUTO-GENERATED END
 
+// AUTO-GENERATED END
 
+// AUTO-GENERATED END
 
+// AUTO-GENERATED END
 
+// AUTO-GENERATED END
+
+// AUTO-GENERATED END
+
+// AUTO-GENERATED END
+
+// AUTO-GENERATED END
+
+// AUTO-GENERATED END
+
+// AUTO-GENERATED END
+
+// AUTO-GENERATED END
+
+// AUTO-GENERATED END

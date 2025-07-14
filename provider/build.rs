@@ -5,9 +5,132 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
+use yyaml;
 
 /// The models.yaml is a top-level array of providers, not a struct with providers field
 type ModelYaml = Vec<ProviderInfo>;
+
+/// Progressive YAML parsing to isolate assertion failures
+fn debug_yaml_parsing(yaml_content: &str) -> Result<yyaml::Yaml, Box<dyn std::error::Error>> {
+    let lines: Vec<&str> = yaml_content.lines().collect();
+    let total_lines = lines.len();
+    println!("🔍 Total YAML lines: {}", total_lines);
+    
+    // Test parsing in progressively larger chunks
+    let chunk_sizes = [50, 100, 200, 500, 1000, total_lines];
+    
+    for &chunk_size in &chunk_sizes {
+        let test_lines = chunk_size.min(total_lines);
+        let test_content = lines[..test_lines].join("\n");
+        
+        println!("🧪 Testing {} lines...", test_lines);
+        
+        match std::panic::catch_unwind(|| {
+            yyaml::YamlLoader::load_from_str(&test_content)
+        }) {
+            Ok(Ok(docs)) => {
+                println!("✅ Successfully parsed {} lines", test_lines);
+                if test_lines == total_lines {
+                    return Ok(docs[0].clone());
+                }
+            },
+            Ok(Err(e)) => {
+                println!("❌ YAML error at {} lines: {}", test_lines, e);
+                return Err(format!("YAML parsing failed at line {}: {}", test_lines, e).into());
+            },
+            Err(_) => {
+                println!("💥 PANIC at {} lines - narrowing down...", test_lines);
+                
+                // Binary search to find exact problematic line
+                if chunk_size > 50 {
+                    let prev_working = chunk_sizes.iter()
+                        .rev()
+                        .find(|&&size| size < chunk_size)
+                        .copied()
+                        .unwrap_or(1);
+                    
+                    return find_problematic_yaml_section(&lines, prev_working, test_lines);
+                }
+                return Err("YAML parsing panicked in first 50 lines".into());
+            }
+        }
+    }
+    
+    Err("Failed to parse YAML completely".into())
+}
+
+/// Binary search to find the exact problematic YAML lines
+fn find_problematic_yaml_section(
+    lines: &[&str], 
+    last_working: usize, 
+    first_failing: usize
+) -> Result<yyaml::Yaml, Box<dyn std::error::Error>> {
+    println!("🎯 Narrowing down: last working {} lines, first failing {} lines", 
+             last_working, first_failing);
+    
+    for line_count in (last_working + 1)..=first_failing {
+        let test_content = lines[..line_count].join("\n");
+        
+        match std::panic::catch_unwind(|| {
+            yyaml::YamlLoader::load_from_str(&test_content)
+        }) {
+            Ok(Ok(_)) => continue,
+            _ => {
+                println!("🚨 PROBLEMATIC SECTION around line {}", line_count);
+                println!("Lines {}-{}:", (line_count.saturating_sub(5)).max(1), line_count.min(lines.len()));
+                
+                let start = (line_count.saturating_sub(5)).max(1) - 1;
+                let end = line_count.min(lines.len());
+                
+                for (i, line) in lines[start..end].iter().enumerate() {
+                    println!("{:4}: {}", start + i + 1, line);
+                }
+                
+                return Err(format!("YAML parsing fails at line {}", line_count).into());
+            }
+        }
+    }
+    
+    Err("Could not isolate problematic YAML section".into())
+}
+
+/// Convert YAML document to ProviderInfo structs
+fn convert_yaml_to_providers(yaml_doc: &yyaml::Yaml) -> Result<ModelYaml, Box<dyn std::error::Error>> {
+    let mut providers = Vec::new();
+    
+    if let Some(provider_array) = yaml_doc.as_vec() {
+        for provider_yaml in provider_array {
+            let provider_name = provider_yaml["provider"].as_str()
+                .ok_or("Missing provider field")?;
+            
+            let mut models = Vec::new();
+            if let Some(models_array) = provider_yaml["models"].as_vec() {
+                for model_yaml in models_array {
+                    let model = ModelConfig {
+                        name: model_yaml["name"].as_str()
+                            .ok_or("Missing model name")?.to_string(),
+                        max_input_tokens: model_yaml["max_input_tokens"].as_i64().map(|v| v as u64),
+                        max_output_tokens: model_yaml["max_output_tokens"].as_i64().map(|v| v as u64),
+                        input_price: model_yaml["input_price"].as_f64(),
+                        output_price: model_yaml["output_price"].as_f64(),
+                        supports_vision: model_yaml["supports_vision"].as_bool(),
+                        supports_function_calling: model_yaml["supports_function_calling"].as_bool(),
+                        require_max_tokens: model_yaml["require_max_tokens"].as_bool(),
+                    };
+                    models.push(model);
+                }
+            }
+            
+            let provider_info = ProviderInfo {
+                provider: provider_name.to_string(),
+                models,
+            };
+            providers.push(provider_info);
+        }
+    }
+    
+    Ok(providers)
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct ProviderInfo {
@@ -82,7 +205,12 @@ impl SurgicalFileManager {
             if let Some(end_pos) = existing.find(self.auto_gen_end) {
                 let before = &existing[..start_pos];
                 let after = &existing[end_pos + self.auto_gen_end.len()..];
-                return Ok(format!("{}{}{}", before, new_content, after));
+                return Ok(format!("{}{}\n{}\n{}{}",
+                    before,
+                    self.auto_gen_start,
+                    new_content,
+                    self.auto_gen_end,
+                    after));
             }
         }
 
@@ -101,24 +229,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .timeout(std::time::Duration::from_secs(30))
         .build()?;
     
-    let response = client
+    let download_result = client
         .get("https://raw.githubusercontent.com/sigoden/aichat/refs/heads/main/models.yaml")
         .send()
-        .await?;
+        .await;
     
-    if !response.status().is_success() {
-        eprintln!("Warning: Failed to download models.yaml, using existing local copy if available");
-        if !Path::new("models.yaml").exists() {
-            return Err("No models.yaml found and download failed".into());
+    match download_result {
+        Ok(response) if response.status().is_success() => {
+            let content = response.text().await?;
+            fs::write("models.yaml", content)?;
         }
-    } else {
-        let content = response.text().await?;
-        fs::write("models.yaml", content)?;
+        _ => {
+            eprintln!("Warning: Failed to download models.yaml, using existing local copy if available");
+            if !Path::new("models.yaml").exists() {
+                return Err("No models.yaml found and download failed".into());
+            }
+        }
     }
     
-    // Load providers from YAML
+    // Load providers from YAML using progressive parsing debug
     let yaml_content = fs::read_to_string("models.yaml")?;
-    let providers: ModelYaml = serde_yaml::from_str(&yaml_content)?;
+    println!("📄 YAML content loaded, {} bytes", yaml_content.len());
+    
+    // Use progressive parsing to isolate any assertion failures
+    let yaml_doc = debug_yaml_parsing(&yaml_content)?;
+    let providers: ModelYaml = convert_yaml_to_providers(&yaml_doc)?;
     
     let file_manager = SurgicalFileManager::new();
     
@@ -134,70 +269,86 @@ fn generate_all_files(
     providers: &[ProviderInfo],
     file_manager: &SurgicalFileManager,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    generate_models_enum_file(providers, file_manager)?;
-    generate_providers_enum_file(providers, file_manager)?;
+    // Generate enums and implementations directly in the target files
+    generate_models_enum_in_model_file(providers, file_manager)?;
+    generate_providers_enum_in_provider_file(providers, file_manager)?;
     generate_model_info_data(providers, file_manager)?;
     
-    // NOTE: Trait implementations are now permanent code, not auto-generated
-    // generate_model_implementations(providers, file_manager)?; // DISABLED
-    // generate_provider_implementations(providers, file_manager)?; // DISABLED
+    // Generate trait implementations in their respective files
+    generate_model_trait_implementation(providers, file_manager)?;
+    generate_provider_implementations(providers, file_manager)?;
     
     println!("✅ All files generated with surgical precision");
     Ok(())
 }
 
-/// Generate models.rs with pure Models enum (zero-allocation, blazing-fast)
-fn generate_models_enum_file(
+/// Generate Models enum directly in model.rs with proper syn formatting
+fn generate_models_enum_in_model_file(
     providers: &[ProviderInfo],
     file_manager: &SurgicalFileManager,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    use syn::{ItemEnum, Variant, parse_quote};
+    
+    // Generate all unique model variants
     let variants = generate_model_variants_optimized(providers);
+    let enum_variants: Vec<Variant> = variants
+        .iter()
+        .map(|variant_name| {
+            let ident = format_ident!("{}", variant_name);
+            parse_quote! { #ident }
+        })
+        .collect();
     
-    let content = format!(
-        r#"// This file is auto-generated. Do not edit manually.
-use serde::{{{}, {}}};
-
-// AUTO-GENERATED START
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Models {{
-{}
-}}
-// AUTO-GENERATED END
-"#,
-        "Serialize", "Deserialize",
-        variants.iter().map(|v| format!("    {},", v)).collect::<Vec<_>>().join("\n")
-    );
+    // Create the Models enum using syn
+    let models_enum: ItemEnum = parse_quote! {
+        #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+        pub enum Models {
+            #(#enum_variants,)*
+        }
+    };
     
-    file_manager.update_file_surgical(Path::new("src/models.rs"), &content, false)?;
+    // Format with proper line breaks and indentation
+    let tokens = quote! {
+        #models_enum
+    };
+    
+    let content = tokens.to_string();
+    file_manager.update_file_surgical(Path::new("src/model.rs"), &content, true)?;
     Ok(())
 }
 
-/// Generate providers.rs with pure Providers enum (zero-allocation, blazing-fast)
-fn generate_providers_enum_file(
+/// Generate Providers enum directly in provider.rs with proper syn formatting
+fn generate_providers_enum_in_provider_file(
     providers: &[ProviderInfo],
     file_manager: &SurgicalFileManager,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let variants: Vec<String> = providers
+    use syn::{ItemEnum, Variant, parse_quote};
+    
+    // Generate provider variants
+    let provider_variants: Vec<Variant> = providers
         .iter()
-        .map(|p| to_pascal_case_optimized(&p.provider))
+        .map(|provider| {
+            let variant_name = to_pascal_case_optimized(&provider.provider);
+            let ident = format_ident!("{}", variant_name);
+            parse_quote! { #ident }
+        })
         .collect();
     
-    let content = format!(
-        r#"// This file is auto-generated. Do not edit manually.
-use serde::{{{}, {}}};
-
-// AUTO-GENERATED START
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Providers {{
-{}
-}}
-// AUTO-GENERATED END
-"#,
-        "Serialize", "Deserialize",
-        variants.iter().map(|v| format!("    {},", v)).collect::<Vec<_>>().join("\n")
-    );
+    // Create the Providers enum using syn
+    let providers_enum: ItemEnum = parse_quote! {
+        #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+        pub enum Providers {
+            #(#provider_variants,)*
+        }
+    };
     
-    file_manager.update_file_surgical(Path::new("src/providers.rs"), &content, false)?;
+    // Format with proper line breaks and indentation
+    let tokens = quote! {
+        #providers_enum
+    };
+    
+    let content = tokens.to_string();
+    file_manager.update_file_surgical(Path::new("src/provider.rs"), &content, true)?;
     Ok(())
 }
 
@@ -217,24 +368,59 @@ fn generate_model_info_data(
     Ok(())
 }
 
-// NOTE: This function is no longer used as Provider implementations are now permanent code
-#[allow(dead_code)]
+/// Generate Model trait implementation using syn/quote with proper formatting
+fn generate_model_trait_implementation(
+    providers: &[ProviderInfo],
+    file_manager: &SurgicalFileManager,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let model_match_arms = generate_model_match_arms_ast(providers);
+    
+    // Generate the Model trait implementation using syn/quote
+    let model_impl: ItemImpl = parse_quote! {
+        impl crate::Model for Models {
+            #[inline(always)]
+            fn info(&self) -> ModelInfoData {
+                match self {
+                    #(#model_match_arms)*
+                }
+            }
+        }
+    };
+    
+    // Generate the complete content with proper formatting
+    let tokens = quote! {
+        use crate::model_info::ModelInfoData;
+        
+        #model_impl
+    };
+    
+    let content = tokens.to_string();
+    file_manager.update_file_surgical(Path::new("src/model.rs"), &content, true)?;
+    Ok(())
+}
+
+/// Generate Provider trait implementation for Providers enum (name() method only)
 fn generate_provider_implementations(
     providers: &[ProviderInfo],
     file_manager: &SurgicalFileManager,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let (models_match_arms, name_match_arms) = generate_provider_match_arms_ast(providers);
+    // Generate name match arms only
+    let mut name_match_arms = Vec::new();
     
-    // Generate the Provider trait implementation using syn/quote
+    for provider in providers {
+        let provider_variant = format_ident!("{}", to_pascal_case_optimized(&provider.provider));
+        let provider_name = &provider.provider;
+        
+        let name_arm: syn::Arm = parse_quote! {
+            Providers::#provider_variant => #provider_name
+        };
+        
+        name_match_arms.push(name_arm);
+    }
+    
+    // Generate the Provider trait implementation using syn/quote (name() only)
     let provider_impl: ItemImpl = parse_quote! {
         impl crate::Provider for Providers {
-            #[inline(always)]
-            fn models(&self) -> ZeroOneOrMany<Models> {
-                match self {
-                    #(#models_match_arms)*
-                }
-            }
-
             #[inline(always)]
             fn name(&self) -> &'static str {
                 match self {
@@ -248,7 +434,6 @@ fn generate_provider_implementations(
     let tokens = quote! {
         // AUTO-GENERATED START
         use crate::providers::Providers;
-        use crate::models::Models;
         
         #provider_impl
         // AUTO-GENERATED END
@@ -391,8 +576,26 @@ fn generate_model_info_data_only(providers: &[ProviderInfo]) -> String {
     model_data.join("\n\n")
 }
 
-// NOTE: This function is no longer used as Provider implementations are now permanent code
-#[allow(dead_code)]
+/// Generate match arms for Model trait implementation using syn/quote
+fn generate_model_match_arms_ast(providers: &[ProviderInfo]) -> Vec<Arm> {
+    let mut match_arms = Vec::new();
+    
+    for provider in providers {
+        for model in &provider.models {
+            let variant_name = format_ident!("{}", to_pascal_case_optimized(&model.name));
+            let function_name = format_ident!("get_{}_info", to_pascal_case_optimized(&model.name).to_lowercase());
+            
+            let match_arm: Arm = parse_quote! {
+                Models::#variant_name => crate::model_info::#function_name(),
+            };
+            
+            match_arms.push(match_arm);
+        }
+    }
+    
+    match_arms
+}
+
 fn generate_provider_match_arms_ast(
     providers: &[ProviderInfo],
 ) -> (Vec<Arm>, Vec<Arm>) {

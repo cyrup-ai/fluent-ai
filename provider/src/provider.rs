@@ -1,78 +1,17 @@
-//! Provider trait definitions for AI services
+//! Provider trait definition
 
-use crate::{ZeroOneOrMany, models::Models, providers::Providers};
+use cyrup_sugars::ZeroOneOrMany;
 
-/// Trait for AI service providers
+/// Provider trait defines the interface for AI service providers
+/// This is permanent code - NOT auto-generated
 pub trait Provider {
-    /// Get the models supported by this provider
-    fn models(&self) -> ZeroOneOrMany<Models>;
-    
-    /// Get the name of this provider
+    /// Get the name of the provider
     fn name(&self) -> &'static str;
+    
+    /// Get the models supported by this provider
+    fn models(&self) -> ZeroOneOrMany<crate::Models>;
 }
 
-/// Permanent implementation of Provider trait for Providers enum
-/// This is manually maintained permanent code - NOT auto-generated
-impl Provider for Providers {
-    #[inline(always)]
-    fn models(&self) -> ZeroOneOrMany<Models> {
-        match self {
-            Providers::OpenAI => ZeroOneOrMany::Many(vec![
-                Models::Gpt41,
-                Models::Gpt41Mini,
-                Models::Gpt41Nano,
-                Models::Gpt4o,
-                Models::Gpt4oMini,
-                Models::O4Mini,
-                Models::O4MiniHigh,
-                Models::O3,
-                Models::O3Mini,
-                Models::O3MiniHigh,
-                Models::TextEmbedding3Large,
-                Models::TextEmbedding3Small,
-            ]),
-            Providers::Anthropic => ZeroOneOrMany::Many(vec![
-                Models::Claude35Sonnet,
-                Models::Claude35Haiku,
-                Models::Claude3Opus,
-                Models::Claude3Sonnet,
-                Models::Claude3Haiku,
-            ]),
-            Providers::Mistral => ZeroOneOrMany::Many(vec![
-                Models::MistralSmall2503,
-                Models::Codestral2501,
-            ]),
-            Providers::Deepseek => ZeroOneOrMany::One(Models::DeepseekR10528),
-            Providers::Meta => ZeroOneOrMany::Many(vec![
-                Models::MetaLlamaLlama4Scout17b16eInstruct,
-                Models::MetaLlamaLlama3370bInstruct,
-            ]),
-            Providers::Qwen => ZeroOneOrMany::Many(vec![
-                Models::QwenQwen3235ba22b,
-                Models::QwenQwen330ba3b,
-                Models::QwenQwen332b,
-                Models::QwenQwq32b,
-                Models::QwenQwen2572bInstruct,
-                Models::QwenQwen25Coder32bInstruct,
-            ]),
-            Providers::Google => ZeroOneOrMany::One(Models::GoogleGemma327bit),
-            Providers::Microsoft => ZeroOneOrMany::One(Models::MicrosoftPhi4ReasoningPlus),
-            Providers::Jina => ZeroOneOrMany::One(Models::JinaColbertv2),
-        }
-    }
-
-    #[inline(always)]
-    fn name(&self) -> &'static str {
-        match self {
-            Providers::OpenAI => "openai",
-            Providers::Anthropic => "anthropic", 
-            Providers::Mistral => "mistral",
-            Providers::Deepseek => "deepseek",
-            Providers::Meta => "meta",
-            Providers::Qwen => "qwen",
-            Providers::Google => "google",
-            Providers::Microsoft => "microsoft",
-            Providers::Jina => "jina",
-        }
-    }
-}
+// AUTO-GENERATED START
+use cyrup_sugars :: ZeroOneOrMany ; impl crate :: Provider for Providers { # [inline (always)] fn models (& self) -> ZeroOneOrMany < Models > { match self { Providers :: Openai => ZeroOneOrMany :: Many (vec ! [Models :: Gpt41 , Models :: Gpt41Mini , Models :: Gpt41Nano , Models :: Gpt4O , Models :: Gpt4OSearchPreview , Models :: Gpt4OMini , Models :: Gpt4OMiniSearchPreview , Models :: Chatgpt4OLatest , Models :: O4Mini , Models :: O4MiniHigh , Models :: O3 , Models :: O3Mini , Models :: O3MiniHigh , Models :: Gpt4Turbo , Models :: Gpt35Turbo , Models :: TextEmbedding3Large , Models :: TextEmbedding3Small]) , Providers :: Gemini => ZeroOneOrMany :: Many (vec ! [Models :: Gemini25Flash , Models :: Gemini25Pro , Models :: Gemini25FlashLitePreview0617 , Models :: Gemini20Flash , Models :: Gemini20FlashLite , Models :: Gemma327BIt , Models :: TextEmbedding004]) , Providers :: Claude => ZeroOneOrMany :: Many (vec ! [Models :: ClaudeOpus420250514 , Models :: ClaudeOpus420250514Thinking , Models :: ClaudeSonnet420250514 , Models :: ClaudeSonnet420250514Thinking , Models :: Claude37Sonnet20250219 , Models :: Claude37Sonnet20250219Thinking , Models :: Claude35Sonnet20241022 , Models :: Claude35Haiku20241022]) , Providers :: Mistral => ZeroOneOrMany :: Many (vec ! [Models :: MistralMediumLatest , Models :: MistralSmallLatest , Models :: MagistralMediumLatest , Models :: MagistralSmallLatest , Models :: DevstralSmallLatest , Models :: CodestralLatest , Models :: MistralEmbed]) , Providers :: Ai21 => ZeroOneOrMany :: Many (vec ! [Models :: JambaLarge , Models :: JambaMini]) , Providers :: Cohere => ZeroOneOrMany :: Many (vec ! [Models :: CommandA032025 , Models :: CommandR7b122024 , Models :: EmbedV40 , Models :: EmbedEnglishV30 , Models :: EmbedMultilingualV30 , Models :: RerankV35 , Models :: RerankEnglishV30 , Models :: RerankMultilingualV30]) , Providers :: Xai => ZeroOneOrMany :: Many (vec ! [Models :: Grok3Latest , Models :: Grok3FastLatest , Models :: Grok3MiniLatest , Models :: Grok3MiniFastLatest]) , Providers :: Perplexity => ZeroOneOrMany :: Many (vec ! [Models :: SonarPro , Models :: Sonar , Models :: SonarReasoningPro , Models :: SonarReasoning , Models :: SonarDeepResearch , Models :: R11776]) , Providers :: Groq => ZeroOneOrMany :: Many (vec ! [Models :: MetaLlamallama4Maverick17B128EInstruct , Models :: MetaLlamallama4Scout17B16EInstruct , Models :: Llama3370BVersatile , Models :: QwenQwq32B , Models :: Qwenqwen332B]) , Providers :: Vertexai => ZeroOneOrMany :: Many (vec ! [Models :: Gemini25Flash , Models :: Gemini25Pro , Models :: Gemini25FlashLitePreview0617 , Models :: Gemini20Flash001 , Models :: Gemini20FlashLite001 , Models :: ClaudeOpus420250514 , Models :: ClaudeOpus420250514Thinking , Models :: ClaudeSonnet420250514 , Models :: ClaudeSonnet420250514Thinking , Models :: Claude37Sonnet20250219 , Models :: Claude37Sonnet20250219thinking , Models :: Claude35SonnetV220241022 , Models :: Claude35Haiku20241022 , Models :: MistralSmall2503 , Models :: Codestral2501 , Models :: TextEmbedding005 , Models :: TextMultilingualEmbedding002]) , Providers :: Bedrock => ZeroOneOrMany :: Many (vec ! [Models :: UsAnthropicClaudeOpus420250514V10 , Models :: UsAnthropicClaudeOpus420250514V10thinking , Models :: UsAnthropicClaudeSonnet420250514V10 , Models :: UsAnthropicClaudeSonnet420250514V10thinking , Models :: UsAnthropicClaude37Sonnet20250219V10 , Models :: UsAnthropicClaude37Sonnet20250219V10thinking , Models :: AnthropicClaude35Sonnet20241022V20 , Models :: AnthropicClaude35Haiku20241022V10 , Models :: UsMetaLlama4Maverick17BInstructV10 , Models :: UsMetaLlama4Scout17BInstructV10 , Models :: UsMetaLlama3370BInstructV10 , Models :: UsAmazonNovaPremierV10 , Models :: UsAmazonNovaProV10 , Models :: UsAmazonNovaLiteV10 , Models :: UsAmazonNovaMicroV10 , Models :: CohereEmbedEnglishV3 , Models :: CohereEmbedMultilingualV3 , Models :: UsDeepseekR1V10]) , Providers :: Cloudflare => ZeroOneOrMany :: Many (vec ! [Models :: Cfmetallama4Scout17B16EInstruct , Models :: Cfmetallama3370BInstructFp8Fast , Models :: Cfqwenqwq32B , Models :: Cfqwenqwen25Coder32BInstruct , Models :: Cfgooglegemma312BIt , Models :: CfmistralaimistralSmall3124BInstruct , Models :: CfbaaibgeLargeEnV15]) , Providers :: Ernie => ZeroOneOrMany :: Many (vec ! [Models :: Ernie45Turbo128K , Models :: Ernie45TurboVl32K , Models :: ErnieX1Turbo32K , Models :: BgeLargeZh , Models :: BgeLargeEn , Models :: BceRerankerBase]) , Providers :: Qianwen => ZeroOneOrMany :: Many (vec ! [Models :: QwenMaxLatest , Models :: QwenPlusLatest , Models :: QwenTurboLatest , Models :: QwenLong , Models :: QwenOmniTurboLatest , Models :: QwqPlusLatest , Models :: QwenVlMaxLatest , Models :: QwenVlPlusLatest , Models :: Qwen3235BA22b , Models :: Qwen330BA3b , Models :: Qwen332B , Models :: Qwq32B , Models :: Qwen2572BInstruct , Models :: Qwen25Vl72BInstruct , Models :: Qwen25Coder32BInstruct , Models :: DeepseekV3 , Models :: DeepseekR10528 , Models :: TextEmbeddingV4 , Models :: TextEmbeddingV3]) , Providers :: Hunyuan => ZeroOneOrMany :: Many (vec ! [Models :: HunyuanTurbosLatest , Models :: HunyuanT1Latest , Models :: HunyuanLite , Models :: HunyuanTurbosVision , Models :: HunyuanT1Vision , Models :: HunyuanEmbedding]) , Providers :: Moonshot => ZeroOneOrMany :: Many (vec ! [Models :: KimiLatest , Models :: KimiThinkingPreview]) , Providers :: Deepseek => ZeroOneOrMany :: Many (vec ! [Models :: DeepseekChat , Models :: DeepseekReasoner]) , Providers :: Zhipuai => ZeroOneOrMany :: Many (vec ! [Models :: Glm4Plus , Models :: Glm4Air , Models :: Glm4Long , Models :: Glm4Flash250414 , Models :: Glm4VPlus0111 , Models :: Glm4VFlash , Models :: GlmZ1Air , Models :: GlmZ1Flash , Models :: Embedding3 , Models :: Rerank]) , Providers :: Minimax => ZeroOneOrMany :: Many (vec ! [Models :: MinimaxText01 , Models :: MinimaxM1]) , Providers :: Openrouter => ZeroOneOrMany :: Many (vec ! [Models :: Openaigpt41 , Models :: Openaigpt41Mini , Models :: Openaigpt41Nano , Models :: Openaigpt4O , Models :: Openaigpt4OSearchPreview , Models :: Openaigpt4OMini , Models :: Openaigpt4OMiniSearchPreview , Models :: Openaichatgpt4OLatest , Models :: Openaio4Mini , Models :: Openaio4MiniHigh , Models :: Openaio3Pro , Models :: Openaio3 , Models :: Openaio3Mini , Models :: Openaio3MiniHigh , Models :: Googlegemini25Flash , Models :: Googlegemini25Pro , Models :: Googlegemini25FlashLitePreview0617 , Models :: Googlegemini20Flash001 , Models :: Googlegemini20FlashLite001 , Models :: Googlegemma327BIt , Models :: AnthropicclaudeOpus4 , Models :: AnthropicclaudeSonnet4 , Models :: Anthropicclaude37Sonnet , Models :: Anthropicclaude37Sonnetthinking , Models :: Anthropicclaude35Sonnet , Models :: Anthropicclaude35Haiku , Models :: MetaLlamallama4Maverick , Models :: MetaLlamallama4Scout , Models :: MetaLlamallama3370BInstruct , Models :: MistralaimistralMedium3 , Models :: MistralaimistralSmall3224BInstruct , Models :: MistralaimagistralMedium2506 , Models :: MistralaimagistralMedium2506Thinking , Models :: MistralaimagistralSmall2506 , Models :: MistralaidevstralSmall , Models :: Mistralaicodestral2501 , Models :: Ai21jamba16Large , Models :: Ai21jamba16Mini , Models :: CoherecommandA , Models :: CoherecommandR7b122024 , Models :: DeepseekdeepseekChatV30324 , Models :: DeepseekdeepseekR10528 , Models :: QwenqwenMax , Models :: QwenqwenPlus , Models :: QwenqwenTurbo , Models :: QwenqwenVlPlus , Models :: Qwenqwen3235BA22b , Models :: Qwenqwen330BA3b , Models :: Qwenqwen332B , Models :: Qwenqwq32B , Models :: Qwenqwen2572BInstruct , Models :: Qwenqwen25Vl72BInstruct , Models :: Qwenqwen25Coder32BInstruct , Models :: XAigrok3 , Models :: XAigrok3Mini , Models :: AmazonnovaProV1 , Models :: AmazonnovaLiteV1 , Models :: AmazonnovaMicroV1 , Models :: PerplexitysonarPro , Models :: Perplexitysonar , Models :: PerplexitysonarReasoningPro , Models :: PerplexitysonarReasoning , Models :: PerplexitysonarDeepResearch , Models :: Perplexityr11776 , Models :: Minimaxminimax01 , Models :: Thudmglm432B , Models :: ThudmglmZ132B , Models :: Microsoftphi4ReasoningPlus]) , Providers :: Github => ZeroOneOrMany :: Many (vec ! [Models :: Gpt41 , Models :: Gpt41Mini , Models :: Gpt41Nano , Models :: Gpt4O , Models :: Gpt4OMini , Models :: O4Mini , Models :: O4MiniHigh , Models :: O3 , Models :: O3Mini , Models :: O3MiniHigh , Models :: TextEmbedding3Large , Models :: TextEmbedding3Small , Models :: Llama4Maverick17B128EInstructFp8 , Models :: Llama4Scout17B16EInstruct , Models :: Llama3370BInstruct , Models :: MistralMedium2505 , Models :: MistralSmall2503 , Models :: Codestral2501 , Models :: CohereEmbedV3English , Models :: CohereEmbedV3Multilingual , Models :: DeepseekR10528 , Models :: DeepseekV30324 , Models :: MaiDsR1 , Models :: Phi4 , Models :: Phi4MiniInstruct , Models :: Phi4Reasoning , Models :: Phi4MiniReasoning , Models :: Grok3 , Models :: Grok3Mini]) , Providers :: Deepinfra => ZeroOneOrMany :: Many (vec ! [Models :: MetaLlamallama4Maverick17B128EInstructFp8 , Models :: MetaLlamallama4Scout17B16EInstruct , Models :: MetaLlamallama3370BInstruct , Models :: Qwenqwen3235BA22b , Models :: Qwenqwen330BA3b , Models :: Qwenqwen332B , Models :: Qwenqwq32B , Models :: Qwenqwen2572BInstruct , Models :: Qwenqwen25Coder32BInstruct , Models :: DeepseekAideepseekV30324 , Models :: DeepseekAideepseekR10528 , Models :: Googlegemma327BIt , Models :: MistralaimistralSmall3224BInstruct2506 , Models :: MistralaidevstralSmall2505 , Models :: Microsoftphi4ReasoningPlus , Models :: BaaibgeLargeEnV15 , Models :: BaaibgeM3 , Models :: Intfloate5LargeV2 , Models :: IntfloatmultilingualE5Large , Models :: ThenlpergteLarge]) , Providers :: Jina => ZeroOneOrMany :: Many (vec ! [Models :: JinaEmbeddingsV3 , Models :: JinaClipV2 , Models :: JinaColbertV2 , Models :: JinaRerankerV2BaseMultilingual , Models :: JinaColbertV2]) , Providers :: Voyageai => ZeroOneOrMany :: Many (vec ! [Models :: Voyage3Large , Models :: Voyage3 , Models :: Voyage3Lite , Models :: Rerank2 , Models :: Rerank2Lite]) , } } # [inline (always)] fn name (& self) -> & 'static str { match self { Providers :: Openai => "openai" , Providers :: Gemini => "gemini" , Providers :: Claude => "claude" , Providers :: Mistral => "mistral" , Providers :: Ai21 => "ai21" , Providers :: Cohere => "cohere" , Providers :: Xai => "xai" , Providers :: Perplexity => "perplexity" , Providers :: Groq => "groq" , Providers :: Vertexai => "vertexai" , Providers :: Bedrock => "bedrock" , Providers :: Cloudflare => "cloudflare" , Providers :: Ernie => "ernie" , Providers :: Qianwen => "qianwen" , Providers :: Hunyuan => "hunyuan" , Providers :: Moonshot => "moonshot" , Providers :: Deepseek => "deepseek" , Providers :: Zhipuai => "zhipuai" , Providers :: Minimax => "minimax" , Providers :: Openrouter => "openrouter" , Providers :: Github => "github" , Providers :: Deepinfra => "deepinfra" , Providers :: Jina => "jina" , Providers :: Voyageai => "voyageai" , } } }
+// AUTO-GENERATED END
