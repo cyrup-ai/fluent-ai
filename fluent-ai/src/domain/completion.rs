@@ -1,6 +1,7 @@
 use crate::async_task::{AsyncStream, AsyncTask};
 use crate::domain::chunk::CompletionChunk;
 use crate::domain::prompt::Prompt;
+use fluent_ai_provider::{Model, ModelInfoData, Models};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -38,6 +39,7 @@ pub struct ToolDefinition {
 }
 
 pub struct CompletionRequestBuilder {
+    model: Option<Models>,
     system_prompt: Option<String>,
     chat_history: Vec<crate::domain::Message>,
     documents: Vec<crate::domain::Document>,
@@ -49,6 +51,8 @@ pub struct CompletionRequestBuilder {
 }
 
 pub struct CompletionRequestBuilderWithHandler {
+    model: Option<Models>,
+    model_info: Option<ModelInfoData>,
     system_prompt: Option<String>,
     chat_history: Vec<crate::domain::Message>,
     documents: Vec<crate::domain::Document>,
@@ -64,6 +68,8 @@ impl CompletionRequest {
     // Semantic entry point
     pub fn prompt(system_prompt: impl Into<String>) -> CompletionRequestBuilder {
         CompletionRequestBuilder {
+            model: None,
+            model_info: None,
             system_prompt: Some(system_prompt.into()),
             chat_history: Vec::new(),
             documents: Vec::new(),
@@ -77,6 +83,13 @@ impl CompletionRequest {
 }
 
 impl CompletionRequestBuilder {
+    pub fn model(mut self, model: Models) -> Self {
+        let model_info = model.info();
+        self.model = Some(model);
+        self.model_info = Some(model_info);
+        self
+    }
+
     pub fn system_prompt(mut self, system_prompt: impl Into<String>) -> Self {
         self.system_prompt = Some(system_prompt.into());
         self
@@ -176,6 +189,8 @@ impl CompletionRequestBuilder {
         F: Fn(String) + Send + Sync + 'static,
     {
         CompletionRequestBuilderWithHandler {
+            model: self.model,
+            model_info: self.model_info,
             system_prompt: self.system_prompt,
             chat_history: self.chat_history,
             documents: self.documents,

@@ -1,13 +1,13 @@
 use crate::domain::CompletionModel;
 use crate::domain::*;
-use crate::{memory, workflow};
+use crate::{memory, workflow, Models};
 
 /// Master builder for Fluent AI - semantic entry point for all builders
 pub struct FluentAi;
 
 impl FluentAi {
     /// Create an AI agent with persistent context and tools
-    pub fn agent(model: impl std::any::Any + Send + Sync + 'static) -> agent::AgentBuilder {
+    pub fn agent(model: Models) -> agent::AgentBuilder {
         agent::Agent::with_model(model)
     }
 

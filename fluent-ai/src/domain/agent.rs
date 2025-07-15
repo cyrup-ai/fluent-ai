@@ -48,7 +48,7 @@ pub struct AgentBuilderWithHandler {
 impl Agent {
     // Semantic entry point
     pub fn with_model(model: Models) -> AgentBuilder {
-        let model_info = model.model_info();
+        let model_info = model.info();
         AgentBuilder {
             model,
             model_info,
