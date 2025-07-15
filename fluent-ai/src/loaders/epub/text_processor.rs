@@ -10,7 +10,7 @@
 
 use std::{convert::Infallible, error::Error};
 
-use quick_xml::{events::Event, Reader};
+use quick_xml::{Reader, events::Event};
 
 /// Pure, allocation-aware transformer used by the loader.
 /// Call-sites that *do* need async can trivially do:

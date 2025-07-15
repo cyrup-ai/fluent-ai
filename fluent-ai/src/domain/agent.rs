@@ -2,14 +2,15 @@ use crate::async_task::{AsyncStream, AsyncTask};
 use crate::domain::chunk::{ChatMessageChunk, CompletionChunk};
 use crate::domain::completion::CompletionRequestBuilder;
 use crate::domain::{CompletionRequest, Document, Message, MessageRole};
-
 use crate::memory::Memory;
 use crate::sugars::{ByteSize, ByteSizeExt};
 use crate::{McpTool, ZeroOneOrMany};
+use fluent_ai_provider::{Model, ModelInfoData, Models};
 use serde_json::Value;
 
 pub struct Agent {
-    pub model: Box<dyn std::any::Any + Send + Sync>,
+    pub model: Models,
+    pub model_info: ModelInfoData,
     pub system_prompt: String,
     pub context: ZeroOneOrMany<Document>,
     pub tools: ZeroOneOrMany<McpTool>,
@@ -20,7 +21,8 @@ pub struct Agent {
 }
 
 pub struct AgentBuilder {
-    model: Box<dyn std::any::Any + Send + Sync>,
+    model: Models,
+    model_info: ModelInfoData,
     system_prompt: String,
     context: Option<ZeroOneOrMany<Document>>,
     tools: Option<ZeroOneOrMany<McpTool>>,
@@ -31,7 +33,8 @@ pub struct AgentBuilder {
 }
 
 pub struct AgentBuilderWithHandler {
-    model: Box<dyn std::any::Any + Send + Sync>,
+    model: Models,
+    model_info: ModelInfoData,
     system_prompt: String,
     context: Option<ZeroOneOrMany<Document>>,
     tools: Option<ZeroOneOrMany<McpTool>>,
@@ -44,9 +47,11 @@ pub struct AgentBuilderWithHandler {
 
 impl Agent {
     // Semantic entry point
-    pub fn with_model(model: impl std::any::Any + Send + Sync + 'static) -> AgentBuilder {
+    pub fn with_model(model: Models) -> AgentBuilder {
+        let model_info = model.model_info();
         AgentBuilder {
-            model: Box::new(model),
+            model,
+            model_info,
             system_prompt: String::new(),
             context: None,
             tools: None,
@@ -173,6 +178,7 @@ impl AgentBuilder {
     {
         AgentBuilderWithHandler {
             model: self.model,
+            model_info: self.model_info,
             system_prompt: self.system_prompt,
             context: self.context,
             tools: self.tools,
@@ -193,6 +199,7 @@ impl AgentBuilderWithHandler {
 
         Agent {
             model: self.model,
+            model_info: self.model_info,
             system_prompt: self.system_prompt,
             context: self
                 .context

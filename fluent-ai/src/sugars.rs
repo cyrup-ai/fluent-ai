@@ -24,7 +24,11 @@ impl<T> ZeroOneOrMany<T> {
         if items.is_empty() {
             Self::None
         } else if items.len() == 1 {
-            Self::One(items.into_iter().next().unwrap())
+            if let Some(item) = items.into_iter().next() {
+                Self::One(item)
+            } else {
+                Self::None
+            }
         } else {
             Self::Many(items)
         }
@@ -296,8 +300,11 @@ where
             match future.poll(cx) {
                 Poll::Ready(output) => {
                     this.future = None;
-                    let f = this.f.take().unwrap();
-                    Poll::Ready(f(output))
+                    if let Some(f) = this.f.take() {
+                        Poll::Ready(f(output))
+                    } else {
+                        panic!("Map future f function already taken")
+                    }
                 }
                 Poll::Pending => Poll::Pending,
             }

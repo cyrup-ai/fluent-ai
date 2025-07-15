@@ -1,6 +1,6 @@
 //! ModelInfo provider for looking up model information
 
-use fluent_ai_provider::{Models, ModelInfoData, Model};
+use fluent_ai_provider::{Model, ModelInfoData, Models};
 
 /// Error types for ModelInfo operations
 #[derive(Debug, thiserror::Error)]

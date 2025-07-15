@@ -123,15 +123,18 @@ impl Engine for FluentEngine {
 
         Box::pin(async move {
             // Convert CompletionRequest to the format expected by the backend
-            let prompt =
-                format!(
+            let prompt = format!(
                 "System: {}\n\nChat History:\n{}\n\nDocuments:\n{}\n\nPlease provide a response.",
                 request.system_prompt,
-                request.chat_history.iter()
+                request
+                    .chat_history
+                    .iter()
                     .map(|msg| format!("{:?}: {}", msg.role, msg.content))
                     .collect::<Vec<_>>()
                     .join("\n"),
-                request.documents.iter()
+                request
+                    .documents
+                    .iter()
                     .map(|doc| format!("Document: {}", doc.content()))
                     .collect::<Vec<_>>()
                     .join("\n")
@@ -233,97 +236,5 @@ impl Clone for FluentEngine {
             default_temperature: self.default_temperature,
             default_max_tokens: self.default_max_tokens,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::async_task::AsyncTask;
-    use std::sync::Arc;
-
-    /// Mock completion backend for testing
-    struct MockCompletionBackend {
-        response: String,
-    }
-
-    impl MockCompletionBackend {
-        fn new(response: impl Into<String>) -> Self {
-            Self {
-                response: response.into(),
-            }
-        }
-    }
-
-    impl CompletionBackend for MockCompletionBackend {
-        fn submit_completion(&self, _prompt: &str, _tools: &[String]) -> AsyncTask<String> {
-            let response = self.response.clone();
-            AsyncTask::from_future(async move { response })
-        }
-    }
-
-    #[tokio::test]
-    async fn test_fluent_engine_complete() {
-        let backend = Arc::new(MockCompletionBackend::new("Hello, world!"));
-        let engine = FluentEngine::new(backend, "test-model");
-
-        let request = CompletionRequest {
-            system_prompt: "Say hello".to_string(),
-            chat_history: Vec::new(),
-            documents: Vec::new(),
-            tools: Vec::new(),
-            temperature: None,
-            max_tokens: None,
-            chunk_size: None,
-            additional_params: None,
-        };
-
-        let response = engine.complete(request).await.unwrap();
-        assert_eq!(response.content, "Hello, world!");
-        assert!(response.usage.is_some());
-    }
-
-    #[tokio::test]
-    async fn test_fluent_engine_extract_json() {
-        let backend = Arc::new(MockCompletionBackend::new(r#"{"key": "value"}"#));
-        let engine = FluentEngine::new(backend, "test-model");
-
-        let config = ExtractionConfig {
-            model: "test-model".to_string(),
-            prompt: "Extract data".to_string(),
-            schema: None,
-            temperature: None,
-        };
-
-        let result = engine.extract_json(config).await.unwrap();
-        assert_eq!(result, serde_json::json!({"key": "value"}));
-    }
-
-    #[tokio::test]
-    async fn test_fluent_engine_create_agent() {
-        let backend = Arc::new(MockCompletionBackend::new("Hello"));
-        let engine = FluentEngine::new(backend, "test-model");
-
-        let config = AgentConfig {
-            model: Model::OpenaiGpt4o, // Using a real model enum variant instead of string
-            system_prompt: Some("You are a helpful assistant".to_string()),
-            temperature: Some(0.8),
-            max_tokens: Some(500),
-            tools: vec![],
-        };
-
-        let agent = engine.create_agent(config).await.unwrap();
-        // Agent is created successfully - just verify it has the correct name
-        assert_eq!(agent.name(), "test_model");
-    }
-
-    #[tokio::test]
-    async fn test_fluent_engine_available_tools() {
-        let backend = Arc::new(MockCompletionBackend::new("tools"));
-        let engine = FluentEngine::new(backend, "test-model");
-
-        let tools = engine.available_tools().await.unwrap();
-        assert!(!tools.is_empty());
-        assert!(tools.contains(&"web_search".to_string()));
     }
 }

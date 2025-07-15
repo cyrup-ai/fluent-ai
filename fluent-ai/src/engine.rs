@@ -16,7 +16,7 @@ pub mod builder;
 pub mod fluent_engine;
 
 // Re-export builder items for convenience
-pub use builder::{engine_builder, states, EngineBuilder, EngineConfig};
+pub use builder::{EngineBuilder, EngineConfig, engine_builder, states};
 // Re-export concrete engines
 pub use fluent_engine::FluentEngine;
 

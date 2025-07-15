@@ -1,7 +1,7 @@
 //! Agent role builder implementation following ARCHITECTURE.md exactly
 
-use crate::domain::chunk::ChatMessageChunk;
 use crate::domain::MessageRole;
+use crate::domain::chunk::ChatMessageChunk;
 use crate::{AsyncStream, HashMap, ZeroOneOrMany};
 use serde_json::Value;
 use std::marker::PhantomData;

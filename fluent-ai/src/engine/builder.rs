@@ -3,10 +3,21 @@
 //! This module provides a compile-time safe builder pattern for configuring engines.
 //! The builder uses phantom types to enforce configuration order and completeness at compile time.
 
-use super::{register_engine, set_default_engine, Engine};
+use super::{Engine, register_engine, set_default_engine};
 use std::error::Error as StdError;
 use std::marker::PhantomData;
 use std::sync::Arc;
+
+/// Errors that can occur during engine building
+#[derive(Debug, thiserror::Error)]
+pub enum BuilderError {
+    #[error("Engine not configured - call engine() first")]
+    EngineNotConfigured,
+    #[error("Name not configured - call name() first")]
+    NameNotConfigured,
+    #[error("Registration failed: {0}")]
+    RegistrationFailed(Box<dyn StdError + Send + Sync>),
+}
 
 /// Marker types for typestate pattern
 pub mod states {
@@ -143,13 +154,9 @@ impl EngineBuilder<states::EngineConfigured, states::NameConfigured, states::Def
     ///     .name("my_engine")
     ///     .build()?;
     /// ```
-    pub fn build(self) -> Result<EngineConfig, Box<dyn StdError + Send + Sync>> {
-        let engine = self
-            .engine
-            .expect("Engine should be set in EngineConfigured state");
-        let name = self
-            .name
-            .expect("Name should be set in NameConfigured state");
+    pub fn build(self) -> Result<EngineConfig, BuilderError> {
+        let engine = self.engine.ok_or(BuilderError::EngineNotConfigured)?;
+        let name = self.name.ok_or(BuilderError::NameNotConfigured)?;
 
         Ok(EngineConfig {
             engine,
@@ -170,9 +177,10 @@ impl EngineBuilder<states::EngineConfigured, states::NameConfigured, states::Def
     ///     .name("my_engine")
     ///     .build_and_register()?;
     /// ```
-    pub fn build_and_register(self) -> Result<(), Box<dyn StdError + Send + Sync>> {
+    pub fn build_and_register(self) -> Result<(), BuilderError> {
         let config = self.build()?;
-        register_engine(&config.name, config.engine)?;
+        register_engine(&config.name, config.engine)
+            .map_err(|e| BuilderError::RegistrationFailed(e))?;
         Ok(())
     }
 }
@@ -191,13 +199,9 @@ impl EngineBuilder<states::EngineConfigured, states::NameConfigured, states::Def
     ///     .as_default()
     ///     .build()?;
     /// ```
-    pub fn build(self) -> Result<EngineConfig, Box<dyn StdError + Send + Sync>> {
-        let engine = self
-            .engine
-            .expect("Engine should be set in EngineConfigured state");
-        let name = self
-            .name
-            .expect("Name should be set in NameConfigured state");
+    pub fn build(self) -> Result<EngineConfig, BuilderError> {
+        let engine = self.engine.ok_or(BuilderError::EngineNotConfigured)?;
+        let name = self.name.ok_or(BuilderError::NameNotConfigured)?;
 
         Ok(EngineConfig {
             engine,
@@ -219,12 +223,13 @@ impl EngineBuilder<states::EngineConfigured, states::NameConfigured, states::Def
     ///     .as_default()
     ///     .build_and_register()?;
     /// ```
-    pub fn build_and_register(self) -> Result<(), Box<dyn StdError + Send + Sync>> {
+    pub fn build_and_register(self) -> Result<(), BuilderError> {
         let config = self.build()?;
-        register_engine(&config.name, config.engine.clone())?;
+        register_engine(&config.name, config.engine.clone())
+            .map_err(|e| BuilderError::RegistrationFailed(e))?;
 
         if config.is_default {
-            set_default_engine(config.engine)?;
+            set_default_engine(config.engine).map_err(|e| BuilderError::RegistrationFailed(e))?;
         }
 
         Ok(())
@@ -242,82 +247,4 @@ impl EngineBuilder<states::EngineConfigured, states::NameConfigured, states::Def
 /// ```
 pub fn engine_builder() -> EngineBuilder<states::NoEngine, states::NoName, states::DefaultNotSet> {
     EngineBuilder::new()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::super::NoOpEngine;
-    use super::*;
-
-    #[tokio::test]
-    async fn test_builder_basic_flow() {
-        let engine = Arc::new(NoOpEngine);
-
-        let config = engine_builder()
-            .engine(engine.clone())
-            .name("test_engine")
-            .build()
-            .unwrap();
-
-        assert_eq!(config.name, "test_engine");
-        assert!(!config.is_default);
-
-        // Test that the engine works by calling a method
-        let tools = config.engine.available_tools().await;
-        assert!(tools.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_builder_with_default() {
-        let engine = Arc::new(NoOpEngine);
-
-        let config = engine_builder()
-            .engine(engine.clone())
-            .name("test_engine")
-            .as_default()
-            .build()
-            .unwrap();
-
-        assert_eq!(config.name, "test_engine");
-        assert!(config.is_default);
-
-        // Test that the engine works by calling a method
-        let tools = config.engine.available_tools().await;
-        assert!(tools.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_builder_register() {
-        let engine = Arc::new(NoOpEngine);
-
-        // Test basic registration
-        engine_builder()
-            .engine(engine.clone())
-            .name("test_register_engine")
-            .build_and_register()
-            .unwrap();
-
-        // Verify it was registered
-        let retrieved = super::super::get_engine("test_register_engine").unwrap();
-        let tools = retrieved.available_tools().await;
-        assert!(tools.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_builder_register_as_default() {
-        let engine = Arc::new(NoOpEngine);
-
-        // Test registration as default
-        engine_builder()
-            .engine(engine.clone())
-            .name("test_default_engine")
-            .as_default()
-            .build_and_register()
-            .unwrap();
-
-        // Verify it was set as default
-        let default = super::super::get_default_engine().unwrap();
-        let tools = default.available_tools().await;
-        assert!(tools.is_ok());
-    }
 }

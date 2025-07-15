@@ -1,5 +1,5 @@
-use crate::domain::chunk::ImageChunk;
 use crate::AsyncStream;
+use crate::domain::chunk::ImageChunk;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

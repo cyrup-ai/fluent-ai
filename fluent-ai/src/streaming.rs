@@ -1,6 +1,6 @@
 use futures::stream::Stream;
 
-use crate::markdown::{render_markdown_to_string, MarkdownRenderer, MarkdownTheme};
+use crate::markdown::{MarkdownRenderer, MarkdownTheme, render_markdown_to_string};
 
 /// Zero-allocation streaming output handler
 pub struct StreamingOutput {

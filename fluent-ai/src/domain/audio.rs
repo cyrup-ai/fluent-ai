@@ -1,5 +1,5 @@
-use crate::domain::chunk::{AudioFormat, SpeechChunk, TranscriptionChunk};
 use crate::AsyncStream;
+use crate::domain::chunk::{AudioFormat, SpeechChunk, TranscriptionChunk};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

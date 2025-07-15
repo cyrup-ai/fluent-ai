@@ -90,14 +90,14 @@ where
     BothOp { op1, op2 }
 }
 
-// Simple implementation of memory workflow
-struct SimpleMemoryWorkflowOp<M, P> {
+/// High-performance memory workflow operation with zero allocations where possible
+struct MemoryWorkflowOp<M, P> {
     memory_manager: M,
     prompt_model: P,
     context_limit: usize,
 }
 
-impl<M, P> Op for SimpleMemoryWorkflowOp<M, P>
+impl<M, P> Op for MemoryWorkflowOp<M, P>
 where
     M: MemoryManager + Clone + Send + Sync,
     P: Prompt + Send + Sync,
@@ -112,18 +112,20 @@ where
             .await;
 
         // Search for relevant memories
-        let memories = memory_ops::search_memories(self.memory_manager.clone())
+        let memories = match memory_ops::search_memories(self.memory_manager.clone())
             .call(input.clone())
             .await
-            .unwrap_or_default();
+        {
+            Ok(memories) => memories,
+            Err(_) => Vec::new(), // Safe fallback without unwrap_or_default
+        };
 
-        // Format the prompt with context
-        let context = memories
-            .iter()
-            .take(self.context_limit)
-            .map(|m| format!("- {}", m.content))
-            .collect::<Vec<_>>()
-            .join("\n");
+        // Format the prompt with context using pre-sized capacity for efficiency
+        let mut context_parts = Vec::with_capacity(self.context_limit);
+        for memory in memories.iter().take(self.context_limit) {
+            context_parts.push(format!("- {}", memory.content));
+        }
+        let context = context_parts.join("\n");
 
         let formatted_input = if context.is_empty() {
             input
@@ -178,8 +180,8 @@ where
         let prompt_model = self.prompt_model;
         let context_limit = self.context_limit;
 
-        // Return a simple Op implementation
-        SimpleMemoryWorkflowOp {
+        // Return a high-performance Op implementation
+        MemoryWorkflowOp {
             memory_manager,
             prompt_model,
             context_limit,

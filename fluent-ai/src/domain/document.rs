@@ -192,7 +192,9 @@ impl DocumentBuilder {
                 media_type: self.media_type,
                 additional_props: self.additional_props,
             },
-            _ => panic!("load() can only be used with immediate data. Use on_error() and load_async() for file/url/glob operations."),
+            _ => panic!(
+                "load() can only be used with immediate data. Use on_error() and load_async() for file/url/glob operations."
+            ),
         }
     }
 }

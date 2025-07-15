@@ -1,5 +1,5 @@
 use fluent_ai::engine::{
-    get_default_engine, get_engine, register_engine, set_default_engine, NoOpEngine,
+    NoOpEngine, get_default_engine, get_engine, register_engine, set_default_engine,
 };
 use std::sync::Arc;
 

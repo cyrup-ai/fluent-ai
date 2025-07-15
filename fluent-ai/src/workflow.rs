@@ -278,6 +278,10 @@ where
             let step = prev_step.clone();
 
             async move {
+                if max_attempts == 0 {
+                    return Err("No retry attempts configured".into());
+                }
+
                 let mut last_error = None;
                 for _ in 0..max_attempts {
                     match step.execute(input.clone()).await {
@@ -285,7 +289,12 @@ where
                         Err(e) => last_error = Some(e),
                     }
                 }
-                Err(last_error.unwrap())
+
+                // Safe because last_error is guaranteed to be Some after the loop
+                match last_error {
+                    Some(error) => Err(error),
+                    None => Err("Unknown error during retry attempts".into()),
+                }
             }
         };
 

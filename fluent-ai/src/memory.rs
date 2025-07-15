@@ -80,6 +80,8 @@ pub enum Error {
     Storage(String),
     #[error("Invalid operation: {0}")]
     InvalidOperation(String),
+    #[error("Memory manager not configured - call with_manager() first")]
+    ManagerNotConfigured,
 }
 
 pub trait MemoryManagerTrait: Send + Sync {
@@ -186,29 +188,25 @@ impl Memory {
     }
 
     /// Get a specific memory by ID
-    pub fn get(self, id: impl Into<String>) -> AsyncTask<Option<MemoryNode>> {
+    pub fn get(self, id: impl Into<String>) -> AsyncTask<Result<Option<MemoryNode>, Error>> {
         let id = id.into();
-        let manager = self
-            .inner
-            .read()
-            .manager
-            .clone()
-            .expect("Memory manager not configured");
+        let manager = match self.inner.read().manager.clone() {
+            Some(manager) => manager,
+            None => return AsyncTask::from_future(async move { Err(Error::ManagerNotConfigured) }),
+        };
 
-        AsyncTask::from_future(async move { manager.get_memory(&id).await.unwrap_or(None) })
+        AsyncTask::from_future(async move { manager.get_memory(&id).await })
     }
 
     /// Delete a memory
-    pub fn delete(self, id: impl Into<String>) -> AsyncTask<bool> {
+    pub fn delete(self, id: impl Into<String>) -> AsyncTask<Result<bool, Error>> {
         let id = id.into();
-        let manager = self
-            .inner
-            .read()
-            .manager
-            .clone()
-            .expect("Memory manager not configured");
+        let manager = match self.inner.read().manager.clone() {
+            Some(manager) => manager,
+            None => return AsyncTask::from_future(async move { Err(Error::ManagerNotConfigured) }),
+        };
 
-        AsyncTask::from_future(async move { manager.delete_memory(&id).await })
+        AsyncTask::from_future(async move { Ok(manager.delete_memory(&id).await) })
     }
 }
 
@@ -246,14 +244,11 @@ impl StoreMemory {
     }
 
     /// Memorize the content
-    pub fn memorize(self) -> AsyncTask<MemoryNode> {
-        let manager = self
-            .memory
-            .inner
-            .read()
-            .manager
-            .clone()
-            .expect("Memory manager not configured");
+    pub fn memorize(self) -> AsyncTask<Result<MemoryNode, Error>> {
+        let manager = match self.memory.inner.read().manager.clone() {
+            Some(manager) => manager,
+            None => return AsyncTask::from_future(async move { Err(Error::ManagerNotConfigured) }),
+        };
 
         let memory_type = self
             .memory_type
@@ -265,7 +260,7 @@ impl StoreMemory {
         }
 
         AsyncTask::from_future(
-            async move { manager.create_memory(node.clone()).await.unwrap_or(node) },
+            async move { manager.create_memory(node.clone()).await.or(Ok(node)) },
         )
     }
 }
@@ -306,14 +301,17 @@ impl QueryMemory {
     }
 
     /// Recall memories based on the query
-    pub fn recall(self) -> AsyncStream<MemoryNode> {
-        let manager = self
-            .memory
-            .inner
-            .read()
-            .manager
-            .clone()
-            .expect("Memory manager not configured");
+    pub fn recall(self) -> AsyncStream<Result<MemoryNode, Error>> {
+        let manager = match self.memory.inner.read().manager.clone() {
+            Some(manager) => manager,
+            None => {
+                let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+                tokio::spawn(async move {
+                    let _ = tx.send(Err(Error::ManagerNotConfigured));
+                });
+                return AsyncStream::new(rx);
+            }
+        };
 
         let limit = self.limit;
 
@@ -325,8 +323,14 @@ impl QueryMemory {
                     use futures::StreamExt;
                     let mut stream = manager.query_by_type(MemoryType::Semantic);
                     while let Some(result) = stream.next().await {
-                        if let Ok(node) = result {
-                            if tx.send(node).is_err() {
+                        match result {
+                            Ok(node) => {
+                                if tx.send(Ok(node)).is_err() {
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                let _ = tx.send(Err(e));
                                 break;
                             }
                         }
@@ -338,8 +342,14 @@ impl QueryMemory {
                     use futures::StreamExt;
                     let mut stream = manager.query_by_type(memory_type);
                     while let Some(result) = stream.next().await {
-                        if let Ok(node) = result {
-                            if tx.send(node).is_err() {
+                        match result {
+                            Ok(node) => {
+                                if tx.send(Ok(node)).is_err() {
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                let _ = tx.send(Err(e));
                                 break;
                             }
                         }
@@ -351,8 +361,14 @@ impl QueryMemory {
                     use futures::StreamExt;
                     let mut stream = manager.search_by_content(&query);
                     while let Some(result) = stream.next().await {
-                        if let Ok(node) = result {
-                            if tx.send(node).is_err() {
+                        match result {
+                            Ok(node) => {
+                                if tx.send(Ok(node)).is_err() {
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                let _ = tx.send(Err(e));
                                 break;
                             }
                         }
@@ -364,8 +380,14 @@ impl QueryMemory {
                     use futures::StreamExt;
                     let mut stream = manager.search_by_vector(vector, limit);
                     while let Some(result) = stream.next().await {
-                        if let Ok(node) = result {
-                            if tx.send(node).is_err() {
+                        match result {
+                            Ok(node) => {
+                                if tx.send(Ok(node)).is_err() {
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                let _ = tx.send(Err(e));
                                 break;
                             }
                         }
@@ -378,8 +400,21 @@ impl QueryMemory {
     }
 
     /// Collect all results into a vector
-    pub fn collect(self) -> AsyncTask<Vec<MemoryNode>> {
-        AsyncTask::from_future(self.recall().collect())
+    pub fn collect(self) -> AsyncTask<Result<Vec<MemoryNode>, Error>> {
+        AsyncTask::from_future(async move {
+            use futures::StreamExt;
+            let mut results = Vec::new();
+            let mut stream = self.recall();
+
+            while let Some(result) = stream.next().await {
+                match result {
+                    Ok(node) => results.push(node),
+                    Err(e) => return Err(e),
+                }
+            }
+
+            Ok(results)
+        })
     }
 }
 
@@ -411,13 +446,11 @@ impl Relationship {
         self
     }
 
-    pub fn create(self, memory: &Memory) -> AsyncTask<MemoryRelationship> {
-        let manager = memory
-            .inner
-            .read()
-            .manager
-            .clone()
-            .expect("Memory manager not configured");
+    pub fn create(self, memory: &Memory) -> AsyncTask<Result<MemoryRelationship, Error>> {
+        let manager = match memory.inner.read().manager.clone() {
+            Some(manager) => manager,
+            None => return AsyncTask::from_future(async move { Err(Error::ManagerNotConfigured) }),
+        };
 
         let relationship = MemoryRelationship {
             id: uuid::Uuid::new_v4().to_string(),
@@ -431,7 +464,7 @@ impl Relationship {
             manager
                 .create_relationship(relationship.clone())
                 .await
-                .unwrap_or(relationship)
+                .or(Ok(relationship))
         })
     }
 }

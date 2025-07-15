@@ -33,22 +33,21 @@ pub mod workflow;
 pub mod domain;
 pub mod engine;
 pub mod fluent;
-pub mod providers;
 
 // Re-export commonly used sugars items
 pub use sugars::*;
 
-// Re-export generated providers
-pub use providers::{Model, ModelInfo, Provider};
+// Re-export from fluent_ai_provider crate
+pub use fluent_ai_provider::{Model, ModelInfoData, Models, Provider, Providers};
 // Re-export domain types
 pub use domain::{
+    Audio, CompletionRequest, Document, Embedding, Image, Message, MessageChunk, MessageRole,
     audio::{AudioMediaType, ContentFormat as AudioContentFormat},
     image::{ContentFormat as ImageContentFormat, ImageDetail, ImageMediaType},
-    Audio, CompletionRequest, Document, Embedding, Image, Message, MessageChunk, MessageRole,
 };
 
 // Re-export traits from domain
-pub use domain::{tool::Tool as OldTool, CompletionBackend, CompletionModel};
+pub use domain::{CompletionBackend, CompletionModel, tool::Tool as OldTool};
 // Re-export new Tool API
 pub use domain::tool_v2::ExecToText;
 pub use domain::{Context, Library, NamedTool, Perplexity, Stdio, ToolV2 as Tool};
@@ -56,10 +55,10 @@ pub use domain::{Context, Library, NamedTool, Perplexity, Stdio, ToolV2 as Tool}
 pub use domain::context::{Directory, File, Files, Github};
 
 // Re-export engine types
-pub use engine::{get_default_engine, get_engine, register_engine, registry, set_default_engine};
 pub use engine::{
     AgentConfig, CompletionResponse, Engine, EngineRegistry, ExtractionConfig, Usage,
 };
+pub use engine::{get_default_engine, get_engine, register_engine, registry, set_default_engine};
 
 // Memory and workflow modules are already defined above as pub mod
 

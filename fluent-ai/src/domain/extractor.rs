@@ -5,6 +5,15 @@ use crate::domain::completion::CompletionModel;
 use serde::de::DeserializeOwned;
 use std::marker::PhantomData;
 
+/// Errors that can occur during data extraction
+#[derive(Debug, thiserror::Error)]
+pub enum ExtractionError {
+    #[error("Failed to parse JSON response: {0}")]
+    JsonParseError(#[from] serde_json::Error),
+    #[error("Model completion failed: {0}")]
+    ModelError(String),
+}
+
 pub struct Extractor<T: DeserializeOwned> {
     pub agent: Agent,
     pub _t: PhantomData<T>,
@@ -62,12 +71,12 @@ impl<T: DeserializeOwned + Send + 'static + crate::async_task::NotResult, M: Com
 }
 
 impl<
-        T: DeserializeOwned + Send + 'static + crate::async_task::NotResult,
-        M: CompletionModel + 'static,
-    > ExtractorBuilderWithHandler<T, M>
+    T: DeserializeOwned + Send + 'static + crate::async_task::NotResult,
+    M: CompletionModel + 'static,
+> ExtractorBuilderWithHandler<T, M>
 {
     // Terminal method - extracts from text
-    pub fn from_text(self, text: impl Into<String>) -> AsyncTask<T> {
+    pub fn from_text(self, text: impl Into<String>) -> AsyncTask<Result<T, ExtractionError>> {
         let system_prompt = self.system_prompt.unwrap_or_else(|| {
             format!(
                 "Extract structured data in JSON format matching the schema for type {}",
@@ -87,10 +96,12 @@ impl<
                         .into_iter()
                         .map(|chunk| chunk.text)
                         .collect::<String>();
-                    // Parse JSON response into T
-                    serde_json::from_str::<T>(&response).unwrap()
+                    // Parse JSON response into T with proper error handling
+                    serde_json::from_str::<T>(&response).map_err(ExtractionError::from)
                 }
-                Err(_) => panic!("Failed to extract data"),
+                Err(_) => Err(ExtractionError::ModelError(
+                    "Failed to extract data".to_string(),
+                )),
             }
         })
     }
@@ -98,14 +109,17 @@ impl<
     // Terminal method with handler
     pub fn on_extraction<F, U>(self, text: impl Into<String>, handler: F) -> AsyncTask<U>
     where
-        F: FnOnce(Result<T, String>) -> U + Send + 'static,
+        F: FnOnce(Result<T, ExtractionError>) -> U + Send + 'static,
         U: Send + 'static + crate::async_task::NotResult,
     {
         let extraction_task = self.from_text(text);
         AsyncTask::from_future(async move {
             match extraction_task.await {
-                Ok(extracted) => handler(Ok(extracted)),
-                Err(e) => handler(Err(format!("Extraction error: {:?}", e))),
+                Ok(result) => handler(result),
+                Err(e) => handler(Err(ExtractionError::ModelError(format!(
+                    "Task execution error: {:?}",
+                    e
+                )))),
             }
         })
     }

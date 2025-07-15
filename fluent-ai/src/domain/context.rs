@@ -1,7 +1,7 @@
 //! Context trait and implementations for loading documents - EXACT API from ARCHITECTURE.md
 
-use crate::domain::Document;
 use crate::ZeroOneOrMany;
+use crate::domain::Document;
 use std::marker::PhantomData;
 use std::path::Path;
 

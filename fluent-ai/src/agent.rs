@@ -1,5 +1,5 @@
-use crate::domain::{tool::Tool, CompletionBackend};
 use crate::AsyncTask;
+use crate::domain::{CompletionBackend, tool::Tool};
 
 pub struct AgentBuilder<B: CompletionBackend> {
     backend: B,
