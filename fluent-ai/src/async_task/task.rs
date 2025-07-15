@@ -7,6 +7,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::sync::oneshot;
+use super::error_handlers::{ResultHandler, BadTraitImpl, default_future_error_handler};
 
 /// Marker trait to prevent Result types in AsyncTask/AsyncStream
 ///
@@ -74,6 +75,43 @@ where
         let (tx, rx) = oneshot::channel();
         tokio::spawn(async move {
             let result = closure();
+            let _ = tx.send(result);
+        });
+        Self { receiver: rx }
+    }
+
+    /// Create an AsyncTask from a future that returns Result<T, E> with error handler
+    pub fn from_future_with_handler<F, E, H>(future: F, handler: H) -> Self
+    where
+        F: Future<Output = Result<T, E>> + Send + 'static,
+        T: Send + 'static,
+        E: Send + 'static,
+        H: FnOnce(E) -> T + Send + 'static,
+    {
+        let (tx, rx) = oneshot::channel();
+        tokio::spawn(async move {
+            let result = match future.await {
+                Ok(value) => value,
+                Err(error) => handler(error),
+            };
+            let _ = tx.send(result);
+        });
+        Self { receiver: rx }
+    }
+
+    /// Create an AsyncTask from a future that returns Result<T, E> with default BadTraitImpl handling
+    pub fn from_future_with_default_handler<F, E>(future: F) -> Self
+    where
+        F: Future<Output = Result<T, E>> + Send + 'static,
+        T: Send + 'static + BadTraitImpl,
+        E: Send + 'static + std::fmt::Display,
+    {
+        let (tx, rx) = oneshot::channel();
+        tokio::spawn(async move {
+            let result = match future.await {
+                Ok(value) => value,
+                Err(error) => default_future_error_handler(error.to_string()),
+            };
             let _ = tx.send(result);
         });
         Self { receiver: rx }

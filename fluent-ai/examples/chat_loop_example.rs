@@ -5,34 +5,55 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example demonstrating the pure ChatLoop pattern
     // All formatting, streaming, and I/O are handled automatically by the builder
 
-    FluentAi::agent("gpt-4o-mini")
-        .system_prompt("You are a helpful assistant.")
-        .on_chunk(|result| {
-            // Handle streaming chunks automatically - no user code needed for formatting
-            match result {
-                Ok(chunk) => print!("{}", chunk),
-                Err(error) => eprintln!("Error: {}", error),
-            }
-        })
-        .chat(|conversation| {
-            // Pure chat closure - no manual loop, no I/O, no formatting
-            // Just read conversation and return ChatLoop control flow
-            let last_message = conversation.last_user_message().unwrap_or("");
-            match last_message.to_lowercase().as_str() {
-                "exit" | "quit" | "bye" => ChatLoop::Break,
-                "hello" => ChatLoop::Reprompt("Hello! How can I help you today?"),
-                "help" => ChatLoop::Reprompt(
-                    "I can assist with various tasks. Try asking me questions or type 'exit' to quit."
-                ),
-                _ => {
-                    // Default response - continue conversation
-                    ChatLoop::Reprompt(
-                        "I understand. Let me help you with that. What would you like to know more about?"
-                    )
-                }
-            }
-        })
-        .await?;
+    let stream = FluentAi::agent_role("rusty-squire")
+    .completion_provider(Mistral::MagistralSmall)
+    .temperature(1.0)
+    .max_tokens(8000)
+    .system_prompt("Act as a Rust developers 'right hand man'.
+        You possess deep expertise in using tools to research rust, cargo doc and github libraries.
+        You are a patient and thoughtful software artisan; a master of sequential thinking and step-by-step reasoning.
+        You excel in compilation triage ...
+
+        ...
+        ...
+
+        Today is {{ date }}
+
+        ~ Be Useful, Not Thorough")
+    .context( // trait Context
+        Context<File>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
+        Context<Files>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
+        Context<Directory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
+        Context<Github>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
+    )
+    .mcp_server<Stdio>::bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
+    .tools( // trait Tool
+        Tool<Perplexity>::new({
+            "citations" => "true"
+        }),
+        Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
+    ) // ZeroOneOrMany `Tool` || `McpTool` || NamedTool (WASM)
+
+    .additional_params({"beta" =>  "true"})
+    .memory(Library::named("obsidian_vault"))
+    .metadata({ "key" => "val", "foo" => "bar" })
+    .on_tool_result(|results| {
+        // do stuff
+    })
+    .on_conversation_turn(|conversation, agent| {
+        log.info("Agent: " + conversation.last().message())
+        agent.chat(process_turn()) // your custom logic
+    })
+    .on_chunk(|chunk| {          // unwrap chunk closure :: NOTE: THIS MUST PRECEDE .chat()
+        Ok => chunk.into()       // `.chat()` returns AsyncStream<MessageChunk> vs. AsyncStream<Result<MessageChunk>>
+        println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns
+    })
+    .into_agent() // Agent Now
+    .conversation_history(MessageRole::User => "What time is it in Paris, France",
+            MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
+            MessageRole::Assistant => "It’s 1:45 AM CEST on July 7, 2025, in Paris, France. That’s 9 hours ahead of your current time in Las Vegas.")
+    .chat("Hello")? // AsyncStream<MessageChunk
+    .collect();
 
     Ok(())
 }

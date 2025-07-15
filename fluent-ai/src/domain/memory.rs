@@ -1,4 +1,5 @@
 use crate::async_task::AsyncTask;
+use crate::ZeroOneOrMany;
 use serde_json::Value;
 use std::future::Future;
 use std::pin::Pin;
@@ -17,12 +18,12 @@ pub trait VectorStoreIndexDyn: Send + Sync {
         &self,
         query: &str,
         n: usize,
-    ) -> BoxFuture<Result<Vec<(f64, String, Value)>, VectorStoreError>>;
+    ) -> BoxFuture<Result<ZeroOneOrMany<(f64, String, Value)>, VectorStoreError>>;
     fn top_n_ids(
         &self,
         query: &str,
         n: usize,
-    ) -> BoxFuture<Result<Vec<(f64, String)>, VectorStoreError>>;
+    ) -> BoxFuture<Result<ZeroOneOrMany<(f64, String)>, VectorStoreError>>;
 }
 
 pub struct VectorStoreIndex {
@@ -60,33 +61,33 @@ impl<'a> VectorQueryBuilder<'a> {
     }
 
     // Terminal method - returns full results with metadata
-    pub fn retrieve(self) -> AsyncTask<Vec<(f64, String, Value)>> {
+    pub fn retrieve(self) -> AsyncTask<ZeroOneOrMany<(f64, String, Value)>> {
         let _future = self.index.backend.top_n(&self.query, self.n);
         AsyncTask::spawn(move || {
             // This would properly await the future
-            vec![]
+            ZeroOneOrMany::None
         })
     }
 
     // Terminal method - returns just IDs
-    pub fn retrieve_ids(self) -> AsyncTask<Vec<(f64, String)>> {
+    pub fn retrieve_ids(self) -> AsyncTask<ZeroOneOrMany<(f64, String)>> {
         let _future = self.index.backend.top_n_ids(&self.query, self.n);
         AsyncTask::spawn(move || {
             // This would properly await the future
-            vec![]
+            ZeroOneOrMany::None
         })
     }
 
     // Terminal method with result handler
     pub fn on_results<F, T>(self, handler: F) -> AsyncTask<T>
     where
-        F: FnOnce(Vec<(f64, String, Value)>) -> T + Send + 'static,
+        F: FnOnce(ZeroOneOrMany<(f64, String, Value)>) -> T + Send + 'static,
         T: Send + 'static + crate::async_task::NotResult,
     {
         let _future = self.index.backend.top_n(&self.query, self.n);
         AsyncTask::spawn(move || {
             // This would properly await the future and pass to handler
-            let result = vec![];
+            let result = ZeroOneOrMany::None;
             handler(result)
         })
     }

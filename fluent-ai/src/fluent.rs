@@ -1,6 +1,6 @@
 use crate::domain::CompletionModel;
 use crate::domain::*;
-use crate::{memory, workflow, Models};
+use crate::{Models, memory, workflow};
 
 /// Master builder for Fluent AI - semantic entry point for all builders
 pub struct FluentAi;
@@ -23,17 +23,27 @@ impl FluentAi {
 
     /// Extract structured data from unstructured text
     pub fn extract<
-        T: serde::de::DeserializeOwned + Send + 'static + crate::async_task::NotResult,
+        T: serde::de::DeserializeOwned + Send + Sync + std::fmt::Debug + Clone + 'static,
         M: CompletionModel,
     >(
         model: M,
     ) -> extractor::ExtractorBuilder<T, M> {
-        extractor::Extractor::<T>::extract_with(model)
+        extractor::ExtractorImpl::<T>::extract_with(model)
+    }
+
+    /// Load files from various sources
+    pub fn loader(pattern: &str) -> loader::LoaderBuilder<std::path::PathBuf> {
+        loader::LoaderImpl::files_matching(pattern)
     }
 
     /// Access the memory system
     pub fn memory() -> memory::Memory {
         memory::Memory::new()
+    }
+
+    /// Create a conversation for message history management
+    pub fn conversation() -> conversation::ConversationBuilder {
+        conversation::ConversationBuilder::new()
     }
 
     /// Create a workflow from a step

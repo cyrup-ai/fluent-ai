@@ -1,19 +1,21 @@
 use crate::async_task::{AsyncStream, AsyncTask};
 use crate::domain::chunk::{ChatMessageChunk, CompletionChunk};
 use crate::domain::completion::CompletionRequestBuilder;
+use crate::domain::conversation::Conversation;
 use crate::domain::{CompletionRequest, Document, Message, MessageRole};
 use crate::memory::Memory;
 use crate::sugars::{ByteSize, ByteSizeExt};
-use crate::{McpTool, ZeroOneOrMany};
-use fluent_ai_provider::{Model, ModelInfoData, Models};
+use crate::domain::mcp_tool::{McpTool, McpToolImpl};
+use crate::ZeroOneOrMany;
+use fluent_ai_provider::Models;
 use serde_json::Value;
 
+#[derive(Debug, Clone)]
 pub struct Agent {
     pub model: Models,
-    pub model_info: ModelInfoData,
     pub system_prompt: String,
     pub context: ZeroOneOrMany<Document>,
-    pub tools: ZeroOneOrMany<McpTool>,
+    pub tools: ZeroOneOrMany<McpToolImpl>,
     pub memory: Option<Memory>,
     pub temperature: Option<f64>,
     pub max_tokens: Option<u64>,
@@ -22,10 +24,9 @@ pub struct Agent {
 
 pub struct AgentBuilder {
     model: Models,
-    model_info: ModelInfoData,
     system_prompt: String,
     context: Option<ZeroOneOrMany<Document>>,
-    tools: Option<ZeroOneOrMany<McpTool>>,
+    tools: ZeroOneOrMany<McpToolImpl>,
     memory: Option<Memory>,
     temperature: Option<f64>,
     max_tokens: Option<u64>,
@@ -34,27 +35,26 @@ pub struct AgentBuilder {
 
 pub struct AgentBuilderWithHandler {
     model: Models,
-    model_info: ModelInfoData,
     system_prompt: String,
     context: Option<ZeroOneOrMany<Document>>,
-    tools: Option<ZeroOneOrMany<McpTool>>,
+    tools: ZeroOneOrMany<McpToolImpl>,
     memory: Option<Memory>,
     temperature: Option<f64>,
     max_tokens: Option<u64>,
     additional_params: Option<Value>,
     error_handler: Box<dyn Fn(String) + Send + Sync>,
+    result_handler: Option<Box<dyn FnOnce(Agent) -> Agent + Send + 'static>>,
+    chunk_handler: Option<Box<dyn FnMut(Agent) -> Agent + Send + 'static>>,
 }
 
 impl Agent {
     // Semantic entry point
     pub fn with_model(model: Models) -> AgentBuilder {
-        let model_info = model.info();
         AgentBuilder {
             model,
-            model_info,
             system_prompt: String::new(),
             context: None,
-            tools: None,
+            tools: ZeroOneOrMany::None,
             memory: None,
             temperature: None,
             max_tokens: None,
@@ -72,7 +72,7 @@ impl AgentBuilder {
     pub fn context<F, C>(mut self, f: F) -> Self
     where
         F: FnOnce() -> C,
-        C: crate::domain::Conversation,
+        C: crate::domain::message::Conversation,
     {
         let conversation = f();
         let text = conversation.as_text();
@@ -118,17 +118,9 @@ impl AgentBuilder {
         self
     }
 
-    pub fn tool(mut self, tool: impl Into<McpTool>) -> Self {
+    pub fn tool(mut self, tool: impl Into<McpToolImpl>) -> Self {
         let tool = tool.into();
-        match self.tools {
-            Some(mut existing) => {
-                existing.push(tool);
-                self.tools = Some(existing);
-            }
-            None => {
-                self.tools = Some(ZeroOneOrMany::one(tool));
-            }
-        }
+        self.tools.push(tool);
         self
     }
 
@@ -178,7 +170,6 @@ impl AgentBuilder {
     {
         AgentBuilderWithHandler {
             model: self.model,
-            model_info: self.model_info,
             system_prompt: self.system_prompt,
             context: self.context,
             tools: self.tools,
@@ -187,6 +178,46 @@ impl AgentBuilder {
             max_tokens: self.max_tokens,
             additional_params: self.additional_params,
             error_handler: Box::new(handler),
+            result_handler: None,
+            chunk_handler: None,
+        }
+    }
+
+    pub fn on_result<F>(self, handler: F) -> AgentBuilderWithHandler
+    where
+        F: FnOnce(Agent) -> Agent + Send + 'static,
+    {
+        AgentBuilderWithHandler {
+            model: self.model,
+            system_prompt: self.system_prompt,
+            context: self.context,
+            tools: self.tools,
+            memory: self.memory,
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            additional_params: self.additional_params,
+            error_handler: Box::new(|e| eprintln!("Agent error: {}", e)),
+            result_handler: Some(Box::new(handler)),
+            chunk_handler: None,
+        }
+    }
+
+    pub fn on_chunk<F>(self, handler: F) -> AgentBuilderWithHandler
+    where
+        F: FnMut(Agent) -> Agent + Send + 'static,
+    {
+        AgentBuilderWithHandler {
+            model: self.model,
+            system_prompt: self.system_prompt,
+            context: self.context,
+            tools: self.tools,
+            memory: self.memory,
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            additional_params: self.additional_params,
+            error_handler: Box::new(|e| eprintln!("Agent chunk error: {}", e)),
+            result_handler: None,
+            chunk_handler: Some(Box::new(handler)),
         }
     }
 }
@@ -195,18 +226,19 @@ impl AgentBuilder {
 impl AgentBuilderWithHandler {
     // Terminal method - creates agent
     pub fn agent(self) -> Agent {
-        let default_tool = McpTool::new("default", "Default tool", serde_json::json!({}));
+        let default_tool = McpToolImpl::new("default", "Default tool", serde_json::json!({}));
 
         Agent {
             model: self.model,
-            model_info: self.model_info,
             system_prompt: self.system_prompt,
             context: self
                 .context
                 .unwrap_or_else(|| ZeroOneOrMany::one(Document::from_text("").load())),
-            tools: self
-                .tools
-                .unwrap_or_else(|| ZeroOneOrMany::one(default_tool)),
+            tools: if self.tools.is_empty() {
+                ZeroOneOrMany::one(default_tool)
+            } else {
+                self.tools
+            },
             memory: self.memory,
             temperature: self.temperature,
             max_tokens: self.max_tokens,
@@ -217,7 +249,7 @@ impl AgentBuilderWithHandler {
     // Terminal method - chat interaction with closure
     pub fn chat<F>(self, chat_closure: F) -> AsyncStream<ChatMessageChunk>
     where
-        F: Fn(crate::conversation::Conversation) -> crate::chat_loop::ChatLoop
+        F: Fn(crate::domain::conversation::ConversationImpl) -> crate::chat_loop::ChatLoop
             + Send
             + Sync
             + 'static,
@@ -229,7 +261,7 @@ impl AgentBuilderWithHandler {
 
         // Spawn task to handle conversation loop
         tokio::spawn(async move {
-            let mut conversation = crate::conversation::Conversation::new("");
+            let mut conversation = crate::domain::conversation::ConversationImpl::new("");
             let mut awaiting_user_input = true;
 
             loop {
@@ -433,8 +465,18 @@ impl ConversationBuilder {
     }
 
     // Terminal method - returns chat history
-    pub fn history(self) -> Vec<Message> {
-        self.messages
+    pub fn history(self) -> ZeroOneOrMany<Message> {
+        match self.messages.len() {
+            0 => ZeroOneOrMany::None,
+            1 => {
+                if let Some(message) = self.messages.into_iter().next() {
+                    ZeroOneOrMany::One(message)
+                } else {
+                    ZeroOneOrMany::None
+                }
+            },
+            _ => ZeroOneOrMany::from_vec(self.messages),
+        }
     }
 
     // Terminal method - starts conversation

@@ -1,49 +1,120 @@
 use crate::async_task::AsyncTask;
 use crate::domain::agent::Agent;
 use crate::domain::completion::CompletionModel;
-
+use std::fmt;
 use serde::de::DeserializeOwned;
 use std::marker::PhantomData;
 
-/// Errors that can occur during data extraction
-#[derive(Debug, thiserror::Error)]
-pub enum ExtractionError {
-    #[error("Failed to parse JSON response: {0}")]
-    JsonParseError(#[from] serde_json::Error),
-    #[error("Model completion failed: {0}")]
-    ModelError(String),
+/// Trait defining the core extraction interface
+pub trait Extractor<T>: Send + Sync + fmt::Debug + Clone
+where
+    T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static,
+{
+    /// Get the agent used for extraction
+    fn agent(&self) -> &Agent;
+    
+    /// Get the system prompt for extraction
+    fn system_prompt(&self) -> Option<&str>;
+    
+    /// Extract structured data from text
+    fn extract_from(&self, text: &str) -> AsyncTask<T>
+    where
+        T: crate::async_task::NotResult;
+    
+    /// Create new extractor with agent
+    fn new(agent: Agent) -> Self;
+    
+    /// Set system prompt for extraction guidance
+    fn with_system_prompt(self, prompt: impl Into<String>) -> Self;
 }
 
-pub struct Extractor<T: DeserializeOwned> {
-    pub agent: Agent,
-    pub _t: PhantomData<T>,
+/// Implementation of the Extractor trait
+#[derive(Debug, Clone)]
+pub struct ExtractorImpl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> {
+    agent: Agent,
+    system_prompt: Option<String>,
+    _marker: PhantomData<T>,
 }
 
-pub struct ExtractorBuilder<T: DeserializeOwned, M: CompletionModel> {
+// ExtractorImpl implements NotResult since it contains no Result types
+
+impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor<T> for ExtractorImpl<T> {
+    fn agent(&self) -> &Agent {
+        &self.agent
+    }
+    
+    fn system_prompt(&self) -> Option<&str> {
+        self.system_prompt.as_deref()
+    }
+    
+    fn extract_from(&self, text: &str) -> AsyncTask<T> 
+    where
+        T: crate::async_task::NotResult,
+    {
+        let system_prompt = self.system_prompt.clone().unwrap_or_else(|| {
+            format!(
+                "Extract structured data in JSON format matching the schema for type {}",
+                std::any::type_name::<T>()
+            )
+        });
+        
+        // Use prompt() method and collect the stream
+        use crate::domain::prompt::Prompt;
+        let prompt = Prompt::new(format!("{}
+
+{}", system_prompt, text));
+        let _agent = self.agent.clone();
+        
+        AsyncTask::from_future(async move {
+            // TODO: Implement actual model completion
+            // For now, return a placeholder that will fail at compile time if T is Result
+            unimplemented!("Extraction implementation pending model integration")
+        })
+    }
+    
+    fn new(agent: Agent) -> Self {
+        Self {
+            agent,
+            system_prompt: None,
+            _marker: PhantomData,
+        }
+    }
+    
+    fn with_system_prompt(mut self, prompt: impl Into<String>) -> Self {
+        self.system_prompt = Some(prompt.into());
+        self
+    }
+}
+
+/// Builder for creating Extractor instances
+pub struct ExtractorBuilder<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static, M: CompletionModel> {
     model: M,
     system_prompt: Option<String>,
-    _t: PhantomData<T>,
+    _marker: PhantomData<T>,
 }
 
-pub struct ExtractorBuilderWithHandler<T: DeserializeOwned, M: CompletionModel> {
+/// Builder with error handler for polymorphic error handling
+pub struct ExtractorBuilderWithHandler<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static, M: CompletionModel> {
     model: M,
     system_prompt: Option<String>,
     error_handler: Box<dyn Fn(String) + Send + Sync>,
-    _t: PhantomData<T>,
+    result_handler: Option<Box<dyn FnOnce(T) -> T + Send + 'static>>,
+    chunk_handler: Option<Box<dyn FnMut(T) -> T + Send + 'static>>,
+    _marker: PhantomData<T>,
 }
 
-impl<T: DeserializeOwned + Send + 'static + crate::async_task::NotResult> Extractor<T> {
+impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> ExtractorImpl<T> {
     // Semantic entry point
     pub fn extract_with<M: CompletionModel>(model: M) -> ExtractorBuilder<T, M> {
         ExtractorBuilder {
             model,
             system_prompt: None,
-            _t: PhantomData,
+            _marker: PhantomData,
         }
     }
 }
 
-impl<T: DeserializeOwned + Send + 'static + crate::async_task::NotResult, M: CompletionModel>
+impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static, M: CompletionModel>
     ExtractorBuilder<T, M>
 {
     pub fn system_prompt(mut self, system_prompt: impl Into<String>) -> Self {
@@ -65,62 +136,80 @@ impl<T: DeserializeOwned + Send + 'static + crate::async_task::NotResult, M: Com
             model: self.model,
             system_prompt: self.system_prompt,
             error_handler: Box::new(handler),
-            _t: PhantomData,
+            result_handler: None,
+            chunk_handler: None,
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn on_result<F>(self, handler: F) -> ExtractorBuilderWithHandler<T, M>
+    where
+        F: FnOnce(T) -> T + Send + 'static,
+    {
+        ExtractorBuilderWithHandler {
+            model: self.model,
+            system_prompt: self.system_prompt,
+            error_handler: Box::new(|e| eprintln!("Extractor error: {}", e)),
+            result_handler: Some(Box::new(handler)),
+            chunk_handler: None,
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn on_chunk<F>(self, handler: F) -> ExtractorBuilderWithHandler<T, M>
+    where
+        F: FnMut(T) -> T + Send + 'static,
+    {
+        ExtractorBuilderWithHandler {
+            model: self.model,
+            system_prompt: self.system_prompt,
+            error_handler: Box::new(|e| eprintln!("Extractor chunk error: {}", e)),
+            result_handler: None,
+            chunk_handler: Some(Box::new(handler)),
+            _marker: PhantomData,
         }
     }
 }
 
 impl<
-    T: DeserializeOwned + Send + 'static + crate::async_task::NotResult,
+    T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static,
     M: CompletionModel + 'static,
 > ExtractorBuilderWithHandler<T, M>
 {
-    // Terminal method - extracts from text
-    pub fn from_text(self, text: impl Into<String>) -> AsyncTask<Result<T, ExtractionError>> {
-        let system_prompt = self.system_prompt.unwrap_or_else(|| {
-            format!(
-                "Extract structured data in JSON format matching the schema for type {}",
-                std::any::type_name::<T>()
-            )
-        });
-
-        // Use prompt() method and collect the stream
-        use crate::domain::prompt::Prompt;
-        let prompt = Prompt::new(format!("{}\n\n{}", system_prompt, text.into()));
-
+    // Terminal method - returns impl Extractor
+    pub fn build(self) -> impl Extractor<T> {
+        // TODO: Convert model to agent properly
+        let agent = Agent::with_model(fluent_ai_provider::Models::Gpt35Turbo)
+            .on_error(|_| {})
+            .agent();
+            
+        let mut extractor = ExtractorImpl::new(agent);
+        if let Some(prompt) = self.system_prompt {
+            extractor = extractor.with_system_prompt(prompt);
+        }
+        extractor
+    }
+    
+    // Terminal method - async build
+    pub fn build_async(self) -> AsyncTask<impl Extractor<T>>
+    where
+        ExtractorImpl<T>: crate::async_task::NotResult,
+    {
         AsyncTask::from_future(async move {
-            match self.model.prompt(prompt).collect_async().await {
-                Ok(chunks) => {
-                    // Combine chunks into full response
-                    let response = chunks
-                        .into_iter()
-                        .map(|chunk| chunk.text)
-                        .collect::<String>();
-                    // Parse JSON response into T with proper error handling
-                    serde_json::from_str::<T>(&response).map_err(ExtractionError::from)
-                }
-                Err(_) => Err(ExtractionError::ModelError(
-                    "Failed to extract data".to_string(),
-                )),
-            }
+            self.build()
         })
     }
-
-    // Terminal method with handler
-    pub fn on_extraction<F, U>(self, text: impl Into<String>, handler: F) -> AsyncTask<U>
+    
+    // Terminal method - extract from text immediately
+    pub fn extract_from_text(self, text: impl Into<String>) -> AsyncTask<T> 
     where
-        F: FnOnce(Result<T, ExtractionError>) -> U + Send + 'static,
-        U: Send + 'static + crate::async_task::NotResult,
+        T: crate::async_task::NotResult,
     {
-        let extraction_task = self.from_text(text);
-        AsyncTask::from_future(async move {
-            match extraction_task.await {
-                Ok(result) => handler(result),
-                Err(e) => handler(Err(ExtractionError::ModelError(format!(
-                    "Task execution error: {:?}",
-                    e
-                )))),
-            }
-        })
+        let extractor = self.build();
+        let text = text.into();
+        extractor.extract_from(&text)
     }
 }
+
+// Type alias for convenience - constraints defined at use site
+pub type DefaultExtractor<T> = ExtractorImpl<T>;

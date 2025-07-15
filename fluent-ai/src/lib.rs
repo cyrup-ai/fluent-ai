@@ -7,8 +7,7 @@ pub use async_task::*;
 pub mod sugars;
 pub use sugars::{ByteSize, ByteSizeExt};
 
-pub mod mcp_tool;
-pub use mcp_tool::*;
+// McpTool is now in domain module
 
 // one_or_many is exported through sugars module
 pub use sugars::ZeroOneOrMany;
@@ -21,9 +20,7 @@ pub use collection_ext::prelude::*;
 pub mod loaders;
 pub mod prelude;
 
-pub mod agent;
 pub mod chat_loop;
-pub mod conversation;
 pub mod macros;
 pub mod markdown;
 pub mod memory;
@@ -47,7 +44,7 @@ pub use domain::{
 };
 
 // Re-export traits from domain
-pub use domain::{CompletionBackend, CompletionModel, tool::Tool as OldTool};
+pub use domain::{CompletionBackend, CompletionModel};
 // Re-export new Tool API
 pub use domain::tool_v2::ExecToText;
 pub use domain::{Context, Library, NamedTool, Perplexity, Stdio, ToolV2 as Tool};

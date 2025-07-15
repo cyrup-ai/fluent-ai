@@ -1,7 +1,8 @@
 use crate::async_task::{AsyncStream, AsyncTask};
 use crate::domain::chunk::CompletionChunk;
 use crate::domain::prompt::Prompt;
-use fluent_ai_provider::{Model, ModelInfoData, Models};
+use crate::ZeroOneOrMany;
+use fluent_ai_provider::Models;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -22,9 +23,9 @@ pub trait CompletionBackend {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompletionRequest {
     pub system_prompt: String,
-    pub chat_history: Vec<crate::domain::Message>,
-    pub documents: Vec<crate::domain::Document>,
-    pub tools: Vec<ToolDefinition>,
+    pub chat_history: ZeroOneOrMany<crate::domain::Message>,
+    pub documents: ZeroOneOrMany<crate::domain::Document>,
+    pub tools: ZeroOneOrMany<ToolDefinition>,
     pub temperature: Option<f64>,
     pub max_tokens: Option<u64>,
     pub chunk_size: Option<usize>,
@@ -41,9 +42,9 @@ pub struct ToolDefinition {
 pub struct CompletionRequestBuilder {
     model: Option<Models>,
     system_prompt: Option<String>,
-    chat_history: Vec<crate::domain::Message>,
-    documents: Vec<crate::domain::Document>,
-    tools: Vec<ToolDefinition>,
+    chat_history: ZeroOneOrMany<crate::domain::Message>,
+    documents: ZeroOneOrMany<crate::domain::Document>,
+    tools: ZeroOneOrMany<ToolDefinition>,
     temperature: Option<f64>,
     max_tokens: Option<u64>,
     chunk_size: Option<usize>,
@@ -52,16 +53,17 @@ pub struct CompletionRequestBuilder {
 
 pub struct CompletionRequestBuilderWithHandler {
     model: Option<Models>,
-    model_info: Option<ModelInfoData>,
     system_prompt: Option<String>,
-    chat_history: Vec<crate::domain::Message>,
-    documents: Vec<crate::domain::Document>,
-    tools: Vec<ToolDefinition>,
+    chat_history: ZeroOneOrMany<crate::domain::Message>,
+    documents: ZeroOneOrMany<crate::domain::Document>,
+    tools: ZeroOneOrMany<ToolDefinition>,
     temperature: Option<f64>,
     max_tokens: Option<u64>,
     chunk_size: Option<usize>,
     additional_params: Option<Value>,
     error_handler: Box<dyn Fn(String) + Send + Sync>,
+    result_handler: Option<Box<dyn FnOnce(CompletionRequest) -> CompletionRequest + Send + 'static>>,
+    chunk_handler: Option<Box<dyn FnMut(CompletionRequest) -> CompletionRequest + Send + 'static>>,
 }
 
 impl CompletionRequest {
@@ -69,11 +71,10 @@ impl CompletionRequest {
     pub fn prompt(system_prompt: impl Into<String>) -> CompletionRequestBuilder {
         CompletionRequestBuilder {
             model: None,
-            model_info: None,
             system_prompt: Some(system_prompt.into()),
-            chat_history: Vec::new(),
-            documents: Vec::new(),
-            tools: Vec::new(),
+            chat_history: ZeroOneOrMany::None,
+            documents: ZeroOneOrMany::None,
+            tools: ZeroOneOrMany::None,
             temperature: None,
             max_tokens: None,
             chunk_size: None,
@@ -84,9 +85,7 @@ impl CompletionRequest {
 
 impl CompletionRequestBuilder {
     pub fn model(mut self, model: Models) -> Self {
-        let model_info = model.info();
         self.model = Some(model);
-        self.model_info = Some(model_info);
         self
     }
 
@@ -95,46 +94,81 @@ impl CompletionRequestBuilder {
         self
     }
 
-    pub fn chat_history(mut self, history: Vec<crate::domain::Message>) -> Self {
+    pub fn chat_history(mut self, history: ZeroOneOrMany<crate::domain::Message>) -> Self {
         self.chat_history = history;
         self
     }
 
     pub fn add_message(mut self, message: crate::domain::Message) -> Self {
-        self.chat_history.push(message);
+        self.chat_history = match self.chat_history {
+            ZeroOneOrMany::None => ZeroOneOrMany::One(message),
+            ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, message]),
+            ZeroOneOrMany::Many(mut messages) => {
+                messages.push(message);
+                ZeroOneOrMany::from_vec(messages)
+            },
+        };
         self
     }
 
     // Message creation in context
     pub fn user(mut self, content: impl Into<String>) -> Self {
-        self.chat_history
-            .push(crate::domain::Message::user(content));
+        let message = crate::domain::Message::user(content);
+        self.chat_history = match self.chat_history {
+            ZeroOneOrMany::None => ZeroOneOrMany::One(message),
+            ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, message]),
+            ZeroOneOrMany::Many(mut messages) => {
+                messages.push(message);
+                ZeroOneOrMany::from_vec(messages)
+            },
+        };
         self
     }
 
     pub fn assistant(mut self, content: impl Into<String>) -> Self {
-        self.chat_history
-            .push(crate::domain::Message::assistant(content));
+        let message = crate::domain::Message::assistant(content);
+        self.chat_history = match self.chat_history {
+            ZeroOneOrMany::None => ZeroOneOrMany::One(message),
+            ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, message]),
+            ZeroOneOrMany::Many(mut messages) => {
+                messages.push(message);
+                ZeroOneOrMany::from_vec(messages)
+            },
+        };
         self
     }
 
     pub fn system(mut self, content: impl Into<String>) -> Self {
-        self.chat_history
-            .push(crate::domain::Message::system(content));
+        let message = crate::domain::Message::system(content);
+        self.chat_history = match self.chat_history {
+            ZeroOneOrMany::None => ZeroOneOrMany::One(message),
+            ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, message]),
+            ZeroOneOrMany::Many(mut messages) => {
+                messages.push(message);
+                ZeroOneOrMany::from_vec(messages)
+            },
+        };
         self
     }
 
-    pub fn documents(mut self, documents: Vec<crate::domain::Document>) -> Self {
+    pub fn documents(mut self, documents: ZeroOneOrMany<crate::domain::Document>) -> Self {
         self.documents = documents;
         self
     }
 
     pub fn add_document(mut self, document: crate::domain::Document) -> Self {
-        self.documents.push(document);
+        self.documents = match self.documents {
+            ZeroOneOrMany::None => ZeroOneOrMany::One(document),
+            ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, document]),
+            ZeroOneOrMany::Many(mut documents) => {
+                documents.push(document);
+                ZeroOneOrMany::from_vec(documents)
+            },
+        };
         self
     }
 
-    pub fn tools(mut self, tools: Vec<ToolDefinition>) -> Self {
+    pub fn tools(mut self, tools: ZeroOneOrMany<ToolDefinition>) -> Self {
         self.tools = tools;
         self
     }
@@ -145,11 +179,19 @@ impl CompletionRequestBuilder {
         description: impl Into<String>,
         parameters: Value,
     ) -> Self {
-        self.tools.push(ToolDefinition {
+        let tool = ToolDefinition {
             name: name.into(),
             description: description.into(),
             parameters,
-        });
+        };
+        self.tools = match self.tools {
+            ZeroOneOrMany::None => ZeroOneOrMany::One(tool),
+            ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, tool]),
+            ZeroOneOrMany::Many(mut tools) => {
+                tools.push(tool);
+                ZeroOneOrMany::from_vec(tools)
+            },
+        };
         self
     }
 
@@ -190,7 +232,6 @@ impl CompletionRequestBuilder {
     {
         CompletionRequestBuilderWithHandler {
             model: self.model,
-            model_info: self.model_info,
             system_prompt: self.system_prompt,
             chat_history: self.chat_history,
             documents: self.documents,
@@ -200,6 +241,48 @@ impl CompletionRequestBuilder {
             chunk_size: self.chunk_size,
             additional_params: self.additional_params,
             error_handler: Box::new(handler),
+            result_handler: None,
+            chunk_handler: None,
+        }
+    }
+
+    pub fn on_result<F>(self, handler: F) -> CompletionRequestBuilderWithHandler
+    where
+        F: FnOnce(CompletionRequest) -> CompletionRequest + Send + 'static,
+    {
+        CompletionRequestBuilderWithHandler {
+            model: self.model,
+            system_prompt: self.system_prompt,
+            chat_history: self.chat_history,
+            documents: self.documents,
+            tools: self.tools,
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            chunk_size: self.chunk_size,
+            additional_params: self.additional_params,
+            error_handler: Box::new(|e| eprintln!("Completion error: {}", e)),
+            result_handler: Some(Box::new(handler)),
+            chunk_handler: None,
+        }
+    }
+
+    pub fn on_chunk<F>(self, handler: F) -> CompletionRequestBuilderWithHandler
+    where
+        F: FnMut(CompletionRequest) -> CompletionRequest + Send + 'static,
+    {
+        CompletionRequestBuilderWithHandler {
+            model: self.model,
+            system_prompt: self.system_prompt,
+            chat_history: self.chat_history,
+            documents: self.documents,
+            tools: self.tools,
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            chunk_size: self.chunk_size,
+            additional_params: self.additional_params,
+            error_handler: Box::new(|e| eprintln!("Completion chunk error: {}", e)),
+            result_handler: None,
+            chunk_handler: Some(Box::new(handler)),
         }
     }
 }

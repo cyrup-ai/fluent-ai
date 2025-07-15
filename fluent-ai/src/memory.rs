@@ -4,6 +4,7 @@
 use crate::prelude::*;
 use futures::Stream;
 use parking_lot::RwLock;
+use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -146,6 +147,22 @@ struct MemoryBuilder {
     default_type: MemoryType,
 }
 
+impl Debug for Memory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Memory")
+            .field("inner", &"Arc<RwLock<MemoryBuilder>>")
+            .finish()
+    }
+}
+
+impl Clone for Memory {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Arc::clone(&self.inner),
+        }
+    }
+}
+
 impl Memory {
     pub fn new() -> Self {
         Self {
@@ -169,7 +186,7 @@ impl Memory {
     }
 
     /// Store a memory
-    pub fn store(self, content: impl Into<String>) -> StoreMemory {
+    pub fn memorize(self, content: impl Into<String>) -> StoreMemory {
         StoreMemory {
             memory: self,
             content: content.into(),
@@ -178,35 +195,42 @@ impl Memory {
         }
     }
 
-    /// Query memories
-    pub fn query(self) -> QueryMemory {
+    /// Query memories by content
+    pub fn recall(self, query: impl Into<String>) -> QueryMemory {
         QueryMemory {
             memory: self,
-            query_type: QueryType::All,
+            query_type: QueryType::ByContent(query.into()),
             limit: 10,
         }
     }
 
     /// Get a specific memory by ID
-    pub fn get(self, id: impl Into<String>) -> AsyncTask<Result<Option<MemoryNode>, Error>> {
+    pub fn get(self, id: impl Into<String>) -> AsyncTask<Option<MemoryNode>> {
         let id = id.into();
         let manager = match self.inner.read().manager.clone() {
             Some(manager) => manager,
-            None => return AsyncTask::from_future(async move { Err(Error::ManagerNotConfigured) }),
+            None => return AsyncTask::from_future(async move { None }),
         };
 
-        AsyncTask::from_future(async move { manager.get_memory(&id).await })
+        AsyncTask::from_future(async move {
+            match manager.get_memory(&id).await {
+                Ok(result) => result,
+                Err(_) => None,
+            }
+        })
     }
 
     /// Delete a memory
-    pub fn delete(self, id: impl Into<String>) -> AsyncTask<Result<bool, Error>> {
+    pub fn delete(self, id: impl Into<String>) -> AsyncTask<bool> {
         let id = id.into();
         let manager = match self.inner.read().manager.clone() {
             Some(manager) => manager,
-            None => return AsyncTask::from_future(async move { Err(Error::ManagerNotConfigured) }),
+            None => return AsyncTask::from_future(async move { false }),
         };
 
-        AsyncTask::from_future(async move { Ok(manager.delete_memory(&id).await) })
+        AsyncTask::from_future(async move { 
+            manager.delete_memory(&id).await
+        })
     }
 }
 
@@ -244,12 +268,7 @@ impl StoreMemory {
     }
 
     /// Memorize the content
-    pub fn memorize(self) -> AsyncTask<Result<MemoryNode, Error>> {
-        let manager = match self.memory.inner.read().manager.clone() {
-            Some(manager) => manager,
-            None => return AsyncTask::from_future(async move { Err(Error::ManagerNotConfigured) }),
-        };
-
+    pub fn memorize(self) -> AsyncTask<MemoryNode> {
         let memory_type = self
             .memory_type
             .unwrap_or_else(|| self.memory.inner.read().default_type.clone());
@@ -259,9 +278,17 @@ impl StoreMemory {
             node.metadata = metadata;
         }
 
-        AsyncTask::from_future(
-            async move { manager.create_memory(node.clone()).await.or(Ok(node)) },
-        )
+        let manager = match self.memory.inner.read().manager.clone() {
+            Some(manager) => manager,
+            None => return AsyncTask::from_future(async move { node }),
+        };
+
+        AsyncTask::from_future(async move {
+            match manager.create_memory(node.clone()).await {
+                Ok(result) => result,
+                Err(_) => node, // Return the original node if storage fails
+            }
+        })
     }
 }
 
@@ -301,14 +328,12 @@ impl QueryMemory {
     }
 
     /// Recall memories based on the query
-    pub fn recall(self) -> AsyncStream<Result<MemoryNode, Error>> {
+    pub fn recall(self) -> AsyncStream<MemoryNode> {
         let manager = match self.memory.inner.read().manager.clone() {
             Some(manager) => manager,
             None => {
                 let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-                tokio::spawn(async move {
-                    let _ = tx.send(Err(Error::ManagerNotConfigured));
-                });
+                // No manager configured - return empty stream
                 return AsyncStream::new(rx);
             }
         };
@@ -325,13 +350,13 @@ impl QueryMemory {
                     while let Some(result) = stream.next().await {
                         match result {
                             Ok(node) => {
-                                if tx.send(Ok(node)).is_err() {
+                                if tx.send(node).is_err() {
                                     break;
                                 }
                             }
-                            Err(e) => {
-                                let _ = tx.send(Err(e));
-                                break;
+                            Err(_) => {
+                                // Skip errors, continue with next items
+                                continue;
                             }
                         }
                     }
@@ -344,13 +369,13 @@ impl QueryMemory {
                     while let Some(result) = stream.next().await {
                         match result {
                             Ok(node) => {
-                                if tx.send(Ok(node)).is_err() {
+                                if tx.send(node).is_err() {
                                     break;
                                 }
                             }
-                            Err(e) => {
-                                let _ = tx.send(Err(e));
-                                break;
+                            Err(_) => {
+                                // Skip errors, continue with next items
+                                continue;
                             }
                         }
                     }
@@ -363,13 +388,13 @@ impl QueryMemory {
                     while let Some(result) = stream.next().await {
                         match result {
                             Ok(node) => {
-                                if tx.send(Ok(node)).is_err() {
+                                if tx.send(node).is_err() {
                                     break;
                                 }
                             }
-                            Err(e) => {
-                                let _ = tx.send(Err(e));
-                                break;
+                            Err(_) => {
+                                // Skip errors, continue with next items
+                                continue;
                             }
                         }
                     }
@@ -382,13 +407,13 @@ impl QueryMemory {
                     while let Some(result) = stream.next().await {
                         match result {
                             Ok(node) => {
-                                if tx.send(Ok(node)).is_err() {
+                                if tx.send(node).is_err() {
                                     break;
                                 }
                             }
-                            Err(e) => {
-                                let _ = tx.send(Err(e));
-                                break;
+                            Err(_) => {
+                                // Skip errors, continue with next items
+                                continue;
                             }
                         }
                     }
@@ -399,21 +424,23 @@ impl QueryMemory {
         AsyncStream::new(rx)
     }
 
-    /// Collect all results into a vector
-    pub fn collect(self) -> AsyncTask<Result<Vec<MemoryNode>, Error>> {
+    /// Collect all results into a ZeroOneOrMany
+    pub fn collect(self) -> AsyncTask<ZeroOneOrMany<MemoryNode>> {
+        let mut stream = self.recall();
         AsyncTask::from_future(async move {
             use futures::StreamExt;
+            let mut pinned_stream = std::pin::Pin::new(&mut stream);
+
             let mut results = Vec::new();
-            let mut stream = self.recall();
-
-            while let Some(result) = stream.next().await {
-                match result {
-                    Ok(node) => results.push(node),
-                    Err(e) => return Err(e),
-                }
+            while let Some(node) = pinned_stream.next().await {
+                results.push(node);
             }
-
-            Ok(results)
+            
+            match results.len() {
+                0 => ZeroOneOrMany::None,
+                1 => ZeroOneOrMany::One(results.into_iter().next().unwrap()),
+                _ => ZeroOneOrMany::from_vec(results),
+            }
         })
     }
 }
@@ -446,10 +473,19 @@ impl Relationship {
         self
     }
 
-    pub fn create(self, memory: &Memory) -> AsyncTask<Result<MemoryRelationship, Error>> {
+    pub fn create(self, memory: &Memory) -> AsyncTask<MemoryRelationship> {
         let manager = match memory.inner.read().manager.clone() {
             Some(manager) => manager,
-            None => return AsyncTask::from_future(async move { Err(Error::ManagerNotConfigured) }),
+            None => return AsyncTask::from_future(async move { 
+                // Return default relationship when manager not configured
+                MemoryRelationship {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    source_id: String::new(),
+                    target_id: String::new(),
+                    relationship_type: "error".to_string(),
+                    metadata: None,
+                }
+            }),
         };
 
         let relationship = MemoryRelationship {
@@ -461,10 +497,10 @@ impl Relationship {
         };
 
         AsyncTask::from_future(async move {
-            manager
-                .create_relationship(relationship.clone())
-                .await
-                .or(Ok(relationship))
+            match manager.create_relationship(relationship.clone()).await {
+                Ok(rel) => rel,
+                Err(_) => relationship, // Return original if creation fails
+            }
         })
     }
 }

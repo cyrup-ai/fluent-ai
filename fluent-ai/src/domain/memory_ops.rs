@@ -1,4 +1,5 @@
 use futures::stream::StreamExt;
+use crate::ZeroOneOrMany;
 
 // Define Op trait locally - no external dependencies
 pub trait Op {
@@ -73,7 +74,7 @@ where
     M: MemoryManager + Clone,
 {
     type Input = Vec<f32>;
-    type Output = Result<Vec<MemoryNode>, MemoryError>;
+    type Output = Result<ZeroOneOrMany<MemoryNode>, MemoryError>;
 
     async fn call(&self, input: Self::Input) -> Self::Output {
         let mut stream = self.manager.search_by_vector(input, self.limit);
@@ -86,7 +87,20 @@ where
             }
         }
 
-        Ok(memories)
+        // Convert Vec<MemoryNode> to ZeroOneOrMany<MemoryNode>
+        let result = match memories.len() {
+            0 => ZeroOneOrMany::None,
+            1 => {
+                if let Some(memory) = memories.into_iter().next() {
+                    ZeroOneOrMany::One(memory)
+                } else {
+                    ZeroOneOrMany::None
+                }
+            },
+            _ => ZeroOneOrMany::from_vec(memories),
+        };
+        
+        Ok(result)
     }
 }
 
@@ -106,7 +120,7 @@ where
     M: MemoryManager + Clone,
 {
     type Input = String;
-    type Output = Result<Vec<MemoryNode>, MemoryError>;
+    type Output = Result<ZeroOneOrMany<MemoryNode>, MemoryError>;
 
     async fn call(&self, input: Self::Input) -> Self::Output {
         let mut stream = self.manager.search_by_content(&input);
@@ -119,7 +133,20 @@ where
             }
         }
 
-        Ok(memories)
+        // Convert Vec<MemoryNode> to ZeroOneOrMany<MemoryNode>
+        let result = match memories.len() {
+            0 => ZeroOneOrMany::None,
+            1 => {
+                if let Some(memory) = memories.into_iter().next() {
+                    ZeroOneOrMany::One(memory)
+                } else {
+                    ZeroOneOrMany::None
+                }
+            },
+            _ => ZeroOneOrMany::from_vec(memories),
+        };
+        
+        Ok(result)
     }
 }
 
@@ -207,7 +234,7 @@ where
     M: MemoryManager + Clone,
 {
     type Input = (String, Vec<String>); // (content, related_memory_ids)
-    type Output = Result<(MemoryNode, Vec<MemoryRelationship>), MemoryError>;
+    type Output = Result<(MemoryNode, ZeroOneOrMany<MemoryRelationship>), MemoryError>;
 
     async fn call(&self, input: Self::Input) -> Self::Output {
         let (content, related_ids) = input;
@@ -236,7 +263,20 @@ where
             }
         }
 
-        Ok((stored_memory, relationships))
+        // Convert Vec<MemoryRelationship> to ZeroOneOrMany<MemoryRelationship>
+        let relationships_result = match relationships.len() {
+            0 => ZeroOneOrMany::None,
+            1 => {
+                if let Some(rel) = relationships.into_iter().next() {
+                    ZeroOneOrMany::One(rel)
+                } else {
+                    ZeroOneOrMany::None
+                }
+            },
+            _ => ZeroOneOrMany::from_vec(relationships),
+        };
+        
+        Ok((stored_memory, relationships_result))
     }
 }
 

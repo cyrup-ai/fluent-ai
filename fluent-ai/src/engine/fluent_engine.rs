@@ -61,9 +61,9 @@ impl FluentEngine {
 
         CompletionRequest {
             system_prompt,
-            chat_history: Vec::new(),
-            documents: Vec::new(),
-            tools: Vec::new(),
+            chat_history: crate::ZeroOneOrMany::None,
+            documents: crate::ZeroOneOrMany::None,
+            tools: crate::ZeroOneOrMany::None,
             temperature: config.temperature.or(self.default_temperature),
             max_tokens: self.default_max_tokens,
             chunk_size: None,

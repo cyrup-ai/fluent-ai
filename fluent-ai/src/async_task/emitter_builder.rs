@@ -17,7 +17,7 @@ pub trait EmitterImpl<T>: Send {
     ) -> Pin<Box<dyn Future<Output = Result<Vec<T>, Box<dyn std::error::Error + Send>>> + Send>>;
 }
 
-impl<T: Send + 'static + crate::async_task::NotResult> EmitterBuilder<T> {
+impl<T: Send + 'static> EmitterBuilder<T> {
     /// Create a new EmitterBuilder
     pub fn new(inner: Box<dyn EmitterImpl<T>>) -> Self {
         Self { inner }
@@ -26,6 +26,7 @@ impl<T: Send + 'static + crate::async_task::NotResult> EmitterBuilder<T> {
     /// Execute with error handling
     pub fn emit<FOk, FErr>(self, on_ok: FOk, on_err: FErr) -> AsyncStream<T>
     where
+        T: crate::async_task::NotResult,
         FOk: FnOnce(Vec<T>) -> Vec<T> + Send + 'static,
         FErr: FnOnce(Box<dyn std::error::Error + Send>) + Send + 'static,
     {

@@ -4,7 +4,128 @@ use crate::domain::MessageRole;
 use crate::domain::chunk::ChatMessageChunk;
 use crate::{AsyncStream, HashMap, ZeroOneOrMany};
 use serde_json::Value;
+use std::fmt;
 use std::marker::PhantomData;
+
+/// MCP Server configuration
+#[derive(Debug, Clone)]
+struct McpServerConfig {
+    server_type: String,
+    bin_path: Option<String>,
+    init_command: Option<String>,
+}
+
+/// Core agent role trait defining all operations and properties
+pub trait AgentRole: Send + Sync + fmt::Debug + Clone {
+    /// Get the name of the agent role
+    fn name(&self) -> &str;
+    
+    /// Get the temperature setting
+    fn temperature(&self) -> Option<f64>;
+    
+    /// Get the max tokens setting
+    fn max_tokens(&self) -> Option<u64>;
+    
+    /// Get the system prompt
+    fn system_prompt(&self) -> Option<&str>;
+    
+    /// Create a new agent role with the given name
+    fn new(name: impl Into<String>) -> Self;
+}
+
+/// Default implementation of the AgentRole trait
+pub struct AgentRoleImpl {
+    name: String,
+    completion_provider: Option<Box<dyn std::any::Any + Send + Sync>>,
+    temperature: Option<f64>,
+    max_tokens: Option<u64>,
+    system_prompt: Option<String>,
+    contexts: Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>,
+    tools: Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>,
+    mcp_servers: Option<ZeroOneOrMany<McpServerConfig>>,
+    additional_params: Option<HashMap<String, Value>>,
+    memory: Option<Box<dyn std::any::Any + Send + Sync>>,
+    metadata: Option<HashMap<String, Value>>,
+    on_tool_result_handler: Option<Box<dyn Fn(ZeroOneOrMany<Value>) + Send + Sync>>,
+    on_conversation_turn_handler:
+        Option<Box<dyn Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync>>,
+}
+
+impl std::fmt::Debug for AgentRoleImpl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AgentRoleImpl")
+            .field("name", &self.name)
+            .field("temperature", &self.temperature)
+            .field("max_tokens", &self.max_tokens)
+            .field("system_prompt", &self.system_prompt)
+            .field("additional_params", &self.additional_params)
+            .field("completion_provider", &"<opaque>")
+            .field("contexts", &"<opaque>")
+            .field("tools", &"<opaque>")
+            .field("mcp_servers", &self.mcp_servers)
+            .field("memory", &"<opaque>")
+            .field("metadata", &self.metadata)
+            .field("on_tool_result_handler", &"<function>")
+            .field("on_conversation_turn_handler", &"<function>")
+            .finish()
+    }
+}
+
+impl Clone for AgentRoleImpl {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            completion_provider: None, // Can't clone trait objects
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            system_prompt: self.system_prompt.clone(),
+            contexts: None, // Can't clone trait objects
+            tools: None, // Can't clone trait objects
+            mcp_servers: self.mcp_servers.clone(),
+            additional_params: self.additional_params.clone(),
+            memory: None, // Can't clone trait objects
+            metadata: self.metadata.clone(),
+            on_tool_result_handler: None, // Can't clone function pointers
+            on_conversation_turn_handler: None, // Can't clone function pointers
+        }
+    }
+}
+
+impl AgentRole for AgentRoleImpl {
+    fn name(&self) -> &str {
+        &self.name
+    }
+    
+    fn temperature(&self) -> Option<f64> {
+        self.temperature
+    }
+    
+    fn max_tokens(&self) -> Option<u64> {
+        self.max_tokens
+    }
+    
+    fn system_prompt(&self) -> Option<&str> {
+        self.system_prompt.as_deref()
+    }
+    
+    fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            completion_provider: None,
+            temperature: None,
+            max_tokens: None,
+            system_prompt: None,
+            contexts: None,
+            tools: None,
+            mcp_servers: None,
+            additional_params: None,
+            memory: None,
+            metadata: None,
+            on_tool_result_handler: None,
+            on_conversation_turn_handler: None,
+        }
+    }
+}
 
 /// Builder for creating agent roles - EXACT API from ARCHITECTURE.md
 pub struct AgentRoleBuilder {
@@ -22,13 +143,6 @@ pub struct AgentRoleBuilder {
     on_tool_result_handler: Option<Box<dyn Fn(ZeroOneOrMany<Value>) + Send + Sync>>,
     on_conversation_turn_handler:
         Option<Box<dyn Fn(&AgentConversation, &AgentRoleAgent) + Send + Sync>>,
-}
-
-/// MCP Server configuration
-struct McpServerConfig {
-    server_type: String,
-    bin_path: Option<String>,
-    init_command: Option<String>,
 }
 
 /// MCP Server builder
@@ -185,6 +299,18 @@ impl AgentRoleBuilder {
         self
     }
 
+    /// Add general error handler - EXACT syntax: .on_error(|error| { ... })
+    /// Enables terminal methods for agent role creation
+    pub fn on_error<F>(self, error_handler: F) -> AgentRoleBuilderWithHandler
+    where
+        F: FnMut(String) + Send + 'static,
+    {
+        AgentRoleBuilderWithHandler {
+            inner: self,
+            error_handler: Box::new(error_handler),
+        }
+    }
+
     /// Set chunk handler - EXACT syntax: .on_chunk(|chunk| { ... })
     /// MUST precede .chat()
     pub fn on_chunk<F>(self, handler: F) -> AgentRoleBuilderWithChunkHandler
@@ -209,7 +335,7 @@ impl<T> McpServerBuilder<T> {
     }
 
     /// Initialize - EXACT syntax: .init("cargo run -- --stdio")
-    pub fn init(mut self, command: impl Into<String>) -> AgentRoleBuilder {
+    pub fn init(self, command: impl Into<String>) -> AgentRoleBuilder {
         let mut parent = self.parent;
         let new_config = McpServerConfig {
             server_type: std::any::type_name::<T>().to_string(),
@@ -224,6 +350,48 @@ impl<T> McpServerBuilder<T> {
             None => Some(ZeroOneOrMany::one(new_config)),
         };
         parent
+    }
+}
+
+/// Builder with general error handler - has access to terminal methods for agent role creation
+pub struct AgentRoleBuilderWithHandler {
+    inner: AgentRoleBuilder,
+    error_handler: Box<dyn FnMut(String) + Send>,
+}
+
+impl AgentRoleBuilderWithHandler {
+    /// Add chunk handler after error handler - EXACT syntax: .on_chunk(|chunk| { ... })
+    pub fn on_chunk<F>(self, handler: F) -> AgentRoleBuilderWithChunkHandler
+    where
+        F: Fn(Result<ChatMessageChunk, String>) -> Result<ChatMessageChunk, String>
+            + Send
+            + Sync
+            + 'static,
+    {
+        AgentRoleBuilderWithChunkHandler {
+            inner: self.inner,
+            chunk_handler: Box::new(handler),
+        }
+    }
+
+    /// Build an agent role directly - EXACT syntax: .build()
+    /// Returns a configured agent role ready for use
+    pub fn build(self) -> impl AgentRole {
+        AgentRoleImpl {
+            name: self.inner.name,
+            completion_provider: self.inner.completion_provider,
+            temperature: self.inner.temperature,
+            max_tokens: self.inner.max_tokens,
+            system_prompt: self.inner.system_prompt,
+            contexts: self.inner.contexts,
+            tools: self.inner.tools,
+            mcp_servers: self.inner.mcp_servers,
+            additional_params: self.inner.additional_params,
+            memory: self.inner.memory,
+            metadata: self.inner.metadata,
+            on_tool_result_handler: self.inner.on_tool_result_handler,
+            on_conversation_turn_handler: self.inner.on_conversation_turn_handler,
+        }
     }
 }
 
@@ -337,7 +505,7 @@ where
 {
     fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
         match contexts {
-            Some(ref mut list) => list.push(Box::new(self)),
+            Some(list) => list.push(Box::new(self)),
             None => *contexts = Some(ZeroOneOrMany::one(Box::new(self))),
         }
     }
@@ -350,7 +518,7 @@ where
 {
     fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
         match contexts {
-            Some(ref mut list) => {
+            Some(list) => {
                 list.push(Box::new(self.0));
                 list.push(Box::new(self.1));
             }
@@ -372,7 +540,7 @@ where
 {
     fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
         match contexts {
-            Some(ref mut list) => {
+            Some(list) => {
                 list.push(Box::new(self.0));
                 list.push(Box::new(self.1));
                 list.push(Box::new(self.2));
@@ -397,7 +565,7 @@ where
 {
     fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
         match contexts {
-            Some(ref mut list) => {
+            Some(list) => {
                 list.push(Box::new(self.0));
                 list.push(Box::new(self.1));
                 list.push(Box::new(self.2));

@@ -1,28 +1,25 @@
-use crate::async_task::AsyncStream;
-use crate::async_task::AsyncTask;
+use crate::async_task::{AsyncStream, AsyncTask, BadTraitImpl};
 use crate::domain::chunk::EmbeddingChunk;
+use crate::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
 
 /// Core trait for embedding models
 pub trait EmbeddingModel: Send + Sync + Clone {
     /// Create embeddings for a single text
-    fn embed(&self, text: &str) -> AsyncTask<Vec<f32>>;
+    fn embed(&self, text: &str) -> AsyncTask<ZeroOneOrMany<f32>>;
 
     /// Create embeddings for multiple texts with streaming
     fn embed_batch(&self, texts: Vec<String>) -> AsyncStream<EmbeddingChunk>;
 
     /// Simple embedding with handler
-    fn on_embedding<F>(&self, text: &str, handler: F) -> AsyncTask<Vec<f32>>
+    fn on_embedding<F>(&self, text: &str, handler: F) -> AsyncTask<ZeroOneOrMany<f32>>
     where
-        F: FnOnce(Result<Vec<f32>, String>) -> Vec<f32> + Send + 'static,
-        Vec<f32>: crate::async_task::NotResult,
+        F: FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static,
     {
         let embed_task = self.embed(text);
         AsyncTask::from_future(async move {
-            match embed_task.await {
-                Ok(embedding) => handler(Ok(embedding)),
-                Err(e) => handler(Err(format!("Embedding error: {:?}", e))),
-            }
+            let embedding = embed_task.await.unwrap_or(ZeroOneOrMany::None);
+            handler(embedding)
         })
     }
 }
@@ -42,6 +39,8 @@ pub struct EmbeddingBuilderWithHandler {
     document: String,
     vec: Option<Vec<f64>>,
     error_handler: Box<dyn Fn(String) + Send + Sync>,
+    result_handler: Option<Box<dyn FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static>>,
+    chunk_handler: Option<Box<dyn FnMut(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static>>,
 }
 
 impl Embedding {
@@ -74,6 +73,34 @@ impl EmbeddingBuilder {
             document: self.document,
             vec: self.vec,
             error_handler: Box::new(handler),
+            result_handler: None,
+            chunk_handler: None,
+        }
+    }
+
+    pub fn on_result<F>(self, handler: F) -> EmbeddingBuilderWithHandler
+    where
+        F: FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static,
+    {
+        EmbeddingBuilderWithHandler {
+            document: self.document,
+            vec: self.vec,
+            error_handler: Box::new(|e| eprintln!("Embedding error: {}", e)),
+            result_handler: Some(Box::new(handler)),
+            chunk_handler: None,
+        }
+    }
+
+    pub fn on_chunk<F>(self, handler: F) -> EmbeddingBuilderWithHandler
+    where
+        F: FnMut(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static,
+    {
+        EmbeddingBuilderWithHandler {
+            document: self.document,
+            vec: self.vec,
+            error_handler: Box::new(|e| eprintln!("Embedding chunk error: {}", e)),
+            result_handler: None,
+            chunk_handler: Some(Box::new(handler)),
         }
     }
 }

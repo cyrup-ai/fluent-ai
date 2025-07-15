@@ -6,10 +6,10 @@ pub use crate::ZeroOneOrMany;
 pub use crate::async_task::{AsyncStream, AsyncTask};
 pub use crate::chat_loop::ChatLoop;
 pub use crate::collection_ext::prelude::*;
-pub use crate::conversation::Conversation;
+pub use crate::domain::conversation::{Conversation as ConversationTrait, ConversationBuilder, ConversationImpl};
 pub use crate::engine::*;
 pub use crate::fluent::*;
-pub use crate::mcp_tool::McpTool;
+// McpTool is now exported through domain module
 pub use crate::memory::*;
 pub use crate::sugars::ByteSize;
 pub use crate::sugars::{FutureExt, StreamExt};

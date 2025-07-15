@@ -68,7 +68,7 @@ impl TextProcessor for StripXmlProcessor {
         loop {
             match reader.read_event()? {
                 Event::Text(t) => {
-                    let txt = t.unescape()?.into_owned();
+                    let txt = String::from_utf8_lossy(t.as_ref()).into_owned();
                     if !txt.trim().is_empty() {
                         if last_was_txt {
                             out.push(' ');

@@ -117,13 +117,21 @@ where
             .await
         {
             Ok(memories) => memories,
-            Err(_) => Vec::new(), // Safe fallback without unwrap_or_default
+            Err(_) => crate::ZeroOneOrMany::None, // Safe fallback without unwrap_or_default
         };
 
         // Format the prompt with context using pre-sized capacity for efficiency
         let mut context_parts = Vec::with_capacity(self.context_limit);
-        for memory in memories.iter().take(self.context_limit) {
-            context_parts.push(format!("- {}", memory.content));
+        match memories {
+            crate::ZeroOneOrMany::None => {},
+            crate::ZeroOneOrMany::One(memory) => {
+                context_parts.push(format!("- {}", memory.content));
+            },
+            crate::ZeroOneOrMany::Many(memories) => {
+                for memory in memories.iter().take(self.context_limit) {
+                    context_parts.push(format!("- {}", memory.content));
+                }
+            },
         }
         let context = context_parts.join("\n");
 

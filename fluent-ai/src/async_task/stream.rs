@@ -1,6 +1,7 @@
 //! Async stream with built-in error handling and collection support
 
 use super::task::NotResult;
+use super::error_handlers::{BadAppleChunk, default_stream_error_handler, ChunkHandler, DefaultChunkHandler};
 use futures::Stream;
 use futures::StreamExt;
 use std::pin::Pin;
@@ -53,6 +54,41 @@ where
         T: Send + 'static,
     {
         crate::AsyncTask::from_future(self.collect())
+    }
+
+    /// Create AsyncStream from Result<T,E> stream with custom chunk handler
+    pub fn from_result_stream_with_handler<S, E, H>(stream: S, mut handler: H) -> Self
+    where
+        S: Stream<Item = Result<T, E>> + Send + 'static,
+        E: Send + 'static + std::fmt::Display,
+        H: ChunkHandler<T> + Send + 'static,
+        T: Send + 'static + BadAppleChunk,
+    {
+        let (tx, rx) = mpsc::unbounded_channel();
+        tokio::spawn(async move {
+            let mut stream = std::pin::pin!(stream);
+            while let Some(result) = stream.next().await {
+                let item = match result {
+                    Ok(value) => handler.handle_chunk(value),
+                    Err(error) => default_stream_error_handler(error.to_string()),
+                };
+                if tx.send(item).is_err() {
+                    break;
+                }
+            }
+        });
+        Self { receiver: rx }
+    }
+
+    /// Create AsyncStream from Result<T,E> stream with default chunk handler
+    pub fn from_result_stream_with_default_handler<S, E>(stream: S) -> Self
+    where
+        S: Stream<Item = Result<T, E>> + Send + 'static,
+        E: Send + 'static + std::fmt::Display,
+        T: Send + 'static + BadAppleChunk,
+    {
+        let mut handler = DefaultChunkHandler::<T>::default();
+        Self::from_result_stream_with_handler(stream, handler)
     }
 }
 

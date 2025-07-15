@@ -46,10 +46,13 @@ impl<In, Out> Clone for Workflow<In, Out> {
 impl<In, Out> Workflow<In, Out>
 where
     In: Send + 'static,
-    Out: Send + 'static + crate::async_task::NotResult,
+    Out: Send + 'static,
 {
     /// Execute the workflow once
-    pub fn execute(&self, input: In) -> AsyncTask<Out> {
+    pub fn execute(&self, input: In) -> AsyncTask<Out> 
+    where
+        Out: crate::async_task::NotResult,
+    {
         let step = self.step.clone();
 
         AsyncTask::from_future(async move {
@@ -63,7 +66,7 @@ where
     /// Execute the workflow on a stream of inputs
     pub fn stream(&self, inputs: AsyncStream<In>) -> AsyncStream<Out>
     where
-        In: crate::async_task::NotResult + 'static,
+        In: 'static + crate::async_task::NotResult,
         Out: crate::async_task::NotResult,
     {
         let step = self.step.clone();
@@ -438,10 +441,20 @@ impl Workflow<(), ()> {
     where
         T: Send + 'static + Clone + crate::async_task::NotResult,
     {
-        // We can't clone AsyncTask, so we need a different approach
-        // For now, this is a placeholder that panics
-        let step = move |_: ()| async move {
-            panic!("from_task not yet implemented - AsyncTask cannot be cloned")
+        let task = Arc::new(std::sync::Mutex::new(Some(task)));
+        let step = move |_: ()| {
+            let task = task.clone();
+            async move {
+                let task = match task.lock().unwrap().take() {
+                    Some(t) => t,
+                    None => return Err("Task already consumed".to_string()),
+                };
+                
+                match task.await {
+                    Ok(result) => Ok(result),
+                    Err(e) => Err(e.to_string()),
+                }
+            }
         };
         WorkflowBuilder::new(step)
     }
@@ -451,10 +464,18 @@ impl Workflow<(), ()> {
     where
         T: Send + 'static + crate::async_task::NotResult,
     {
-        // We can't clone AsyncStream, so we need a different approach
-        // For now, this is a placeholder that panics
-        let step = move |_: ()| async move {
-            panic!("from_stream not yet implemented - AsyncStream cannot be cloned")
+        let stream = Arc::new(std::sync::Mutex::new(Some(stream)));
+        let step = move |_: ()| {
+            let stream = stream.clone();
+            async move {
+                let stream = match stream.lock().unwrap().take() {
+                    Some(s) => s,
+                    None => return Err("Stream already consumed".to_string()),
+                };
+                
+                let items = stream.collect().await;
+                Ok(items)
+            }
         };
         WorkflowBuilder::new(step)
     }

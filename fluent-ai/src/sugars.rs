@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use crate::async_task::error_handlers::BadTraitImpl;
 
 /// A type that can hold zero, one, or many items
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -49,7 +50,7 @@ impl<T> ZeroOneOrMany<T> {
                     *self = Self::Many(vec![old_item, item]);
                 }
             }
-            Self::Many(ref mut items) => items.push(item),
+            Self::Many(items) => items.push(item),
         }
     }
 
@@ -92,6 +93,17 @@ impl<T> From<T> for ZeroOneOrMany<T> {
 impl<T> From<Vec<T>> for ZeroOneOrMany<T> {
     fn from(items: Vec<T>) -> Self {
         Self::many(items)
+    }
+}
+
+impl<T> BadTraitImpl for ZeroOneOrMany<T> 
+where
+    T: Send + Sync + std::fmt::Debug + Clone,
+{
+    fn bad_impl(error: String) -> Self {
+        // Return None as the default "bad" implementation for error states
+        eprintln!("ZeroOneOrMany BadTraitImpl: {}", error);
+        ZeroOneOrMany::None
     }
 }
 
