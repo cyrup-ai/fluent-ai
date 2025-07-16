@@ -16,14 +16,19 @@ pub struct Tool<T> {
 }
 
 impl<T> Tool<T> {
-    /// Create new tool with config - EXACT syntax: Tool<Perplexity>::new({"citations" => "true"})
-    pub fn new<F>(config: F) -> Self
+    /// Create new tool with config - EXACT syntax: Tool<Perplexity>::new(hash_map_fn!({"citations" => "true"}))
+    pub fn new<P>(config: P) -> Self
     where
-        F: FnOnce() -> HashMap<String, Value>,
+        P: Into<hashbrown::HashMap<&'static str, &'static str>>,
     {
+        let config_map = config.into();
+        let mut map = HashMap::new();
+        for (k, v) in config_map {
+            map.insert(k.to_string(), Value::String(v.to_string()));
+        }
         Self {
             _phantom: PhantomData,
-            config: config(),
+            config: map,
         }
     }
 }

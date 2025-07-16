@@ -91,6 +91,7 @@ pub use fluent::{Ai, FluentAi};
 #[cfg(test)]
 mod tests {
     use crate::async_task::AsyncTask;
+    use crate::{AsyncStream, Document, CompletionRequest};
 
     /// Test that Result types cannot be used in AsyncTask - this should fail to compile
     #[test]

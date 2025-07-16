@@ -1,5 +1,6 @@
 use clap::Parser;
-use fluent_ai_provider::{Model, Models, Provider, Providers};
+use fluent_ai::domain::conversation::Conversation;
+use fluent_ai_provider::{Models, Provider, Providers};
 use futures::StreamExt;
 use std::io::{self, Write};
 use tokio;
@@ -71,16 +72,16 @@ fn is_model_supported_by_provider(provider: &Providers, model_name: &str) -> boo
 fn find_models_enum_by_name(model_name: &str) -> Option<Models> {
     // Create instances of all Models variants and check their names
     let all_models = [
-        Models::OpenaiGpt4o,
-        Models::OpenaiGpt4oMini,
-        Models::ClaudeClaude35Sonnet20241022,
-        Models::MistralMistralMediumLatest,
-        Models::MistralMistralSmallLatest,
-        Models::MistralMagistralMediumLatest,
-        Models::MistralMagistralSmallLatest,
-        Models::MistralDevstralSmallLatest,
-        Models::MistralCodestralLatest,
-        Models::MistralMistralEmbed,
+        Models::OpenaiGpt4O,
+        Models::OpenaiGpt4OMini,
+        Models::Claude35Sonnet20241022,
+        Models::MistralMediumLatest,
+        Models::MistralSmallLatest,
+        Models::MagistralMediumLatest,
+        Models::MagistralSmallLatest,
+        Models::DevstralSmallLatest,
+        Models::CodestralLatest,
+        Models::MistralEmbed,
         // Add more as needed...
     ];
 

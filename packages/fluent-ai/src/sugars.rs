@@ -96,6 +96,24 @@ impl<T> From<Vec<T>> for ZeroOneOrMany<T> {
     }
 }
 
+impl<T> std::ops::Index<usize> for ZeroOneOrMany<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match self {
+            Self::None => panic!("index out of bounds: the len is 0 but the index is {}", index),
+            Self::One(item) => {
+                if index == 0 {
+                    item
+                } else {
+                    panic!("index out of bounds: the len is 1 but the index is {}", index)
+                }
+            },
+            Self::Many(items) => &items[index],
+        }
+    }
+}
+
 impl<T> BadTraitImpl for ZeroOneOrMany<T> 
 where
     T: Send + Sync + std::fmt::Debug + Clone,

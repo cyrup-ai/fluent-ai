@@ -1,12 +1,10 @@
 use fluent_ai::prelude::*;
-use sugars_macros::hash_map_fn;
-use fluent_ai::domain::context::{Context, File, Files, Directory, Github};
-use fluent_ai::domain::tool_v2::{Tool, ExecToText};
+use fluent_ai::domain::context::Context;
+use fluent_ai::domain::tool_v2::Tool;
 use fluent_ai::domain::library::Library;
 use fluent_ai::domain::agent_role::Stdio;
-use fluent_ai::domain::message::MessageRole;
 use fluent_ai_provider::Models;
-use futures::StreamExt;
+use std::collections::HashMap;
 
 // Mock provider types - these should be replaced with actual provider implementations
 pub struct Mistral;
@@ -37,23 +35,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         ~ Be Useful, Not Thorough")
         .context((
-            Context::<File>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
-            Context::<Files>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
-            Context::<Directory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
-            Context::<Github>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
+            Context::file("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
+            Context::files_glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
+            Context::directory("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
+            Context::github_glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
         ))
         .mcp_server::<Stdio>()
             .bin("/user/local/bin/sweetmcp")
             .init("cargo run -- --stdio")
         .tools((
-            Tool::<Perplexity>::new(hash_map_fn!({"citations" => "true"})),
+            Tool::<Perplexity>::new(|| {
+                let mut params = HashMap::new();
+                params.insert("citations".to_string(), serde_json::json!("true"));
+                params
+            }),
             Tool::named("cargo")
                 .bin("~/.cargo/bin")
-                .description("cargo --help".exec_to_text())
+                .description("cargo --help")
         ))
-        .additional_params(hash_map_fn!({"beta" => "true"}))
+        .additional_params(|| {
+            let mut params = HashMap::new();
+            params.insert("beta".to_string(), serde_json::json!("true"));
+            params
+        })
         .memory(Library::named("obsidian_vault"))
-        .metadata(hash_map_fn!({"key" => "val", "foo" => "bar"}))
+        .metadata(|| {
+            let mut metadata = HashMap::new();
+            metadata.insert("key".to_string(), serde_json::json!("val"));
+            metadata.insert("foo".to_string(), serde_json::json!("bar"));
+            metadata
+        })
         .on_tool_result(|_results| {
             // do stuff
         })
@@ -66,14 +77,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             chunk                     // `.chat()` returns AsyncStream<MessageChunk> vs. AsyncStream<Result<MessageChunk>>
         })
         .into_agent() // Agent Now
-        .conversation_history((
-            (MessageRole::User, "What time is it in Paris, France"),
-            (MessageRole::System, "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45"),
-            (MessageRole::Assistant, "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas.")
-        ))
+        .conversation_history(conversation_history![
+            MessageRole::User => "What time is it in Paris, France",
+            MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
+            MessageRole::Assistant => "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas."
+        ])
         .chat("Hello"); // AsyncStream<MessageChunk>
 
-    // Process the stream
+    // Collect the stream to process results
     let _results: Vec<_> = stream.collect().await;
 
     Ok(())

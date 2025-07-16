@@ -65,7 +65,7 @@ impl CompletionModel for RigCompletionBackend {
                         }
                     };
                     let client = openai::Client::new(&api_key);
-                    let agent = client.agent(model_name).build();
+                    let agent = client.agent(&model_name).build();
                     match agent.stream_prompt(&prompt_text).await {
                         Ok(mut stream) => {
                             debug!("Successfully created OpenAI stream, consuming chunks...");
@@ -114,7 +114,7 @@ impl CompletionModel for RigCompletionBackend {
                         }
                     };
                     let client = anthropic::ClientBuilder::new(&api_key).build();
-                    let agent = client.agent(model_name).build();
+                    let agent = client.agent(&model_name).build();
                     match agent.stream_prompt(&prompt_text).await {
                         Ok(mut stream) => {
                             debug!("Successfully created Anthropic stream, consuming chunks...");
@@ -163,7 +163,7 @@ impl CompletionModel for RigCompletionBackend {
                         }
                     };
                     let client = mistral::Client::new(&api_key);
-                    let agent = client.agent(model_name).build();
+                    let agent = client.agent(&model_name).build();
                     match agent.stream_prompt(&prompt_text).await {
                         Ok(mut stream) => {
                             debug!("Successfully created Mistral stream, consuming chunks...");
@@ -271,7 +271,7 @@ pub mod cli {
         let model_name = model.name();
         let is_supported = supported_models
             .iter()
-            .any(|supported| supported.name().eq_ignore_ascii_case(model_name));
+            .any(|supported| supported.name().eq_ignore_ascii_case(&model_name));
 
         if is_supported {
             Ok(())
@@ -291,6 +291,6 @@ pub mod cli {
         provider
             .models()
             .first()
-            .and_then(|model| Models::from_name(model.name()))
+            .and_then(|model| Models::from_name(&model.name()))
     }
 }

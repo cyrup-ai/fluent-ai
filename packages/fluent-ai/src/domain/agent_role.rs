@@ -269,12 +269,17 @@ impl AgentRoleBuilder {
         self
     }
 
-    /// Set additional params - EXACT syntax: .additional_params({"beta" => "true"})
-    pub fn additional_params<F>(mut self, params: F) -> Self
+    /// Set additional params - EXACT syntax: .additional_params(hash_map_fn!({"beta" => "true"}))
+    pub fn additional_params<P>(mut self, params: P) -> Self
     where
-        F: FnOnce() -> HashMap<String, Value>,
+        P: Into<hashbrown::HashMap<&'static str, &'static str>>,
     {
-        self.additional_params = Some(params());
+        let config_map = params.into();
+        let mut map = HashMap::new();
+        for (k, v) in config_map {
+            map.insert(k.to_string(), Value::String(v.to_string()));
+        }
+        self.additional_params = Some(map);
         self
     }
 
@@ -284,12 +289,17 @@ impl AgentRoleBuilder {
         self
     }
 
-    /// Set metadata - EXACT syntax: .metadata({"key" => "val", "foo" => "bar"})
-    pub fn metadata<F>(mut self, metadata: F) -> Self
+    /// Set metadata - EXACT syntax: .metadata(hash_map_fn!({"key" => "val", "foo" => "bar"}))
+    pub fn metadata<P>(mut self, metadata: P) -> Self
     where
-        F: FnOnce() -> HashMap<String, Value>,
+        P: Into<hashbrown::HashMap<&'static str, &'static str>>,
     {
-        self.metadata = Some(metadata());
+        let config_map = metadata.into();
+        let mut map = HashMap::new();
+        for (k, v) in config_map {
+            map.insert(k.to_string(), Value::String(v.to_string()));
+        }
+        self.metadata = Some(map);
         self
     }
 
@@ -440,7 +450,7 @@ pub struct AgentWithHistory {
 }
 
 impl AgentWithHistory {
-    /// Set conversation history - EXACT syntax: .conversation_history(MessageRole::User => "...", ...)
+    /// Set conversation history - EXACT syntax: .conversation_history(MessageRole::User => "...", MessageRole::System => "...", MessageRole::Assistant => "...")
     pub fn conversation_history(mut self, history: impl ConversationHistoryArgs) -> Self {
         self.conversation_history = history.into_history();
         self
@@ -630,21 +640,38 @@ where
     }
 }
 
-// Support for conversation history with => syntax
+
+// Support for conversation history with tuple syntax
 impl ConversationHistoryArgs for ZeroOneOrMany<(MessageRole, String)> {
     fn into_history(self) -> Option<ZeroOneOrMany<(MessageRole, String)>> {
         Some(self)
     }
 }
 
-// Macro to support => syntax for conversation history
-#[macro_export]
-macro_rules! conversation_history {
-    ($($role:path => $msg:expr),* $(,)?) => {{
-        let mut history = $crate::ZeroOneOrMany::None;
-        $(
-            history.push(($role, $msg.to_string()));
-        )*
-        history
-    }};
+// Support for single tuple
+impl ConversationHistoryArgs for (MessageRole, &str) {
+    fn into_history(self) -> Option<ZeroOneOrMany<(MessageRole, String)>> {
+        Some(ZeroOneOrMany::one((self.0, self.1.to_string())))
+    }
 }
+
+// Support for multiple tuples
+impl ConversationHistoryArgs for ((MessageRole, &str), (MessageRole, &str)) {
+    fn into_history(self) -> Option<ZeroOneOrMany<(MessageRole, String)>> {
+        Some(ZeroOneOrMany::many(vec![
+            (self.0.0, self.0.1.to_string()),
+            (self.1.0, self.1.1.to_string()),
+        ]))
+    }
+}
+
+impl ConversationHistoryArgs for ((MessageRole, &str), (MessageRole, &str), (MessageRole, &str)) {
+    fn into_history(self) -> Option<ZeroOneOrMany<(MessageRole, String)>> {
+        Some(ZeroOneOrMany::many(vec![
+            (self.0.0, self.0.1.to_string()),
+            (self.1.0, self.1.1.to_string()),
+            (self.2.0, self.2.1.to_string()),
+        ]))
+    }
+}
+

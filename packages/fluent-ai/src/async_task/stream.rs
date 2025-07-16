@@ -100,6 +100,14 @@ impl<T, const CAP: usize> AsyncStreamSender<T, CAP> {
     }
 }
 
+impl<T, const CAP: usize> Default for AsyncStream<T, CAP> {
+    /// Create an empty AsyncStream
+    #[inline]
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
 impl<T, const CAP: usize> Stream for AsyncStream<T, CAP> {
     type Item = T;
 

@@ -59,13 +59,8 @@ async fn test_exact_architecture_api() {
             // agent.chat(process_turn()) // your custom logic
         })
         .on_chunk(|chunk| {          // unwrap chunk closure :: NOTE: THIS MUST PRECEDE .chat()
-            match chunk {
-                Ok(chunk) => {
-                    println!("{:?}", chunk);   // stream response here or from the AsyncStream .chat() returns
-                    Ok(chunk)
-                }
-                Err(e) => Err(e)
-            }
+            println!("{:?}", chunk);   // stream response here or from the AsyncStream .chat() returns
+            chunk
         })
         .into_agent() // Agent Now
         .conversation_history(conversation_history![
@@ -80,5 +75,5 @@ async fn test_exact_architecture_api() {
     // To actually run it would require a tokio runtime.
 
     // Verify the stream was created (doesn't panic)
-    assert!(_stream.is_ok());
+    // _stream is an AsyncStream, not a Result
 }

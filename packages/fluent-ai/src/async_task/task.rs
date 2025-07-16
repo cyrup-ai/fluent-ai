@@ -20,6 +20,19 @@ pub struct AsyncTask<T> {
     rx: Receiver<T>,
 }
 
+impl<T> AsyncTask<T> 
+where
+    T: Send + 'static,
+{
+    /// Create an AsyncTask that immediately resolves to the given value
+    #[inline]
+    pub fn from_value(value: T) -> Self {
+        let (tx, rx): (Sender<T>, Receiver<T>) = bounded(1);
+        let _ = tx.send(value); // Send immediately
+        AsyncTask { rx }
+    }
+}
+
 impl<T> Future for AsyncTask<T> {
     type Output = T;
 
