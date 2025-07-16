@@ -5,7 +5,7 @@
 
 use crate::async_task::{AsyncTask, error_handlers::BadTraitImpl};
 use crate::domain::memory::VectorStoreIndexDyn;
-use crate::providers::embedding::similarity::{
+use crate::embedding::similarity::{
     SimilarityMetric, cosine_similarity, euclidean_distance
 };
 use crate::ZeroOneOrMany;
@@ -275,7 +275,7 @@ impl InMemoryVectorStore {
             
             // Apply normalization if configured
             if config.normalize_on_insert {
-                crate::providers::embedding::normalization::normalize_vector(&mut normalized_vector);
+                crate::embedding::normalization::normalize_vector(&mut normalized_vector);
             }
             
             let entry = VectorEntry {
@@ -308,7 +308,7 @@ impl InMemoryVectorStore {
             
             // Apply normalization if configured
             if config.normalize_on_insert {
-                crate::providers::embedding::normalization::normalize_vector(&mut normalized_vector);
+                crate::embedding::normalization::normalize_vector(&mut normalized_vector);
             }
             
             let entry = VectorEntry {

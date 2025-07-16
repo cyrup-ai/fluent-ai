@@ -1,12 +1,13 @@
 use fluent_ai::prelude::*;
 use fluent_ai::domain::context::{Context, File, Files, Directory, Github};
-use fluent_ai::domain::tool_v2::{Tool, ExecToText};
+use fluent_ai::domain::tool::{Tool, ExecToText};
+use fluent_ai::json_map;
 use fluent_ai::domain::library::Library;
 use fluent_ai::domain::agent_role::Stdio;
 use fluent_ai::domain::message::MessageRole;
 use fluent_ai_provider::Models;
 use futures::StreamExt;
-use cyrup_sugars::*;
+// use cyrup_sugars::*;
 
 // Mock provider types - these should be replaced with actual provider implementations
 pub struct Mistral;
@@ -46,14 +47,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .bin("/user/local/bin/sweetmcp")
             .init("cargo run -- --stdio")
         .tools((
-            Tool::<Perplexity>::new({
-                "citations" => "true"
-            }),
+            Tool::<Perplexity>::new(json_map!{"citations" => "true"}),
             Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
         ))
-        .additional_params({"beta" => "true"})
+        .additional_params(json_map!{"beta" => "true"})
         .memory(Library::named("obsidian_vault"))
-        .metadata({"key" => "val", "foo" => "bar"})
+        .metadata(json_map!{"key" => "val", "foo" => "bar"})
         .on_tool_result(|_results| {
             // do stuff
         })

@@ -80,144 +80,23 @@ impl FluentAgent {
 }
 
 impl Agent for FluentAgent {
-    fn model(&self) -> &Models {
+    fn model(&self) -> &fluent_ai_provider::Models {
         &self.config.model
     }
 }
 
 impl Engine for FluentEngine {
-    fn create_agent(
-        &self,
-        config: AgentConfig,
-    ) -> AsyncTask<Box<dyn Agent + Send>>
-    where
-        Box<dyn Agent + Send>: crate::async_task::NotResult,
-    {
-        spawn_async(async move {
-            let agent = FluentAgent::new(config);
-            Box::new(agent) as Box<dyn Agent + Send>
-        })
+    fn name(&self) -> &str {
+        "fluent-engine"
     }
-
-    fn complete(
-        &self,
-        request: CompletionRequest,
-    ) -> AsyncTask<CompletionResponse>
-    where
-        CompletionResponse: crate::async_task::NotResult,
-    {
-        let backend = Arc::clone(&self.backend);
-        let _model = self.model.clone();
-        let _default_temperature = self.default_temperature;
-        let _default_max_tokens = self.default_max_tokens;
-
+    
+    fn complete(&self, request: &crate::domain::completion::CompletionRequest) -> crate::runtime::AsyncTask<Result<CompletionResponse, crate::completion::CompletionError>> {
+        let backend = self.backend.clone();
+        let request = request.clone();
         spawn_async(async move {
-            // Convert CompletionRequest to the format expected by the backend
-            let prompt = format!(
-                "System: {}\n\nChat History:\n{}\n\nDocuments:\n{}\n\nPlease provide a response.",
-                request.system_prompt,
-                request
-                    .chat_history
-                    .iter()
-                    .map(|msg| format!("{:?}: {}", msg.role, msg.content))
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-                request
-                    .documents
-                    .iter()
-                    .map(|doc| format!("Document: {}", doc.content()))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            );
-
-            let tools: Vec<String> = match &request.tools {
-                ZeroOneOrMany::None => vec![],
-                ZeroOneOrMany::One(tool) => vec![tool.name.clone()],
-                ZeroOneOrMany::Many(tools) => tools.iter().map(|t| t.name.clone()).collect(),
-            };
-
-            // Submit completion to backend
-            let result = backend.submit_completion(&prompt, &tools).await;
-
-            // result is already a String since AsyncTask handles errors internally
-            CompletionResponse {
-                content: result,
-                usage: Some(crate::engine::Usage {
-                    prompt_tokens: 0,     // Backend doesn't provide this info
-                    completion_tokens: 0, // Backend doesn't provide this info
-                    total_tokens: 0,      // Backend doesn't provide this info
-                }),
-            }
-        })
-    }
-
-    fn extract_json(
-        &self,
-        config: ExtractionConfig,
-    ) -> AsyncTask<Value>
-    where
-        Value: crate::async_task::NotResult,
-    {
-        let completion_request = self.extraction_config_to_completion_request(&config);
-        let complete_task = self.complete(completion_request);
-        
-        spawn_async(async move {
-            let response = complete_task.await; // AsyncTask now returns T directly, not Result<T, E>
-
-            // Try to parse the response as JSON, return default on error
-            match serde_json::from_str(&response.content) {
-                Ok(json) => json,
-                Err(_) => Value::String(response.content), // Return original content as string value
-            }
-        })
-    }
-
-    fn execute_tool(
-        &self,
-        tool_name: &str,
-        args: Value,
-    ) -> AsyncTask<Value>
-    where
-        Value: crate::async_task::NotResult,
-    {
-        let backend = Arc::clone(&self.backend);
-        let tool_name = tool_name.to_string();
-        
-        spawn_async(async move {
-            // For now, we'll create a completion request that asks the backend to execute the tool
-            let prompt = format!(
-                "Execute tool '{}' with arguments: {}. Please provide the result.",
-                tool_name, args
-            );
-
-            let result = backend
-                .submit_completion(&prompt, &[tool_name.clone()])
-                .await;
-
-            // result is already a String since AsyncTask handles errors internally
-            // Try to parse as JSON, or return as string value
-            match serde_json::from_str(&result) {
-                Ok(json) => json,
-                Err(_) => Value::String(result),
-            }
-        })
-    }
-
-    fn available_tools(
-        &self,
-    ) -> AsyncTask<ZeroOneOrMany<String>>
-    where
-        ZeroOneOrMany<String>: crate::async_task::NotResult,
-    {
-        spawn_async(async move {
-            // For now, return a basic set of tools
-            // In a real implementation, this would query the backend for available tools
-            ZeroOneOrMany::from_vec(vec![
-                "web_search".to_string(),
-                "calculator".to_string(),
-                "file_reader".to_string(),
-                "code_executor".to_string(),
-            ])
+            // Use backend to complete the request
+            let response = backend.complete(request).await?;
+            Ok(response)
         })
     }
 }

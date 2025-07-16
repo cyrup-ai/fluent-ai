@@ -1,7 +1,8 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
     "packages/fluent-ai",
-    "packages/fluent-ai-rig",
     "packages/provider",
+    "packages/domain",
 ]
+exclude = ["tmp/rig", "tmp/cyrup-agent", "tmp/cyrup-sugars", "tmp/candle"]

@@ -3,7 +3,7 @@
 //! Implements various indexing approaches including LSH, k-means clustering,
 //! and hierarchical indices for approximate nearest neighbor search.
 
-use crate::providers::embedding::similarity::{cosine_similarity, euclidean_distance, SimilarityMetric};
+use crate::embedding::similarity::{cosine_similarity, euclidean_distance, SimilarityMetric};
 use crate::vector_store::in_memory::VectorEntry;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

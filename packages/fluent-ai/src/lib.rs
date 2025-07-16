@@ -2,83 +2,156 @@
 #![feature(auto_traits)]
 
 //! # CRITICAL: ASYNC FRAMEWORK USAGE
-//! 
+//!
 //! ⚠️⚠️⚠️ DO NOT IMPORT FROM cyrup-agent - IT WILL BE DELETED! ⚠️⚠️⚠️
-//! 
+//!
 //! ALL async operations must use fluent-ai's async primitives:
 //! ```rust
 //! use fluent_ai::{AsyncTask, AsyncStream, spawn_async};  // ✅ CORRECT
 //! // use cyrup_agent::runtime::{AsyncTask, AsyncStream};  // ❌ WRONG - WILL BREAK!
 //! ```
-//! 
+//!
 //! Cyrup-agent's battle-tested async primitives have been COPIED INTO fluent-ai.
 //! The cyrup-agent crate will be deleted after this conversion is complete.
 
 pub mod async_task;
-pub use async_task::*;
+pub use async_task::{AsyncTask, AsyncStream, spawn_async, NotResult};
 
-pub mod sugars;
-pub use sugars::{ByteSize, ByteSizeExt};
-
-// McpTool is now in domain module
-
-// one_or_many is exported through sugars module
-pub use sugars::ZeroOneOrMany;
+// Re-export cyrup_sugars crate items (explicit imports to avoid conflicts)
+pub use cyrup_sugars::{ByteSize, ByteSizeExt, OneOrMany, ZeroOneOrMany};
+pub use cyrup_sugars::builders::*;
+pub use cyrup_sugars::r#async::{AsyncResult, AsyncResultChunk, FutureExt, StreamExt};
 
 // mapmacro is included via sugars module
 
-pub mod collection_ext;
-pub use collection_ext::prelude::*;
+// collection_ext comes from cyrup_sugars
 
 pub mod loaders;
 pub mod prelude;
 
-pub mod chat_loop;
+pub mod chat;
 pub mod macros;
 pub mod markdown;
 pub mod memory;
 pub mod streaming;
 pub mod workflow;
 
-pub mod domain;
+// Re-export domain and provider types
+pub use fluent_ai_domain as domain;
+pub use fluent_ai_provider as provider;
 pub mod engine;
 pub mod fluent;
 
 // High-performance provider implementations
-pub mod providers;
+pub mod completion;
 
 // Vector store implementations
 pub mod vector_store;
 
-// Internal utilities for provider implementations and core systems
-mod internal;
+// Additional modules
+pub mod agent;
+pub mod audio_generation;
+pub mod builders;
+pub mod client;
+pub mod embedding;
+pub mod extractor;
+pub mod http;
+pub mod providers;
+pub mod runtime;
+pub mod transcription;
+
+// Utility modules for provider implementations and core systems
+pub mod util;
+
+// Re-export utility modules at crate root for compatibility
+pub mod json_util {
+    pub use crate::util::json_util::*;
+}
+
+// Re-export message types from domain at crate root for compatibility
+pub mod message {
+    pub use crate::domain::message::*;
+}
+
+// Re-export embeddings module for compatibility
+pub mod embeddings {
+    pub use crate::embedding::*;
+}
+
+// Re-export OneOrMany as one_or_many module for compatibility
+pub mod one_or_many {
+    pub use crate::OneOrMany;
+    pub use crate::ZeroOneOrMany;
+    
+    use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
+    use std::convert::Infallible;
+    use std::fmt;
+    use std::marker::PhantomData;
+    use std::str::FromStr;
+    use serde::Deserialize;
+    
+    /// Serde deserializer for OneOrMany<T> that accepts either a single string or array
+    pub fn string_or_one_or_many<'de, T, D>(deserializer: D) -> Result<OneOrMany<T>, D::Error>
+    where
+        T: Deserialize<'de> + FromStr<Err = Infallible> + Clone,
+        D: Deserializer<'de>,
+    {
+        struct StringOrOneOrMany<T>(PhantomData<fn() -> T>);
+
+        impl<'de, T> Visitor<'de> for StringOrOneOrMany<T>
+        where
+            T: Deserialize<'de> + FromStr<Err = Infallible> + Clone,
+        {
+            type Value = OneOrMany<T>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("string or array of strings")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(OneOrMany::from(T::from_str(value).map_err(|_| {
+                    E::custom("Failed to parse string")
+                })?))
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut items = Vec::new();
+                while let Some(item) = seq.next_element()? {
+                    items.push(item);
+                }
+                OneOrMany::try_from(items).map_err(|_| de::Error::custom("Cannot create OneOrMany with empty vector"))
+            }
+        }
+
+        deserializer.deserialize_any(StringOrOneOrMany(PhantomData))
+    }
+}
 
 // Re-export commonly used sugars items
-pub use sugars::*;
-
-// Re-export from fluent_ai_provider crate
-pub use fluent_ai_provider::{Model, ModelInfoData, Models, Provider, Providers};
-// Re-export domain types
-pub use domain::{
-    Audio, CompletionRequest, Document, Embedding, Image, Message, MessageChunk, MessageRole,
-    audio::{AudioMediaType, ContentFormat as AudioContentFormat},
-    image::{ContentFormat as ImageContentFormat, ImageDetail, ImageMediaType},
-};
-
-// Re-export traits from domain
-pub use domain::{CompletionBackend, CompletionModel};
-// Re-export new Tool API
-pub use domain::tool_v2::ExecToText;
-pub use domain::{Context, Library, NamedTool, Perplexity, Stdio, ToolV2 as Tool};
 // Re-export context marker types
 pub use domain::context::{Directory, File, Files, Github};
-
+// Re-export new Tool API
+pub use domain::tool::ExecToText;
+// Re-export domain types
+pub use domain::{
+    audio::{AudioMediaType, ContentFormat as AudioContentFormat},
+    image::{ContentFormat as ImageContentFormat, ImageDetail, ImageMediaType},
+    Audio, CompletionRequest, Document, Embedding, Image, Message, MessageChunk, MessageRole,
+};
+// Re-export traits from domain
+pub use domain::{CompletionBackend, CompletionModel};
+pub use domain::{Context, Library, NamedTool, Perplexity, Stdio, ToolV2 as Tool};
 // Re-export engine types
+pub use engine::{get_default_engine, get_engine, register_engine, registry, set_default_engine};
 pub use engine::{
     AgentConfig, CompletionResponse, Engine, EngineRegistry, ExtractionConfig, Usage,
 };
-pub use engine::{get_default_engine, get_engine, register_engine, registry, set_default_engine};
-
 // Memory and workflow modules are already defined above as pub mod
 
 // Macros with #[macro_export] are already available at crate root
@@ -87,11 +160,14 @@ pub use engine::{get_default_engine, get_engine, register_engine, registry, set_
 
 // Master builder export
 pub use fluent::{Ai, FluentAi};
+// Re-export from fluent_ai_provider crate
+pub use fluent_ai_provider::{Model, ModelInfoData, Models, Provider, Providers};
+// Note: cyrup_sugars is already re-exported at the top of the file
 
 #[cfg(test)]
 mod tests {
     use crate::async_task::AsyncTask;
-    use crate::{AsyncStream, Document, CompletionRequest};
+    use crate::{AsyncStream, CompletionRequest, Document};
 
     /// Test that Result types cannot be used in AsyncTask - this should fail to compile
     #[test]
@@ -156,8 +232,9 @@ mod tests {
     /// Test streaming operations with chunks
     #[test]
     fn test_streaming_with_chunks() {
-        use crate::domain::chunk::{DocumentChunk, ImageChunk, VoiceChunk};
         use std::collections::HashMap;
+
+        use crate::domain::chunk::{DocumentChunk, ImageChunk, VoiceChunk};
 
         // Test that chunk types work with AsyncStream (using default empty streams for tests)
         let _doc_stream: AsyncStream<DocumentChunk> = AsyncStream::default();

@@ -5,7 +5,7 @@
 
 use crate::async_task::{AsyncTask, AsyncStream};
 use crate::domain::chunk::EmbeddingChunk;
-use crate::providers::embedding::similarity::{
+use crate::embedding::similarity::{
     SimilarityMetric, cosine_similarity, euclidean_distance, manhattan_distance
 };
 use crate::vector_store::in_memory::{SearchResult, InMemoryVectorStore};

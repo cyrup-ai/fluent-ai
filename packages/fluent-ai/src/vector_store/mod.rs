@@ -10,3 +10,6 @@ pub mod similarity_search;
 pub use in_memory::*;
 pub use index::*;
 pub use similarity_search::*;
+
+// Re-export domain types for compatibility
+pub use crate::domain::memory::{VectorStoreError, VectorStoreIndex, VectorStoreIndexDyn};

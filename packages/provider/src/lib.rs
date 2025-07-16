@@ -4,19 +4,26 @@
 //! The enum variants are auto-generated from the AiChat models.yaml file.
 
 // Module declarations
-pub mod model;
 pub mod model_info;
 pub mod models;
 pub mod models_ext; // Extension methods for Models enum
-pub mod provider;
 pub mod providers;
+
+// Provider client implementations - the actual client code moved from fluent-ai
+pub mod clients;
+
+// HTTP utilities moved from fluent-ai
+pub mod http;
+
+// Streaming utilities moved from fluent-ai
+pub mod streaming;
+
 
 // Re-export all types for convenience
 pub use cyrup_sugars::ZeroOneOrMany;
-pub use model::Model;
+pub use fluent_ai_domain::{Model, Provider};
 pub use model_info::ModelInfoData;
 pub use models::Models;
-pub use provider::Provider;
 pub use providers::Providers;
 
 
