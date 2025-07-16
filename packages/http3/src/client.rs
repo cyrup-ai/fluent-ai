@@ -129,8 +129,10 @@ impl HttpClient {
         }
         
         // Add HTTP/3 support if available and enabled
+        // Note: Don't use http3_prior_knowledge() as it forces HTTP3 and prevents fallback
+        // Let reqwest negotiate the best protocol version available
         if config.http3_enabled {
-            builder = builder.http3_prior_knowledge();
+            // HTTP3 will be attempted automatically if supported by the server
         }
         
         // Configure connection pooling
@@ -635,13 +637,15 @@ impl HttpClient {
         let status = response.status();
         let headers = response.headers().clone();
         
-        // 1) Get the stream from reqwest response
-        let stream = HttpStream::new(response);
+        // reqwest's bytes_stream() doesn't automatically decompress
+        // Use bytes() which does automatic decompression
+        let body = response.bytes().await.map_err(|e| {
+            HttpError::NetworkError {
+                message: format!("Failed to read response body: {}", e),
+            }
+        })?;
         
-        // 2) Call collect() on the stream
-        let body = stream.collect().await?;
-        
-        Ok(HttpResponse::new(status, headers, body))
+        Ok(HttpResponse::new(status, headers, body.to_vec()))
     }
     
     /// Update statistics atomically

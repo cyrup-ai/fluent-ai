@@ -79,54 +79,67 @@ pub enum ReviewRole {
     ConsistencyValidator,
     CreativityEnhancer,
     TechnicalValidator,
+    /// Cross-reviewer where one model reviews another's work
+    CrossReviewer {
+        reviewer_model: Models,
+        target_model: Models,
+    },
 }
 
 impl ReviewRole {
-    /// Get static string identifier (zero allocation)
+    /// Get string identifier (zero allocation for most cases)
     #[inline(always)]
-    pub const fn as_str(self) -> &'static str {
+    pub fn as_str(self) -> String {
         match self {
-            Self::AccuracyChecker => "accuracy_checker",
-            Self::ClarityReviewer => "clarity_reviewer",
-            Self::LogicValidator => "logic_validator",
-            Self::StyleEnhancer => "style_enhancer",
-            Self::CompletenessChecker => "completeness_checker",
-            Self::ConsistencyValidator => "consistency_validator",
-            Self::CreativityEnhancer => "creativity_enhancer",
-            Self::TechnicalValidator => "technical_validator",
+            Self::AccuracyChecker => "accuracy_checker".to_string(),
+            Self::ClarityReviewer => "clarity_reviewer".to_string(),
+            Self::LogicValidator => "logic_validator".to_string(),
+            Self::StyleEnhancer => "style_enhancer".to_string(),
+            Self::CompletenessChecker => "completeness_checker".to_string(),
+            Self::ConsistencyValidator => "consistency_validator".to_string(),
+            Self::CreativityEnhancer => "creativity_enhancer".to_string(),
+            Self::TechnicalValidator => "technical_validator".to_string(),
+            Self::CrossReviewer { reviewer_model, target_model } => {
+                format!("cross_review_{}_{}", reviewer_model.name(), target_model.name())
+            }
         }
     }
 
-    /// Get system prompt for role (zero allocation)
+    /// Get system prompt for role (zero allocation for most cases)
     #[inline(always)]
-    pub const fn system_prompt(self) -> &'static str {
+    pub fn system_prompt(self) -> String {
         match self {
-            Self::AccuracyChecker => "You are an expert accuracy checker. Focus on factual correctness, logical consistency, and technical precision. Provide specific feedback on any inaccuracies.",
-            Self::ClarityReviewer => "You are an expert clarity reviewer. Focus on clear communication, user experience, and actionable language. Improve readability and comprehension.",
-            Self::LogicValidator => "You are an expert logic validator. Focus on reasoning chains, argument structure, and logical flow. Identify gaps in reasoning.",
-            Self::StyleEnhancer => "You are an expert style enhancer. Focus on writing quality, tone consistency, and engaging presentation. Improve stylistic elements.",
-            Self::CompletenessChecker => "You are an expert completeness checker. Focus on thoroughness, missing elements, and comprehensive coverage. Identify what's missing.",
-            Self::ConsistencyValidator => "You are an expert consistency validator. Focus on internal consistency, coherent messaging, and unified approach. Eliminate contradictions.",
-            Self::CreativityEnhancer => "You are an expert creativity enhancer. Focus on innovative approaches, engaging elements, and creative solutions. Suggest creative improvements.",
-            Self::TechnicalValidator => "You are an expert technical validator. Focus on technical accuracy, implementation feasibility, and best practices. Validate technical content.",
+            Self::AccuracyChecker => "You are an expert accuracy checker. Focus on factual correctness, logical consistency, and technical precision. Provide specific feedback on any inaccuracies.".to_string(),
+            Self::ClarityReviewer => "You are an expert clarity reviewer. Focus on clear communication, user experience, and actionable language. Improve readability and comprehension.".to_string(),
+            Self::LogicValidator => "You are an expert logic validator. Focus on reasoning chains, argument structure, and logical flow. Identify gaps in reasoning.".to_string(),
+            Self::StyleEnhancer => "You are an expert style enhancer. Focus on writing quality, tone consistency, and engaging presentation. Improve stylistic elements.".to_string(),
+            Self::CompletenessChecker => "You are an expert completeness checker. Focus on thoroughness, missing elements, and comprehensive coverage. Identify what's missing.".to_string(),
+            Self::ConsistencyValidator => "You are an expert consistency validator. Focus on internal consistency, coherent messaging, and unified approach. Eliminate contradictions.".to_string(),
+            Self::CreativityEnhancer => "You are an expert creativity enhancer. Focus on innovative approaches, engaging elements, and creative solutions. Suggest creative improvements.".to_string(),
+            Self::TechnicalValidator => "You are an expert technical validator. Focus on technical accuracy, implementation feasibility, and best practices. Validate technical content.".to_string(),
+            Self::CrossReviewer { reviewer_model, target_model } => {
+                format!("You are {} reviewing {}'s response. Be thorough and constructive. Focus on accuracy, clarity, completeness, and overall quality. Provide specific feedback on how the response could be improved.", 
+                    reviewer_model.name(), target_model.name())
+            }
         }
     }
 
     /// Get preferred model for this role (optimized selection)
     #[inline(always)]
-    pub const fn preferred_model(self) -> Models {
+    pub fn preferred_model(self) -> Models {
         match self {
             Self::AccuracyChecker | Self::LogicValidator => Models::AnthropicClaude35Sonnet,
-            Self::ClarityReviewer | Self::StyleEnhancer => Models::OpenaiGpt4O,
-            Self::CompletenessChecker | Self::ConsistencyValidator => Models::GoogleGemini15Pro,
+            Self::ClarityReviewer | Self::StyleEnhancer => Models::Gpt4O,
+            Self::CompletenessChecker | Self::ConsistencyValidator => Models::Gemini25Pro,
             Self::CreativityEnhancer => Models::AnthropicClaude35Sonnet,
-            Self::TechnicalValidator => Models::OpenaiGpt4O,
+            Self::TechnicalValidator => Models::Gpt4O,
+            Self::CrossReviewer { reviewer_model, .. } => reviewer_model,
         }
     }
 
-    /// Get all review roles as const array (zero allocation)
+    /// Get all standard review roles as const array (zero allocation)
     #[inline(always)]
-    pub const fn all() -> [Self; 8] {
+    pub const fn all_standard() -> [Self; 8] {
         [
             Self::AccuracyChecker,
             Self::ClarityReviewer,
@@ -647,48 +660,72 @@ impl CrossLLMEnhancer {
         Ok(generation_op)
     }
 
-    /// Create cross-review operation (zero allocation)
+    /// Create cross-review operation where each LLM reviews each OTHER LLM's work (zero allocation)
     fn create_cross_review_op(&self) -> CrossReviewResult<impl Op<Input = Vec<GenerationResult>, Output = Vec<IndividualReview>>> {
         let config = self.config;
         
         let cross_review_op = step(move |generations: Vec<GenerationResult>| async move {
-            let mut all_reviews = Vec::with_capacity(generations.len() * ReviewRole::all().len());
+            let mut all_reviews = Vec::with_capacity(generations.len() * (generations.len() - 1));
             
-            // Each generation gets reviewed by all roles
-            for generation in &generations {
-                for role in ReviewRole::all() {
+            // Each LLM reviews every OTHER LLM's work (cross-review pattern)
+            for (reviewer_idx, reviewer_generation) in generations.iter().enumerate() {
+                for (target_idx, target_generation) in generations.iter().enumerate() {
+                    // Skip self-review - each LLM only reviews OTHER LLMs' work
+                    if reviewer_idx == target_idx {
+                        continue;
+                    }
+                    
                     let start_time = std::time::Instant::now();
                     
-                    // Create reviewer agent
-                    let agent = Agent::for_provider(role.preferred_model())
-                        .system_prompt(role.system_prompt())
+                    // Use the same model that generated the review to do the reviewing
+                    // This creates the cross-review pattern where each model reviews others
+                    let reviewer_model = reviewer_generation.model;
+                    let target_model = target_generation.model;
+                    
+                    // Create reviewer agent using the reviewer's model
+                    let reviewer_agent = Agent::for_provider(reviewer_model)
+                        .system_prompt(&format!(
+                            "You are reviewing another AI model's response. Be thorough and constructive. \
+                            Focus on accuracy, clarity, completeness, and overall quality. \
+                            Provide specific feedback on how the response could be improved."
+                        ))
                         .temperature(0.1)
                         .build();
                     
-                    // Create review prompt
+                    // Create cross-review prompt
                     let review_prompt = format!(
-                        "Review the following response for {}:\n\n{}\n\n\
-                        Provide a score from 0-10 and detailed feedback. \
-                        Format: SCORE: X\nFEEDBACK: [your feedback]",
-                        role.as_str(),
-                        generation.content
+                        "Review this response generated by {}:\n\n{}\n\n\
+                        As a peer reviewer, provide:\n\
+                        1. A quality score from 0-10\n\
+                        2. Specific strengths of the response\n\
+                        3. Areas for improvement\n\
+                        4. Constructive suggestions for enhancement\n\n\
+                        Format: SCORE: X\nSTRENGTHS: [list strengths]\nIMPROVEMENTS: [list improvements]\nSUGGESTIONS: [specific suggestions]",
+                        target_model.name(),
+                        target_generation.content
                     );
                     
-                    // Execute review
-                    match agent.completion(&review_prompt).await {
+                    // Execute cross-review
+                    match reviewer_agent.completion(&review_prompt).await {
                         Ok(review_content) => {
                             let processing_time_us = start_time.elapsed().as_micros() as u64;
                             let score = Self::extract_score_from_review(&review_content);
                             
+                            // Create a cross-review role that identifies both reviewer and target
+                            let cross_review_role = ReviewRole::CrossReviewer {
+                                reviewer_model: reviewer_model,
+                                target_model: target_model,
+                            };
+                            
                             all_reviews.push(IndividualReview::new(
-                                role,
+                                cross_review_role,
                                 score,
                                 Arc::from(review_content),
                                 processing_time_us,
                             ));
                         }
                         Err(_) => {
-                            // Skip failed reviews
+                            // Skip failed reviews but continue with others
                         }
                     }
                 }

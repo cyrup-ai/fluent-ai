@@ -56,7 +56,7 @@ crossbeam-queue = "0.3"
 lazy_static = "1.4"
 
 # Streaming and WebSocket dependencies
-reqwest = { version = "0.12.22", features = ["json", "stream", "http3", "rustls-tls", "rustls-tls-native-roots", "rustls-tls-manual-roots"] }
+reqwest = { version = "0.12.22", features = ["json", "stream", "http3", "rustls-tls", "rustls-tls-native-roots", "rustls-tls-manual-roots", "gzip", "deflate", "brotli"] }
 reqwest-eventsource = "0.6.0"
 tokio-tungstenite = "0.27.0"
 tracing = "0.1.41"

@@ -10,7 +10,6 @@
 //! ```
 
 pub mod client;
-pub mod client_old;
 pub mod completion;
 pub mod embedding;
 pub mod streaming;

@@ -121,12 +121,12 @@ static HTTP_CLIENT: Lazy<PooledHttpClient> = Lazy::new(|| {
     PooledHttpClient::new().expect("Failed to initialize HTTP client")
 });
 
-/// Zero-allocation, blazing-fast YAML configuration parser using yyaml
+/// Zero-allocation, blazing-fast YAML configuration parser using serde_yaml
 /// Optimized for production use with zero compromises
 #[inline]
 fn parse_yaml_config(yaml_content: &str) -> Result<ModelYaml, Box<dyn std::error::Error>> {
-    // Direct parsing with semantic error handling using yyaml
-    match yyaml::from_str::<ModelYaml>(yaml_content) {
+    // Direct parsing with semantic error handling using serde_yaml
+    match serde_yaml::from_str::<ModelYaml>(yaml_content) {
         Ok(providers) => Ok(providers),
         Err(parse_error) => {
             Err(format!("Failed to parse YAML configuration: {}", parse_error).into())
@@ -270,11 +270,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // Generate all files
-    generate_all_files(&providers)?;
+    // Discover available client modules
+    let available_clients = discover_client_modules()?;
+    
+    // Filter providers to only include those with existing client modules
+    let providers_with_clients = filter_providers_with_clients(&providers, &available_clients)?;
+    
+    println!("ℹ️  Filtered {} providers to {} providers with client implementations", 
+             providers.len(), providers_with_clients.len());
+    
+    // Generate all files (only for providers with clients)
+    generate_all_files(&providers_with_clients)?;
     
     // Generate provider-to-client mapping
-    generate_provider_client_mapping(&providers)?;
+    generate_provider_client_mapping(&providers_with_clients)?;
 
     println!("✅ Code generation completed successfully!");
     Ok(())
@@ -571,7 +580,6 @@ fn add_provider_trait_impl(providers: &[ProviderInfo]) -> Result<(), Box<dyn std
     let providers_path = Path::new("src/providers.rs");
     
     let mut impl_content = String::new();
-    impl_content.push_str("use crate::providers::Providers;\n");
     impl_content.push_str("use crate::models::Models;\n");
     impl_content.push_str("use cyrup_sugars::ZeroOneOrMany;\n\n");
     impl_content.push_str("impl Providers {\n");
@@ -748,6 +756,32 @@ fn to_snake_case_optimized(input: &str) -> String {
     result
 }
 
+/// Filter providers to only include those with existing client modules
+fn filter_providers_with_clients(
+    providers: &[ProviderInfo],
+    available_clients: &[String]
+) -> Result<Vec<ProviderInfo>, Box<dyn std::error::Error>> {
+    let mut filtered_providers = Vec::new();
+    
+    for provider in providers {
+        let client_module = to_snake_case_optimized(&provider.provider);
+        
+        if available_clients.contains(&client_module) {
+            filtered_providers.push(provider.clone());
+            println!("✅ Provider '{}' -> client module '{}' (exists)", provider.provider, client_module);
+        } else {
+            println!("⚠️  Provider '{}' -> client module '{}' (missing, skipping enum generation)", 
+                     provider.provider, client_module);
+        }
+    }
+    
+    if filtered_providers.is_empty() {
+        println!("⚠️  No providers have corresponding client modules!");
+    }
+    
+    Ok(filtered_providers)
+}
+
 /// Dynamically discover available client modules by scanning the clients directory
 fn discover_client_modules() -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let clients_dir = Path::new("src/clients");
@@ -791,30 +825,13 @@ fn generate_provider_client_mapping(providers: &[ProviderInfo]) -> Result<(), Bo
     content.push_str("pub static PROVIDER_CLIENT_MAP: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {\n");
     content.push_str("    let mut map = HashMap::new();\n");
     
-    // Dynamically discover available client modules
-    let available_clients = discover_client_modules()?;
-    
+    // All providers passed to this function should have existing client modules
     for provider in providers {
         let client_module = to_snake_case_optimized(&provider.provider);
-        
-        // Check if client module exists
-        if available_clients.contains(&client_module) {
-            content.push_str(&format!(
-                "    map.insert(\"{}\", \"{}\");\n",
-                provider.provider, client_module
-            ));
-        } else {
-            // Make loud noise but don't fail the build
-            println!("cargo:warning=🚨 MISSING CLIENT MODULE: Provider '{}' maps to client module '{}' which doesn't exist!", provider.provider, client_module);
-            println!("cargo:warning=📁 Available client modules: {}", available_clients.join(", "));
-            println!("cargo:warning=💡 Create src/clients/{}/mod.rs to support this provider", client_module);
-            
-            // Still add to map but with a comment indicating it's missing
-            content.push_str(&format!(
-                "    // MISSING CLIENT: map.insert(\"{}\", \"{}\"); // Client module not found\n",
-                provider.provider, client_module
-            ));
-        }
+        content.push_str(&format!(
+            "    map.insert(\"{}\", \"{}\");\n",
+            provider.provider, client_module
+        ));
     }
     
     content.push_str("    map\n");
