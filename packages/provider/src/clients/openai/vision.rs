@@ -3,7 +3,7 @@
 //! Provides comprehensive support for OpenAI's vision models (GPT-4O, GPT-4V)
 //! with optimal performance patterns and full multimodal capabilities.
 
-use crate::providers::openai::{OpenAIError, OpenAIResult};
+use super::{OpenAIError, OpenAIResult};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;

@@ -3,7 +3,7 @@
 //! Provides comprehensive support for OpenAI's text embedding models (text-embedding-3-large/small)
 //! with optimal performance patterns and batch processing capabilities.
 
-use crate::providers::openai::{OpenAIError, OpenAIResult};
+use super::{OpenAIError, OpenAIResult};
 use crate::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
 

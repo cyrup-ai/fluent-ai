@@ -18,6 +18,7 @@ use fluent_ai_domain::Provider;
 use std::sync::Arc;
 use thiserror::Error;
 use futures::StreamExt;
+// Removed async_trait - using AsyncTask pattern instead
 
 /// Unified error type for client factory operations
 #[derive(Error, Debug)]
@@ -72,35 +73,34 @@ impl Default for ClientConfig {
     }
 }
 
-/// Unified client trait for all AI providers
-#[async_trait::async_trait]
+/// Unified client trait for all AI providers using AsyncTask pattern
 pub trait UnifiedClient: Send + Sync {
     /// Get the provider name
     fn provider_name(&self) -> &'static str;
     
     /// Test connection and authentication
-    async fn test_connection(&self) -> ClientFactoryResult<()>;
+    fn test_connection(&self) -> crate::AsyncTask<ClientFactoryResult<()>>;
     
     /// Get available models for this provider
-    async fn get_models(&self) -> ClientFactoryResult<Vec<String>>;
+    fn get_models(&self) -> crate::AsyncTask<ClientFactoryResult<Vec<String>>>;
     
     /// Send a completion request
-    async fn send_completion(
+    fn send_completion(
         &self,
         request: &serde_json::Value,
-    ) -> ClientFactoryResult<serde_json::Value>;
+    ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>>;
     
     /// Send a streaming completion request
-    async fn send_streaming_completion(
+    fn send_streaming_completion(
         &self,
         request: &serde_json::Value,
-    ) -> ClientFactoryResult<Box<dyn futures::Stream<Item = ClientFactoryResult<serde_json::Value>> + Send + Unpin>>;
+    ) -> crate::AsyncTask<ClientFactoryResult<crate::AsyncStream<ClientFactoryResult<serde_json::Value>>>>;
     
     /// Send an embedding request
-    async fn send_embedding(
+    fn send_embedding(
         &self,
         request: &serde_json::Value,
-    ) -> ClientFactoryResult<serde_json::Value>;
+    ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>>;
 }
 
 /// OpenAI client wrapper implementing UnifiedClient
@@ -109,7 +109,6 @@ pub struct OpenAIUnifiedClient {
     provider: openai::OpenAIProvider,
 }
 
-#[async_trait::async_trait]
 impl UnifiedClient for OpenAIUnifiedClient {
     fn provider_name(&self) -> &'static str {
         "openai"
@@ -227,7 +226,6 @@ pub struct AnthropicUnifiedClient {
     provider: anthropic::AnthropicProvider,
 }
 
-#[async_trait::async_trait]
 impl UnifiedClient for AnthropicUnifiedClient {
     fn provider_name(&self) -> &'static str {
         "anthropic"

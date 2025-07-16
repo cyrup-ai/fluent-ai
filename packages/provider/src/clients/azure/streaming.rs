@@ -9,8 +9,8 @@
 use super::completion::CompletionModel;
 use crate::{
     completion::{CompletionError, CompletionRequest},
-    util::json_util::merge,
-    providers::openai::{self, send_compatible_streaming_request},
+    json_util::merge,
+    clients::openai::{self, send_compatible_streaming_request},
     runtime::{self as rt, AsyncTask},
     streaming::StreamingCompletionResponse as RigStreaming,
 };

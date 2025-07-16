@@ -17,6 +17,20 @@ pub mod transcription;
 
 pub use client::{Client, GeminiCompletionBuilder};
 
+// API Response wrapper for compatibility
+#[derive(Debug, serde::Deserialize)]
+pub enum ApiResponse<T> {
+    #[serde(rename = "data")]
+    Ok(T),
+    #[serde(rename = "error")]
+    Err(ApiError),
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ApiError {
+    pub message: String,
+}
+
 pub mod gemini_api_types {
     use serde::{Deserialize, Serialize};
 

@@ -13,7 +13,7 @@ use crate::{
 };
 
 // Re-export OpenAI streaming response type since DeepSeek uses the same format
-pub use crate::providers::openai::StreamingCompletionResponse;
+pub use crate::clients::openai::StreamingCompletionResponse;
 
 /// Send a streaming request to DeepSeek using HTTP3 client and return an AsyncStream
 pub fn send_deepseek_streaming_request(

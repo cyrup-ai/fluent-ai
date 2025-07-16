@@ -2,7 +2,7 @@
 //!
 //! Provides comprehensive error handling with static dispatch and minimal allocations.
 
-use crate::async_task::error_handlers::BadTraitImpl;
+// BadTraitImpl trait removed - not needed for provider error handling
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -75,13 +75,7 @@ impl fmt::Display for AnthropicError {
 
 impl std::error::Error for AnthropicError {}
 
-/// Zero-allocation bad trait implementation for error recovery
-impl BadTraitImpl for AnthropicError {
-    #[inline(always)]
-    fn bad_impl(error: &str) -> Self {
-        AnthropicError::Unknown(error.to_string())
-    }
-}
+// BadTraitImpl implementation removed - not needed for provider error handling
 
 /// API response envelope for error handling
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,20 +134,25 @@ fn parse_retry_after(body: &str) -> Option<u64> {
     None
 }
 
-/// Convert reqwest error to AnthropicError
+/// Convert HTTP3 error to AnthropicError
 #[inline(always)]
-pub fn handle_reqwest_error(error: reqwest::Error) -> AnthropicError {
-    if error.is_timeout() {
-        AnthropicError::NetworkError("Request timeout".to_string())
-    } else if error.is_connect() {
-        AnthropicError::NetworkError("Connection failed".to_string())
-    } else if let Some(status) = error.status() {
-        AnthropicError::ServerError {
-            status: status.as_u16(),
-            message: error.to_string(),
+pub fn handle_http3_error(error: fluent_ai_http3::HttpError) -> AnthropicError {
+    match error {
+        fluent_ai_http3::HttpError::Timeout => {
+            AnthropicError::NetworkError("Request timeout".to_string())
         }
-    } else {
-        AnthropicError::NetworkError(error.to_string())
+        fluent_ai_http3::HttpError::Connection(_) => {
+            AnthropicError::NetworkError("Connection failed".to_string())
+        }
+        fluent_ai_http3::HttpError::Http(status, msg) => {
+            AnthropicError::ServerError {
+                status: status as u16,
+                message: msg,
+            }
+        }
+        _ => {
+            AnthropicError::NetworkError(error.to_string())
+        }
     }
 }
 

@@ -5,7 +5,7 @@ use mime_guess;
 use serde_json::{Map, Value};
 
 use crate::{
-    providers::gemini::completion::gemini_api_types::{
+    clients::gemini::completion::gemini_api_types::{
         Blob, Content, GenerateContentRequest, GenerationConfig, Part, Role,
     },
     transcription::{self, TranscriptionError},

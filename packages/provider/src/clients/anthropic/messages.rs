@@ -3,8 +3,7 @@
 //! Comprehensive message system supporting text, images, documents, and tool interactions
 //! with optimal memory usage and performance.
 
-use crate::util::json_util::{merge_inplace, stringified_json};
-use crate::domain::message::MessageRole;
+use fluent_ai_domain::message::MessageRole;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -62,7 +61,7 @@ pub enum ContentBlock {
     ToolUse {
         id: String,
         name: String,
-        #[serde(with = "stringified_json")]
+        #[serde(with = "crate::util::json_util::stringified_json")]
         input: Value,
     },
     /// Tool result block for function responses
@@ -106,7 +105,7 @@ pub struct ToolCall {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionCall {
     pub name: String,
-    #[serde(with = "stringified_json")]
+    #[serde(with = "crate::util::json_util::stringified_json")]
     pub arguments: Value,
 }
 
@@ -350,7 +349,7 @@ impl Tool {
 
     /// Convert from fluent-ai ToolDefinition
     #[inline(always)]
-    pub fn from_definition(def: &crate::domain::completion::ToolDefinition) -> Self {
+    pub fn from_definition(def: &crate::completion::ToolDefinition) -> Self {
         Self::new(
             def.name.clone(),
             def.description.clone(),
@@ -360,7 +359,7 @@ impl Tool {
 }
 
 /// Convert fluent-ai Message to Anthropic Message
-impl From<&crate::domain::Message> for Message {
+impl From<&crate::message::Message> for Message {
     #[inline(always)]
     fn from(msg: &crate::domain::Message) -> Self {
         match msg.role {
@@ -379,7 +378,7 @@ impl MessageConverter {
     /// Convert fluent-ai messages to Anthropic format with zero allocation where possible
     #[inline(always)]
     pub fn convert_messages(
-        messages: &crate::ZeroOneOrMany<crate::domain::Message>,
+        messages: &crate::ZeroOneOrMany<crate::message::Message>,
     ) -> Vec<Message> {
         match messages {
             crate::ZeroOneOrMany::None => Vec::new(),
@@ -393,7 +392,7 @@ impl MessageConverter {
     /// Convert fluent-ai tools to Anthropic format
     #[inline(always)]
     pub fn convert_tools(
-        tools: &crate::ZeroOneOrMany<crate::domain::completion::ToolDefinition>,
+        tools: &crate::ZeroOneOrMany<crate::completion::ToolDefinition>,
     ) -> Vec<Tool> {
         match tools {
             crate::ZeroOneOrMany::None => Vec::new(),
@@ -411,7 +410,7 @@ impl MessageConverter {
         additional: Option<Value>,
     ) -> Value {
         if let Some(params) = additional {
-            merge_inplace(&mut request, params);
+            request = crate::json_util::merge(request, params);
         }
         request
     }
@@ -419,7 +418,7 @@ impl MessageConverter {
     /// Convert documents to message content blocks
     #[inline(always)]
     pub fn convert_documents_to_blocks(
-        documents: &crate::ZeroOneOrMany<crate::domain::Document>,
+        documents: &crate::ZeroOneOrMany<crate::completion::Document>,
     ) -> Vec<ContentBlock> {
         let mut blocks = Vec::new();
         

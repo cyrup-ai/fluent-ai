@@ -3,8 +3,8 @@
 //! Comprehensive tool calling support with automatic tool execution,
 //! result processing, and context injection with optimal performance.
 
-use crate::providers::anthropic::{AnthropicError, AnthropicResult, Message, Tool};
-use crate::providers::anthropic::messages::ContentBlock;
+use super::{AnthropicError, AnthropicResult, Message, Tool};
+use super::messages::ContentBlock;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;

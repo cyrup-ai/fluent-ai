@@ -87,6 +87,27 @@ where
     tokio::spawn(future)
 }
 
+/// Channel creation for async communication
+pub fn channel<T: Send + 'static>() -> (ChannelSender<T>, AsyncTask<T>) {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    let task = spawn_async(async move {
+        rx.recv().await.expect("Channel closed unexpectedly")
+    });
+    (ChannelSender { tx }, task)
+}
+
+/// Channel sender wrapper
+pub struct ChannelSender<T> {
+    tx: tokio::sync::mpsc::UnboundedSender<T>,
+}
+
+impl<T> ChannelSender<T> {
+    /// Finish the task by sending the result
+    pub fn finish(self, value: T) {
+        let _ = self.tx.send(value);
+    }
+}
+
 // Create async_task module for compatibility
 pub mod async_task {
     pub use super::{AsyncTask, spawn_async};

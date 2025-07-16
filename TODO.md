@@ -1,586 +1,173 @@
-# TODO: Fix ALL Warnings and Errors
-
-## Compilation Status
-- **46 ERRORS** 🚨
-- **5 WARNINGS** ⚠️  
-- **1 BUILD SCRIPT FAILURE** 💥
-
-## Provider Build Script Issues
-
-### 1. Fix provider build script YAML parsing error
-- **Error**: `Failed to parse YAML configuration: custom: expected sequence`
-- **Location**: `packages/provider/build.rs`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 2. QA: Rate the YAML parsing fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Warning Issues
-
-### 3. Remove unused AsyncStream import from completion.rs
-- **Warning**: `unused import: AsyncStream`
-- **Location**: `packages/domain/src/completion.rs:1:13`
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 4. QA: Rate the AsyncStream import removal (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 5. Remove unused AsyncStream import from embedding.rs
-- **Warning**: `unused import: AsyncStream`
-- **Location**: `packages/domain/src/embedding.rs:1:13`
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 6. QA: Rate the AsyncStream import removal (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 7. Remove unused AsyncStream import from loader.rs
-- **Warning**: `unused import: AsyncStream`
-- **Location**: `packages/domain/src/loader.rs:2:13`
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 8. QA: Rate the AsyncStream import removal (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 9. Remove unused Hasher import from model.rs
-- **Warning**: `unused import: Hasher`
-- **Location**: `packages/domain/src/model.rs:11:23`
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 10. QA: Rate the Hasher import removal (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Document.rs Result Handling Errors
-
-### 11. Fix AsyncTask result handling in document stream_chunks
-- **Error**: `no field data on type Result<document::Document, JoinError>`
-- **Location**: `packages/domain/src/document.rs:551:32`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 12. QA: Rate the AsyncTask result handling fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 13. Fix AsyncTask result handling in document stream_lines
-- **Error**: `no field data on type Result<document::Document, JoinError>`
-- **Location**: `packages/domain/src/document.rs:580:29`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 14. QA: Rate the AsyncTask result handling fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Agent.rs Type Binding and Method Errors
-
-### 15. Fix agent context trait binding for as_text method
-- **Error**: `no method named as_text found for type parameter C`
-- **Location**: `packages/domain/src/agent.rs:81:33`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 16. QA: Rate the trait binding fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 17. Fix ZeroOneOrMany push method in agent context (occurrence 1)
-- **Error**: `no method named push found for enum ZeroOneOrMany`
-- **Location**: `packages/domain/src/agent.rs:86:26`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 18. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 19. Fix ZeroOneOrMany push method in agent add_context (occurrence 2)
-- **Error**: `no method named push found for enum ZeroOneOrMany`
-- **Location**: `packages/domain/src/agent.rs:99:26`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 20. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 21. Fix ZeroOneOrMany push method in agent context_text (occurrence 3)
-- **Error**: `no method named push found for enum ZeroOneOrMany`
-- **Location**: `packages/domain/src/agent.rs:114:26`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 22. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 23. Fix ZeroOneOrMany push method in agent tool (occurrence 4)
-- **Error**: `no method named push found for enum ZeroOneOrMany`
-- **Location**: `packages/domain/src/agent.rs:126:20`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 24. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 25. Fix ambiguous numeric type bytes method call
-- **Error**: `can't call method bytes on ambiguous numeric type {integer}`
-- **Location**: `packages/domain/src/agent.rs:367:55`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 26. QA: Rate the numeric type fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 27. Fix AsyncTask::spawn method not found
-- **Error**: `no function or associated item named spawn found for struct tokio::task::JoinHandle`
-- **Location**: `packages/domain/src/agent.rs:429:20`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 28. QA: Rate the AsyncTask::spawn fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 29. Fix ZeroOneOrMany push method in ConversationBuilder system (occurrence 5)
-- **Error**: `no method named push found for enum ZeroOneOrMany`
-- **Location**: `packages/domain/src/agent.rs:452:23`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 30. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 31. Fix ZeroOneOrMany push method in ConversationBuilder user (occurrence 6)
-- **Error**: `no method named push found for enum ZeroOneOrMany`
-- **Location**: `packages/domain/src/agent.rs:457:23`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 32. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 33. Fix ZeroOneOrMany push method in ConversationBuilder assistant (occurrence 7)
-- **Error**: `no method named push found for enum ZeroOneOrMany`
-- **Location**: `packages/domain/src/agent.rs:462:23`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 34. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 35. Fix ZeroOneOrMany push method in ConversationBuilder message (occurrence 8)
-- **Error**: `no method named push found for enum ZeroOneOrMany`
-- **Location**: `packages/domain/src/agent.rs:467:23`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 36. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Agent Role.rs ZeroOneOrMany Push Errors
-
-### 37. Fix ZeroOneOrMany push method in agent_role servers (occurrence 9)
-- **Error**: `no method named push found for enum ZeroOneOrMany`
-- **Location**: `packages/domain/src/agent_role.rs:370:25`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 38. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 39. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 10)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:521:32`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 40. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 41. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 11)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:535:22`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 42. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 43. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 12)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:536:22`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 44. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 45. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 13)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:557:22`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 46. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 47. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 14)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:558:22`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 48. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 49. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 15)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:559:22`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 50. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 51. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 16)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:582:22`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 52. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 53. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 17)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:583:22`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 54. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 55. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 18)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:584:22`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 56. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 57. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 19)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:585:22`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 58. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 59. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 20)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:607:40`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 60. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 61. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 21)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:617:40`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 62. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 63. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 22)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:631:26`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 64. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 65. Fix ZeroOneOrMany push method in agent_role Any boxed types (occurrence 23)
-- **Error**: `no method named push found for mutable reference ZeroOneOrMany<Box<dyn Any>>`
-- **Location**: `packages/domain/src/agent_role.rs:632:26`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 66. QA: Rate the ZeroOneOrMany push fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Completion.rs Engine Type Mismatch
-
-### 67. Fix engine match pattern type mismatch
-- **Error**: `expected EngineConfig, found Option<_>`
-- **Location**: `packages/domain/src/completion.rs:325:17`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 68. QA: Rate the engine match fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 69. Fix engine match None pattern type mismatch
-- **Error**: `expected EngineConfig, found Option<_>`
-- **Location**: `packages/domain/src/completion.rs:340:17`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 70. QA: Rate the engine match None fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Embedding.rs Type Mismatch
-
-### 71. Fix embedding handler Result type mismatch
-- **Error**: `expected ZeroOneOrMany<f32>, found Result<ZeroOneOrMany<f32>, JoinError>`
-- **Location**: `packages/domain/src/embedding.rs:23:21`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 72. QA: Rate the embedding handler fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 73. Fix ZeroOneOrMany<f64> Default trait bound
-- **Error**: `the trait bound ZeroOneOrMany<f64>: Default is not satisfied`
-- **Location**: `packages/domain/src/embedding.rs:120:31`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 74. QA: Rate the Default trait bound fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Image.rs Return Type Mismatch
-
-### 75. Fix image process return type mismatch
-- **Error**: `expected AsyncStream<ImageChunk>, found opaque type`
-- **Location**: `packages/domain/src/image.rs:193:9`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 76. QA: Rate the image process return type fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Loader.rs Result Pattern Matching
-
-### 77. Fix loader results pattern matching (occurrence 1)
-- **Error**: `expected Result<ZeroOneOrMany<PathBuf>, JoinError>, found ZeroOneOrMany<_>`
-- **Location**: `packages/domain/src/loader.rs:153:17`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 78. QA: Rate the loader pattern matching fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 79. Fix loader results pattern matching (occurrence 2)
-- **Error**: `expected Result<ZeroOneOrMany<PathBuf>, JoinError>, found ZeroOneOrMany<_>`
-- **Location**: `packages/domain/src/loader.rs:154:17`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 80. QA: Rate the loader pattern matching fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 81. Fix loader results pattern matching (occurrence 3)
-- **Error**: `expected Result<ZeroOneOrMany<PathBuf>, JoinError>, found ZeroOneOrMany<_>`
-- **Location**: `packages/domain/src/loader.rs:155:17`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 82. QA: Rate the loader pattern matching fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 83. Fix loader items pattern matching (occurrence 4)
-- **Error**: `expected Result<ZeroOneOrMany<T>, JoinError>, found ZeroOneOrMany<_>`
-- **Location**: `packages/domain/src/loader.rs:393:17`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 84. QA: Rate the loader pattern matching fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 85. Fix loader items pattern matching (occurrence 5)
-- **Error**: `expected Result<ZeroOneOrMany<T>, JoinError>, found ZeroOneOrMany<_>`
-- **Location**: `packages/domain/src/loader.rs:394:17`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 86. QA: Rate the loader pattern matching fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 87. Fix loader items pattern matching (occurrence 6)
-- **Error**: `expected Result<ZeroOneOrMany<T>, JoinError>, found ZeroOneOrMany<_>`
-- **Location**: `packages/domain/src/loader.rs:395:17`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 88. QA: Rate the loader pattern matching fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Memory.rs Missing Clone Trait
-
-### 89. Fix MemoryRelationship missing Clone trait
-- **Error**: `the trait Clone is not implemented for MemoryRelationship`
-- **Location**: `packages/domain/src/memory.rs:133:5`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 90. QA: Rate the Clone trait fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Memory Workflow.rs VectorStoreError Trait Issues
-
-### 91. Fix VectorStoreError missing AsDynError trait
-- **Error**: `its trait bounds were not satisfied`
-- **Location**: `packages/domain/src/memory_workflow.rs:209:12`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 92. QA: Rate the AsDynError trait fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 93. Fix VectorStoreError missing Display trait
-- **Error**: `trait bounds were not satisfied VectorStoreError: std::fmt::Display`
-- **Location**: `packages/domain/src/memory_workflow.rs:208:13`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 94. QA: Rate the Display trait fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Model Info Provider.rs Missing Method
-
-### 95. Fix Models missing info method
-- **Error**: `no method named info found for reference &Models`
-- **Location**: `packages/domain/src/model_info_provider.rs:27:18`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 96. QA: Rate the Models info method fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Model.rs Lifetime Issues
-
-### 97. Fix model registry get method lifetime issues (occurrence 1)
-- **Error**: `lifetime may not live long enough`
-- **Location**: `packages/domain/src/model.rs:619:9`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 98. QA: Rate the lifetime fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 99. Fix model registry get method lifetime issues (occurrence 2)
-- **Error**: `lifetime may not live long enough`
-- **Location**: `packages/domain/src/model.rs:619:9`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 100. QA: Rate the lifetime fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 101. Fix model registry get_provider_models lifetime issues
-- **Error**: `lifetime may not live long enough`
-- **Location**: `packages/domain/src/model.rs:625:9`
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 102. QA: Rate the lifetime fix (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-## Final Tasks
-
-### 103. Run final cargo check for zero errors and warnings
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 104. QA: Rate the final verification (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
-
-### 105. Test basic functionality end-to-end
-- **Priority**: HIGH
-- **Status**: PENDING
-
-### 106. QA: Rate the functionality test (1-10)
-- **Priority**: MEDIUM
-- **Status**: PENDING
+# Updated TODO.md - Clean Streaming Completion Architecture
+
+## OBJECTIVE
+Achieve 0 compilation errors and 0 warnings by implementing clean, elegant streaming completions using cyrup_sugars typestate builders, ModelInfo defaults, and fluent_ai_http3.
+
+## ARCHITECTURE NOTES
+- **Clean Syntax**: `client.completion_model("gpt-4").system_prompt("You are helpful").temperature(0.8).prompt("Hello")` 
+- **ModelInfo Defaults**: ALL properties (max_tokens, temperature, system_prompt, etc.) default from enumerations
+- **Terminal Action**: `.prompt()` is the action method that returns unwrapped AsyncStream<CompletionChunk>
+- **Optional Callbacks**: `.on_chunk()` is optional with env_logger defaults
+- **HTTP3 Direct**: Use fluent_ai_http3 directly, no wrappers
+- **Streaming First**: AsyncStream<CompletionChunk> with .collect() option
+- **Complete Parameters**: system_prompt, chat_history, documents, tools, temperature, max_tokens, top_p, etc.
 
 ---
 
-## Summary
-**Total Items**: 106
-**High Priority**: 52
-**Medium Priority**: 54
-**Pending**: 106
-**Completed**: 0
+## Phase 1: ModelInfo Integration & Defaults
 
-## Key Patterns
-1. **ZeroOneOrMany missing push method** - 24 occurrences 😱
-2. **AsyncTask Result<T, JoinError> handling** - 9 occurrences 
-3. **Missing trait implementations** - 8 occurrences
-4. **Lifetime annotation issues** - 3 occurrences
-5. **Type mismatch in pattern matching** - 8 occurrences
-6. **Unused imports** - 4 occurrences
-7. **Build script YAML parsing** - 1 occurrence
+### 1. Implement ModelInfo Default Loading System
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/model_info.rs`
+**Lines**: Add method to load defaults from model enumerations
+**Implementation**: Create `ModelInfo::load_defaults(model: &str) -> ModelConfig` that reads max_tokens, temperature, top_p, default_system_prompt from generated model enumerations. Use domain ModelInfoData structure.
+**Architecture**: Centralized configuration loading from dynamically generated enumerations ensures consistent defaults across all providers.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-The architecture shows a clean separation:
-- `domain/` - Core domain logic and types
-- `provider/` - Generated model providers with build script
-- `http3/` - HTTP/3 client implementation
-- `fluent-ai/` - Main library implementation
+### 2. QA: Validate ModelInfo Default System
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify ModelInfo correctly loads defaults from enumerations. Rate default loading implementation quality 1-10. Ensure no unwrap() usage.
 
-The biggest issue is the missing `push` method on `ZeroOneOrMany` which appears 24 times! 🤯
+---
+
+## Phase 2: OpenAI Reference Implementation
+
+### 3. Implement Clean OpenAI CompletionBuilder
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/openai/completion.rs`
+**Lines**: Replace entire file content (lines 1-end)
+**Implementation**: 
+- Create `OpenAICompletionBuilder<State>` with typestate: `NeedsPrompt` → `Ready`
+- Implement `.completion_model(model: &str)` that loads ModelInfo defaults
+- Add optional methods with ModelInfo defaults:
+  - `.system_prompt(prompt: &str)` - override default system prompt
+  - `.temperature(temp: f64)` - override default temperature
+  - `.max_tokens(tokens: u32)` - override default max_tokens
+  - `.top_p(p: f64)` - override default top_p
+  - `.frequency_penalty(penalty: f64)` - override default
+  - `.presence_penalty(penalty: f64)` - override default
+  - `.chat_history(history: Vec<Message>)` - add conversation context
+  - `.documents(docs: Vec<Document>)` - add RAG context
+  - `.tools(tools: Vec<ToolDefinition>)` - add function calling
+  - `.additional_params(params: Value)` - provider-specific overrides
+- Add optional `.on_chunk<F>(callback: F)` that captures user callback
+- Implement terminal `.prompt(text: &str) -> AsyncStream<CompletionChunk>`
+- Use fluent_ai_http3::HttpClient directly for streaming SSE responses
+- Parse OpenAI SSE into CompletionChunk format with no unwrap()
+- Default .on_chunk() behavior: Ok(chunk) → chunk.into(), Err(e) → env_logger + BadChunk::from_err(e)
+**Architecture**: Reference implementation demonstrating clean syntax with complete parameter support and ModelInfo defaults.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 4. QA: Validate OpenAI Clean Implementation
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify clean syntax works: `client.completion_model("gpt-4").system_prompt("Be helpful").prompt("Hello")`. Rate streaming implementation and parameter support 1-10. Ensure no unwrap() usage.
+
+### 5. Update OpenAI Client Factory Methods
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/openai/client.rs`
+**Lines**: Update client creation and model factory methods
+**Implementation**: 
+- Update `Client::new()` to use fluent_ai_http3::HttpClient with HttpConfig::ai_optimized()
+- Implement `completion_model(model: &str) -> OpenAICompletionBuilder<NeedsPrompt>`
+- Load ModelInfo defaults in completion_model() method
+- Add proper error handling for authentication without unwrap()
+**Architecture**: Client provides clean factory methods that return builders with ModelInfo defaults loaded.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 6. QA: Validate OpenAI Client Integration
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify client factory methods work with clean syntax. Rate ModelInfo integration and error handling 1-10.
+
+---
+
+## Phase 3: Pattern Replication
+
+### 7. Implement HuggingFace Clean CompletionBuilder
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/huggingface/completion.rs`
+**Lines**: Replace all existing completion logic (lines 1-end)
+**Implementation**: Apply exact same clean pattern as OpenAI: typestate builder with full parameter support (system_prompt, temperature, max_tokens, chat_history, documents, tools, etc.), ModelInfo defaults, optional .on_chunk(), terminal .prompt(), fluent_ai_http3 streaming. Parse HuggingFace responses into CompletionChunk format.
+**Architecture**: Identical clean syntax across all providers with provider-specific streaming response parsing.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 8. QA: Validate HuggingFace Clean Implementation
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify HuggingFace follows OpenAI pattern exactly with clean syntax and full parameter support. Rate consistency and streaming quality 1-10.
+
+### 9. Implement DeepSeek Clean CompletionBuilder
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/deepseek/completion.rs`
+**Lines**: Replace all completion logic (lines 1-end)
+**Implementation**: Apply clean pattern with ModelInfo defaults and full parameter support (system_prompt, chat_history, documents, tools, temperature, max_tokens, etc.). Fix all type resolution errors by using fluent_ai_domain types. Replace DeepSeekCompletionModel with clean builder pattern. Use fluent_ai_http3 for streaming.
+**Architecture**: Clean syntax with DeepSeek-specific API format adaptation and complete parameter support.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 10. QA: Validate DeepSeek Clean Implementation
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify DeepSeek resolves type errors and implements clean streaming syntax with full parameter support. Rate type safety and consistency 1-10.
+
+### 11. Implement All Remaining Provider Clean Builders
+**Files**: 
+- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
+- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/gemini/completion.rs`
+- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/groq/completion.rs`
+- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/mistral/completion.rs`
+- All other client completion modules
+**Implementation**: Apply identical clean pattern to all remaining providers: ModelInfo defaults, full parameter support (system_prompt, temperature, max_tokens, chat_history, documents, tools, top_p, frequency_penalty, presence_penalty, additional_params), optional .on_chunk(), terminal .prompt(), fluent_ai_http3 streaming, provider-specific response parsing.
+**Architecture**: Consistent clean syntax with complete parameter support across entire provider ecosystem.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 12. QA: Validate All Provider Clean Implementations
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify all providers consistently implement clean syntax with ModelInfo defaults and full parameter support. Rate pattern consistency 1-10.
+
+---
+
+## Phase 4: Integration & Validation
+
+### 13. Re-enable Client Factory with Clean Patterns
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/client_factory.rs`
+**Lines**: Uncomment and update entire module
+**Implementation**: Update factory to create clients that support clean completion_model() syntax with full parameter support. Use AsyncTask patterns. Map Provider enum variants to client instances with ModelInfo integration.
+**Architecture**: Factory creates clients with consistent clean completion builder interface supporting all parameters.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 14. QA: Validate Client Factory Clean Integration
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify factory produces clients with clean syntax support and full parameter capabilities. Rate factory implementation quality 1-10.
+
+### 15. Fix All Import Statements for Clean Architecture
+**Files**: All client modules and lib.rs
+**Implementation**: Ensure all imports reference fluent_ai_domain for types (Message, Document, ToolDefinition, etc.). Update client trait definitions to support clean completion_model() methods with full parameter support. Remove any remaining provider-local domain types.
+**Architecture**: Clean separation with proper imports supporting clean completion syntax and all parameters.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 16. QA: Validate Clean Import Architecture
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify imports support clean completion syntax with full parameters. Rate import organization and architecture 1-10.
+
+### 17. Comprehensive Compilation Validation
+**Command**: `cargo check --workspace`
+**Implementation**: Verify zero compilation errors with clean syntax implementation and full parameter support. Fix any remaining type issues, import problems, or trait mismatches. Ensure ModelInfo defaults work correctly for all parameters.
+**Architecture**: Complete clean syntax architecture with full parameter support compiles successfully.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 18. QA: Validate Zero Compilation Errors
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify cargo check returns completely clean build with clean syntax and full parameter support. Rate compilation success 1-10.
+
+### 19. Eliminate All 47 Warnings
+**Implementation**: Address remaining warnings while preserving clean syntax functionality and full parameter support. Remove unused imports, dead code, missing docs. Ensure warning-free build with clean completion interface.
+**Architecture**: Production-quality clean syntax implementation with full parameters and zero warnings.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 20. QA: Validate Zero Warnings Achievement
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify all warnings eliminated while maintaining clean syntax and full parameter support. Rate warning resolution quality 1-10.
+
+### 21. End-to-End Clean Syntax Validation
+**Implementation**: Create test demonstrating clean syntax with full parameters: `client.completion_model("gpt-4").system_prompt("You are helpful").temperature(0.8).chat_history(messages).documents(docs).tools(tools).prompt("Hello")`. Verify ModelInfo defaults load correctly for all parameters. Test streaming with optional .on_chunk(). Validate .collect() functionality.
+**Architecture**: Complete clean syntax streaming architecture with full parameter support working end-to-end.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 22. QA: Validate End-to-End Clean Functionality
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify clean syntax works end-to-end with ModelInfo defaults, full parameter support, and streaming. Rate system quality 1-10.
+
+---
+
+## SUCCESS CRITERIA
+- [ ] Clean syntax works: `client.completion_model("gpt-4").system_prompt("Be helpful").prompt("Hello")`
+- [ ] All parameters supported: system_prompt, temperature, max_tokens, chat_history, documents, tools, top_p, frequency_penalty, presence_penalty, additional_params
+- [ ] All properties default from ModelInfo enumerations
+- [ ] .on_chunk() is optional with env_logger defaults
+- [ ] .prompt() is terminal action returning unwrapped AsyncStream<CompletionChunk>
+- [ ] All HTTP operations use fluent_ai_http3 directly
+- [ ] `cargo check --workspace` returns 0 errors, 0 warnings
+- [ ] Zero unwrap()/expect() in src/* code
+- [ ] AsyncTask patterns throughout
+- [ ] End-to-end streaming functionality with clean syntax and full parameter support

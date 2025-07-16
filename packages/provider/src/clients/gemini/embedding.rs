@@ -7,7 +7,7 @@ use serde_json::json;
 
 use crate::embeddings::{self, EmbeddingError};
 
-use super::{client_old, Client};
+use super::{ApiResponse, Client};
 
 /// `embedding-001` embedding model
 pub const EMBEDDING_001: &str = "embedding-001";
@@ -75,11 +75,11 @@ impl embeddings::EmbeddingModel for EmbeddingModel {
             .send()
             .await?
             .error_for_status()?
-            .json::<client_old::ApiResponse<gemini_api_types::EmbeddingResponse>>()
+            .json::<ApiResponse<gemini_api_types::EmbeddingResponse>>()
             .await?;
 
         match response {
-            client_old::ApiResponse::Ok(response) => {
+            ApiResponse::Ok(response) => {
                 let docs = documents
                     .into_iter()
                     .zip(response.embeddings)
@@ -91,7 +91,7 @@ impl embeddings::EmbeddingModel for EmbeddingModel {
 
                 Ok(docs)
             }
-            client_old::ApiResponse::Err(err) => Err(EmbeddingError::ProviderError(err.message)),
+            ApiResponse::Err(err) => Err(EmbeddingError::ProviderError(err.message)),
         }
     }
 }
@@ -105,7 +105,7 @@ mod gemini_api_types {
     use serde::{Deserialize, Serialize};
     use serde_json::Value;
 
-    use crate::providers::gemini::gemini_api_types::{CodeExecutionResult, ExecutableCode};
+    // Removed problematic import - will use qualified paths if needed
 
     #[derive(Serialize)]
     #[serde(rename_all = "camelCase")]

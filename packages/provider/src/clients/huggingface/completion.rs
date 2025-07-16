@@ -3,14 +3,13 @@ use serde_json::{json, Value};
 use std::{convert::Infallible, str::FromStr};
 
 use super::client::Client;
-use crate::providers::openai::StreamingCompletionResponse;
-use crate::{
-    completion::{self, CompletionError, CompletionRequest},
-    json_util,
-    message::{self},
-    one_or_many::string_or_one_or_many,
+use crate::clients::openai::StreamingCompletionResponse;
+use fluent_ai_domain::{
+    completion::{CompletionRequest, ToolDefinition as DomainToolDefinition},
+    message::{self, Message, AssistantContent, MessageError, ToolCall, ToolFunction, UserContent, Text},
     OneOrMany,
 };
+use crate::json_util;
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
@@ -222,11 +221,11 @@ impl TryFrom<message::UserContent> for UserContent {
 #[serde(tag = "role", rename_all = "lowercase")]
 pub enum Message {
     System {
-        #[serde(deserialize_with = "string_or_one_or_many")]
+        #[serde(deserialize_with = "crate::util::string_or_one_or_many")]
         content: OneOrMany<SystemContent>,
     },
     User {
-        #[serde(deserialize_with = "string_or_one_or_many")]
+        #[serde(deserialize_with = "crate::util::string_or_one_or_many")]
         content: OneOrMany<UserContent>,
     },
     Assistant {
@@ -240,7 +239,7 @@ pub enum Message {
         name: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         arguments: Option<serde_json::Value>,
-        #[serde(deserialize_with = "string_or_one_or_many")]
+        #[serde(deserialize_with = "crate::util::string_or_one_or_many")]
         content: OneOrMany<String>,
     },
 }
@@ -425,55 +424,36 @@ where
     }
 }
 
-impl TryFrom<CompletionResponse> for completion::CompletionResponse {
-    type Error = CompletionError;
+// Simple response wrapper for provider clients
+#[derive(Debug, Clone)]
+pub struct ProviderCompletionResponse {
+    pub content: String,
+    pub raw: CompletionResponse,
+}
+
+impl TryFrom<CompletionResponse> for ProviderCompletionResponse {
+    type Error = String;
 
     fn try_from(response: CompletionResponse) -> Result<Self, Self::Error> {
         let choice = response.choices.first().ok_or_else(|| {
-            CompletionError::ResponseError("Response contained no choices".to_owned())
+            "Response contained no choices".to_string()
         })?;
 
         let content = match &choice.message {
-            Message::Assistant {
-                content,
-                tool_calls,
-                ..
-            } => {
-                let mut content = content
+            Message::Assistant { content, .. } => {
+                content
                     .iter()
-                    .map(|c| match c {
-                        AssistantContent::Text { text } => message::AssistantContent::text(text),
+                    .find_map(|c| match c {
+                        AssistantContent::Text { text } => Some(text.clone()),
                     })
-                    .collect::<Vec<_>>();
-
-                content.extend(
-                    tool_calls
-                        .iter()
-                        .map(|call| {
-                            completion::AssistantContent::tool_call(
-                                &call.id,
-                                &call.function.name,
-                                call.function.arguments.clone(),
-                            )
-                        })
-                        .collect::<Vec<_>>(),
-                );
-                Ok(content)
+                    .unwrap_or_default()
             }
-            _ => Err(CompletionError::ResponseError(
-                "Response did not contain a valid message or tool call".into(),
-            )),
-        }?;
+            _ => return Err("Response did not contain assistant message".to_string()),
+        };
 
-        let choice = OneOrMany::many(content).map_err(|_| {
-            CompletionError::ResponseError(
-                "Response contained no message or tool call (empty)".to_owned(),
-            )
-        })?;
-
-        Ok(completion::CompletionResponse {
-            choice,
-            raw_response: response,
+        Ok(ProviderCompletionResponse {
+            content,
+            raw: response,
         })
     }
 }

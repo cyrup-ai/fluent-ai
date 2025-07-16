@@ -11,7 +11,7 @@ use crate::{
     completion::{
         self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
     },
-    embeddings::{Embed, EmbeddingsBuilder},
+    embeddings::{Embedding, EmbeddingBuilder},
     http::{HttpClient, HttpError},
     json_util,
     message::Message,
@@ -90,8 +90,8 @@ impl Client {
     }
 
     /// Create an embeddings builder for the given model.
-    pub fn embeddings<D: Embed>(&self, model: &str) -> EmbeddingsBuilder<EmbeddingModel, D> {
-        EmbeddingsBuilder::new(self.embedding_model(model))
+    pub fn embeddings<D: Embed>(&self, model: &str) -> EmbeddingBuilder<EmbeddingModel, D> {
+        EmbeddingBuilder::new(self.embedding_model(model))
     }
 
     /// Create a transcription model with the given name.

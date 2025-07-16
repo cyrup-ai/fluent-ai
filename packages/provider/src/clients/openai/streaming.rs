@@ -3,10 +3,10 @@
 //! Provides blazing-fast real-time streaming for OpenAI chat completions, function calls,
 //! and tool use with comprehensive SSE parsing and no unsafe operations.
 
-use crate::async_task::AsyncStream;
+use crate::AsyncStream;
 use crate::domain::chunk::CompletionChunk;
-use crate::providers::openai::{OpenAIError, OpenAIResult, OpenAIMessage};
-use crate::providers::openai::tools::{
+use super::{OpenAIError, OpenAIResult, OpenAIMessage};
+use super::tools::{
     OpenAIToolCall as ToolsOpenAIToolCall, 
     OpenAIFunctionCall as ToolsOpenAIFunctionCall
 };

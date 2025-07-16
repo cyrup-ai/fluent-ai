@@ -30,9 +30,7 @@ pub mod error;
 
 // Explicit re-exports to avoid ambiguity
 pub use client::{
-    OpenAIClient, OpenAIClientBuilder, OpenAICompletionBuilder, 
-    OpenAIVisionBuilder, OpenAIAudioBuilder, OpenAIEmbeddingBuilder,
-    OpenAIModerationBuilder
+    OpenAIClient, OpenAIClientConfig
 };
 
 pub use completion::{

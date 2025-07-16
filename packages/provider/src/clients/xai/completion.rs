@@ -6,13 +6,13 @@
 use crate::{
     completion::{self, CompletionError},
     json_util,
-    providers::openai::Message,
+    clients::openai::Message,
 };
 
-use crate::providers::anthropic::ApiResponse;
+use crate::clients::anthropic::ApiResponse;
 use super::client::Client;
 use crate::completion::CompletionRequest;
-use crate::providers::openai;
+use crate::clients::openai;
 use crate::streaming::StreamingCompletionResponse;
 use serde_json::{json, Value};
 use xai_api_types::{CompletionResponse, ToolDefinition};
@@ -144,7 +144,7 @@ pub mod xai_api_types {
     use serde::{Deserialize, Serialize};
 
     use crate::completion::{self, CompletionError};
-    use crate::providers::openai::{AssistantContent, Message};
+    use crate::clients::openai::{AssistantContent, Message};
     use crate::OneOrMany;
 
     impl TryFrom<CompletionResponse> for completion::CompletionResponse {

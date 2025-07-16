@@ -3,15 +3,14 @@
 //! Production-ready completion provider supporting all Claude models, tool calling,
 //! document attachments, and advanced API features with optimal performance.
 
-use crate::async_task::AsyncTask;
-use crate::domain::completion::{CompletionBackend, CompletionRequest, ToolDefinition};
-use crate::util::json_util::{merge_inplace, to_compact_string};
-use crate::providers::anthropic::{
+use fluent_ai_domain::{AsyncTask, spawn_async};
+use fluent_ai_domain::completion::{CompletionBackend, CompletionRequest, ToolDefinition};
+use fluent_ai_http3::{HttpClient, HttpRequest, HttpError};
+use super::{
     AnthropicError, AnthropicResult, Message, MessageConverter, Tool,
-    handle_http_error, handle_reqwest_error, handle_json_error,
+    handle_json_error, handle_http_error, handle_reqwest_error,
 };
-use fluent_ai_provider::Models;
-use reqwest::Client;
+use crate::Models;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -20,7 +19,7 @@ use std::time::Duration;
 /// Production-ready Anthropic completion provider
 #[derive(Clone)]
 pub struct AnthropicProvider {
-    client: Client,
+    client: HttpClient,
     api_key: String,
     base_url: String,
     default_model: Models,
@@ -107,11 +106,9 @@ impl AnthropicProvider {
     /// Create new Anthropic provider with API key
     #[inline(always)]
     pub fn new(api_key: impl Into<String>) -> AnthropicResult<Self> {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(120))
-            .user_agent("fluent-ai/1.0")
-            .build()
-            .map_err(handle_reqwest_error)?;
+        let client = HttpClient::with_config(
+            fluent_ai_http3::HttpConfig::ai_optimized()
+        ).map_err(super::error::handle_http3_error)?;
 
         Ok(Self {
             client,
@@ -281,29 +278,33 @@ impl AnthropicProvider {
         
         let request_body = to_compact_string(&request_json);
         
+        // Build HTTP3 request
+        let http3_request = fluent_ai_http3::HttpRequest::builder()
+            .method("POST")
+            .url(&url)
+            .header("Content-Type", "application/json")
+            .header("x-api-key", &self.api_key)
+            .header("anthropic-version", "2023-06-01")
+            .body(request_body.clone())
+            .timeout(self.request_timeout)
+            .build()
+            .map_err(super::error::handle_http3_error)?;
+
         // Make HTTP request with retries
         let mut last_error = None;
         for attempt in 0..=self.max_retries {
-            let response = self.client
-                .post(&url)
-                .header("Content-Type", "application/json")
-                .header("x-api-key", &self.api_key)
-                .header("anthropic-version", "2023-06-01")
-                .timeout(self.request_timeout)
-                .body(request_body.clone())
-                .send()
-                .await;
+            let response = self.client.send(http3_request.clone()).await;
             
             match response {
                 Ok(resp) => {
-                    let status = resp.status();
-                    let body = resp.text().await.map_err(handle_reqwest_error)?;
+                    let status = resp.status_code();
+                    let body = resp.text().await.map_err(super::error::handle_http3_error)?;
                     
-                    if status.is_success() {
+                    if status >= 200 && status < 300 {
                         return serde_json::from_str(&body)
-                            .map_err(handle_json_error);
+                            .map_err(super::error::handle_json_error);
                     } else {
-                        let error = handle_http_error(status.as_u16(), &body);
+                        let error = super::error::handle_http_error(status, &body);
                         
                         // Retry on rate limits and server errors
                         if matches!(error, AnthropicError::RateLimited { .. }) ||
@@ -320,7 +321,7 @@ impl AnthropicProvider {
                     }
                 }
                 Err(e) => {
-                    let error = handle_reqwest_error(e);
+                    let error = super::error::handle_http3_error(e);
                     
                     // Retry on network errors
                     if matches!(error, AnthropicError::NetworkError(..)) && attempt < self.max_retries {
@@ -371,12 +372,12 @@ impl CompletionBackend for AnthropicProvider {
         let prompt = prompt.to_string();
         let tools = tools.to_vec();
         
-        crate::async_task::spawn_async(async move {
+        crate::runtime::spawn_async(async move {
             // Convert simple prompt to CompletionRequest format
             let completion_request = CompletionRequest {
                 system_prompt: String::new(),
                 chat_history: crate::ZeroOneOrMany::One(
-                    crate::domain::Message::user(prompt)
+                    crate::message::Message::user(prompt)
                 ),
                 documents: crate::ZeroOneOrMany::None,
                 tools: if tools.is_empty() {
@@ -424,4 +425,25 @@ pub fn with_model(api_key: impl Into<String>, model: Models) -> AnthropicResult<
     let mut provider = AnthropicProvider::new(api_key)?;
     provider.default_model = model;
     Ok(provider)
+}
+
+/// Utility function to merge JSON values in place
+#[inline(always)]
+fn merge_inplace(base: &mut Value, other: Value) {
+    match (base, other) {
+        (Value::Object(base_map), Value::Object(other_map)) => {
+            for (key, value) in other_map {
+                base_map.insert(key, value);
+            }
+        }
+        (base_value, other_value) => {
+            *base_value = other_value;
+        }
+    }
+}
+
+/// Utility function to convert JSON value to compact string
+#[inline(always)]
+fn to_compact_string(value: &Value) -> String {
+    serde_json::to_string(value).unwrap_or_else(|_| "{}".to_string())
 }

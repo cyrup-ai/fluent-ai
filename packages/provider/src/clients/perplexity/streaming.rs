@@ -5,4 +5,4 @@
 // ============================================================================
 
 // Perplexity uses OpenAI-compatible streaming, so we re-export that
-pub use crate::providers::openai::StreamingCompletionResponse;
+pub use crate::clients::openai::StreamingCompletionResponse;

@@ -156,7 +156,7 @@ impl TryFrom<message::Message> for GroqMessage {
 // ============================================================================
 // Completion Response (reuse OpenAI format)
 // ============================================================================
-pub use crate::providers::openai::CompletionResponse;
+pub use crate::clients::openai::CompletionResponse;
 
 // ============================================================================
 // Completion Model

@@ -3,13 +3,13 @@
 //! Provides real-time streaming with tool calling, proper SSE handling,
 //! and efficient chunk processing with minimal memory allocation using HTTP3 client.
 
-use crate::async_task::AsyncStream;
+use crate::runtime::AsyncStream;
 use crate::domain::chunk::CompletionChunk;
-use crate::providers::anthropic::{
+use super::{
     AnthropicResult, AnthropicCompletionRequest,
     handle_json_error,
 };
-use crate::providers::anthropic::messages::ContentBlock;
+use super::messages::ContentBlock;
 use futures_util::{Stream, StreamExt};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
 use serde::{Deserialize, Serialize};

@@ -4,7 +4,7 @@
 //! with support for text, images, audio, tool calls, and function calls.
 
 use crate::domain::{Message as DomainMessage, MessageRole};
-use crate::providers::openai::{OpenAIError, OpenAIResult};
+use super::{OpenAIError, OpenAIResult};
 use crate::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
 use base64::Engine;

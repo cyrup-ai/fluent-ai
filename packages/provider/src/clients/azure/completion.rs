@@ -11,11 +11,11 @@ use crate::{
     completion::{
         self, CompletionError, StreamingCompletionResponse as RigStreaming,
     },
-    client::completion::CompletionRequest,
-    util::json_util::{self, merge},
-    domain::message::{self, MessageError},
+    completion::CompletionRequest,
+    json_util::{self, merge},
+    message::{self, MessageError},
     OneOrMany,
-    providers::openai::{self, send_compatible_streaming_request, TranscriptionResponse},
+    clients::openai::{self, send_compatible_streaming_request, TranscriptionResponse},
     runtime::{self as rt, AsyncTask},
     streaming::StreamingCompletionResponse,
 };
@@ -68,7 +68,7 @@ enum ApiResponse<T> {
 
 /* ───────────────────────────── provider model ──────────────────────────── */
 
-pub use fluent_ai_provider::Models as CompletionModel;
+pub use crate::Models as CompletionModel;
 
 impl CompletionModel {
     #[inline(always)]

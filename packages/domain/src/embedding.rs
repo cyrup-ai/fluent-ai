@@ -21,7 +21,7 @@ pub trait EmbeddingModel: Send + Sync + Clone {
         crate::async_task::spawn_async(async move {
             let embedding = match embed_task.await {
                 Ok(embedding) => embedding,
-                Err(_) => return ZeroOneOrMany::None, // Handle JoinError
+                Err(_) => ZeroOneOrMany::None, // Handle JoinError properly
             };
             handler(embedding)
         })

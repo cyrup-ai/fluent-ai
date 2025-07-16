@@ -50,7 +50,7 @@ impl PooledHttpClient {
         // Increment request counter atomically
         let request_id = self.request_count.fetch_add(1, Ordering::Relaxed);
         
-        // Build request with conditional headers
+        // Build request with conditional headers using the correct API
         let mut request = self.client.get(url);
         
         // Add caching headers if available
@@ -76,8 +76,8 @@ impl PooledHttpClient {
         
         // Process response
         let status = response.status();
-        let etag = response.etag().cloned();
-        let last_modified = response.last_modified().cloned();
+        let etag = response.headers().get("etag").map(|s| s.to_string());
+        let last_modified = response.headers().get("last-modified").map(|s| s.to_string());
         
         if status.as_u16() == 304 {
             return Ok(HttpResponse::NotModified);

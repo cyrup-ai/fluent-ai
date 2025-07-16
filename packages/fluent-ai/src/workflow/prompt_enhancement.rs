@@ -87,46 +87,56 @@ pub enum ReviewRole {
 }
 
 impl ReviewRole {
-    /// Get string identifier (zero allocation for most cases)
+    /// Get static string identifier (zero allocation)
     #[inline(always)]
-    pub fn as_str(self) -> String {
+    pub const fn as_str_static(self) -> &'static str {
         match self {
-            Self::AccuracyChecker => "accuracy_checker".to_string(),
-            Self::ClarityReviewer => "clarity_reviewer".to_string(),
-            Self::LogicValidator => "logic_validator".to_string(),
-            Self::StyleEnhancer => "style_enhancer".to_string(),
-            Self::CompletenessChecker => "completeness_checker".to_string(),
-            Self::ConsistencyValidator => "consistency_validator".to_string(),
-            Self::CreativityEnhancer => "creativity_enhancer".to_string(),
-            Self::TechnicalValidator => "technical_validator".to_string(),
-            Self::CrossReviewer { reviewer_model, target_model } => {
-                format!("cross_review_{}_{}", reviewer_model.name(), target_model.name())
-            }
+            Self::AccuracyChecker => "accuracy_checker",
+            Self::ClarityReviewer => "clarity_reviewer",
+            Self::LogicValidator => "logic_validator",
+            Self::StyleEnhancer => "style_enhancer",
+            Self::CompletenessChecker => "completeness_checker",
+            Self::ConsistencyValidator => "consistency_validator",
+            Self::CreativityEnhancer => "creativity_enhancer",
+            Self::TechnicalValidator => "technical_validator",
+            Self::CrossReviewer { .. } => "cross_reviewer",
         }
     }
 
-    /// Get system prompt for role (zero allocation for most cases)
+    /// Get static system prompt for role (zero allocation for standard roles)
     #[inline(always)]
-    pub fn system_prompt(self) -> String {
+    pub const fn system_prompt_static(self) -> &'static str {
         match self {
-            Self::AccuracyChecker => "You are an expert accuracy checker. Focus on factual correctness, logical consistency, and technical precision. Provide specific feedback on any inaccuracies.".to_string(),
-            Self::ClarityReviewer => "You are an expert clarity reviewer. Focus on clear communication, user experience, and actionable language. Improve readability and comprehension.".to_string(),
-            Self::LogicValidator => "You are an expert logic validator. Focus on reasoning chains, argument structure, and logical flow. Identify gaps in reasoning.".to_string(),
-            Self::StyleEnhancer => "You are an expert style enhancer. Focus on writing quality, tone consistency, and engaging presentation. Improve stylistic elements.".to_string(),
-            Self::CompletenessChecker => "You are an expert completeness checker. Focus on thoroughness, missing elements, and comprehensive coverage. Identify what's missing.".to_string(),
-            Self::ConsistencyValidator => "You are an expert consistency validator. Focus on internal consistency, coherent messaging, and unified approach. Eliminate contradictions.".to_string(),
-            Self::CreativityEnhancer => "You are an expert creativity enhancer. Focus on innovative approaches, engaging elements, and creative solutions. Suggest creative improvements.".to_string(),
-            Self::TechnicalValidator => "You are an expert technical validator. Focus on technical accuracy, implementation feasibility, and best practices. Validate technical content.".to_string(),
-            Self::CrossReviewer { reviewer_model, target_model } => {
-                format!("You are {} reviewing {}'s response. Be thorough and constructive. Focus on accuracy, clarity, completeness, and overall quality. Provide specific feedback on how the response could be improved.", 
-                    reviewer_model.name(), target_model.name())
-            }
+            Self::AccuracyChecker => "You are an expert accuracy checker. Focus on factual correctness, logical consistency, and technical precision. Provide specific feedback on any inaccuracies.",
+            Self::ClarityReviewer => "You are an expert clarity reviewer. Focus on clear communication, user experience, and actionable language. Improve readability and comprehension.",
+            Self::LogicValidator => "You are an expert logic validator. Focus on reasoning chains, argument structure, and logical flow. Identify gaps in reasoning.",
+            Self::StyleEnhancer => "You are an expert style enhancer. Focus on writing quality, tone consistency, and engaging presentation. Improve stylistic elements.",
+            Self::CompletenessChecker => "You are an expert completeness checker. Focus on thoroughness, missing elements, and comprehensive coverage. Identify what's missing.",
+            Self::ConsistencyValidator => "You are an expert consistency validator. Focus on internal consistency, coherent messaging, and unified approach. Eliminate contradictions.",
+            Self::CreativityEnhancer => "You are an expert creativity enhancer. Focus on innovative approaches, engaging elements, and creative solutions. Suggest creative improvements.",
+            Self::TechnicalValidator => "You are an expert technical validator. Focus on technical accuracy, implementation feasibility, and best practices. Validate technical content.",
+            Self::CrossReviewer { .. } => "You are reviewing another AI model's response. Be thorough and constructive. Focus on accuracy, clarity, completeness, and overall quality.",
         }
+    }
+
+    /// Get reviewer and target model names for cross-reviewer (minimal allocation)
+    #[inline(always)]
+    pub fn get_cross_review_models(self) -> Option<(Models, Models)> {
+        match self {
+            Self::CrossReviewer { reviewer_model, target_model } => Some((reviewer_model, target_model)),
+            _ => None,
+        }
+    }
+
+    /// Check if this is a cross-reviewer role
+    #[inline(always)]
+    pub const fn is_cross_reviewer(self) -> bool {
+        matches!(self, Self::CrossReviewer { .. })
     }
 
     /// Get preferred model for this role (optimized selection)
     #[inline(always)]
-    pub fn preferred_model(self) -> Models {
+    pub const fn preferred_model(self) -> Models {
         match self {
             Self::AccuracyChecker | Self::LogicValidator => Models::AnthropicClaude35Sonnet,
             Self::ClarityReviewer | Self::StyleEnhancer => Models::Gpt4O,
@@ -150,6 +160,12 @@ impl ReviewRole {
             Self::CreativityEnhancer,
             Self::TechnicalValidator,
         ]
+    }
+
+    /// Create cross-reviewer role (only allocation point)
+    #[inline(always)]
+    pub const fn cross_reviewer(reviewer_model: Models, target_model: Models) -> Self {
+        Self::CrossReviewer { reviewer_model, target_model }
     }
 }
 
@@ -509,7 +525,219 @@ impl EnhancedPrompt {
     pub fn reviews_by_role(&self, role: ReviewRole) -> impl Iterator<Item = &IndividualReview> {
         self.review_scores.iter().filter(move |r| r.role == role)
     }
+    
+    /// Get cross-reviews for a specific target model
+    #[inline]
+    pub fn cross_reviews_for_target(&self, target_model: Models) -> impl Iterator<Item = &IndividualReview> {
+        self.review_scores.iter().filter(move |r| {
+            if let Some((_, target)) = r.role().get_cross_review_models() {
+                target == target_model
+            } else {
+                false
+            }
+        })
+    }
+    
+    /// Get cross-reviews by a specific reviewer model
+    #[inline]
+    pub fn cross_reviews_by_reviewer(&self, reviewer_model: Models) -> impl Iterator<Item = &IndividualReview> {
+        self.review_scores.iter().filter(move |r| {
+            if let Some((reviewer, _)) = r.role().get_cross_review_models() {
+                reviewer == reviewer_model
+            } else {
+                false
+            }
+        })
+    }
+    
+    /// Get cross-review matrix summary (zero allocation)
+    #[inline]
+    pub fn cross_review_matrix_summary(&self) -> CrossReviewMatrix {
+        CrossReviewMatrix::from_reviews(&self.review_scores)
+    }
 }
+
+/// Cross-review matrix for analyzing peer review patterns (zero allocation)
+#[derive(Debug, Clone)]
+pub struct CrossReviewMatrix {
+    /// Review pairs (reviewer_model, target_model, score)
+    review_pairs: Arc<[(Models, Models, u32)]>,
+    /// Matrix dimensions (number of unique models)
+    dimensions: u32,
+    /// Average cross-review score (0-1000)
+    average_score: Arc<AtomicU32>,
+}
+
+impl CrossReviewMatrix {
+    /// Create matrix from individual reviews (zero allocation where possible)
+    #[inline]
+    pub fn from_reviews(reviews: &[IndividualReview]) -> Self {
+        let mut review_pairs = Vec::new();
+        let mut unique_models = std::collections::HashSet::new();
+        let mut total_score = 0u64;
+        let mut cross_review_count = 0u32;
+        
+        for review in reviews.iter() {
+            if let Some((reviewer_model, target_model)) = review.role().get_cross_review_models() {
+                let score = review.score();
+                review_pairs.push((reviewer_model, target_model, score));
+                unique_models.insert(reviewer_model);
+                unique_models.insert(target_model);
+                total_score += score as u64;
+                cross_review_count += 1;
+            }
+        }
+        
+        let average_score = if cross_review_count > 0 {
+            (total_score / cross_review_count as u64) as u32
+        } else {
+            0
+        };
+        
+        Self {
+            review_pairs: Arc::from(review_pairs.into_boxed_slice()),
+            dimensions: unique_models.len() as u32,
+            average_score: Arc::new(AtomicU32::new(average_score)),
+        }
+    }
+    
+    /// Get matrix dimensions (number of unique models)
+    #[inline(always)]
+    pub const fn dimensions(&self) -> u32 {
+        self.dimensions
+    }
+    
+    /// Get total number of cross-reviews
+    #[inline(always)]
+    pub fn total_reviews(&self) -> usize {
+        self.review_pairs.len()
+    }
+    
+    /// Get average cross-review score (0-1000)
+    #[inline(always)]
+    pub fn average_score(&self) -> u32 {
+        self.average_score.load(Ordering::Relaxed)
+    }
+    
+    /// Get normalized average score (0.0-1.0)
+    #[inline(always)]
+    pub fn normalized_average_score(&self) -> f32 {
+        self.average_score() as f32 / 1000.0
+    }
+    
+    /// Get score for specific reviewer-target pair
+    #[inline]
+    pub fn get_score(&self, reviewer: Models, target: Models) -> Option<u32> {
+        self.review_pairs.iter()
+            .find(|(r, t, _)| *r == reviewer && *t == target)
+            .map(|(_, _, score)| *score)
+    }
+    
+    /// Get all scores for a target model (reviews it received)
+    #[inline]
+    pub fn scores_for_target(&self, target: Models) -> impl Iterator<Item = u32> + '_ {
+        self.review_pairs.iter()
+            .filter(move |(_, t, _)| *t == target)
+            .map(|(_, _, score)| *score)
+    }
+    
+    /// Get all scores by a reviewer model (reviews it gave)
+    #[inline]
+    pub fn scores_by_reviewer(&self, reviewer: Models) -> impl Iterator<Item = u32> + '_ {
+        self.review_pairs.iter()
+            .filter(move |(r, _, _)| *r == reviewer)
+            .map(|(_, _, score)| *score)
+    }
+    
+    /// Calculate consensus variance (measure of agreement between reviewers)
+    #[inline]
+    pub fn consensus_variance(&self) -> f32 {
+        if self.review_pairs.is_empty() {
+            return 0.0;
+        }
+        
+        let mean = self.normalized_average_score();
+        let variance: f32 = self.review_pairs.iter()
+            .map(|(_, _, score)| {
+                let normalized = *score as f32 / 1000.0;
+                (normalized - mean).powi(2)
+            })
+            .sum::<f32>() / self.review_pairs.len() as f32;
+            
+        variance
+    }
+    
+    /// Calculate consensus strength (lower variance = higher consensus)
+    #[inline(always)]
+    pub fn consensus_strength(&self) -> f32 {
+        1.0 - self.consensus_variance().min(1.0)
+    }
+    
+    /// Get review coverage (percentage of possible N×(N-1) reviews completed)
+    #[inline]
+    pub fn coverage_percentage(&self) -> f32 {
+        if self.dimensions <= 1 {
+            return 1.0;
+        }
+        
+        let possible_reviews = self.dimensions * (self.dimensions - 1);
+        let actual_reviews = self.review_pairs.len() as u32;
+        
+        (actual_reviews as f32 / possible_reviews as f32) * 100.0
+    }
+    
+    /// Get model performance ranking (by average scores received)
+    #[inline]
+    pub fn model_performance_ranking(&self) -> Vec<(Models, f32)> {
+        let mut model_scores: std::collections::HashMap<Models, Vec<u32>> = std::collections::HashMap::new();
+        
+        // Collect scores for each target model
+        for (_, target, score) in self.review_pairs.iter() {
+            model_scores.entry(*target).or_default().push(*score);
+        }
+        
+        // Calculate averages and sort
+        let mut rankings: Vec<(Models, f32)> = model_scores.into_iter()
+            .map(|(model, scores)| {
+                let average = scores.iter().sum::<u32>() as f32 / scores.len() as f32;
+                (model, average / 1000.0) // Normalize to 0.0-1.0
+            })
+            .collect();
+            
+        rankings.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        rankings
+    }
+    
+    /// Get reviewer reliability ranking (by consistency of scores given)
+    #[inline]
+    pub fn reviewer_reliability_ranking(&self) -> Vec<(Models, f32)> {
+        let mut reviewer_scores: std::collections::HashMap<Models, Vec<u32>> = std::collections::HashMap::new();
+        
+        // Collect scores by each reviewer
+        for (reviewer, _, score) in self.review_pairs.iter() {
+            reviewer_scores.entry(*reviewer).or_default().push(*score);
+        }
+        
+        // Calculate consistency (inverse of variance) and sort
+        let mut rankings: Vec<(Models, f32)> = reviewer_scores.into_iter()
+            .map(|(model, scores)| {
+                if scores.len() <= 1 {
+                    return (model, 1.0); // Single score is perfectly consistent
+                }
+                
+                let mean = scores.iter().sum::<u32>() as f32 / scores.len() as f32;
+                let variance = scores.iter()
+                    .map(|&score| (score as f32 - mean).powi(2))
+                    .sum::<f32>() / scores.len() as f32;
+                
+                let consistency = 1.0 - (variance / 1000000.0).min(1.0); // Normalize variance
+                (model, consistency)
+            })
+            .collect();
+            
+        rankings.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        rankings
+    }
 
 /// Cross-review generation result (zero allocation)
 #[derive(Debug, Clone)]
@@ -660,81 +888,130 @@ impl CrossLLMEnhancer {
         Ok(generation_op)
     }
 
-    /// Create cross-review operation where each LLM reviews each OTHER LLM's work (zero allocation)
+    /// Create cross-review operation implementing N×(N-1) peer review matrix (zero allocation)
     fn create_cross_review_op(&self) -> CrossReviewResult<impl Op<Input = Vec<GenerationResult>, Output = Vec<IndividualReview>>> {
         let config = self.config;
         
         let cross_review_op = step(move |generations: Vec<GenerationResult>| async move {
-            let mut all_reviews = Vec::with_capacity(generations.len() * (generations.len() - 1));
+            // N×(N-1) matrix: each model reviews every other model's work
+            let total_reviews = generations.len() * (generations.len() - 1);
+            let mut all_reviews = Vec::with_capacity(total_reviews);
             
-            // Each LLM reviews every OTHER LLM's work (cross-review pattern)
+            // Execute cross-reviews in parallel batches to avoid overwhelming APIs
+            let batch_size = config.max_parallel_reviews.min(8) as usize;
+            let mut review_futures = Vec::with_capacity(total_reviews);
+            
+            // Build all review pairs first (zero allocation iterator pattern)
             for (reviewer_idx, reviewer_generation) in generations.iter().enumerate() {
                 for (target_idx, target_generation) in generations.iter().enumerate() {
-                    // Skip self-review - each LLM only reviews OTHER LLMs' work
+                    // Skip self-review - true cross-review only
                     if reviewer_idx == target_idx {
                         continue;
                     }
                     
-                    let start_time = std::time::Instant::now();
-                    
-                    // Use the same model that generated the review to do the reviewing
-                    // This creates the cross-review pattern where each model reviews others
                     let reviewer_model = reviewer_generation.model;
                     let target_model = target_generation.model;
+                    let target_content = target_generation.content.clone();
                     
-                    // Create reviewer agent using the reviewer's model
-                    let reviewer_agent = Agent::for_provider(reviewer_model)
-                        .system_prompt(&format!(
-                            "You are reviewing another AI model's response. Be thorough and constructive. \
-                            Focus on accuracy, clarity, completeness, and overall quality. \
-                            Provide specific feedback on how the response could be improved."
-                        ))
-                        .temperature(0.1)
-                        .build();
-                    
-                    // Create cross-review prompt
-                    let review_prompt = format!(
-                        "Review this response generated by {}:\n\n{}\n\n\
-                        As a peer reviewer, provide:\n\
-                        1. A quality score from 0-10\n\
-                        2. Specific strengths of the response\n\
-                        3. Areas for improvement\n\
-                        4. Constructive suggestions for enhancement\n\n\
-                        Format: SCORE: X\nSTRENGTHS: [list strengths]\nIMPROVEMENTS: [list improvements]\nSUGGESTIONS: [specific suggestions]",
-                        target_model.name(),
-                        target_generation.content
+                    // Create cross-review task
+                    let review_future = Self::execute_cross_review(
+                        reviewer_model,
+                        target_model,
+                        target_content,
+                        config.review_timeout_ms,
                     );
                     
-                    // Execute cross-review
-                    match reviewer_agent.completion(&review_prompt).await {
-                        Ok(review_content) => {
-                            let processing_time_us = start_time.elapsed().as_micros() as u64;
-                            let score = Self::extract_score_from_review(&review_content);
-                            
-                            // Create a cross-review role that identifies both reviewer and target
-                            let cross_review_role = ReviewRole::CrossReviewer {
-                                reviewer_model: reviewer_model,
-                                target_model: target_model,
-                            };
-                            
-                            all_reviews.push(IndividualReview::new(
-                                cross_review_role,
-                                score,
-                                Arc::from(review_content),
-                                processing_time_us,
-                            ));
-                        }
-                        Err(_) => {
-                            // Skip failed reviews but continue with others
-                        }
-                    }
+                    review_futures.push(review_future);
                 }
             }
             
-            all_reviews
+            // Execute reviews in parallel batches (lock-free coordination)
+            let mut completed_reviews = Vec::with_capacity(total_reviews);
+            
+            for batch in review_futures.chunks(batch_size) {
+                let batch_results = futures::future::join_all(batch).await;
+                
+                for result in batch_results {
+                    if let Ok(review) = result {
+                        completed_reviews.push(review);
+                    }
+                    // Continue processing even if individual reviews fail
+                }
+            }
+            
+            completed_reviews
         });
 
         Ok(cross_review_op)
+    }
+    
+    /// Execute single cross-review with zero allocation and timeout handling
+    async fn execute_cross_review(
+        reviewer_model: Models,
+        target_model: Models,
+        target_content: Arc<str>,
+        timeout_ms: u32,
+    ) -> CrossReviewResult<IndividualReview> {
+        let start_time = std::time::Instant::now();
+        
+        // Create static cross-review prompt (zero allocation)
+        let system_prompt = format!(
+            "You are {} reviewing {}'s response. Be thorough, constructive, and objective. \
+            Focus on accuracy, clarity, completeness, logic, and overall quality. \
+            Provide specific, actionable feedback.",
+            reviewer_model.name(),
+            target_model.name()
+        );
+        
+        let review_prompt = format!(
+            "PEER REVIEW TASK:\n\
+            Target Model: {}\n\
+            Content to Review:\n{}\n\n\
+            Provide:\n\
+            1. Quality Score (0-10)\n\
+            2. Strengths (specific positive aspects)\n\
+            3. Weaknesses (areas needing improvement)\n\
+            4. Actionable Suggestions (concrete improvements)\n\n\
+            Format:\n\
+            SCORE: X\n\
+            STRENGTHS: [detailed strengths]\n\
+            WEAKNESSES: [specific weaknesses]\n\
+            SUGGESTIONS: [actionable recommendations]",
+            target_model.name(),
+            target_content
+        );
+        
+        // Create reviewer agent with timeout
+        let reviewer_agent = Agent::for_provider(reviewer_model)
+            .system_prompt(&system_prompt)
+            .temperature(0.1) // Low temperature for consistent reviewing
+            .max_tokens(1000) // Efficient token usage
+            .timeout(Duration::from_millis(timeout_ms as u64))
+            .build();
+        
+        // Execute review with timeout protection
+        let review_content = tokio::time::timeout(
+            Duration::from_millis(timeout_ms as u64),
+            reviewer_agent.completion(&review_prompt)
+        ).await
+            .map_err(|_| CrossReviewError::timeout("Review timeout exceeded"))?
+            .map_err(|_| CrossReviewError::model("Review generation failed"))?;
+        
+        let processing_time_us = start_time.elapsed().as_micros() as u64;
+        let score = Self::extract_score_from_review(&review_content);
+        
+        // Create cross-review role (zero allocation)
+        let cross_review_role = ReviewRole::CrossReviewer {
+            reviewer_model,
+            target_model,
+        };
+        
+        Ok(IndividualReview::new(
+            cross_review_role,
+            score,
+            Arc::from(review_content),
+            processing_time_us,
+        ))
     }
 
     /// Create synthesis operation (zero allocation)

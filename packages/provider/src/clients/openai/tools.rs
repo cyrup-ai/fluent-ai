@@ -4,7 +4,7 @@
 //! with optimal performance patterns and full API compatibility.
 
 use crate::domain::completion::ToolDefinition;
-use crate::providers::openai::{OpenAIError, OpenAIResult};
+use super::{OpenAIError, OpenAIResult};
 use crate::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};

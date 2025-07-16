@@ -3,8 +3,8 @@
 //! Provides comprehensive content safety analysis using OpenAI's moderation models
 //! with blazing-fast performance and no unsafe operations.
 
-use crate::async_task::AsyncTask;
-use crate::providers::openai::{OpenAIError, OpenAIResult};
+use crate::AsyncTask;
+use super::{OpenAIError, OpenAIResult};
 use crate::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

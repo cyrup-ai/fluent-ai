@@ -7,14 +7,13 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::{
-    completion::{self, CompletionError, CompletionRequest},
-    json_util, message,
-    runtime::{self, AsyncTask},
-    streaming::StreamingCompletionResponse,
-    OneOrMany,
+use fluent_ai_domain::{
+    completion::{CompletionRequest, ToolDefinition as DomainToolDefinition}, 
+    message::{self, Message, AssistantContent, MessageError},
+    AsyncTask, spawn_async, OneOrMany,
 };
-use fluent_ai_provider::Model;
+use crate::{json_util, streaming::StreamingCompletionResponse};
+use crate::Model;
 
 use super::client::Client;
 use super::streaming;
@@ -139,7 +138,7 @@ impl From<completion::ToolDefinition> for ToolDefinition {
 // ============================================================================
 // Response types (reuse OpenAI format mostly)
 // ============================================================================
-pub use crate::providers::openai::CompletionResponse;
+pub use crate::clients::openai::CompletionResponse;
 
 // ============================================================================
 // Message conversion implementations
@@ -210,17 +209,17 @@ impl TryFrom<message::Message> for Vec<DeepSeekMessage> {
 #[derive(Clone)]
 pub struct DeepSeekCompletionModel {
     pub client: Client,
-    pub model: fluent_ai_provider::Models,
+    pub model: crate::Models,
 }
 
 impl DeepSeekCompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         let model_enum = match model {
-            "deepseek-chat" => fluent_ai_provider::Models::DeepseekChat,
-            "deepseek-reasoner" => fluent_ai_provider::Models::DeepseekReasoner,
-            "deepseek-v3" => fluent_ai_provider::Models::DeepseekV3,
-            "deepseek-r1" => fluent_ai_provider::Models::DeepseekR10528,
-            _ => fluent_ai_provider::Models::DeepseekChat, // Default fallback
+            "deepseek-chat" => crate::Models::DeepseekChat,
+            "deepseek-reasoner" => crate::Models::DeepseekReasoner,
+            "deepseek-v3" => crate::Models::DeepseekV3,
+            "deepseek-r1" => crate::Models::DeepseekR10528,
+            _ => crate::Models::DeepseekChat, // Default fallback
         };
         Self {
             client,

@@ -15,14 +15,20 @@
 
 pub mod client;
 pub mod completion;
+pub mod config;
 pub mod messages;
+pub mod requests;
+pub mod responses;
 pub mod streaming;
 pub mod tools;
 pub mod error;
 
 pub use client::*;
 pub use completion::*;
+pub use config::*;
 pub use messages::*;
+pub use requests::*;
+pub use responses::*;
 pub use streaming::*;
 pub use tools::*;
 pub use error::*;

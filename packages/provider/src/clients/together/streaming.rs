@@ -1,8 +1,8 @@
 use serde_json::json;
 
 use super::completion::CompletionModel;
-use crate::providers::openai;
-use crate::providers::openai::send_compatible_streaming_request;
+use crate::clients::openai;
+use crate::clients::openai::send_compatible_streaming_request;
 use crate::streaming::StreamingCompletionResponse;
 use crate::{
     completion::{CompletionError, CompletionRequest},

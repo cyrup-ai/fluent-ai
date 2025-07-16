@@ -5,13 +5,13 @@ use super::client::{ApiErrorResponse, ApiResponse, Client, Usage};
 use crate::{
     completion::{self, CompletionError, CompletionRequest},
     json_util,
-    providers::openai::Message,
+    clients::openai::Message,
     OneOrMany,
 };
 use serde_json::{json, Value};
 
-use crate::providers::openai::AssistantContent;
-use crate::providers::openrouter::streaming::FinalCompletionResponse;
+use crate::clients::openai::AssistantContent;
+use super::streaming::FinalCompletionResponse;
 use crate::streaming::StreamingCompletionResponse;
 
 // ================================================================

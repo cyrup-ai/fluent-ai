@@ -28,7 +28,7 @@ pub const GEMINI_1_5_PRO_8B: &str = "gemini-1.5-pro-8b";
 pub const GEMINI_1_0_PRO: &str = "gemini-1.0-pro";
 
 use self::gemini_api_types::Schema;
-use crate::providers::gemini::streaming::StreamingCompletionResponse;
+use super::streaming::StreamingCompletionResponse;
 use crate::{
     completion::{self, CompletionError, CompletionRequest},
     OneOrMany,
@@ -279,8 +279,6 @@ pub mod gemini_api_types {
     use crate::{
         completion::CompletionError,
         message::{self, MimeType as _},
-        one_or_many::string_or_one_or_many,
-        providers::gemini::gemini_api_types::{CodeExecutionResult, ExecutableCode},
         OneOrMany,
     };
 
@@ -331,7 +329,7 @@ pub mod gemini_api_types {
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Content {
         /// Ordered Parts that constitute a single message. Parts may have different MIME types.
-        #[serde(deserialize_with = "string_or_one_or_many")]
+        #[serde(deserialize_with = "crate::util::string_or_one_or_many")]
         pub parts: OneOrMany<Part>,
         /// The producer of the content. Must be either 'user' or 'model'.
         /// Useful to set for multi-turn conversations, otherwise can be left blank or unset.

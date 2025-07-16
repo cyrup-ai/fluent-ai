@@ -8,7 +8,7 @@
 
 use super::client::Client;
 use crate::{
-    providers::openai::TranscriptionResponse,
+    clients::openai::TranscriptionResponse,
     runtime::{self as rt, AsyncTask},
     transcription::{self, TranscriptionError},
 };

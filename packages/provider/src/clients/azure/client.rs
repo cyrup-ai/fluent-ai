@@ -14,8 +14,8 @@ use crate::{
     completion::{
         self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
     },
-    domain::message::Message,
-    providers::azure::completion::{CompletionModel, GPT_4O},
+    message::Message,
+    clients::azure::completion::{CompletionModel, GPT_4O},
     runtime::{self as rt, AsyncTask},
     http::{HttpClient, HttpRequest, HttpError},
 };

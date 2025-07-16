@@ -1,39 +1,46 @@
 //! Fluent AI Provider Library
 //!
-//! This crate provides provider and model traits and definitions for AI services.
+//! This crate provides the dynamically generated Provider and Model enumerations
+//! and client implementations for AI services.
 //! The enum variants are auto-generated from the AiChat models.yaml file.
 
-// Module declarations
+// CORE: Dynamically generated enumerations from models.yaml
 pub mod model_info;
 pub mod models;
 pub mod models_ext; // Extension methods for Models enum
 pub mod providers;
 
-// Provider client implementations - the actual client code moved from fluent-ai
+// Provider client implementations
 pub mod clients;
 
 // Client factory for provider-to-client mapping
-pub mod client_factory;
+// pub mod client_factory; // Temporarily disabled during async pattern conversion
 
-// HTTP utilities moved from fluent-ai
-pub mod http;
+// Client traits (NOT domain objects)
+pub mod client;
 
-// Streaming utilities moved from fluent-ai
-pub mod streaming;
-
-
-// Re-export all types for convenience
-pub use cyrup_sugars::ZeroOneOrMany;
-pub use fluent_ai_domain::{Model, Provider};
+// CORE EXPORTS: The dynamically generated enumerations (THE MAIN VALUE!)
+// Re-export client traits for provider implementations
+pub use client::*;
 pub use model_info::ModelInfoData;
 pub use models::Models;
 pub use providers::Providers;
 
-// Re-export client factory types
-pub use client_factory::{
-    ClientConfig, ClientFactoryError, ClientFactoryResult, UnifiedClient
-};
+// Re-export fluent-ai types for provider implementations
+pub use fluent_ai_domain as domain;
+pub use fluent_ai_domain::AsyncTask;
+pub use fluent_ai_domain::spawn_async;
+pub use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
 
+// Create our own AsyncStream type for provider compatibility
+pub type AsyncStream<T> = tokio_stream::wrappers::UnboundedReceiverStream<T>;
+pub type AsyncStreamSender<T> = tokio::sync::mpsc::UnboundedSender<T>;
+
+// Helper to create async stream channel
+pub fn async_stream_channel<T>() -> (AsyncStreamSender<T>, AsyncStream<T>) {
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    (tx, tokio_stream::wrappers::UnboundedReceiverStream::new(rx))
+}
 
 // Extension methods for Providers enum
 impl Providers {

@@ -1,5 +1,5 @@
-use crate::providers::huggingface::completion::ApiResponse;
-use crate::providers::huggingface::Client;
+use super::completion::ApiResponse;
+use super::Client;
 use crate::transcription;
 use crate::transcription::TranscriptionError;
 use base64::prelude::BASE64_STANDARD;

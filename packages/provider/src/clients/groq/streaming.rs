@@ -10,12 +10,12 @@ use serde_json::Value;
 use crate::{
     completion::CompletionError,
     http::{HttpClient, HttpRequest},
-    providers::openai::{CompletionResponse, StreamingChoice, StreamingMessage},
+    clients::openai::{CompletionResponse, StreamingChoice, StreamingMessage},
     runtime::{self, AsyncStream},
 };
 
 // Re-export OpenAI streaming response type since Groq uses the same format
-pub use crate::providers::openai::StreamingCompletionResponse;
+pub use crate::clients::openai::StreamingCompletionResponse;
 
 /// Send a streaming request to Groq and return an AsyncStream
 pub fn send_groq_streaming_request(

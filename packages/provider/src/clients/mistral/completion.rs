@@ -8,7 +8,7 @@ use crate::streaming::{RawStreamingChoice, StreamingCompletionResponse};
 use crate::{
     completion::{self, CompletionError, CompletionRequest},
     json_util, message,
-    providers::mistral::client::ApiResponse,
+    clients::mistral::client::ApiResponse,
     OneOrMany,
 };
 

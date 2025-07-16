@@ -6,7 +6,7 @@
 use crate::{
     completion::{self, CompletionError},
     json_util,
-    providers::openai,
+    clients::openai,
 };
 
 use super::client::{together_ai_api_types::ApiResponse, Client};

@@ -3,7 +3,7 @@
 //! Provides comprehensive support for OpenAI's audio models including Whisper (transcription),
 //! TTS (text-to-speech), and audio processing with optimal performance patterns.
 
-use crate::providers::openai::{OpenAIError, OpenAIResult};
+use super::{OpenAIError, OpenAIResult};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

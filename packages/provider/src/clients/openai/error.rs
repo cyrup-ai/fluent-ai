@@ -254,5 +254,5 @@ pub fn from_env_with_base_url(base_url: impl Into<String>) -> OpenAIResult<super
         .map_err(|_| OpenAIError::AuthenticationFailed(
             "OPENAI_API_KEY environment variable not set".to_string()
         ))?;
-    super::OpenAIProvider::with_config(api_key, base_url, fluent_ai_provider::Models::Gpt4O)
+    super::OpenAIProvider::with_config(api_key, base_url, crate::Models::Gpt4O)
 }
