@@ -5,6 +5,7 @@
 //! All operations are lock-free and use atomic counters for thread safety.
 
 use crate::{HttpRequest, HttpResponse, HttpResult, HttpError, HttpStream, HttpConfig};
+use reqwest::tls;
 use std::sync::atomic::{AtomicUsize, AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime};
 use std::collections::HashMap;
@@ -82,7 +83,7 @@ impl HttpClient {
     
     /// Create a new HTTP client with custom configuration
     pub fn with_config(config: HttpConfig) -> HttpResult<Self> {
-        // Set environment variable for HTTP3 support without using std::env which could race
+        // Optimally configured HTTP3/QUIC client with TLS 1.3 for maximum performance
         let mut builder = reqwest::Client::builder()
             .pool_max_idle_per_host(config.pool_max_idle_per_host)
             .pool_idle_timeout(config.pool_idle_timeout)
@@ -91,8 +92,9 @@ impl HttpClient {
             .tcp_nodelay(config.tcp_nodelay)
             .http2_prior_knowledge()
             .http2_adaptive_window(config.http2_adaptive_window)
-            .use_rustls_tls()
-            .tls_built_in_root_certs(config.use_native_certs)
+            .use_rustls_tls()  // Explicitly use rustls to avoid TLS backend conflicts
+            .tls_built_in_root_certs(true)
+            .min_tls_version(tls::Version::TLS_1_3)  // TLS 1.3 required for QUIC/HTTP3
             .https_only(config.https_only)
             .user_agent(&config.user_agent);
             // Compression is enabled by default in reqwest 0.12
@@ -628,18 +630,18 @@ impl HttpClient {
         Duration::from_millis(final_delay as u64)
     }
     
-    /// Convert reqwest response to HttpResponse
+    /// Convert reqwest response to HttpResponse using streaming approach
     async fn convert_response(&self, response: reqwest::Response) -> HttpResult<HttpResponse> {
         let status = response.status();
         let headers = response.headers().clone();
         
-        let body = response.bytes().await.map_err(|e| {
-            HttpError::NetworkError {
-                message: format!("Failed to read response body: {}", e),
-            }
-        })?;
+        // 1) Get the stream from reqwest response
+        let stream = HttpStream::new(response);
         
-        Ok(HttpResponse::new(status, headers, body.to_vec()))
+        // 2) Call collect() on the stream
+        let body = stream.collect().await?;
+        
+        Ok(HttpResponse::new(status, headers, body))
     }
     
     /// Update statistics atomically

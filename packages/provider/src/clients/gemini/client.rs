@@ -5,12 +5,14 @@
 // ============================================================================
 
 use serde_json::json;
+use bytes::Bytes;
 
 use crate::{
     completion::{
         self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
     },
     embeddings::{Embed, EmbeddingsBuilder},
+    http::{HttpClient, HttpError},
     json_util,
     message::Message,
     runtime::{self, AsyncTask},
@@ -29,51 +31,47 @@ const GEMINI_API_BASE_URL: &str = "https://generativelanguage.googleapis.com";
 pub struct Client {
     pub base_url: String,
     pub api_key: String,
-    pub(crate) http_client: reqwest::Client,
+    pub(crate) http_client: HttpClient,
 }
 
 impl Client {
     /// Create a new Gemini client with the given API key.
-    pub fn new(api_key: &str) -> Self {
+    pub fn new(api_key: &str) -> Result<Self, HttpError> {
         Self::from_url(api_key, GEMINI_API_BASE_URL)
     }
 
     /// Create a new Gemini client with the given API key and base API URL.
-    pub fn from_url(api_key: &str, base_url: &str) -> Self {
-        Self {
+    pub fn from_url(api_key: &str, base_url: &str) -> Result<Self, HttpError> {
+        let http_client = HttpClient::for_provider("gemini")?;
+        
+        Ok(Self {
             base_url: base_url.to_string(),
             api_key: api_key.to_string(),
-            http_client: reqwest::Client::builder()
-                .default_headers({
-                    let mut headers = reqwest::header::HeaderMap::new();
-                    headers.insert(
-                        reqwest::header::CONTENT_TYPE,
-                        "application/json".parse().unwrap(),
-                    );
-                    headers
-                })
-                .build()
-                .expect("Gemini reqwest client should build"),
-        }
+            http_client,
+        })
     }
 
     /// Create from environment (GEMINI_API_KEY)
-    pub fn from_env() -> Self {
-        let api_key = std::env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY not set");
+    pub fn from_env() -> Result<Self, HttpError> {
+        let api_key = std::env::var("GEMINI_API_KEY")
+            .map_err(|_| HttpError::ConfigurationError("GEMINI_API_KEY not set".to_string()))?;
         Self::new(&api_key)
     }
 
-    pub fn post(&self, path: &str) -> reqwest::RequestBuilder {
+    pub fn post(&self, path: &str, body: Vec<u8>) -> Result<crate::http::HttpRequest, HttpError> {
         let url = format!("{}/{}?key={}", self.base_url, path, self.api_key).replace("//", "/");
         tracing::debug!("POST {}/{}?key={}", self.base_url, path, "****");
-        self.http_client.post(url)
+        
+        crate::http::HttpRequest::post(url, Bytes::from(body))?
+            .header("Content-Type", "application/json")
     }
 
-    pub fn post_sse(&self, path: &str) -> reqwest::RequestBuilder {
-        let url =
-            format!("{}/{}?alt=sse&key={}", self.base_url, path, self.api_key).replace("//", "/");
+    pub fn post_sse(&self, path: &str, body: Vec<u8>) -> Result<crate::http::HttpRequest, HttpError> {
+        let url = format!("{}/{}?alt=sse&key={}", self.base_url, path, self.api_key).replace("//", "/");
         tracing::debug!("POST {}/{}?alt=sse&key={}", self.base_url, path, "****");
-        self.http_client.post(url)
+        
+        crate::http::HttpRequest::post(url, Bytes::from(body))?
+            .header("Content-Type", "application/json")
     }
 
     /// Create a completion model with the given name.

@@ -2,7 +2,7 @@
 
 use crate::MessageRole;
 use crate::chunk::ChatMessageChunk;
-use crate::{AsyncStream, HashMap};
+use crate::HashMap;
 use crate::ZeroOneOrMany;
 use serde_json::Value;
 use std::fmt;
@@ -366,9 +366,8 @@ impl<T> McpServerBuilder<T> {
             init_command: Some(command.into()),
         };
         parent.mcp_servers = match parent.mcp_servers {
-            Some(mut servers) => {
-                servers.push(new_config);
-                Some(servers)
+            Some(servers) => {
+                Some(servers.with_pushed(new_config))
             }
             None => Some(ZeroOneOrMany::one(new_config)),
         };
@@ -458,7 +457,7 @@ impl AgentWithHistory {
     }
 
     /// Start chat - EXACT syntax: .chat("Hello")
-    pub fn chat(self, message: impl Into<String>) -> AsyncStream<ChatMessageChunk> {
+    pub fn chat(self, message: impl Into<String>) -> crate::async_task::AsyncStream<ChatMessageChunk> {
         let message = message.into();
         let handler = self.chunk_handler;
 
@@ -488,7 +487,7 @@ impl AgentWithHistory {
             let _ = tx.send(processed_chunk);
         });
 
-        AsyncStream::new(rx)
+        crate::async_task::AsyncStream::new(rx)
     }
 }
 
@@ -517,8 +516,8 @@ where
     T: Send + Sync + 'static,
 {
     fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
-        match contexts {
-            Some(list) => list.push(Box::new(self)),
+        match contexts.take() {
+            Some(list) => *contexts = Some(list.with_pushed(Box::new(self))),
             None => *contexts = Some(ZeroOneOrMany::one(Box::new(self))),
         }
     }
@@ -530,10 +529,9 @@ where
     T2: std::any::Any + Send + Sync + 'static,
 {
     fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
-        match contexts {
+        match contexts.take() {
             Some(list) => {
-                list.push(Box::new(self.0));
-                list.push(Box::new(self.1));
+                *contexts = Some(list.with_pushed(Box::new(self.0)).with_pushed(Box::new(self.1)));
             }
             None => {
                 *contexts = Some(ZeroOneOrMany::many(vec![
@@ -552,11 +550,9 @@ where
     T3: std::any::Any + Send + Sync + 'static,
 {
     fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
-        match contexts {
+        match contexts.take() {
             Some(list) => {
-                list.push(Box::new(self.0));
-                list.push(Box::new(self.1));
-                list.push(Box::new(self.2));
+                *contexts = Some(list.with_pushed(Box::new(self.0)).with_pushed(Box::new(self.1)).with_pushed(Box::new(self.2)));
             }
             None => {
                 *contexts = Some(ZeroOneOrMany::many(vec![
@@ -577,12 +573,9 @@ where
     T4: std::any::Any + Send + Sync + 'static,
 {
     fn add_to(self, contexts: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
-        match contexts {
+        match contexts.take() {
             Some(list) => {
-                list.push(Box::new(self.0));
-                list.push(Box::new(self.1));
-                list.push(Box::new(self.2));
-                list.push(Box::new(self.3));
+                *contexts = Some(list.with_pushed(Box::new(self.0)).with_pushed(Box::new(self.1)).with_pushed(Box::new(self.2)).with_pushed(Box::new(self.3)));
             }
             None => {
                 *contexts = Some(ZeroOneOrMany::many(vec![
@@ -603,8 +596,8 @@ where
     T: Send + Sync + 'static,
 {
     fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
-        match tools {
-            Some(existing) => existing.push(Box::new(self)),
+        match tools.take() {
+            Some(existing) => *tools = Some(existing.with_pushed(Box::new(self))),
             None => *tools = Some(ZeroOneOrMany::one(Box::new(self))),
         }
     }
@@ -613,8 +606,8 @@ where
 // Implement for NamedTool
 impl ToolArgs for crate::tool_v2::NamedTool {
     fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
-        match tools {
-            Some(existing) => existing.push(Box::new(self)),
+        match tools.take() {
+            Some(existing) => *tools = Some(existing.with_pushed(Box::new(self))),
             None => *tools = Some(ZeroOneOrMany::one(Box::new(self))),
         }
     }
@@ -626,10 +619,9 @@ where
     T2: std::any::Any + Send + Sync + 'static,
 {
     fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
-        match tools {
+        match tools.take() {
             Some(existing) => {
-                existing.push(Box::new(self.0));
-                existing.push(Box::new(self.1));
+                *tools = Some(existing.with_pushed(Box::new(self.0)).with_pushed(Box::new(self.1)));
             }
             None => {
                 *tools = Some(ZeroOneOrMany::many(vec![

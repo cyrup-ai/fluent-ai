@@ -10,7 +10,7 @@ pub trait Op {
 }
 
 use crate::memory::{
-    Error as MemoryError, MemoryManager, MemoryNode, MemoryRelationship, MemoryType,
+    MemoryError, MemoryManager, MemoryNode, MemoryRelationship, MemoryType,
 };
 
 /// Store a piece of content as a memory node
@@ -97,7 +97,7 @@ where
                     ZeroOneOrMany::None
                 }
             },
-            _ => ZeroOneOrMany::from_vec(memories),
+            _ => ZeroOneOrMany::many(memories),
         };
         
         Ok(result)
@@ -143,7 +143,7 @@ where
                     ZeroOneOrMany::None
                 }
             },
-            _ => ZeroOneOrMany::from_vec(memories),
+            _ => ZeroOneOrMany::many(memories),
         };
         
         Ok(result)
@@ -204,10 +204,9 @@ where
         let (source_id, target_id) = input;
         let relationship = MemoryRelationship {
             id: uuid::Uuid::new_v4().to_string(),
-            source_id,
-            target_id,
+            from_id: source_id,
+            to_id: target_id,
             relationship_type: self.relationship_type.clone(),
-            metadata: None,
         };
 
         self.manager.create_relationship(relationship).await
@@ -248,10 +247,9 @@ where
         for related_id in related_ids {
             let relationship = MemoryRelationship {
                 id: uuid::Uuid::new_v4().to_string(),
-                source_id: stored_memory.id.clone(),
-                target_id: related_id,
+                from_id: stored_memory.id.clone(),
+                to_id: related_id,
                 relationship_type: "related_to".to_string(),
-                metadata: None,
             };
 
             match self.manager.create_relationship(relationship).await {
@@ -273,7 +271,7 @@ where
                     ZeroOneOrMany::None
                 }
             },
-            _ => ZeroOneOrMany::from_vec(relationships),
+            _ => ZeroOneOrMany::many(relationships),
         };
         
         Ok((stored_memory, relationships_result))

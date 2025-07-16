@@ -263,16 +263,30 @@ impl completion::CompletionModel for CompletionModel {
         match self.create_completion_request(completion_request) {
             Ok(request) => {
                 runtime::spawn_async(async move {
-                    let response = client.post("/chat/completions").json(&request).send().await;
+                    let request_body = match serde_json::to_vec(&request) {
+                        Ok(body) => body,
+                        Err(e) => {
+                            tx.finish(Err(CompletionError::ProviderError(format!("Failed to serialize request: {}", e))));
+                            return;
+                        }
+                    };
 
-                    let result = match response {
+                    let http_request = match client.post("/chat/completions", request_body) {
+                        Ok(req) => req,
+                        Err(e) => {
+                            tx.finish(Err(CompletionError::ProviderError(format!("Failed to create request: {}", e))));
+                            return;
+                        }
+                    };
+
+                    let result = match client.http_client.send(http_request).await {
                         Ok(response) => {
                             if response.status().is_success() {
-                                match response.json::<ApiResponse<CompletionResponse>>().await {
+                                match serde_json::from_slice::<ApiResponse<CompletionResponse>>(response.body()) {
                                     Ok(ApiResponse::Ok(response)) => {
                                         tracing::info!(target: "rig",
                                             "groq completion token usage: {:?}",
-                                            response.usage.clone().map(|usage| format!("{usage}")).unwrap_or("N/A".to_string())
+                                            response.usage.clone().map(|usage| format!("{usage}")).unwrap_or_else(|| "N/A".to_string())
                                         );
                                         response.try_into()
                                     }
@@ -284,10 +298,8 @@ impl completion::CompletionModel for CompletionModel {
                                     }
                                 }
                             } else {
-                                match response.text().await {
-                                    Ok(text) => Err(CompletionError::ProviderError(text)),
-                                    Err(e) => Err(CompletionError::RequestError(e.to_string())),
-                                }
+                                let error_body = String::from_utf8_lossy(response.body());
+                                Err(CompletionError::ProviderError(error_body.to_string()))
                             }
                         }
                         Err(e) => Err(CompletionError::RequestError(e.to_string())),
@@ -320,8 +332,23 @@ impl completion::CompletionModel for CompletionModel {
                 );
 
                 runtime::spawn_async(async move {
-                    let builder = client.post("/chat/completions").json(&request);
-                    let result = streaming::send_groq_streaming_request(builder).await;
+                    let request_body = match serde_json::to_vec(&request) {
+                        Ok(body) => body,
+                        Err(e) => {
+                            tx.finish(Err(CompletionError::ProviderError(format!("Failed to serialize request: {}", e))));
+                            return;
+                        }
+                    };
+
+                    let http_request = match client.post("/chat/completions", request_body) {
+                        Ok(req) => req,
+                        Err(e) => {
+                            tx.finish(Err(CompletionError::ProviderError(format!("Failed to create request: {}", e))));
+                            return;
+                        }
+                    };
+
+                    let result = streaming::send_groq_streaming_request(client.http_client, http_request).await;
                     tx.finish(result);
                 });
             }

@@ -42,18 +42,20 @@ impl embeddings::EmbeddingModel for EmbeddingModel {
     ) -> Result<Vec<embeddings::Embedding>, EmbeddingError> {
         let documents = documents.into_iter().collect::<Vec<_>>();
 
-        let response = self
-            .client
-            .post("v1/embeddings")
-            .json(&json!({
-                "model": self.model,
-                "input": documents,
-            }))
-            .send()
-            .await?;
+        let request_body = serde_json::to_vec(&json!({
+            "model": self.model,
+            "input": documents,
+        }))
+        .map_err(|e| EmbeddingError::ProviderError(format!("Failed to serialize request: {}", e)))?;
+
+        let http_request = self.client.post("v1/embeddings", request_body)
+            .map_err(|e| EmbeddingError::ProviderError(format!("Failed to create request: {}", e)))?;
+
+        let response = self.client.http_client.send(http_request).await
+            .map_err(|e| EmbeddingError::ProviderError(format!("Request failed: {}", e)))?;
 
         if response.status().is_success() {
-            match response.json::<ApiResponse<EmbeddingResponse>>().await? {
+            match serde_json::from_slice::<ApiResponse<EmbeddingResponse>>(response.body())? {
                 ApiResponse::Ok(response) => {
                     tracing::debug!(target: "rig",
                         "Mistral embedding token usage: {}",
@@ -79,7 +81,8 @@ impl embeddings::EmbeddingModel for EmbeddingModel {
                 ApiResponse::Err(err) => Err(EmbeddingError::ProviderError(err.message)),
             }
         } else {
-            Err(EmbeddingError::ProviderError(response.text().await?))
+            let error_body = String::from_utf8_lossy(response.body());
+            Err(EmbeddingError::ProviderError(error_body.to_string()))
         }
     }
 }

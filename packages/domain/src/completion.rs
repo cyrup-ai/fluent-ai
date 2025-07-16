@@ -1,7 +1,7 @@
-use crate::{AsyncStream, AsyncTask, spawn_async};
+use crate::{AsyncTask, spawn_async};
 use crate::chunk::CompletionChunk;
 use crate::prompt::Prompt;
-use crate::ZeroOneOrMany;
+use crate::{ZeroOneOrMany, Models};
 // Remove circular dependency - Models will be provided by caller
 // use fluent_ai_provider::Models;
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use serde_json::Value;
 /// Core trait for completion models
 pub trait CompletionModel: Send + Sync + Clone {
     /// Generate completion from prompt
-    fn prompt(&self, prompt: Prompt) -> AsyncStream<CompletionChunk>;
+    fn prompt(&self, prompt: Prompt) -> crate::async_task::AsyncStream<CompletionChunk>;
 }
 
 pub trait CompletionBackend {
@@ -115,10 +115,10 @@ impl CompletionRequestBuilder {
     pub fn add_message(mut self, message: crate::Message) -> Self {
         self.chat_history = match self.chat_history {
             ZeroOneOrMany::None => ZeroOneOrMany::One(message),
-            ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, message]),
+            ZeroOneOrMany::One(existing) => ZeroOneOrMany::many(vec![existing, message]),
             ZeroOneOrMany::Many(mut messages) => {
                 messages.push(message);
-                ZeroOneOrMany::from_vec(messages)
+                ZeroOneOrMany::many(messages)
             },
         };
         self
@@ -129,10 +129,10 @@ impl CompletionRequestBuilder {
         let message = crate::Message::user(content);
         self.chat_history = match self.chat_history {
             ZeroOneOrMany::None => ZeroOneOrMany::One(message),
-            ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, message]),
+            ZeroOneOrMany::One(existing) => ZeroOneOrMany::many(vec![existing, message]),
             ZeroOneOrMany::Many(mut messages) => {
                 messages.push(message);
-                ZeroOneOrMany::from_vec(messages)
+                ZeroOneOrMany::many(messages)
             },
         };
         self
@@ -142,10 +142,10 @@ impl CompletionRequestBuilder {
         let message = crate::Message::assistant(content);
         self.chat_history = match self.chat_history {
             ZeroOneOrMany::None => ZeroOneOrMany::One(message),
-            ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, message]),
+            ZeroOneOrMany::One(existing) => ZeroOneOrMany::many(vec![existing, message]),
             ZeroOneOrMany::Many(mut messages) => {
                 messages.push(message);
-                ZeroOneOrMany::from_vec(messages)
+                ZeroOneOrMany::many(messages)
             },
         };
         self
@@ -155,10 +155,10 @@ impl CompletionRequestBuilder {
         let message = crate::Message::system(content);
         self.chat_history = match self.chat_history {
             ZeroOneOrMany::None => ZeroOneOrMany::One(message),
-            ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, message]),
+            ZeroOneOrMany::One(existing) => ZeroOneOrMany::many(vec![existing, message]),
             ZeroOneOrMany::Many(mut messages) => {
                 messages.push(message);
-                ZeroOneOrMany::from_vec(messages)
+                ZeroOneOrMany::many(messages)
             },
         };
         self
@@ -172,10 +172,10 @@ impl CompletionRequestBuilder {
     pub fn add_document(mut self, document: crate::Document) -> Self {
         self.documents = match self.documents {
             ZeroOneOrMany::None => ZeroOneOrMany::One(document),
-            ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, document]),
+            ZeroOneOrMany::One(existing) => ZeroOneOrMany::many(vec![existing, document]),
             ZeroOneOrMany::Many(mut documents) => {
                 documents.push(document);
-                ZeroOneOrMany::from_vec(documents)
+                ZeroOneOrMany::many(documents)
             },
         };
         self
@@ -199,10 +199,10 @@ impl CompletionRequestBuilder {
         };
         self.tools = match self.tools {
             ZeroOneOrMany::None => ZeroOneOrMany::One(tool),
-            ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, tool]),
+            ZeroOneOrMany::One(existing) => ZeroOneOrMany::many(vec![existing, tool]),
             ZeroOneOrMany::Many(mut tools) => {
                 tools.push(tool);
-                ZeroOneOrMany::from_vec(tools)
+                ZeroOneOrMany::many(tools)
             },
         };
         self
@@ -321,24 +321,20 @@ impl CompletionRequestBuilderWithHandler {
         F: Fn(String) + Send + Sync + 'static,
     {
         spawn_async(async move {
-            match crate::engine::get_default_engine() {
-                Some(engine) => {
-                    let request = CompletionRequest {
-                        system_prompt: self.system_prompt.unwrap_or_default(),
-                        chat_history: self.chat_history,
-                        documents: self.documents,
-                        tools: self.tools,
-                        temperature: self.temperature,
-                        max_tokens: self.max_tokens,
-                        chunk_size: self.chunk_size,
-                        additional_params: self.additional_params,
-                    };
+            let engine = crate::engine::get_default_engine();
+            let request = CompletionRequest {
+                system_prompt: self.system_prompt.unwrap_or_default(),
+                chat_history: self.chat_history,
+                documents: self.documents,
+                tools: self.tools,
+                temperature: self.temperature,
+                max_tokens: self.max_tokens,
+                chunk_size: self.chunk_size,
+                additional_params: self.additional_params,
+            };
 
-                    let response = engine.complete(request).await;
-                    response.content
-                }
-                None => "No engine configured".to_string(),
-            }
+            let response = crate::engine::complete_with_engine(&engine, &request.system_prompt).await;
+            response.unwrap_or_else(|_| "Error completing request".to_string())
         })
     }
 

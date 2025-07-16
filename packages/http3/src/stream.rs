@@ -18,8 +18,10 @@ pin_project! {
 }
 
 impl HttpStream {
-    /// Create a new HTTP stream from a reqwest Response
+    /// Create a new HTTP stream from a reqwest Response with automatic decompression
     pub fn new(response: reqwest::Response) -> Self {
+        // reqwest automatically decompresses the bytes_stream() when compression is detected
+        // The response headers are already parsed by reqwest's decompression layer
         Self {
             inner: Box::new(response.bytes_stream()),
             buffer: Vec::new(),

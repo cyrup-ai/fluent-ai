@@ -200,29 +200,32 @@ impl completion::CompletionModel for CompletionModel {
     ) -> Result<completion::CompletionResponse<openai::CompletionResponse>, CompletionError> {
         let request = self.create_completion_request(completion_request)?;
 
-        let response = self
-            .client
-            .post("/v1/chat/completions")
-            .json(&request)
-            .send()
-            .await?;
+        let request_body = serde_json::to_vec(&request)
+            .map_err(|e| CompletionError::ProviderError(format!("Failed to serialize request: {}", e)))?;
+
+        let http_request = self.client.post("/v1/chat/completions", request_body)
+            .map_err(|e| CompletionError::ProviderError(format!("Failed to create request: {}", e)))?;
+
+        let response = self.client.http_client.send(http_request).await
+            .map_err(|e| CompletionError::ProviderError(format!("Request failed: {}", e)))?;
 
         if response.status().is_success() {
-            let t = response.text().await?;
-            tracing::debug!(target: "rig", "Together completion error: {}", t);
+            let body = response.body();
+            tracing::debug!(target: "rig", "Together completion response: {}", String::from_utf8_lossy(body));
 
-            match serde_json::from_str::<ApiResponse<openai::CompletionResponse>>(&t)? {
+            match serde_json::from_slice::<ApiResponse<openai::CompletionResponse>>(body)? {
                 ApiResponse::Ok(response) => {
                     tracing::info!(target: "rig",
                         "Together completion token usage: {:?}",
-                        response.usage.clone().map(|usage| format!("{usage}")).unwrap_or("N/A".to_string())
+                        response.usage.clone().map(|usage| format!("{usage}")).unwrap_or_else(|| "N/A".to_string())
                     );
                     response.try_into()
                 }
                 ApiResponse::Error(err) => Err(CompletionError::ProviderError(err.error)),
             }
         } else {
-            Err(CompletionError::ProviderError(response.text().await?))
+            let error_body = String::from_utf8_lossy(response.body());
+            Err(CompletionError::ProviderError(error_body.to_string()))
         }
     }
 

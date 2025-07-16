@@ -11,6 +11,7 @@ use crate::{
         self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
     },
     embeddings::{Embed, EmbeddingsBuilder},
+    http::{HttpClient, HttpRequest, HttpError},
     json_util,
     message::Message,
     runtime::{self, AsyncTask},
@@ -26,37 +27,41 @@ const OLLAMA_API_BASE_URL: &str = "http://localhost:11434";
 #[derive(Clone, Debug)]
 pub struct Client {
     pub base_url: String,
-    pub(crate) http_client: reqwest::Client,
+    pub(crate) http_client: HttpClient,
 }
 
 impl Default for Client {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|_| {
+            panic!("Failed to create default Ollama client")
+        })
     }
 }
 
 impl Client {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, HttpError> {
         Self::from_url(OLLAMA_API_BASE_URL)
     }
 
-    pub fn from_url(base_url: &str) -> Self {
-        Self {
+    pub fn from_url(base_url: &str) -> Result<Self, HttpError> {
+        let http_client = HttpClient::for_provider("ollama")?;
+        
+        Ok(Self {
             base_url: base_url.to_owned(),
-            http_client: reqwest::Client::builder()
-                .build()
-                .expect("Ollama reqwest client should build"),
-        }
+            http_client,
+        })
     }
 
     /// Create from environment (Ollama defaults to localhost)
-    pub fn from_env() -> Self {
-        Self::default()
+    pub fn from_env() -> Result<Self, HttpError> {
+        Self::new()
     }
 
-    pub(crate) fn post(&self, path: &str) -> reqwest::RequestBuilder {
+    pub(crate) fn post(&self, path: &str, body: Vec<u8>) -> Result<HttpRequest, HttpError> {
         let url = format!("{}/{}", self.base_url, path);
-        self.http_client.post(url)
+        
+        HttpRequest::post(url, body)?
+            .header("Content-Type", "application/json")
     }
 
     /// Create a completion model with the given name.
@@ -247,7 +252,7 @@ impl<'a> OllamaCompletionBuilder<'a, NeedsPrompt> {
 impl<'a> OllamaCompletionBuilder<'a, HasPrompt> {
     /// Build the completion request
     fn build_request(&self) -> Result<CompletionRequest, PromptError> {
-        let prompt = self.prompt.as_ref().expect("HasPrompt guarantees prompt");
+        let prompt = self.prompt.as_ref().ok_or_else(|| PromptError::ValidationError("Prompt is required".to_string()))?;
 
         let mut builder =
             CompletionRequestBuilder::new(self.model_name.to_string(), prompt.clone())?;

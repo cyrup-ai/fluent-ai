@@ -31,13 +31,13 @@ pub struct HttpRequest {
 }
 
 impl HttpRequest {
-    /// Create a new HTTP request
+    /// Create a new HTTP request with default optimized configuration
     pub fn new(method: HttpMethod, url: String) -> Self {
         Self {
             method,
             url,
             headers: HashMap::new(),
-            body: None,
+            body: Some(Vec::new()),  // Default to empty body so users don't have to handle None
             timeout: None,
         }
     }

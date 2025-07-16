@@ -120,7 +120,7 @@ impl AudioBuilder {
 
 impl AudioBuilderWithHandler {
     // Terminal method - returns AsyncStream<TranscriptionChunk> for STT
-    pub fn decode(self) -> AsyncStream<TranscriptionChunk> {
+    pub fn decode(self) -> impl AsyncStream<Item = TranscriptionChunk> {
         // Create transcription chunks that can be collected into a Transcription
         let chunk = TranscriptionChunk {
             text: format!("Transcribed audio from: {}", self.data),
@@ -133,11 +133,11 @@ impl AudioBuilderWithHandler {
 
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let _ = tx.send(chunk);
-        AsyncStream::new(rx)
+        crate::async_task::AsyncStream::new(rx)
     }
 
     // Terminal method - returns AsyncStream<SpeechChunk> for TTS
-    pub fn stream(self) -> AsyncStream<SpeechChunk> {
+    pub fn stream(self) -> impl AsyncStream<Item = SpeechChunk> {
         // Convert audio data to bytes and create proper SpeechChunk
         let audio_data = self.data.as_bytes().to_vec();
         let format = match self.media_type.unwrap_or(AudioMediaType::MP3) {
@@ -159,6 +159,6 @@ impl AudioBuilderWithHandler {
 
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let _ = tx.send(chunk);
-        AsyncStream::new(rx)
+        crate::async_task::AsyncStream::new(rx)
     }
 }

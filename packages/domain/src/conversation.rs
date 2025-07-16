@@ -59,7 +59,7 @@ impl Conversation for ConversationImpl {
                     ZeroOneOrMany::None
                 }
             },
-            _ => ZeroOneOrMany::from_vec(self.messages.clone()),
+            _ => ZeroOneOrMany::many(self.messages.clone()),
         }
     }
 

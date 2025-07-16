@@ -35,10 +35,22 @@ impl ToolSet {
 }
 
 /// Unified tool definition for all tool types
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ToolDefinition {
     Typed(Box<dyn std::any::Any + Send + Sync>),
     Named(NamedTool),
+}
+
+impl Clone for ToolDefinition {
+    fn clone(&self) -> Self {
+        match self {
+            ToolDefinition::Typed(_) => {
+                // Can't clone Box<dyn Any>, so create a new empty one
+                ToolDefinition::Typed(Box::new(()))
+            }
+            ToolDefinition::Named(named) => ToolDefinition::Named(named.clone()),
+        }
+    }
 }
 
 /// Generic Tool with type parameter
@@ -68,6 +80,7 @@ impl<T> Tool<T> {
 }
 
 /// Named tool builder
+#[derive(Debug, Clone)]
 pub struct NamedTool {
     #[allow(dead_code)] // TODO: Use for tool name identification and registration
     name: String,

@@ -1,0 +1,592 @@
+   Compiling fluent_ai_provider v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/provider)
+    Checking fluent_ai_domain v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/domain)
+warning: unused import: `AsyncStream`
+ --> packages/domain/src/completion.rs:1:13
+  |
+1 | use crate::{AsyncStream, AsyncTask, spawn_async};
+  |             ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `AsyncStream`
+ --> packages/domain/src/embedding.rs:1:13
+  |
+1 | use crate::{AsyncStream, AsyncTask, spawn_async};
+  |             ^^^^^^^^^^^
+
+warning: unused import: `AsyncStream`
+ --> packages/domain/src/loader.rs:2:13
+  |
+2 | use crate::{AsyncStream, AsyncTask, spawn_async};
+  |             ^^^^^^^^^^^
+
+error[E0609]: no field `data` on type `Result<document::Document, JoinError>`
+   --> packages/domain/src/document.rs:551:32
+    |
+551 |             let content = &doc.data;
+    |                                ^^^^ unknown field
+    |
+help: one of the expressions' fields has a field of the same name
+    |
+551 |             let content = &doc.unwrap().data;
+    |                                +++++++++
+
+error[E0609]: no field `data` on type `Result<document::Document, JoinError>`
+   --> packages/domain/src/document.rs:580:29
+    |
+580 |             for line in doc.data.lines() {
+    |                             ^^^^ unknown field
+    |
+help: one of the expressions' fields has a field of the same name
+    |
+580 |             for line in doc.unwrap().data.lines() {
+    |                             +++++++++
+
+error[E0599]: no method named `as_text` found for type parameter `C` in the current scope
+  --> packages/domain/src/agent.rs:81:33
+   |
+75 |     pub fn context<F, C>(mut self, f: F) -> Self
+   |                       - method `as_text` not found for this type parameter
+...
+81 |         let text = conversation.as_text();
+   |                                 ^^^^^^^ method not found in `C`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following traits define an item `as_text`, perhaps you need to restrict type parameter `C` with one of them:
+   |
+78 |         C: crate::conversation::Conversation + AssistantContentExt,
+   |                                              +++++++++++++++++++++
+78 |         C: crate::conversation::Conversation + UserContentExt,
+   |                                              ++++++++++++++++
+78 |         C: crate::conversation::Conversation + message::Conversation,
+   |                                              +++++++++++++++++++++++
+
+error[E0599]: no method named `push` found for enum `ZeroOneOrMany` in the current scope
+    --> packages/domain/src/agent.rs:86:26
+     |
+86   |                 existing.push(doc);
+     |                          ^^^^ method not found in `ZeroOneOrMany<document::Document>`
+     |
+note: the method `push` exists on the type `Vec<document::Document>`
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc/src/vec/mod.rs:2474:5
+     |
+2474 |     pub fn push(&mut self, value: T) {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `push` found for enum `ZeroOneOrMany` in the current scope
+    --> packages/domain/src/agent.rs:99:26
+     |
+99   |                 existing.push(document);
+     |                          ^^^^ method not found in `ZeroOneOrMany<document::Document>`
+     |
+note: the method `push` exists on the type `Vec<document::Document>`
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc/src/vec/mod.rs:2474:5
+     |
+2474 |     pub fn push(&mut self, value: T) {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `push` found for enum `ZeroOneOrMany` in the current scope
+    --> packages/domain/src/agent.rs:114:26
+     |
+114  |                 existing.push(doc);
+     |                          ^^^^ method not found in `ZeroOneOrMany<document::Document>`
+     |
+note: the method `push` exists on the type `Vec<document::Document>`
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc/src/vec/mod.rs:2474:5
+     |
+2474 |     pub fn push(&mut self, value: T) {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `push` found for enum `ZeroOneOrMany` in the current scope
+    --> packages/domain/src/agent.rs:126:20
+     |
+126  |         self.tools.push(tool);
+     |                    ^^^^ method not found in `ZeroOneOrMany<McpToolImpl>`
+     |
+note: the method `push` exists on the type `Vec<McpToolImpl>`
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc/src/vec/mod.rs:2474:5
+     |
+2474 |     pub fn push(&mut self, value: T) {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0689]: can't call method `bytes` on ambiguous numeric type `{integer}`
+   --> packages/domain/src/agent.rs:367:55
+    |
+367 |         self.on_chunk_with_size(message, handler, 512.bytes())
+    |                                                       ^^^^^
+    |
+help: you must specify a concrete type for this numeric value, like `i32`
+    |
+367 |         self.on_chunk_with_size(message, handler, 512_i32.bytes())
+    |                                                      ++++
+
+error[E0599]: no function or associated item named `spawn` found for struct `tokio::task::JoinHandle` in the current scope
+   --> packages/domain/src/agent.rs:429:20
+    |
+429 |         AsyncTask::spawn(async move {
+    |                    ^^^^^ function or associated item not found in `tokio::task::JoinHandle<_>`
+
+error[E0599]: no method named `push` found for enum `ZeroOneOrMany` in the current scope
+    --> packages/domain/src/agent.rs:452:23
+     |
+452  |         self.messages.push(Message::system(content));
+     |                       ^^^^ method not found in `ZeroOneOrMany<Message>`
+     |
+note: the method `push` exists on the type `Vec<Message>`
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc/src/vec/mod.rs:2474:5
+     |
+2474 |     pub fn push(&mut self, value: T) {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `push` found for enum `ZeroOneOrMany` in the current scope
+    --> packages/domain/src/agent.rs:457:23
+     |
+457  |         self.messages.push(Message::user(content));
+     |                       ^^^^ method not found in `ZeroOneOrMany<Message>`
+     |
+note: the method `push` exists on the type `Vec<Message>`
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc/src/vec/mod.rs:2474:5
+     |
+2474 |     pub fn push(&mut self, value: T) {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `push` found for enum `ZeroOneOrMany` in the current scope
+    --> packages/domain/src/agent.rs:462:23
+     |
+462  |         self.messages.push(Message::assistant(content));
+     |                       ^^^^ method not found in `ZeroOneOrMany<Message>`
+     |
+note: the method `push` exists on the type `Vec<Message>`
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc/src/vec/mod.rs:2474:5
+     |
+2474 |     pub fn push(&mut self, value: T) {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `push` found for enum `ZeroOneOrMany` in the current scope
+    --> packages/domain/src/agent.rs:467:23
+     |
+467  |         self.messages.push(message);
+     |                       ^^^^ method not found in `ZeroOneOrMany<Message>`
+     |
+note: the method `push` exists on the type `Vec<Message>`
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc/src/vec/mod.rs:2474:5
+     |
+2474 |     pub fn push(&mut self, value: T) {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `push` found for enum `ZeroOneOrMany` in the current scope
+    --> packages/domain/src/agent_role.rs:370:25
+     |
+370  |                 servers.push(new_config);
+     |                         ^^^^ method not found in `ZeroOneOrMany<McpServerConfig>`
+     |
+note: the method `push` exists on the type `Vec<McpServerConfig>`
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc/src/vec/mod.rs:2474:5
+     |
+2474 |     pub fn push(&mut self, value: T) {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:521:32
+    |
+521 |             Some(list) => list.push(Box::new(self)),
+    |                                ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:535:22
+    |
+535 |                 list.push(Box::new(self.0));
+    |                      ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:536:22
+    |
+536 |                 list.push(Box::new(self.1));
+    |                      ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:557:22
+    |
+557 |                 list.push(Box::new(self.0));
+    |                      ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:558:22
+    |
+558 |                 list.push(Box::new(self.1));
+    |                      ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:559:22
+    |
+559 |                 list.push(Box::new(self.2));
+    |                      ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:582:22
+    |
+582 |                 list.push(Box::new(self.0));
+    |                      ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:583:22
+    |
+583 |                 list.push(Box::new(self.1));
+    |                      ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:584:22
+    |
+584 |                 list.push(Box::new(self.2));
+    |                      ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:585:22
+    |
+585 |                 list.push(Box::new(self.3));
+    |                      ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:607:40
+    |
+607 |             Some(existing) => existing.push(Box::new(self)),
+    |                                        ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:617:40
+    |
+617 |             Some(existing) => existing.push(Box::new(self)),
+    |                                        ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:631:26
+    |
+631 |                 existing.push(Box::new(self.0));
+    |                          ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0599]: no method named `push` found for mutable reference `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>` in the current scope
+   --> packages/domain/src/agent_role.rs:632:26
+    |
+632 |                 existing.push(Box::new(self.1));
+    |                          ^^^^ method not found in `&mut ZeroOneOrMany<Box<(dyn std::any::Any + std::marker::Send + Sync + 'static)>>`
+
+error[E0308]: mismatched types
+   --> packages/domain/src/completion.rs:325:17
+    |
+324 |             match crate::engine::get_default_engine() {
+    |                   ----------------------------------- this expression has type `EngineConfig`
+325 |                 Some(engine) => {
+    |                 ^^^^^^^^^^^^ expected `EngineConfig`, found `Option<_>`
+    |
+    = note: expected struct `EngineConfig`
+                 found enum `std::option::Option<_>`
+
+error[E0308]: mismatched types
+   --> packages/domain/src/completion.rs:340:17
+    |
+324 |             match crate::engine::get_default_engine() {
+    |                   ----------------------------------- this expression has type `EngineConfig`
+...
+340 |                 None => "No engine configured".to_string(),
+    |                 ^^^^ expected `EngineConfig`, found `Option<_>`
+    |
+    = note: expected struct `EngineConfig`
+                 found enum `std::option::Option<_>`
+
+error[E0308]: mismatched types
+  --> packages/domain/src/embedding.rs:23:21
+   |
+23 |             handler(embedding)
+   |             ------- ^^^^^^^^^ expected `ZeroOneOrMany<f32>`, found `Result<ZeroOneOrMany<f32>, JoinError>`
+   |             |
+   |             arguments to this function are incorrect
+   |
+   = note: expected enum `ZeroOneOrMany<_>`
+              found enum `Result<ZeroOneOrMany<_>, JoinError>`
+note: callable defined here
+  --> packages/domain/src/embedding.rs:18:12
+   |
+18 |         F: FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider using `Result::expect` to unwrap the `Result<ZeroOneOrMany<f32>, JoinError>` value, panicking if the value is a `Result::Err`
+   |
+23 |             handler(embedding.expect("REASON"))
+   |                              +++++++++++++++++
+
+error[E0277]: the trait bound `ZeroOneOrMany<f64>: Default` is not satisfied
+    --> packages/domain/src/embedding.rs:120:31
+     |
+120  |                 vec: self.vec.unwrap_or_default(),
+     |                               ^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `ZeroOneOrMany<f64>`
+     |
+note: required by a bound in `std::option::Option::<T>::unwrap_or_default`
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:1077:12
+     |
+1075 |     pub fn unwrap_or_default(self) -> T
+     |            ----------------- required by a bound in this associated function
+1076 |     where
+1077 |         T: Default,
+     |            ^^^^^^^ required by this bound in `Option::<T>::unwrap_or_default`
+
+error[E0308]: mismatched types
+   --> packages/domain/src/image.rs:193:9
+    |
+157 |     pub fn load(self) -> impl AsyncStream<Item = ImageChunk> {
+    |                          ----------------------------------- the found opaque type
+...
+187 |     pub fn process<F>(self, _f: F) -> crate::async_task::AsyncStream<ImageChunk>
+    |                                       ------------------------------------------ expected `async_task::AsyncStream<ImageChunk>` because of return type
+...
+193 |         self.load()
+    |         ^^^^^^^^^^^ expected `AsyncStream<ImageChunk>`, found opaque type
+    |
+    = note:   expected struct `async_task::AsyncStream<ImageChunk>`
+            found opaque type `impl Stream<Item = ImageChunk>`
+
+error[E0308]: mismatched types
+   --> packages/domain/src/loader.rs:153:17
+    |
+152 |             let results: Vec<U> = match paths {
+    |                                         ----- this expression has type `Result<ZeroOneOrMany<PathBuf>, JoinError>`
+153 |                 ZeroOneOrMany::None => Vec::new(),
+    |                 ^^^^^^^^^^^^^^^^^^^ expected `Result<ZeroOneOrMany<PathBuf>, ...>`, found `ZeroOneOrMany<_>`
+    |
+    = note: expected enum `Result<ZeroOneOrMany<PathBuf>, JoinError>`
+               found enum `ZeroOneOrMany<_>`
+help: try wrapping the pattern in `Ok`
+    |
+153 |                 Ok(ZeroOneOrMany::None) => Vec::new(),
+    |                 +++                   +
+
+error[E0308]: mismatched types
+   --> packages/domain/src/loader.rs:154:17
+    |
+152 |             let results: Vec<U> = match paths {
+    |                                         ----- this expression has type `Result<ZeroOneOrMany<PathBuf>, JoinError>`
+153 |                 ZeroOneOrMany::None => Vec::new(),
+154 |                 ZeroOneOrMany::One(path) => vec![processor(&path)],
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<ZeroOneOrMany<PathBuf>, ...>`, found `ZeroOneOrMany<_>`
+    |
+    = note: expected enum `Result<ZeroOneOrMany<PathBuf>, JoinError>`
+               found enum `ZeroOneOrMany<_>`
+help: try wrapping the pattern in `Ok`
+    |
+154 |                 Ok(ZeroOneOrMany::One(path)) => vec![processor(&path)],
+    |                 +++                        +
+
+error[E0308]: mismatched types
+   --> packages/domain/src/loader.rs:155:17
+    |
+152 |             let results: Vec<U> = match paths {
+    |                                         ----- this expression has type `Result<ZeroOneOrMany<PathBuf>, JoinError>`
+...
+155 |                 ZeroOneOrMany::Many(paths) => paths.iter().map(|p| processor(p)).collect(),
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<ZeroOneOrMany<PathBuf>, ...>`, found `ZeroOneOrMany<_>`
+    |
+    = note: expected enum `Result<ZeroOneOrMany<PathBuf>, JoinError>`
+               found enum `ZeroOneOrMany<_>`
+help: try wrapping the pattern in `Ok`
+    |
+155 |                 Ok(ZeroOneOrMany::Many(paths)) => paths.iter().map(|p| processor(p)).collect(),
+    |                 +++                          +
+
+error[E0308]: mismatched types
+   --> packages/domain/src/loader.rs:393:17
+    |
+392 |             match items {
+    |                   ----- this expression has type `Result<ZeroOneOrMany<T>, JoinError>`
+393 |                 ZeroOneOrMany::None => {},
+    |                 ^^^^^^^^^^^^^^^^^^^ expected `Result<ZeroOneOrMany<T>, JoinError>`, found `ZeroOneOrMany<_>`
+    |
+    = note: expected enum `Result<ZeroOneOrMany<T>, JoinError>`
+               found enum `ZeroOneOrMany<_>`
+help: try wrapping the pattern in `Ok`
+    |
+393 |                 Ok(ZeroOneOrMany::None) => {},
+    |                 +++                   +
+
+error[E0308]: mismatched types
+   --> packages/domain/src/loader.rs:394:17
+    |
+392 |             match items {
+    |                   ----- this expression has type `Result<ZeroOneOrMany<T>, JoinError>`
+393 |                 ZeroOneOrMany::None => {},
+394 |                 ZeroOneOrMany::One(item) => handler(&item),
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<ZeroOneOrMany<T>, JoinError>`, found `ZeroOneOrMany<_>`
+    |
+    = note: expected enum `Result<ZeroOneOrMany<T>, JoinError>`
+               found enum `ZeroOneOrMany<_>`
+help: try wrapping the pattern in `Ok`
+    |
+394 |                 Ok(ZeroOneOrMany::One(item)) => handler(&item),
+    |                 +++                        +
+
+error[E0308]: mismatched types
+   --> packages/domain/src/loader.rs:395:17
+    |
+392 |             match items {
+    |                   ----- this expression has type `Result<ZeroOneOrMany<T>, JoinError>`
+...
+395 |                 ZeroOneOrMany::Many(items) => {
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<ZeroOneOrMany<T>, JoinError>`, found `ZeroOneOrMany<_>`
+    |
+    = note: expected enum `Result<ZeroOneOrMany<T>, JoinError>`
+               found enum `ZeroOneOrMany<_>`
+help: try wrapping the pattern in `Ok`
+    |
+395 |                 Ok(ZeroOneOrMany::Many(items)) => {
+    |                 +++                          +
+
+error[E0277]: the trait bound `MemoryRelationship: Clone` is not satisfied
+   --> packages/domain/src/memory.rs:133:5
+    |
+130 | #[derive(Debug, Clone)]
+    |                 ----- in this derive macro expansion
+...
+133 |     pub relationships: Vec<MemoryRelationship>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `MemoryRelationship`
+    |
+    = note: required for `Vec<MemoryRelationship>` to implement `Clone`
+help: consider annotating `MemoryRelationship` with `#[derive(Clone)]`
+    |
+101 + #[derive(Clone)]
+102 | pub struct MemoryRelationship {
+    |
+
+error[E0599]: the method `as_dyn_error` exists for reference `&VectorStoreError`, but its trait bounds were not satisfied
+   --> packages/domain/src/memory_workflow.rs:209:12
+    |
+209 |     Memory(#[from] MemoryError),
+    |            ^^^^^^^ method cannot be called on `&VectorStoreError` due to unsatisfied trait bounds
+    |
+   ::: packages/domain/src/memory.rs:10:1
+    |
+10  | pub enum VectorStoreError {
+    | ------------------------- doesn't satisfy `VectorStoreError: AsDynError<'_>` or `VectorStoreError: StdError`
+    |
+    = note: the following trait bounds were not satisfied:
+            `VectorStoreError: StdError`
+            which is required by `VectorStoreError: AsDynError<'_>`
+            `&VectorStoreError: StdError`
+            which is required by `&VectorStoreError: AsDynError<'_>`
+note: the trait `StdError` must be implemented
+   --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/error.rs:53:1
+    |
+53  | pub trait Error: Debug + Display {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `as_dyn_error`, perhaps you need to implement it:
+            candidate #1: `AsDynError`
+
+error[E0599]: the method `as_display` exists for reference `&VectorStoreError`, but its trait bounds were not satisfied
+    --> packages/domain/src/memory_workflow.rs:208:13
+     |
+208  |     #[error("Memory error: {0}")]
+     |             ^^^^^^^^^^^^^^^^^^^ method cannot be called on `&VectorStoreError` due to unsatisfied trait bounds
+     |
+    ::: packages/domain/src/memory.rs:10:1
+     |
+10   | pub enum VectorStoreError {
+     | ------------------------- doesn't satisfy `VectorStoreError: std::fmt::Display`
+     |
+     = note: the following trait bounds were not satisfied:
+             `VectorStoreError: std::fmt::Display`
+             which is required by `&VectorStoreError: AsDisplay<'_>`
+note: the trait `std::fmt::Display` must be implemented
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/fmt/mod.rs:1003:1
+     |
+1003 | pub trait Display: PointeeSized {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     = help: items from traits can only be used if the trait is implemented and in scope
+     = note: the following trait defines an item `as_display`, perhaps you need to implement it:
+             candidate #1: `AsDisplay`
+
+error[E0599]: no method named `info` found for reference `&Models` in the current scope
+  --> packages/domain/src/model_info_provider.rs:27:18
+   |
+27 |         Ok(model.info())
+   |                  ^^^^
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `info`, perhaps you need to implement one of them:
+           candidate #1: `model::Model`
+           candidate #2: `prodash::traits::Progress`
+help: there is a method `into` with a similar name
+   |
+27 -         Ok(model.info())
+27 +         Ok(model.into())
+   |
+
+warning: unused import: `Hasher`
+  --> packages/domain/src/model.rs:11:23
+   |
+11 | use std::hash::{Hash, Hasher};
+   |                       ^^^^^^
+
+error: lifetime may not live long enough
+   --> packages/domain/src/model.rs:619:9
+    |
+618 |     pub fn get(&self, provider: &str, name: &str) -> Option<&Arc<T>> {
+    |                -                - let's call the lifetime of this reference `'1`
+    |                |
+    |                let's call the lifetime of this reference `'2`
+619 |         self.models.get(&(provider, name))
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+    |
+help: consider introducing a named lifetime parameter and update trait if needed
+    |
+618 |     pub fn get<'a>(&self, provider: &'a str, name: &str) -> Option<&'a Arc<T>> {
+    |               ++++                   ++                             ++
+
+error: lifetime may not live long enough
+   --> packages/domain/src/model.rs:619:9
+    |
+618 |     pub fn get(&self, provider: &str, name: &str) -> Option<&Arc<T>> {
+    |                -                            - let's call the lifetime of this reference `'3`
+    |                |
+    |                let's call the lifetime of this reference `'2`
+619 |         self.models.get(&(provider, name))
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'3`
+    |
+help: consider introducing a named lifetime parameter and update trait if needed
+    |
+618 |     pub fn get<'a>(&self, provider: &str, name: &'a str) -> Option<&'a Arc<T>> {
+    |               ++++                               ++                 ++
+
+error: lifetime may not live long enough
+   --> packages/domain/src/model.rs:625:9
+    |
+624 |       pub fn get_provider_models(&self, provider: &str) -> Vec<&Arc<T>> {
+    |                                  -                - let's call the lifetime of this reference `'1`
+    |                                  |
+    |                                  let's call the lifetime of this reference `'2`
+625 | /         self.providers.get(provider)
+626 | |             .map(|names| names.iter().filter_map(|name| self.models.get(&(provider, name))).collect())
+627 | |             .unwrap_or_default()
+    | |________________________________^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+    |
+help: consider introducing a named lifetime parameter and update trait if needed
+    |
+624 |     pub fn get_provider_models<'a>(&self, provider: &'a str) -> Vec<&'a Arc<T>> {
+    |                               ++++                   ++              ++
+
+Some errors have detailed explanations: E0277, E0308, E0599, E0609, E0689.
+For more information about an error, try `rustc --explain E0277`.
+warning: `fluent_ai_domain` (lib) generated 4 warnings
+error: could not compile `fluent_ai_domain` (lib) due to 46 previous errors; 4 warnings emitted
+warning: build failed, waiting for other jobs to finish...
+error: failed to run custom build command for `fluent_ai_provider v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/provider)`
+note: To improve backtraces for build dependencies, set the CARGO_PROFILE_DEV_BUILD_OVERRIDE_DEBUG=true environment variable to enable debug information generation.
+
+Caused by:
+  process didn't exit successfully: `/Volumes/samsung_t9/fluent-ai/target/debug/build/fluent_ai_provider-c3d469ba443c8a30/build-script-build` (exit status: 1)
+  --- stdout
+  cargo:rerun-if-changed=models.yaml
+  cargo:rerun-if-changed=models.yaml.cache
+  cargo:rerun-if-changed=build.rs
+  🔗 HTTP Client Stats: 0 connections, 0 requests
+  📄 YAML content loaded, 1260 bytes
+
+  --- stderr
+  ⚠️  Network error downloading models.yaml: Connection error: error sending request for url (https://raw.githubusercontent.com/sigoden/aichat/refs/heads/main/models.yaml)
+  Error: "Failed to parse YAML configuration: custom: expected sequence"

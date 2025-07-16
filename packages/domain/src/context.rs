@@ -77,7 +77,7 @@ impl ContextSource for FilesContext {
                     .filter_map(Result::ok)
                     .map(|path| Document::from_file(path).load())
                     .collect();
-                ZeroOneOrMany::from_vec(docs)
+                ZeroOneOrMany::many(docs)
             })
             .unwrap_or(ZeroOneOrMany::None)
     }
@@ -114,7 +114,7 @@ impl ContextSource for DirectoryContext {
                         }
                     })
                     .collect();
-                ZeroOneOrMany::from_vec(docs)
+                ZeroOneOrMany::many(docs)
             })
             .unwrap_or(ZeroOneOrMany::None)
     }

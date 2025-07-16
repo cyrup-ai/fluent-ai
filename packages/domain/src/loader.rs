@@ -1,5 +1,5 @@
 use crate::ZeroOneOrMany;
-use crate::{AsyncStream, AsyncTask, spawn_async};
+use crate::{AsyncTask, spawn_async};
 use std::fmt;
 use std::path::PathBuf;
 
@@ -20,7 +20,7 @@ where
         T: crate::async_task::NotResult;
     
     /// Stream files one by one
-    fn stream_files(&self) -> AsyncStream<T>
+    fn stream_files(&self) -> crate::async_task::AsyncStream<T>
     where
         T: crate::async_task::NotResult;
     
@@ -114,12 +114,12 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
                         ZeroOneOrMany::None
                     }
                 },
-                _ => ZeroOneOrMany::from_vec(results),
+                _ => ZeroOneOrMany::many(results),
             }
         })
     }
     
-    fn stream_files(&self) -> AsyncStream<PathBuf>
+    fn stream_files(&self) -> crate::async_task::AsyncStream<PathBuf>
     where
         PathBuf: crate::async_task::NotResult,
     {
@@ -138,7 +138,7 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
             }
         });
         
-        AsyncStream::new(rx)
+        crate::async_task::AsyncStream::new(rx)
     }
     
     fn process_each<F, U>(&self, processor: F) -> AsyncTask<ZeroOneOrMany<U>>
@@ -148,7 +148,10 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
     {
         let load_task = self.load_all();
         spawn_async(async move {
-            let paths = load_task.await; // AsyncTask now returns T directly, not Result<T, E>
+            let paths = match load_task.await {
+                Ok(paths) => paths,
+                Err(_) => return ZeroOneOrMany::None, // Handle JoinError
+            };
             let results: Vec<U> = match paths {
                 ZeroOneOrMany::None => Vec::new(),
                 ZeroOneOrMany::One(path) => vec![processor(&path)],
@@ -166,7 +169,7 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
                         ZeroOneOrMany::None
                     }
                 },
-                _ => ZeroOneOrMany::from_vec(results),
+                _ => ZeroOneOrMany::many(results),
             }
         })
     }
@@ -351,7 +354,7 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static>
     }
     
     // Terminal method - stream files immediately  
-    pub fn stream(self) -> AsyncStream<T> 
+    pub fn stream(self) -> crate::async_task::AsyncStream<T> 
     where 
         LoaderImpl<T>: Loader<T>,
         T: crate::async_task::NotResult,
@@ -388,7 +391,10 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static>
     {
         let load_task = self.load_files();
         spawn_async(async move {
-            let items = load_task.await; // AsyncTask now returns T directly, not Result<T, E>
+            let items = match load_task.await {
+                Ok(items) => items,
+                Err(_) => return, // Handle JoinError
+            };
             match items {
                 ZeroOneOrMany::None => {},
                 ZeroOneOrMany::One(item) => handler(&item),

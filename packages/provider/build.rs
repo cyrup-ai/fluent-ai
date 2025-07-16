@@ -32,10 +32,8 @@ struct PooledHttpClient {
 impl PooledHttpClient {
     /// Create a new pooled HTTP client optimized for maximum performance
     fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        use fluent_ai_http3::HttpConfig;
-        
-        // Use optimized HTTP3 client with AI-specific configuration
-        let client = fluent_ai_http3::HttpClient::with_config(HttpConfig::ai_optimized())
+        // Use default HTTP3 client with proper SSL configuration
+        let client = fluent_ai_http3::HttpClient::new()
             .map_err(|e| format!("Failed to create HTTP3 client: {}", e))?;
         
         Ok(Self {
@@ -71,7 +69,7 @@ impl PooledHttpClient {
             .header("Cache-Control", "max-age=3600")
             .header("Accept", "application/x-yaml, text/yaml, */*")
             .header("Accept-Encoding", "gzip, br, deflate")
-            .header("X-Request-ID", request_id.to_string());
+            .header("X-Request-ID", &request_id.to_string());
         
         // Execute request using fluent_ai_http3
         let response = self.client.send(request).await?;
@@ -211,6 +209,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             Ok(HttpResponse::Success { content, etag, last_modified }) => {
+                // Debug: Check if content looks like YAML
+                println!("🔍 Downloaded content preview (first 100 chars): {}", 
+                    &content[..content.len().min(100)]);
+                
                 // New content, download and update cache
                 fs::write(models_file, &content)?;
                 
@@ -228,15 +230,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(e) => {
                 eprintln!("⚠️  Network error downloading models.yaml: {}", e);
+                // Don't continue with stale or invalid local files when remote fails
+                return Err(format!("Failed to download models.yaml: {}. Build aborted to avoid using stale data.", e).into());
             }
         }
     } else {
         println!("📋 Using cached models.yaml (within 24-hour window)");
     }
     
-    // Ensure models.yaml exists
+    // Ensure models.yaml exists - if not, this is a real error
     if !models_file.exists() {
-        return Err("No models.yaml found and download failed".into());
+        return Err("models.yaml does not exist and network download failed. This is a build error that must be resolved.".into());
     }
 
     // Load providers from YAML

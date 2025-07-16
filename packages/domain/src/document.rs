@@ -463,7 +463,7 @@ impl DocumentBuilderWithHandler {
     }
 
     /// Stream documents matching a glob pattern or load a single document as a stream
-    pub fn stream(self) -> AsyncStream<Document> {
+    pub fn stream(self) -> impl AsyncStream<Item = Document> {
         match self.data {
             DocumentBuilderData::Glob(pattern) => {
                 let format = self.format.clone();
@@ -509,30 +509,46 @@ impl DocumentBuilderWithHandler {
                     }
                 });
 
-                AsyncStream::new(rx)
+                crate::async_task::AsyncStream::new(rx)
             }
             _ => {
                 // For non-glob sources, create a single-item stream
                 let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
                 tokio::spawn(async move {
-                    let doc = self.load_async().await;
-                    let _ = tx.send(doc);
+                    match self.load_async().await {
+                        Ok(doc) => {
+                            let _ = tx.send(doc);
+                        }
+                        Err(_) => {
+                            // Handle join error by creating an empty document
+                            let doc = Document {
+                                data: String::new(),
+                                format: None,
+                                media_type: None,
+                                additional_props: HashMap::new(),
+                            };
+                            let _ = tx.send(doc);
+                        }
+                    }
                 });
 
-                AsyncStream::new(rx)
+                crate::async_task::AsyncStream::new(rx)
             }
         }
     }
 
     /// Stream document content in chunks
-    pub fn stream_chunks(self, chunk_size: usize) -> AsyncStream<DocumentChunk> {
+    pub fn stream_chunks(self, chunk_size: usize) -> impl AsyncStream<Item = DocumentChunk> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         tokio::spawn(async move {
             // First load the document
             // load_async().await returns Document directly since AsyncTask handles errors internally
-            let doc = self.load_async().await;
+            let doc = match self.load_async().await {
+                Ok(d) => d,
+                Err(_) => return, // Can't send error through channel in this design
+            };
 
             // Then chunk it
             let content = &doc.data;
@@ -550,17 +566,20 @@ impl DocumentBuilderWithHandler {
             }
         });
 
-        AsyncStream::new(rx)
+        crate::async_task::AsyncStream::new(rx)
     }
 
     /// Stream document content line by line
-    pub fn stream_lines(self) -> AsyncStream<DocumentChunk> {
+    pub fn stream_lines(self) -> impl AsyncStream<Item = DocumentChunk> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         tokio::spawn(async move {
             // First load the document
             // load_async().await returns Document directly since AsyncTask handles errors internally
-            let doc = self.load_async().await;
+            let doc = match self.load_async().await {
+                Ok(d) => d,
+                Err(_) => return, // Can't send error through channel in this design
+            };
 
             // Then split by lines
             let mut offset = 0;
@@ -575,7 +594,7 @@ impl DocumentBuilderWithHandler {
             }
         });
 
-        AsyncStream::new(rx)
+        crate::async_task::AsyncStream::new(rx)
     }
 }
 

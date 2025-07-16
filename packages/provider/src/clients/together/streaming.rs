@@ -19,8 +19,12 @@ impl CompletionModel {
 
         request = merge(request, json!({"stream_tokens": true}));
 
-        let builder = self.client.post("/v1/chat/completions").json(&request);
+        let request_body = serde_json::to_vec(&request)
+            .map_err(|e| CompletionError::ProviderError(format!("Failed to serialize request: {}", e)))?;
 
-        send_compatible_streaming_request(builder).await
+        let http_request = self.client.post("/v1/chat/completions", request_body)
+            .map_err(|e| CompletionError::ProviderError(format!("Failed to create request: {}", e)))?;
+
+        openai::send_compatible_streaming_request(self.client.http_client.clone(), http_request).await
     }
 }

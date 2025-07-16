@@ -3,14 +3,14 @@
 //! This module provides a production-ready OpenAI client with QUIC/HTTP3 support,
 //! proper error handling, and zero-allocation request patterns.
 
-use crate::http::HttpRequest;
+use crate::http::{HttpClient, HttpError};
 use super::completion::{OpenAICompletionRequest, OpenAICompletionResponse};
 use super::embeddings::{OpenAIEmbeddingRequest, OpenAIEmbeddingResponse};
 use super::error::{OpenAIError, OpenAIResult};
 use super::streaming::OpenAIStreamChunk;
 use futures::Stream;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
+use bytes::Bytes;
 
 /// OpenAI client configuration
 #[derive(Debug, Clone)]
@@ -35,8 +35,8 @@ impl Default for OpenAIClientConfig {
 /// High-performance OpenAI client with QUIC/HTTP3 support
 pub struct OpenAIClient {
     config: OpenAIClientConfig,
-    http_client: Arc<HttpRequest>,
-    request_count: Arc<RwLock<u64>>,
+    http_client: HttpClient,
+    request_count: Arc<AtomicU64>,
 }
 
 impl OpenAIClient {
@@ -48,8 +48,11 @@ impl OpenAIClient {
             ..Default::default()
         };
         
-        let http_client = Arc::new(HttpRequest::new());
-        let request_count = Arc::new(RwLock::new(0));
+        let http_client = HttpClient::for_provider("openai")
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to create HTTP client: {}", e),
+            })?;
+        let request_count = Arc::new(AtomicU64::new(0));
         
         Ok(Self {
             config,
@@ -60,8 +63,11 @@ impl OpenAIClient {
     
     /// Create a new OpenAI client with custom configuration
     pub async fn with_config(config: OpenAIClientConfig) -> OpenAIResult<Self> {
-        let http_client = Arc::new(HttpRequest::new());
-        let request_count = Arc::new(RwLock::new(0));
+        let http_client = HttpClient::for_provider("openai")
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to create HTTP client: {}", e),
+            })?;
+        let request_count = Arc::new(AtomicU64::new(0));
         
         Ok(Self {
             config,
@@ -70,15 +76,14 @@ impl OpenAIClient {
         })
     }
     
-    /// Get the current request count
-    pub async fn request_count(&self) -> u64 {
-        *self.request_count.read().await
+    /// Get the current request count (lock-free)
+    pub fn request_count(&self) -> u64 {
+        self.request_count.load(Ordering::Relaxed)
     }
     
-    /// Increment the request count
-    async fn increment_request_count(&self) {
-        let mut count = self.request_count.write().await;
-        *count += 1;
+    /// Increment the request count (lock-free)
+    fn increment_request_count(&self) {
+        self.request_count.fetch_add(1, Ordering::Relaxed);
     }
     
     /// Create authorization header value
@@ -86,24 +91,15 @@ impl OpenAIClient {
         format!("Bearer {}", self.config.api_key)
     }
     
-    /// Create common headers for OpenAI requests
-    fn common_headers(&self) -> hashbrown::HashMap<String, String> {
-        let mut headers = hashbrown::HashMap::new();
-        headers.insert("Authorization".to_string(), self.auth_header());
-        headers.insert("Content-Type".to_string(), "application/json".to_string());
-        headers.insert("User-Agent".to_string(), "fluent-ai-provider/0.1.0".to_string());
-        headers
-    }
     
     /// Send a completion request
     pub async fn send_completion(
         &self,
         request: &OpenAICompletionRequest,
     ) -> OpenAIResult<OpenAICompletionResponse> {
-        self.increment_request_count().await;
+        self.increment_request_count();
         
         let url = format!("{}/chat/completions", self.config.base_url);
-        let headers = self.common_headers();
         
         let body = serde_json::to_vec(request).map_err(|e| {
             OpenAIError::SerializationError {
@@ -111,17 +107,30 @@ impl OpenAIClient {
             }
         })?;
         
-        let response = self.http_client
-            .post(&url)
-            .headers(headers)
-            .body(body)
-            .timeout_seconds(self.config.timeout_seconds)
-            .send()
-            .await
-            .map_err(|e| {
-                OpenAIError::NetworkError {
-                    message: format!("Failed to send completion request: {}", e),
-                }
+        let mut http_request = crate::http::HttpRequest::post(url, Bytes::from(body))
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to create HTTP request: {}", e),
+            })?;
+        
+        // Add headers
+        http_request = http_request.header("Content-Type", "application/json")
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to add content-type header: {}", e),
+            })?;
+        
+        http_request = http_request.header("Authorization", &self.auth_header())
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to add authorization header: {}", e),
+            })?;
+        
+        http_request = http_request.header("User-Agent", "fluent-ai-provider/0.1.0")
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to add user-agent header: {}", e),
+            })?;
+        
+        let response = self.http_client.execute(http_request).await
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to execute completion request: {}", e),
             })?;
         
         if !response.status.is_success() {
@@ -145,11 +154,10 @@ impl OpenAIClient {
     pub async fn send_streaming_completion(
         &self,
         request: &OpenAICompletionRequest,
-    ) -> OpenAIResult<Box<dyn Stream<Item = OpenAIResult<OpenAIStreamChunk>> + Send + Unpin>> {
-        self.increment_request_count().await;
+    ) -> OpenAIResult<impl Stream<Item = OpenAIResult<OpenAIStreamChunk>>> {
+        self.increment_request_count();
         
         let url = format!("{}/chat/completions", self.config.base_url);
-        let headers = self.common_headers();
         
         // Create streaming request
         let mut streaming_request = request.clone();
@@ -161,20 +169,34 @@ impl OpenAIClient {
             }
         })?;
         
-        let stream = self.http_client
-            .post(&url)
-            .headers(headers)
-            .body(body)
-            .timeout_seconds(self.config.timeout_seconds)
-            .send_stream()
-            .await
-            .map_err(|e| {
-                OpenAIError::NetworkError {
-                    message: format!("Failed to send streaming request: {}", e),
-                }
+        let mut http_request = crate::http::HttpRequest::post(url, Bytes::from(body))
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to create HTTP request: {}", e),
             })?;
         
-        // Convert HTTP stream to OpenAI chunk stream
+        // Add headers
+        http_request = http_request.header("Content-Type", "application/json")
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to add content-type header: {}", e),
+            })?;
+        
+        http_request = http_request.header("Authorization", &self.auth_header())
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to add authorization header: {}", e),
+            })?;
+        
+        http_request = http_request.header("User-Agent", "fluent-ai-provider/0.1.0")
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to add user-agent header: {}", e),
+            })?;
+        
+        // Use HTTP3 streaming
+        let stream = self.http_client.execute_streaming(http_request).await
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to execute streaming request: {}", e),
+            })?;
+        
+        // Convert HTTP stream to OpenAI chunk stream using HTTP3 SSE parsing
         let chunk_stream = stream.map(|chunk_result| {
             match chunk_result {
                 Ok(chunk) => {
@@ -202,7 +224,7 @@ impl OpenAIClient {
             }
         });
         
-        Ok(Box::new(chunk_stream))
+        Ok(chunk_stream)
     }
     
     /// Send an embedding request
@@ -210,10 +232,9 @@ impl OpenAIClient {
         &self,
         request: &OpenAIEmbeddingRequest,
     ) -> OpenAIResult<OpenAIEmbeddingResponse> {
-        self.increment_request_count().await;
+        self.increment_request_count();
         
         let url = format!("{}/embeddings", self.config.base_url);
-        let headers = self.common_headers();
         
         let body = serde_json::to_vec(request).map_err(|e| {
             OpenAIError::SerializationError {
@@ -221,17 +242,30 @@ impl OpenAIClient {
             }
         })?;
         
-        let response = self.http_client
-            .post(&url)
-            .headers(headers)
-            .body(body)
-            .timeout_seconds(self.config.timeout_seconds)
-            .send()
-            .await
-            .map_err(|e| {
-                OpenAIError::NetworkError {
-                    message: format!("Failed to send embedding request: {}", e),
-                }
+        let mut http_request = crate::http::HttpRequest::post(url, Bytes::from(body))
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to create HTTP request: {}", e),
+            })?;
+        
+        // Add headers
+        http_request = http_request.header("Content-Type", "application/json")
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to add content-type header: {}", e),
+            })?;
+        
+        http_request = http_request.header("Authorization", &self.auth_header())
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to add authorization header: {}", e),
+            })?;
+        
+        http_request = http_request.header("User-Agent", "fluent-ai-provider/0.1.0")
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to add user-agent header: {}", e),
+            })?;
+        
+        let response = self.http_client.execute(http_request).await
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to execute embedding request: {}", e),
             })?;
         
         if !response.status.is_success() {
@@ -254,18 +288,26 @@ impl OpenAIClient {
     /// Test the client connection
     pub async fn test_connection(&self) -> OpenAIResult<()> {
         let url = format!("{}/models", self.config.base_url);
-        let headers = self.common_headers();
         
-        let response = self.http_client
-            .get(&url)
-            .headers(headers)
-            .timeout_seconds(30)
-            .send()
-            .await
-            .map_err(|e| {
-                OpenAIError::NetworkError {
-                    message: format!("Connection test failed: {}", e),
-                }
+        let mut http_request = crate::http::HttpRequest::get(url)
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to create HTTP request: {}", e),
+            })?;
+        
+        // Add headers
+        http_request = http_request.header("Authorization", &self.auth_header())
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to add authorization header: {}", e),
+            })?;
+        
+        http_request = http_request.header("User-Agent", "fluent-ai-provider/0.1.0")
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Failed to add user-agent header: {}", e),
+            })?;
+        
+        let response = self.http_client.execute(http_request).await
+            .map_err(|e| OpenAIError::NetworkError {
+                message: format!("Connection test failed: {}", e),
             })?;
         
         if !response.status.is_success() {
@@ -331,7 +373,7 @@ mod tests {
         assert!(client.is_ok());
         
         let client = client.unwrap();
-        assert_eq!(client.request_count().await, 0);
+        assert_eq!(client.request_count(), 0);
     }
     
     #[tokio::test]
@@ -349,18 +391,5 @@ mod tests {
         ).await.unwrap();
         
         assert_eq!(client.auth_header(), "Bearer test-key");
-    }
-    
-    #[tokio::test]
-    async fn test_common_headers() {
-        let client = OpenAIClient::new(
-            "test-key".to_string(),
-            "https://api.openai.com/v1".to_string(),
-        ).await.unwrap();
-        
-        let headers = client.common_headers();
-        assert_eq!(headers.get("Authorization"), Some(&"Bearer test-key".to_string()));
-        assert_eq!(headers.get("Content-Type"), Some(&"application/json".to_string()));
-        assert!(headers.contains_key("User-Agent"));
     }
 }

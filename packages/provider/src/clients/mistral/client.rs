@@ -10,6 +10,7 @@ use crate::{
     completion::{
         self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
     },
+    http::{HttpClient, HttpRequest, HttpError},
     json_util,
     message::Message,
     runtime::{self, AsyncTask},
@@ -28,49 +29,41 @@ const MISTRAL_API_BASE_URL: &str = "https://api.mistral.ai";
 #[derive(Clone, Debug)]
 pub struct Client {
     pub base_url: String,
-    pub(crate) http_client: reqwest::Client,
+    pub(crate) http_client: HttpClient,
+    pub(crate) api_key: String,
 }
 
 impl Client {
     /// Create a new Mistral client with the given API key.
-    pub fn new(api_key: &str) -> Self {
+    pub fn new(api_key: &str) -> Result<Self, HttpError> {
         Self::from_url(api_key, MISTRAL_API_BASE_URL)
     }
 
     /// Create a new Mistral client with the given API key and base URL.
-    pub fn from_url(api_key: &str, base_url: &str) -> Self {
-        Self {
+    pub fn from_url(api_key: &str, base_url: &str) -> Result<Self, HttpError> {
+        let http_client = HttpClient::for_provider("mistral")?;
+        
+        Ok(Self {
             base_url: base_url.to_string(),
-            http_client: reqwest::Client::builder()
-                .default_headers({
-                    let mut headers = reqwest::header::HeaderMap::new();
-                    headers.insert(
-                        reqwest::header::CONTENT_TYPE,
-                        "application/json".parse().unwrap(),
-                    );
-                    headers.insert(
-                        "Authorization",
-                        format!("Bearer {api_key}")
-                            .parse()
-                            .expect("Bearer token should parse"),
-                    );
-                    headers
-                })
-                .build()
-                .expect("Mistral reqwest client should build"),
-        }
+            http_client,
+            api_key: api_key.to_string(),
+        })
     }
 
     /// Create from environment (MISTRAL_API_KEY)
-    pub fn from_env() -> Self {
-        let api_key = std::env::var("MISTRAL_API_KEY").expect("MISTRAL_API_KEY not set");
+    pub fn from_env() -> Result<Self, HttpError> {
+        let api_key = std::env::var("MISTRAL_API_KEY")
+            .map_err(|_| HttpError::ConfigurationError("MISTRAL_API_KEY not set".to_string()))?;
         Self::new(&api_key)
     }
 
-    pub(crate) fn post(&self, path: &str) -> reqwest::RequestBuilder {
+    pub(crate) fn post(&self, path: &str, body: Vec<u8>) -> Result<HttpRequest, HttpError> {
         let url = format!("{}/{}", self.base_url, path).replace("//", "/");
         tracing::debug!("POST {}", url);
-        self.http_client.post(url)
+        
+        HttpRequest::post(url, body)?
+            .header("Content-Type", "application/json")?
+            .header("Authorization", &format!("Bearer {}", self.api_key))
     }
 
     /// Create a completion model with the given name.
@@ -251,7 +244,7 @@ impl<'a> MistralCompletionBuilder<'a, NeedsPrompt> {
 impl<'a> MistralCompletionBuilder<'a, HasPrompt> {
     /// Build the completion request
     fn build_request(&self) -> Result<CompletionRequest, PromptError> {
-        let prompt = self.prompt.as_ref().expect("HasPrompt guarantees prompt");
+        let prompt = self.prompt.as_ref().ok_or_else(|| PromptError::ValidationError("Prompt is required".to_string()))?;
 
         let mut builder =
             CompletionRequestBuilder::new(self.model_name.to_string(), prompt.clone())?;

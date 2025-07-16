@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::sync::Arc;
 
 /// Zero-allocation model information with optimized string handling
@@ -615,13 +615,13 @@ impl<T: Model> ModelRegistry<T> {
     
     /// Get model by provider and name - zero allocation
     #[inline]
-    pub fn get(&self, provider: &str, name: &str) -> Option<&Arc<T>> {
+    pub fn get<'a>(&'a self, provider: &'a str, name: &'a str) -> Option<&'a Arc<T>> {
         self.models.get(&(provider, name))
     }
     
     /// Get all models for a provider - zero allocation
     #[inline]
-    pub fn get_provider_models(&self, provider: &str) -> Vec<&Arc<T>> {
+    pub fn get_provider_models<'a>(&'a self, provider: &'a str) -> Vec<&'a Arc<T>> {
         self.providers.get(provider)
             .map(|names| names.iter().filter_map(|name| self.models.get(&(provider, name))).collect())
             .unwrap_or_default()

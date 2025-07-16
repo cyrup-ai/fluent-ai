@@ -331,7 +331,7 @@ where
         let memories = memory_ops::search_memories(self.memory_manager.clone())
             .call(query.clone())
             .await
-            .unwrap_or_default();
+            .unwrap_or_else(|_| crate::ZeroOneOrMany::None);
 
         // Format as RAG prompt
         let documents = memories

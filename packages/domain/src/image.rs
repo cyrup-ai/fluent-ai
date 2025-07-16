@@ -1,4 +1,3 @@
-use crate::AsyncStream;
 use crate::chunk::ImageChunk;
 use serde::{Deserialize, Serialize};
 
@@ -154,7 +153,7 @@ impl ImageBuilder {
 
 impl ImageBuilderWithHandler {
     // Terminal method - returns AsyncStream<ImageChunk>
-    pub fn load(self) -> AsyncStream<ImageChunk> {
+    pub fn load(self) -> crate::async_task::AsyncStream<ImageChunk> {
         let image = Image {
             data: self.data,
             format: self.format,
@@ -180,11 +179,11 @@ impl ImageBuilderWithHandler {
         };
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let _ = tx.send(chunk);
-        AsyncStream::new(rx)
+        crate::async_task::AsyncStream::new(rx)
     }
 
     // Terminal method - async load with processing
-    pub fn process<F>(self, _f: F) -> AsyncStream<ImageChunk>
+    pub fn process<F>(self, _f: F) -> crate::async_task::AsyncStream<ImageChunk>
     where
         F: FnOnce(ImageChunk) -> ImageChunk + Send + 'static,
     {

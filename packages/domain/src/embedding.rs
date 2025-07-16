@@ -1,4 +1,4 @@
-use crate::{AsyncStream, AsyncTask, spawn_async};
+use crate::{AsyncTask, spawn_async};
 use crate::chunk::EmbeddingChunk;
 use crate::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ pub trait EmbeddingModel: Send + Sync + Clone {
     fn embed(&self, text: &str) -> AsyncTask<ZeroOneOrMany<f32>>;
 
     /// Create embeddings for multiple texts with streaming
-    fn embed_batch(&self, texts: ZeroOneOrMany<String>) -> AsyncStream<EmbeddingChunk>;
+    fn embed_batch(&self, texts: ZeroOneOrMany<String>) -> crate::async_task::AsyncStream<EmbeddingChunk>;
 
     /// Simple embedding with handler
     /// Performance: Zero allocation, direct await without Result unwrapping
@@ -19,7 +19,10 @@ pub trait EmbeddingModel: Send + Sync + Clone {
     {
         let embed_task = self.embed(text);
         crate::async_task::spawn_async(async move {
-            let embedding = embed_task.await; // AsyncTask now returns T directly, not Result<T, E>
+            let embedding = match embed_task.await {
+                Ok(embedding) => embedding,
+                Err(_) => return ZeroOneOrMany::None, // Handle JoinError
+            };
             handler(embedding)
         })
     }
@@ -66,7 +69,7 @@ impl EmbeddingBuilder {
     }
 
     pub fn with_dimensions(mut self, dims: usize) -> Self {
-        self.vec = Some(ZeroOneOrMany::from_vec(vec![0.0; dims]));
+        self.vec = Some(ZeroOneOrMany::many(vec![0.0; dims]));
         self
     }
 
@@ -117,7 +120,7 @@ impl EmbeddingBuilderWithHandler {
         spawn_async(async move {
             Embedding {
                 document: self.document,
-                vec: self.vec.unwrap_or_default(),
+                vec: self.vec.unwrap_or(ZeroOneOrMany::None),
             }
         })
     }

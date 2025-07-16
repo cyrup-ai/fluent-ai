@@ -7,6 +7,7 @@
 #![allow(clippy::type_complexity)]
 
 use serde_json::json;
+use bytes::Bytes;
 
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient, TranscriptionClient},
@@ -16,6 +17,7 @@ use crate::{
     domain::message::Message,
     providers::azure::completion::{CompletionModel, GPT_4O},
     runtime::{self as rt, AsyncTask},
+    http::{HttpClient, HttpRequest, HttpError},
 };
 
 use super::{embedding::EmbeddingModel, transcription::TranscriptionModel};
@@ -46,7 +48,8 @@ pub struct HasPrompt;
 pub struct Client {
     pub(crate) api_version: String,
     pub(crate) azure_endpoint: String,
-    pub(crate) http_client: reqwest::Client,
+    pub(crate) http_client: HttpClient,
+    pub(crate) auth: AzureOpenAIAuth,
 }
 
 impl Client {
@@ -58,28 +61,14 @@ impl Client {
     /// * `api_version` - API version to use (e.g., "2024-10-21" for GA, "2024-10-01-preview" for preview)
     /// * `azure_endpoint` - Azure OpenAI endpoint URL, for example: https://{your-resource-name}.openai.azure.com
     pub fn new(auth: impl Into<AzureOpenAIAuth>, api_version: &str, azure_endpoint: &str) -> Self {
-        let mut headers = reqwest::header::HeaderMap::new();
-        match auth.into() {
-            AzureOpenAIAuth::ApiKey(api_key) => {
-                headers.insert("api-key", api_key.parse().expect("API key should parse"));
-            }
-            AzureOpenAIAuth::Token(token) => {
-                headers.insert(
-                    "Authorization",
-                    format!("Bearer {token}")
-                        .parse()
-                        .expect("Token should parse"),
-                );
-            }
-        }
+        let http_client = HttpClient::for_provider("azure");
+        let auth = auth.into();
 
         Self {
             api_version: api_version.to_string(),
             azure_endpoint: azure_endpoint.to_string(),
-            http_client: reqwest::Client::builder()
-                .default_headers(headers)
-                .build()
-                .expect("Azure OpenAI reqwest client should build"),
+            http_client,
+            auth,
         }
     }
 
@@ -101,46 +90,59 @@ impl Client {
         )
     }
 
-    pub(crate) fn post_embedding(&self, deployment_id: &str) -> reqwest::RequestBuilder {
+    /// Get the authentication header for requests
+    pub(crate) fn auth_header(&self) -> (&'static str, String) {
+        match &self.auth {
+            AzureOpenAIAuth::ApiKey(api_key) => ("api-key", api_key.clone()),
+            AzureOpenAIAuth::Token(token) => ("Authorization", format!("Bearer {}", token)),
+        }
+    }
+
+    pub(crate) fn post_embedding(&self, deployment_id: &str) -> Result<HttpRequest, HttpError> {
         let url = format!(
             "{}/openai/deployments/{}/embeddings?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
-        self.http_client.post(url)
+        let (header_name, header_value) = self.auth_header();
+        HttpRequest::post(url, Bytes::new())?.header(header_name, header_value)
     }
 
-    pub(crate) fn post_chat_completion(&self, deployment_id: &str) -> reqwest::RequestBuilder {
+    pub(crate) fn post_chat_completion(&self, deployment_id: &str) -> Result<HttpRequest, HttpError> {
         let url = format!(
             "{}/openai/deployments/{}/chat/completions?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
-        self.http_client.post(url)
+        let (header_name, header_value) = self.auth_header();
+        HttpRequest::post(url, Bytes::new())?.header(header_name, header_value)
     }
 
-    pub(crate) fn post_transcription(&self, deployment_id: &str) -> reqwest::RequestBuilder {
+    pub(crate) fn post_transcription(&self, deployment_id: &str) -> Result<HttpRequest, HttpError> {
         let url = format!(
             "{}/openai/deployments/{}/audio/translations?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
-        self.http_client.post(url)
+        let (header_name, header_value) = self.auth_header();
+        HttpRequest::post(url, Bytes::new())?.header(header_name, header_value)
     }
 
     #[cfg(feature = "image")]
-    pub(crate) fn post_image_generation(&self, deployment_id: &str) -> reqwest::RequestBuilder {
+    pub(crate) fn post_image_generation(&self, deployment_id: &str) -> Result<HttpRequest, HttpError> {
         let url = format!(
             "{}/openai/deployments/{}/images/generations?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
-        self.http_client.post(url)
+        let (header_name, header_value) = self.auth_header();
+        HttpRequest::post(url, Bytes::new())?.header(header_name, header_value)
     }
 
     #[cfg(feature = "audio")]
-    pub(crate) fn post_audio_generation(&self, deployment_id: &str) -> reqwest::RequestBuilder {
+    pub(crate) fn post_audio_generation(&self, deployment_id: &str) -> Result<HttpRequest, HttpError> {
         let url = format!(
             "{}/openai/deployments/{}/audio/speech?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
-        self.http_client.post(url)
+        let (header_name, header_value) = self.auth_header();
+        HttpRequest::post(url, Bytes::new())?.header(header_name, header_value)
     }
 }
 

@@ -394,27 +394,30 @@ impl completion::CompletionModel for CompletionModel {
     ) -> Result<completion::CompletionResponse<CompletionResponse>, CompletionError> {
         let request = self.create_completion_request(completion_request)?;
 
-        let response = self
-            .client
-            .post("v1/chat/completions")
-            .json(&request)
-            .send()
-            .await?;
+        let request_body = serde_json::to_vec(&request)
+            .map_err(|e| CompletionError::ProviderError(format!("Failed to serialize request: {}", e)))?;
+
+        let http_request = self.client.post("v1/chat/completions", request_body)
+            .map_err(|e| CompletionError::ProviderError(format!("Failed to create request: {}", e)))?;
+
+        let response = self.client.http_client.send(http_request).await
+            .map_err(|e| CompletionError::ProviderError(format!("Request failed: {}", e)))?;
 
         if response.status().is_success() {
-            let text = response.text().await?;
-            match serde_json::from_str::<ApiResponse<CompletionResponse>>(&text)? {
+            let body = response.body();
+            match serde_json::from_slice::<ApiResponse<CompletionResponse>>(body)? {
                 ApiResponse::Ok(response) => {
                     tracing::debug!(target: "rig",
                         "Mistral completion token usage: {:?}",
-                        response.usage.clone().map(|usage| format!("{usage}")).unwrap_or("N/A".to_string())
+                        response.usage.clone().map(|usage| format!("{usage}")).unwrap_or_else(|| "N/A".to_string())
                     );
                     response.try_into()
                 }
                 ApiResponse::Err(err) => Err(CompletionError::ProviderError(err.message)),
             }
         } else {
-            Err(CompletionError::ProviderError(response.text().await?))
+            let error_body = String::from_utf8_lossy(response.body());
+            Err(CompletionError::ProviderError(error_body.to_string()))
         }
     }
 

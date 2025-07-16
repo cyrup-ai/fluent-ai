@@ -15,3 +15,6 @@ pub use try_flow::*;
 
 pub mod workflow;
 pub use workflow::*;
+
+pub mod prompt_enhancement;
+pub use prompt_enhancement::*;

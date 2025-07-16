@@ -7,7 +7,7 @@ use crate::async_task::{AsyncStream, AsyncTask};
 use crate::domain::chunk::EmbeddingChunk;
 use crate::embedding::batch::EmbeddingBatch;
 use crate::ZeroOneOrMany;
-use reqwest::Client;
+use fluent_ai_http3::{HttpClient, HttpConfig};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -80,7 +80,7 @@ impl Default for EmbeddingConfig {
 /// OpenAI embedding provider with latest models
 #[derive(Clone)]
 pub struct OpenAIEmbeddingProvider {
-    client: Client,
+    client: HttpClient,
     api_key: String,
     base_url: String,
     default_model: String,
@@ -136,11 +136,8 @@ impl OpenAIEmbeddingProvider {
     /// Create new OpenAI embedding provider
     #[inline(always)]
     pub fn new(api_key: impl Into<String>) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(120))
-            .user_agent("fluent-ai/1.0")
-            .build()
-            .unwrap_or_default();
+        let client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .expect("Failed to create HTTP3 client for OpenAI embeddings");
 
         Self {
             client,
@@ -172,27 +169,29 @@ impl OpenAIEmbeddingProvider {
     ) -> Result<OpenAIEmbeddingResponse, String> {
         let url = format!("{}/embeddings", self.base_url);
         
-        let request_body = serde_json::to_string(&request)
+        let request_body = serde_json::to_vec(&request)
             .map_err(|e| format!("Failed to serialize request: {}", e))?;
         
-        let response = self.client
+        // Create HTTP3 request
+        let http_request = self.client
             .post(&url)
             .header("Content-Type", "application/json")
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .timeout(self.request_timeout)
-            .body(request_body)
-            .send()
+            .header("Authorization", &format!("Bearer {}", self.api_key))
+            .with_body(request_body);
+        
+        let response = self.client
+            .send(http_request)
             .await
             .map_err(|e| format!("Request failed: {}", e))?;
         
         let status = response.status();
-        let body = response.text().await.unwrap_or_default();
+        let body = response.body();
         
         if status.is_success() {
-            serde_json::from_str(&body)
+            serde_json::from_slice(body)
                 .map_err(|e| format!("Failed to parse response: {}", e))
         } else {
-            Err(format!("API error {}: {}", status, body))
+            Err(format!("API error {}: {}", status, String::from_utf8_lossy(body)))
         }
     }
 
@@ -389,7 +388,7 @@ impl EnhancedEmbeddingModel for OpenAIEmbeddingProvider {
 /// Cohere embedding provider
 #[derive(Clone)]
 pub struct CohereEmbeddingProvider {
-    client: Client,
+    client: HttpClient,
     api_key: String,
     base_url: String,
     default_model: String,
@@ -400,11 +399,8 @@ impl CohereEmbeddingProvider {
     /// Create new Cohere embedding provider
     #[inline(always)]
     pub fn new(api_key: impl Into<String>) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(120))
-            .user_agent("fluent-ai/1.0")
-            .build()
-            .unwrap_or_default();
+        let client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .expect("Failed to create HTTP3 client for Cohere embeddings");
 
         Self {
             client,
@@ -442,14 +438,20 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
                 "input_type": "search_document"
             });
             
-            match client
-                .post(&url)
-                .header("Authorization", format!("Bearer {}", api_key))
-                .timeout(timeout)
-                .json(&request)
-                .send()
-                .await
-            {
+            // Create HTTP3 request
+            let request_body = serde_json::to_vec(&request)
+                .map_err(|e| format!("Failed to serialize request: {}", e));
+            
+            let http_request = match request_body {
+                Ok(body) => client
+                    .post(&url)
+                    .header("Authorization", &format!("Bearer {}", api_key))
+                    .header("Content-Type", "application/json")
+                    .with_body(body),
+                Err(e) => return ZeroOneOrMany::None,
+            };
+            
+            match client.send(http_request).await {
                 Ok(_response) => {
                     // Parse Cohere response and extract embeddings
                     let embedding = vec![0.0; 1536]; // Placeholder dimensions

@@ -2,11 +2,10 @@ use crate::chunk::{ChatMessageChunk, CompletionChunk};
 use crate::completion::CompletionRequestBuilder;
 use crate::conversation::Conversation;
 use crate::{CompletionRequest, Document, Message, MessageRole};
-use crate::memory::{Memory, VectorStoreIndex};
+use crate::memory::Memory;
 use crate::{AsyncStream, AsyncTask};
-// ByteSize types are not needed for now, removing to fix compilation
 use crate::mcp_tool::{McpTool, McpToolImpl};
-use crate::ZeroOneOrMany;
+use crate::{ZeroOneOrMany, Models, ByteSize};
 // Remove circular dependency - Models will be provided by caller
 // use fluent_ai_provider::Models;
 use serde_json::Value;
@@ -79,13 +78,12 @@ impl AgentBuilder {
         C: crate::conversation::Conversation,
     {
         let conversation = f();
-        let text = conversation.as_text();
+        let text = conversation.latest_user_message();
         let doc = Document::from_text(text).load();
 
         match self.context {
-            Some(mut existing) => {
-                existing.push(doc);
-                self.context = Some(existing);
+            Some(existing) => {
+                self.context = Some(existing.with_pushed(doc));
             }
             None => {
                 self.context = Some(ZeroOneOrMany::one(doc));
@@ -96,9 +94,8 @@ impl AgentBuilder {
 
     pub fn add_context(mut self, document: Document) -> Self {
         match self.context {
-            Some(mut existing) => {
-                existing.push(document);
-                self.context = Some(existing);
+            Some(existing) => {
+                self.context = Some(existing.with_pushed(document));
             }
             None => {
                 self.context = Some(ZeroOneOrMany::one(document));
@@ -111,9 +108,8 @@ impl AgentBuilder {
     pub fn context_text(mut self, text: impl Into<String>) -> Self {
         let doc = Document::from_text(text.into()).load();
         match self.context {
-            Some(mut existing) => {
-                existing.push(doc);
-                self.context = Some(existing);
+            Some(existing) => {
+                self.context = Some(existing.with_pushed(doc));
             }
             None => {
                 self.context = Some(ZeroOneOrMany::one(doc));
@@ -124,7 +120,7 @@ impl AgentBuilder {
 
     pub fn tool(mut self, tool: impl Into<McpToolImpl>) -> Self {
         let tool = tool.into();
-        self.tools.push(tool);
+        self.tools = self.tools.with_pushed(tool);
         self
     }
 
@@ -251,7 +247,7 @@ impl AgentBuilderWithHandler {
     }
 
     // Terminal method - chat interaction with closure
-    pub fn chat<F>(self, chat_closure: F) -> AsyncStream<ChatMessageChunk>
+    pub fn chat<F>(self, chat_closure: F) -> crate::async_task::AsyncStream<ChatMessageChunk>
     where
         F: Fn(crate::conversation::ConversationImpl) -> crate::chat::chat_loop::ChatLoop
             + Send
@@ -328,11 +324,11 @@ impl AgentBuilderWithHandler {
             }
         });
 
-        AsyncStream::new(rx)
+        crate::async_task::AsyncStream::new(rx)
     }
 
     // Keep the original string-based chat method for backward compatibility
-    pub fn chat_message(self, message: impl Into<String>) -> AsyncStream<ChatMessageChunk> {
+    pub fn chat_message(self, message: impl Into<String>) -> crate::async_task::AsyncStream<ChatMessageChunk> {
         let message = message.into();
         self.chat(move |_conversation| {
             crate::chat::chat_loop::ChatLoop::Reprompt(format!("Received: {}", message))
@@ -340,7 +336,7 @@ impl AgentBuilderWithHandler {
     }
 
     // Terminal method - stream completion
-    pub fn stream_completion(self, prompt: impl Into<String>) -> AsyncStream<CompletionChunk> {
+    pub fn stream_completion(self, prompt: impl Into<String>) -> crate::async_task::AsyncStream<CompletionChunk> {
         let agent = self.agent();
         let _request = CompletionRequest::prompt(prompt)
             .temperature(agent.temperature.unwrap_or(0.7))
@@ -352,7 +348,7 @@ impl AgentBuilderWithHandler {
         // TODO: Implement actual completion streaming
         // For now, return empty stream
         let (_tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        AsyncStream::new(rx)
+        crate::async_task::AsyncStream::new(rx)
     }
 
     // Terminal method - chat with chunk handler
@@ -360,12 +356,12 @@ impl AgentBuilderWithHandler {
         self,
         message: impl Into<String>,
         handler: F,
-    ) -> AsyncStream<ChatMessageChunk>
+    ) -> crate::async_task::AsyncStream<ChatMessageChunk>
     where
         F: Fn(ChatMessageChunk) + Send + Sync + 'static,
     {
         // Default chunk size of 512 bytes
-        self.on_chunk_with_size(message, handler, 512.bytes())
+        self.on_chunk_with_size(message, handler, crate::ByteSize(512_usize))
     }
 
     // Terminal method - chat with chunk handler and custom size
@@ -374,7 +370,7 @@ impl AgentBuilderWithHandler {
         message: impl Into<String>,
         handler: F,
         _chunk_size: ByteSize,
-    ) -> AsyncStream<ChatMessageChunk>
+    ) -> crate::async_task::AsyncStream<ChatMessageChunk>
     where
         F: Fn(ChatMessageChunk) + Send + Sync + 'static,
     {
@@ -401,7 +397,7 @@ impl AgentBuilderWithHandler {
             handler(response_chunk);
         });
 
-        AsyncStream::new(rx)
+        crate::async_task::AsyncStream::new(rx)
     }
 
     // Terminal method - create a completion request
@@ -427,7 +423,7 @@ impl AgentBuilderWithHandler {
         let _agent = self.agent();
         // TODO: Implement actual completion with the model
         // For now, return a placeholder response
-        AsyncTask::spawn(async move {
+        crate::spawn_async(async move {
             let response = "Placeholder response".to_string();
             handler(Ok(response))
         })
@@ -450,22 +446,22 @@ impl ConversationBuilder {
     }
 
     pub fn system(mut self, content: impl Into<String>) -> Self {
-        self.messages.push(Message::system(content));
+        self.messages = self.messages.with_pushed(Message::system(content));
         self
     }
 
     pub fn user(mut self, content: impl Into<String>) -> Self {
-        self.messages.push(Message::user(content));
+        self.messages = self.messages.with_pushed(Message::user(content));
         self
     }
 
     pub fn assistant(mut self, content: impl Into<String>) -> Self {
-        self.messages.push(Message::assistant(content));
+        self.messages = self.messages.with_pushed(Message::assistant(content));
         self
     }
 
     pub fn message(mut self, message: Message) -> Self {
-        self.messages.push(message);
+        self.messages = self.messages.with_pushed(message);
         self
     }
 
@@ -485,7 +481,7 @@ impl ConversationBuilder {
     }
 
     // Terminal method - starts conversation
-    pub fn converse(self) -> AsyncStream<ChatMessageChunk> {
+    pub fn converse(self) -> impl AsyncStream<Item = ChatMessageChunk> {
         // For conversation, we need to convert messages to a prompt
         // Taking the last user message as the prompt
         // Find the last user message by converting to vec and iterating in reverse
@@ -519,6 +515,6 @@ impl ConversationBuilder {
             let _ = tx.send(response_chunk);
         });
 
-        AsyncStream::new(rx)
+        crate::async_task::AsyncStream::new(rx)
     }
 }

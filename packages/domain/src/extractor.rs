@@ -1,6 +1,7 @@
 use crate::{AsyncTask, spawn_async};
 use crate::agent::Agent;
 use crate::completion::CompletionModel;
+use crate::Models;
 use std::fmt;
 use serde::de::DeserializeOwned;
 use std::marker::PhantomData;
@@ -185,7 +186,7 @@ impl<
     // Terminal method - returns impl Extractor
     pub fn build(self) -> impl Extractor<T> {
         // TODO: Convert model to agent properly
-        let agent = Agent::with_model(fluent_ai_provider::Models::Gpt35Turbo)
+        let agent = Agent::with_model(Models::Gpt35Turbo)
             .on_error(|_| {})
             .agent();
             

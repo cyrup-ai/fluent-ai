@@ -14,6 +14,7 @@ futures = "0.3"
 hashbrown = { version = "0.15", features = ["serde"] }
 glob = "0.3"
 fluent_ai_http3 = { path = "../http3" }
+# fluent_ai_provider = { path = "../provider" }
 base64 = "0.22"
 
 [lib]
