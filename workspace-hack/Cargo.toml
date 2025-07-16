@@ -15,187 +15,302 @@ publish = false
 
 ### BEGIN HAKARI SECTION
 [dependencies]
+ahash = { version = "0.8", features = ["serde"] }
+aho-corasick = { version = "1" }
+bstr = { version = "1" }
+bumpalo = { version = "3", features = ["allocator-api2"] }
 bytes = { version = "1", features = ["serde"] }
-castaway = { version = "0.2" }
-chrono = { version = "0.4", features = ["serde"] }
-digest = { version = "0.10", features = ["mac", "std"] }
-either = { version = "1", features = ["use_std"] }
+const-oid = { version = "0.9", default-features = false, features = ["db", "std"] }
+crossbeam-epoch = { version = "0.9" }
+crossbeam-utils = { version = "0.8" }
+crypto-common = { version = "0.1", default-features = false, features = ["std"] }
+digest = { version = "0.10", features = ["mac", "oid", "std"] }
+flate2 = { version = "1", features = ["zlib-ng", "zlib-rs"] }
 futures-channel = { version = "0.3", features = ["sink"] }
 futures-core = { version = "0.3" }
+futures-executor = { version = "0.3" }
 futures-io = { version = "0.3" }
 futures-sink = { version = "0.3" }
+futures-task = { version = "0.3" }
 futures-util = { version = "0.3", features = ["channel", "io", "sink"] }
-hashbrown = { version = "0.15" }
+generic-array = { version = "0.14", default-features = false, features = ["more_lengths", "zeroize"] }
+getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-features = false, features = ["std", "wasm_js"] }
+gix-features = { version = "0.42", features = ["crc32", "fs-read-dir", "io-pipe", "once_cell", "parallel", "progress", "progress-unit-bytes", "progress-unit-human-numbers", "walkdir", "zlib"] }
+gix-utils = { version = "0.3", default-features = false, features = ["bstr"] }
+hashbrown-3575ec1268b04181 = { package = "hashbrown", version = "0.15", features = ["serde"] }
+hashbrown-582f2526e08bb6a0 = { package = "hashbrown", version = "0.14", features = ["raw"] }
+idna = { version = "1" }
 indexmap = { version = "2", features = ["serde"] }
-itertools-582f2526e08bb6a0 = { package = "itertools", version = "0.14" }
-itertools-a6292c17cd707f01 = { package = "itertools", version = "0.11" }
 js-sys = { version = "0.3" }
-lalrpop-util = { version = "0.20", features = ["lexer"] }
-log = { version = "0.4", default-features = false, features = ["std"] }
+libc = { version = "0.2", features = ["extra_traits"] }
+lock_api = { version = "0.4", features = ["arc_lock"] }
+log = { version = "0.4", default-features = false, features = ["kv", "std"] }
 memchr = { version = "2", features = ["use_std"] }
 mime_guess = { version = "2" }
+miniz_oxide = { version = "0.8", features = ["simd"] }
 num-traits = { version = "0.2", features = ["i128", "libm"] }
-once_cell = { version = "1" }
+once_cell = { version = "1", features = ["critical-section"] }
+parking_lot = { version = "0.12", features = ["arc_lock"] }
 percent-encoding = { version = "2" }
-phf_shared = { version = "0.11", features = ["unicase"] }
-rand = { version = "0.8", features = ["small_rng"] }
-rand_core = { version = "0.6", default-features = false, features = ["std"] }
-regex = { version = "1" }
-regex-automata = { version = "0.4", default-features = false, features = ["dfa-onepass", "hybrid", "meta", "nfa-backtrack", "perf", "unicode"] }
-reqwest = { version = "0.12", features = ["blocking", "json", "macos-system-configuration", "multipart", "rustls-tls", "stream"] }
+portable-atomic = { version = "1", features = ["require-cas"] }
+prodash = { version = "29", features = ["unit-bytes", "unit-human"] }
+regex-automata = { version = "0.4", default-features = false, features = ["dfa", "hybrid", "meta", "nfa", "perf", "unicode"] }
+regex-syntax = { version = "0.8" }
+reqwest = { version = "0.12", features = ["blocking", "json", "macos-system-configuration", "multipart", "native-tls", "rustls-tls", "stream"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
-serde_json = { version = "1", features = ["alloc", "preserve_order"] }
+serde_json = { version = "1", features = ["alloc", "preserve_order", "raw_value"] }
 sha1 = { version = "0.10", features = ["compress"] }
-smallvec = { version = "1", default-features = false, features = ["const_generics"] }
-string_cache = { version = "0.8" }
+simd-adler32 = { version = "0.3" }
+smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union", "write"] }
 subtle = { version = "2" }
-time = { version = "0.3", features = ["formatting", "local-offset", "macros", "parsing"] }
-tokio = { version = "1", features = ["full"] }
-unicode-xid = { version = "0.2" }
+tinystr = { version = "0.8", features = ["zerovec"] }
+tokio = { version = "1", features = ["full", "test-util"] }
+tracing = { version = "0.1", features = ["log"] }
+tracing-core = { version = "0.1" }
+unicode-normalization = { version = "0.1" }
 url = { version = "2", features = ["serde"] }
 wasm-bindgen = { version = "0.2" }
 web-sys = { version = "0.3", features = ["AbortController", "AbortSignal", "BinaryType", "Cache", "CacheQueryOptions", "CacheStorage", "CloseEvent", "ErrorEvent", "File", "FormData", "Headers", "MessageEvent", "ProgressEvent", "QueuingStrategy", "ReadableByteStreamController", "ReadableStream", "ReadableStreamByobReader", "ReadableStreamByobRequest", "ReadableStreamDefaultController", "ReadableStreamDefaultReader", "ReadableStreamGetReaderOptions", "ReadableStreamReadResult", "ReadableStreamReaderMode", "ReadableStreamType", "ReadableWritablePair", "Request", "RequestInit", "RequestRedirect", "Response", "ResponseInit", "StreamPipeOptions", "TransformStream", "TransformStreamDefaultController", "Transformer", "UnderlyingSink", "UnderlyingSource", "WebSocket", "WorkerGlobalScope", "WritableStream", "WritableStreamDefaultController", "WritableStreamDefaultWriter", "console"] }
+zeroize = { version = "1", features = ["derive"] }
 
 [build-dependencies]
+ahash = { version = "0.8", features = ["serde"] }
+aho-corasick = { version = "1" }
+bumpalo = { version = "3", features = ["allocator-api2"] }
 bytes = { version = "1", features = ["serde"] }
-either = { version = "1", features = ["use_std"] }
+cc = { version = "1", default-features = false, features = ["parallel"] }
+const-oid = { version = "0.9", default-features = false, features = ["db", "std"] }
+crossbeam-epoch = { version = "0.9" }
+crossbeam-utils = { version = "0.8" }
+crypto-common = { version = "0.1", default-features = false, features = ["std"] }
+digest = { version = "0.10", features = ["mac", "oid", "std"] }
+displaydoc = { version = "0.2" }
+flate2 = { version = "1", features = ["zlib-ng", "zlib-rs"] }
 futures-channel = { version = "0.3", features = ["sink"] }
 futures-core = { version = "0.3" }
 futures-io = { version = "0.3" }
 futures-sink = { version = "0.3" }
+futures-task = { version = "0.3" }
 futures-util = { version = "0.3", features = ["channel", "io", "sink"] }
-hashbrown = { version = "0.15" }
+generic-array = { version = "0.14", default-features = false, features = ["more_lengths", "zeroize"] }
+getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-features = false, features = ["std", "wasm_js"] }
+hashbrown-3575ec1268b04181 = { package = "hashbrown", version = "0.15", features = ["serde"] }
+hashbrown-582f2526e08bb6a0 = { package = "hashbrown", version = "0.14", features = ["raw"] }
+idna = { version = "1" }
 indexmap = { version = "2", features = ["serde"] }
-itertools-a6292c17cd707f01 = { package = "itertools", version = "0.11" }
 js-sys = { version = "0.3" }
-lalrpop-util = { version = "0.20", features = ["lexer"] }
-log = { version = "0.4", default-features = false, features = ["std"] }
+libc = { version = "0.2", features = ["extra_traits"] }
+lock_api = { version = "0.4", features = ["arc_lock"] }
+log = { version = "0.4", default-features = false, features = ["kv", "std"] }
 memchr = { version = "2", features = ["use_std"] }
 mime_guess = { version = "2" }
-once_cell = { version = "1" }
+miniz_oxide = { version = "0.8", features = ["simd"] }
+num-traits = { version = "0.2", features = ["i128", "libm"] }
+once_cell = { version = "1", features = ["critical-section"] }
+parking_lot = { version = "0.12", features = ["arc_lock"] }
 percent-encoding = { version = "2" }
-phf_shared = { version = "0.11", features = ["unicase"] }
-rand = { version = "0.8", features = ["small_rng"] }
-rand_core = { version = "0.6", default-features = false, features = ["std"] }
-regex = { version = "1" }
-regex-automata = { version = "0.4", default-features = false, features = ["dfa-onepass", "hybrid", "meta", "nfa-backtrack", "perf", "unicode"] }
-reqwest = { version = "0.12", features = ["blocking", "json", "macos-system-configuration", "multipart", "rustls-tls", "stream"] }
+portable-atomic = { version = "1", features = ["require-cas"] }
+regex-automata = { version = "0.4", default-features = false, features = ["dfa", "hybrid", "meta", "nfa", "perf", "unicode"] }
+regex-syntax = { version = "0.8" }
+reqwest = { version = "0.12", features = ["blocking", "json", "macos-system-configuration", "multipart", "native-tls", "rustls-tls", "stream"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
-serde_json = { version = "1", features = ["alloc", "preserve_order"] }
-smallvec = { version = "1", default-features = false, features = ["const_generics"] }
-string_cache = { version = "0.8" }
-syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
-tokio = { version = "1", features = ["full"] }
-unicode-xid = { version = "0.2" }
+serde_json = { version = "1", features = ["alloc", "preserve_order", "raw_value"] }
+sha1 = { version = "0.10", features = ["compress"] }
+simd-adler32 = { version = "0.3" }
+smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union", "write"] }
+subtle = { version = "2" }
+tinystr = { version = "0.8", features = ["zerovec"] }
+tokio = { version = "1", features = ["full", "test-util"] }
 url = { version = "2", features = ["serde"] }
 wasm-bindgen = { version = "0.2" }
 web-sys = { version = "0.3", features = ["AbortController", "AbortSignal", "BinaryType", "Cache", "CacheQueryOptions", "CacheStorage", "CloseEvent", "ErrorEvent", "File", "FormData", "Headers", "MessageEvent", "ProgressEvent", "QueuingStrategy", "ReadableByteStreamController", "ReadableStream", "ReadableStreamByobReader", "ReadableStreamByobRequest", "ReadableStreamDefaultController", "ReadableStreamDefaultReader", "ReadableStreamGetReaderOptions", "ReadableStreamReadResult", "ReadableStreamReaderMode", "ReadableStreamType", "ReadableWritablePair", "Request", "RequestInit", "RequestRedirect", "Response", "ResponseInit", "StreamPipeOptions", "TransformStream", "TransformStreamDefaultController", "Transformer", "UnderlyingSink", "UnderlyingSource", "WebSocket", "WorkerGlobalScope", "WritableStream", "WritableStreamDefaultController", "WritableStreamDefaultWriter", "console"] }
+zeroize = { version = "1", features = ["derive"] }
 
 [target.x86_64-unknown-linux-gnu.dependencies]
-bitflags = { version = "2", default-features = false, features = ["std"] }
+aws-lc-rs = { version = "1", features = ["prebuilt-nasm"] }
+bitflags = { version = "2", default-features = false, features = ["serde", "std"] }
 byteorder = { version = "1" }
-getrandom = { version = "0.3", default-features = false, features = ["std"] }
+crypto-common = { version = "0.1", default-features = false, features = ["getrandom"] }
+getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "std"] }
+hyper = { version = "1", features = ["full"] }
+hyper-rustls = { version = "0.27", features = ["http2", "ring", "webpki-tokio"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 mio = { version = "1", features = ["net", "os-ext"] }
+rand_core = { version = "0.6", default-features = false, features = ["std"] }
 ring = { version = "0.17", features = ["std"] }
-rustix = { version = "1", features = ["fs", "stdio", "termios"] }
-rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
-smallvec = { version = "1", default-features = false, features = ["const_new"] }
-tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
-tracing = { version = "0.1" }
-tracing-core = { version = "0.1" }
-uuid = { version = "1", features = ["serde", "v4", "v7"] }
+rustls = { version = "0.23", features = ["ring"] }
+rustls-webpki = { version = "0.103", default-features = false, features = ["aws-lc-rs", "ring", "std"] }
+sha1 = { version = "0.10", default-features = false, features = ["oid"] }
+sha1-checked = { version = "0.10", features = ["zeroize"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
+subtle = { version = "2", default-features = false, features = ["const-generics"] }
+tokio-rustls = { version = "0.26", features = ["ring"] }
+tokio-util = { version = "0.7", features = ["codec", "compat", "io-util"] }
+tower = { version = "0.5", default-features = false, features = ["buffer", "log", "make", "retry", "timeout"] }
+tower-http = { version = "0.6", features = ["cors", "follow-redirect", "map-response-body", "trace"] }
 web-sys = { version = "0.3", default-features = false, features = ["Worker"] }
 
 [target.x86_64-unknown-linux-gnu.build-dependencies]
-bitflags = { version = "2", default-features = false, features = ["std"] }
+aws-lc-rs = { version = "1", features = ["prebuilt-nasm"] }
+bitflags = { version = "2", default-features = false, features = ["serde", "std"] }
+bstr = { version = "1" }
+byteorder = { version = "1" }
+crypto-common = { version = "0.1", default-features = false, features = ["getrandom"] }
+getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "std"] }
+hyper = { version = "1", features = ["full"] }
+hyper-rustls = { version = "0.27", features = ["http2", "ring", "webpki-tokio"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 mio = { version = "1", features = ["net", "os-ext"] }
+rand_core = { version = "0.6", default-features = false, features = ["std"] }
 ring = { version = "0.17", features = ["std"] }
-rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
-smallvec = { version = "1", default-features = false, features = ["const_new"] }
-subtle = { version = "2" }
-tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
-tracing = { version = "0.1" }
+rustls = { version = "0.23", features = ["ring"] }
+rustls-webpki = { version = "0.103", default-features = false, features = ["aws-lc-rs", "ring", "std"] }
+sha1 = { version = "0.10", default-features = false, features = ["oid"] }
+sha1-checked = { version = "0.10", features = ["zeroize"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
+subtle = { version = "2", default-features = false, features = ["const-generics"] }
+tokio-rustls = { version = "0.26", features = ["ring"] }
+tokio-util = { version = "0.7", features = ["codec", "compat", "io-util"] }
+tower = { version = "0.5", default-features = false, features = ["buffer", "log", "make", "retry", "timeout"] }
+tower-http = { version = "0.6", features = ["cors", "follow-redirect", "map-response-body", "trace"] }
+tracing = { version = "0.1", features = ["log"] }
 tracing-core = { version = "0.1" }
 web-sys = { version = "0.3", default-features = false, features = ["Worker"] }
 
 [target.x86_64-apple-darwin.dependencies]
+aws-lc-rs = { version = "1", features = ["prebuilt-nasm"] }
+bitflags = { version = "2", default-features = false, features = ["serde", "std"] }
 byteorder = { version = "1" }
-getrandom = { version = "0.3", default-features = false, features = ["std"] }
+getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "std"] }
+hyper = { version = "1", features = ["full"] }
+hyper-rustls = { version = "0.27", features = ["http2", "ring", "webpki-tokio"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 ring = { version = "0.17", features = ["std"] }
-rustix = { version = "1", features = ["fs", "stdio", "termios"] }
-rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
-smallvec = { version = "1", default-features = false, features = ["const_new"] }
-tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
-tracing = { version = "0.1" }
-tracing-core = { version = "0.1" }
-uuid = { version = "1", features = ["serde", "v4", "v7"] }
+rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
+rustls = { version = "0.23", features = ["ring"] }
+rustls-webpki = { version = "0.103", default-features = false, features = ["aws-lc-rs", "ring", "std"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
+subtle = { version = "2", default-features = false, features = ["const-generics"] }
+time = { version = "0.3", features = ["formatting", "local-offset", "macros", "parsing", "serde"] }
+tokio-rustls = { version = "0.26", features = ["ring"] }
+tokio-util = { version = "0.7", features = ["codec", "compat", "io-util"] }
+tower = { version = "0.5", default-features = false, features = ["buffer", "log", "make", "retry", "timeout"] }
+tower-http = { version = "0.6", features = ["cors", "follow-redirect", "map-response-body", "trace"] }
 web-sys = { version = "0.3", default-features = false, features = ["Worker"] }
 
 [target.x86_64-apple-darwin.build-dependencies]
-getrandom = { version = "0.3", default-features = false, features = ["std"] }
+aws-lc-rs = { version = "1", features = ["prebuilt-nasm"] }
+bitflags = { version = "2", default-features = false, features = ["serde", "std"] }
+byteorder = { version = "1" }
+futures-executor = { version = "0.3" }
+getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "std"] }
+hyper = { version = "1", features = ["full"] }
+hyper-rustls = { version = "0.27", features = ["http2", "ring", "webpki-tokio"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 ring = { version = "0.17", features = ["std"] }
-rustix = { version = "1", features = ["fs", "stdio", "termios"] }
-rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
-smallvec = { version = "1", default-features = false, features = ["const_new"] }
-subtle = { version = "2" }
-tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
-tracing = { version = "0.1" }
+rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
+rustls = { version = "0.23", features = ["ring"] }
+rustls-webpki = { version = "0.103", default-features = false, features = ["aws-lc-rs", "ring", "std"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
+subtle = { version = "2", default-features = false, features = ["const-generics"] }
+time = { version = "0.3", features = ["formatting", "local-offset", "macros", "parsing", "serde"] }
+tokio-rustls = { version = "0.26", features = ["ring"] }
+tokio-util = { version = "0.7", features = ["codec", "compat", "io-util"] }
+tower = { version = "0.5", default-features = false, features = ["buffer", "log", "make", "retry", "timeout"] }
+tower-http = { version = "0.6", features = ["cors", "follow-redirect", "map-response-body", "trace"] }
+tracing = { version = "0.1", features = ["log"] }
 tracing-core = { version = "0.1" }
 web-sys = { version = "0.3", default-features = false, features = ["Worker"] }
 
 [target.aarch64-apple-darwin.dependencies]
+aws-lc-rs = { version = "1", features = ["prebuilt-nasm"] }
+bitflags = { version = "2", default-features = false, features = ["serde", "std"] }
 byteorder = { version = "1" }
-getrandom = { version = "0.3", default-features = false, features = ["std"] }
+getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "std"] }
+hyper = { version = "1", features = ["full"] }
+hyper-rustls = { version = "0.27", features = ["http2", "ring", "webpki-tokio"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 ring = { version = "0.17", features = ["std"] }
-rustix = { version = "1", features = ["fs", "stdio", "termios"] }
-rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
-smallvec = { version = "1", default-features = false, features = ["const_new"] }
-tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
-tracing = { version = "0.1" }
-tracing-core = { version = "0.1" }
-uuid = { version = "1", features = ["serde", "v4", "v7"] }
+rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
+rustls = { version = "0.23", features = ["ring"] }
+rustls-webpki = { version = "0.103", default-features = false, features = ["aws-lc-rs", "ring", "std"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
+subtle = { version = "2", default-features = false, features = ["const-generics"] }
+time = { version = "0.3", features = ["formatting", "local-offset", "macros", "parsing", "serde"] }
+tokio-rustls = { version = "0.26", features = ["ring"] }
+tokio-util = { version = "0.7", features = ["codec", "compat", "io-util"] }
+tower = { version = "0.5", default-features = false, features = ["buffer", "log", "make", "retry", "timeout"] }
+tower-http = { version = "0.6", features = ["cors", "follow-redirect", "map-response-body", "trace"] }
 web-sys = { version = "0.3", default-features = false, features = ["Worker"] }
 
 [target.aarch64-apple-darwin.build-dependencies]
-getrandom = { version = "0.3", default-features = false, features = ["std"] }
+aws-lc-rs = { version = "1", features = ["prebuilt-nasm"] }
+bitflags = { version = "2", default-features = false, features = ["serde", "std"] }
+byteorder = { version = "1" }
+futures-executor = { version = "0.3" }
+getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "std"] }
+hyper = { version = "1", features = ["full"] }
+hyper-rustls = { version = "0.27", features = ["http2", "ring", "webpki-tokio"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 mio = { version = "1", features = ["net", "os-ext"] }
 ring = { version = "0.17", features = ["std"] }
-rustix = { version = "1", features = ["fs", "stdio", "termios"] }
-rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
-smallvec = { version = "1", default-features = false, features = ["const_new"] }
-subtle = { version = "2" }
-tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
-tracing = { version = "0.1" }
+rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
+rustls = { version = "0.23", features = ["ring"] }
+rustls-webpki = { version = "0.103", default-features = false, features = ["aws-lc-rs", "ring", "std"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
+subtle = { version = "2", default-features = false, features = ["const-generics"] }
+time = { version = "0.3", features = ["formatting", "local-offset", "macros", "parsing", "serde"] }
+tokio-rustls = { version = "0.26", features = ["ring"] }
+tokio-util = { version = "0.7", features = ["codec", "compat", "io-util"] }
+tower = { version = "0.5", default-features = false, features = ["buffer", "log", "make", "retry", "timeout"] }
+tower-http = { version = "0.6", features = ["cors", "follow-redirect", "map-response-body", "trace"] }
+tracing = { version = "0.1", features = ["log"] }
 tracing-core = { version = "0.1" }
 web-sys = { version = "0.3", default-features = false, features = ["Worker"] }
 
 [target.x86_64-pc-windows-msvc.dependencies]
+aws-lc-rs = { version = "1", features = ["prebuilt-nasm"] }
+bitflags = { version = "2", default-features = false, features = ["serde", "std"] }
 byteorder = { version = "1" }
-getrandom = { version = "0.3", default-features = false, features = ["std"] }
+getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "std"] }
+hyper = { version = "1", features = ["full"] }
+hyper-rustls = { version = "0.27", features = ["http2", "ring", "webpki-tokio"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 ring = { version = "0.17", features = ["std"] }
-rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
-smallvec = { version = "1", default-features = false, features = ["const_new"] }
-tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
-tracing = { version = "0.1" }
-tracing-core = { version = "0.1" }
-uuid = { version = "1", features = ["serde", "v4", "v7"] }
+rustls = { version = "0.23", features = ["ring"] }
+rustls-webpki = { version = "0.103", default-features = false, features = ["aws-lc-rs", "ring", "std"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
+tokio-rustls = { version = "0.26", features = ["ring"] }
+tokio-util = { version = "0.7", features = ["codec", "compat", "io-util"] }
+tower = { version = "0.5", default-features = false, features = ["buffer", "log", "make", "retry", "timeout"] }
+tower-http = { version = "0.6", features = ["cors", "follow-redirect", "map-response-body", "trace"] }
 web-sys = { version = "0.3", default-features = false, features = ["Worker"] }
-winapi = { version = "0.3", default-features = false, features = ["cfg", "consoleapi", "errhandlingapi", "evntrace", "fileapi", "handleapi", "impl-default", "in6addr", "inaddr", "knownfolders", "minwinbase", "ntsecapi", "objbase", "processenv", "shlobj", "synchapi", "winbase", "wincon", "windef", "winerror", "winioctl", "winuser"] }
-windows-sys = { version = "0.59", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_NetworkManagement_IpHelper", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Authorization", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_IO", "Win32_System_Ioctl", "Win32_System_Kernel", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Performance", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
+windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Foundation", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_Environment", "Win32_System_IO", "Win32_System_Ioctl", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Performance", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
 [target.x86_64-pc-windows-msvc.build-dependencies]
+aws-lc-rs = { version = "1", features = ["prebuilt-nasm"] }
+bitflags = { version = "2", default-features = false, features = ["serde", "std"] }
+byteorder = { version = "1" }
+getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js", "std"] }
+hyper = { version = "1", features = ["full"] }
+hyper-rustls = { version = "0.27", features = ["http2", "ring", "webpki-tokio"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 ring = { version = "0.17", features = ["std"] }
-rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
-smallvec = { version = "1", default-features = false, features = ["const_new"] }
-subtle = { version = "2" }
-tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
-tracing = { version = "0.1" }
+rustls = { version = "0.23", features = ["ring"] }
+rustls-webpki = { version = "0.103", default-features = false, features = ["aws-lc-rs", "ring", "std"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
+tokio-rustls = { version = "0.26", features = ["ring"] }
+tokio-util = { version = "0.7", features = ["codec", "compat", "io-util"] }
+tower = { version = "0.5", default-features = false, features = ["buffer", "log", "make", "retry", "timeout"] }
+tower-http = { version = "0.6", features = ["cors", "follow-redirect", "map-response-body", "trace"] }
+tracing = { version = "0.1", features = ["log"] }
 tracing-core = { version = "0.1" }
 web-sys = { version = "0.3", default-features = false, features = ["Worker"] }
-winapi = { version = "0.3", default-features = false, features = ["cfg", "consoleapi", "errhandlingapi", "evntrace", "fileapi", "handleapi", "impl-default", "in6addr", "inaddr", "knownfolders", "minwinbase", "ntsecapi", "objbase", "processenv", "shlobj", "synchapi", "winbase", "wincon", "windef", "winerror", "winioctl", "winuser"] }
-windows-sys = { version = "0.59", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_NetworkManagement_IpHelper", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Authorization", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_IO", "Win32_System_Ioctl", "Win32_System_Kernel", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Performance", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
+windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Foundation", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_Environment", "Win32_System_IO", "Win32_System_Ioctl", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Performance", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
 ### END HAKARI SECTION
