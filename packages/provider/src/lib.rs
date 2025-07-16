@@ -12,6 +12,9 @@ pub mod providers;
 // Provider client implementations - the actual client code moved from fluent-ai
 pub mod clients;
 
+// Client factory for provider-to-client mapping
+pub mod client_factory;
+
 // HTTP utilities moved from fluent-ai
 pub mod http;
 
@@ -25,6 +28,11 @@ pub use fluent_ai_domain::{Model, Provider};
 pub use model_info::ModelInfoData;
 pub use models::Models;
 pub use providers::Providers;
+
+// Re-export client factory types
+pub use client_factory::{
+    ClientConfig, ClientFactoryError, ClientFactoryResult, UnifiedClient
+};
 
 
 // Extension methods for Providers enum

@@ -2,7 +2,7 @@
 //! 
 //! Provides trait-based MCP tool management with builder pattern
 
-use crate::async_task::{AsyncTask, spawn_async};
+use crate::{AsyncTask, spawn_async};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;

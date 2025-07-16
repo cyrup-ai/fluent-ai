@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", rev = "cc262c4aa90493a6cf6ae4695b7dad28b0c1199d" }
+cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["all"] }
 thiserror = "2.0.12"
 uuid = { version = "1.17.0", features = ["v4", "serde"] }
 serde_json = "1.0"
@@ -13,7 +13,8 @@ tokio = { version = "1.46.1", features = ["full"] }
 futures = "0.3"
 hashbrown = { version = "0.15", features = ["serde"] }
 glob = "0.3"
-reqwest = { version = "0.12", features = ["json", "http3", "rustls-tls", "rustls-tls-native-roots"] }
+fluent_ai_http3 = { path = "../http3" }
+base64 = "0.22"
 
 [lib]
 name = "fluent_ai_domain"

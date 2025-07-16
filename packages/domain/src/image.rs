@@ -1,5 +1,5 @@
 use crate::AsyncStream;
-use crate::domain::chunk::ImageChunk;
+use crate::chunk::ImageChunk;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -165,11 +165,11 @@ impl ImageBuilderWithHandler {
         // Convert image data to bytes and create proper ImageChunk
         let data = image.data.as_bytes().to_vec();
         let format = match image.media_type.unwrap_or(ImageMediaType::PNG) {
-            ImageMediaType::PNG => crate::domain::chunk::ImageFormat::PNG,
-            ImageMediaType::JPEG => crate::domain::chunk::ImageFormat::JPEG,
-            ImageMediaType::GIF => crate::domain::chunk::ImageFormat::GIF,
-            ImageMediaType::WEBP => crate::domain::chunk::ImageFormat::WebP,
-            ImageMediaType::SVG => crate::domain::chunk::ImageFormat::PNG, // fallback
+            ImageMediaType::PNG => crate::chunk::ImageFormat::PNG,
+            ImageMediaType::JPEG => crate::chunk::ImageFormat::JPEG,
+            ImageMediaType::GIF => crate::chunk::ImageFormat::GIF,
+            ImageMediaType::WEBP => crate::chunk::ImageFormat::WebP,
+            ImageMediaType::SVG => crate::chunk::ImageFormat::PNG, // fallback
         };
 
         let chunk = ImageChunk {

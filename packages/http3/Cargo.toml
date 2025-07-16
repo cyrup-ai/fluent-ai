@@ -1,0 +1,38 @@
+[package]
+name = "fluent_ai_http3"
+version = "0.1.0"
+edition = "2024"
+description = "Zero-allocation HTTP/3 (QUIC) client with HTTP/2 fallback for AI providers"
+license = "MIT"
+repository = "https://github.com/cyrup-ai/fluent-ai"
+keywords = ["http3", "quic", "ai", "zero-allocation", "blazing-fast"]
+categories = ["network-programming", "web-programming::http-client"]
+
+[dependencies]
+reqwest = { version = "0.12.22", features = ["json", "stream", "http3", "rustls-tls", "rustls-tls-native-roots"] }
+tokio = { version = "1.46.1", features = ["full"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+thiserror = "2.0.12"
+futures = "0.3.31"
+hashbrown = { version = "0.15.4", features = ["serde"] }
+http = "1.3.1"
+once_cell = "1.21.3"
+tracing = { version = "0.1", optional = true }
+bytes = "1.10.1"
+pin-project-lite = "0.2.16"
+fastrand = "2.3.0"
+url = "2.5.4"
+crossbeam = "0.8.4"
+crossbeam-skiplist = "0.1.3"
+
+[lib]
+name = "fluent_ai_http3"
+path = "src/lib.rs"
+
+[features]
+default = ["http3", "connection-pool", "compression"]
+http3 = []
+connection-pool = []
+compression = []
+tracing = ["dep:tracing"]

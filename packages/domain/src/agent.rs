@@ -1,13 +1,14 @@
-use crate::async_task::{AsyncStream, AsyncTask, spawn_async};
-use crate::domain::chunk::{ChatMessageChunk, CompletionChunk};
-use crate::domain::completion::CompletionRequestBuilder;
-use crate::domain::conversation::Conversation;
-use crate::domain::{CompletionRequest, Document, Message, MessageRole};
-use crate::memory::Memory;
-use crate::{ByteSize, ByteSizeExt};
-use crate::domain::mcp_tool::{McpTool, McpToolImpl};
+use crate::chunk::{ChatMessageChunk, CompletionChunk};
+use crate::completion::CompletionRequestBuilder;
+use crate::conversation::Conversation;
+use crate::{CompletionRequest, Document, Message, MessageRole};
+use crate::memory::{Memory, VectorStoreIndex};
+use crate::{AsyncStream, AsyncTask};
+// ByteSize types are not needed for now, removing to fix compilation
+use crate::mcp_tool::{McpTool, McpToolImpl};
 use crate::ZeroOneOrMany;
-use fluent_ai_provider::Models;
+// Remove circular dependency - Models will be provided by caller
+// use fluent_ai_provider::Models;
 use serde_json::Value;
 
 #[derive(Debug, Clone)]
@@ -75,7 +76,7 @@ impl AgentBuilder {
     pub fn context<F, C>(mut self, f: F) -> Self
     where
         F: FnOnce() -> C,
-        C: crate::domain::message::Conversation,
+        C: crate::conversation::Conversation,
     {
         let conversation = f();
         let text = conversation.as_text();
@@ -158,7 +159,7 @@ impl AgentBuilder {
 
     pub fn metadata<F>(mut self, f: F) -> Self
     where
-        F: FnOnce() -> hashbrown::HashMap<String, Value>,
+        F: FnOnce() -> std::collections::HashMap<String, Value>,
     {
         let metadata = f();
         let json_metadata: serde_json::Map<String, Value> = metadata.into_iter().collect();
@@ -252,7 +253,7 @@ impl AgentBuilderWithHandler {
     // Terminal method - chat interaction with closure
     pub fn chat<F>(self, chat_closure: F) -> AsyncStream<ChatMessageChunk>
     where
-        F: Fn(crate::domain::conversation::ConversationImpl) -> crate::chat::chat_loop::ChatLoop
+        F: Fn(crate::conversation::ConversationImpl) -> crate::chat::chat_loop::ChatLoop
             + Send
             + Sync
             + 'static,
@@ -264,7 +265,7 @@ impl AgentBuilderWithHandler {
 
         // Spawn task to handle conversation loop
         tokio::spawn(async move {
-            let mut conversation = crate::domain::conversation::ConversationImpl::new("");
+            let mut conversation = crate::conversation::ConversationImpl::new("");
             let mut awaiting_user_input = true;
 
             loop {
@@ -426,7 +427,7 @@ impl AgentBuilderWithHandler {
         let _agent = self.agent();
         // TODO: Implement actual completion with the model
         // For now, return a placeholder response
-        spawn_async(async move {
+        AsyncTask::spawn(async move {
             let response = "Placeholder response".to_string();
             handler(Ok(response))
         })

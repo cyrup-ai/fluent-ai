@@ -89,9 +89,14 @@ pub struct MessageChunk {
     pub content: String,
 }
 
-impl ZeroOneOrMany<UserContent> {
+/// Extension trait for UserContent collections
+pub trait UserContentExt {
     /// Extract text content from user content, concatenating multiple items
-    pub fn as_text(&self) -> String {
+    fn as_text(&self) -> String;
+}
+
+impl UserContentExt for ZeroOneOrMany<UserContent> {
+    fn as_text(&self) -> String {
         self.iter()
             .map(|c| c.as_text())
             .collect::<Vec<_>>()
@@ -99,9 +104,14 @@ impl ZeroOneOrMany<UserContent> {
     }
 }
 
-impl ZeroOneOrMany<AssistantContent> {
+/// Extension trait for AssistantContent collections
+pub trait AssistantContentExt {
     /// Extract text content from assistant content, concatenating multiple items
-    pub fn as_text(&self) -> String {
+    fn as_text(&self) -> String;
+}
+
+impl AssistantContentExt for ZeroOneOrMany<AssistantContent> {
+    fn as_text(&self) -> String {
         self.iter()
             .map(|c| c.as_text())
             .collect::<Vec<_>>()
@@ -283,9 +293,9 @@ pub trait MessageBuilder {
 
 pub trait UserMessageBuilderTrait: MessageBuilder<Content = UserContent> {
     fn text(self, text: impl Into<String>) -> Self;
-    fn image(self, image: crate::domain::Image) -> Self;
-    fn audio(self, audio: crate::domain::Audio) -> Self;
-    fn document(self, document: crate::domain::Document) -> Self;
+    fn image(self, image: crate::Image) -> Self;
+    fn audio(self, audio: crate::Audio) -> Self;
+    fn document(self, document: crate::Document) -> Self;
     fn say(self) -> Message;
 }
 

@@ -1,500 +1,329 @@
-//! High-level Anthropic client with zero-allocation patterns
+//! Anthropic client implementation with zero-allocation patterns
 //!
-//! Provides a comprehensive client interface for all Anthropic API features
-//! with optimal performance and ergonomic usage patterns.
+//! This module provides a production-ready Anthropic client with QUIC/HTTP3 support,
+//! proper error handling, and zero-allocation request patterns.
 
-use crate::async_task::AsyncTask;
-use crate::domain::completion::{CompletionRequest, ToolDefinition};
-use crate::providers::anthropic::{
-    AnthropicProvider, AnthropicError, AnthropicResult,
-    AnthropicCompletionResponse, Usage,
-};
-use fluent_ai_provider::Models;
-use serde_json::Value;
+use crate::http::HttpRequest;
+use super::completion::{AnthropicCompletionRequest, AnthropicCompletionResponse};
+use super::error::{AnthropicError, AnthropicResult};
+use super::streaming::AnthropicStreamChunk;
+use futures::Stream;
 use std::sync::Arc;
-use std::time::Duration;
+use tokio::sync::RwLock;
 
-/// High-level Anthropic client with comprehensive feature support
-#[derive(Clone)]
+/// Anthropic client configuration
+#[derive(Debug, Clone)]
+pub struct AnthropicClientConfig {
+    pub api_key: String,
+    pub base_url: String,
+    pub timeout_seconds: u64,
+    pub max_retries: u32,
+}
+
+impl Default for AnthropicClientConfig {
+    fn default() -> Self {
+        Self {
+            api_key: String::new(),
+            base_url: "https://api.anthropic.com".to_string(),
+            timeout_seconds: 300,
+            max_retries: 3,
+        }
+    }
+}
+
+/// High-performance Anthropic client with QUIC/HTTP3 support
 pub struct AnthropicClient {
-    provider: Arc<AnthropicProvider>,
-    default_model: Models,
-    default_temperature: Option<f64>,
-    default_max_tokens: Option<u64>,
-}
-
-/// Builder for creating Anthropic clients with custom configuration
-pub struct AnthropicClientBuilder {
-    api_key: Option<String>,
-    base_url: Option<String>,
-    model: Option<Models>,
-    temperature: Option<f64>,
-    max_tokens: Option<u64>,
-    timeout: Option<Duration>,
-    max_retries: Option<u32>,
-}
-
-/// Completion request builder for Anthropic client
-pub struct AnthropicCompletionBuilder {
-    client: AnthropicClient,
-    request: CompletionRequest,
-    model_override: Option<Models>,
-    temperature_override: Option<f64>,
-    max_tokens_override: Option<u64>,
-    tool_choice: Option<String>,
-    stop_sequences: Option<Vec<String>>,
-    metadata: Option<Value>,
+    config: AnthropicClientConfig,
+    http_client: Arc<HttpRequest>,
+    request_count: Arc<RwLock<u64>>,
 }
 
 impl AnthropicClient {
-    /// Create new Anthropic client with API key
-    #[inline(always)]
-    pub fn new(api_key: impl Into<String>) -> AnthropicResult<Self> {
-        let provider = AnthropicProvider::new(api_key)?;
+    /// Create a new Anthropic client with API key and base URL
+    pub async fn new(api_key: String, base_url: String) -> AnthropicResult<Self> {
+        let config = AnthropicClientConfig {
+            api_key,
+            base_url,
+            ..Default::default()
+        };
+        
+        let http_client = Arc::new(HttpRequest::new());
+        let request_count = Arc::new(RwLock::new(0));
+        
         Ok(Self {
-            provider: Arc::new(provider),
-            default_model: Models::AnthropicClaude35Sonnet,
-            default_temperature: None,
-            default_max_tokens: None,
+            config,
+            http_client,
+            request_count,
         })
     }
-
-    /// Create client from environment variables
-    #[inline(always)]
-    pub fn from_env() -> AnthropicResult<Self> {
-        let provider = crate::providers::anthropic::from_env()?;
+    
+    /// Create a new Anthropic client with custom configuration
+    pub async fn with_config(config: AnthropicClientConfig) -> AnthropicResult<Self> {
+        let http_client = Arc::new(HttpRequest::new());
+        let request_count = Arc::new(RwLock::new(0));
+        
         Ok(Self {
-            provider: Arc::new(provider),
-            default_model: Models::AnthropicClaude35Sonnet,
-            default_temperature: None,
-            default_max_tokens: None,
+            config,
+            http_client,
+            request_count,
         })
     }
-
-    /// Start building a client with custom configuration
-    #[inline(always)]
-    pub fn builder() -> AnthropicClientBuilder {
-        AnthropicClientBuilder {
-            api_key: None,
-            base_url: None,
-            model: None,
+    
+    /// Get the current request count
+    pub async fn request_count(&self) -> u64 {
+        *self.request_count.read().await
+    }
+    
+    /// Increment the request count
+    async fn increment_request_count(&self) {
+        let mut count = self.request_count.write().await;
+        *count += 1;
+    }
+    
+    /// Create common headers for Anthropic requests
+    fn common_headers(&self) -> hashbrown::HashMap<String, String> {
+        let mut headers = hashbrown::HashMap::new();
+        headers.insert("x-api-key".to_string(), self.config.api_key.clone());
+        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        headers.insert("anthropic-version".to_string(), "2023-06-01".to_string());
+        headers.insert("User-Agent".to_string(), "fluent-ai-provider/0.1.0".to_string());
+        headers
+    }
+    
+    /// Send a completion request
+    pub async fn send_completion(
+        &self,
+        request: &AnthropicCompletionRequest,
+    ) -> AnthropicResult<AnthropicCompletionResponse> {
+        self.increment_request_count().await;
+        
+        let url = format!("{}/v1/messages", self.config.base_url);
+        let headers = self.common_headers();
+        
+        let body = serde_json::to_vec(request).map_err(|e| {
+            AnthropicError::SerializationError {
+                message: format!("Failed to serialize completion request: {}", e),
+            }
+        })?;
+        
+        let response = self.http_client
+            .post(&url)
+            .headers(headers)
+            .body(body)
+            .timeout_seconds(self.config.timeout_seconds)
+            .send()
+            .await
+            .map_err(|e| {
+                AnthropicError::NetworkError {
+                    message: format!("Failed to send completion request: {}", e),
+                }
+            })?;
+        
+        if !response.status.is_success() {
+            return Err(AnthropicError::ApiError {
+                status: response.status.as_u16(),
+                message: String::from_utf8_lossy(&response.body).to_string(),
+            });
+        }
+        
+        let completion_response: AnthropicCompletionResponse = serde_json::from_slice(&response.body)
+            .map_err(|e| {
+                AnthropicError::DeserializationError {
+                    message: format!("Failed to deserialize completion response: {}", e),
+                }
+            })?;
+        
+        Ok(completion_response)
+    }
+    
+    /// Send a streaming completion request
+    pub async fn send_streaming_completion(
+        &self,
+        request: &AnthropicCompletionRequest,
+    ) -> AnthropicResult<Box<dyn Stream<Item = AnthropicResult<AnthropicStreamChunk>> + Send + Unpin>> {
+        self.increment_request_count().await;
+        
+        let url = format!("{}/v1/messages", self.config.base_url);
+        let headers = self.common_headers();
+        
+        // Create streaming request
+        let mut streaming_request = request.clone();
+        streaming_request.stream = Some(true);
+        
+        let body = serde_json::to_vec(&streaming_request).map_err(|e| {
+            AnthropicError::SerializationError {
+                message: format!("Failed to serialize streaming request: {}", e),
+            }
+        })?;
+        
+        let stream = self.http_client
+            .post(&url)
+            .headers(headers)
+            .body(body)
+            .timeout_seconds(self.config.timeout_seconds)
+            .send_stream()
+            .await
+            .map_err(|e| {
+                AnthropicError::NetworkError {
+                    message: format!("Failed to send streaming request: {}", e),
+                }
+            })?;
+        
+        // Convert HTTP stream to Anthropic chunk stream
+        let chunk_stream = stream.map(|chunk_result| {
+            match chunk_result {
+                Ok(chunk) => {
+                    // Parse SSE chunk
+                    let chunk_str = String::from_utf8_lossy(&chunk);
+                    if chunk_str.starts_with("data: ") {
+                        let json_str = &chunk_str[6..];
+                        if json_str.trim() == "[DONE]" {
+                            return Ok(AnthropicStreamChunk::done());
+                        }
+                        
+                        serde_json::from_str::<AnthropicStreamChunk>(json_str)
+                            .map_err(|e| AnthropicError::DeserializationError {
+                                message: format!("Failed to parse stream chunk: {}", e),
+                            })
+                    } else {
+                        Err(AnthropicError::StreamError {
+                            message: "Invalid SSE format".to_string(),
+                        })
+                    }
+                }
+                Err(e) => Err(AnthropicError::StreamError {
+                    message: format!("Stream error: {}", e),
+                }),
+            }
+        });
+        
+        Ok(Box::new(chunk_stream))
+    }
+    
+    /// Test the client connection
+    pub async fn test_connection(&self) -> AnthropicResult<()> {
+        let url = format!("{}/v1/messages", self.config.base_url);
+        let headers = self.common_headers();
+        
+        // Create a minimal test request
+        let test_request = AnthropicCompletionRequest {
+            model: "claude-3-haiku-20240307".to_string(),
+            max_tokens: 10,
+            messages: vec![super::messages::AnthropicMessage {
+                role: "user".to_string(),
+                content: "Hi".to_string(),
+            }],
+            system: None,
             temperature: None,
-            max_tokens: None,
-            timeout: None,
-            max_retries: None,
-        }
-    }
-
-    /// Set default model for this client
-    #[inline(always)]
-    pub fn with_model(mut self, model: Models) -> Self {
-        self.default_model = model;
-        self
-    }
-
-    /// Set default temperature for this client
-    #[inline(always)]
-    pub fn with_temperature(mut self, temperature: f64) -> Self {
-        self.default_temperature = Some(temperature);
-        self
-    }
-
-    /// Set default max tokens for this client
-    #[inline(always)]
-    pub fn with_max_tokens(mut self, max_tokens: u64) -> Self {
-        self.default_max_tokens = Some(max_tokens);
-        self
-    }
-
-    /// Start building a completion request
-    #[inline(always)]
-    pub fn completion(&self, system_prompt: impl Into<String>) -> AnthropicCompletionBuilder {
-        AnthropicCompletionBuilder {
-            client: self.clone(),
-            request: CompletionRequest {
-                system_prompt: system_prompt.into(),
-                chat_history: crate::ZeroOneOrMany::None,
-                documents: crate::ZeroOneOrMany::None,
-                tools: crate::ZeroOneOrMany::None,
-                temperature: self.default_temperature,
-                max_tokens: self.default_max_tokens,
-                chunk_size: None,
-                additional_params: None,
-            },
-            model_override: None,
-            temperature_override: None,
-            max_tokens_override: None,
-            tool_choice: None,
+            top_p: None,
+            top_k: None,
             stop_sequences: None,
-            metadata: None,
+            stream: None,
+            tools: None,
+            tool_choice: None,
+        };
+        
+        let body = serde_json::to_vec(&test_request).map_err(|e| {
+            AnthropicError::SerializationError {
+                message: format!("Failed to serialize test request: {}", e),
+            }
+        })?;
+        
+        let response = self.http_client
+            .post(&url)
+            .headers(headers)
+            .body(body)
+            .timeout_seconds(30)
+            .send()
+            .await
+            .map_err(|e| {
+                AnthropicError::NetworkError {
+                    message: format!("Connection test failed: {}", e),
+                }
+            })?;
+        
+        if !response.status.is_success() {
+            return Err(AnthropicError::ApiError {
+                status: response.status.as_u16(),
+                message: String::from_utf8_lossy(&response.body).to_string(),
+            });
+        }
+        
+        Ok(())
+    }
+}
+
+/// Anthropic provider implementation
+pub struct AnthropicProvider {
+    name: &'static str,
+}
+
+impl AnthropicProvider {
+    /// Create a new Anthropic provider instance
+    pub fn new() -> Self {
+        Self {
+            name: "anthropic",
         }
     }
-
-    /// Make a simple completion request
-    #[inline(always)]
-    pub fn complete_simple(&self, prompt: impl Into<String>) -> AsyncTask<String> {
-        self.completion("")
-            .user(prompt)
-            .complete()
+    
+    /// Get the provider name
+    pub fn name(&self) -> &'static str {
+        self.name
     }
-
-    /// Chat with Claude using messages
-    #[inline(always)]
-    pub fn chat(&self, messages: Vec<crate::domain::Message>) -> AsyncTask<String> {
-        self.completion("")
-            .messages(crate::ZeroOneOrMany::from_vec(messages))
-            .complete()
-    }
-
-    /// Get available Claude models
-    #[inline(always)]
-    pub fn available_models() -> Vec<Models> {
+    
+    /// Get available models
+    pub fn models(&self) -> Vec<&'static str> {
         vec![
-            Models::AnthropicClaudeOpus4,
-            Models::AnthropicClaudeSonnet4,
-            Models::AnthropicClaude37Sonnet,
-            Models::AnthropicClaude37Sonnetthinking,
-            Models::AnthropicClaude35Sonnet,
-            Models::AnthropicClaude35Sonnet20241022V20,
-            Models::AnthropicClaude35Haiku,
-            Models::AnthropicClaude35Haiku20241022V10,
+            "claude-opus-4-20250514",
+            "claude-sonnet-4-20250514",
+            "claude-3-7-sonnet-20250219",
+            "claude-3-5-sonnet-20241022",
+            "claude-3-5-haiku-20241022",
         ]
     }
+}
 
-    /// Check if model supports specific features
-    #[inline(always)]
-    pub fn model_supports_tools(model: &Models) -> bool {
-        matches!(model,
-            Models::AnthropicClaudeOpus4 |
-            Models::AnthropicClaudeSonnet4 |
-            Models::AnthropicClaude37Sonnet |
-            Models::AnthropicClaude35Sonnet |
-            Models::AnthropicClaude35Sonnet20241022V20
-        )
-    }
-
-    /// Check if model supports vision
-    #[inline(always)]
-    pub fn model_supports_vision(model: &Models) -> bool {
-        matches!(model,
-            Models::AnthropicClaudeOpus4 |
-            Models::AnthropicClaudeSonnet4 |
-            Models::AnthropicClaude37Sonnet |
-            Models::AnthropicClaude35Sonnet |
-            Models::AnthropicClaude35Sonnet20241022V20
-        )
+impl Default for AnthropicProvider {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
-impl AnthropicClientBuilder {
-    /// Set API key
-    #[inline(always)]
-    pub fn api_key(mut self, api_key: impl Into<String>) -> Self {
-        self.api_key = Some(api_key.into());
-        self
-    }
-
-    /// Set base URL for API
-    #[inline(always)]
-    pub fn base_url(mut self, url: impl Into<String>) -> Self {
-        self.base_url = Some(url.into());
-        self
-    }
-
-    /// Set default model
-    #[inline(always)]
-    pub fn model(mut self, model: Models) -> Self {
-        self.model = Some(model);
-        self
-    }
-
-    /// Set default temperature
-    #[inline(always)]
-    pub fn temperature(mut self, temp: f64) -> Self {
-        self.temperature = Some(temp);
-        self
-    }
-
-    /// Set default max tokens
-    #[inline(always)]
-    pub fn max_tokens(mut self, tokens: u64) -> Self {
-        self.max_tokens = Some(tokens);
-        self
-    }
-
-    /// Set request timeout
-    #[inline(always)]
-    pub fn timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = Some(timeout);
-        self
-    }
-
-    /// Set maximum retries
-    #[inline(always)]
-    pub fn max_retries(mut self, retries: u32) -> Self {
-        self.max_retries = Some(retries);
-        self
-    }
-
-    /// Build the client
-    #[inline(always)]
-    pub fn build(self) -> AnthropicResult<AnthropicClient> {
-        let api_key = self.api_key.ok_or_else(|| {
-            AnthropicError::AuthenticationFailed("API key is required".to_string())
-        })?;
-
-        let model = self.model.unwrap_or(Models::AnthropicClaude35Sonnet);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[tokio::test]
+    async fn test_client_creation() {
+        let client = AnthropicClient::new(
+            "test-key".to_string(),
+            "https://api.anthropic.com".to_string(),
+        ).await;
         
-        let mut provider = if let Some(base_url) = self.base_url {
-            AnthropicProvider::with_config(
-                api_key,
-                base_url,
-                model.clone(),
-            )?
-        } else {
-            AnthropicProvider::new(api_key)?
-        };
-
-        if let Some(timeout) = self.timeout {
-            provider = provider.with_timeout(timeout);
-        }
-
-        if let Some(max_retries) = self.max_retries {
-            provider = provider.with_max_retries(max_retries);
-        }
-
-        Ok(AnthropicClient {
-            provider: Arc::new(provider),
-            default_model: model,
-            default_temperature: self.temperature,
-            default_max_tokens: self.max_tokens,
-        })
-    }
-}
-
-impl AnthropicCompletionBuilder {
-    /// Override model for this request
-    #[inline(always)]
-    pub fn model(mut self, model: Models) -> Self {
-        self.model_override = Some(model);
-        self
-    }
-
-    /// Set temperature for this request
-    #[inline(always)]
-    pub fn temperature(mut self, temp: f64) -> Self {
-        self.temperature_override = Some(temp);
-        self
-    }
-
-    /// Set max tokens for this request
-    #[inline(always)]
-    pub fn max_tokens(mut self, tokens: u64) -> Self {
-        self.max_tokens_override = Some(tokens);
-        self
-    }
-
-    /// Add user message
-    #[inline(always)]
-    pub fn user(mut self, content: impl Into<String>) -> Self {
-        let message = crate::domain::Message::user(content);
-        self.request.chat_history = match self.request.chat_history {
-            crate::ZeroOneOrMany::None => crate::ZeroOneOrMany::One(message),
-            crate::ZeroOneOrMany::One(existing) => {
-                crate::ZeroOneOrMany::from_vec(vec![existing, message])
-            }
-            crate::ZeroOneOrMany::Many(mut messages) => {
-                messages.push(message);
-                crate::ZeroOneOrMany::from_vec(messages)
-            }
-        };
-        self
-    }
-
-    /// Add assistant message
-    #[inline(always)]
-    pub fn assistant(mut self, content: impl Into<String>) -> Self {
-        let message = crate::domain::Message::assistant(content);
-        self.request.chat_history = match self.request.chat_history {
-            crate::ZeroOneOrMany::None => crate::ZeroOneOrMany::One(message),
-            crate::ZeroOneOrMany::One(existing) => {
-                crate::ZeroOneOrMany::from_vec(vec![existing, message])
-            }
-            crate::ZeroOneOrMany::Many(mut messages) => {
-                messages.push(message);
-                crate::ZeroOneOrMany::from_vec(messages)
-            }
-        };
-        self
-    }
-
-    /// Set all messages at once
-    #[inline(always)]
-    pub fn messages(mut self, messages: crate::ZeroOneOrMany<crate::domain::Message>) -> Self {
-        self.request.chat_history = messages;
-        self
-    }
-
-    /// Add documents
-    #[inline(always)]
-    pub fn documents(mut self, docs: crate::ZeroOneOrMany<crate::domain::Document>) -> Self {
-        self.request.documents = docs;
-        self
-    }
-
-    /// Add tools
-    #[inline(always)]
-    pub fn tools(mut self, tools: crate::ZeroOneOrMany<ToolDefinition>) -> Self {
-        self.request.tools = tools;
-        self
-    }
-
-    /// Add single tool
-    #[inline(always)]
-    pub fn tool(
-        mut self,
-        name: impl Into<String>,
-        description: impl Into<String>,
-        parameters: Value,
-    ) -> Self {
-        let tool = ToolDefinition {
-            name: name.into(),
-            description: description.into(),
-            parameters,
-        };
-        self.request.tools = match self.request.tools {
-            crate::ZeroOneOrMany::None => crate::ZeroOneOrMany::One(tool),
-            crate::ZeroOneOrMany::One(existing) => {
-                crate::ZeroOneOrMany::from_vec(vec![existing, tool])
-            }
-            crate::ZeroOneOrMany::Many(mut tools) => {
-                tools.push(tool);
-                crate::ZeroOneOrMany::from_vec(tools)
-            }
-        };
-        self
-    }
-
-    /// Set tool choice strategy
-    #[inline(always)]
-    pub fn tool_choice(mut self, choice: impl Into<String>) -> Self {
-        self.tool_choice = Some(choice.into());
-        self
-    }
-
-    /// Set stop sequences
-    #[inline(always)]
-    pub fn stop_sequences(mut self, sequences: Vec<String>) -> Self {
-        self.stop_sequences = Some(sequences);
-        self
-    }
-
-    /// Add metadata
-    #[inline(always)]
-    pub fn metadata(mut self, metadata: Value) -> Self {
-        self.metadata = Some(metadata);
-        self
-    }
-
-    /// Execute completion request
-    #[inline(always)]
-    pub fn complete(self) -> AsyncTask<String> {
-        let provider = self.client.provider.clone();
-        let mut request = self.request;
+        assert!(client.is_ok());
         
-        // Apply overrides
-        if let Some(temp) = self.temperature_override {
-            request.temperature = Some(temp);
-        }
-        if let Some(max_tokens) = self.max_tokens_override {
-            request.max_tokens = Some(max_tokens);
-        }
-        
-        crate::async_task::spawn_async(async move {
-            match provider.convert_request(&request) {
-                Ok(mut anthropic_request) => {
-                    // Apply additional configurations
-                    if let Some(metadata) = self.metadata {
-                        anthropic_request.metadata = Some(
-                            metadata.as_object().unwrap_or(&serde_json::Map::new())
-                                .iter()
-                                .map(|(k, v)| (k.clone(), v.clone()))
-                                .collect()
-                        );
-                    }
-                    
-                    if let Some(stop_seqs) = self.stop_sequences {
-                        anthropic_request.stop_sequences = Some(stop_seqs);
-                    }
-                    
-                    match provider.make_completion_request(anthropic_request).await {
-                        Ok(response) => provider.extract_text_content(&response),
-                        Err(e) => format!("Anthropic completion error: {}", e),
-                    }
-                }
-                Err(e) => format!("Request conversion error: {}", e),
-            }
-        })
+        let client = client.unwrap();
+        assert_eq!(client.request_count().await, 0);
     }
-
-    /// Execute completion request and return structured response
-    #[inline(always)]
-    pub fn complete_structured(self) -> AsyncTask<AnthropicCompletionResponse> {
-        let provider = self.client.provider.clone();
-        let mut request = self.request;
+    
+    #[tokio::test]
+    async fn test_provider_creation() {
+        let provider = AnthropicProvider::new();
+        assert_eq!(provider.name(), "anthropic");
+        assert!(!provider.models().is_empty());
+    }
+    
+    #[tokio::test]
+    async fn test_common_headers() {
+        let client = AnthropicClient::new(
+            "test-key".to_string(),
+            "https://api.anthropic.com".to_string(),
+        ).await.unwrap();
         
-        // Apply overrides
-        if let Some(temp) = self.temperature_override {
-            request.temperature = Some(temp);
-        }
-        if let Some(max_tokens) = self.max_tokens_override {
-            request.max_tokens = Some(max_tokens);
-        }
-        
-        crate::async_task::spawn_async(async move {
-            let anthropic_request = match provider.convert_request(&request) {
-                Ok(req) => req,
-                Err(_) => {
-                    // Return default response instead of propagating error
-                    return AnthropicCompletionResponse {
-                        id: String::new(),
-                        response_type: "message".to_string(),
-                        role: "assistant".to_string(),
-                        content: Vec::new(),
-                        model: String::new(),
-                        stop_reason: None,
-                        stop_sequence: None,
-                        usage: Usage {
-                            input_tokens: 0,
-                            output_tokens: 0,
-                            cache_creation_input_tokens: None,
-                            cache_read_input_tokens: None,
-                        },
-                    };
-                }
-            };
-            
-            match provider.make_completion_request(anthropic_request).await {
-                Ok(response) => response,
-                Err(_) => {
-                    // Return default response instead of propagating error
-                    AnthropicCompletionResponse {
-                        id: String::new(),
-                        response_type: "message".to_string(),
-                        role: "assistant".to_string(),
-                        content: Vec::new(),
-                        model: String::new(),
-                        stop_reason: None,
-                        stop_sequence: None,
-                        usage: Usage {
-                            input_tokens: 0,
-                            output_tokens: 0,
-                            cache_creation_input_tokens: None,
-                            cache_read_input_tokens: None,
-                        },
-                    }
-                }
-            }
-        })
+        let headers = client.common_headers();
+        assert_eq!(headers.get("x-api-key"), Some(&"test-key".to_string()));
+        assert_eq!(headers.get("Content-Type"), Some(&"application/json".to_string()));
+        assert_eq!(headers.get("anthropic-version"), Some(&"2023-06-01".to_string()));
+        assert!(headers.contains_key("User-Agent"));
     }
 }

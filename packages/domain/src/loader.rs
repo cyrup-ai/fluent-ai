@@ -1,5 +1,5 @@
-use crate::{AsyncStream, ZeroOneOrMany};
-use crate::async_task::{AsyncTask, spawn_async};
+use crate::ZeroOneOrMany;
+use crate::{AsyncStream, AsyncTask, spawn_async};
 use std::fmt;
 use std::path::PathBuf;
 

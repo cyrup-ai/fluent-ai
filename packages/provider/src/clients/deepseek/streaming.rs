@@ -1,11 +1,11 @@
 // ============================================================================
 // File: src/providers/deepseek/streaming.rs
 // ----------------------------------------------------------------------------
-// DeepSeek streaming implementation (OpenAI-compatible SSE format)
+// DeepSeek streaming implementation using HTTP3 client (OpenAI-compatible SSE format)
 // ============================================================================
 
 use futures::StreamExt;
-use reqwest_eventsource::{Event, EventSource};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
 
 use crate::{
     completion::CompletionError,
@@ -15,9 +15,9 @@ use crate::{
 // Re-export OpenAI streaming response type since DeepSeek uses the same format
 pub use crate::providers::openai::StreamingCompletionResponse;
 
-/// Send a streaming request to DeepSeek and return an AsyncStream
+/// Send a streaming request to DeepSeek using HTTP3 client and return an AsyncStream
 pub fn send_deepseek_streaming_request(
-    builder: reqwest::RequestBuilder,
+    http3_request: Http3Request,
 ) -> crate::runtime::AsyncTask<
     Result<crate::streaming::StreamingCompletionResponse<StreamingCompletionResponse>, CompletionError>,
 > {
@@ -26,27 +26,38 @@ pub fn send_deepseek_streaming_request(
         let (tx, stream) =
             runtime::async_stream::<Result<StreamingCompletionResponse, CompletionError>>(512);
 
-        // Clone the request for the async task
-        let request = builder
-            .try_clone()
-            .ok_or_else(|| CompletionError::RequestError("Failed to clone request".to_string()))?;
+        // Create HTTP3 client with streaming configuration
+        let client = HttpClient::with_config(HttpConfig::streaming_optimized())
+            .map_err(|e| CompletionError::RequestError(format!("Failed to create HTTP3 client: {}", e)))?;
 
         // Spawn the streaming task
         runtime::spawn_async(async move {
-            let mut event_source = EventSource::new(request)
-                .map_err(|e| CompletionError::RequestError(e.to_string()))?;
+            // Send streaming request
+            let stream_response = match client.send_stream(http3_request).await {
+                Ok(stream) => stream,
+                Err(e) => {
+                    let _ = tx.try_send(Err(CompletionError::RequestError(e.to_string())));
+                    return Ok::<(), CompletionError>(());
+                }
+            };
 
-            while let Some(event) = event_source.next().await {
+            // Process SSE events
+            let mut sse_stream = stream_response.sse();
+            
+            while let Some(event) = sse_stream.next().await {
                 match event {
-                    Ok(Event::Open) => {
-                        tracing::debug!(target: "rig", "DeepSeek streaming connection opened");
-                    }
-                    Ok(Event::Message(message)) => {
-                        if message.data == "[DONE]" {
+                    Ok(event) => {
+                        if event.is_done() {
+                            tracing::debug!(target: "rig", "DeepSeek streaming completed");
                             break;
                         }
 
-                        match serde_json::from_str::<StreamingCompletionResponse>(&message.data) {
+                        let data = event.data_string();
+                        if data.trim().is_empty() {
+                            continue;
+                        }
+
+                        match serde_json::from_str::<StreamingCompletionResponse>(&data) {
                             Ok(response) => {
                                 if tx.try_send(Ok(response)).is_err() {
                                     tracing::warn!(target: "rig", "DeepSeek streaming receiver dropped");

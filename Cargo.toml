@@ -4,5 +4,6 @@ members = [
     "packages/fluent-ai",
     "packages/provider",
     "packages/domain",
+    "packages/http3",
 ]
 exclude = ["tmp/rig", "tmp/cyrup-agent", "tmp/cyrup-sugars", "tmp/candle"]

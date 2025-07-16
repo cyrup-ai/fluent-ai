@@ -1,11 +1,13 @@
 /*──────────────────────────────────────────────────────────────────────────────
-  Ultra-lean HTTP façade that **never leaks `reqwest`** to the public API.
+  Ultra-lean HTTP façade that **never leaks `fluent_ai_http3`** to the public API.
 
   ┌────────────── hot-path guarantees ──────────────────────────────────────┐
   │ • ZERO heap allocations after the `HttpRequest` has been built          │
   │ • All slices stay borrowed; large bodies use `bytes::Bytes`             │
   │ • Shared connection pool (keep-alive + HTTP/2 multiplexing)            │
   │ • Executes on the global reactor via `rt::spawn_async`                  │
+  │ • HTTP/3 (QUIC) prioritization with HTTP/2 fallback                     │
+  │ • Streaming-first design with .collect() fallback                       │
   └──────────────────────────────────────────────────────────────────────────┘
 ──────────────────────────────────────────────────────────────────────────────*/
 
@@ -16,40 +18,19 @@ use std::{convert::TryFrom, sync::Arc, time::Duration};
 use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Uri};
 use once_cell::sync::Lazy;
-use reqwest::{
-    header::HeaderMap as ReqHeaderMap, Client as ReqwestClient,
-    ClientBuilder as ReqwestClientBuilder,
-};
 use thiserror::Error;
 
 use crate::runtime::{spawn_async, AsyncTask};
+use fluent_ai_http3::{HttpClient as Http3Client, HttpConfig, HttpError as Http3Error, HttpRequest as Http3Request, HttpResponse as Http3Response};
 
 // ────────────────────────────────────────────────────────────────────────────
-// Global, connection-pooled reqwest client
+// Global, connection-pooled HTTP3 client
 // ────────────────────────────────────────────────────────────────────────────
 
-static REQWEST: Lazy<Arc<ReqwestClient>> = Lazy::new(|| {
+static HTTP3_CLIENT: Lazy<Arc<Http3Client>> = Lazy::new(|| {
     Arc::new(
-        ReqwestClientBuilder::new()
-            // Prioritize QUIC (HTTP/3) with fallback to HTTP/2 - fully async
-            .http3_prior_knowledge()
-            .http2_prior_knowledge()
-            .http2_keep_alive_interval(Duration::from_secs(30))
-            .http2_keep_alive_timeout(Duration::from_secs(10))
-            .http2_keep_alive_while_idle(true)
-            .http2_max_frame_size(Some(1024 * 1024)) // 1MB frames for efficiency
-            // Use rustls for TLS with native root certificates
-            .use_rustls_tls()
-            .tls_built_in_root_certs(true)
-            // Re-use connections aggressively – most APIs sit behind some LB
-            .tcp_keepalive(Duration::from_secs(30))
-            .pool_idle_timeout(Duration::from_secs(90))
-            .pool_max_idle_per_host(32) // Increase connection pool for better performance
-            .timeout(Duration::from_secs(300)) // 5 minute timeout for async operations
-            .connect_timeout(Duration::from_secs(30))
-            .user_agent(concat!("cyrup_ai/", env!("CARGO_PKG_VERSION"), " (QUIC/HTTP3+rustls)"))
-            .build()
-            .expect("failed to initialise async reqwest client with QUIC and rustls support"),
+        Http3Client::with_config(HttpConfig::ai_optimized())
+            .expect("failed to initialise HTTP3 client with QUIC and rustls support"),
     )
 });
 
@@ -70,6 +51,29 @@ pub enum HttpError {
     /// Non-success HTTP status returned by the server.
     #[error("HTTP {status}: {body}")]
     Status { status: StatusCode, body: String },
+}
+
+impl From<Http3Error> for HttpError {
+    fn from(error: Http3Error) -> Self {
+        match error {
+            Http3Error::HttpStatus { status, message, .. } => {
+                Self::Status {
+                    status: StatusCode::from_u16(status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                    body: message,
+                }
+            }
+            Http3Error::NetworkError { message } => Self::Transport(message),
+            Http3Error::Timeout { message } => Self::Transport(message),
+            Http3Error::ConnectionError { message } => Self::Transport(message),
+            Http3Error::DnsError { message } => Self::Transport(message),
+            Http3Error::TlsError { message } => Self::Transport(message),
+            Http3Error::ClientError { message } => Self::Build(message),
+            Http3Error::SerializationError { message } => Self::Build(message),
+            Http3Error::DeserializationError { message } => Self::Build(message),
+            Http3Error::StreamError { message } => Self::Transport(message),
+            Http3Error::Other { message } => Self::Transport(message),
+        }
+    }
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -143,7 +147,7 @@ pub struct HttpResponse {
 
 #[derive(Debug, Clone)]
 pub struct HttpClient {
-    inner: Arc<ReqwestClient>,
+    inner: Arc<Http3Client>,
 }
 
 impl Default for HttpClient {
@@ -158,7 +162,7 @@ impl HttpClient {
     #[inline(always)]
     pub fn new() -> Self {
         Self {
-            inner: REQWEST.clone(),
+            inner: HTTP3_CLIENT.clone(),
         }
     }
 
@@ -184,31 +188,38 @@ impl HttpClient {
         let client = self.inner.clone();
 
         spawn_async(async move {
-            // HeaderMap → ReqHeaderMap **without** extra allocation.
-            let mut req_headers = ReqHeaderMap::with_capacity(req.headers.len());
-            req_headers.extend(req.headers.into_iter());
+            // Convert our HttpRequest to Http3Request
+            let mut http3_req = match req.method {
+                Method::GET => client.get(&req.uri.to_string()),
+                Method::POST => client.post(&req.uri.to_string()),
+                Method::PUT => client.put(&req.uri.to_string()),
+                Method::DELETE => client.delete(&req.uri.to_string()),
+                Method::PATCH => client.patch(&req.uri.to_string()),
+                Method::HEAD => client.head(&req.uri.to_string()),
+                _ => return Err(HttpError::Build(format!("unsupported method: {}", req.method))),
+            };
 
-            // Build the reqwest request.
-            let mut builder = client
-                .request(req.method, req.uri.to_string())
-                .headers(req_headers);
-
-            if let Some(body) = req.body {
-                builder = builder.body(body);
+            // Add headers
+            for (name, value) in req.headers {
+                if let Some(header_name) = name {
+                    if let Ok(value_str) = value.to_str() {
+                        http3_req = http3_req.header(header_name.as_str(), value_str);
+                    }
+                }
             }
 
-            // Perform the HTTP call.
-            let resp = builder
-                .send()
-                .await
-                .map_err(|e| HttpError::Transport(e.to_string()))?;
+            // Add body if present
+            if let Some(body) = req.body {
+                http3_req = http3_req.with_body(body.to_vec());
+            }
 
+            // Send the request using the HTTP3 client
+            let resp = client.send(http3_req).await?;
+
+            // Convert Http3Response to our HttpResponse
             let status = resp.status();
             let headers = resp.headers().clone();
-            let body = resp
-                .bytes()
-                .await
-                .map_err(|e| HttpError::Transport(e.to_string()))?;
+            let body = Bytes::from(resp.body().clone());
 
             if !status.is_success() {
                 return Err(HttpError::Status {

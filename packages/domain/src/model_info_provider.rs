@@ -1,6 +1,8 @@
 //! ModelInfo provider for looking up model information
 
-use fluent_ai_provider::{Model, ModelInfoData, Models};
+// Domain should NOT depend on provider - provider depends on domain
+// These types should be defined in domain or passed as generics
+use crate::model::{Model, ModelInfo};
 
 /// Error types for ModelInfo operations
 #[derive(Debug, thiserror::Error)]

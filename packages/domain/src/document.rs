@@ -1,4 +1,4 @@
-use crate::domain::chunk::DocumentChunk;
+use crate::chunk::DocumentChunk;
 use crate::AsyncStream;
 use crate::async_task::{AsyncTask, spawn_async};
 use crate::async_task::error_handlers::BadTraitImpl;
@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use fluent_ai_http3::{HttpClient, HttpConfig};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Document {
@@ -56,7 +57,7 @@ pub struct DocumentBuilderWithHandler {
     additional_props: HashMap<String, Value>,
     error_handler: Box<dyn FnMut(String) + Send + 'static>,
     #[allow(dead_code)] // TODO: Use for document streaming chunk processing
-    chunk_handler: Option<Box<dyn FnMut(crate::domain::chunk::DocumentChunk) -> crate::domain::chunk::DocumentChunk + Send + 'static>>,
+    chunk_handler: Option<Box<dyn FnMut(crate::chunk::DocumentChunk) -> crate::chunk::DocumentChunk + Send + 'static>>,
 }
 
 impl Document {
@@ -182,7 +183,7 @@ impl DocumentBuilder {
 
     pub fn on_chunk<F>(self, handler: F) -> DocumentBuilderWithHandler
     where
-        F: FnMut(crate::domain::chunk::DocumentChunk) -> crate::domain::chunk::DocumentChunk + Send + 'static,
+        F: FnMut(crate::chunk::DocumentChunk) -> crate::chunk::DocumentChunk + Send + 'static,
     {
         DocumentBuilderWithHandler {
             data: self.data,
@@ -274,7 +275,24 @@ impl DocumentBuilderWithHandler {
                 let mut error_handler = self.error_handler;
 
                 spawn_async(async move {
-                    match reqwest::get(&url).await {
+                    // Create HTTP3 client with streaming-optimized configuration
+                    let client = match HttpClient::with_config(HttpConfig::streaming_optimized()) {
+                        Ok(client) => client,
+                        Err(e) => {
+                            error_handler(format!("Failed to create HTTP client: {}", e));
+                            return Document {
+                                data: String::new(),
+                                format,
+                                media_type,
+                                additional_props,
+                            };
+                        }
+                    };
+
+                    // Create GET request using HTTP3 client
+                    let request = client.get(&url);
+                    
+                    match client.send(request).await {
                         Ok(resp) => match resp.text().await {
                             Ok(data) => Document {
                                 data,
@@ -334,8 +352,25 @@ impl DocumentBuilderWithHandler {
                 );
 
                 spawn_async(async move {
-                    match reqwest::get(&api_url).await {
-                        Ok(resp) => match resp.json::<serde_json::Value>().await {
+                    // Create HTTP3 client with AI-optimized configuration for GitHub API
+                    let client = match HttpClient::with_config(HttpConfig::ai_optimized()) {
+                        Ok(client) => client,
+                        Err(e) => {
+                            error_handler(format!("Failed to create HTTP client: {}", e));
+                            return Document {
+                                data: String::new(),
+                                format,
+                                media_type,
+                                additional_props,
+                            };
+                        }
+                    };
+
+                    // Create GET request using HTTP3 client
+                    let request = client.get(&api_url);
+                    
+                    match client.send(request).await {
+                        Ok(resp) => match resp.json::<serde_json::Value>() {
                             Ok(json) => {
                                 if let Some(content) = json.get("content").and_then(|c| c.as_str())
                                 {

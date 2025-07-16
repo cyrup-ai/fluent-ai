@@ -91,7 +91,7 @@ pub struct ChatMessageChunk {
     pub content: String,
 
     /// Role of the message sender
-    pub role: crate::domain::message::MessageRole,
+    pub role: crate::message::MessageRole,
 
     /// Whether this is the final chunk
     pub is_final: bool,
@@ -258,7 +258,7 @@ impl DocumentChunk {
 }
 
 impl ChatMessageChunk {
-    pub fn new(content: impl Into<String>, role: crate::domain::message::MessageRole) -> Self {
+    pub fn new(content: impl Into<String>, role: crate::message::MessageRole) -> Self {
         Self {
             content: content.into(),
             role,

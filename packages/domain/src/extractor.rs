@@ -1,6 +1,6 @@
-use crate::async_task::{AsyncTask, spawn_async};
-use crate::domain::agent::Agent;
-use crate::domain::completion::CompletionModel;
+use crate::{AsyncTask, spawn_async};
+use crate::agent::Agent;
+use crate::completion::CompletionModel;
 use std::fmt;
 use serde::de::DeserializeOwned;
 use std::marker::PhantomData;
@@ -59,7 +59,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
         });
         
         // Use prompt() method and collect the stream
-        use crate::domain::prompt::Prompt;
+        use crate::prompt::Prompt;
         let _prompt = Prompt::new(format!("{}
 
 {}", system_prompt, text));

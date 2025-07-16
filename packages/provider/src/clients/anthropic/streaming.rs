@@ -1,17 +1,17 @@
 //! Zero-allocation streaming completion implementation for Anthropic API
 //!
 //! Provides real-time streaming with tool calling, proper SSE handling,
-//! and efficient chunk processing with minimal memory allocation.
+//! and efficient chunk processing with minimal memory allocation using HTTP3 client.
 
 use crate::async_task::AsyncStream;
 use crate::domain::chunk::CompletionChunk;
 use crate::providers::anthropic::{
     AnthropicResult, AnthropicCompletionRequest,
-    handle_reqwest_error, handle_json_error,
+    handle_json_error,
 };
 use crate::providers::anthropic::messages::ContentBlock;
 use futures_util::{Stream, StreamExt};
-use reqwest::Client;
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::pin::Pin;
@@ -100,7 +100,7 @@ pub struct StreamingUsage {
     pub cache_read_input_tokens: Option<u64>,
 }
 
-/// Error details in streaming response
+/// Error details for streaming errors
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorDetails {
     #[serde(rename = "type")]
@@ -108,304 +108,251 @@ pub struct ErrorDetails {
     pub message: String,
 }
 
-/// Zero-allocation streaming client for Anthropic API
-pub struct AnthropicStreamingClient {
-    client: Client,
-    api_key: String,
-    base_url: String,
-}
-
-/// Aggregated streaming state for complete responses
+/// Anthropic streaming chunk wrapper for easier processing
 #[derive(Debug, Clone)]
-pub struct StreamingState {
-    pub message_id: Option<String>,
-    pub text_content: String,
-    pub tool_calls: Vec<ToolCallState>,
+pub struct AnthropicStreamChunk {
+    pub chunk_type: String,
+    pub content: String,
+    pub is_final: bool,
     pub usage: Option<StreamingUsage>,
-    pub stop_reason: Option<String>,
-    pub is_complete: bool,
+    pub error: Option<String>,
 }
 
-/// Tool call state during streaming
-#[derive(Debug, Clone)]
-pub struct ToolCallState {
-    pub id: String,
-    pub name: String,
-    pub input_json: String,
-    pub is_complete: bool,
+/// High-performance zero-allocation streaming implementation for Anthropic
+/// 
+/// This implementation uses HTTP3 client with streaming-first design for optimal performance
+/// with no unsafe code, no unchecked operations, and no locking.
+pub struct AnthropicStreamingProcessor {
+    client: HttpClient,
+    accumulator: String,
+    current_usage: Option<StreamingUsage>,
 }
 
-impl AnthropicStreamingClient {
-    /// Create new streaming client
+impl AnthropicStreamingProcessor {
+    /// Create a new streaming processor with HTTP3 client
     #[inline(always)]
-    pub fn new(api_key: impl Into<String>, base_url: impl Into<String>) -> Self {
-        let client = Client::builder()
-            .user_agent("fluent-ai/1.0")
-            .build()
-            .unwrap_or_default();
+    pub fn new() -> AnthropicResult<Self> {
+        let client = HttpClient::with_config(HttpConfig::streaming_optimized())
+            .map_err(|e| crate::providers::anthropic::AnthropicError::RequestError(
+                format!("Failed to create HTTP3 client: {}", e)
+            ))?;
 
-        Self {
+        Ok(Self {
             client,
-            api_key: api_key.into(),
-            base_url: base_url.into(),
-        }
+            accumulator: String::with_capacity(4096), // Pre-allocate for efficiency
+            current_usage: None,
+        })
     }
 
-    /// Start streaming completion request
-    pub async fn stream_completion(
+    /// Process a streaming request and return an AsyncStream
+    #[inline(always)]
+    pub fn process_streaming_request(
         &self,
-        mut request: AnthropicCompletionRequest,
-    ) -> AnthropicResult<Pin<Box<dyn Stream<Item = AnthropicResult<StreamingChunk>> + Send>>> {
-        // Enable streaming
-        request.stream = Some(true);
-        
-        let url = format!("{}/messages", self.base_url);
-        let request_body = serde_json::to_string(&request)
-            .map_err(handle_json_error)?;
-        
-        let response = self.client
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .header("x-api-key", &self.api_key)
-            .header("anthropic-version", "2023-06-01")
-            .header("Accept", "text/event-stream")
-            .body(request_body)
-            .send()
-            .await
-            .map_err(handle_reqwest_error)?;
-        
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            return Err(crate::providers::anthropic::handle_http_error(status.as_u16(), &body));
-        }
-        
-        let stream = response.bytes_stream();
-        let sse_stream = SSEStream::new(stream);
-        
-        Ok(Box::pin(sse_stream))
-    }
+        http3_request: Http3Request,
+    ) -> crate::runtime::AsyncTask<
+        Result<AsyncStream<Result<AnthropicStreamChunk, crate::providers::anthropic::AnthropicError>>, 
+               crate::providers::anthropic::AnthropicError>,
+    > {
+        let client = self.client.clone();
 
-    /// Stream completion with chunk aggregation
-    pub fn stream_with_aggregation(
-        &self,
-        request: AnthropicCompletionRequest,
-    ) -> AsyncStream<CompletionChunk> {
-        let client = self.clone();
-        let (tx, rx) = mpsc::unbounded_channel();
-        
-        tokio::spawn(async move {
-            let mut state = StreamingState::new();
+        crate::runtime::spawn_async(async move {
+            let (tx, stream) = crate::runtime::async_stream::<
+                Result<AnthropicStreamChunk, crate::providers::anthropic::AnthropicError>
+            >(512);
+
+            // Spawn the streaming task with zero-allocation patterns
+            crate::runtime::spawn_async(async move {
+                // Send streaming request using HTTP3 client
+                let stream_response = match client.send_stream(http3_request).await {
+                    Ok(stream) => stream,
+                    Err(e) => {
+                        let _ = tx.try_send(Err(crate::providers::anthropic::AnthropicError::RequestError(
+                            e.to_string()
+                        )));
+                        return Ok::<(), crate::providers::anthropic::AnthropicError>(());
+                    }
+                };
+
+                // Process SSE events from Anthropic
+                let mut sse_stream = stream_response.sse();
+                let mut content_accumulator = String::with_capacity(4096);
+                let mut current_usage = None;
+                
+                while let Some(event) = sse_stream.next().await {
+                    match event {
+                        Ok(sse_event) => {
+                            let data = sse_event.data_string();
+                            
+                            // Skip empty events
+                            if data.trim().is_empty() {
+                                continue;
+                            }
+
+                            // Parse the SSE data as JSON
+                            let chunk = match serde_json::from_str::<StreamingChunk>(&data) {
+                                Ok(chunk) => chunk,
+                                Err(e) => {
+                                    let _ = tx.try_send(Err(crate::providers::anthropic::AnthropicError::DeserializationError(
+                                        format!("Failed to parse Anthropic SSE chunk: {}", e)
+                                    )));
+                                    continue;
+                                }
+                            };
+
+                            // Process the chunk based on its type
+                            let processed_chunk = match process_anthropic_chunk(
+                                &chunk, 
+                                &mut content_accumulator, 
+                                &mut current_usage
+                            ) {
+                                Ok(Some(chunk)) => chunk,
+                                Ok(None) => continue, // Skip internal chunks
+                                Err(e) => {
+                                    let _ = tx.try_send(Err(e));
+                                    continue;
+                                }
+                            };
+
+                            // Send the processed chunk
+                            if tx.try_send(Ok(processed_chunk)).is_err() {
+                                tracing::warn!(target: "rig", "Anthropic streaming receiver dropped");
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!(target: "rig", "Anthropic streaming error: {}", e);
+                            let _ = tx.try_send(Err(crate::providers::anthropic::AnthropicError::RequestError(
+                                e.to_string()
+                            )));
+                            break;
+                        }
+                    }
+                }
+
+                Ok::<(), crate::providers::anthropic::AnthropicError>(())
+            });
+
+            Ok(stream)
+        })
+    }
+}
+
+impl Default for AnthropicStreamingProcessor {
+    fn default() -> Self {
+        Self::new().unwrap_or_else(|_| {
+            // Fallback to default configuration if streaming optimization fails
+            let client = HttpClient::with_config(HttpConfig::ai_optimized())
+                .unwrap_or_else(|_| HttpClient::default());
             
-            match client.stream_completion(request).await {
-                Ok(mut stream) => {
-                    while let Some(chunk_result) = stream.next().await {
-                        match chunk_result {
-                            Ok(chunk) => {
-                                if let Some(completion_chunk) = state.process_chunk(chunk) {
-                                    if tx.send(completion_chunk).is_err() {
-                                        break;
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                let error_chunk = CompletionChunk::Error(format!("Stream error: {}", e));
-                                if tx.send(error_chunk).is_err() {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Send final completion chunk
-                    if state.is_complete {
-                        let final_chunk = CompletionChunk::Complete {
-                            text: state.text_content,
-                            finish_reason: state.stop_reason.map(|reason| match reason.as_str() {
-                                "end_turn" => crate::domain::chunk::FinishReason::Stop,
-                                "max_tokens" => crate::domain::chunk::FinishReason::Length,
-                                "stop_sequence" => crate::domain::chunk::FinishReason::Stop,
-                                "tool_use" => crate::domain::chunk::FinishReason::ToolCalls,
-                                _ => crate::domain::chunk::FinishReason::Stop,
-                            }),
-                            usage: state.usage.map(|u| crate::domain::chunk::Usage {
-                                prompt_tokens: u.input_tokens as u32,
-                                completion_tokens: u.output_tokens as u32,
-                                total_tokens: (u.input_tokens + u.output_tokens) as u32,
-                            }),
-                        };
-                        let _ = tx.send(final_chunk);
-                    }
-                }
-                Err(e) => {
-                    let error_chunk = CompletionChunk::Error(format!("Failed to start stream: {}", e));
-                    let _ = tx.send(error_chunk);
-                }
+            Self {
+                client,
+                accumulator: String::with_capacity(4096),
+                current_usage: None,
             }
-        });
-        
-        AsyncStream::new(rx)
+        })
     }
 }
 
-impl Clone for AnthropicStreamingClient {
-    fn clone(&self) -> Self {
-        Self {
-            client: self.client.clone(),
-            api_key: self.api_key.clone(),
-            base_url: self.base_url.clone(),
+/// Process an Anthropic streaming chunk with zero-allocation patterns
+/// 
+/// This function handles the different types of Anthropic streaming chunks
+/// and accumulates content efficiently without unnecessary allocations.
+#[inline(always)]
+fn process_anthropic_chunk(
+    chunk: &StreamingChunk,
+    content_accumulator: &mut String,
+    current_usage: &mut Option<StreamingUsage>,
+) -> Result<Option<AnthropicStreamChunk>, crate::providers::anthropic::AnthropicError> {
+    match &chunk.data {
+        StreamingData::MessageStart { message } => {
+            // Initialize usage tracking
+            *current_usage = Some(message.usage.clone());
+            Ok(None) // Don't emit a chunk for message start
         }
-    }
-}
-
-impl StreamingState {
-    /// Create new streaming state
-    #[inline(always)]
-    pub fn new() -> Self {
-        Self {
-            message_id: None,
-            text_content: String::new(),
-            tool_calls: Vec::new(),
-            usage: None,
-            stop_reason: None,
-            is_complete: false,
+        StreamingData::ContentBlockStart { .. } => {
+            // Prepare for content accumulation
+            content_accumulator.clear();
+            Ok(None) // Don't emit a chunk for content block start
         }
-    }
-
-    /// Process streaming chunk and return completion chunk if ready
-    #[inline(always)]
-    pub fn process_chunk(&mut self, chunk: StreamingChunk) -> Option<CompletionChunk> {
-        match chunk.data {
-            StreamingData::MessageStart { message } => {
-                self.message_id = Some(message.id);
-                None
-            }
-            StreamingData::ContentBlockDelta { delta, .. } => {
-                match delta {
-                    ContentDelta::TextDelta { text } => {
-                        self.text_content.push_str(&text);
-                        Some(CompletionChunk::Text(text))
-                    }
-                    ContentDelta::InputJsonDelta { partial_json } => {
-                        // Handle partial JSON for tool calls
-                        if let Some(tool_call) = self.tool_calls.last_mut() {
-                            tool_call.input_json.push_str(&partial_json);
-                        }
-                        Some(CompletionChunk::ToolCall {
-                            id: self.tool_calls.last()?.id.clone(),
-                            name: self.tool_calls.last()?.name.clone(),
-                            partial_input: partial_json,
-                        })
-                    }
+        StreamingData::ContentBlockDelta { delta, .. } => {
+            // Accumulate content based on delta type
+            match delta {
+                ContentDelta::TextDelta { text } => {
+                    content_accumulator.push_str(text);
+                    Ok(Some(AnthropicStreamChunk {
+                        chunk_type: "content_block_delta".to_string(),
+                        content: text.clone(),
+                        is_final: false,
+                        usage: current_usage.clone(),
+                        error: None,
+                    }))
+                }
+                ContentDelta::InputJsonDelta { partial_json } => {
+                    content_accumulator.push_str(partial_json);
+                    Ok(Some(AnthropicStreamChunk {
+                        chunk_type: "input_json_delta".to_string(),
+                        content: partial_json.clone(),
+                        is_final: false,
+                        usage: current_usage.clone(),
+                        error: None,
+                    }))
                 }
             }
-            StreamingData::ContentBlockStart { content_block, .. } => {
-                match content_block {
-                    ContentBlock::ToolUse { id, name, .. } => {
-                        let tool_call = ToolCallState {
-                            id: id.clone(),
-                            name: name.clone(),
-                            input_json: String::new(),
-                            is_complete: false,
-                        };
-                        self.tool_calls.push(tool_call);
-                        
-                        Some(CompletionChunk::ToolCallStart {
-                            id,
-                            name,
-                        })
-                    }
-                    _ => None,
-                }
-            }
-            StreamingData::ContentBlockStop { .. } => {
-                if let Some(tool_call) = self.tool_calls.last_mut() {
-                    tool_call.is_complete = true;
-                    Some(CompletionChunk::ToolCallComplete {
-                        id: tool_call.id.clone(),
-                        name: tool_call.name.clone(),
-                        input: tool_call.input_json.clone(),
-                    })
-                } else {
-                    None
-                }
-            }
-            StreamingData::MessageDelta { delta, usage } => {
-                if let Some(stop_reason) = delta.stop_reason {
-                    self.stop_reason = Some(stop_reason);
-                }
-                if let Some(u) = usage {
-                    self.usage = Some(u);
-                }
-                None
-            }
-            StreamingData::MessageStop => {
-                self.is_complete = true;
-                None
-            }
-            StreamingData::Error { error } => {
-                Some(CompletionChunk::Error(format!("{}: {}", error.error_type, error.message)))
-            }
-            _ => None,
         }
-    }
-}
-
-/// Server-Sent Events stream parser
-struct SSEStream<S> {
-    inner: S,
-    buffer: Vec<u8>,
-}
-
-impl<S> SSEStream<S>
-where
-    S: Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Unpin,
-{
-    fn new(inner: S) -> Self {
-        Self {
-            inner,
-            buffer: Vec::new(),
+        StreamingData::ContentBlockStop { .. } => {
+            // Emit final content block
+            let final_content = content_accumulator.clone();
+            content_accumulator.clear();
+            Ok(Some(AnthropicStreamChunk {
+                chunk_type: "content_block_stop".to_string(),
+                content: final_content,
+                is_final: false,
+                usage: current_usage.clone(),
+                error: None,
+            }))
         }
-    }
-}
-
-impl<S> Stream for SSEStream<S>
-where
-    S: Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Unpin,
-{
-    type Item = AnthropicResult<StreamingChunk>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        loop {
-            match Pin::new(&mut self.inner).poll_next(cx) {
-                Poll::Ready(Some(Ok(bytes))) => {
-                    self.buffer.extend_from_slice(&bytes);
-                    
-                    // Process complete lines
-                    while let Some(line_end) = self.buffer.iter().position(|&b| b == b'\n') {
-                        let line = self.buffer.drain(..=line_end).collect::<Vec<u8>>();
-                        let line_str = String::from_utf8_lossy(&line[..line.len()-1]); // Remove \n
-                        
-                        if line_str.starts_with("data: ") {
-                            let json_str = &line_str[6..]; // Remove "data: " prefix
-                            
-                            if json_str == "[DONE]" {
-                                return Poll::Ready(None);
-                            }
-                            
-                            match serde_json::from_str::<StreamingChunk>(json_str) {
-                                Ok(chunk) => return Poll::Ready(Some(Ok(chunk))),
-                                Err(e) => return Poll::Ready(Some(Err(handle_json_error(e)))),
-                            }
-                        }
-                    }
-                }
-                Poll::Ready(Some(Err(e))) => {
-                    return Poll::Ready(Some(Err(handle_reqwest_error(e))));
-                }
-                Poll::Ready(None) => return Poll::Ready(None),
-                Poll::Pending => return Poll::Pending,
+        StreamingData::MessageDelta { delta, usage } => {
+            // Update usage if provided
+            if let Some(new_usage) = usage {
+                *current_usage = Some(new_usage.clone());
             }
+            
+            // Check for stop reason
+            if let Some(stop_reason) = &delta.stop_reason {
+                Ok(Some(AnthropicStreamChunk {
+                    chunk_type: "message_delta".to_string(),
+                    content: format!("Stop reason: {}", stop_reason),
+                    is_final: false,
+                    usage: current_usage.clone(),
+                    error: None,
+                }))
+            } else {
+                Ok(None)
+            }
+        }
+        StreamingData::MessageStop => {
+            // Final message - streaming is complete
+            Ok(Some(AnthropicStreamChunk {
+                chunk_type: "message_stop".to_string(),
+                content: String::new(),
+                is_final: true,
+                usage: current_usage.clone(),
+                error: None,
+            }))
+        }
+        StreamingData::Ping => {
+            // Ping events are used for connection keep-alive
+            Ok(None)
+        }
+        StreamingData::Error { error } => {
+            // Error event
+            Ok(Some(AnthropicStreamChunk {
+                chunk_type: "error".to_string(),
+                content: String::new(),
+                is_final: true,
+                usage: current_usage.clone(),
+                error: Some(format!("{}: {}", error.error_type, error.message)),
+            }))
         }
     }
 }

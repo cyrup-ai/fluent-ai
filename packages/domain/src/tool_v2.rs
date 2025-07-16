@@ -1,1 +1,1 @@
-pub use crate::domain::tool::{Tool, NamedTool};
+pub use crate::tool::{Tool, NamedTool};

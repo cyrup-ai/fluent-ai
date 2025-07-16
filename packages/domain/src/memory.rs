@@ -13,6 +13,54 @@ pub enum VectorStoreError {
     InvalidQuery(String),
 }
 
+pub type Error = VectorStoreError;
+
+#[derive(Debug)]
+pub enum MemoryType {
+    ShortTerm,
+    LongTerm,
+    Semantic,
+}
+
+#[derive(Debug)]
+pub struct MemoryNode {
+    pub id: String,
+    pub content: String,
+    pub memory_type: MemoryType,
+}
+
+#[derive(Debug)]
+pub struct MemoryRelationship {
+    pub from_id: String,
+    pub to_id: String,
+    pub relationship_type: String,
+}
+
+#[derive(Debug)]
+pub struct MemoryManager {
+    pub nodes: Vec<MemoryNode>,
+    pub relationships: Vec<MemoryRelationship>,
+}
+
+impl MemoryManager {
+    pub fn new() -> Self {
+        Self {
+            nodes: Vec::new(),
+            relationships: Vec::new(),
+        }
+    }
+    
+    pub fn add_node(&mut self, node: MemoryNode) {
+        self.nodes.push(node);
+    }
+    
+    pub fn add_relationship(&mut self, relationship: MemoryRelationship) {
+        self.relationships.push(relationship);
+    }
+}
+
+pub type Memory = MemoryManager;
+
 pub trait VectorStoreIndexDyn: Send + Sync {
     fn top_n(
         &self,

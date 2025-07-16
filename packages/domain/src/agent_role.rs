@@ -1,8 +1,9 @@
 //! Agent role builder implementation following ARCHITECTURE.md exactly
 
-use crate::domain::MessageRole;
-use crate::domain::chunk::ChatMessageChunk;
-use crate::{AsyncStream, HashMap, ZeroOneOrMany};
+use crate::MessageRole;
+use crate::chunk::ChatMessageChunk;
+use crate::{AsyncStream, HashMap};
+use crate::ZeroOneOrMany;
 use serde_json::Value;
 use std::fmt;
 use std::marker::PhantomData;
@@ -511,7 +512,7 @@ pub trait ConversationHistoryArgs {
 // Users must use tuples for multiple arguments
 
 // Implement for single Context<T> items
-impl<T> ContextArgs for crate::domain::context::Context<T>
+impl<T> ContextArgs for crate::context::Context<T>
 where
     T: Send + Sync + 'static,
 {
@@ -597,7 +598,7 @@ where
 
 // Implement ToolArgs for tuples
 // Implement for single Tool<T> items
-impl<T> ToolArgs for crate::domain::tool_v2::Tool<T>
+impl<T> ToolArgs for crate::tool_v2::Tool<T>
 where
     T: Send + Sync + 'static,
 {
@@ -610,7 +611,7 @@ where
 }
 
 // Implement for NamedTool
-impl ToolArgs for crate::domain::tool_v2::NamedTool {
+impl ToolArgs for crate::tool_v2::NamedTool {
     fn add_to(self, tools: &mut Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>) {
         match tools {
             Some(existing) => existing.push(Box::new(self)),

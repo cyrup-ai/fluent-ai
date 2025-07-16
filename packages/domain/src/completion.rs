@@ -1,8 +1,9 @@
-use crate::async_task::{AsyncStream, AsyncTask, spawn_async};
-use crate::domain::chunk::CompletionChunk;
-use crate::domain::prompt::Prompt;
+use crate::{AsyncStream, AsyncTask, spawn_async};
+use crate::chunk::CompletionChunk;
+use crate::prompt::Prompt;
 use crate::ZeroOneOrMany;
-use fluent_ai_provider::Models;
+// Remove circular dependency - Models will be provided by caller
+// use fluent_ai_provider::Models;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -23,8 +24,8 @@ pub trait CompletionBackend {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompletionRequest {
     pub system_prompt: String,
-    pub chat_history: ZeroOneOrMany<crate::domain::Message>,
-    pub documents: ZeroOneOrMany<crate::domain::Document>,
+    pub chat_history: ZeroOneOrMany<crate::Message>,
+    pub documents: ZeroOneOrMany<crate::Document>,
     pub tools: ZeroOneOrMany<ToolDefinition>,
     pub temperature: Option<f64>,
     pub max_tokens: Option<u64>,
@@ -42,8 +43,8 @@ pub struct ToolDefinition {
 pub struct CompletionRequestBuilder {
     model: Option<Models>,
     system_prompt: Option<String>,
-    chat_history: ZeroOneOrMany<crate::domain::Message>,
-    documents: ZeroOneOrMany<crate::domain::Document>,
+    chat_history: ZeroOneOrMany<crate::Message>,
+    documents: ZeroOneOrMany<crate::Document>,
     tools: ZeroOneOrMany<ToolDefinition>,
     temperature: Option<f64>,
     max_tokens: Option<u64>,
@@ -57,9 +58,9 @@ pub struct CompletionRequestBuilderWithHandler {
     #[allow(dead_code)] // TODO: Use for system prompt configuration
     system_prompt: Option<String>,
     #[allow(dead_code)] // TODO: Use for conversation context and message history
-    chat_history: ZeroOneOrMany<crate::domain::Message>,
+    chat_history: ZeroOneOrMany<crate::Message>,
     #[allow(dead_code)] // TODO: Use for document context integration
-    documents: ZeroOneOrMany<crate::domain::Document>,
+    documents: ZeroOneOrMany<crate::Document>,
     #[allow(dead_code)] // TODO: Use for tool definition and function calling
     tools: ZeroOneOrMany<ToolDefinition>,
     #[allow(dead_code)] // TODO: Use for response randomness control
@@ -106,12 +107,12 @@ impl CompletionRequestBuilder {
         self
     }
 
-    pub fn chat_history(mut self, history: ZeroOneOrMany<crate::domain::Message>) -> Self {
+    pub fn chat_history(mut self, history: ZeroOneOrMany<crate::Message>) -> Self {
         self.chat_history = history;
         self
     }
 
-    pub fn add_message(mut self, message: crate::domain::Message) -> Self {
+    pub fn add_message(mut self, message: crate::Message) -> Self {
         self.chat_history = match self.chat_history {
             ZeroOneOrMany::None => ZeroOneOrMany::One(message),
             ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, message]),
@@ -125,7 +126,7 @@ impl CompletionRequestBuilder {
 
     // Message creation in context
     pub fn user(mut self, content: impl Into<String>) -> Self {
-        let message = crate::domain::Message::user(content);
+        let message = crate::Message::user(content);
         self.chat_history = match self.chat_history {
             ZeroOneOrMany::None => ZeroOneOrMany::One(message),
             ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, message]),
@@ -138,7 +139,7 @@ impl CompletionRequestBuilder {
     }
 
     pub fn assistant(mut self, content: impl Into<String>) -> Self {
-        let message = crate::domain::Message::assistant(content);
+        let message = crate::Message::assistant(content);
         self.chat_history = match self.chat_history {
             ZeroOneOrMany::None => ZeroOneOrMany::One(message),
             ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, message]),
@@ -151,7 +152,7 @@ impl CompletionRequestBuilder {
     }
 
     pub fn system(mut self, content: impl Into<String>) -> Self {
-        let message = crate::domain::Message::system(content);
+        let message = crate::Message::system(content);
         self.chat_history = match self.chat_history {
             ZeroOneOrMany::None => ZeroOneOrMany::One(message),
             ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, message]),
@@ -163,12 +164,12 @@ impl CompletionRequestBuilder {
         self
     }
 
-    pub fn documents(mut self, documents: ZeroOneOrMany<crate::domain::Document>) -> Self {
+    pub fn documents(mut self, documents: ZeroOneOrMany<crate::Document>) -> Self {
         self.documents = documents;
         self
     }
 
-    pub fn add_document(mut self, document: crate::domain::Document) -> Self {
+    pub fn add_document(mut self, document: crate::Document) -> Self {
         self.documents = match self.documents {
             ZeroOneOrMany::None => ZeroOneOrMany::One(document),
             ZeroOneOrMany::One(existing) => ZeroOneOrMany::from_vec(vec![existing, document]),

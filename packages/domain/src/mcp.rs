@@ -1,4 +1,4 @@
-use crate::async_task::{AsyncTask, spawn_async};
+use crate::{AsyncTask, spawn_async};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;

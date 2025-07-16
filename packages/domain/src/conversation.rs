@@ -2,7 +2,7 @@
 //!
 //! Provides trait-based conversation management with builder pattern
 
-use crate::async_task::{AsyncTask, spawn_async};
+use crate::{AsyncTask, spawn_async};
 use crate::ZeroOneOrMany;
 use std::fmt;
 

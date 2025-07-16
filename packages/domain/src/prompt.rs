@@ -1,4 +1,4 @@
-use crate::domain::MessageRole;
+use crate::MessageRole;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

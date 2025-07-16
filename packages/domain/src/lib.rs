@@ -6,6 +6,39 @@
 // Re-export cyrup_sugars for convenience
 pub use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
 
+// Use std HashMap instead
+pub use std::collections::HashMap;
+
+// Define our own async task types
+pub type AsyncTask<T> = tokio::task::JoinHandle<T>;
+
+pub fn spawn_async<F, T>(future: F) -> AsyncTask<T>
+where
+    F: std::future::Future<Output = T> + Send + 'static,
+    T: Send + 'static,
+{
+    tokio::spawn(future)
+}
+
+// Create async_task module for compatibility
+pub mod async_task {
+    pub use super::{AsyncTask, spawn_async};
+    
+    // Define NotResult trait for compatibility
+    pub trait NotResult {}
+    impl<T> NotResult for T where T: Send + 'static {}
+    
+    // Error handlers module
+    pub mod error_handlers {
+        pub fn default_error_handler<T: std::fmt::Debug>(_error: T) {
+            // Default error handler implementation
+        }
+    }
+}
+
+// Re-export streaming types
+pub use futures::stream::Stream as AsyncStream;
+
 // Domain modules
 pub mod agent;
 pub mod agent_role;
@@ -14,6 +47,8 @@ pub mod chunk;
 pub mod completion;
 pub mod context;
 pub mod conversation;
+pub mod chat;
+pub mod engine;
 pub mod document;
 pub mod embedding;
 pub mod extractor;

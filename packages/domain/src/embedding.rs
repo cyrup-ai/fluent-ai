@@ -1,5 +1,5 @@
-use crate::async_task::{AsyncStream, AsyncTask, spawn_async};
-use crate::domain::chunk::EmbeddingChunk;
+use crate::{AsyncStream, AsyncTask, spawn_async};
+use crate::chunk::EmbeddingChunk;
 use crate::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
 
