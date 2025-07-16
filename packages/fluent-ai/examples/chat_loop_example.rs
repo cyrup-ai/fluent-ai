@@ -1,5 +1,4 @@
 use fluent_ai::prelude::*;
-use sugars_macros::hash_map_fn;
 use fluent_ai::domain::context::{Context, File, Files, Directory, Github};
 use fluent_ai::domain::tool_v2::{Tool, ExecToText};
 use fluent_ai::domain::library::Library;
@@ -7,11 +6,12 @@ use fluent_ai::domain::agent_role::Stdio;
 use fluent_ai::domain::message::MessageRole;
 use fluent_ai_provider::Models;
 use futures::StreamExt;
+use cyrup_sugars::*;
 
 // Mock provider types - these should be replaced with actual provider implementations
 pub struct Mistral;
 impl Mistral {
-    pub const MagistralSmall: Models = Models::MistralSmallLatest;
+    pub const MAGISTRAL_SMALL: Models = Models::MistralSmallLatest;
 }
 
 pub struct Perplexity;
@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // All formatting, streaming, and I/O are handled automatically by the builder
 
     let stream = FluentAi::agent_role("rusty-squire")
-        .completion_provider(Mistral::MagistralSmall)
+        .completion_provider(Mistral::MAGISTRAL_SMALL)
         .temperature(1.0)
         .max_tokens(8000)
         .system_prompt("Act as a Rust developers 'right hand man'.
@@ -46,14 +46,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .bin("/user/local/bin/sweetmcp")
             .init("cargo run -- --stdio")
         .tools((
-            Tool::<Perplexity>::new(hash_map_fn!({"citations" => "true"})),
-            Tool::named("cargo")
-                .bin("~/.cargo/bin")
-                .description("cargo --help".exec_to_text())
+            Tool::<Perplexity>::new({
+                "citations" => "true"
+            }),
+            Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
         ))
-        .additional_params(hash_map_fn!({"beta" => "true"}))
+        .additional_params({"beta" => "true"})
         .memory(Library::named("obsidian_vault"))
-        .metadata(hash_map_fn!({"key" => "val", "foo" => "bar"}))
+        .metadata({"key" => "val", "foo" => "bar"})
         .on_tool_result(|_results| {
             // do stuff
         })

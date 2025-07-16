@@ -15,5 +15,8 @@ pub use crate::sugars::ByteSize;
 pub use crate::sugars::{FutureExt, StreamExt};
 pub use crate::workflow::*;
 
+// Re-export hashbrown for transformation system
+pub use hashbrown::HashMap;
+
 // Error type definition
 pub type Error = Box<dyn std::error::Error + Send + Sync>;

@@ -6,7 +6,7 @@ edition = "2021"
 
 [features]
 default = ["hashbrown-json"]
-hashbrown-json = []
+hashbrown-json = ["cyrup_sugars/all"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
@@ -18,9 +18,8 @@ bytes = "1.5"
 fastrand = "2.0"
 thiserror = "2.0.12"
 parking_lot = "0.12.4"
-hashbrown = { version = "0.15.4", features = [
-    "inline-more",
-    "raw-entry"
+hashbrown = { version = "0.14", features = [
+    "inline-more"
 ] }
 uuid = { version = "1.0", features = ["v4"] }
 indexmap = "2.10.0"
