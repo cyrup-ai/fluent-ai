@@ -85,7 +85,7 @@ pub use crate::builders::{
     ModelInfoBuilder,
     PromptBuilder,
     SecureMcpToolBuilder,
-    VectorQueryBuilder,
+    VectorQueryBuilder, VectorStoreIndexExt,
     WorkflowBuilder
 };
 

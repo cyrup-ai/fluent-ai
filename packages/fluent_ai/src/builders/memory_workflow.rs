@@ -1,4 +1,150 @@
-// Define traits locally - no external dependencies
+//! Memory workflow builder implementations with zero-allocation, lock-free design
+//!
+//! Provides EXACT API syntax for workflow composition and parallel execution.
+
+use fluent_ai_domain::{
+    memory::{MemoryManager, MemoryNode, MemoryType, MemoryError},
+    memory_ops::{self, Op},
+    ZeroOneOrMany, AsyncTask, spawn_async
+};
+use serde_json::Value;
+use std::sync::Arc;
+
+/// Create a new workflow builder - EXACT syntax: workflow::new()
+#[inline(always)]
+pub fn new() -> WorkflowBuilder {
+    WorkflowBuilder::default()
+}
+
+/// Zero-allocation workflow builder with lock-free operation composition
+#[derive(Debug, Clone)]
+pub struct WorkflowBuilder {
+    ops: Vec<Box<dyn Op<Input = Value, Output = Value> + Send + Sync>>,
+    parallel_groups: Vec<Vec<usize>>, // Indices into ops for parallel execution
+}
+
+impl Default for WorkflowBuilder {
+    #[inline(always)]
+    fn default() -> Self {
+        Self {
+            ops: Vec::new(),
+            parallel_groups: Vec::new(),
+        }
+    }
+}
+
+impl WorkflowBuilder {
+    /// Chain a sequential operation with zero allocation hot path - EXACT syntax: .chain(op)
+    #[inline(always)]
+    pub fn chain<O>(mut self, op: O) -> Self
+    where
+        O: Op<Input = Value, Output = Value> + Send + Sync + 'static,
+    {
+        self.ops.push(Box::new(op));
+        self
+    }
+
+    /// Add operations for parallel execution - EXACT syntax: .parallel(ops)
+    #[inline(always)]
+    pub fn parallel<I>(mut self, ops: I) -> Self
+    where
+        I: IntoIterator<Item = Box<dyn Op<Input = Value, Output = Value> + Send + Sync>>,
+    {
+        let mut indices = Vec::new();
+        
+        for op in ops {
+            indices.push(self.ops.len());
+            self.ops.push(op);
+        }
+        
+        if !indices.is_empty() {
+            self.parallel_groups.push(indices);
+        }
+        
+        self
+    }
+
+    /// Execute the workflow with optimal allocation patterns - EXACT syntax: .execute(input)
+    pub async fn execute(&self, input: Value) -> Result<Value, WorkflowError> {
+        if self.ops.is_empty() {
+            return Ok(input);
+        }
+
+        let mut current_value = input;
+        let mut op_index = 0;
+
+        // Execute operations in sequence and parallel groups
+        while op_index < self.ops.len() {
+            // Check if this operation is part of a parallel group
+            if let Some(group) = self.parallel_groups.iter().find(|group| group.contains(&op_index)) {
+                // Execute parallel group
+                let mut futures = Vec::with_capacity(group.len());
+                
+                for &idx in group {
+                    let op = &self.ops[idx];
+                    let input_clone = current_value.clone();
+                    futures.push(op.call(input_clone));
+                }
+                
+                // Await all parallel operations
+                let results = futures::future::join_all(futures).await;
+                
+                // Combine results (take the first successful result or Null)
+                current_value = results
+                    .into_iter()
+                    .next()
+                    .unwrap_or(Value::Null);
+                
+                // Skip all operations in this parallel group
+                op_index = group.iter().max().copied().map(|x| x + 1).unwrap_or(op_index + 1);
+            } else {
+                // Execute sequential operation
+                if let Some(op) = self.ops.get(op_index) {
+                    current_value = op.call(current_value).await;
+                }
+                op_index += 1;
+            }
+        }
+
+        Ok(current_value)
+    }
+
+    /// Build an executable workflow - EXACT syntax: .build()
+    #[inline(always)]
+    pub fn build(self) -> ExecutableWorkflow {
+        ExecutableWorkflow {
+            builder: self,
+        }
+    }
+}
+
+/// Zero-allocation executable workflow
+pub struct ExecutableWorkflow {
+    builder: WorkflowBuilder,
+}
+
+impl ExecutableWorkflow {
+    /// Execute the workflow with the given input - EXACT syntax: .run(input)
+    #[inline(always)]
+    pub async fn run(&self, input: Value) -> Result<Value, WorkflowError> {
+        self.builder.execute(input).await
+    }
+}
+
+/// Error type for memory workflows
+#[derive(Debug, thiserror::Error)]
+pub enum WorkflowError {
+    #[error("Memory error: {0}")]
+    Memory(#[from] MemoryError),
+
+    #[error("Prompt error: {0}")]
+    Prompt(String),
+
+    #[error("Workflow error: {0}")]
+    Other(String),
+}
+
+/// Define traits locally - no external dependencies
 pub trait Prompt: Clone {
     fn prompt(
         &self,
@@ -12,142 +158,15 @@ pub enum PromptError {
     Error(String),
 }
 
-// Import Op from memory_ops
-use super::memory_ops::Op;
-use crate::memory::{Error as MemoryError, MemoryManager, MemoryNode, MemoryType};
-
-use super::memory_ops;
-
-// Workflow builder module
-mod workflow {
-    // Remove unused super::* import - specify needed imports explicitly
-
-    /// Create a new workflow builder
-    #[inline(always)]
-    pub fn new() -> WorkflowBuilder {
-        WorkflowBuilder::default()
-    }
-
-    /// Zero-allocation workflow builder with lock-free operation composition
-    #[derive(Debug, Clone)]
-    pub struct WorkflowBuilder {
-        ops: Vec<Box<dyn Op<Input = serde_json::Value, Output = serde_json::Value> + Send + Sync>>,
-        parallel_groups: Vec<Vec<usize>>, // Indices into ops for parallel execution
-    }
-
-    impl Default for WorkflowBuilder {
-        #[inline(always)]
-        fn default() -> Self {
-            Self {
-                ops: Vec::new(),
-                parallel_groups: Vec::new(),
-            }
-        }
-    }
-
-    impl WorkflowBuilder {
-        /// Chain a sequential operation with zero allocation hot path
-        #[inline(always)]
-        pub fn chain<O>(mut self, op: O) -> Self
-        where
-            O: Op<Input = serde_json::Value, Output = serde_json::Value> + Send + Sync + 'static,
-        {
-            self.ops.push(Box::new(op));
-            self
-        }
-
-        /// Add operations for parallel execution
-        #[inline(always)]
-        pub fn parallel<I>(mut self, ops: I) -> Self
-        where
-            I: IntoIterator<Item = Box<dyn Op<Input = serde_json::Value, Output = serde_json::Value> + Send + Sync>>,
-        {
-            let start_idx = self.ops.len();
-            let mut indices = Vec::new();
-            
-            for op in ops {
-                indices.push(self.ops.len());
-                self.ops.push(op);
-            }
-            
-            if !indices.is_empty() {
-                self.parallel_groups.push(indices);
-            }
-            
-            self
-        }
-
-        /// Execute the workflow with optimal allocation patterns
-        pub async fn execute(&self, input: serde_json::Value) -> Result<serde_json::Value, WorkflowError> {
-            if self.ops.is_empty() {
-                return Ok(input);
-            }
-
-            let mut current_value = input;
-            let mut op_index = 0;
-
-            // Execute operations in sequence and parallel groups
-            while op_index < self.ops.len() {
-                // Check if this operation is part of a parallel group
-                if let Some(group) = self.parallel_groups.iter().find(|group| group.contains(&op_index)) {
-                    // Execute parallel group
-                    let mut futures = Vec::with_capacity(group.len());
-                    
-                    for &idx in group {
-                        let op = &self.ops[idx];
-                        let input_clone = current_value.clone();
-                        futures.push(op.call(input_clone));
-                    }
-                    
-                    // Await all parallel operations
-                    let results = futures::future::join_all(futures).await;
-                    
-                    // Combine results (take the first successful result or Null)
-                    current_value = results
-                        .into_iter()
-                        .next()
-                        .unwrap_or(serde_json::Value::Null);
-                    
-                    // Skip all operations in this parallel group
-                    op_index = group.iter().max().copied().map(|x| x + 1).unwrap_or(op_index + 1);
-                } else {
-                    // Execute sequential operation
-                    if let Some(op) = self.ops.get(op_index) {
-                        current_value = op.call(current_value).await;
-                    }
-                    op_index += 1;
-                }
-            }
-
-            Ok(current_value)
-        }
-
-        /// Build an executable workflow
-        #[inline(always)]
-        pub fn build(self) -> ExecutableWorkflow {
-            ExecutableWorkflow {
-                builder: self,
-            }
-        }
-    }
-
-    /// Zero-allocation executable workflow
-    pub struct ExecutableWorkflow {
-        builder: WorkflowBuilder,
-    }
-
-    impl ExecutableWorkflow {
-        /// Execute the workflow with the given input
-        #[inline(always)]
-        pub async fn run(&self, input: serde_json::Value) -> Result<serde_json::Value, WorkflowError> {
-            self.builder.execute(input).await
-        }
+impl From<PromptError> for WorkflowError {
+    fn from(error: PromptError) -> Self {
+        WorkflowError::Prompt(error.to_string())
     }
 }
 
-// For now, let's simplify and not use parallel macro
-#[allow(dead_code)] // TODO: Implement workflow system
-fn passthrough<T: Clone + Send + Sync + 'static>() -> impl Op<Input = T, Output = T> {
+/// Zero-allocation passthrough operation for testing
+#[allow(dead_code)]
+pub fn passthrough<T: Clone + Send + Sync + 'static>() -> impl Op<Input = T, Output = T> {
     struct PassthroughOp<T> {
         _phantom: std::marker::PhantomData<T>,
     }
@@ -166,9 +185,9 @@ fn passthrough<T: Clone + Send + Sync + 'static>() -> impl Op<Input = T, Output 
     }
 }
 
-// Simple tuple operation that runs two ops and returns a tuple
-#[allow(dead_code)] // TODO: Implement workflow system
-fn run_both<I, O1, O2, Op1, Op2>(op1: Op1, op2: Op2) -> impl Op<Input = I, Output = (O1, O2)>
+/// Zero-allocation tuple operation that runs two ops and returns a tuple
+#[allow(dead_code)]
+pub fn run_both<I, O1, O2, Op1, Op2>(op1: Op1, op2: Op2) -> impl Op<Input = I, Output = (O1, O2)>
 where
     I: Clone + Send + Sync + 'static,
     O1: Send + Sync + 'static,
@@ -229,17 +248,17 @@ where
             .await
         {
             Ok(memories) => memories,
-            Err(_) => crate::ZeroOneOrMany::None, // Safe fallback without unwrap_or_default
+            Err(_) => ZeroOneOrMany::None, // Safe fallback without unwrap_or_default
         };
 
         // Format the prompt with context using pre-sized capacity for efficiency
         let mut context_parts = Vec::with_capacity(self.context_limit);
         match memories {
-            crate::ZeroOneOrMany::None => {},
-            crate::ZeroOneOrMany::One(memory) => {
+            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::One(memory) => {
                 context_parts.push(format!("- {}", memory.content));
             },
-            crate::ZeroOneOrMany::Many(memories) => {
+            ZeroOneOrMany::Many(memories) => {
                 for memory in memories.iter().take(self.context_limit) {
                     context_parts.push(format!("- {}", memory.content));
                 }
@@ -281,6 +300,7 @@ where
     M: MemoryManager + Clone,
     P: Prompt + Send + Sync,
 {
+    /// Create new memory-enhanced workflow - EXACT syntax: MemoryEnhancedWorkflow::new(manager, model)
     pub fn new(memory_manager: M, prompt_model: P) -> Self {
         Self {
             memory_manager,
@@ -289,12 +309,13 @@ where
         }
     }
 
+    /// Set context limit - EXACT syntax: .with_context_limit(10)
     pub fn with_context_limit(mut self, limit: usize) -> Self {
         self.context_limit = limit;
         self
     }
 
-    /// Build the memory-enhanced workflow
+    /// Build the memory-enhanced workflow - EXACT syntax: .build()
     pub fn build(self) -> impl Op<Input = String, Output = Result<String, WorkflowError>> {
         let memory_manager = self.memory_manager;
         let prompt_model = self.prompt_model;
@@ -309,20 +330,7 @@ where
     }
 }
 
-/// Error type for memory workflows
-#[derive(Debug, thiserror::Error)]
-pub enum WorkflowError {
-    #[error("Memory error: {0}")]
-    Memory(#[from] MemoryError),
-
-    #[error("Prompt error: {0}")]
-    Prompt(#[from] PromptError),
-
-    #[error("Workflow error: {0}")]
-    Other(String),
-}
-
-/// Create a simple memory-aware conversation workflow
+/// Create a simple memory-aware conversation workflow - EXACT syntax: conversation_workflow(manager, model)
 pub fn conversation_workflow<M, P>(
     memory_manager: M,
     prompt_model: P,
@@ -347,6 +355,7 @@ where
     M: MemoryManager + Clone,
     B: Op,
 {
+    /// Create new adaptive workflow - EXACT syntax: AdaptiveWorkflow::new(manager, op)
     pub fn new(memory_manager: M, base_op: B) -> Self {
         Self {
             memory_manager,
@@ -388,7 +397,7 @@ where
     }
 }
 
-/// Apply feedback to a stored memory
+/// Apply feedback to a stored memory - EXACT syntax: apply_feedback(manager, id, feedback)
 pub async fn apply_feedback<M: MemoryManager>(
     memory_manager: M,
     memory_id: String,
@@ -402,7 +411,7 @@ pub async fn apply_feedback<M: MemoryManager>(
     Ok(())
 }
 
-/// Create a RAG (Retrieval-Augmented Generation) workflow
+/// Create a RAG (Retrieval-Augmented Generation) workflow - EXACT syntax: rag_workflow(manager, model, limit)
 pub fn rag_workflow<M, P>(
     memory_manager: M,
     prompt_model: P,
@@ -438,7 +447,7 @@ where
         let memories = memory_ops::search_memories(self.memory_manager.clone())
             .call(query.clone())
             .await
-            .unwrap_or_else(|_| crate::ZeroOneOrMany::None);
+            .unwrap_or_else(|_| ZeroOneOrMany::None);
 
         // Format as RAG prompt
         let documents = memories

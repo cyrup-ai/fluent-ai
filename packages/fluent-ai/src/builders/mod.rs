@@ -24,7 +24,7 @@ pub use conversation::ConversationBuilder;
 pub use image::{ImageBuilder, ImageBuilderWithHandler};
 pub use mcp::McpClientBuilder;
 pub use mcp_tool::{McpToolBuilder, McpToolImpl};
-pub use memory::VectorQueryBuilder;
+pub use memory::{VectorQueryBuilder, VectorStoreIndexExt};
 pub use model::ModelInfoBuilder;
 pub use prompt::PromptBuilder;
 pub use secure_mcp_tool::SecureMcpToolBuilder;

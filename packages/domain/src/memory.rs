@@ -225,13 +225,71 @@ pub struct VectorStoreIndex {
     pub backend: Box<dyn VectorStoreIndexDyn>,
 }
 
-// VectorQueryBuilder moved to fluent_ai/src/builders/memory.rs
-
 impl VectorStoreIndex {
     // Direct creation from backend
     pub fn with_backend<B: VectorStoreIndexDyn + 'static>(backend: B) -> Self {
         VectorStoreIndex {
             backend: Box::new(backend),
         }
+    }
+
+    // Semantic query entry point
+    pub fn search(&self, query: impl Into<String>) -> VectorQueryBuilder<'_> {
+        VectorQueryBuilder {
+            index: self,
+            query: query.into(),
+            n: 10, // default
+        }
+    }
+}
+
+pub struct VectorQueryBuilder<'a> {
+    index: &'a VectorStoreIndex,
+    query: String,
+    n: usize,
+}
+
+impl<'a> VectorQueryBuilder<'a> {
+    pub fn top(mut self, n: usize) -> Self {
+        self.n = n;
+        self
+    }
+
+    // Terminal method - returns full results with metadata
+    pub fn retrieve(self) -> AsyncTask<ZeroOneOrMany<(f64, String, Value)>> {
+        let future = self.index.backend.top_n(&self.query, self.n);
+        spawn_async(async move {
+            match future.await {
+                Ok(results) => results,
+                Err(_) => ZeroOneOrMany::None,
+            }
+        })
+    }
+
+    // Terminal method - returns just IDs
+    pub fn retrieve_ids(self) -> AsyncTask<ZeroOneOrMany<(f64, String)>> {
+        let future = self.index.backend.top_n_ids(&self.query, self.n);
+        spawn_async(async move {
+            match future.await {
+                Ok(results) => results,
+                Err(_) => ZeroOneOrMany::None,
+            }
+        })
+    }
+
+    // Terminal method with result handler
+    pub fn on_results<F, T>(self, handler: F) -> AsyncTask<T>
+    where
+        F: FnOnce(ZeroOneOrMany<(f64, String, Value)>) -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        let future = self.index.backend.top_n(&self.query, self.n);
+        spawn_async(async move {
+            let result = match future.await {
+                Ok(results) => results,
+                Err(_) => ZeroOneOrMany::None,
+            };
+            handler(result)
+        })
     }
 }
