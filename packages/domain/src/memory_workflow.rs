@@ -14,7 +14,7 @@ pub enum PromptError {
 
 // Import Op from memory_ops
 use super::memory_ops::Op;
-use crate::memory::{Error as MemoryError, MemoryManager, MemoryNode, MemoryType, ImportanceContext, MemoryRecord};
+use crate::memory::{MemoryError, MemoryManager, MemoryNode, MemoryType, ImportanceContext, MemoryRecord, get_cached_timestamp};
 
 use super::memory_ops;
 
@@ -238,17 +238,14 @@ where
     B::Output: Clone + serde::Serialize + Send,
 {
     type Input = B::Input;
-    type Output = (B::Output, u64); // (result, memory_id)
+    type Output = Result<(B::Output, u64), WorkflowError>; // (result, memory_id)
 
     async fn call(&self, input: Self::Input) -> Self::Output {
         // Execute the base operation
         let output = self.base_op.call(input.clone()).await;
 
         // Create a memory capturing both input and output with zero allocation
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+        let timestamp = get_cached_timestamp();
             
         // Convert input and output to strings for hashing
         let input_str = serde_json::to_string(&input).unwrap_or_else(|_| "invalid_input".to_string());
@@ -267,10 +264,9 @@ where
         let stored_memory = self
             .memory_manager
             .create_memory(memory)
-            .await
-            .expect("Failed to store memory");
+            .await?;
 
-        (output, stored_memory.id)
+        Ok((output, stored_memory.id))
     }
 }
 

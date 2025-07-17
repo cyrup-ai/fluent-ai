@@ -1,0 +1,62 @@
+/// Mathematical expression grammar for zero-allocation parsing
+/// Supports arithmetic operations, functions, constants, and variables
+
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
+
+// Numbers: integers and floating point
+number = @{ 
+    "-"? ~ 
+    ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ 
+    ("." ~ ASCII_DIGIT*)? ~ 
+    (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
+}
+
+// Mathematical constants
+constant = { "pi" | "e" | "tau" }
+
+// Variables (single letter followed by optional digits)
+variable = @{ ASCII_ALPHA ~ ASCII_DIGIT* }
+
+// Mathematical functions
+function = { 
+    "sqrt" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan" | 
+    "sinh" | "cosh" | "tanh" | "ln" | "log" | "log10" | "log2" |
+    "exp" | "abs" | "ceil" | "floor" | "round" | "sign" |
+    "deg" | "rad" | "min" | "max"
+}
+
+// Primary expressions
+primary = {
+    number |
+    constant |
+    variable |
+    function ~ "(" ~ expression ~ ("," ~ expression)* ~ ")" |
+    "(" ~ expression ~ ")"
+}
+
+// Unary expressions (+ and -)
+unary = { ("+" | "-")? ~ primary }
+
+// Power operator (right associative)
+power = { unary ~ ("^" ~ unary)* }
+
+// Multiplicative operators (left associative)
+multiplicative = { power ~ (("*" | "/" | "%") ~ power)* }
+
+// Additive operators (left associative)
+additive = { multiplicative ~ (("+" | "-") ~ multiplicative)* }
+
+// Comparison operators
+comparison = { additive ~ (("==" | "!=" | "<=" | ">=" | "<" | ">") ~ additive)* }
+
+// Logical AND
+logical_and = { comparison ~ ("&&" ~ comparison)* }
+
+// Logical OR
+logical_or = { logical_and ~ ("||" ~ logical_and)* }
+
+// Main expression
+expression = { logical_or }
+
+// Calculator input (expression with optional assignment)
+calculator = { SOI ~ (variable ~ "=" ~ expression | expression) ~ EOI }

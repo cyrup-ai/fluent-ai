@@ -1,385 +1,414 @@
-# Updated TODO.md - Clean Streaming Completion Architecture
+# IMAGE GENERATION IMPLEMENTATION TODO
 
-## OBJECTIVE
-Achieve 0 compilation errors and 0 warnings by implementing clean, elegant streaming completions using cyrup_sugars typestate builders, ModelInfo defaults, and fluent_ai_http3.
+## PRODUCTION-QUALITY STABLE DIFFUSION 3 IMPLEMENTATION
 
-## ARCHITECTURE NOTES
-- **Clean Syntax**: `client.completion_model("gpt-4").system_prompt("You are helpful").temperature(0.8).prompt("Hello")` 
-- **ModelInfo Defaults**: ALL properties (max_tokens, temperature, system_prompt, etc.) default from enumerations
-- **Terminal Action**: `.prompt()` is the action method that returns unwrapped AsyncStream<CompletionChunk>
-- **Optional Callbacks**: `.on_chunk()` is optional with env_logger defaults
-- **HTTP3 Direct**: Use fluent_ai_http3 directly, no wrappers
-- **Streaming First**: AsyncStream<CompletionChunk> with .collect() option
-- **Complete Parameters**: system_prompt, chat_history, documents, tools, temperature, max_tokens, top_p, etc.
+### PHASE 0: PRODUCTION READINESS FIXES
+*CRITICAL: Must be completed before other phases*
 
----
+#### Task 1: Fix Critical Unwrap() in Generation.rs
+**File:** `./packages/provider/src/image_processing/generation.rs`
+**Lines:** 201
+**Priority:** CRITICAL
+**Architecture:** Replace dangerous unwrap() with proper error handling
 
-## Phase 1: ModelInfo Integration & Defaults
+**Technical Details:**
+- Current code: `let model_manager = self.model_manager.as_ref().unwrap();`
+- Violation: Can cause application panic if model_manager is None
+- Solution: Replace with `let model_manager = self.model_manager.as_ref().ok_or_else(|| GenerationError::ModelLoadingError("Model manager not initialized".to_string()))?;`
+- Ensure function returns Result type for proper error propagation
+- Follow zero-allocation, blazing-fast, no unsafe, no unchecked, no locking, elegant ergonomic code constraints
 
-### 1. Implement ModelInfo Default Loading System
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/model_info.rs`
-**Lines**: Add method to load defaults from model enumerations
-**Implementation**: Create `ModelInfo::load_defaults(model: &str) -> ModelConfig` that reads max_tokens, temperature, top_p, default_system_prompt from generated model enumerations. Use domain ModelInfoData structure.
-**Architecture**: Centralized configuration loading from dynamically generated enumerations ensures consistent defaults across all providers.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 2. QA: Validate ModelInfo Default System
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify ModelInfo correctly loads defaults from enumerations. Rate default loading implementation quality 1-10. Ensure no unwrap() usage.
+**Constraints:** Never use unwrap() or expect() in src/* files. All operations must return Result types.
 
 ---
 
-## Phase 2: OpenAI Reference Implementation
+#### Task 2: Fix Time Approximation in Cache.rs
+**File:** `./packages/http3/src/cache.rs`
+**Lines:** 364-371
+**Priority:** CRITICAL
+**Architecture:** Replace time approximation with production-ready time handling
 
-### 3. Implement Clean OpenAI CompletionBuilder
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/openai/completion.rs`
-**Lines**: Replace entire file content (lines 1-end)
-**Implementation**: 
-- Create `OpenAICompletionBuilder<State>` with typestate: `NeedsPrompt` → `Ready`
-- Implement `.completion_model(model: &str)` that loads ModelInfo defaults
-- Add optional methods with ModelInfo defaults:
-  - `.system_prompt(prompt: &str)` - override default system prompt
-  - `.temperature(temp: f64)` - override default temperature
-  - `.max_tokens(tokens: u32)` - override default max_tokens
-  - `.top_p(p: f64)` - override default top_p
-  - `.frequency_penalty(penalty: f64)` - override default
-  - `.presence_penalty(penalty: f64)` - override default
-  - `.chat_history(history: Vec<Message>)` - add conversation context
-  - `.documents(docs: Vec<Document>)` - add RAG context
-  - `.tools(tools: Vec<ToolDefinition>)` - add function calling
-  - `.additional_params(params: Value)` - provider-specific overrides
-- Add optional `.on_chunk<F>(callback: F)` that captures user callback
-- Implement terminal `.prompt(text: &str) -> AsyncStream<CompletionChunk>`
-- Use fluent_ai_http3::HttpClient directly for streaming SSE responses
-- Parse OpenAI SSE into CompletionChunk format with no unwrap()
-- Default .on_chunk() behavior: Ok(chunk) → chunk.into(), Err(e) → env_logger + BadChunk::from_err(e)
-**Architecture**: Reference implementation demonstrating clean syntax with complete parameter support and ModelInfo defaults.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 4. QA: Validate OpenAI Clean Implementation
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify clean syntax works: `client.completion_model("gpt-4").system_prompt("Be helpful").prompt("Hello")`. Rate streaming implementation and parameter support 1-10. Ensure no unwrap() usage.
-
-### 5. Update OpenAI Client Factory Methods
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/openai/client.rs`
-**Lines**: Update client creation and model factory methods
-**Implementation**: 
-- Update `Client::new()` to use fluent_ai_http3::HttpClient with HttpConfig::ai_optimized()
-- Implement `completion_model(model: &str) -> OpenAICompletionBuilder<NeedsPrompt>`
-- Load ModelInfo defaults in completion_model() method
-- Add proper error handling for authentication without unwrap()
-**Architecture**: Client provides clean factory methods that return builders with ModelInfo defaults loaded.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 6. QA: Validate OpenAI Client Integration
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify client factory methods work with clean syntax. Rate ModelInfo integration and error handling 1-10.
-
----
-
-## Phase 3: Pattern Replication
-
-### 7. Implement HuggingFace Clean CompletionBuilder
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/huggingface/completion.rs`
-**Lines**: Replace all existing completion logic (lines 1-end)
-**Implementation**: Apply exact same clean pattern as OpenAI: typestate builder with full parameter support (system_prompt, temperature, max_tokens, chat_history, documents, tools, etc.), ModelInfo defaults, optional .on_chunk(), terminal .prompt(), fluent_ai_http3 streaming. Parse HuggingFace responses into CompletionChunk format.
-**Architecture**: Identical clean syntax across all providers with provider-specific streaming response parsing.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 8. QA: Validate HuggingFace Clean Implementation
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify HuggingFace follows OpenAI pattern exactly with clean syntax and full parameter support. Rate consistency and streaming quality 1-10.
-
-### 9. Implement DeepSeek Clean CompletionBuilder
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/deepseek/completion.rs`
-**Lines**: Replace all completion logic (lines 1-end)
-**Implementation**: Apply clean pattern with ModelInfo defaults and full parameter support (system_prompt, chat_history, documents, tools, temperature, max_tokens, etc.). Fix all type resolution errors by using fluent_ai_domain types. Replace DeepSeekCompletionModel with clean builder pattern. Use fluent_ai_http3 for streaming.
-**Architecture**: Clean syntax with DeepSeek-specific API format adaptation and complete parameter support.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 10. QA: Validate DeepSeek Clean Implementation
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify DeepSeek resolves type errors and implements clean streaming syntax with full parameter support. Rate type safety and consistency 1-10.
-
-### 11. Implement All Remaining Provider Clean Builders
-**Files**: 
-- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
-- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/gemini/completion.rs`
-- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/groq/completion.rs`
-- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/mistral/completion.rs`
-- All other client completion modules
-**Implementation**: Apply identical clean pattern to all remaining providers: ModelInfo defaults, full parameter support (system_prompt, temperature, max_tokens, chat_history, documents, tools, top_p, frequency_penalty, presence_penalty, additional_params), optional .on_chunk(), terminal .prompt(), fluent_ai_http3 streaming, provider-specific response parsing.
-**Architecture**: Consistent clean syntax with complete parameter support across entire provider ecosystem.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 12. QA: Validate All Provider Clean Implementations
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify all providers consistently implement clean syntax with ModelInfo defaults and full parameter support. Rate pattern consistency 1-10.
-
----
-
-## Phase 4: Integration & Validation
-
-### 13. Re-enable Client Factory with Clean Patterns
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/client_factory.rs`
-**Lines**: Uncomment and update entire module
-**Implementation**: Update factory to create clients that support clean completion_model() syntax with full parameter support. Use AsyncTask patterns. Map Provider enum variants to client instances with ModelInfo integration.
-**Architecture**: Factory creates clients with consistent clean completion builder interface supporting all parameters.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 14. QA: Validate Client Factory Clean Integration
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify factory produces clients with clean syntax support and full parameter capabilities. Rate factory implementation quality 1-10.
-
-### 15. Fix All Import Statements for Clean Architecture
-**Files**: All client modules and lib.rs
-**Implementation**: Ensure all imports reference fluent_ai_domain for types (Message, Document, ToolDefinition, etc.). Update client trait definitions to support clean completion_model() methods with full parameter support. Remove any remaining provider-local domain types.
-**Architecture**: Clean separation with proper imports supporting clean completion syntax and all parameters.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 16. QA: Validate Clean Import Architecture
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify imports support clean completion syntax with full parameters. Rate import organization and architecture 1-10.
-
-### 17. Comprehensive Compilation Validation
-**Command**: `cargo check --workspace`
-**Implementation**: Verify zero compilation errors with clean syntax implementation and full parameter support. Fix any remaining type issues, import problems, or trait mismatches. Ensure ModelInfo defaults work correctly for all parameters.
-**Architecture**: Complete clean syntax architecture with full parameter support compiles successfully.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 18. QA: Validate Zero Compilation Errors
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify cargo check returns completely clean build with clean syntax and full parameter support. Rate compilation success 1-10.
-
-### 19. Eliminate All 47 Warnings
-**Implementation**: Address remaining warnings while preserving clean syntax functionality and full parameter support. Remove unused imports, dead code, missing docs. Ensure warning-free build with clean completion interface.
-**Architecture**: Production-quality clean syntax implementation with full parameters and zero warnings.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 20. QA: Validate Zero Warnings Achievement
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify all warnings eliminated while maintaining clean syntax and full parameter support. Rate warning resolution quality 1-10.
-
-### 21. End-to-End Clean Syntax Validation
-**Implementation**: Create test demonstrating clean syntax with full parameters: `client.completion_model("gpt-4").system_prompt("You are helpful").temperature(0.8).chat_history(messages).documents(docs).tools(tools).prompt("Hello")`. Verify ModelInfo defaults load correctly for all parameters. Test streaming with optional .on_chunk(). Validate .collect() functionality.
-**Architecture**: Complete clean syntax streaming architecture with full parameter support working end-to-end.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 22. QA: Validate End-to-End Clean Functionality
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify clean syntax works end-to-end with ModelInfo defaults, full parameter support, and streaming. Rate system quality 1-10.
-
----
-
-## Phase 5: Intelligent Tool Selection Pipeline (Future Enhancement)
-
-### 23. Implement BERT Classifier for Tool Relevance Scoring
-**Files**: 
-- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/tool_selection/classifier.rs`
-- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/tool_selection/pipeline.rs`
-**Implementation**: 
-- Integrate BERT-based inference pipeline for tool relevance classification
-- Create semantic similarity scoring between user prompt and tool descriptions
-- Implement `ToolRelevanceClassifier` that scores tools 0.0-1.0 based on prompt context
-- Add `classify_tool_relevance(prompt: &str, tools: &[ToolDefinition]) -> Vec<(ToolDefinition, f64)>`
-- Support contextual filtering (e.g., "planning" requests exclude `github_commit` tool)
-**Architecture**: Pre-completion tool filtering ensures only relevant tools are sent to AI model, staying within 32-tool limit while maximizing utility.
-
-### 24. Implement Dynamic Tool Selection Pipeline
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/tool_selection/selector.rs`
-**Implementation**:
-- Create `ToolSelector` that reduces N tools to ≤32 based on BERT classifier scores
-- Implement smart selection strategies:
-  - **Relevance-based**: Top 32 tools by semantic similarity score
-  - **Category-balanced**: Ensure representation across tool categories (code, planning, communication, etc.)
-  - **Context-aware**: Boost tools based on conversation history and domain context
-- Add `select_optimal_tools(prompt: &str, available_tools: Vec<ToolDefinition>) -> Vec<ToolDefinition>`
-- Ensure deterministic selection within score tiers for reproducible behavior
-**Architecture**: Intelligent tool selection maximizes model effectiveness while respecting 32-tool constraint.
-
-### 25. Integrate Tool Selection into CompletionProvider
-**Files**: All provider completion implementations
-**Implementation**:
-- Modify `tools()` method to accept unlimited tools but intelligently select ≤32
-- Add `enable_tool_selection(bool)` configuration option (default: true)
-- Implement tool selection pipeline in completion builders:
+**Technical Details:**
+- Current issue: Comment "in a real implementation you'd use a proper time library" with approximation code
+- Lines 364-371: Replace approximation code with proper time handling
+- Add dependency: `chrono = "0.4"` to Cargo.toml
+- Solution implementation:
   ```rust
-  fn tools(mut self, tools: ZeroOneOrMany<ToolDefinition>) -> Result<Self, CompletionError> {
-      let selected_tools = if self.tool_selection_enabled {
-          self.tool_selector.select_optimal_tools(&self.prompt_context, tools)
-      } else {
-          tools.into_iter().take(32).collect() // Fallback to first 32
-      };
-      // Store selected tools in ArrayVec<ToolDefinition, 32>
-  }
+  use chrono::{DateTime, Utc};
+  
+  let unix_timestamp = DateTime::from_timestamp(total_seconds as i64, 0)
+      .ok_or_else(|| "Invalid timestamp")?;
+  let duration_since_epoch = unix_timestamp
+      .signed_duration_since(DateTime::UNIX_EPOCH);
+  Some(Instant::now() - Duration::from_secs(duration_since_epoch.num_seconds() as u64))
   ```
-- Add logging of tool selection decisions for transparency
-**Architecture**: Seamless integration maintains existing API while adding intelligent tool curation.
+- Follow zero-allocation, blazing-fast, no unsafe, no unchecked, no locking, elegant ergonomic code constraints
 
-### 26. Implement Tool Selection Caching and Performance
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/tool_selection/cache.rs`
-**Implementation**:
-- Add LRU cache for BERT inference results to avoid re-computing similar prompts
-- Implement `ToolSelectionCache` with configurable TTL and memory limits
-- Add batch inference optimization for multiple tool evaluations
-- Create tool fingerprinting for efficient cache key generation
-- Implement async tool classification to avoid blocking completion pipeline
-**Architecture**: High-performance tool selection with sub-millisecond response times through intelligent caching.
-
-### 27. Add Tool Selection Configuration and Observability
-**Files**:
-- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/tool_selection/config.rs`
-- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/tool_selection/metrics.rs`
-**Implementation**:
-- Add `ToolSelectionConfig` with tunable parameters:
-  - `relevance_threshold: f64` - Minimum score for tool inclusion
-  - `max_tools: usize` - Tool limit (default: 32)
-  - `category_balance: bool` - Enable category-balanced selection
-  - `cache_enabled: bool` - Enable/disable result caching
-- Implement tool selection metrics and observability:
-  - Tool selection latency tracking
-  - Cache hit/miss rates
-  - Tool relevance score distributions
-  - Selection decision audit logs
-- Add `ToolSelectionMetrics` for performance monitoring
-**Architecture**: Production-ready tool selection with full observability and tunable performance characteristics.
-
-### 28. QA: Validate Intelligent Tool Selection System
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify:
-- BERT classifier accurately scores tool relevance for different prompt types
-- Tool selection pipeline consistently selects appropriate tools within 32-tool limit
-- Performance meets sub-millisecond requirements with caching
-- Integration preserves existing CompletionProvider API compatibility
-- Tool selection decisions are logged and auditable
-Rate intelligent tool selection implementation quality 1-10.
+**Constraints:** Must be production-ready with proper error handling. No approximations or "for now" implementations.
 
 ---
 
-## Anthropic Advanced Features Integration
+#### Task 3: Systematic Unwrap() Replacement
+**File:** Multiple files in `./packages/provider/src/` and `./packages/http3/src/`
+**Lines:** 100+ locations
+**Priority:** CRITICAL
+**Architecture:** Replace all unwrap() calls with proper error handling
 
-### 29. Implement Prompt Caching for Anthropic Provider
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
-**Lines**: Add cache_control field to AnthropicCompletionRequest struct and builder methods
-**Implementation**: 
-- Add `with_prompt_caching()` method to AnthropicCompletionBuilder that sets internal boolean flag
-- Modify `build_request()` to include `cache_control: { type: "ephemeral" }` when caching enabled
-- Auto-enable caching for large system prompts (>2048 tokens) and context documents
-- Add cache_control to system prompt, documents, and tool definitions in request structure
-- Handle cache status in streaming responses for observability
-- Integrate with existing Context<File> API - large files auto-cached
-**Architecture**: Transparent prompt caching that reduces costs for repeated content while maintaining clean builder syntax `.with_prompt_caching()` and seamless Context integration.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+**Technical Details:**
+- Search pattern: `unwrap()` in all src/ directories
+- Replace each instance with proper error handling using ? operator and Result types
+- Ensure all functions return Result types instead of panicking
+- Common patterns:
+  - `some_operation().unwrap()` → `some_operation().map_err(|e| SpecificError::from(e))?`
+  - `option.unwrap()` → `option.ok_or_else(|| SpecificError::new("description"))?`
+  - `result.unwrap()` → `result.map_err(|e| SpecificError::from(e))?`
+- Follow zero-allocation, lock-free patterns with elegant ergonomic error handling
+- Prioritize files in image_processing module first as they're needed for Phase 1
 
-### 30. QA: Validate Anthropic Prompt Caching Implementation
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify prompt caching integrates cleanly with builder syntax, properly structures cache_control in requests, handles large content auto-caching, and maintains cost transparency. Rate implementation quality 1-10.
-
-### 31. Implement Extended Thinking for Anthropic Provider
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
-**Lines**: Add thinking field to AnthropicCompletionRequest struct and builder methods
-**Implementation**: 
-- Add `with_thinking(budget_tokens: Option<u32>)` method to AnthropicCompletionBuilder
-- Modify `build_request()` to include `thinking: { type: "enabled", budget_tokens: n }` when thinking enabled
-- Default budget_tokens to 1024 when None provided, use custom value when Some(n)
-- Extend `parse_sse_chunk()` to handle thinking content blocks in streaming responses
-- Add CompletionChunk::Thinking variant or include thinking content in existing text chunks
-- Preserve existing `on_chunk(|chunk| { Ok => chunk.into(), Err(e) => ... })` syntax unchanged
-- Handle thinking signatures and verification in response parsing
-**Architecture**: Transparent extended thinking that provides reasoning transparency while maintaining existing cyrup_sugars on_chunk syntax and streaming patterns.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 32. QA: Validate Anthropic Extended Thinking Implementation
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify extended thinking integrates cleanly with builder syntax, properly structures thinking requests, handles streaming thinking content, preserves existing on_chunk syntax, and provides reasoning transparency. Rate implementation quality 1-10.
-
-### 33. Implement Citations for Anthropic Provider
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
-**Lines**: Add citations field to AnthropicCompletionBuilder and request processing
-**Implementation**: 
-- Add `with_citations()` method to AnthropicCompletionBuilder that sets internal boolean flag
-- Integrate with existing Context<File>, Context<Files>, Context<Directory> API for automatic source attribution
-- Modify document processing in `build_request()` to include source metadata when citations enabled
-- Extend `parse_sse_chunk()` to handle citation blocks in streaming responses
-- Add citation information to CompletionChunk responses (source file, line numbers, URLs)
-- Preserve existing `on_chunk(|chunk| { Ok => chunk.into(), Err(e) => ... })` syntax unchanged
-- Map Context sources to Anthropic citation format in request structure
-**Architecture**: Transparent citations that provide source attribution for document-based responses while leveraging existing Context API and maintaining clean builder syntax `.with_citations()`.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 34. QA: Validate Anthropic Citations Implementation
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify citations integrate cleanly with builder syntax, leverage existing Context API for source attribution, properly handle citation blocks in streaming, preserve existing on_chunk syntax, and provide accurate source metadata. Rate implementation quality 1-10.
-
-### 35. Implement Search Results Processing for Anthropic Provider
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
-**Lines**: Add search results field to AnthropicCompletionBuilder and context processing
-**Implementation**: 
-- Add `with_search_results()` method to AnthropicCompletionBuilder that sets internal boolean flag
-- Extend context() method to accept ZeroOneOrMany<SearchResult> alongside existing Context types
-- Create SearchResult domain type with title, snippet, url, relevance_score fields
-- Modify `build_request()` to format search results into structured context when flag enabled
-- Apply Anthropic-specific search result formatting (title, snippet, source URL structure)
-- Integrate search results with existing citation system when both flags enabled
-- Preserve existing `on_chunk(|chunk| { Ok => chunk.into(), Err(e) => ... })` syntax unchanged
-- Handle search result metadata in streaming responses for source attribution
-**Architecture**: Transparent search results processing that auto-formats search context using ZeroOneOrMany pattern while maintaining clean builder syntax `.with_search_results()` and existing context API.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 36. QA: Validate Anthropic Search Results Implementation
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify search results integrate cleanly with builder syntax, properly format search context, use ZeroOneOrMany pattern correctly, integrate with citation system, preserve existing on_chunk syntax, and provide structured search formatting. Rate implementation quality 1-10.
-
-### 37. Implement Batch Processing for Anthropic Provider
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
-**Lines**: Add batch processing methods and separate execution path
-**Implementation**: 
-- Add `batch_prompts(args...)` method to AnthropicCompletionBuilder using ZeroOneOrMany variadic pattern
-- Implement `execute_batch()` method that uses Anthropic's `/v1/messages/batches` endpoint
-- Create separate batch request structure with array of individual completion requests
-- Handle batch response parsing with multiple completion results
-- Preserve all existing builder options (model, temperature, system_prompt, etc.) for batch requests
-- Maintain cost optimization through batch API pricing advantages
-- Add batch status tracking and completion polling for async batch processing
-- Preserve existing `on_chunk(|chunk| { Ok => chunk.into(), Err(e) => ... })` syntax for streaming batch results
-**Architecture**: Efficient batch processing that leverages Anthropic's batch API for cost optimization while maintaining clean builder syntax `.batch_prompts("prompt1", "prompt2", "prompt3").execute_batch()` and ZeroOneOrMany variadic pattern.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 38. QA: Validate Anthropic Batch Processing Implementation
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify batch processing integrates cleanly with builder syntax, uses ZeroOneOrMany variadic pattern correctly, leverages Anthropic batch API properly, maintains cost optimization, preserves existing on_chunk syntax, and provides efficient batch execution. Rate implementation quality 1-10.
-
-### 39. Implement Multi-lingual Support for Anthropic Provider
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
-**Lines**: Add multilingual processing and UTF-8 robustness
-**Implementation**: 
-- Add `with_multilingual()` method to AnthropicCompletionBuilder that sets internal boolean flag
-- Enhance UTF-8 handling throughout request building and response parsing
-- Add character encoding validation for system prompts, user prompts, and context documents
-- Implement proper Unicode normalization (NFC) for consistent text processing
-- Add language detection hints in request metadata when multilingual flag enabled
-- Enhance streaming response parsing to handle multi-byte UTF-8 sequences correctly
-- Add proper byte boundary handling in SSE chunk parsing to avoid broken Unicode
-- Preserve existing `on_chunk(|chunk| { Ok => chunk.into(), Err(e) => ... })` syntax unchanged
-- Ensure all text processing maintains Unicode correctness and character integrity
-**Architecture**: Robust multilingual support that ensures proper UTF-8 handling and language processing while maintaining clean builder syntax `.with_multilingual()` and existing streaming patterns.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 40. QA: Validate Anthropic Multi-lingual Implementation
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify multilingual support integrates cleanly with builder syntax, properly handles UTF-8 encoding, maintains Unicode correctness, handles multi-byte sequences in streaming, preserves existing on_chunk syntax, and provides robust language processing. Rate implementation quality 1-10.
-
-### 41. Implement Automatic Token Counting for Anthropic Provider
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
-**Lines**: Add automatic token counting and cost transparency
-**Implementation**: 
-- Integrate Anthropic's `/v1/messages/count_tokens` endpoint for pre-request token counting
-- Add automatic token counting in `build_request()` method before sending completion request
-- Count tokens for system prompt, user prompt, chat history, documents, and tool definitions
-- Add token usage tracking in streaming response parsing from usage metadata
-- Implement cost calculation based on model pricing (input/output token rates)
-- Add token budget validation against model limits with intelligent truncation
-- Log token usage and cost information for transparency and optimization
-- Preserve existing `on_chunk(|chunk| { Ok => chunk.into(), Err(e) => ... })` syntax unchanged
-- Include token count and cost data in completion metadata and error messages
-**Architecture**: Transparent automatic token counting that provides cost visibility and request optimization while maintaining existing builder syntax and requiring no user intervention.
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-### 42. QA: Validate Anthropic Token Counting Implementation
-Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify automatic token counting integrates seamlessly, provides accurate cost transparency, handles token budget validation, includes proper usage tracking, preserves existing on_chunk syntax, and requires no user syntax changes. Rate implementation quality 1-10.
+**Constraints:** Never use unwrap() or expect() in src/* files. All operations must return Result types.
 
 ---
 
-## SUCCESS CRITERIA
-- [ ] Clean syntax works: `client.completion_model("gpt-4").system_prompt("Be helpful").prompt("Hello")`
-- [ ] All parameters supported: system_prompt, temperature, max_tokens, chat_history, documents, tools, top_p, frequency_penalty, presence_penalty, additional_params
-- [ ] All properties default from ModelInfo enumerations
-- [ ] .on_chunk() is optional with env_logger defaults
-- [ ] .prompt() is terminal action returning unwrapped AsyncStream<CompletionChunk>
-- [ ] All HTTP operations use fluent_ai_http3 directly
-- [ ] `cargo check --workspace` returns 0 errors, 0 warnings
-- [ ] Zero unwrap()/expect() in src/* code
-- [ ] AsyncTask patterns throughout
-- [ ] End-to-end streaming functionality with clean syntax and full parameter support
+#### Task 4: Replace Anthropic Tools Placeholder Implementations
+**File:** Multiple files containing "in production" comments
+**Lines:** Various
+**Priority:** MEDIUM
+**Architecture:** Replace placeholder implementations with production-ready code
+
+**Technical Details:**
+
+**4a. Expression Calculator (Line 89)**
+- **File:** `./packages/provider/src/clients/anthropic/tools.rs`
+- **Lines:** 89 - Replace "Simple expression evaluation (in production, use a proper parser)"
+- **Implementation:** Replace `evaluate_expression()` with proper mathematical expression parser using `pest` crate
+- **Features:** Support arithmetic operations (+, -, *, /, %), parentheses, variables, mathematical functions (sin, cos, sqrt, etc.)
+- **Error Handling:** Comprehensive parsing error messages, division by zero protection, overflow detection
+- **Performance:** Zero-allocation parsing with stack-based evaluation, O(n) complexity
+
+**4b. Web Search API Integration (Line 143)**
+- **File:** `./packages/provider/src/clients/anthropic/tools.rs`
+- **Lines:** 143-159 - Replace placeholder search results with actual API integration
+- **Implementation:** Integrate with DuckDuckGo Instant Answer API or similar privacy-focused search
+- **Features:** Query sanitization, result ranking, snippet extraction, URL validation
+- **Rate Limiting:** Implement exponential backoff, request throttling, cache results
+- **Security:** Input validation, XSS prevention, safe URL handling
+
+**4c. Secure File Reading (Line 212)**
+- **File:** `./packages/provider/src/clients/anthropic/tools.rs`
+- **Lines:** 212-218 - Replace placeholder file reading with secure implementation
+- **Implementation:** Path traversal prevention, file size limits, allowed directory restrictions
+- **Features:** MIME type detection, binary file handling, encoding detection
+- **Security:** Sandbox file access, symlink protection, permission validation
+- **Performance:** Streaming reads for large files, memory-mapped access for performance
+
+**4d. Directory Listing (Line 221)**
+- **File:** `./packages/provider/src/clients/anthropic/tools.rs`
+- **Lines:** 221-229 - Replace placeholder directory listing with secure implementation
+- **Implementation:** Recursive directory traversal with depth limits, pattern matching
+- **Features:** File metadata extraction, sorting options, filtering capabilities
+- **Security:** Path validation, hidden file handling, permission checking
+- **Performance:** Async directory traversal, lazy loading for large directories
+
+**4e. CUDA Detection Enhancement (Line 200)**
+- **File:** `./packages/provider/src/image_processing/factory.rs`
+- **Lines:** 200-202 - Replace simple CUDA check with sophisticated detection
+- **Implementation:** NVIDIA Management Library (NVML) integration, CUDA runtime detection
+- **Features:** GPU capability detection, memory availability check, compute capability validation
+- **Performance:** Cached detection results, lazy initialization, minimal overhead
+- **Compatibility:** Support for different CUDA versions, multi-GPU systems
+
+**Constraints:** All implementations must be production-ready. No placeholders or "in production" comments. Follow zero-allocation, blazing-fast, no unsafe, no unchecked, no locking, elegant ergonomic code constraints.
+
+---
+
+#### Task 5: Replace "For Now" Temporary Implementations
+**File:** Multiple files containing "for now" comments
+**Lines:** Various
+**Priority:** MEDIUM
+**Architecture:** Replace temporary implementations with production-ready code
+
+**Technical Details:**
+
+**5a. Groq Model Configuration (Line 413)**
+- **File:** `./packages/provider/src/clients/groq/completion.rs`
+- **Lines:** 413-424 - Replace "Get model config - for now using default values"
+- **Implementation:** Dynamic model configuration based on specific model capabilities
+- **Features:** Model-specific parameter optimization, context length detection, capability flags
+- **Data Source:** Groq API model list endpoint, cached model specifications
+- **Performance:** Lazy loading of model configs, zero-allocation parameter selection
+
+**5b. Groq Streaming Implementation (Line 586)**
+- **File:** `./packages/provider/src/clients/groq/completion.rs`
+- **Lines:** 586 - Replace "For now, return a placeholder stream"
+- **Implementation:** Full Server-Sent Events (SSE) streaming with Groq API
+- **Features:** Real-time token streaming, partial response handling, connection recovery
+- **Error Handling:** Stream interruption recovery, timeout handling, backpressure management
+- **Performance:** Zero-copy streaming, async iterator pattern, minimal latency
+
+**5c. Client Factory Implementations**
+- **File:** `./packages/provider/src/client_factory.rs`
+- **Lines:** 383, 396, 409, 422, 435 - Replace TODO client implementations
+- **Implementation:** Complete client factory methods for all supported providers
+- **Providers:** Gemini, Mistral, Groq, Perplexity, xAI
+- **Features:** Authentication handling, configuration validation, client instantiation
+- **Architecture:** Factory pattern with lazy initialization, connection pooling
+
+**5d. OpenAI Vision Image Resizing (Line 274)**
+- **File:** `./packages/provider/src/clients/openai/vision.rs`
+- **Lines:** 274 - Replace "TODO: Implement actual image resizing"
+- **Implementation:** High-performance image resizing using `image` crate
+- **Features:** Aspect ratio preservation, quality optimization, format conversion
+- **Performance:** SIMD-accelerated processing, memory-efficient resizing
+- **Formats:** Support for JPEG, PNG, WebP, with automatic format detection
+
+**5e. OpenAI Moderation Placeholders (Lines 621, 646)**
+- **File:** `./packages/provider/src/clients/openai/moderation.rs`
+- **Lines:** 621, 646 - Replace placeholder assessments and API simulation
+- **Implementation:** Full OpenAI Moderation API integration
+- **Features:** Content safety classification, confidence scoring, category detection
+- **Categories:** Hate, harassment, self-harm, sexual content, violence
+- **Performance:** Batch processing, caching, rate limiting
+
+**Constraints:** All implementations must be production-ready. No temporary or "for now" implementations. Follow zero-allocation, blazing-fast, no unsafe, no unchecked, no locking, elegant ergonomic code constraints.
+
+---
+
+#### Task 6: Decompose Large Files for Maintainability
+**File:** Multiple large files in `./packages/provider/src/`
+**Lines:** Files >1000 lines
+**Priority:** LOW
+**Architecture:** Split large files into logical modules for better maintainability
+
+**Technical Details:**
+
+**6a. Decompose model_info.rs (2586 lines)**
+- Split into: `model_info/definitions.rs`, `model_info/providers.rs`, `model_info/capabilities.rs`, `model_info/validation.rs`, `model_info/mod.rs`
+- Ensure zero-allocation patterns and lock-free design throughout
+
+**6b. Decompose gemini/completion.rs (1731 lines)**
+- Split into: `gemini/completion/request.rs`, `gemini/completion/response.rs`, `gemini/completion/streaming.rs`, `gemini/completion/mod.rs`
+- Follow zero-allocation, lock-free patterns with elegant ergonomic design
+
+**6c. Decompose mistral/completion.rs (1284 lines)**
+- Split into same pattern as gemini/completion.rs
+- Ensure blazing-fast performance with zero-allocation patterns
+
+**6d. Decompose workflow/prompt_enhancement.rs (1135 lines)**
+- Split into: `workflow/prompt_enhancement/stages.rs`, `workflow/prompt_enhancement/pipeline.rs`, `workflow/prompt_enhancement/config.rs`, `workflow/prompt_enhancement/mod.rs`
+- Follow lock-free concurrent programming patterns
+
+**6e. Decompose domain/memory.rs (1088 lines)**
+- Split into: `domain/memory/types.rs`, `domain/memory/management.rs`, `domain/memory/persistence.rs`, `domain/memory/mod.rs`
+- Ensure zero-allocation memory management with elegant ergonomic design
+
+**6f. Decompose embedding/image.rs (1020 lines)**
+- Split into: `embedding/image/processing.rs`, `embedding/image/features.rs`, `embedding/image/backends.rs`, `embedding/image/mod.rs`
+- Follow zero-allocation patterns with blazing-fast performance optimization
+
+**Constraints:** All decomposed modules must follow zero-allocation, blazing-fast, no unsafe, no unchecked, no locking, elegant ergonomic code constraints.
+
+---
+
+### PHASE 1: FOUNDATION & CONFIGURATION
+
+#### Task 7: Create Image Generation Foundation
+**File:** `./packages/provider/src/image_processing/generation.rs`
+**Lines:** 1-100
+**Architecture:** Main implementation file with CandleImageGenerator struct
+
+**Technical Details:**
+- Lines 1-20: Imports (candle_transformers::models::mmdit, hf_hub, tokenizers, candle_nn::VarBuilder)
+- Lines 21-40: CandleImageGenerator struct with fields: device, model_config, is_initialized, current_model
+- Lines 41-60: GenerationError enum with variants: ModelLoadingError, TextEncodingError, SamplingError, VAEDecodingError, DeviceError, ConfigurationError
+- Lines 61-80: Device management utilities (detect_optimal_device, estimate_memory_usage, configure_device)
+- Lines 81-100: Constructor methods (new, with_device, with_config) with proper error handling
+
+**Constraints:** Never use unwrap() or expect() in source code. All operations must return Result types.
+
+---
+
+#### Task 8: Create Generation Configuration
+**File:** `./packages/provider/src/image_processing/generation/config.rs`
+**Lines:** 1-150
+**Architecture:** Configuration management for SD3 model variants and parameters
+
+**Technical Details:**
+- Lines 1-30: SD3ModelVariant enum with variants: ThreeMedium, ThreeFiveLarge, ThreeFiveLargeTurbo, ThreeFiveMedium
+- Lines 31-70: GenerationConfig struct with fields: model_variant, num_inference_steps, cfg_scale, time_shift, use_flash_attn, use_slg, output_size, seed
+- Lines 71-100: ModelLoadingConfig struct with model_id, revision, use_safetensors, cache_dir
+- Lines 101-130: Configuration validation functions (validate_inference_steps, validate_cfg_scale, validate_output_size)
+- Lines 131-150: Device configuration optimization (get_optimal_batch_size, calculate_memory_requirements)
+
+**Constraints:** All configuration must match stable-diffusion-3 example patterns exactly.
+
+---
+
+#### Task 9: Create Text Encoder Implementation
+**File:** `./packages/provider/src/image_processing/generation/text_encoder.rs`
+**Lines:** 1-400
+**Architecture:** Triple CLIP encoder following stable-diffusion-3/clip.rs patterns
+
+**Technical Details:**
+- Lines 1-50: Imports and ClipWithTokenizer struct definition
+- Lines 51-120: CLIP-L implementation with tokenization and embedding generation
+- Lines 121-190: CLIP-G implementation with proper padding and attention
+- Lines 191-260: T5WithTokenizer implementation for T5-XXL long text understanding
+- Lines 261-320: StableDiffusion3TripleClipWithTokenizer combining all three encoders
+- Lines 321-370: encode_text_to_embedding method with context and y tensor generation
+- Lines 371-400: Error handling and cleanup utilities
+
+**Constraints:** Must follow stable-diffusion-3/clip.rs patterns exactly. No modifications to tokenization logic.
+
+---
+
+#### Task 10: Create Sampling Implementation
+**File:** `./packages/provider/src/image_processing/generation/sampling.rs`
+**Lines:** 1-200
+**Architecture:** MMDiT sampling with Euler method following stable-diffusion-3/sampling.rs
+
+**Technical Details:**
+- Lines 1-30: Imports and SkipLayerGuidanceConfig struct definition
+- Lines 31-80: euler_sample function with MMDiT integration, sigmas calculation, timestep scheduling
+- Lines 81-120: CFG (Classifier-Free Guidance) implementation with apply_cfg function
+- Lines 121-150: Skip Layer Guidance support for SD3.5 models with layer masking
+- Lines 151-180: Noise generation using flux::sampling::get_noise patterns
+- Lines 181-200: Time scheduling utilities (time_snr_shift function)
+
+**Constraints:** Must follow stable-diffusion-3/sampling.rs patterns exactly. No modifications to sampling algorithms.
+
+---
+
+#### Task 11: Create VAE Decoder Implementation
+**File:** `./packages/provider/src/image_processing/generation/vae.rs`
+**Lines:** 1-150
+**Architecture:** VAE decoder following stable-diffusion-3/vae.rs patterns
+
+**Technical Details:**
+- Lines 1-40: Imports and VAE configuration setup
+- Lines 41-80: build_sd3_vae_autoencoder function with AutoEncoderKLConfig
+- Lines 81-120: sd3_vae_vb_rename function for weight mapping and layer renaming
+- Lines 121-150: Latent to image conversion with TAESD3 scale factor and post-processing
+
+**Constraints:** Must follow stable-diffusion-3/vae.rs patterns exactly. Use exact scaling factors.
+
+---
+
+#### Task 12: Create Model Management
+**File:** `./packages/provider/src/image_processing/generation/models.rs`
+**Lines:** 1-250
+**Architecture:** Model loading and management from HuggingFace Hub
+
+**Technical Details:**
+- Lines 1-50: Imports and ModelManager struct definition
+- Lines 51-100: HuggingFace Hub integration with hf_hub::api for model downloading
+- Lines 101-150: Weight management using candle_nn::VarBuilder::from_mmaped_safetensors
+- Lines 151-200: Multi-model support infrastructure with model switching
+- Lines 201-250: Memory optimization utilities and model cleanup
+
+**Constraints:** Must handle all SD3 model variants. Efficient memory management required.
+
+---
+
+### PHASE 2: MAIN IMPLEMENTATION
+
+#### Task 13: Implement Main Generation Logic
+**File:** `./packages/provider/src/image_processing/generation.rs`
+**Lines:** 101-550
+**Architecture:** Complete ImageGenerationProvider trait implementation
+
+**Technical Details:**
+- Lines 101-150: ImageGenerationProvider trait implementation skeleton
+- Lines 151-250: generate_image() method orchestrating text encoding, sampling, VAE decoding
+- Lines 251-350: generate_image_batch() with efficient batch processing
+- Lines 351-400: supported_models() returning all SD3 variants
+- Lines 401-450: load_model() with proper error handling and model switching
+- Lines 451-500: Device management and optimization utilities
+- Lines 501-550: Cleanup and resource management methods
+
+**Constraints:** Full pipeline orchestration required. All trait methods must be implemented.
+
+---
+
+#### Task 14: Create Module Integration
+**File:** `./packages/provider/src/image_processing/generation/mod.rs`
+**Lines:** 1-50
+**Architecture:** Module declarations and public API
+
+**Technical Details:**
+- Lines 1-20: Module declarations for config, text_encoder, sampling, vae, models
+- Lines 21-35: Public use statements for main types (CandleImageGenerator, GenerationConfig, SD3ModelVariant)
+- Lines 36-50: Module-level documentation and visibility configuration
+
+**Constraints:** Clean public API required. Proper encapsulation.
+
+---
+
+#### Task 15: Update Main Image Processing Module
+**File:** `./packages/provider/src/image_processing/mod.rs`
+**Lines:** Add generation module after line 14
+**Architecture:** Integration with existing image processing module
+
+**Technical Details:**
+- Add: `#[cfg(feature = "generation")] pub mod generation;` after line 14
+- Update pub use statements to include generation types
+- Ensure feature flag compatibility
+
+**Constraints:** Must maintain compatibility with existing module structure.
+
+---
+
+### PHASE 3: INTEGRATION & TESTING
+
+#### Task 16: Update Provider Factory
+**File:** `./packages/provider/src/image_processing/factory.rs`
+**Lines:** 115-122 (update existing generation provider creation)
+**Architecture:** Integration with factory pattern
+
+**Technical Details:**
+- Update create_candle_generation_provider function to use CandleImageGenerator
+- Add proper error handling and configuration passing
+- Ensure feature flag compatibility
+
+**Constraints:** Must integrate seamlessly with existing factory pattern.
+
+---
+
+## ARCHITECTURAL NOTES
+
+### Device Management Strategy
+- Automatic device detection with fallback hierarchy: Metal → CUDA → CPU
+- Memory estimation and optimization for large models
+- Efficient batch processing with dynamic batch sizing
+
+### Error Handling Architecture
+- Comprehensive error types covering all failure modes
+- Proper error propagation without unwrap/expect
+- Rich error context for debugging and monitoring
+
+### Memory Management
+- Efficient model loading with memory mapping
+- Proper cleanup and resource deallocation
+- Batch processing optimization for memory usage
+
+### Performance Optimizations
+- Flash attention support for speed improvements
+- Skip Layer Guidance for SD3.5 models
+- Efficient tensor operations with proper device placement
+
+## QUALITY REQUIREMENTS
+
+1. **No unwrap() or expect() in source code** - All operations must return Result types
+2. **Real ML operations only** - No mocking, simulation, or fake data
+3. **Production-quality error handling** - Comprehensive error coverage
+4. **Memory efficiency** - Proper resource management and cleanup
+5. **Device optimization** - Automatic device selection and configuration
+6. **Exact pattern matching** - Follow stable-diffusion-3 example patterns precisely
+
+## CONSTRAINTS
+
+- Must follow stable-diffusion-3 example patterns exactly
+- Never use unwrap() or expect() in src/* files
+- All operations must be real ML operations using Candle transformers
+- Comprehensive error handling for all failure modes
+- Memory-efficient implementation with proper cleanup
+- Support for all SD3 model variants (3-medium, 3.5-large, 3.5-large-turbo, 3.5-medium)

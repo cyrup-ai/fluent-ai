@@ -493,7 +493,7 @@ mod tests {
             ]
         }
         "#;
-        let completion_response = serde_json::from_str::<CompletionResponse>(json_data).unwrap();
+        let completion_response = serde_json::from_str::<CompletionResponse>(json_data).expect("Failed to parse completion response in test");
         assert_eq!(completion_response.model, MISTRAL_SMALL);
 
         let CompletionResponse {
@@ -511,7 +511,7 @@ mod tests {
             completion_tokens,
             prompt_tokens,
             total_tokens,
-        } = usage.unwrap();
+        } = usage.expect("Usage should be present in test");
 
         assert_eq!(prompt_tokens, 16);
         assert_eq!(completion_tokens, 34);
@@ -1234,7 +1234,7 @@ mod new_completion_tests {
         );
         
         assert!(builder.is_ok());
-        let builder = builder.unwrap();
+        let builder = builder.expect("Failed to create mistral completion builder in test");
         
         // Test env_api_keys method
         let env_keys = builder.env_api_keys();
@@ -1253,7 +1253,7 @@ mod new_completion_tests {
         let builder = MistralCompletionBuilder::new(
             "original-key".to_string(),
             MISTRAL_LARGE,
-        ).unwrap();
+        ).expect("Failed to create mistral completion builder in test");
         
         // Test that explicit_api_key is None initially
         assert!(builder.explicit_api_key.is_none());

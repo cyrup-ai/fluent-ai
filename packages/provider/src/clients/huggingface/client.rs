@@ -84,7 +84,7 @@ mod tests {
         let client = HuggingFaceClient::new("test-key".to_string());
         assert!(client.is_ok());
         
-        let client = client.unwrap();
+        let client = client.expect("Failed to create huggingface client in test");
         assert_eq!(client.api_key(), "test-key");
     }
     
@@ -96,7 +96,7 @@ mod tests {
     
     #[test]
     fn test_completion_model_factory() {
-        let client = HuggingFaceClient::new("test-key".to_string()).unwrap();
+        let client = HuggingFaceClient::new("test-key".to_string()).expect("Failed to create huggingface client in test");
         let builder = client.completion_model("meta-llama/Meta-Llama-3.1-8B-Instruct");
         assert!(builder.is_ok());
     }

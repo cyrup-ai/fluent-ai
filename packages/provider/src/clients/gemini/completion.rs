@@ -1480,7 +1480,10 @@ pub mod gemini_api_types {
                     }),
                     items: obj
                         .get("items")
-                        .map(|v| Box::new(v.clone().try_into().unwrap())),
+                        .map(|v| v.clone().try_into()
+                            .map(|schema| Box::new(schema))
+                            .map_err(|_| CompletionError::ResponseError("Failed to parse items schema".into())))
+                        .transpose()?,
                 })
             } else {
                 Err(CompletionError::ResponseError(

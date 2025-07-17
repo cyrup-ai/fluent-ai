@@ -576,7 +576,8 @@ impl From<ProviderMessage> for CompletionMessage {
                     ));
                 }
                 CompletionMessage::Assistant {
-                    content: OneOrMany::many(assistant_contents).unwrap(),
+                    content: OneOrMany::many(assistant_contents)
+                        .map_err(|e| CompletionError::ServerError(format!("Failed to create assistant content: {}", e)))?,
                 }
             }
             // System and ToolResult are converted to User message as needed.

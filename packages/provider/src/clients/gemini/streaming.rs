@@ -99,7 +99,9 @@ impl CompletionModel {
                     if choice.finish_reason.is_some() {
                         yield Ok(streaming::RawStreamingChoice::FinalResponse(StreamingCompletionResponse {
                             usage_metadata: PartialUsage {
-                                total_token_count: data.usage_metadata.unwrap().total_token_count,
+                                total_token_count: data.usage_metadata.as_ref()
+                                    .ok_or_else(|| CompletionError::ServerError("Missing usage metadata in streaming response".to_string()))?
+                                    .total_token_count,
                             }
                         }))
                     }

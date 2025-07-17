@@ -80,7 +80,7 @@ mod tests {
         let client = OpenAIClient::new("test-key".to_string());
         assert!(client.is_ok());
         
-        let client = client.unwrap();
+        let client = client.expect("Failed to create openai client in test");
         assert_eq!(client.api_key(), "test-key");
     }
     
@@ -92,7 +92,7 @@ mod tests {
     
     #[test]
     fn test_completion_model_factory() {
-        let client = OpenAIClient::new("test-key".to_string()).unwrap();
+        let client = OpenAIClient::new("test-key".to_string()).expect("Failed to create openai client in test");
         let builder = client.completion_model("gpt-4o");
         assert!(builder.is_ok());
     }

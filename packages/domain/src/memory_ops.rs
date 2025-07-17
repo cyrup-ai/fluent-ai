@@ -22,6 +22,7 @@ pub const SMALL_EMBEDDING_DIMENSION: usize = 64;
 
 /// Generate small embedding using stack allocation for blazing-fast performance
 #[inline(always)]
+#[must_use]
 pub fn generate_small_embedding(content: &str) -> Vec<f32> {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -356,6 +357,8 @@ where
 }
 
 /// Convenience functions for creating memory operations
+#[inline(always)]
+#[must_use]
 pub fn store_memory<M: MemoryManager + Clone>(
     manager: M,
     memory_type: MemoryType,
@@ -363,6 +366,8 @@ pub fn store_memory<M: MemoryManager + Clone>(
     StoreMemory::new(manager, memory_type)
 }
 
+#[inline(always)]
+#[must_use]
 pub fn retrieve_memories<M: MemoryManager + Clone>(
     manager: M,
     limit: usize,
@@ -370,14 +375,20 @@ pub fn retrieve_memories<M: MemoryManager + Clone>(
     RetrieveMemories::new(manager, limit)
 }
 
+#[inline(always)]
+#[must_use]
 pub fn search_memories<M: MemoryManager + Clone>(manager: M) -> SearchMemories<M> {
     SearchMemories::new(manager)
 }
 
+#[inline(always)]
+#[must_use]
 pub fn update_importance<M: MemoryManager + Clone>(manager: M, boost: f32) -> UpdateImportance<M> {
     UpdateImportance::new(manager, boost)
 }
 
+#[inline(always)]
+#[must_use]
 pub fn link_memories<M: MemoryManager + Clone>(
     manager: M,
     relationship_type: String,
@@ -385,6 +396,8 @@ pub fn link_memories<M: MemoryManager + Clone>(
     LinkMemories::new(manager, relationship_type)
 }
 
+#[inline(always)]
+#[must_use]
 pub fn store_with_context<M: MemoryManager + Clone>(
     manager: M,
     memory_type: MemoryType,

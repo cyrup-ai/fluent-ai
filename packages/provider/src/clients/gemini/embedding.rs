@@ -66,7 +66,11 @@ impl embeddings::EmbeddingModel for EmbeddingModel {
 
         let request_body = json!({ "requests": requests  });
 
-        tracing::info!("{}", serde_json::to_string_pretty(&request_body).unwrap());
+        if let Ok(json_string) = serde_json::to_string_pretty(&request_body) {
+            tracing::info!("{}", json_string);
+        } else {
+            tracing::warn!("Failed to serialize request body for logging");
+        }
 
         let response = self
             .client

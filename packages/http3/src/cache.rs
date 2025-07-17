@@ -2,6 +2,7 @@
 
 use std::time::{Duration, Instant};
 use hashbrown::HashMap;
+use chrono::{DateTime, Utc};
 use crate::HttpResponse;
 
 /// Cache entry for HTTP responses
@@ -360,15 +361,25 @@ fn timestamp_to_instant(year: u32, month: u32, day: u32, hour: u32, minute: u32,
     // Create Duration from Unix epoch
     let duration = Duration::from_secs(total_seconds);
     
-    // Get current time and subtract the duration to get the target instant
-    // This is an approximation - in a real implementation you'd use a proper time library
-    let now = Instant::now();
-    let unix_epoch_approx = now - Duration::from_secs(std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .ok()?
-        .as_secs());
+    // Convert to proper timestamp using chrono
+    let unix_timestamp = DateTime::from_timestamp(total_seconds as i64, 0)?;
+    let duration_since_epoch = unix_timestamp
+        .signed_duration_since(DateTime::UNIX_EPOCH);
     
-    Some(unix_epoch_approx + duration)
+    // Convert to Instant by calculating offset from current time
+    let now = Instant::now();
+    let system_now = std::time::SystemTime::now();
+    let current_unix_duration = system_now.duration_since(std::time::UNIX_EPOCH).ok()?;
+    let current_unix_secs = current_unix_duration.as_secs() as i64;
+    let target_unix_secs = duration_since_epoch.num_seconds();
+    
+    if target_unix_secs <= current_unix_secs {
+        let offset = Duration::from_secs((current_unix_secs - target_unix_secs) as u64);
+        Some(now - offset)
+    } else {
+        let offset = Duration::from_secs((target_unix_secs - current_unix_secs) as u64);
+        Some(now + offset)
+    }
 }
 
 /// Check if year is a leap year

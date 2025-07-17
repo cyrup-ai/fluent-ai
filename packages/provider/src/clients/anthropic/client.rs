@@ -92,7 +92,7 @@ mod tests {
         let client = AnthropicClient::new("test-key".to_string());
         assert!(client.is_ok());
         
-        let client = client.unwrap();
+        let client = client.expect("Failed to create anthropic client in test");
         assert_eq!(client.api_key(), "test-key");
     }
     
@@ -104,7 +104,7 @@ mod tests {
     
     #[test]
     fn test_completion_model_factory() {
-        let client = AnthropicClient::new("test-key".to_string()).unwrap();
+        let client = AnthropicClient::new("test-key".to_string()).expect("Failed to create anthropic client in test");
         let builder = client.completion_model("claude-3-5-sonnet-20241022");
         assert!(builder.is_ok());
     }

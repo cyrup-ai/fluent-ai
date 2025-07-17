@@ -16,6 +16,7 @@
 pub mod client;
 pub mod completion;
 pub mod config;
+pub mod expression_evaluator;
 pub mod messages;
 pub mod requests;
 pub mod responses;

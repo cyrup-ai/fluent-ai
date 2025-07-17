@@ -5,6 +5,7 @@
 
 use super::{AnthropicError, AnthropicResult, Message, Tool};
 use super::messages::ContentBlock;
+use super::expression_evaluator::{ExpressionEvaluator, ExpressionError};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -86,16 +87,28 @@ impl ToolExecutor for CalculatorTool {
                 "Calculator requires 'expression' parameter".to_string()
             ))?;
         
-        // Simple expression evaluation (in production, use a proper parser)
-        match evaluate_expression(expression) {
+        // Production-ready expression evaluation with comprehensive error handling
+        let mut evaluator = ExpressionEvaluator::new();
+        match evaluator.evaluate(expression) {
             Ok(result) => Ok(ToolOutput::Json(json!({
                 "result": result,
                 "expression": expression
             }))),
-            Err(e) => Ok(ToolOutput::Error {
-                message: format!("Calculation error: {}", e),
-                code: Some("EVAL_ERROR".to_string()),
-            }),
+            Err(e) => {
+                let error_code = match e {
+                    ExpressionError::ParseError { .. } => "PARSE_ERROR",
+                    ExpressionError::DivisionByZero => "DIVISION_BY_ZERO",
+                    ExpressionError::InvalidFunctionCall { .. } => "INVALID_FUNCTION",
+                    ExpressionError::UndefinedVariable { .. } => "UNDEFINED_VARIABLE",
+                    ExpressionError::DomainError { .. } => "DOMAIN_ERROR",
+                    ExpressionError::Overflow { .. } => "OVERFLOW",
+                    ExpressionError::InvalidExpression { .. } => "INVALID_EXPRESSION",
+                };
+                Ok(ToolOutput::Error {
+                    message: e.to_string(),
+                    code: Some(error_code.to_string()),
+                })
+            }
         }
         })
     }
@@ -109,7 +122,7 @@ impl ToolExecutor for CalculatorTool {
                 "properties": {
                     "expression": {
                         "type": "string",
-                        "description": "Mathematical expression to evaluate"
+                        "description": "Mathematical expression to evaluate. Supports arithmetic operations (+, -, *, /, %, ^), parentheses, mathematical functions (sin, cos, tan, sqrt, ln, log, exp, abs, etc.), constants (pi, e, tau), and variables. Examples: '2 + 3 * 4', 'sin(pi/2)', 'sqrt(16)', 'x = 5; x^2 + 3'"
                     }
                 },
                 "required": ["expression"]
@@ -452,44 +465,3 @@ impl ToolExecutionContext {
     }
 }
 
-/// Simple expression evaluator for calculator tool
-fn evaluate_expression(expr: &str) -> Result<f64, String> {
-    // This is a simplified implementation
-    // In production, use a proper expression parser like `evalexpr`
-    let expr = expr.replace(' ', "");
-    
-    // Handle basic arithmetic
-    if let Ok(result) = expr.parse::<f64>() {
-        return Ok(result);
-    }
-    
-    // Simple addition/subtraction
-    if let Some(pos) = expr.rfind('+') {
-        let left = evaluate_expression(&expr[..pos])?;
-        let right = evaluate_expression(&expr[pos+1..])?;
-        return Ok(left + right);
-    }
-    
-    if let Some(pos) = expr.rfind('-') {
-        let left = evaluate_expression(&expr[..pos])?;
-        let right = evaluate_expression(&expr[pos+1..])?;
-        return Ok(left - right);
-    }
-    
-    if let Some(pos) = expr.rfind('*') {
-        let left = evaluate_expression(&expr[..pos])?;
-        let right = evaluate_expression(&expr[pos+1..])?;
-        return Ok(left * right);
-    }
-    
-    if let Some(pos) = expr.rfind('/') {
-        let left = evaluate_expression(&expr[..pos])?;
-        let right = evaluate_expression(&expr[pos+1..])?;
-        if right == 0.0 {
-            return Err("Division by zero".to_string());
-        }
-        return Ok(left / right);
-    }
-    
-    Err(format!("Unable to evaluate expression: {}", expr))
-}

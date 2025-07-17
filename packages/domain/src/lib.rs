@@ -3,6 +3,12 @@
 //! This crate provides core domain types and traits for AI services.
 //! All domain logic, message types, and business objects are defined here.
 
+// Initialize timestamp caching system for zero-allocation operations
+pub fn initialize_domain() {
+    memory::initialize_timestamp_cache();
+    memory::initialize_memory_node_pool(100, 768); // 100 nodes, 768-dim embeddings
+}
+
 // Re-export cyrup_sugars for convenience
 pub use cyrup_sugars::{OneOrMany, ZeroOneOrMany, ByteSize};
 
@@ -91,11 +97,18 @@ where
     tokio::spawn(future)
 }
 
+/// Channel error type for proper error handling
+#[derive(Debug, thiserror::Error)]
+pub enum ChannelError {
+    #[error("Channel closed unexpectedly")]
+    ChannelClosed,
+}
+
 /// Channel creation for async communication
-pub fn channel<T: Send + 'static>() -> (ChannelSender<T>, AsyncTask<T>) {
+pub fn channel<T: Send + 'static>() -> (ChannelSender<T>, AsyncTask<Result<T, ChannelError>>) {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let task = spawn_async(async move {
-        rx.recv().await.expect("Channel closed unexpectedly")
+        rx.recv().await.ok_or(ChannelError::ChannelClosed)
     });
     (ChannelSender { tx }, task)
 }
