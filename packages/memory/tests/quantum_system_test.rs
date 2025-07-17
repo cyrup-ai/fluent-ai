@@ -1,10 +1,12 @@
 //! Quick test to verify the cognitive system compiles and initializes
 
+#![cfg(feature = "cognitive")]
+
 use std::sync::Arc;
-use surreal_memory::cognitive::quantum::{
+use fluent_ai_memory::cognitive::quantum::{
     EnhancedQuery, QuantumConfig, QuantumRouter, QueryIntent,
 };
-use surreal_memory::cognitive::state::CognitiveStateManager;
+use fluent_ai_memory::cognitive::state::CognitiveStateManager;
 
 #[tokio::test]
 async fn test_quantum_router_basic() {
@@ -46,7 +48,7 @@ async fn test_quantum_router_basic() {
 
 #[test]
 fn test_cognitive_memory_node_creation() {
-    use surreal_memory::{CognitiveMemoryNode, MemoryType};
+    use fluent_ai_memory::{CognitiveMemoryNode, MemoryType};
 
     let node = CognitiveMemoryNode::new("Test content".to_string(), MemoryType::Semantic);
 
@@ -56,7 +58,7 @@ fn test_cognitive_memory_node_creation() {
 
 #[test]
 fn test_complex_number_operations() {
-    use surreal_memory::cognitive::quantum::Complex64;
+    use fluent_ai_memory::cognitive::quantum::Complex64;
 
     let c1 = Complex64::new(3.0, 4.0);
     let c2 = Complex64::new(1.0, 2.0);
@@ -77,7 +79,7 @@ fn test_complex_number_operations() {
 
 #[tokio::test]
 async fn test_cognitive_state_manager() {
-    use surreal_memory::cognitive::state::{
+    use fluent_ai_memory::cognitive::state::{
         AbstractionLevel, CognitiveState, CognitiveStateManager, SemanticContext,
     };
 
@@ -109,8 +111,8 @@ async fn test_cognitive_state_manager() {
 
 #[test]
 fn test_evolution_metadata() {
-    use surreal_memory::cognitive::evolution::EvolutionMetadata;
-    use surreal_memory::{MemoryNode, MemoryType};
+    use fluent_ai_memory::cognitive::evolution::EvolutionMetadata;
+    use fluent_ai_memory::{MemoryNode, MemoryType};
 
     let memory = MemoryNode::new("test".to_string(), MemoryType::Semantic);
     let metadata = EvolutionMetadata::new(&memory);
@@ -122,7 +124,7 @@ fn test_evolution_metadata() {
 
 #[tokio::test]
 async fn test_attention_mechanism() {
-    use surreal_memory::cognitive::attention::{AttentionConfig, AttentionMechanism};
+    use fluent_ai_memory::cognitive::attention::{AttentionConfig, AttentionMechanism};
 
     let config = AttentionConfig {
         num_heads: 2,
@@ -151,7 +153,7 @@ async fn test_attention_mechanism() {
 
 #[test]
 fn test_measurement_basis() {
-    use surreal_memory::cognitive::quantum::measurement::{BasisType, MeasurementBasis};
+    use fluent_ai_memory::cognitive::quantum::measurement::{BasisType, MeasurementBasis};
 
     let computational = MeasurementBasis::computational();
     assert!(matches!(computational.basis_type, BasisType::Computational));

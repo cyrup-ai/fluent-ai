@@ -98,6 +98,12 @@ pub struct MigrationManager {
     migrations: Vec<Box<dyn Migration>>,
 }
 
+impl Default for MigrationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MigrationManager {
     /// Create a new migration manager
     pub fn new() -> Self {

@@ -392,7 +392,7 @@ impl EpisodicMemory {
             .events
             .iter()
             .find(|e| e.id == event_id)
-            .ok_or_else(|| Error::NotFound(format!("Event with ID {} not found", event_id)))?;
+            .ok_or_else(|| Error::NotFound(format!("Event with ID {event_id} not found")))?;
 
         let mut related = Vec::new();
         for other in &self.events {
@@ -453,8 +453,7 @@ impl EpisodicMemory {
                 summary.push_str("\nCommon Contexts:\n");
                 for ((context_type, value), count) in context_vec.iter().take(5) {
                     summary.push_str(&format!(
-                        "- {} ({}): {} occurrences\n",
-                        context_type, value, count
+                        "- {context_type} ({value}): {count} occurrences\n"
                     ));
                 }
             }

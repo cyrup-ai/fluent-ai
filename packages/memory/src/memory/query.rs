@@ -149,8 +149,8 @@ impl MemoryQueryExecutor {
         ComplexQueryBuilder::new()
     }
 
-    /// Execute a query with the configured settings
-    pub fn execute_query(
+    /// Execute a query with the configured settings using proper async patterns
+    pub async fn execute_query(
         &self,
         query: &MemoryQuery,
         manager: &dyn super::memory_manager::MemoryManager,
@@ -177,28 +177,24 @@ impl MemoryQueryExecutor {
         if let Some(memory_types) = &query.filter.memory_types {
             for memory_type in memory_types {
                 let mut stream = manager.query_by_type(memory_type.clone());
-                tokio::runtime::Handle::current().block_on(async {
-                    while let Some(result) = stream.next().await {
-                        match result {
-                            Ok(memory) => results.push(memory),
-                            Err(_) => break,
-                        }
-                    }
-                });
-            }
-        }
-
-        // Execute text search if text query provided
-        if let Some(text) = &query.text {
-            let mut stream = manager.search_by_content(text);
-            tokio::runtime::Handle::current().block_on(async {
                 while let Some(result) = stream.next().await {
                     match result {
                         Ok(memory) => results.push(memory),
                         Err(_) => break,
                     }
                 }
-            });
+            }
+        }
+
+        // Execute text search if text query provided
+        if let Some(text) = &query.text {
+            let mut stream = manager.search_by_content(text);
+            while let Some(result) = stream.next().await {
+                match result {
+                    Ok(memory) => results.push(memory),
+                    Err(_) => break,
+                }
+            }
         }
 
         // Apply limit from filter
@@ -245,6 +241,12 @@ pub enum QueryCondition {
 pub enum LogicalOperator {
     And,
     Or,
+}
+
+impl Default for ComplexQueryBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ComplexQueryBuilder {

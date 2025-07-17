@@ -4,10 +4,28 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::cmp::Ordering;
 use surrealdb::sql::Value;
 
+use crate::constants::SEARCH_TASK;
 use crate::utils::error::Result;
 use crate::vector::embedding_model::EmbeddingModel;
+
+/// Convert static string to Option<String> for embedding tasks
+#[inline]
+fn task_string(task: &'static str) -> Option<String> {
+    Some(task.to_string())
+}
+
+/// Type alias for keyword search function
+pub type KeywordSearchFn = Box<
+    dyn Fn(
+            &str,
+            Option<SearchOptions>,
+        ) -> futures::future::BoxFuture<'static, Result<Vec<SearchResult>>>
+        + Send
+        + Sync,
+>;
 use crate::vector::vector_store::VectorStore;
 
 /// Search result
@@ -74,7 +92,7 @@ impl VectorSearch {
         options: Option<SearchOptions>,
     ) -> Result<Vec<SearchResult>> {
         // Generate embedding for the text
-        let embedding = self.embedding_model.embed(text, Some("search")).await?;
+        let embedding = self.embedding_model.embed(text, task_string(SEARCH_TASK)).await?;
 
         // Search by embedding
         self.search_by_embedding(&embedding, options).await
@@ -142,7 +160,7 @@ impl VectorSearch {
         // Generate embeddings for all texts
         let embeddings = self
             .embedding_model
-            .batch_embed(texts, Some("search"))
+            .batch_embed(texts, task_string(SEARCH_TASK))
             .await?;
 
         // Search by embeddings
@@ -174,14 +192,7 @@ pub struct HybridSearch {
     /// Vector search
     vector_search: VectorSearch,
     /// Keyword search function
-    keyword_search: Box<
-        dyn Fn(
-                &str,
-                Option<SearchOptions>,
-            ) -> futures::future::BoxFuture<'static, Result<Vec<SearchResult>>>
-            + Send
-            + Sync,
-    >,
+    keyword_search: KeywordSearchFn,
     /// Vector weight (0.0 to 1.0)
     vector_weight: f32,
 }
@@ -259,20 +270,22 @@ impl HybridSearch {
             let entry_exists = combined_map.contains_key(&result.id);
 
             if entry_exists {
-                // Get the existing values first
-                let (existing_result, existing_similarity, _, _) =
-                    combined_map.remove(&result.id).unwrap();
+                // Get the existing values first - safe because we checked entry_exists
+                if let Some((existing_result, existing_similarity, _, _)) =
+                    combined_map.remove(&result.id)
+                {
+                    // Update values
+                    let new_similarity = existing_similarity + weighted_similarity;
+                    let mut result_clone = existing_result.clone();
+                    result_clone.similarity = new_similarity;
 
-                // Update values
-                let new_similarity = existing_similarity + weighted_similarity;
-                let mut result_clone = existing_result.clone();
-                result_clone.similarity = new_similarity;
-
-                // Re-insert with updated values
-                combined_map.insert(
-                    result.id.clone(),
-                    (result_clone, new_similarity, true, true),
-                );
+                    // Re-insert with updated values
+                    combined_map.insert(
+                        result.id.clone(),
+                        (result_clone, new_similarity, true, true),
+                    );
+                }
+                // If entry doesn't exist despite entry_exists being true, fall through to else
             } else {
                 // Add new entry
                 combined_map.insert(
@@ -293,11 +306,23 @@ impl HybridSearch {
             })
             .collect();
 
-        // Sort by similarity (descending)
+        // Sort by similarity (descending) - custom comparison to handle NaN values
         combined_results.sort_by(|a, b| {
-            b.similarity
-                .partial_cmp(&a.similarity)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            match (a.similarity.is_nan(), b.similarity.is_nan()) {
+                (true, true) => Ordering::Equal,
+                (true, false) => Ordering::Greater,  // NaN goes to end
+                (false, true) => Ordering::Less,     // NaN goes to end
+                (false, false) => {
+                    // Safe to compare non-NaN values (descending order)
+                    if b.similarity > a.similarity {
+                        Ordering::Greater
+                    } else if b.similarity < a.similarity {
+                        Ordering::Less
+                    } else {
+                        Ordering::Equal
+                    }
+                }
+            }
         });
 
         // Apply limit
@@ -310,7 +335,7 @@ impl HybridSearch {
 
     /// Set vector weight
     pub fn set_vector_weight(&mut self, weight: f32) {
-        let clamped_weight = weight.max(0.0).min(1.0);
+        let clamped_weight = weight.clamp(0.0, 1.0);
         self.vector_weight = clamped_weight;
     }
 

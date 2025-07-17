@@ -5,7 +5,7 @@ use crate::cognitive::evolution::{CodeEvolution, CognitiveCodeEvolution};
 use crate::cognitive::types::{CognitiveError, OptimizationOutcome, OptimizationSpec};
 use serde_json;
 use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::task::JoinSet;

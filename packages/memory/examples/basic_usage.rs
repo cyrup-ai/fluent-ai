@@ -8,9 +8,8 @@
 //! - Searching memories by content and vector similarity
 
 use futures::StreamExt;
-use mem0_rs::memory::{
+use fluent_ai_memory::memory::{
     memory_manager::{MemoryManager, SurrealDBMemoryManager},
-    memory_metadata::MemoryMetadata,
     memory_node::{MemoryNode, MemoryType},
     memory_relationship::MemoryRelationship,
 };
@@ -47,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match memory_manager.initialize().await {
         Ok(_) => println!("   ✓ Memory manager initialized"),
         Err(e) => {
-            println!("   ✗ Failed to initialize: {:?}", e);
+            println!("   ✗ Failed to initialize: {e:?}");
             return Err(e.into());
         }
     }
@@ -79,7 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             created
         }
         Err(e) => {
-            println!("❌ Failed to create memory: {:?}", e);
+            println!("❌ Failed to create memory: {e:?}");
             return Err(e.into());
         }
     };
@@ -142,13 +141,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect::<Vec<_>>()
         .await;
 
-    for rel_result in relationships {
-        if let Ok(rel) = rel_result {
-            println!(
-                "   Found relationship: {} -> {} ({})",
-                rel.source_id, rel.target_id, rel.relationship_type
-            );
-        }
+    for rel in relationships.into_iter().flatten() {
+        println!(
+            "   Found relationship: {} -> {} ({})",
+            rel.source_id, rel.target_id, rel.relationship_type
+        );
     }
 
     // 9. Search memories by type
@@ -159,14 +156,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
 
     println!("   Found {} semantic memories", semantic_memories.len());
-    for mem_result in semantic_memories {
-        if let Ok(mem) = mem_result {
-            println!(
-                "   - {}: {}",
-                mem.id,
-                &mem.content[..50.min(mem.content.len())]
-            );
-        }
+    for mem in semantic_memories.into_iter().flatten() {
+        println!(
+            "   - {}: {}",
+            mem.id,
+            &mem.content[..50.min(mem.content.len())]
+        );
     }
 
     // 10. Search memories by content
@@ -180,14 +175,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "   Found {} memories containing 'Rust'",
         search_results.len()
     );
-    for mem_result in search_results {
-        if let Ok(mem) = mem_result {
-            println!(
-                "   - {}: {}",
-                mem.id,
-                &mem.content[..50.min(mem.content.len())]
-            );
-        }
+    for mem in search_results.into_iter().flatten() {
+        println!(
+            "   - {}: {}",
+            mem.id,
+            &mem.content[..50.min(mem.content.len())]
+        );
     }
 
     // 11. Search by vector similarity (if embeddings are available)
@@ -199,26 +192,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
 
     println!("   Found {} similar memories", similar_memories.len());
-    for mem_result in similar_memories {
-        if let Ok(mem) = mem_result {
-            println!(
-                "   - {}: {}",
-                mem.id,
-                &mem.content[..50.min(mem.content.len())]
-            );
-        }
+    for mem in similar_memories.into_iter().flatten() {
+        println!(
+            "   - {}: {}",
+            mem.id,
+            &mem.content[..50.min(mem.content.len())]
+        );
     }
 
     // 12. Delete a relationship
     println!("\n12. Deleting relationship...");
     let deleted_rel = memory_manager.delete_relationship(&created_rel.id).await?;
-    println!("✅ Deleted relationship: {}", deleted_rel);
+    println!("✅ Deleted relationship: {deleted_rel}");
 
     // 13. Delete memories
     println!("\n13. Cleaning up memories...");
     let deleted1 = memory_manager.delete_memory(&created_rust.id).await?;
     let deleted2 = memory_manager.delete_memory(&created_meeting.id).await?;
-    println!("✅ Deleted memories: {} and {}", deleted1, deleted2);
+    println!("✅ Deleted memories: {deleted1} and {deleted2}");
 
     println!("\n✨ Example completed successfully!");
 

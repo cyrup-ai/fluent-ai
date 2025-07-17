@@ -16,6 +16,12 @@ pub struct InMemoryVectorStore {
     metadata: Arc<Mutex<HashMap<String, serde_json::Value>>>,
 }
 
+impl Default for InMemoryVectorStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InMemoryVectorStore {
     /// Create a new in-memory vector store
     pub fn new() -> Self {
@@ -64,7 +70,7 @@ impl VectorStore for InMemoryVectorStore {
             let result = {
                 let vectors_lock = vectors.lock().unwrap();
                 if !vectors_lock.contains_key(&id) {
-                    Err(Error::NotFound(format!("Vector with id {} not found", id)))
+                    Err(Error::NotFound(format!("Vector with id {id} not found")))
                 } else {
                     drop(vectors_lock);
                     vectors.lock().unwrap().insert(id.clone(), embedding);

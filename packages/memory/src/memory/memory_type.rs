@@ -67,7 +67,7 @@ impl fmt::Display for MemoryTypeEnum {
             MemoryTypeEnum::Procedural => write!(f, "procedural"),
             MemoryTypeEnum::Working => write!(f, "working"),
             MemoryTypeEnum::LongTerm => write!(f, "longterm"),
-            MemoryTypeEnum::Custom(id) => write!(f, "custom_{}", id),
+            MemoryTypeEnum::Custom(id) => write!(f, "custom_{id}"),
         }
     }
 }
@@ -84,13 +84,12 @@ impl MemoryTypeEnum {
             s if s.starts_with("custom_") => {
                 let id_str = s.strip_prefix("custom_").unwrap_or("");
                 let id = id_str.parse::<u8>().map_err(|_| {
-                    Error::ConversionError(format!("Invalid custom memory type ID: {}", id_str))
+                    Error::ConversionError(format!("Invalid custom memory type ID: {id_str}"))
                 })?;
                 Ok(MemoryTypeEnum::Custom(id))
             }
             _ => Err(Error::ConversionError(format!(
-                "Unknown memory type: {}",
-                s
+                "Unknown memory type: {s}"
             ))),
         }
     }
@@ -153,12 +152,12 @@ impl MemoryMetadata {
 
     /// Set importance
     pub fn set_importance(&mut self, importance: f32) {
-        self.importance = importance.max(0.0).min(1.0);
+        self.importance = importance.clamp(0.0, 1.0);
     }
 
     /// Set relevance
     pub fn set_relevance(&mut self, relevance: f32) {
-        self.relevance = relevance.max(0.0).min(1.0);
+        self.relevance = relevance.clamp(0.0, 1.0);
     }
 
     /// Add custom metadata
@@ -330,8 +329,7 @@ impl MemoryContentType {
             "json" => Ok(MemoryContentType::Json),
             "binary" => Ok(MemoryContentType::Binary),
             _ => Err(Error::ConversionError(format!(
-                "Unknown content type: {}",
-                s
+                "Unknown content type: {s}"
             ))),
         }
     }
@@ -407,7 +405,7 @@ impl MemoryContent {
                 }
             }
             MemoryContentType::Json => Ok(serde_json::to_string(&self.data).map_err(|e| {
-                Error::ConversionError(format!("Failed to convert JSON to string: {}", e))
+                Error::ConversionError(format!("Failed to convert JSON to string: {e}"))
             })?),
             MemoryContentType::Binary => Err(Error::ConversionError(
                 "Cannot convert binary content to text".to_string(),
@@ -429,7 +427,7 @@ impl MemoryContent {
             }
             MemoryContentType::Json => {
                 let json_string = serde_json::to_string(&self.data).map_err(|e| {
-                    Error::ConversionError(format!("Failed to convert JSON to string: {}", e))
+                    Error::ConversionError(format!("Failed to convert JSON to string: {e}"))
                 })?;
                 Ok(json_string.as_bytes().to_vec())
             }
@@ -438,7 +436,7 @@ impl MemoryContent {
                     base64::engine::general_purpose::STANDARD
                         .decode(s)
                         .map_err(|e| {
-                            Error::ConversionError(format!("Failed to decode base64: {}", e))
+                            Error::ConversionError(format!("Failed to decode base64: {e}"))
                         })
                 } else {
                     Err(Error::ConversionError(
@@ -487,11 +485,10 @@ impl MemoryContent {
         let embedding = if let Some(Value::Array(arr)) = entity.get("embedding") {
             let mut embedding = Vec::new();
             for value in arr.iter() {
-                if let Value::Number(n) = value {
-                    if let Some(f) = n.as_f64() {
+                if let Value::Number(n) = value
+                    && let Some(f) = n.as_f64() {
                         embedding.push(f as f32);
                     }
-                }
             }
             if !embedding.is_empty() {
                 Some(embedding)
@@ -603,7 +600,7 @@ impl BaseMemory {
             memory_type,
             MemoryContent::text(text),
         );
-        memory.name = format!("text_memory_{}", id);
+        memory.name = format!("text_memory_{id}");
         memory.description = format!(
             "Text memory containing: {}",
             text.chars().take(50).collect::<String>()
@@ -620,8 +617,8 @@ impl BaseMemory {
             memory_type,
             MemoryContent::json(data.clone()),
         );
-        memory.name = format!("json_memory_{}", id);
-        memory.description = format!("JSON memory containing structured data");
+        memory.name = format!("json_memory_{id}");
+        memory.description = "JSON memory containing structured data".to_string();
         memory
     }
 
@@ -634,7 +631,7 @@ impl BaseMemory {
             memory_type,
             MemoryContent::binary(data.clone()),
         );
-        memory.name = format!("binary_memory_{}", id);
+        memory.name = format!("binary_memory_{id}");
         memory.description = format!("Binary memory containing {} bytes", data.len());
         memory
     }
@@ -730,8 +727,8 @@ impl Memory for BaseMemory {
 
         // Extract memory type from entity type
         let entity_type = entity.entity_type();
-        let _memory_type = if entity_type.starts_with("memory_") {
-            MemoryTypeEnum::from_string(&entity_type[7..])?
+        let _memory_type = if let Some(stripped) = entity_type.strip_prefix("memory_") {
+            MemoryTypeEnum::from_string(stripped)?
         } else {
             MemoryTypeEnum::LongTerm
         };

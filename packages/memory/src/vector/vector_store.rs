@@ -7,6 +7,15 @@ use surrealdb::sql::Value;
 
 use crate::utils::error::Result;
 
+/// Type alias for vector store futures
+pub type VectorStoreFuture<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
+
+/// Type alias for vector metadata
+pub type VectorMetadata = Option<HashMap<String, Value>>;
+
+/// Type alias for vector search results
+pub type VectorSearchResult = (String, Vec<f32>, f32, VectorMetadata);
+
 /// Trait for vector store implementations
 #[cfg_attr(test, mockall::automock)]
 pub trait VectorStore: Send + Sync {
@@ -21,7 +30,7 @@ pub trait VectorStore: Send + Sync {
     fn get_vector(
         &self,
         id: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<(Vec<f32>, Option<HashMap<String, Value>>)>> + Send>>;
+    ) -> VectorStoreFuture<(Vec<f32>, VectorMetadata)>;
 
     /// Update a vector
     fn update_vector(
@@ -46,13 +55,7 @@ pub trait VectorStore: Send + Sync {
         query_vector: &[f32],
         limit: Option<usize>,
         filters: Option<HashMap<String, Value>>,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = Result<Vec<(String, Vec<f32>, f32, Option<HashMap<String, Value>>)>>,
-                > + Send,
-        >,
-    >;
+    ) -> VectorStoreFuture<Vec<VectorSearchResult>>;
 
     /// Get the count of vectors in the store
     fn count(&self) -> Pin<Box<dyn Future<Output = Result<usize>> + Send>>;

@@ -22,6 +22,7 @@ use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
+use super::messages::ContentBlock;
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -29,6 +30,8 @@ const MAX_MESSAGES: usize = 128;
 const MAX_TOOLS: usize = 32;
 /// Maximum documents per request (compile-time bounded)
 const MAX_DOCUMENTS: usize = 64;
+/// Maximum search results per request (compile-time bounded)
+const MAX_SEARCH_RESULTS: usize = 16;
 
 /// Get ModelInfo configuration for Anthropic models
 #[inline(always)]
@@ -41,6 +44,14 @@ pub fn get_model_config(model_name: &'static str) -> &'static ModelConfig {
 pub struct CacheControl {
     #[serde(rename = "type")]
     pub cache_type: String, // "ephemeral"
+}
+
+/// Search result data for citation support
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchResultData {
+    pub source: String,
+    pub title: String,
+    pub content: Vec<ContentBlock>,
 }
 
 impl Default for CacheControl {
@@ -104,6 +115,23 @@ pub struct AnthropicCompletionBuilder {
     // Extended thinking configuration
     thinking_enabled: bool,
     thinking_config: Option<ThinkingConfig>,
+    // Search results for citation support
+    search_results: ArrayVec<SearchResultData, MAX_SEARCH_RESULTS>,
+}
+
+/// Anthropic-specific builder extensions available only for Anthropic provider
+pub trait AnthropicExtensions {
+    /// Add search results for citation support
+    /// 
+    /// Search results enable Claude to cite sources properly and provide
+    /// natural citations in responses. Each search result includes:
+    /// - source: URL or identifier for the source
+    /// - title: Descriptive title of the content
+    /// - content: Array of content blocks (typically text)
+    fn with_search_results(self, search_results: Vec<SearchResultData>) -> Self;
+    
+    /// Add a single search result for citation support
+    fn with_search_result(self, source: impl Into<String>, title: impl Into<String>, content: Vec<ContentBlock>) -> Self;
 }
 
 /// Anthropic API message (zero-allocation serialization)
@@ -209,6 +237,8 @@ impl CompletionProvider for AnthropicCompletionBuilder {
             } else {
                 None
             },
+            // Initialize search results (empty by default)
+            search_results: ArrayVec::new(),
         })
     }
 
@@ -392,6 +422,41 @@ impl CompletionProvider for AnthropicCompletionBuilder {
     }
 }
 
+impl AnthropicExtensions for AnthropicCompletionBuilder {
+    /// Add search results for citation support
+    #[inline(always)]
+    fn with_search_results(mut self, search_results: Vec<SearchResultData>) -> Self {
+        self.search_results.clear();
+        for result in search_results.into_iter().take(MAX_SEARCH_RESULTS) {
+            if self.search_results.try_push(result).is_err() {
+                break;
+            }
+        }
+        self
+    }
+    
+    /// Add a single search result for citation support
+    #[inline(always)]
+    fn with_search_result(mut self, source: impl Into<String>, title: impl Into<String>, content: Vec<ContentBlock>) -> Self {
+        let search_result = SearchResultData {
+            source: source.into(),
+            title: title.into(),
+            content,
+        };
+        
+        if self.search_results.try_push(search_result).is_err() {
+            // ArrayVec is full, remove oldest entry and add new one
+            self.search_results.remove(0);
+            let _ = self.search_results.try_push(SearchResultData {
+                source: source.into(),
+                title: title.into(),
+                content,
+            });
+        }
+        self
+    }
+}
+
 impl AnthropicCompletionBuilder {
     /// Enable prompt caching for cost optimization and faster processing
     /// 
@@ -535,6 +600,30 @@ impl AnthropicCompletionBuilder {
             let anthropic_msg = self.convert_domain_message(msg)?;
             messages.try_push(anthropic_msg)
                 .map_err(|_| CompletionError::RequestTooLarge)?;
+        }
+
+        // Add search results as user messages for citation support
+        for search_result in &self.search_results {
+            let search_content = format!("Search Result - {}: {}", 
+                search_result.title, 
+                search_result.content.iter()
+                    .filter_map(|c| match c {
+                        ContentBlock::Text { text } => Some(text.as_str()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            );
+            
+            messages.try_push(AnthropicMessage {
+                role: "user",
+                content: Box::leak(search_content.into_boxed_str()),
+                cache_control: if self.should_cache_content(&search_content) {
+                    Some(CacheControl::default())
+                } else {
+                    None
+                },
+            }).map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
         // Add user prompt (typically not cached as it's unique)

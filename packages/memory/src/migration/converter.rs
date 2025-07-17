@@ -7,6 +7,12 @@ use std::sync::Arc;
 
 use crate::migration::Result;
 
+/// Type alias for conversion rules
+pub type ConversionRule = Arc<dyn Fn(&ImportData) -> Result<ImportData> + Send + Sync>;
+
+/// Type alias for conversion rules map
+pub type ConversionRulesMap = HashMap<(String, String), ConversionRule>;
+
 /// Import data structure
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ImportData {
@@ -36,8 +42,7 @@ pub struct DataConverter {
     /// Target version
     target_version: String,
     /// Custom conversion rules
-    custom_rules:
-        HashMap<(String, String), Arc<dyn Fn(&ImportData) -> Result<ImportData> + Send + Sync>>,
+    custom_rules: ConversionRulesMap,
 }
 
 impl DataConverter {
@@ -53,8 +58,16 @@ impl DataConverter {
     /// Convert data from source version to target version
     pub fn convert(&self, data: &ImportData) -> Result<ImportData> {
         // Check if we have a custom rule for this conversion
-        let key = (self.source_version.clone(), self.target_version.clone());
-        if let Some(rule) = self.custom_rules.get(&key) {
+        let key_lookup = (&self.source_version, &self.target_version);
+        
+        // Find rule by comparing with existing keys
+        if let Some(rule) = self.custom_rules.iter().find_map(|(key, rule)| {
+            if (&key.0, &key.1) == key_lookup {
+                Some(rule)
+            } else {
+                None
+            }
+        }) {
             return rule(data);
         }
 
@@ -362,16 +375,16 @@ mod tests {
             tags: vec![],
             metadata: Some(serde_json::Value::Object(serde_json::Map::new())),
         };
-        data.memories.push(serde_json::to_value(memory).unwrap());
+        data.memories.push(serde_json::to_value(memory).expect("Failed to serialize memory"));
 
         // Add a test relationship
         let relationship =
             crate::schema::relationship_schema::Relationship::new("source", "target", "related_to");
         data.relationships
-            .push(serde_json::to_value(relationship).unwrap());
+            .push(serde_json::to_value(relationship).expect("Failed to serialize relationship"));
 
         // Convert the data
-        let result = converter.convert(&data).unwrap();
+        let result = converter.convert(&data).expect("Failed to convert data");
 
         // Check that the version was updated
         assert_eq!(result.metadata.format_version, "0.2.0");
@@ -382,7 +395,7 @@ mod tests {
         if let serde_json::Value::Object(memory_obj) = memory {
             if let Some(serde_json::Value::Object(metadata)) = memory_obj.get("metadata") {
                 assert_eq!(
-                    metadata.get("schema_version").unwrap(),
+                    metadata.get("schema_version").expect("Missing schema_version"),
                     &serde_json::json!("0.2.0")
                 );
             } else {
@@ -398,7 +411,7 @@ mod tests {
         if let serde_json::Value::Object(rel_obj) = relationship {
             if let Some(serde_json::Value::Object(metadata)) = rel_obj.get("metadata") {
                 assert_eq!(
-                    metadata.get("schema_version").unwrap(),
+                    metadata.get("schema_version").expect("Missing schema_version"),
                     &serde_json::json!("0.2.0")
                 );
             } else {
@@ -443,7 +456,7 @@ mod tests {
             tags: vec![],
             metadata: Some(serde_json::Value::Object(memory_metadata)),
         };
-        data.memories.push(serde_json::to_value(memory).unwrap());
+        data.memories.push(serde_json::to_value(memory).expect("Failed to serialize memory"));
 
         // Add a test relationship with schema version
         let mut relationship =
@@ -453,10 +466,10 @@ mod tests {
         rel_metadata.insert("advanced_features".to_string(), serde_json::json!(true));
         relationship.metadata = serde_json::Value::Object(rel_metadata);
         data.relationships
-            .push(serde_json::to_value(relationship).unwrap());
+            .push(serde_json::to_value(relationship).expect("Failed to serialize relationship"));
 
         // Convert the data
-        let result = converter.convert(&data).unwrap();
+        let result = converter.convert(&data).expect("Failed to convert data");
 
         // Check that the version was updated
         assert_eq!(result.metadata.format_version, "0.1.0");
@@ -516,7 +529,7 @@ mod tests {
         };
 
         // Convert using custom rule
-        let result = converter.convert(&data).unwrap();
+        let result = converter.convert(&data).expect("Failed to convert data");
 
         // Check that the custom rule was applied
         assert_eq!(result.metadata.format_version, "custom-converted");

@@ -72,6 +72,12 @@ pub enum ContentBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         is_error: Option<bool>,
     },
+    /// Search result block for citation support
+    SearchResult {
+        source: String,
+        title: String,
+        content: Vec<ContentBlock>,
+    },
 }
 
 /// Image source with format and data

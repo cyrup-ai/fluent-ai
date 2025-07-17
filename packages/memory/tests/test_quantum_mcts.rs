@@ -1,8 +1,10 @@
 // tests/test_quantum_mcts.rs
 //! Integration tests for quantum MCTS recursive improvement
 
+#![cfg(feature = "cognitive")]
+
 use std::sync::Arc;
-use surreal_memory::cognitive::{
+use fluent_ai_memory::cognitive::{
     committee::CommitteeEvent,
     mcts::CodeState,
     performance::PerformanceAnalyzer,

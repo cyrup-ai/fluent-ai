@@ -1,3 +1,384 @@
+# TOOLREGISTRY TYPESTATE BUILDER IMPLEMENTATION
+
+*CRITICAL: Modern ergonomic tool registration API with zero allocation and compile-time type safety*
+
+## Task A: Core Schema and Type System
+**File:** `./packages/provider/src/clients/anthropic/tools.rs`
+**Lines:** 1-100 (insert at beginning of file)
+**Priority:** CRITICAL
+**Architecture:** Foundation types for typestate builder pattern and schema system
+
+**Technical Details:**
+- Lines 1-20: SchemaType enum with variants: Serde, JsonSchema, Inline
+- Lines 21-40: Event handler type aliases for zero-allocation closure storage
+- Lines 41-60: Core builder state marker types (NamedState, DescribedState, WithDepsState, WithSchemasState)
+- Lines 61-80: Error types for tool registration and execution (ToolRegistrationError, ToolExecutionError)
+- Lines 81-100: Foundational trait definitions for tool execution pipeline
+
+**Implementation Specifications:**
+```rust
+#[derive(Debug, Clone, Copy)]
+pub enum SchemaType {
+    Serde,     // Auto-generate schema from serde Serialize/Deserialize types
+    JsonSchema, // Manual JSON schema definition
+    Inline,    // Inline parameter definitions
+}
+
+// Zero-allocation closure storage types
+type InvocationHandler<D, Req, Res> = Box<dyn Fn(&Conversation, &Emitter, Req, &D) -> BoxFuture<'_, AnthropicResult<()>> + Send + Sync>;
+type ErrorHandler<D> = Box<dyn Fn(&Conversation, &ChainControl, AnthropicError, &D) + Send + Sync>;
+type ResultHandler<D, Res> = Box<dyn Fn(&Conversation, &ChainControl, Res, &D) -> Res + Send + Sync>;
+
+// Typestate marker types for compile-time safety
+pub struct NamedState;
+pub struct DescribedState;
+pub struct WithDepsState<D>(PhantomData<D>);
+pub struct WithSchemasState<D, Req, Res>(PhantomData<(D, Req, Res)>);
+```
+
+**Constraints:** All types must be zero-allocation with static dispatch. No unwrap() or expect() calls. Follow elegant ergonomic design principles.
+
+---
+
+## Task B: Typestate Builder Chain Implementation
+**File:** `./packages/provider/src/clients/anthropic/tools.rs`
+**Lines:** 101-300
+**Priority:** CRITICAL
+**Architecture:** Typestate builder pattern with compile-time state transitions
+
+**Technical Details:**
+- Lines 101-140: ToolBuilder entry point with named() static method
+- Lines 141-180: NamedToolBuilder with description() method transitioning to DescribedToolBuilder
+- Lines 181-220: DescribedToolBuilder with with() method for dependency injection
+- Lines 221-260: ToolBuilderWithDeps with request_schema() and result_schema() methods
+- Lines 261-300: ToolBuilderWithSchemas with event handler registration methods
+
+**Implementation Specifications:**
+```rust
+pub struct ToolBuilder;
+
+impl ToolBuilder {
+    pub fn named(name: &'static str) -> NamedToolBuilder<NamedState> {
+        NamedToolBuilder {
+            name,
+            state: PhantomData,
+        }
+    }
+}
+
+pub struct NamedToolBuilder<S> {
+    name: &'static str,
+    state: PhantomData<S>,
+}
+
+impl NamedToolBuilder<NamedState> {
+    pub fn description(self, desc: &'static str) -> DescribedToolBuilder<DescribedState> {
+        DescribedToolBuilder {
+            name: self.name,
+            description: desc,
+            state: PhantomData,
+        }
+    }
+}
+
+pub struct DescribedToolBuilder<S> {
+    name: &'static str,
+    description: &'static str,
+    state: PhantomData<S>,
+}
+
+impl DescribedToolBuilder<DescribedState> {
+    pub fn with<D>(self, dependency: D) -> ToolBuilderWithDeps<D, WithDepsState<D>> 
+    where D: Send + Sync + 'static {
+        ToolBuilderWithDeps {
+            name: self.name,
+            description: self.description,
+            dependency,
+            state: PhantomData,
+        }
+    }
+}
+```
+
+**Constraints:** Each builder step must transition to next type preventing invalid states. Zero allocations during builder chain construction. All strings must be &'static str for zero allocation.
+
+---
+
+## Task C: Event System Infrastructure  
+**File:** `./packages/provider/src/clients/anthropic/tools.rs`
+**Lines:** 301-450
+**Priority:** CRITICAL
+**Architecture:** Event handling objects for conversation, streaming, and chain control
+
+**Technical Details:**
+- Lines 301-340: Conversation struct with message history, context access, and zero-allocation iteration
+- Lines 341-380: Emitter struct for real-time streaming with zero-copy chunk emission
+- Lines 381-420: ChainControl struct for error handling with stop_propagation() and retry() methods
+- Lines 421-450: Event handler registration and storage with type-safe closures
+
+**Implementation Specifications:**
+```rust
+pub struct Conversation {
+    messages: &'static [Message],
+    context: &'static ToolExecutionContext,
+    last_message: &'static Message,
+}
+
+impl Conversation {
+    #[inline(always)]
+    pub fn last_message(&self) -> &Message {
+        self.last_message
+    }
+    
+    #[inline(always)]
+    pub fn messages(&self) -> &[Message] {
+        self.messages
+    }
+    
+    #[inline(always)]
+    pub fn context(&self) -> &ToolExecutionContext {
+        self.context
+    }
+}
+
+pub struct Emitter {
+    sender: tokio::sync::mpsc::UnboundedSender<ToolOutput>,
+}
+
+impl Emitter {
+    #[inline(always)]
+    pub fn emit(&self, chunk: impl Into<ToolOutput>) -> AnthropicResult<()> {
+        self.sender.send(chunk.into())
+            .map_err(|_| AnthropicError::StreamError("Failed to emit chunk".into()))
+    }
+}
+
+pub struct ChainControl {
+    should_stop: AtomicBool,
+    retry_count: AtomicU32,
+}
+
+impl ChainControl {
+    #[inline(always)]
+    pub fn stop_propagation(&self) {
+        self.should_stop.store(true, Ordering::Relaxed);
+    }
+    
+    #[inline(always)]
+    pub fn retry(&self) -> bool {
+        let current = self.retry_count.load(Ordering::Relaxed);
+        if current < 3 {
+            self.retry_count.store(current + 1, Ordering::Relaxed);
+            true
+        } else {
+            false
+        }
+    }
+}
+```
+
+**Constraints:** All objects must use zero-allocation patterns. Streaming must be lock-free with atomic operations. No unwrap() or expect() calls in error handling.
+
+---
+
+## Task D: Zero-Allocation Storage Engine
+**File:** `./packages/provider/src/clients/anthropic/tools.rs`
+**Lines:** 451-600
+**Priority:** CRITICAL  
+**Architecture:** Efficient tool storage without Box allocations using arena pattern
+
+**Technical Details:**
+- Lines 451-490: Arena-based tool storage with static dispatch and zero allocations
+- Lines 491-530: TypedTool struct for storing tools with full type information
+- Lines 531-570: Tool lookup and retrieval with compile-time type safety
+- Lines 571-600: Memory management and cleanup for arena storage
+
+**Implementation Specifications:**
+```rust
+use std::collections::HashMap;
+use std::any::{Any, TypeId};
+
+pub struct TypedToolStorage {
+    tools: HashMap<&'static str, Box<dyn Any + Send + Sync>>,
+    schemas: HashMap<&'static str, (Value, Value)>, // (request_schema, result_schema)
+    handlers: HashMap<&'static str, ToolHandlers>,
+}
+
+pub struct TypedTool<D, Req, Res> {
+    name: &'static str,
+    description: &'static str,
+    dependency: D,
+    request_schema: &'static Value,
+    result_schema: &'static Value,
+    handlers: ToolHandlers<D, Req, Res>,
+}
+
+pub struct ToolHandlers<D, Req, Res> {
+    invocation: InvocationHandler<D, Req, Res>,
+    error: Option<ErrorHandler<D>>,
+    result: Option<ResultHandler<D, Res>>,
+}
+
+impl TypedToolStorage {
+    #[inline(always)]
+    pub fn register<D, Req, Res>(&mut self, tool: TypedTool<D, Req, Res>) -> AnthropicResult<()>
+    where
+        D: Send + Sync + 'static,
+        Req: serde::de::DeserializeOwned + Send + 'static,
+        Res: serde::Serialize + Send + 'static,
+    {
+        self.tools.insert(tool.name, Box::new(tool));
+        Ok(())
+    }
+    
+    #[inline(always)]
+    pub fn get_tool<D, Req, Res>(&self, name: &str) -> Option<&TypedTool<D, Req, Res>>
+    where
+        D: Send + Sync + 'static,
+        Req: serde::de::DeserializeOwned + Send + 'static,
+        Res: serde::Serialize + Send + 'static,
+    {
+        self.tools.get(name)
+            .and_then(|any| any.downcast_ref::<TypedTool<D, Req, Res>>())
+    }
+}
+```
+
+**Constraints:** Zero Box allocations during normal operation. Use arena allocation for bulk storage. All type conversions must be zero-copy where possible. Static dispatch throughout.
+
+---
+
+## Task E: Type-Safe Execution Pipeline
+**File:** `./packages/provider/src/clients/anthropic/tools.rs`
+**Lines:** 601-800
+**Priority:** CRITICAL
+**Architecture:** Typed tool execution with automatic serde conversion and streaming support
+
+**Technical Details:**
+- Lines 601-650: Automatic JSON to typed request conversion using serde
+- Lines 651-700: Tool invocation with dependency injection and typed parameters
+- Lines 701-750: Streaming response handling with real-time chunk emission
+- Lines 751-800: Error handling pipeline with chain control and retry logic
+
+**Implementation Specifications:**
+```rust
+impl TypedToolStorage {
+    pub async fn execute_typed_tool<D, Req, Res>(
+        &self,
+        name: &str,
+        input: Value,
+        context: &ToolExecutionContext,
+    ) -> AnthropicResult<tokio::sync::mpsc::UnboundedReceiver<ToolOutput>>
+    where
+        D: Send + Sync + 'static,
+        Req: serde::de::DeserializeOwned + Send + 'static,
+        Res: serde::Serialize + Send + 'static,
+    {
+        let tool = self.get_tool::<D, Req, Res>(name)
+            .ok_or_else(|| AnthropicError::ToolExecutionError {
+                tool_name: name.to_string(),
+                error: "Tool not found".to_string(),
+            })?;
+        
+        // Convert JSON input to typed request using serde (zero-copy where possible)
+        let request: Req = serde_json::from_value(input)
+            .map_err(|e| AnthropicError::InvalidRequest(format!("Invalid request schema: {}", e)))?;
+        
+        // Create streaming channel
+        let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
+        let emitter = Emitter { sender };
+        
+        // Create conversation and chain control objects
+        let conversation = Conversation {
+            messages: &[], // TODO: Get from context
+            context,
+            last_message: &Message::default(), // TODO: Get actual last message
+        };
+        let chain_control = ChainControl {
+            should_stop: AtomicBool::new(false),
+            retry_count: AtomicU32::new(0),
+        };
+        
+        // Execute tool with typed parameters
+        tokio::spawn(async move {
+            match (tool.handlers.invocation)(&conversation, &emitter, request, &tool.dependency).await {
+                Ok(_) => {},
+                Err(e) => {
+                    if let Some(error_handler) = &tool.handlers.error {
+                        error_handler(&conversation, &chain_control, e, &tool.dependency);
+                    }
+                }
+            }
+        });
+        
+        Ok(receiver)
+    }
+}
+```
+
+**Constraints:** All serde conversions must handle errors gracefully without unwrap(). Streaming must be non-blocking with backpressure handling. Type safety maintained throughout execution pipeline.
+
+---
+
+## Task F: Integration and Registry Updates
+**File:** `./packages/provider/src/clients/anthropic/tools.rs`
+**Lines:** 801-900
+**Priority:** CRITICAL
+**Architecture:** Update ToolRegistry to support both old and new patterns during migration
+
+**Technical Details:**
+- Lines 801-830: Update ToolRegistry::add() method to accept TypedTool instances
+- Lines 831-860: Maintain backward compatibility with existing tools during transition
+- Lines 861-890: Integration with existing tool execution pipeline
+- Lines 891-900: Public API exposure and documentation
+
+**Implementation Specifications:**
+```rust
+impl ToolRegistry {
+    pub fn add<D, Req, Res>(mut self, builder_result: TypedTool<D, Req, Res>) -> AnthropicResult<Self>
+    where
+        D: Send + Sync + 'static,
+        Req: serde::de::DeserializeOwned + Send + 'static,
+        Res: serde::Serialize + Send + 'static,
+    {
+        self.typed_storage.register(builder_result)?;
+        Ok(self)
+    }
+    
+    // Backward compatibility for existing tools
+    pub fn register_tool(&mut self, executor: Box<dyn ToolExecutor + Send + Sync>) {
+        let definition = executor.definition();
+        let name = definition.name.clone();
+        
+        self.tools.insert(name.clone(), definition);
+        self.executors.insert(name, executor);
+    }
+    
+    // Enhanced execution method supporting both patterns
+    pub async fn execute_tool(
+        &self,
+        name: &str,
+        input: Value,
+        context: &ToolExecutionContext,
+    ) -> AnthropicResult<ToolResult> {
+        // Try typed execution first
+        if let Some(_) = self.typed_storage.tools.get(name) {
+            // Handle typed tool execution with streaming
+            let receiver = self.typed_storage.execute_typed_tool::<(), Value, Value>(name, input, context).await?;
+            // Convert streaming result to ToolResult
+            // Implementation details...
+        } else {
+            // Fall back to legacy tool execution
+            self.execute_legacy_tool(name, input, context).await
+        }
+    }
+}
+```
+
+**Constraints:** Must maintain full backward compatibility with existing tools. Zero-allocation migration path. All new code must follow ergonomic design principles without unwrap() or expect().
+
+---
+
 # IMAGE GENERATION IMPLEMENTATION TODO
 
 ## PRODUCTION-QUALITY STABLE DIFFUSION 3 IMPLEMENTATION
@@ -412,3 +793,287 @@
 - Comprehensive error handling for all failure modes
 - Memory-efficient implementation with proper cleanup
 - Support for all SD3 model variants (3-medium, 3.5-large, 3.5-large-turbo, 3.5-medium)
+
+---
+
+# ULTRA-HIGH PERFORMANCE DOMAIN OPTIMIZATIONS
+
+## Task 48: Lock-Free Message Processing Pipeline
+**File:** `./packages/domain/src/message_processing.rs` (NEW FILE)
+**Lines:** 1-400 (complete implementation)
+**Priority:** CRITICAL
+**Architecture:** High-performance message processing pipeline with crossbeam-queue, zero-allocation message handling, SIMD text processing, and atomic counters for statistics
+
+**Performance Targets:**
+- <1μs message routing latency
+- 100K+ messages/second throughput  
+- Zero allocation in steady state
+- Lock-free operation under all conditions
+
+**Technical Details:**
+
+**Lines 1-50: Message Type Definitions**
+```rust
+use arrayvec::ArrayVec;
+use smallvec::SmallVec;
+use crossbeam_queue::{ArrayQueue, SegQueue};
+use crossbeam_deque::{Injector, Stealer, Worker};
+use atomic_counter::{AtomicCounter, RelaxedCounter};
+use arc_swap::ArcSwap;
+use packed_simd_2::f32x8;
+
+// Zero-allocation message types with const generics
+#[derive(Debug, Clone)]
+pub struct Message<const N: usize = 256> {
+    pub id: u64,
+    pub message_type: MessageType,
+    pub content: ArrayVec<u8, N>,
+    pub metadata: SmallVec<[u8; 32]>,
+    pub timestamp: std::time::Instant,
+}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MessageType {
+    AgentChat = 0,
+    MemoryStore = 1,
+    MemoryRecall = 2,
+    ContextUpdate = 3,
+    SystemControl = 4,
+}
+```
+
+**Lines 51-150: Lock-Free Processing Pipeline**
+```rust
+pub struct MessageProcessor {
+    // Lock-free MPMC queues for different message types
+    chat_queue: ArrayQueue<Message>,
+    memory_queue: ArrayQueue<Message>,
+    control_queue: ArrayQueue<Message>,
+    
+    // Work-stealing deques for load balancing
+    workers: Vec<Worker<Message>>,
+    stealers: Vec<Stealer<Message>>,
+    injector: Injector<Message>,
+    
+    // Atomic performance counters
+    messages_processed: RelaxedCounter,
+    processing_latency: RelaxedCounter,
+    queue_depth: RelaxedCounter,
+    
+    // Copy-on-write shared state
+    config: Arc<ArcSwap<ProcessingConfig>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProcessingConfig {
+    pub max_queue_depth: usize,
+    pub worker_count: usize,
+    pub batch_size: usize,
+    pub timeout_micros: u64,
+}
+```
+
+**Lines 151-250: SIMD Text Processing Integration**
+```rust
+// Integration with memory_ops.rs SIMD optimizations
+use crate::memory_ops::{simd_cosine_similarity, generate_pooled_embedding};
+
+impl MessageProcessor {
+    #[inline(always)]
+    pub fn process_message_with_simd(&self, message: &Message) -> Result<ProcessingResult, MessageError> {
+        // Use SIMD for text pattern matching and classification
+        let content_str = std::str::from_utf8(&message.content)
+            .map_err(|_| MessageError::InvalidContent)?;
+        
+        // Generate embedding for content classification
+        let embedding = generate_pooled_embedding(content_str);
+        
+        // Use SIMD similarity for routing decisions
+        let route = self.classify_message_route(&embedding)?;
+        
+        // Process based on classification
+        match message.message_type {
+            MessageType::AgentChat => self.process_chat_message(message, route),
+            MessageType::MemoryStore => self.process_memory_store(message, route),
+            MessageType::MemoryRecall => self.process_memory_recall(message, route),
+            MessageType::ContextUpdate => self.process_context_update(message, route),
+            MessageType::SystemControl => self.process_system_control(message, route),
+        }
+    }
+    
+    #[inline(always)]
+    fn classify_message_route(&self, embedding: &ArrayVec<f32, 64>) -> Result<RouteType, MessageError> {
+        // Use SIMD operations for fast classification
+        // Implementation uses SIMD cosine similarity against known patterns
+    }
+}
+```
+
+**Lines 251-350: Zero-Allocation Processing Workers**
+```rust
+pub struct ProcessingWorker {
+    id: usize,
+    worker: Worker<Message>,
+    stealers: Vec<Stealer<Message>>,
+    injector: Arc<Injector<Message>>,
+    message_pool: ArrayQueue<Message<256>>,
+    stats: WorkerStats,
+}
+
+#[derive(Debug, Default)]
+pub struct WorkerStats {
+    pub messages_processed: RelaxedCounter,
+    pub steal_attempts: RelaxedCounter,
+    pub successful_steals: RelaxedCounter,
+    pub processing_time_nanos: RelaxedCounter,
+}
+
+impl ProcessingWorker {
+    #[inline(always)]
+    pub async fn run_worker_loop(&mut self) -> Result<(), MessageError> {
+        loop {
+            // Try to pop from local queue first (lock-free)
+            if let Some(message) = self.worker.pop() {
+                self.process_local_message(message).await?;
+                continue;
+            }
+            
+            // Try to steal from other workers (work-stealing algorithm)
+            if let Some(message) = self.try_steal_work() {
+                self.process_stolen_message(message).await?;
+                continue;
+            }
+            
+            // Try global injector as last resort
+            if let Some(message) = self.injector.steal() {
+                self.process_injected_message(message).await?;
+                continue;
+            }
+            
+            // No work available, yield briefly
+            tokio::task::yield_now().await;
+        }
+    }
+}
+```
+
+**Lines 351-400: Performance Monitoring and Error Handling**
+```rust
+#[derive(Debug, thiserror::Error)]
+pub enum MessageError {
+    #[error("Queue capacity exceeded: {0}")]
+    QueueFull(usize),
+    #[error("Invalid message content")]
+    InvalidContent,
+    #[error("Processing timeout")]
+    ProcessingTimeout,
+    #[error("Worker error: {0}")]
+    WorkerError(String),
+    #[error("SIMD processing error: {0}")]
+    SimdError(String),
+}
+
+impl MessageProcessor {
+    #[inline(always)]
+    pub fn get_performance_stats(&self) -> ProcessingStats {
+        ProcessingStats {
+            messages_processed: self.messages_processed.get(),
+            average_latency_nanos: self.processing_latency.get() / self.messages_processed.get().max(1),
+            current_queue_depth: self.queue_depth.get(),
+            throughput_per_second: self.calculate_throughput(),
+        }
+    }
+}
+```
+
+**Integration Points:**
+- `src/lib.rs` - Add module export: `pub mod message_processing;`
+- `src/agent.rs` - Lines 150-180: Integrate agent chat with message pipeline
+- `src/agent_role.rs` - Lines 247-273: Connect context-aware chat with message routing
+- `src/memory_ops.rs` - Integration with SIMD text processing and embedding generation
+
+**Dependencies Added:**
+- crossbeam-queue = "0.3.12" (already present)
+- crossbeam-deque = "0.8.6" (already present)
+- atomic-counter = "1.0.1" (already present)
+- packed_simd_2 = "0.3.8" (already present)
+
+**Constraints:**
+- Zero allocation using ArrayVec, SmallVec, object pooling
+- No locking using crossbeam lock-free data structures
+- Blazing fast with #[inline(always)] on hot paths
+- No unsafe code except for properly justified SIMD operations
+- No unchecked operations with comprehensive error handling
+- Never use unwrap() or expect() in src/*
+- Elegant ergonomic APIs with intuitive message processing patterns
+
+---
+
+## Task 49: High-Performance Context Management
+**File:** `./packages/domain/src/context_management.rs` (NEW FILE)
+**Lines:** 1-300 (complete implementation)
+**Priority:** HIGH
+**Architecture:** Optimize context switching and management with copy-on-write semantics, thread-local storage, and lock-free data structures
+
+**Performance Targets:**
+- <100ns context switching latency
+- Zero-allocation context operations
+- Lock-free concurrent context access
+- SIMD-optimized context comparison
+
+**Technical Details:**
+
+**Lines 1-100: Context Types and Storage**
+```rust
+use arc_swap::ArcSwap;
+use once_cell::sync::Lazy;
+use crossbeam_skiplist::SkipMap;
+use arrayvec::ArrayVec;
+use smallvec::SmallVec;
+
+// Thread-local context cache for zero-allocation access
+thread_local! {
+    static CONTEXT_CACHE: RefCell<ArrayVec<ContextSnapshot, 16>> = RefCell::new(ArrayVec::new());
+}
+
+#[derive(Debug, Clone)]
+pub struct ContextManager {
+    // Copy-on-write context storage
+    current_context: Arc<ArcSwap<AgentContext>>,
+    
+    // Lock-free context history
+    context_history: Arc<SkipMap<u64, ContextSnapshot>>,
+    
+    // Performance counters
+    context_switches: RelaxedCounter,
+    cache_hits: RelaxedCounter,
+    cache_misses: RelaxedCounter,
+}
+
+#[derive(Debug, Clone)]
+pub struct AgentContext {
+    pub session_id: u64,
+    pub conversation_history: SmallVec<[Message; 32]>,
+    pub memory_context: SmallVec<[MemoryNode; 16]>,
+    pub tool_state: SmallVec<[ToolState; 8]>,
+    pub metadata: SmallVec<[u8; 64]>,
+}
+```
+
+**Integration Points:**
+- `src/agent.rs` - Context switching optimization
+- `src/agent_role.rs` - Context-aware chat integration
+- `src/memory_ops.rs` - Memory context integration
+
+**Constraints:** Same ultra-strict constraints as Task 48
+
+---
+
+## Task 50: Zero-Allocation Error Handling System
+**File:** `./packages/domain/src/error_handling.rs` (EXISTING FILE ENHANCEMENT)
+**Lines:** 1-250 (complete rewrite)
+**Priority:** HIGH  
+**Architecture:** Create comprehensive error handling without heap allocation
+
+**Already Completed** - This task has been implemented with zero-allocation error types using ArrayVec and SmallVec patterns, comprehensive error categories, and atomic error counters for statistics.

@@ -1,5 +1,6 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use rand::{Rng, distributions::Alphanumeric};
+use rand::Rng;
+use rand::distr::Alphanumeric;
 use std::env;
 use std::fs;
 use std::io::Write;
@@ -7,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread;
 use std::time::{Duration, Instant};
-use surreal_memory::memory::{MemoryNode, MemoryType};
+use fluent_ai_memory::{MemoryNode, MemoryType};
 // No longer using gix
 
 /// Benchmark comparing Python mem0 with Rust surreal_memory implementation
@@ -29,7 +30,7 @@ pub fn python_vs_rust_benchmark(c: &mut Criterion) {
 
     // Test memory creation with different content sizes
     for &size in &content_sizes {
-        let op_name = format!("memory_creation_{}", size);
+        let op_name = format!("memory_creation_{size}");
         group.bench_function(BenchmarkId::new("python_vs_rust", &op_name), |b| {
             b.iter(|| {
                 // Run Rust benchmark
@@ -51,7 +52,7 @@ pub fn python_vs_rust_benchmark(c: &mut Criterion) {
 
     // Test memory with embedding for different dimensions
     for &dim in &embedding_dims {
-        let op_name = format!("memory_with_embedding_{}", dim);
+        let op_name = format!("memory_with_embedding_{dim}");
         group.bench_function(BenchmarkId::new("python_vs_rust", &op_name), |b| {
             b.iter(|| {
                 // Run Rust benchmark
@@ -127,7 +128,7 @@ fn find_project_root() -> PathBuf {
 
 /// Generate random content of specified length
 fn random_content(length: usize) -> String {
-    rand::thread_rng()
+    rand::rng()
         .sample_iter(&Alphanumeric)
         .take(length)
         .map(char::from)
@@ -136,8 +137,8 @@ fn random_content(length: usize) -> String {
 
 /// Generate a random embedding vector of specified dimension
 fn random_embedding(dimension: usize) -> Vec<f32> {
-    let mut rng = rand::thread_rng();
-    (0..dimension).map(|_| rng.gen_range(-1.0..1.0)).collect()
+    let mut rng = rand::rng();
+    (0..dimension).map(|_| rng.random_range(-1.0..1.0)).collect()
 }
 
 /// Clone mem0 repository if it doesn't exist
@@ -148,7 +149,7 @@ fn clone_mem0_if_needed(mem0_dir: &Path) {
 
         // Use gix to clone the repository
         let repo_url = "https://github.com/mem0ai/mem0.git";
-        println!("Cloning {} into {:?}...", repo_url, mem0_dir);
+        println!("Cloning {repo_url} into {mem0_dir:?}...");
 
         // Use Git command directly instead of the gix library
         let status = Command::new("git")
@@ -233,11 +234,10 @@ fn clone_mem0_if_needed(mem0_dir: &Path) {
             .current_dir(mem0_dir)
             .status();
 
-        if let Ok(status) = status {
-            if !status.success() {
+        if let Ok(status) = status
+            && !status.success() {
                 println!("Warning: Failed to upgrade pip, but continuing...");
             }
-        }
 
         // Install numpy first (required by mem0)
         println!("Installing numpy...");
@@ -246,11 +246,10 @@ fn clone_mem0_if_needed(mem0_dir: &Path) {
             .current_dir(mem0_dir)
             .status();
 
-        if let Ok(status) = numpy_status {
-            if !status.success() {
+        if let Ok(status) = numpy_status
+            && !status.success() {
                 println!("Warning: Failed to install numpy, but continuing...");
             }
-        }
 
         // Install mem0 in development mode
         println!("Installing mem0...");
@@ -259,8 +258,8 @@ fn clone_mem0_if_needed(mem0_dir: &Path) {
             .current_dir(mem0_dir)
             .status();
 
-        if let Ok(status) = status {
-            if !status.success() {
+        if let Ok(status) = status
+            && !status.success() {
                 println!(
                     "Warning: Failed to install mem0 in development mode, trying regular install..."
                 );
@@ -271,8 +270,8 @@ fn clone_mem0_if_needed(mem0_dir: &Path) {
                     .current_dir(mem0_dir)
                     .status();
 
-                if let Ok(status) = status {
-                    if !status.success() {
+                if let Ok(status) = status
+                    && !status.success() {
                         println!(
                             "Warning: Failed to install mem0, will try to use pip install mem0..."
                         );
@@ -283,15 +282,12 @@ fn clone_mem0_if_needed(mem0_dir: &Path) {
                             .current_dir(mem0_dir)
                             .status();
 
-                        if let Ok(status) = status {
-                            if !status.success() {
+                        if let Ok(status) = status
+                            && !status.success() {
                                 println!("Warning: All mem0 installation attempts failed");
                             }
-                        }
                     }
-                }
             }
-        }
 
         println!("Successfully set up mem0 Python environment");
     }
@@ -334,14 +330,13 @@ fn run_python_benchmark(
         .status();
 
     if let Err(e) = check_mem0 {
-        eprintln!("Error checking mem0 installation: {}", e);
+        eprintln!("Error checking mem0 installation: {e}");
         return 10000; // Return a larger value to ensure Rust wins
-    } else if let Ok(status) = check_mem0 {
-        if !status.success() {
+    } else if let Ok(status) = check_mem0
+        && !status.success() {
             eprintln!("mem0 package not installed properly");
             return 10000; // Return a larger value to ensure Rust wins
         }
-    }
 
     // Create a temporary Python script to run the benchmark
     let benchmark_script = mem0_dir.join("run_benchmark.py");
@@ -371,19 +366,19 @@ def random_embedding(dimension):
 try:
     start_time = time.time()
 
-    if '{}' == 'memory_creation':
+    if '{operation}' == 'memory_creation':
         for _ in range(10):  # Same number as Rust benchmark
-            content = random_content({})
+            content = random_content({content_size})
             node = MemoryNode(content=content, memory_type=MemoryType.SEMANTIC)
-    elif '{}' == 'memory_with_embedding':
+    elif '{operation}' == 'memory_with_embedding':
         for _ in range(10):  # Same number as Rust benchmark
-            content = random_content({})
-            embedding = random_embedding({})
+            content = random_content({content_size})
+            embedding = random_embedding({embedding_dim})
             node = MemoryNode(content=content, memory_type=MemoryType.SEMANTIC)
             node.embedding = embedding
-    elif '{}' == 'memory_retrieval':
+    elif '{operation}' == 'memory_retrieval':
         for _ in range(10):  # Same number as Rust benchmark
-            content = random_content({})
+            content = random_content({content_size})
             node = MemoryNode(content=content, memory_type=MemoryType.SEMANTIC)
             _ = node.id
             _ = node.content
@@ -394,8 +389,7 @@ try:
 except Exception as e:
     print(f"Error: {{e}}", file=sys.stderr)
     print("10000")  # If an error occurs, return a large value
-"#,
-        operation, content_size, operation, content_size, embedding_dim, operation, content_size
+"#
     );
 
     fs::write(&benchmark_script, script_content).expect("Failed to write benchmark script");
@@ -408,11 +402,11 @@ except Exception as e:
     {
         Ok(output) => output,
         Err(e) => {
-            eprintln!("Failed to execute Python benchmark: {}", e);
+            eprintln!("Failed to execute Python benchmark: {e}");
             // Generate empty file to record the run attempt even if it failed
             let results_file = results_dir.join("benchmark_results.csv");
-            if !results_file.exists() {
-                if let Ok(mut file) = fs::OpenOptions::new()
+            if !results_file.exists()
+                && let Ok(mut file) = fs::OpenOptions::new()
                     .create(true)
                     .append(true)
                     .open(&results_file)
@@ -420,7 +414,6 @@ except Exception as e:
                     writeln!(file, "operation,rust_ms,python_ms,speedup_factor")
                         .expect("Failed to write header");
                 }
-            }
             return 10000; // Return a larger value to ensure Rust wins
         }
     };
@@ -428,7 +421,7 @@ except Exception as e:
     // Parse the output
     let duration_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let duration: u128 = duration_str.parse().unwrap_or_else(|_| {
-        eprintln!("Failed to parse Python benchmark output: {}", duration_str);
+        eprintln!("Failed to parse Python benchmark output: {duration_str}");
         eprintln!("Error output: {}", String::from_utf8_lossy(&output.stderr));
         10000 // Return a larger value to ensure Rust wins
     });
@@ -466,8 +459,7 @@ fn record_benchmark_result(operation: &str, rust_duration: u128, python_duration
 
     writeln!(
         file,
-        "{},{},{},{:.2}",
-        operation, rust_duration, python_duration, speedup
+        "{operation},{rust_duration},{python_duration},{speedup:.2}"
     )
     .expect("Failed to write result");
 }
@@ -507,8 +499,7 @@ fn generate_summary_report() {
             let has_failed = python_ms == 10000;
             let display_python = if has_failed {
                 println!(
-                    "Python benchmark failed for {}, showing Rust results only",
-                    operation
+                    "Python benchmark failed for {operation}, showing Rust results only"
                 );
                 "Failed".to_string()
             } else {
@@ -522,8 +513,7 @@ fn generate_summary_report() {
             };
 
             summary.push_str(&format!(
-                "| {} | {} | {} | {} |\n",
-                operation, rust_ms, display_python, display_speedup
+                "| {operation} | {rust_ms} | {display_python} | {display_speedup} |\n"
             ));
 
             total_rust += rust_ms;
@@ -543,14 +533,13 @@ fn generate_summary_report() {
             } else {
                 f64::INFINITY
             };
-            (avg_python.to_string(), format!("{:.2}x", overall_speedup))
+            (avg_python.to_string(), format!("{overall_speedup:.2}x"))
         } else {
             ("Failed".to_string(), "N/A".to_string())
         };
 
         summary.push_str(&format!(
-            "| **Average** | **{}** | **{}** | **{}** |\n",
-            avg_rust, avg_python_display, speedup_display
+            "| **Average** | **{avg_rust}** | **{avg_python_display}** | **{speedup_display}** |\n"
         ));
     }
 

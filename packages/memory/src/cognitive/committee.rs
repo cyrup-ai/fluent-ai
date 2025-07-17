@@ -3,7 +3,7 @@
 //! against user objectives through prompting and rubric-based evaluation.
 
 use crate::cognitive::mcts::CodeState;
-use crate::cognitive::types::{CognitiveError, OptimizationSpec};
+use crate::cognitive::types::{CognitiveError, OptimizationSpec, ImpactFactors};
 use crate::llm::{CompletionRequest, CompletionResponse, LLMProvider};
 use futures::stream::{FuturesUnordered, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,78 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{RwLock, Semaphore, mpsc};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
+
+/// Model type for LLM evaluation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ModelType {
+    Gpt35Turbo,
+    Gpt4,
+    Gpt4O,
+    Claude3Opus,
+    Claude3Sonnet,
+    Claude3Haiku,
+}
+
+impl ModelType {
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            ModelType::Gpt35Turbo => "gpt-3.5-turbo",
+            ModelType::Gpt4 => "gpt-4",
+            ModelType::Gpt4O => "gpt-4o",
+            ModelType::Claude3Opus => "claude-3-opus",
+            ModelType::Claude3Sonnet => "claude-3-sonnet",
+            ModelType::Claude3Haiku => "claude-3-haiku",
+        }
+    }
+}
+
+/// Simple model wrapper for LLM providers
+#[derive(Debug, Clone)]
+pub struct Model {
+    model_type: ModelType,
+    provider: Arc<dyn LLMProvider>,
+}
+
+impl Model {
+    pub async fn create(model_type: ModelType) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        // Create appropriate provider based on model type
+        let provider: Arc<dyn LLMProvider> = match model_type {
+            ModelType::Gpt35Turbo | ModelType::Gpt4 | ModelType::Gpt4O => {
+                Arc::new(crate::llm::OpenAIProvider::new("".to_string(), Some(model_type.display_name().to_string())))
+            }
+            ModelType::Claude3Opus | ModelType::Claude3Sonnet | ModelType::Claude3Haiku => {
+                Arc::new(crate::llm::AnthropicProvider::new("".to_string(), Some(model_type.display_name().to_string())))
+            }
+        };
+        
+        Ok(Self {
+            model_type,
+            provider,
+        })
+    }
+    
+    pub fn available_types() -> Vec<ModelType> {
+        vec![
+            ModelType::Gpt35Turbo,
+            ModelType::Gpt4,
+            ModelType::Gpt4O,
+            ModelType::Claude3Opus,
+            ModelType::Claude3Sonnet,
+            ModelType::Claude3Haiku,
+        ]
+    }
+    
+    pub async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse, Box<dyn std::error::Error + Send + Sync>> {
+        let completion = self.provider.complete(request);
+        Ok(completion.await?)
+    }
+    
+    pub async fn prompt(&self, prompt: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        let completion = self.provider.complete(prompt).await?;
+        Ok(completion)
+    }
+}
 
 /// Consensus decision from committee
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,7 +226,7 @@ impl LLMEvaluationAgent {
 
     fn build_review_prompt(
         &self,
-        state: &CodeState,
+        _state: &CodeState,
         action: &str,
         rubric: &EvaluationRubric,
         others: &[AgentEvaluation],
@@ -209,7 +280,7 @@ Provide your potentially revised evaluation in the same JSON format:
 
     fn build_refine_prompt(
         &self,
-        state: &CodeState,
+        _state: &CodeState,
         action: &str,
         rubric: &EvaluationRubric,
         others: &[AgentEvaluation],
@@ -258,10 +329,10 @@ Provide your refined evaluation in the same JSON format:
 
     fn build_final_prompt(
         &self,
-        state: &CodeState,
+        _state: &CodeState,
         action: &str,
         rubric: &EvaluationRubric,
-        all_rounds: &[AgentEvaluation],
+        _all_rounds: &[AgentEvaluation],
     ) -> String {
         format!(
             r#"This is the final evaluation round. Provide your definitive assessment.
@@ -434,6 +505,7 @@ pub enum CommitteeEvent {
     ConsensusReached {
         action: String,
         decision: ConsensusDecision,
+        factors: ImpactFactors,
         rounds_taken: usize,
     },
     EvaluationFailed {

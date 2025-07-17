@@ -157,7 +157,10 @@ impl SandboxManager {
             info!("Python environment already exists at {:?}", env_path);
             env.is_valid = true;
             self.add_environment(env);
-            return Ok(self.get_environment("python").unwrap());
+            return self.get_environment("python")
+                .ok_or_else(|| ExecError::RuntimeError(
+                    "Failed to retrieve Python environment after adding it to sandbox".to_string()
+                ));
         }
 
         info!("Creating Python virtual environment at {:?}", env_path);

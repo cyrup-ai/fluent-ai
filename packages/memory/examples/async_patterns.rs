@@ -4,7 +4,7 @@
 //! that can be awaited, following the pattern of no async_trait or Box<dyn Future>
 
 use futures::StreamExt;
-use mem0_rs::memory::{
+use fluent_ai_memory::memory::{
     memory_manager::{MemoryManager, SurrealDBMemoryManager},
     memory_node::{MemoryNode, MemoryType},
 };
@@ -72,8 +72,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create multiple memories
     for i in 1..=5 {
         let mem = MemoryNode::with_id(
-            format!("stream_demo_{}", i),
-            format!("Stream demo memory #{}", i),
+            format!("stream_demo_{i}"),
+            format!("Stream demo memory #{i}"),
             MemoryType::Semantic,
         );
         memory_manager.create_memory(mem).await?;
@@ -91,10 +91,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("  📄 {}: {}", memory.id, memory.content);
                 count += 1;
             }
-            Err(e) => println!("  ❌ Error: {}", e),
+            Err(e) => println!("  ❌ Error: {e}"),
         }
     }
-    println!("Total streamed: {} memories", count);
+    println!("Total streamed: {count} memories");
 
     // 4. Demonstrating concurrent operations
     println!("\n4. Concurrent Operations");
@@ -140,10 +140,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
 
     println!("First 3 search results:");
-    for result in search_results {
-        if let Ok(mem) = result {
-            println!("   - {}: {}", mem.id, mem.content);
-        }
+    for mem in search_results.into_iter().flatten() {
+        println!("   - {}: {}", mem.id, mem.content);
     }
 
     // Filter stream results
@@ -166,7 +164,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match memory_manager.get_memory("non_existent").await {
         Ok(Some(mem)) => println!("Found: {}", mem.id),
         Ok(None) => println!("✅ Correctly returned None for non-existent memory"),
-        Err(e) => println!("Error: {}", e),
+        Err(e) => println!("Error: {e}"),
     }
 
     // 7. Demonstrating RelationshipStream
@@ -174,7 +172,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "=".repeat(40));
 
     // Create a relationship
-    let rel = mem0_rs::memory::memory_relationship::MemoryRelationship::new(
+    let rel = fluent_ai_memory::memory::MemoryRelationship::new(
         mem1.id.clone(),
         mem2.id.clone(),
         "relates_to".to_string(),
@@ -206,7 +204,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|r| r.as_ref().unwrap_or(&false) == &true)
         .count();
 
-    println!("✅ Deleted {} memories", deleted_count);
+    println!("✅ Deleted {deleted_count} memories");
 
     println!("\n✨ Async patterns example completed!");
 

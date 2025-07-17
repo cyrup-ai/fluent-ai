@@ -248,7 +248,7 @@ impl MemoryStorage for InMemoryStorage {
         tokio::spawn(async move {
             let memories = memories.read().await;
             let result = memories.get(&id).cloned().ok_or_else(|| {
-                crate::utils::error::Error::NotFound(format!("Memory {} not found", id))
+                crate::utils::error::Error::NotFound(format!("Memory {id} not found"))
             });
             let _ = tx.send(result);
         });
@@ -291,8 +291,7 @@ impl MemoryStorage for InMemoryStorage {
                 Ok(())
             } else {
                 Err(crate::utils::error::Error::NotFound(format!(
-                    "Memory {} not found",
-                    id
+                    "Memory {id} not found"
                 )))
             };
             let _ = tx.send(result);

@@ -123,7 +123,7 @@ impl CognitiveMesh {
         let state_manager = Arc::new(CognitiveStateManager::new());
         let quantum_router = Arc::new(QuantumRouter::new(state_manager.clone()));
         let attention_router = Arc::new(AttentionRouter::new(state_manager.clone(), 8, 64));
-        let evolution_engine = Arc::new(RwLock::new(EvolutionEngine::new(state_manager.clone(), 50)));
+        let evolution_engine = Arc::new(RwLock::new(EvolutionEngine::with_state_manager(state_manager.clone(), 50)));
         let meta_consciousness = Arc::new(MetaConsciousness::new());
 
         Ok(Self {

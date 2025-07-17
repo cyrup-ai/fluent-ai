@@ -15,7 +15,8 @@ pub mod state;
 pub mod types;
 
 pub use complex::Complex64;
-pub use entanglement::{EntanglementGraph, EntanglementLink, EntanglementType};
+pub use entanglement::{EntanglementGraph, EntanglementLink};
+pub use crate::cognitive::types::EntanglementType;
 pub use error_correction::{ErrorCorrectionCode, QuantumErrorCorrection};
 pub use hardware::{QuantumConfig, QuantumHardwareBackend};
 pub use measurement::{BasisType, MeasurementBasis, MeasurementOperator};

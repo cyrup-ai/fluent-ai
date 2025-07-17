@@ -3,7 +3,7 @@
 
 use crate::cognitive::committee::{CommitteeEvent, EvaluationCommittee};
 use crate::cognitive::performance::PerformanceAnalyzer;
-use crate::cognitive::types::{CognitiveError, ImpactFactors, OptimizationSpec};
+use crate::cognitive::types::{CognitiveError, OptimizationSpec};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -125,7 +125,16 @@ impl MCTS {
                 }
             }
 
-            current_id = best_child.expect("Should have found a child");
+            // Handle case where no valid child is found (defensive programming)
+            current_id = match best_child {
+                Some(child_id) => child_id,
+                None => {
+                    // Fallback to current node if tree structure is corrupted
+                    // This prevents panic while allowing MCTS to continue
+                    debug!("No valid child found in UCT selection, using current node as fallback");
+                    return current_id;
+                }
+            };
         }
     }
 
@@ -141,7 +150,7 @@ impl MCTS {
         }
 
         // Pop a random untried action
-        let action_idx = rand::thread_rng().gen_range(0..node.untried_actions.len());
+        let action_idx = rand::rng().random_range(0..node.untried_actions.len());
         let action = node.untried_actions.remove(action_idx);
 
         // Apply action to get new state

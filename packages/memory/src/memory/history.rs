@@ -47,7 +47,7 @@ impl ChangeType {
     }
 
     /// Parse from string
-    pub fn from_str(s: &str) -> Result<Self> {
+    pub fn parse_from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "creation" => Ok(ChangeType::Creation),
             "update" => Ok(ChangeType::Update),
@@ -67,8 +67,7 @@ impl ChangeType {
                 }
             }
             _ => Err(Error::ValidationError(format!(
-                "Invalid change type: {}",
-                s
+                "Invalid change type: {s}"
             ))),
         }
     }
@@ -82,14 +81,14 @@ impl ChangeType {
             ChangeType::Restoration => Value::Strand("restoration".into()),
             ChangeType::Merge => Value::Strand("merge".into()),
             ChangeType::Split => Value::Strand("split".into()),
-            ChangeType::Custom(code) => Value::Strand(format!("custom{}", code).into()),
+            ChangeType::Custom(code) => Value::Strand(format!("custom{code}").into()),
         }
     }
 
     /// Create from value
     pub fn from_value(value: &Value) -> Result<Self> {
         if let Value::Strand(s) = value {
-            Self::from_str(&s.to_string())
+            Self::parse_from_str(&s.to_string())
         } else {
             Err(Error::ConversionError(
                 "Invalid change type value".to_string(),
@@ -287,7 +286,7 @@ impl MemoryVersion {
 
         // Add metadata
         for (key, value) in &self.metadata {
-            entity = entity.with_attribute(&format!("metadata_{}", key), value.clone());
+            entity = entity.with_attribute(&format!("metadata_{key}"), value.clone());
         }
 
         entity
@@ -499,8 +498,7 @@ impl MemoryHistory {
         // Validate versions
         if from_version > to_version {
             return Err(Error::ValidationError(format!(
-                "From version {} is greater than to version {}",
-                from_version, to_version
+                "From version {from_version} is greater than to version {to_version}"
             )));
         }
 
@@ -510,7 +508,7 @@ impl MemoryHistory {
             if let Some(v) = self.get_version(version) {
                 path.push(v);
             } else {
-                return Err(Error::NotFound(format!("Version {} not found", version)));
+                return Err(Error::NotFound(format!("Version {version} not found")));
             }
         }
 
@@ -522,11 +520,11 @@ impl MemoryHistory {
         // Get versions
         let from = self
             .get_version(from_version)
-            .ok_or_else(|| Error::NotFound(format!("Version {} not found", from_version)))?;
+            .ok_or_else(|| Error::NotFound(format!("Version {from_version} not found")))?;
 
         let to = self
             .get_version(to_version)
-            .ok_or_else(|| Error::NotFound(format!("Version {} not found", to_version)))?;
+            .ok_or_else(|| Error::NotFound(format!("Version {to_version} not found")))?;
 
         // Get content
         let from_content = from.content.as_deref().unwrap_or("");
@@ -554,17 +552,17 @@ impl MemoryHistory {
         for i in 0..max_lines {
             match (old_lines.get(i), new_lines.get(i)) {
                 (Some(old_line), Some(new_line)) if old_line != new_line => {
-                    writeln!(&mut output, "-{}", old_line).unwrap();
-                    writeln!(&mut output, "+{}", new_line).unwrap();
+                    writeln!(&mut output, "-{old_line}").unwrap();
+                    writeln!(&mut output, "+{new_line}").unwrap();
                 }
                 (Some(old_line), None) => {
-                    writeln!(&mut output, "-{}", old_line).unwrap();
+                    writeln!(&mut output, "-{old_line}").unwrap();
                 }
                 (None, Some(new_line)) => {
-                    writeln!(&mut output, "+{}", new_line).unwrap();
+                    writeln!(&mut output, "+{new_line}").unwrap();
                 }
                 (Some(line), Some(_)) => {
-                    writeln!(&mut output, " {}", line).unwrap();
+                    writeln!(&mut output, " {line}").unwrap();
                 }
                 _ => {}
             }

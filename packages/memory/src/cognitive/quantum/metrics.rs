@@ -5,7 +5,7 @@ use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 /// Comprehensive metrics collection for quantum operations
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 pub struct QuantumMetrics {
     pub total_routing_requests: u64,
     pub successful_routes: u64,
@@ -20,7 +20,7 @@ pub struct QuantumMetrics {
 }
 
 /// Performance indicators
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 pub struct PerformanceIndicators {
     pub throughput: f64,
     pub latency_percentiles: LatencyPercentiles,
@@ -29,7 +29,7 @@ pub struct PerformanceIndicators {
 }
 
 /// Latency percentiles
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 pub struct LatencyPercentiles {
     pub p50: Duration,
     pub p90: Duration,
@@ -39,7 +39,7 @@ pub struct LatencyPercentiles {
 }
 
 /// Resource utilization metrics
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 pub struct ResourceUtilization {
     pub cpu_usage: f64,
     pub memory_usage: f64,
@@ -48,7 +48,7 @@ pub struct ResourceUtilization {
 }
 
 /// Error rate tracking
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 pub struct ErrorRates {
     pub gate_error_rate: f64,
     pub readout_error_rate: f64,
@@ -57,7 +57,7 @@ pub struct ErrorRates {
 }
 
 /// Historical metrics tracking
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct MetricsHistory {
     pub routing_history: VecDeque<RoutingMetric>,
     pub fidelity_history: VecDeque<FidelityMetric>,
@@ -66,8 +66,9 @@ pub struct MetricsHistory {
 }
 
 /// Individual routing metric
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RoutingMetric {
+    #[serde(skip)]
     pub timestamp: Instant,
     pub duration: Duration,
     pub success: bool,
@@ -76,8 +77,9 @@ pub struct RoutingMetric {
 }
 
 /// Fidelity metric over time
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FidelityMetric {
+    #[serde(skip)]
     pub timestamp: Instant,
     pub fidelity: f64,
     pub measurement_type: String,
@@ -85,8 +87,9 @@ pub struct FidelityMetric {
 }
 
 /// Resource usage metric
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ResourceMetric {
+    #[serde(skip)]
     pub timestamp: Instant,
     pub cpu_usage: f64,
     pub memory_usage: f64,

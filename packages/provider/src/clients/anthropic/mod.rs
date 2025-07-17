@@ -33,3 +33,6 @@ pub use responses::*;
 pub use streaming::*;
 pub use tools::*;
 pub use error::*;
+
+// Re-export the polymorphic extension traits
+pub use completion::{AnthropicExtensions, SearchResultData};

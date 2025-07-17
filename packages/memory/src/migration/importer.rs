@@ -45,7 +45,7 @@ impl DataImporter {
 
         let data: Vec<T> = bincode::decode_from_slice(&buffer, bincode::config::standard())
             .map_err(|e| {
-                MigrationError::UnsupportedFormat(format!("Binary decoding failed: {}", e))
+                MigrationError::UnsupportedFormat(format!("Binary decoding failed: {e}"))
             })?
             .0;
         Ok(data)

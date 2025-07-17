@@ -69,14 +69,14 @@ impl MemoryRepository {
         // Update type index
         self.type_index
             .entry(memory_ref.memory_type.clone())
-            .or_insert_with(HashSet::new)
+            .or_default()
             .insert(memory_ref.id.clone());
 
         // Update user index
         if let Some(user_id) = &memory_ref.metadata.user_id {
             self.user_index
                 .entry(user_id.clone())
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(memory_ref.id.clone());
         }
 
@@ -84,7 +84,7 @@ impl MemoryRepository {
         if let Some(agent_id) = &memory_ref.metadata.agent_id {
             self.agent_index
                 .entry(agent_id.clone())
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(memory_ref.id.clone());
         }
 
@@ -92,14 +92,14 @@ impl MemoryRepository {
         for tag in &memory_ref.metadata.tags {
             self.tag_index
                 .entry(tag.clone())
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(memory_ref.id.clone());
         }
 
         // Update time index
         self.time_index
             .entry(memory_ref.created_at)
-            .or_insert_with(HashSet::new)
+            .or_default()
             .insert(memory_ref.id.clone());
     }
 
@@ -206,11 +206,11 @@ impl MemoryRepository {
             .filter_map(|id| self.memories.get(&id))
             .filter(|memory| {
                 if let Some(time_range) = &filter.time_range {
-                    let in_range = time_range
+                    
+                    time_range
                         .start
-                        .map_or(true, |start| memory.created_at >= start)
-                        && time_range.end.map_or(true, |end| memory.created_at < end);
-                    in_range
+                        .is_none_or(|start| memory.created_at >= start)
+                        && time_range.end.is_none_or(|end| memory.created_at < end)
                 } else {
                     true
                 }
@@ -264,18 +264,16 @@ impl MemoryRepository {
         }
 
         // Remove from user index
-        if let Some(user_id) = &memory.metadata.user_id {
-            if let Some(user_ids) = self.user_index.get_mut(user_id) {
+        if let Some(user_id) = &memory.metadata.user_id
+            && let Some(user_ids) = self.user_index.get_mut(user_id) {
                 user_ids.remove(&memory.id);
             }
-        }
 
         // Remove from agent index
-        if let Some(agent_id) = &memory.metadata.agent_id {
-            if let Some(agent_ids) = self.agent_index.get_mut(agent_id) {
+        if let Some(agent_id) = &memory.metadata.agent_id
+            && let Some(agent_ids) = self.agent_index.get_mut(agent_id) {
                 agent_ids.remove(&memory.id);
             }
-        }
 
         // Remove from tag index
         for tag in &memory.metadata.tags {

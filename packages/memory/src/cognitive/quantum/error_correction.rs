@@ -448,7 +448,7 @@ impl QuantumErrorCorrection {
     /// Encode logical qubit into physical qubits
     pub fn encode_logical_qubit(
         &self,
-        logical_state: Vec<Complex64>,
+        _logical_state: Vec<Complex64>,
         code: &ErrorCorrectionCode,
     ) -> CognitiveResult<LogicalQubit> {
         let encoding_circuit = self.generate_encoding_circuit(code)?;
@@ -528,10 +528,11 @@ impl QuantumErrorCorrection {
             }
         }
 
+        let depth = self.calculate_circuit_depth(&gates);
         Ok(QuantumCircuit {
             gates,
             qubit_count: code.physical_qubits,
-            depth: self.calculate_circuit_depth(&gates),
+            depth,
         })
     }
 
@@ -558,10 +559,11 @@ impl QuantumErrorCorrection {
             }
         }
 
+        let depth = self.calculate_circuit_depth(&gates);
         Ok(QuantumCircuit {
             gates,
             qubit_count: code.physical_qubits,
-            depth: self.calculate_circuit_depth(&gates),
+            depth,
         })
     }
 

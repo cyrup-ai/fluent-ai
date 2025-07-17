@@ -2,8 +2,9 @@
 
 use crate::cognitive::quantum::{
     Complex64,
-    types::{CognitiveError, CognitiveResult, EntanglementType},
+    types::{CognitiveError, CognitiveResult},
 };
+use crate::cognitive::types::EntanglementType;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};

@@ -267,8 +267,8 @@ impl QuantumMCTS {
         let probabilities: Vec<f64> = scores.iter().map(|(_, s)| s.exp() / total_score).collect();
 
         // Quantum measurement
-        let mut rng = rand::thread_rng();
-        let measurement = rng.gen_range(0.0..1.0);
+        let mut rng = rand::rng();
+        let measurement = rng.random_range(0.0..1.0);
         let mut cumulative = 0.0;
 
         for (i, p) in probabilities.iter().enumerate() {
@@ -345,8 +345,8 @@ impl QuantumMCTS {
         let probabilities = superposition.measure(&measurement)?;
 
         // Select based on quantum probabilities
-        let mut rng = rand::thread_rng();
-        let selection = rng.gen_range(0.0..1.0);
+        let mut rng = rand::rng();
+        let selection = rng.random_range(0.0..1.0);
         let mut cumulative = 0.0;
 
         for (i, &p) in probabilities.iter().enumerate() {
@@ -411,7 +411,7 @@ impl QuantumMCTS {
         };
 
         let phase = Complex64::new(0.0, phase_shift);
-        parent_amplitude * phase.exp() * 0.9 // Amplitude decay
+        *parent_amplitude * phase.exp() * 0.9 // Amplitude decay
     }
 
     /// Create entanglement between related nodes
@@ -650,7 +650,7 @@ impl QuantumMCTS {
     }
 
     /// Get quantum-enhanced actions
-    fn get_quantum_actions(state: &CodeState, spec: &OptimizationSpec) -> Vec<String> {
+    fn get_quantum_actions(_state: &CodeState, _spec: &OptimizationSpec) -> Vec<String> {
         let mut actions = vec![
             "quantum_optimize_superposition".to_string(),
             "entangle_parallel_paths".to_string(),

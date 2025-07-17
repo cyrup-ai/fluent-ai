@@ -71,17 +71,18 @@ pub enum SemanticItemType {
     Category,
 }
 
-impl SemanticItemType {
-    /// Convert to string
-    pub fn to_string(&self) -> String {
+impl std::fmt::Display for SemanticItemType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SemanticItemType::Concept => "concept".to_string(),
-            SemanticItemType::Fact => "fact".to_string(),
-            SemanticItemType::Rule => "rule".to_string(),
-            SemanticItemType::Category => "category".to_string(),
+            SemanticItemType::Concept => write!(f, "concept"),
+            SemanticItemType::Fact => write!(f, "fact"),
+            SemanticItemType::Rule => write!(f, "rule"),
+            SemanticItemType::Category => write!(f, "category"),
         }
     }
+}
 
+impl SemanticItemType {
     /// Convert from string
     pub fn from_string(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
@@ -90,8 +91,7 @@ impl SemanticItemType {
             "rule" => Ok(SemanticItemType::Rule),
             "category" => Ok(SemanticItemType::Category),
             _ => Err(Error::ConversionError(format!(
-                "Invalid semantic item type: {}",
-                s
+                "Invalid semantic item type: {s}"
             ))),
         }
     }
@@ -308,19 +308,20 @@ pub enum SemanticRelationshipType {
     Custom(String),
 }
 
-impl SemanticRelationshipType {
-    /// Convert to string
-    pub fn to_string(&self) -> String {
+impl std::fmt::Display for SemanticRelationshipType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SemanticRelationshipType::IsA => "is_a".to_string(),
-            SemanticRelationshipType::HasA => "has_a".to_string(),
-            SemanticRelationshipType::PartOf => "part_of".to_string(),
-            SemanticRelationshipType::RelatedTo => "related_to".to_string(),
-            SemanticRelationshipType::Causes => "causes".to_string(),
-            SemanticRelationshipType::Custom(s) => s.clone(),
+            SemanticRelationshipType::IsA => write!(f, "is_a"),
+            SemanticRelationshipType::HasA => write!(f, "has_a"),
+            SemanticRelationshipType::PartOf => write!(f, "part_of"),
+            SemanticRelationshipType::RelatedTo => write!(f, "related_to"),
+            SemanticRelationshipType::Causes => write!(f, "causes"),
+            SemanticRelationshipType::Custom(s) => write!(f, "{s}"),
         }
     }
+}
 
+impl SemanticRelationshipType {
     /// Convert from string
     pub fn from_string(s: &str) -> Self {
         match s.to_lowercase().as_str() {

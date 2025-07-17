@@ -16,6 +16,9 @@ use surrealdb::sql::Value;
 /// Type alias for entity futures to simplify trait definitions
 pub type EntityFuture<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
+/// Type alias for entity validation functions
+pub type EntityValidatorFn = Box<dyn Fn(&dyn Entity) -> Result<()> + Send + Sync>;
+
 /// Entity trait for domain objects
 pub trait Entity: Send + Sync + Debug {
     /// Get the entity ID
@@ -189,7 +192,7 @@ impl RequiredAttributeRule {
     /// Create a new required attribute rule
     pub fn new(attribute: &str) -> Self {
         Self {
-            name: format!("RequiredAttribute:{}", attribute),
+            name: format!("RequiredAttribute:{attribute}"),
             attribute: attribute.to_string(),
         }
     }
@@ -235,7 +238,7 @@ impl AttributeTypeRule {
     /// Create a new attribute type rule
     pub fn new(attribute: &str, expected_type: AttributeType) -> Self {
         Self {
-            name: format!("AttributeType:{}:{:?}", attribute, expected_type),
+            name: format!("AttributeType:{attribute}:{expected_type:?}"),
             attribute: attribute.to_string(),
             expected_type,
         }
@@ -298,14 +301,14 @@ pub struct CustomValidationRule {
     name: String,
 
     /// Validation function
-    validator: Box<dyn Fn(&dyn Entity) -> Result<()> + Send + Sync>,
+    validator: EntityValidatorFn,
 }
 
 impl CustomValidationRule {
     /// Create a new custom validation rule
     pub fn new(
         name: &str,
-        validator: Box<dyn Fn(&dyn Entity) -> Result<()> + Send + Sync>,
+        validator: EntityValidatorFn,
     ) -> Self {
         Self {
             name: name.to_string(),
@@ -336,6 +339,12 @@ pub struct EntityValidator {
     rules: Vec<Box<dyn ValidationRule>>,
 }
 
+impl Default for EntityValidator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EntityValidator {
     /// Create a new entity validator
     pub fn new() -> Self {
@@ -361,7 +370,7 @@ impl EntityValidator {
     pub fn add_custom_rule(
         &mut self,
         name: &str,
-        validator: Box<dyn Fn(&dyn Entity) -> Result<()> + Send + Sync>,
+        validator: EntityValidatorFn,
     ) {
         self.add_rule(CustomValidationRule::new(name, validator));
     }
@@ -475,11 +484,10 @@ impl<E: Entity + 'static> SurrealEntityRepository<E> {
 impl<E: Entity + Clone + 'static> EntityRepository for SurrealEntityRepository<E> {
     fn create(&self, entity: &dyn Entity) -> EntityFuture<Box<dyn Entity>> {
         // Validate the entity synchronously if a validator is configured
-        if let Some(validator) = &self.validator {
-            if let Err(e) = validator.validate(entity) {
+        if let Some(validator) = &self.validator
+            && let Err(e) = validator.validate(entity) {
                 return Box::pin(async move { Err(e) });
             }
-        }
 
         // Clone necessary data for the async block
         let db = self.db.clone();
@@ -526,11 +534,10 @@ impl<E: Entity + Clone + 'static> EntityRepository for SurrealEntityRepository<E
 
     fn update(&self, entity: &dyn Entity) -> EntityFuture<Box<dyn Entity>> {
         // Validate the entity synchronously if a validator is configured
-        if let Some(validator) = &self.validator {
-            if let Err(e) = validator.validate(entity) {
+        if let Some(validator) = &self.validator
+            && let Err(e) = validator.validate(entity) {
                 return Box::pin(async move { Err(e) });
             }
-        }
 
         // Clone necessary data for the async block
         let db = self.db.clone();
@@ -587,8 +594,7 @@ impl<E: Entity + Clone + 'static> EntityRepository for SurrealEntityRepository<E
         Box::pin(async move {
             // Build query with database-level pagination
             let query = format!(
-                "SELECT * FROM {} WHERE entity_type = $entity_type LIMIT {} START {}",
-                table_name, limit, offset
+                "SELECT * FROM {table_name} WHERE entity_type = $entity_type LIMIT {limit} START {offset}"
             );
 
             // Create query options with entity_type parameter
@@ -653,11 +659,10 @@ impl<E: Entity + Clone + 'static> EntityRepository for SurrealEntityRepository<E
             let mut entities: Vec<Box<dyn Entity>> = Vec::new();
             use futures::StreamExt;
             while let Some(node_result) = results_stream.next().await {
-                if let Ok(node) = node_result {
-                    if let Ok(entity) = E::from_node(node) {
+                if let Ok(node) = node_result
+                    && let Ok(entity) = E::from_node(node) {
                         entities.push(Box::new(entity) as Box<dyn Entity>);
                     }
-                }
             }
 
             Ok(entities)
@@ -671,11 +676,10 @@ impl<E: Entity + Clone + 'static> EntityRepository for SurrealEntityRepository<E
 
         Box::pin(async move {
             let query = if entity_type.is_empty() {
-                format!("SELECT count() FROM {} GROUP ALL", table_name)
+                format!("SELECT count() FROM {table_name} GROUP ALL")
             } else {
                 format!(
-                    "SELECT count() FROM {} WHERE entity_type = $entity_type GROUP ALL",
-                    table_name
+                    "SELECT count() FROM {table_name} WHERE entity_type = $entity_type GROUP ALL"
                 )
             };
 

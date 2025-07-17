@@ -40,6 +40,9 @@ pub struct QuantumSignature {
     pub entanglement_bonds: Vec<EntanglementBond>,
     pub superposition_contexts: Vec<String>,
     pub collapse_probability: f32,
+    pub entanglement_links: Vec<String>,
+    pub quantum_entropy: f64,
+    pub creation_time: chrono::DateTime<chrono::Utc>,
 }
 
 /// Cognitive memory node with enhanced capabilities
@@ -51,6 +54,14 @@ pub struct CognitiveMemoryNode {
     pub evolution_metadata: Option<EvolutionMetadata>,
     pub attention_weights: Vec<f32>,
     pub semantic_relationships: Vec<String>,
+    pub base: crate::memory::MemoryNode,
+}
+
+impl CognitiveMemoryNode {
+    /// Check if this memory node has enhanced cognitive capabilities
+    pub fn is_enhanced(&self) -> bool {
+        self.quantum_signature.is_some() || self.evolution_metadata.is_some() || !self.attention_weights.is_empty()
+    }
 }
 
 /// Configuration settings for cognitive memory system
@@ -64,6 +75,9 @@ pub struct CognitiveSettings {
     pub evolution_mutation_rate: f32,
     pub attention_decay_rate: f32,
     pub meta_awareness_level: f32,
+    pub attention_heads: usize,
+    pub quantum_coherence_time: f64,
+    pub enabled: bool,
 }
 
 impl Default for CognitiveSettings {
@@ -77,6 +91,9 @@ impl Default for CognitiveSettings {
             evolution_mutation_rate: 0.1,
             attention_decay_rate: 0.95,
             meta_awareness_level: 0.7,
+            attention_heads: 8,
+            quantum_coherence_time: 0.1,
+            enabled: true,
         }
     }
 }
@@ -95,6 +112,9 @@ pub enum EntanglementType {
     Temporal,
     Causal,
     Emergent,
+    Werner,
+    Weak,
+    Bell,
 }
 
 /// Evolution metadata tracking system development
@@ -105,6 +125,19 @@ pub struct EvolutionMetadata {
     pub mutation_history: Vec<MutationEvent>,
     pub specialization_domains: Vec<SpecializationDomain>,
     pub adaptation_rate: f32,
+}
+
+impl EvolutionMetadata {
+    /// Create new evolution metadata
+    pub fn new() -> Self {
+        Self {
+            generation: 0,
+            fitness_score: 0.0,
+            mutation_history: Vec::new(),
+            specialization_domains: Vec::new(),
+            adaptation_rate: 0.1,
+        }
+    }
 }
 
 /// A mutation event in system evolution
@@ -196,6 +229,20 @@ pub struct EmergentPattern {
     pub description: String,
 }
 
+/// Impact factors for evaluation committee decisions
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImpactFactors {
+    pub alignment_score: f64,
+    pub quality_score: f64,
+    pub safety_score: f64,
+    pub confidence: f64,
+    pub improvement_suggestions: Vec<String>,
+    pub potential_risks: Vec<String>,
+    pub latency_factor: f64,
+    pub memory_factor: f64,
+    pub relevance_factor: f64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PatternType {
     Temporal,
@@ -228,6 +275,27 @@ pub enum CognitiveError {
 
     #[error("Cognitive capacity exceeded: {0}")]
     CapacityExceeded(String),
+    
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
+    
+    #[error("API error: {0}")]
+    ApiError(String),
+
+    #[error("Optimization error: {0}")]
+    OptimizationError(String),
+
+    #[error("Invalid state: {0}")]
+    InvalidState(String),
+
+    #[error("Orchestration error: {0}")]
+    OrchestrationError(String),
+
+    #[error("Specification error: {0}")]
+    SpecError(String),
+
+    #[error("Parse error: {0}")]
+    ParseError(String),
 }
 
 pub type CognitiveResult<T> = Result<T, CognitiveError>;
@@ -242,6 +310,9 @@ pub struct OptimizationSpec {
     pub timeout_ms: Option<u64>,
     pub max_iterations: Option<u32>,
     pub target_quality: f32,
+    pub baseline_metrics: BaselineMetrics,
+    pub content_type: ContentType,
+    pub evolution_rules: EvolutionRules,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -253,38 +324,6 @@ pub enum OptimizationType {
     Custom(String),
 }
 
-/// Impact measurement structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ImpactFactors {
-    pub performance_impact: f32,
-    pub quality_impact: f32,
-    pub user_satisfaction_impact: f32,
-    pub system_stability_impact: f32,
-    pub maintainability_impact: f32,
-    pub overall_score: f32,
-}
-
-impl ImpactFactors {
-    pub fn new() -> Self {
-        Self {
-            performance_impact: 0.0,
-            quality_impact: 0.0,
-            user_satisfaction_impact: 0.0,
-            system_stability_impact: 0.0,
-            maintainability_impact: 0.0,
-            overall_score: 0.0,
-        }
-    }
-
-    pub fn calculate_overall_score(&mut self) {
-        self.overall_score = (self.performance_impact
-            + self.quality_impact
-            + self.user_satisfaction_impact
-            + self.system_stability_impact
-            + self.maintainability_impact)
-            / 5.0;
-    }
-}
 
 /// Result of optimization operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -294,17 +333,20 @@ pub enum OptimizationOutcome {
         performance_gain: f32,
         quality_score: f32,
         metadata: HashMap<String, serde_json::Value>,
+        applied: bool,
     },
     PartialSuccess {
         improvements: Vec<String>,
         issues: Vec<String>,
         performance_gain: f32,
         quality_score: f32,
+        applied: bool,
     },
     Failure {
         errors: Vec<String>,
         root_cause: String,
         suggestions: Vec<String>,
+        applied: bool,
     },
 }
 
@@ -317,6 +359,97 @@ impl PendingOptimizationResult {
     pub fn new(rx: tokio::sync::oneshot::Receiver<CognitiveResult<OptimizationOutcome>>) -> Self {
         Self { rx }
     }
+}
+
+/// Content type classification for optimization
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContentType {
+    pub category: ContentCategory,
+    pub complexity: f32,
+    pub processing_hints: Vec<String>,
+    pub format: String,
+    pub restrictions: Restrictions,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ContentCategory {
+    Text,
+    Code,
+    Data,
+    Media,
+    Structured,
+    Unstructured,
+}
+
+/// Restrictions for content processing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Restrictions {
+    pub max_memory_usage: Option<u64>,
+    pub max_processing_time: Option<u64>,
+    pub allowed_operations: Vec<String>,
+    pub forbidden_operations: Vec<String>,
+    pub security_level: SecurityLevel,
+    pub compiler: String,
+    pub max_latency_increase: f64,
+    pub max_memory_increase: f64,
+    pub min_relevance_improvement: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SecurityLevel {
+    Public,
+    Internal,
+    Confidential,
+    Restricted,
+}
+
+/// Constraints for optimization operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Constraints {
+    pub memory_limit: Option<u64>,
+    pub time_limit: Option<u64>,
+    pub quality_threshold: f32,
+    pub resource_constraints: Vec<ResourceConstraint>,
+    pub size: usize,
+    pub style: Vec<String>,
+    pub schemas: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceConstraint {
+    pub resource_type: String,
+    pub max_usage: f32,
+    pub priority: f32,
+}
+
+/// Evolution rules for cognitive development
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvolutionRules {
+    pub mutation_rate: f32,
+    pub selection_pressure: f32,
+    pub crossover_rate: f32,
+    pub elite_retention: f32,
+    pub diversity_maintenance: f32,
+    pub allowed_mutations: Vec<MutationType>,
+    pub build_on_previous: bool,
+    pub new_axis_per_iteration: bool,
+    pub max_cumulative_latency_increase: f64,
+    pub min_action_diversity: f64,
+    pub validation_required: bool,
+}
+
+/// Baseline performance metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BaselineMetrics {
+    pub response_time: f32,
+    pub accuracy: f32,
+    pub throughput: f32,
+    pub resource_usage: f32,
+    pub error_rate: f32,
+    pub quality_score: f32,
+    pub latency: f64,
+    pub memory: f64,
+    pub relevance: f64,
 }
 
 impl std::future::Future for PendingOptimizationResult {

@@ -2,7 +2,7 @@
 
 use std::time::{Duration, Instant};
 use hashbrown::HashMap;
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 use crate::HttpResponse;
 
 /// Cache entry for HTTP responses
@@ -357,9 +357,6 @@ fn timestamp_to_instant(year: u32, month: u32, day: u32, hour: u32, minute: u32,
     
     // Convert to seconds
     let total_seconds = days * 86400 + hour as u64 * 3600 + minute as u64 * 60 + second as u64;
-    
-    // Create Duration from Unix epoch
-    let duration = Duration::from_secs(total_seconds);
     
     // Convert to proper timestamp using chrono
     let unix_timestamp = DateTime::from_timestamp(total_seconds as i64, 0)?;

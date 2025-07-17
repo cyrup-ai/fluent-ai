@@ -61,19 +61,19 @@ impl LLMProvider for OpenAIProvider {
 
             let result = async {
                 let response = client
-                    .post(format!("{}/chat/completions", api_base))
-                    .header("Authorization", format!("Bearer {}", api_key))
+                    .post(format!("{api_base}/chat/completions"))
+                    .header("Authorization", format!("Bearer {api_key}"))
                     .json(&request)
                     .send()
                     .await
-                    .map_err(|e| LLMError::NetworkError(e))?;
+                    .map_err(LLMError::NetworkError)?;
 
                 match response.status() {
                     StatusCode::OK => {
                         let completion: CompletionResponse = response
                             .json()
                             .await
-                            .map_err(|e| LLMError::NetworkError(e))?;
+                            .map_err(LLMError::NetworkError)?;
 
                         completion
                             .choices
@@ -120,19 +120,19 @@ impl LLMProvider for OpenAIProvider {
 
             let result = async {
                 let response = client
-                    .post(format!("{}/embeddings", api_base))
-                    .header("Authorization", format!("Bearer {}", api_key))
+                    .post(format!("{api_base}/embeddings"))
+                    .header("Authorization", format!("Bearer {api_key}"))
                     .json(&request)
                     .send()
                     .await
-                    .map_err(|e| LLMError::NetworkError(e))?;
+                    .map_err(LLMError::NetworkError)?;
 
                 match response.status() {
                     StatusCode::OK => {
                         let embedding_response: EmbeddingResponse = response
                             .json()
                             .await
-                            .map_err(|e| LLMError::NetworkError(e))?;
+                            .map_err(LLMError::NetworkError)?;
 
                         embedding_response
                             .data

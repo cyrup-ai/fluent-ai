@@ -144,7 +144,7 @@ where
         let results = {
             let vector_store = self.vector_store.lock().await;
             (*vector_store)
-                .search(query_embedding.clone(), top_k, filter.map(|f| f.clone()))
+                .search(query_embedding.clone(), top_k, filter)
                 .await?
         };
 

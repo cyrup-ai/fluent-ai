@@ -3,15 +3,23 @@
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
+use std::cmp::Ordering;
 use surrealdb::sql::Value;
 
-use super::vector_store::VectorStore;
+use super::vector_store::{VectorStore, VectorSearchResult};
+use crate::constants::ERROR_VECTOR_NOT_FOUND;
 use crate::utils::error::{Error, Result};
 
 /// In-memory vector store implementation
 pub struct InMemoryVectorStore {
     vectors: HashMap<String, Vec<f32>>,
     metadata: HashMap<String, HashMap<String, Value>>,
+}
+
+impl Default for InMemoryVectorStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl InMemoryVectorStore {
@@ -43,7 +51,7 @@ impl VectorStore for InMemoryVectorStore {
             let metadata = self.metadata.get(id).cloned();
             Ok((vector.clone(), metadata))
         } else {
-            Err(Error::NotFound(format!("Vector with id {} not found", id)))
+            Err(Error::NotFound(ERROR_VECTOR_NOT_FOUND.to_string()))
         };
         Box::pin(async move { result })
     }
@@ -57,9 +65,8 @@ impl VectorStore for InMemoryVectorStore {
             self.vectors.insert(id.to_string(), vector);
             Box::pin(async { Ok(()) })
         } else {
-            let id = id.to_string();
             Box::pin(
-                async move { Err(Error::NotFound(format!("Vector with id {} not found", id))) },
+                async move { Err(Error::NotFound(ERROR_VECTOR_NOT_FOUND.to_string())) },
             )
         }
     }
@@ -83,8 +90,24 @@ impl VectorStore for InMemoryVectorStore {
             results.push((id.clone(), similarity));
         }
 
-        // Sort by similarity (descending)
-        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        // Sort by similarity (descending) - custom comparison to handle NaN values
+        results.sort_by(|a, b| {
+            match (a.1.is_nan(), b.1.is_nan()) {
+                (true, true) => Ordering::Equal,
+                (true, false) => Ordering::Greater,  // NaN goes to end
+                (false, true) => Ordering::Less,     // NaN goes to end
+                (false, false) => {
+                    // Safe to compare non-NaN values (descending order)
+                    if b.1 > a.1 {
+                        Ordering::Greater
+                    } else if b.1 < a.1 {
+                        Ordering::Less
+                    } else {
+                        Ordering::Equal
+                    }
+                }
+            }
+        });
 
         // Take top k results
         let top_k: Vec<String> = results.into_iter().take(limit).map(|(id, _)| id).collect();
@@ -104,7 +127,7 @@ impl VectorStore for InMemoryVectorStore {
                 > + Send,
         >,
     > {
-        let mut results: Vec<(String, Vec<f32>, f32, Option<HashMap<String, Value>>)> = Vec::new();
+        let mut results: Vec<VectorSearchResult> = Vec::new();
 
         // Simple cosine similarity search
         for (id, vector) in &self.vectors {
@@ -131,8 +154,24 @@ impl VectorStore for InMemoryVectorStore {
             results.push((id.clone(), vector.clone(), similarity, metadata));
         }
 
-        // Sort by similarity (descending)
-        results.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+        // Sort by similarity (descending) - custom comparison to handle NaN values
+        results.sort_by(|a, b| {
+            match (a.2.is_nan(), b.2.is_nan()) {
+                (true, true) => Ordering::Equal,
+                (true, false) => Ordering::Greater,  // NaN goes to end
+                (false, true) => Ordering::Less,     // NaN goes to end
+                (false, false) => {
+                    // Safe to compare non-NaN values (descending order)
+                    if b.2 > a.2 {
+                        Ordering::Greater
+                    } else if b.2 < a.2 {
+                        Ordering::Less
+                    } else {
+                        Ordering::Equal
+                    }
+                }
+            }
+        });
 
         // Take top k results
         if let Some(limit) = limit {

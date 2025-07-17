@@ -6,7 +6,7 @@
 //! - Procedural memories (how-to knowledge)
 
 use futures::StreamExt;
-use mem0_rs::memory::{
+use fluent_ai_memory::memory::{
     memory_manager::{MemoryManager, SurrealDBMemoryManager},
     memory_node::{MemoryNode, MemoryType},
 };
@@ -146,9 +146,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "=".repeat(40));
 
     // Link semantic memory to episodic memory
-    let rel1 = memory_manager
+    let _rel1 = memory_manager
         .create_relationship(
-            mem0_rs::memory::memory_relationship::MemoryRelationship::new(
+            fluent_ai_memory::memory::MemoryRelationship::new(
                 rust_mem.id.clone(),
                 episode1.id.clone(),
                 "triggered".to_string(),
@@ -157,9 +157,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     // Link episodic memories in sequence
-    let rel2 = memory_manager
+    let _rel2 = memory_manager
         .create_relationship(
-            mem0_rs::memory::memory_relationship::MemoryRelationship::new(
+            fluent_ai_memory::memory::MemoryRelationship::new(
                 episode1.id.clone(),
                 episode2.id.clone(),
                 "led_to".to_string(),
@@ -168,9 +168,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     // Link procedural memory to semantic memory
-    let rel3 = memory_manager
+    let _rel3 = memory_manager
         .create_relationship(
-            mem0_rs::memory::memory_relationship::MemoryRelationship::new(
+            fluent_ai_memory::memory::MemoryRelationship::new(
                 stored_procedure.id.clone(),
                 rust_mem.id.clone(),
                 "implements".to_string(),
@@ -194,14 +194,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
 
     println!("📚 Episodic memories ({}):", episodes.len());
-    for mem_result in episodes {
-        if let Ok(mem) = mem_result {
-            println!(
-                "   - {}: {}",
-                mem.id,
-                &mem.content[..60.min(mem.content.len())]
-            );
-        }
+    for mem in episodes.into_iter().flatten() {
+        println!(
+            "   - {}: {}",
+            mem.id,
+            &mem.content[..60.min(mem.content.len())]
+        );
     }
 
     // Get all semantic memories
@@ -211,14 +209,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
 
     println!("\n📖 Semantic memories ({}):", semantics.len());
-    for mem_result in semantics {
-        if let Ok(mem) = mem_result {
-            println!(
-                "   - {}: {}",
-                mem.id,
-                &mem.content[..60.min(mem.content.len())]
-            );
-        }
+    for mem in semantics.into_iter().flatten() {
+        println!(
+            "   - {}: {}",
+            mem.id,
+            &mem.content[..60.min(mem.content.len())]
+        );
     }
 
     println!("\n✨ Memory types example completed!");

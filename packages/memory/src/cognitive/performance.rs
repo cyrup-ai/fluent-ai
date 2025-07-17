@@ -1,14 +1,14 @@
 // src/cognitive/performance.rs
 //! Performance analysis for code states using committee evaluation
 
-use crate::cognitive::committee::{CommitteeEvent, EvaluationCommittee};
+use crate::cognitive::committee::EvaluationCommittee;
 use crate::cognitive::mcts::CodeState;
 use crate::cognitive::types::ImpactFactors;
 use crate::cognitive::types::{CognitiveError, OptimizationSpec};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
+use tracing::debug;
 
 /// Tracks performance metrics across evaluations
 #[derive(Debug, Clone)]

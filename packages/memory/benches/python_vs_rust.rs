@@ -1,13 +1,14 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use rand::{Rng, distributions::Alphanumeric};
+use rand::Rng;
+use rand::distr::Alphanumeric;
 use std::env;
 use std::path::Path;
 use std::process::Command;
-use surreal_memory::memory::{MemoryNode, MemoryType};
+use fluent_ai_memory::{MemoryNode, MemoryType};
 
 /// Generate random content of specified length
 fn random_content(length: usize) -> String {
-    rand::thread_rng()
+    rand::rng()
         .sample_iter(&Alphanumeric)
         .take(length)
         .map(char::from)
@@ -16,8 +17,8 @@ fn random_content(length: usize) -> String {
 
 /// Generate a random embedding vector of specified dimension
 fn random_embedding(dimension: usize) -> Vec<f32> {
-    let mut rng = rand::thread_rng();
-    (0..dimension).map(|_| rng.gen_range(-1.0..1.0)).collect()
+    let mut rng = rand::rng();
+    (0..dimension).map(|_| rng.random_range(-1.0..1.0)).collect()
 }
 
 /// Benchmark memory creation
@@ -54,6 +55,7 @@ fn bench_memory_with_embedding(c: &mut Criterion) {
 }
 
 /// Run Python comparison benchmarks (if Python is available)
+#[allow(dead_code)]
 fn run_python_comparison() {
     // Check if we can run the Python comparison
     let has_python = Command::new("python")
@@ -81,11 +83,11 @@ fn run_python_comparison() {
                     eprintln!("Python comparison benchmarks failed to run.");
                 }
                 Err(e) => {
-                    eprintln!("Failed to run Python comparison benchmarks: {}", e);
+                    eprintln!("Failed to run Python comparison benchmarks: {e}");
                 }
             }
         } else {
-            eprintln!("Python comparison script not found at: {:?}", python_script);
+            eprintln!("Python comparison script not found at: {python_script:?}");
         }
     } else {
         println!("Python not found. Skipping Python vs Rust comparison benchmarks.");

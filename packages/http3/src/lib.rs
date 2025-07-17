@@ -69,8 +69,10 @@ pub use middleware::{Middleware, MiddlewareChain};
 pub use config::HttpConfig;
 
 /// Global HTTP client instance with connection pooling
+/// Uses the Default implementation which provides graceful fallback handling
+/// in case the optimized configuration fails to initialize
 static GLOBAL_CLIENT: Lazy<Arc<HttpClient>> = Lazy::new(|| {
-    Arc::new(HttpClient::new().expect("Failed to initialize global HTTP client"))
+    Arc::new(HttpClient::default())
 });
 
 /// Get the global HTTP client instance

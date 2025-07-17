@@ -1,8 +1,10 @@
 // examples/cognitive_optimization.rs
 //! Example of using the cognitive optimization system
 
-use cyrup_memory::cognitive::{orchestrator::InfiniteOrchestrator, types::OptimizationSpec};
+#[cfg(feature = "cognitive")]
+use fluent_ai_memory::cognitive::{orchestrator::InfiniteOrchestrator, types::OptimizationSpec};
 
+#[cfg(feature = "cognitive")]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize logging
@@ -86,4 +88,10 @@ impl QuantumMemory {
     orchestrator.run_infinite().await?;
 
     Ok(())
+}
+
+#[cfg(not(feature = "cognitive"))]
+fn main() {
+    println!("This example requires the 'cognitive' feature to be enabled.");
+    println!("Run with: cargo run --example cognitive_optimization --features cognitive");
 }

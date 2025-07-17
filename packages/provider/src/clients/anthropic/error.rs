@@ -27,6 +27,12 @@ pub enum AnthropicError {
     ToolExecutionError { tool_name: String, error: String },
     /// Streaming error
     StreamError(String),
+    /// HTTP error
+    HttpError(String),
+    /// File operation error
+    FileError(String),
+    /// API error
+    ApiError(String),
     /// Generic error fallback
     Unknown(String),
 }
@@ -65,6 +71,15 @@ impl fmt::Display for AnthropicError {
             }
             AnthropicError::StreamError(msg) => {
                 write!(f, "Anthropic stream error: {}", msg)
+            }
+            AnthropicError::HttpError(msg) => {
+                write!(f, "Anthropic HTTP error: {}", msg)
+            }
+            AnthropicError::FileError(msg) => {
+                write!(f, "Anthropic file error: {}", msg)
+            }
+            AnthropicError::ApiError(msg) => {
+                write!(f, "Anthropic API error: {}", msg)
             }
             AnthropicError::Unknown(msg) => {
                 write!(f, "Unknown Anthropic error: {}", msg)

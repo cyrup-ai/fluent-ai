@@ -403,7 +403,7 @@ impl MemoryManager for SurrealDBMemoryManager {
 
             let result = match updated {
                 Some(schema) => Ok(SurrealDBMemoryManager::from_schema(schema)),
-                None => Err(Error::NotFound(format!("Memory with id {} not found", id))),
+                None => Err(Error::NotFound(format!("Memory with id {id} not found"))),
             };
 
             let _ = tx.send(result);
@@ -535,7 +535,7 @@ impl MemoryManager for SurrealDBMemoryManager {
             MemoryType::Episodic => "Episodic".to_string(),
             MemoryType::Semantic => "Semantic".to_string(),
             MemoryType::Procedural => "Procedural".to_string(),
-            MemoryType::Custom(name) => format!("Custom(\"{}\")", name),
+            MemoryType::Custom(name) => format!("Custom(\"{name}\")"),
         };
 
         let (tx, rx) = tokio::sync::mpsc::channel(100);
@@ -607,12 +607,11 @@ impl MemoryManager for SurrealDBMemoryManager {
 
             // Use SurrealDB's native vector similarity search
             let sql_query = format!(
-                "SELECT *, vector::similarity::cosine(metadata.embedding, {}) AS score 
+                "SELECT *, vector::similarity::cosine(metadata.embedding, {vector_json}) AS score 
                 FROM memory 
                 WHERE metadata.embedding != NULL 
                 ORDER BY score DESC 
-                LIMIT {};",
-                vector_json, limit
+                LIMIT {limit};"
             );
 
             match db.query(&sql_query).await {

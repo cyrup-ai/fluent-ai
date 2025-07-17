@@ -16,6 +16,7 @@ pub struct CognitiveState {
     pub processing_depth: f32,
     pub activation_level: f32,
     pub associations: Vec<Association>,
+    #[serde(skip)]
     pub timestamp: Instant,
 }
 

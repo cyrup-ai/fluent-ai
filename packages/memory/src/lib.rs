@@ -5,6 +5,7 @@
 pub mod api;
 #[cfg(feature = "cognitive")]
 pub mod cognitive;
+pub mod constants;
 pub mod graph;
 pub mod llm;
 pub mod memory;

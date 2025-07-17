@@ -24,7 +24,7 @@ pub mod quantum_orchestrator;
 
 // Re-exports for convenience
 pub use committee::{CommitteeEvent, EvaluationCommittee};
-pub use evolution::{CodeEvolution, CognitiveCodeEvolution};
+pub use evolution::{CodeEvolution, CognitiveCodeEvolution, EvolutionEngine, EvolutionResult, PerformanceMetrics};
 pub use mcts::{CodeState, MCTS};
 pub use orchestrator::InfiniteOrchestrator;
 pub use quantum_mcts::{QuantumMCTS, QuantumMCTSConfig, QuantumNodeState, QuantumTreeStatistics};

@@ -8,7 +8,7 @@ use crate::cognitive::{
     quantum::{EnhancedQuery, QuantumConfig, QuantumRouter, QueryIntent},
     state::CognitiveStateManager,
 };
-use crate::memory::{MemoryManager, MemoryNode, MemoryType};
+use crate::memory::{MemoryManager, MemoryNode, MemoryType, MemoryRelationship, memory_manager::{PendingMemory, MemoryQuery, PendingDeletion, RelationshipStream, MemoryStream, PendingRelationship}};
 use anyhow::Result;
 use std::future::Future;
 use std::pin::Pin;
@@ -86,7 +86,7 @@ impl CognitiveMemoryManager {
         let quantum_router = Arc::new(QuantumRouter::new(state_manager, quantum_config).await?);
 
         let evolution_engine = Arc::new(tokio::sync::RwLock::new(EvolutionEngine::new(
-            settings.evolution_rate,
+            settings.evolution_mutation_rate.into(),
         )));
 
         Ok(Self {
@@ -99,7 +99,7 @@ impl CognitiveMemoryManager {
     }
 
     /// Create LLM provider based on settings
-    fn create_llm_provider(settings: &CognitiveSettings) -> Result<Arc<dyn LLMProvider>> {
+    fn create_llm_provider(_settings: &CognitiveSettings) -> Result<Arc<dyn LLMProvider>> {
         // Placeholder - would create actual provider based on settings.llm_provider
         Ok(Arc::new(MockLLMProvider))
     }
@@ -255,93 +255,89 @@ impl CognitiveMemoryManager {
 
 // Implement MemoryManager trait for backward compatibility
 impl MemoryManager for CognitiveMemoryManager {
-    fn create_memory(
-        &self,
-        memory: MemoryNode,
-    ) -> Pin<Box<dyn Future<Output = Result<MemoryNode>> + Send + '_>> {
-        Box::pin(async move {
-            // Enhance memory with cognitive features
-            let cognitive_memory = self.enhance_memory_cognitively(memory).await?;
+    fn create_memory(&self, memory: MemoryNode) -> PendingMemory {
+        let manager = self.clone();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        
+        tokio::spawn(async move {
+            let result = async {
+                // Enhance memory with cognitive features
+                let cognitive_memory = manager.enhance_memory_cognitively(memory).await?;
 
-            // Store base memory
-            let stored = self
-                .legacy_manager
-                .create_memory(cognitive_memory.base.clone())
-                .await?;
+                // Store base memory
+                let stored = manager
+                    .legacy_manager
+                    .create_memory(cognitive_memory.base.clone())
+                    .await?;
 
-            // Store cognitive metadata
-            self.store_cognitive_metadata(&stored.id, &cognitive_memory)
-                .await?;
+                // Store cognitive metadata
+                manager.store_cognitive_metadata(&stored.id, &cognitive_memory)
+                    .await?;
 
-            Ok(stored)
-        })
+                Ok(stored)
+            }.await;
+            
+            let _ = tx.send(result);
+        });
+        
+        PendingMemory::new(rx)
     }
 
-    fn get_memory(
-        &self,
-        id: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<Option<MemoryNode>>> + Send + '_>> {
+    fn get_memory(&self, id: &str) -> MemoryQuery {
         self.legacy_manager.get_memory(id)
     }
 
-    fn update_memory(
-        &self,
-        memory: MemoryNode,
-    ) -> Pin<Box<dyn Future<Output = Result<MemoryNode>> + Send + '_>> {
-        Box::pin(async move {
-            // Update base memory
-            let updated = self.legacy_manager.update_memory(memory.clone()).await?;
+    fn update_memory(&self, memory: MemoryNode) -> PendingMemory {
+        let manager = self.clone();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        
+        tokio::spawn(async move {
+            let result = async {
+                // Update base memory
+                let updated = manager.legacy_manager.update_memory(memory.clone()).await?;
 
-            // Re-enhance if cognitive features are enabled
-            if self.settings.enabled {
-                let cognitive_memory = self.enhance_memory_cognitively(updated.clone()).await?;
-                self.store_cognitive_metadata(&updated.id, &cognitive_memory)
-                    .await?;
-            }
+                // Re-enhance if cognitive features are enabled
+                if manager.settings.enabled {
+                    let cognitive_memory = manager.enhance_memory_cognitively(updated.clone()).await?;
+                    manager.store_cognitive_metadata(&updated.id, &cognitive_memory)
+                        .await?;
+                }
 
-            Ok(updated)
-        })
+                Ok(updated)
+            }.await;
+            
+            let _ = tx.send(result);
+        });
+        
+        PendingMemory::new(rx)
     }
 
-    fn delete_memory(&self, id: &str) -> Pin<Box<dyn Future<Output = Result<()>> + Send + '_>> {
+    fn delete_memory(&self, id: &str) -> PendingDeletion {
         self.legacy_manager.delete_memory(id)
     }
 
-    fn search_by_content<'a>(
-        &'a self,
-        query: &'a str,
-    ) -> Pin<Box<dyn futures::Stream<Item = Result<MemoryNode>> + Send + 'a>> {
-        Box::pin(
-            futures::stream::unfold((self, query, false), |(manager, query, done)| async move {
-                if done {
-                    return None;
-                }
-
-                // For simple queries, use legacy search
-                let results = manager
-                    .legacy_manager
-                    .search_by_content(query)
-                    .collect::<Vec<_>>()
-                    .await;
-
-                // Convert to stream items
-                let mut items = Vec::new();
-                for result in results {
-                    items.push(result);
-                }
-
-                Some((futures::stream::iter(items), (manager, query, true)))
-            })
-            .flatten(),
-        )
+    fn search_by_content(&self, query: &str) -> MemoryStream {
+        self.legacy_manager.search_by_content(query)
     }
 
-    fn get_related_memories(
-        &self,
-        id: &str,
-        limit: usize,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<MemoryNode>>> + Send + '_>> {
-        self.legacy_manager.get_related_memories(id, limit)
+    fn create_relationship(&self, relationship: MemoryRelationship) -> PendingRelationship {
+        self.legacy_manager.create_relationship(relationship)
+    }
+
+    fn get_relationships(&self, memory_id: &str) -> RelationshipStream {
+        self.legacy_manager.get_relationships(memory_id)
+    }
+
+    fn delete_relationship(&self, id: &str) -> PendingDeletion {
+        self.legacy_manager.delete_relationship(id)
+    }
+
+    fn query_by_type(&self, memory_type: MemoryType) -> MemoryStream {
+        self.legacy_manager.query_by_type(memory_type)
+    }
+
+    fn search_by_vector(&self, vector: Vec<f32>, limit: usize) -> MemoryStream {
+        self.legacy_manager.search_by_vector(vector, limit)
     }
 }
 

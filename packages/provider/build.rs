@@ -673,70 +673,121 @@ fn generate_model_info_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn st
 }
 
 
-/// Add Provider trait implementation to providers.rs
+/// Add Provider trait implementation to providers.rs using syn/quote
 fn add_provider_trait_impl(providers: &[ProviderInfo]) -> Result<(), Box<dyn std::error::Error>> {
     let providers_path = Path::new("src/providers.rs");
     
-    let mut impl_content = String::new();
-    impl_content.push_str("use crate::models::Models;\n");
-    impl_content.push_str("use cyrup_sugars::ZeroOneOrMany;\n\n");
-    impl_content.push_str("impl Providers {\n");
+    // Generate provider variants for matching
+    let provider_variants: Vec<(Ident, String)> = providers
+        .iter()
+        .map(|p| {
+            let variant_name = to_pascal_case_optimized(&p.provider);
+            let variant_ident = syn::parse_str::<Ident>(&variant_name).unwrap();
+            (variant_ident, p.provider.clone())
+        })
+        .collect();
 
-    // Generate name() method
-    impl_content.push_str("    /// Get provider name as static string - zero allocation\n");
-    impl_content.push_str("    pub fn name(&self) -> &'static str {\n");
-    impl_content.push_str("        match self {\n");
-    for provider in providers {
-        let variant_name = to_pascal_case_optimized(&provider.provider);
-        impl_content.push_str(&format!(
-            "            Providers::{} => \"{}\",\n",
-            variant_name, provider.provider
-        ));
-    }
-    impl_content.push_str("        }\n");
-    impl_content.push_str("    }\n\n");
-
-    // Generate models() method
-    impl_content.push_str("    /// Get models for this provider - zero allocation\n");
-    impl_content.push_str("    pub fn models(&self) -> ZeroOneOrMany<Models> {\n");
-    impl_content.push_str("        match self {\n");
-    for provider in providers {
-        let variant_name = to_pascal_case_optimized(&provider.provider);
-        let model_variants: Vec<_> = provider
-            .models
-            .iter()
-            .map(|m| to_pascal_case_optimized(&m.name))
-            .collect();
-
-        if model_variants.len() == 1 {
-            impl_content.push_str(&format!(
-                "            Providers::{} => ZeroOneOrMany::One(Models::{}),\n",
-                variant_name, model_variants[0]
-            ));
-        } else if model_variants.is_empty() {
-            impl_content.push_str(&format!(
-                "            Providers::{} => ZeroOneOrMany::Zero,\n",
-                variant_name
-            ));
-        } else {
-            impl_content.push_str(&format!(
-                "            Providers::{} => ZeroOneOrMany::Many(vec![\n",
-                variant_name
-            ));
-            for model_variant in &model_variants {
-                impl_content.push_str(&format!("                Models::{},\n", model_variant));
+    // Generate name() method match arms
+    let name_match_arms: Vec<_> = provider_variants
+        .iter()
+        .map(|(variant_ident, provider_name)| {
+            quote! {
+                Providers::#variant_ident => #provider_name
             }
-            impl_content.push_str("            ]),\n");
+        })
+        .collect();
+
+    // Generate models() method match arms
+    let models_match_arms: Vec<_> = providers
+        .iter()
+        .map(|provider| {
+            let variant_name = to_pascal_case_optimized(&provider.provider);
+            let variant_ident = syn::parse_str::<Ident>(&variant_name).unwrap();
+            
+            let model_variants: Vec<Ident> = provider
+                .models
+                .iter()
+                .map(|m| {
+                    let model_variant = to_pascal_case_optimized(&m.name);
+                    syn::parse_str::<Ident>(&model_variant).unwrap()
+                })
+                .collect();
+
+            match model_variants.len() {
+                0 => quote! {
+                    Providers::#variant_ident => ZeroOneOrMany::Zero
+                },
+                1 => {
+                    let model = &model_variants[0];
+                    quote! {
+                        Providers::#variant_ident => ZeroOneOrMany::One(Models::#model)
+                    }
+                },
+                _ => quote! {
+                    Providers::#variant_ident => ZeroOneOrMany::Many(vec![
+                        #(Models::#model_variants),*
+                    ])
+                }
+            }
+        })
+        .collect();
+
+    // Generate from_name() method match arms
+    let mut from_name_arms = Vec::new();
+    for provider in providers {
+        let variant_name = to_pascal_case_optimized(&provider.provider);
+        let variant_ident = syn::parse_str::<Ident>(&variant_name).unwrap();
+        let provider_name = &provider.provider;
+        
+        // Add common aliases for major providers
+        let aliases = match provider_name.as_str() {
+            "openai" => vec!["openai", "gpt"],
+            "anthropic" => vec!["anthropic", "claude"],
+            "gemini" => vec!["gemini", "google"],
+            _ => vec![provider_name.as_str()],
+        };
+        
+        for alias in aliases {
+            from_name_arms.push(quote! {
+                #alias => Some(Providers::#variant_ident)
+            });
         }
     }
-    impl_content.push_str("        }\n");
-    impl_content.push_str("    }\n");
-    impl_content.push_str("}\n");
 
-    // Read existing providers.rs file and append the implementation
+    // Generate the complete implementation using quote
+    let impl_block = quote! {
+        use crate::models::Models;
+        use cyrup_sugars::ZeroOneOrMany;
+
+        impl Providers {
+            /// Get provider name as static string - zero allocation
+            pub fn name(&self) -> &'static str {
+                match self {
+                    #(#name_match_arms,)*
+                }
+            }
+
+            /// Get models for this provider - zero allocation
+            pub fn models(&self) -> ZeroOneOrMany<Models> {
+                match self {
+                    #(#models_match_arms,)*
+                }
+            }
+
+            /// Create a Providers enum from a name string - only implemented providers
+            pub fn from_name(name: &str) -> Option<Self> {
+                match name {
+                    #(#from_name_arms,)*
+                    _ => None,
+                }
+            }
+        }
+    };
+
+    // Read existing providers.rs file and replace auto-generated section
     if providers_path.exists() {
         let existing = fs::read_to_string(providers_path)?;
-        let updated = replace_auto_generated_section(&existing, &impl_content);
+        let updated = replace_auto_generated_section(&existing, &impl_block.to_string());
         
         // Only write if content changed
         if existing != updated {

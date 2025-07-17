@@ -20,6 +20,6 @@ pub fn generate_id() -> String {
 /// Convert timestamp to ISO8601 string
 pub fn timestamp_to_iso8601(timestamp_ms: u64) -> String {
     let datetime = chrono::DateTime::<Utc>::from_timestamp_millis(timestamp_ms as i64)
-        .unwrap_or_else(|| Utc::now());
+        .unwrap_or_else(Utc::now);
     datetime.to_rfc3339()
 }

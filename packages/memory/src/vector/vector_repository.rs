@@ -75,8 +75,7 @@ impl VectorRepository {
 
         if collections.contains_key(&name) {
             return Err(crate::utils::error::Error::AlreadyExists(format!(
-                "Collection '{}' already exists",
-                name
+                "Collection '{name}' already exists"
             )));
         }
 
@@ -116,8 +115,7 @@ impl VectorRepository {
 
         if collections.remove(name).is_none() {
             return Err(crate::utils::error::Error::NotFound(format!(
-                "Collection '{}' not found",
-                name
+                "Collection '{name}' not found"
             )));
         }
 
@@ -132,7 +130,7 @@ impl VectorRepository {
             .get(name)
             .map(|handle| handle.metadata.clone())
             .ok_or_else(|| {
-                crate::utils::error::Error::NotFound(format!("Collection '{}' not found", name))
+                crate::utils::error::Error::NotFound(format!("Collection '{name}' not found"))
             })
     }
 

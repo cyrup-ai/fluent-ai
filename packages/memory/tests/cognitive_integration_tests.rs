@@ -1,7 +1,9 @@
 //! Integration tests for the Cognitive Memory System
 
+#![cfg(feature = "cognitive")]
+
 use std::time::Duration;
-use surreal_memory::{
+use fluent_ai_memory::{
     CognitiveMemoryManager, CognitiveSettings, MemoryManager, MemoryNode, MemoryType,
 };
 
@@ -51,7 +53,7 @@ async fn test_cognitive_enhancement() {
         MemoryType::Semantic,
     );
 
-    let cognitive_memory = surreal_memory::CognitiveMemoryNode::from(base_memory);
+    let cognitive_memory = fluent_ai_memory::CognitiveMemoryNode::from(base_memory);
 
     assert!(!cognitive_memory.is_enhanced());
     assert_eq!(
@@ -120,10 +122,10 @@ async fn test_cognitive_search() {
 #[tokio::test]
 async fn test_quantum_routing_performance() {
     use std::sync::Arc;
-    use surreal_memory::cognitive::quantum::{
+    use fluent_ai_memory::cognitive::quantum::{
         EnhancedQuery, QuantumConfig, QuantumRouter, QueryIntent,
     };
-    use surreal_memory::cognitive::state::CognitiveStateManager;
+    use fluent_ai_memory::cognitive::state::CognitiveStateManager;
 
     let state_manager = Arc::new(CognitiveStateManager::new());
     let config = QuantumConfig::default();
@@ -154,14 +156,14 @@ async fn test_quantum_routing_performance() {
 #[tokio::test]
 async fn test_memory_usage() {
     use std::sync::Arc;
-    use surreal_memory::cognitive::quantum::QuantumRouter;
-    use surreal_memory::cognitive::state::CognitiveStateManager;
+    use fluent_ai_memory::cognitive::quantum::QuantumRouter;
+    use fluent_ai_memory::cognitive::state::CognitiveStateManager;
 
     let initial_memory = get_current_memory_usage();
 
     // Create cognitive components
     let state_manager = Arc::new(CognitiveStateManager::new());
-    let config = surreal_memory::cognitive::quantum::QuantumConfig::default();
+    let config = fluent_ai_memory::cognitive::quantum::QuantumConfig::default();
     let _router = QuantumRouter::new(state_manager, config)
         .await
         .expect("Failed to create quantum router");
@@ -169,12 +171,12 @@ async fn test_memory_usage() {
     // Simulate some operations
     for _ in 0..100 {
         // Create temporary states that should be garbage collected
-        let _state = surreal_memory::CognitiveState::new(
-            surreal_memory::cognitive::state::SemanticContext {
+        let _state = fluent_ai_memory::CognitiveState::new(
+            fluent_ai_memory::cognitive::state::SemanticContext {
                 primary_concepts: vec!["test".to_string()],
                 secondary_concepts: vec![],
                 domain_tags: vec![],
-                abstraction_level: surreal_memory::cognitive::state::AbstractionLevel::Concrete,
+                abstraction_level: fluent_ai_memory::cognitive::state::AbstractionLevel::Concrete,
             },
         );
     }
@@ -195,7 +197,7 @@ async fn test_memory_usage() {
 #[tokio::test]
 async fn test_evolution_engine() {
     use std::time::Duration;
-    use surreal_memory::cognitive::evolution::{EvolutionEngine, PerformanceMetrics};
+    use fluent_ai_memory::cognitive::evolution::{EvolutionEngine, PerformanceMetrics};
 
     let mut engine = EvolutionEngine::new(0.1);
 
@@ -224,7 +226,7 @@ async fn test_evolution_engine() {
 /// Test attention mechanism for memory retrieval
 #[tokio::test]
 async fn test_attention_mechanism() {
-    use surreal_memory::cognitive::attention::{AttentionConfig, AttentionMechanism};
+    use fluent_ai_memory::cognitive::attention::{AttentionConfig, AttentionMechanism};
 
     let config = AttentionConfig {
         num_heads: 4,

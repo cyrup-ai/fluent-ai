@@ -74,7 +74,7 @@ impl DataExporter {
                 let values: Vec<String> = map
                     .values()
                     .map(|v| match v {
-                        serde_json::Value::String(s) => format!("\"{}\"", s),
+                        serde_json::Value::String(s) => format!("\"{s}\""),
                         _ => v.to_string(),
                     })
                     .collect();
@@ -91,7 +91,7 @@ impl DataExporter {
         T: bincode::Encode,
     {
         let bytes = bincode::encode_to_vec(data, bincode::config::standard()).map_err(|e| {
-            MigrationError::UnsupportedFormat(format!("Binary encoding failed: {}", e))
+            MigrationError::UnsupportedFormat(format!("Binary encoding failed: {e}"))
         })?;
         let mut file = File::create(path)?;
         file.write_all(&bytes)?;

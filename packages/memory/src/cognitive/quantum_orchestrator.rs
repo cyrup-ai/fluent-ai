@@ -185,14 +185,15 @@ impl QuantumOrchestrator {
         *self.recursive_states.write().await = recursive_states;
 
         // Create optimization outcome
-        Ok(OptimizationOutcome {
-            optimized_code: current_state.code,
-            improvement_percentage: total_improvement * 100.0,
-            applied_techniques: vec![
+        Ok(OptimizationOutcome::Success {
+            improvements: vec![
                 "quantum_mcts".to_string(),
                 "recursive_improvement".to_string(),
+                format!("Total improvement: {:.2}%", total_improvement * 100.0),
             ],
-            metrics: self.collect_final_metrics(&current_state).await?,
+            performance_gain: total_improvement * 100.0,
+            quality_score: current_state.relevance * 100.0,
+            metadata: self.collect_final_metrics(&current_state).await?,
         })
     }
 

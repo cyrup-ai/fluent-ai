@@ -5,6 +5,7 @@
 //! including transitions, relationships between versions, and
 //! analysis of memory development patterns.
 
+use crate::constants::{EMPTY_STRING, METADATA_PREFIX};
 use crate::graph::entity::{BaseEntity, Entity};
 use crate::utils::Result;
 use crate::utils::error::Error;
@@ -44,8 +45,12 @@ impl TransitionType {
         }
     }
 
-    /// Parse from string
-    pub fn from_str(s: &str) -> Result<Self> {
+}
+
+impl std::str::FromStr for TransitionType {
+    type Err = Error;
+    
+    fn from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "linear" => Ok(TransitionType::Linear),
             "branching" => Ok(TransitionType::Branching),
@@ -64,12 +69,13 @@ impl TransitionType {
                 }
             }
             _ => Err(Error::ValidationError(format!(
-                "Invalid transition type: {}",
-                s
+                "Invalid transition type: {s}"
             ))),
         }
     }
+}
 
+impl TransitionType {
     /// Convert to value
     pub fn to_value(&self) -> Value {
         match self {
@@ -78,14 +84,14 @@ impl TransitionType {
             TransitionType::Merging => Value::Strand("merging".into()),
             TransitionType::Restoration => Value::Strand("restoration".into()),
             TransitionType::Deletion => Value::Strand("deletion".into()),
-            TransitionType::Custom(code) => Value::Strand(format!("custom{}", code).into()),
+            TransitionType::Custom(code) => Value::Strand(format!("custom{code}").into()),
         }
     }
 
     /// Create from value
     pub fn from_value(value: &Value) -> Result<Self> {
         if let Value::Strand(s) = value {
-            Self::from_str(&s.to_string())
+            s.to_string().parse()
         } else {
             Err(Error::ConversionError(
                 "Invalid transition type value".to_string(),
@@ -131,8 +137,8 @@ impl EvolutionTransition {
         let now = Utc::now();
 
         // Set primary version IDs from first elements of vectors
-        let from_version_id = source_version_ids.first().unwrap_or(&String::new()).clone();
-        let to_version_id = target_version_ids.first().unwrap_or(&String::new()).clone();
+        let from_version_id = source_version_ids.first().cloned().unwrap_or_else(|| EMPTY_STRING.to_string());
+        let to_version_id = target_version_ids.first().cloned().unwrap_or_else(|| EMPTY_STRING.to_string());
 
         Self {
             id: id.to_string(),
@@ -272,7 +278,7 @@ impl EvolutionTransition {
 
         // Add metadata
         for (key, value) in &self.metadata {
-            entity = entity.with_attribute(&format!("metadata_{}", key), value.clone());
+            entity = entity.with_attribute(&format!("metadata_{key}"), value.clone());
         }
 
         entity
@@ -345,10 +351,10 @@ impl EvolutionTransition {
         // Extract metadata
         let mut metadata = HashMap::new();
         for (key, value) in entity.attributes() {
-            if key.starts_with("metadata_") {
-                let metadata_key = key.strip_prefix("metadata_").unwrap().to_string();
-                metadata.insert(metadata_key, value.clone());
-            }
+            if key.starts_with(METADATA_PREFIX)
+                && let Some(metadata_key) = key.strip_prefix(METADATA_PREFIX) {
+                    metadata.insert(metadata_key.to_string(), value.clone());
+                }
         }
 
         Ok(Self {
@@ -480,15 +486,13 @@ impl EvolutionGraph {
         // Check if versions exist
         if !self.version_ids.contains(from_version_id) {
             return Err(Error::NotFound(format!(
-                "Version {} not found",
-                from_version_id
+                "Version {from_version_id} not found"
             )));
         }
 
         if !self.version_ids.contains(to_version_id) {
             return Err(Error::NotFound(format!(
-                "Version {} not found",
-                to_version_id
+                "Version {to_version_id} not found"
             )));
         }
 
@@ -505,7 +509,7 @@ impl EvolutionGraph {
                 for target_id in &transition.target_version_ids {
                     graph
                         .entry(source_id.clone())
-                        .or_insert_with(Vec::new)
+                        .or_default()
                         .push((target_id.clone(), transition));
                 }
             }
@@ -529,7 +533,7 @@ impl EvolutionGraph {
                     if let Some(transition) = self
                         .transitions
                         .iter()
-                        .find(|t| &t.from_version_id == parent_id && &t.to_version_id == current_id)
+                        .find(|t| &t.from_version_id == parent_id && t.to_version_id == current_id)
                     {
                         path.push(transition);
                     }
@@ -556,8 +560,7 @@ impl EvolutionGraph {
         }
 
         Err(Error::NotFound(format!(
-            "No evolution path found from version {} to {}",
-            from_version_id, to_version_id
+            "No evolution path found from version {from_version_id} to {to_version_id}"
         )))
     }
 }

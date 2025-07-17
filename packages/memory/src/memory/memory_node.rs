@@ -28,7 +28,7 @@ impl fmt::Display for MemoryType {
             MemoryType::Episodic => write!(f, "episodic"),
             MemoryType::Semantic => write!(f, "semantic"),
             MemoryType::Procedural => write!(f, "procedural"),
-            MemoryType::Custom(name) => write!(f, "custom:{}", name),
+            MemoryType::Custom(name) => write!(f, "custom:{name}"),
         }
     }
 }

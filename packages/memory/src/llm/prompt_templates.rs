@@ -45,9 +45,9 @@ impl PromptTemplate {
 
         for variable in &self.variables {
             if let Some(value) = values.get(variable) {
-                result = result.replace(&format!("{{{{{}}}}}", variable), value);
+                result = result.replace(&format!("{{{{{variable}}}}}"), value);
             } else {
-                return Err(format!("Missing value for variable: {}", variable));
+                return Err(format!("Missing value for variable: {variable}"));
             }
         }
 
@@ -208,7 +208,7 @@ impl PromptManager {
         values: &HashMap<String, String>,
     ) -> Result<String, String> {
         self.get_template(template_name)
-            .ok_or_else(|| format!("Template '{}' not found", template_name))?
+            .ok_or_else(|| format!("Template '{template_name}' not found"))?
             .format(values)
     }
 }

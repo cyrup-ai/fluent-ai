@@ -61,21 +61,21 @@ impl LLMProvider for AnthropicProvider {
 
             let result = async {
                 let response = client
-                    .post(format!("{}/messages", api_base))
+                    .post(format!("{api_base}/messages"))
                     .header("x-api-key", api_key)
                     .header("anthropic-version", "2023-06-01")
                     .header("content-type", "application/json")
                     .json(&request)
                     .send()
                     .await
-                    .map_err(|e| LLMError::NetworkError(e))?;
+                    .map_err(LLMError::NetworkError)?;
 
                 match response.status() {
                     StatusCode::OK => {
                         let completion: CompletionResponse = response
                             .json()
                             .await
-                            .map_err(|e| LLMError::NetworkError(e))?;
+                            .map_err(LLMError::NetworkError)?;
 
                         completion
                             .content

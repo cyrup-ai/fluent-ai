@@ -39,7 +39,7 @@ impl StepStatus {
     }
 
     /// Parse from string
-    pub fn from_str(s: &str) -> Result<Self> {
+    pub fn parse_from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "pending" => Ok(StepStatus::Pending),
             "executing" => Ok(StepStatus::Executing),
@@ -47,8 +47,7 @@ impl StepStatus {
             "failed" => Ok(StepStatus::Failed),
             "skipped" => Ok(StepStatus::Skipped),
             _ => Err(GraphError::ValidationError(format!(
-                "Invalid step status: {}",
-                s
+                "Invalid step status: {s}"
             ))),
         }
     }
@@ -76,14 +75,13 @@ impl ConditionType {
     }
 
     /// Parse from string
-    pub fn from_str(s: &str) -> Result<Self> {
+    pub fn parse_from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "prerequisite" => Ok(ConditionType::Prerequisite),
             "postcondition" => Ok(ConditionType::Postcondition),
             "invariant" => Ok(ConditionType::Invariant),
             _ => Err(GraphError::ValidationError(format!(
-                "Invalid condition type: {}",
-                s
+                "Invalid condition type: {s}"
             ))),
         }
     }
@@ -188,7 +186,7 @@ impl Condition {
             };
 
             let condition_type = if let Some(Value::Strand(s)) = obj.get("condition_type") {
-                ConditionType::from_str(&s.to_string())?
+                ConditionType::parse_from_str(&s.to_string())?
             } else {
                 return Err(GraphError::ConversionError(
                     "Missing condition_type in condition".to_string(),
@@ -360,7 +358,7 @@ impl Step {
 
         let mut metadata_obj = Object::default();
         for (key, value) in &self.metadata {
-            metadata_obj.insert(key.clone().into(), value.clone());
+            metadata_obj.insert(key.clone(), value.clone());
         }
         obj.insert("metadata".into(), Value::Object(metadata_obj));
 
@@ -411,7 +409,7 @@ impl Step {
             };
 
             let status = if let Some(Value::Strand(s)) = obj.get("status") {
-                StepStatus::from_str(&s.to_string())?
+                StepStatus::parse_from_str(&s.to_string())?
             } else {
                 StepStatus::Pending
             };
