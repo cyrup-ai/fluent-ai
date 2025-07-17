@@ -32,6 +32,12 @@ pub enum TranscriptionError {
 
     #[error("response parse: {0}")]
     Response(String),
+    
+    #[error("file not found: {0}")]
+    FileNotFound(String),
+    
+    #[error("invalid filename: {0}")]
+    InvalidFilename(String),
 
     #[error("provider: {0}")]
     Provider(String),
@@ -112,16 +118,22 @@ impl<M: TranscriptionModel> TranscriptionRequestBuilder<M> {
     }
 
     #[inline(always)]
-    pub fn load_file<P: AsRef<Path>>(self, path: P) -> Self {
+    pub fn load_file<P: AsRef<Path>>(self, path: P) -> Result<Self, TranscriptionError> {
         let p = path.as_ref();
-        let bytes = fs::read(p).expect("file not found");
-        self.data(bytes).filename(
-            p.file_name()
-                .expect("not a file")
-                .to_str()
-                .expect("non-utf8 filename")
-                .to_owned(),
-        )
+        let bytes = match fs::read(p) {
+            Ok(data) => data,
+            Err(e) => return Err(TranscriptionError::FileNotFound(e.to_string())),
+        };
+        
+        let filename = match p.file_name() {
+            Some(name) => match name.to_str() {
+                Some(str_name) => str_name.to_owned(),
+                None => return Err(TranscriptionError::InvalidFilename("Non-UTF8 filename".to_string())),
+            },
+            None => return Err(TranscriptionError::InvalidFilename("Not a file".to_string())),
+        };
+        
+        Ok(self.data(bytes).filename(filename))
     }
 
     #[inline(always)]

@@ -447,7 +447,13 @@ impl QueryMemory {
             
             match results.len() {
                 0 => ZeroOneOrMany::None,
-                1 => ZeroOneOrMany::One(results.into_iter().next().unwrap()),
+                1 => {
+                    if let Some(result) = results.into_iter().next() {
+                        ZeroOneOrMany::One(result)
+                    } else {
+                        ZeroOneOrMany::None
+                    }
+                },
                 _ => ZeroOneOrMany::from_vec(results),
             }
         })

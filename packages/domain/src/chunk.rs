@@ -240,21 +240,6 @@ impl DocumentChunk {
             metadata: HashMap::new(),
         }
     }
-
-    pub fn with_path(mut self, path: PathBuf) -> Self {
-        self.path = Some(path);
-        self
-    }
-
-    pub fn with_range(mut self, start: usize, end: usize) -> Self {
-        self.byte_range = Some((start, end));
-        self
-    }
-
-    pub fn with_metadata(mut self, key: impl Into<String>, value: Value) -> Self {
-        self.metadata.insert(key.into(), value);
-        self
-    }
 }
 
 impl ChatMessageChunk {
@@ -265,11 +250,6 @@ impl ChatMessageChunk {
             is_final: false,
             metadata: HashMap::new(),
         }
-    }
-
-    pub fn final_chunk(mut self) -> Self {
-        self.is_final = true;
-        self
     }
 }
 
@@ -363,16 +343,6 @@ impl LegacyCompletionChunk {
             finish_reason: None,
             usage: None,
         }
-    }
-
-    pub fn finished(mut self, reason: FinishReason) -> Self {
-        self.finish_reason = Some(reason);
-        self
-    }
-
-    pub fn with_usage(mut self, usage: Usage) -> Self {
-        self.usage = Some(usage);
-        self
     }
 
     /// Convert to new CompletionChunk format

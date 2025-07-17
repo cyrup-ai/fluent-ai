@@ -92,7 +92,15 @@ pub fn register_engine<E: Engine + 'static>(name: String, engine: E) {
             REGISTRY = Some(Arc::new(EngineRegistry::new()));
         }
         if let Some(registry) = &mut REGISTRY {
-            Arc::get_mut(registry).unwrap().register(name, engine);
+            match Arc::get_mut(registry) {
+                Some(registry_mut) => registry_mut.register(name, engine),
+                None => {
+                    // Registry is shared, create new one with the engine
+                    let mut new_registry = EngineRegistry::new();
+                    new_registry.register(name, engine);
+                    REGISTRY = Some(Arc::new(new_registry));
+                }
+            }
         }
     }
 }
@@ -103,7 +111,15 @@ pub fn registry() -> Arc<EngineRegistry> {
         if REGISTRY.is_none() {
             REGISTRY = Some(Arc::new(EngineRegistry::new()));
         }
-        REGISTRY.as_ref().unwrap().clone()
+        match REGISTRY.as_ref() {
+            Some(registry) => registry.clone(),
+            None => {
+                // Initialize with empty registry
+                let registry = Arc::new(EngineRegistry::new());
+                REGISTRY = Some(registry.clone());
+                registry
+            }
+        }
     }
 }
 

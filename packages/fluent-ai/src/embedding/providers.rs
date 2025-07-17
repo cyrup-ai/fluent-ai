@@ -135,17 +135,19 @@ pub struct EmbeddingUsage {
 impl OpenAIEmbeddingProvider {
     /// Create new OpenAI embedding provider
     #[inline(always)]
-    pub fn new(api_key: impl Into<String>) -> Self {
-        let client = HttpClient::with_config(HttpConfig::ai_optimized())
-            .expect("Failed to create HTTP3 client for OpenAI embeddings");
+    pub fn new(api_key: impl Into<String>) -> Result<Self, EmbeddingError> {
+        let client = match HttpClient::with_config(HttpConfig::ai_optimized()) {
+            Ok(client) => client,
+            Err(e) => return Err(EmbeddingError::ConfigurationError(format!("Failed to create HTTP3 client: {:?}", e))),
+        };
 
-        Self {
+        Ok(Self {
             client,
             api_key: api_key.into(),
             base_url: "https://api.openai.com/v1".to_string(),
             default_model: "text-embedding-3-large".to_string(),
             request_timeout: Duration::from_secs(120),
-        }
+        })
     }
 
     /// Create provider with custom model
@@ -398,17 +400,19 @@ pub struct CohereEmbeddingProvider {
 impl CohereEmbeddingProvider {
     /// Create new Cohere embedding provider
     #[inline(always)]
-    pub fn new(api_key: impl Into<String>) -> Self {
-        let client = HttpClient::with_config(HttpConfig::ai_optimized())
-            .expect("Failed to create HTTP3 client for Cohere embeddings");
+    pub fn new(api_key: impl Into<String>) -> Result<Self, EmbeddingError> {
+        let client = match HttpClient::with_config(HttpConfig::ai_optimized()) {
+            Ok(client) => client,
+            Err(e) => return Err(EmbeddingError::ConfigurationError(format!("Failed to create HTTP3 client: {:?}", e))),
+        };
 
-        Self {
+        Ok(Self {
             client,
             api_key: api_key.into(),
             base_url: "https://api.cohere.ai/v1".to_string(),
             default_model: "embed-english-v3.0".to_string(),
             request_timeout: Duration::from_secs(120),
-        }
+        })
     }
 
     /// Create provider with custom model

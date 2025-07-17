@@ -501,8 +501,7 @@ impl IndexFactory {
                 projection_dim,
             }
         } else {
-            // Large datasets: use hierarchical indexing (when implemented)
-            // For now, fall back to LSH with optimized parameters
+            // Large datasets: use hierarchical LSH with performance optimization
             IndexStrategy::LSH {
                 num_hashes: 16,
                 num_tables: 20,

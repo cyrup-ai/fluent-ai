@@ -281,8 +281,10 @@ impl<M: CompletionModel> CompletionRequestBuilder<M> {
     pub fn build(self) -> CompletionRequest {
         CompletionRequest {
             preamble: self.preamble,
-            chat_history: OneOrMany::many([self.chat_history, vec![self.prompt]].concat())
-                .expect("prompt present"),
+            chat_history: match OneOrMany::many([self.chat_history, vec![self.prompt]].concat()) {
+                Ok(history) => history,
+                Err(_) => OneOrMany::One(self.prompt),
+            },
             documents: self.documents,
             tools: self.tools,
             temperature: self.temperature,

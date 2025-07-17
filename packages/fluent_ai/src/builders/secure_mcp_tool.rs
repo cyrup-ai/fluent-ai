@@ -118,12 +118,26 @@ impl SecureMcpToolBuilder {
         self
     }
     
+    /// Set execution timeout - EXACT syntax: .with_timeout(seconds)
+    #[inline]
+    pub fn with_timeout(mut self, seconds: u64) -> Self {
+        self.timeout_seconds = seconds;
+        self
+    }
+    
     /// Set memory limit in bytes
     /// 
     /// # Arguments
     /// * `bytes` - Maximum memory usage
     #[inline]
     pub fn memory_limit(mut self, bytes: u64) -> Self {
+        self.memory_limit = Some(bytes);
+        self
+    }
+    
+    /// Set memory limit - EXACT syntax: .with_memory_limit(bytes)
+    #[inline]
+    pub fn with_memory_limit(mut self, bytes: u64) -> Self {
         self.memory_limit = Some(bytes);
         self
     }
@@ -144,6 +158,13 @@ impl SecureMcpToolBuilder {
     /// * `cores` - Maximum number of CPU cores
     #[inline]
     pub fn cpu_limit(mut self, cores: u32) -> Self {
+        self.cpu_limit = Some(cores);
+        self
+    }
+    
+    /// Set CPU core limit - EXACT syntax: .with_cpu_limit(cores)
+    #[inline]
+    pub fn with_cpu_limit(mut self, cores: u32) -> Self {
         self.cpu_limit = Some(cores);
         self
     }

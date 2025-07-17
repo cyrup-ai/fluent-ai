@@ -115,8 +115,10 @@ impl<R: Clone + Unpin> Stream for StreamingCompletionResponse<R> {
                     if !me.text_buf.trim().is_empty() {
                         aggregated.insert(0, AssistantContent::Text(me.text_buf.clone().into()));
                     }
-                    me.choice =
-                        OneOrMany::many(aggregated).expect("at least one assistant message");
+                    me.choice = match OneOrMany::many(aggregated) {
+                        Ok(messages) => messages,
+                        Err(_) => OneOrMany::One(AssistantContent::Text("".into())),
+                    };
                 }
                 Poll::Pending
             }

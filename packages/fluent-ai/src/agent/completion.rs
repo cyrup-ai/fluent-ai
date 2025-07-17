@@ -97,7 +97,10 @@ impl<M: CompletionModelTrait> Completion<M> for Agent<M> {
             return Ok(req.tools(static_defs));
         }
 
-        let rag_seed = rag_seed.unwrap();
+        let rag_seed = match rag_seed {
+            Some(seed) => seed,
+            None => return Err(CompletionError::RequestError(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Missing RAG seed")))),
+        };
 
         /* --------------------------------------------------------- */
         /* 3. Dynamic context (vector stores)                        */
@@ -194,9 +197,14 @@ impl<M: CompletionModelTrait> Prompt for Agent<M> {
     type PromptedBuilder = PromptRequest<'static, M>;
     
     fn prompt(self, prompt: impl ToString) -> Result<Self::PromptedBuilder, PromptError> {
-        // This is a temporary fix - we need to properly handle the lifetime
-        // For now, let's return an error to indicate this needs more work
-        Err(PromptError::PromptFailed("Prompt implementation needs lifetime fix".to_string()))
+        // Create a PromptRequest with proper lifetime management
+        let prompt_text = prompt.to_string();
+        let prompt_request = PromptRequest {
+            agent: self,
+            prompt: prompt_text,
+            _phantom: std::marker::PhantomData,
+        };
+        Ok(prompt_request)
     }
 }
 

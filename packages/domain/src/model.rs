@@ -30,164 +30,26 @@ pub struct ModelInfo {
     pub supports_vision: Option<bool>,
     /// Whether the model supports function calling
     pub supports_function_calling: Option<bool>,
+    /// Whether the model supports streaming responses
+    pub supports_streaming: Option<bool>,
+    /// Whether the model supports embedding generation
+    pub supports_embedding: Option<bool>,
+    /// Whether the model supports multimodal inputs
+    pub supports_multimodal: Option<bool>,
+    /// Whether the model supports real-time processing
+    pub supports_realtime: Option<bool>,
+    /// Whether the model supports fine-tuning
+    pub supports_fine_tuning: Option<bool>,
+    /// Whether the model supports batch processing
+    pub supports_batch_processing: Option<bool>,
     /// Whether the model requires max_tokens parameter
     pub require_max_tokens: Option<bool>,
-    /// Model capabilities - cached for performance
-    pub capabilities: ModelCapabilities,
     /// Token limits - optimized structure
     pub token_limits: TokenLimits,
     /// Pricing information - optimized structure
     pub pricing: ModelPricing,
 }
 
-/// High-performance model capabilities with bit-packed flags
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct ModelCapabilities {
-    /// Packed capability flags for zero-allocation access
-    flags: u32,
-}
-
-impl ModelCapabilities {
-    /// Vision support flag bit
-    const VISION_FLAG: u32 = 1 << 0;
-    /// Function calling support flag bit
-    const FUNCTION_CALLING_FLAG: u32 = 1 << 1;
-    /// Streaming support flag bit
-    const STREAMING_FLAG: u32 = 1 << 2;
-    /// Embedding support flag bit
-    const EMBEDDING_FLAG: u32 = 1 << 3;
-    /// Multimodal support flag bit
-    const MULTIMODAL_FLAG: u32 = 1 << 4;
-    /// Real-time support flag bit
-    const REALTIME_FLAG: u32 = 1 << 5;
-    /// Fine-tuning support flag bit
-    const FINE_TUNING_FLAG: u32 = 1 << 6;
-    /// Batch processing support flag bit
-    const BATCH_PROCESSING_FLAG: u32 = 1 << 7;
-
-    /// Create new capabilities with all flags disabled
-    #[inline]
-    pub const fn new() -> Self {
-        Self { flags: 0 }
-    }
-
-    /// Create capabilities with all features enabled
-    #[inline]
-    pub const fn all() -> Self {
-        Self { flags: u32::MAX }
-    }
-
-    /// Check if vision is supported - zero allocation
-    #[inline]
-    pub const fn has_vision(&self) -> bool {
-        self.flags & Self::VISION_FLAG != 0
-    }
-
-    /// Check if function calling is supported - zero allocation
-    #[inline]
-    pub const fn has_function_calling(&self) -> bool {
-        self.flags & Self::FUNCTION_CALLING_FLAG != 0
-    }
-
-    /// Check if streaming is supported - zero allocation
-    #[inline]
-    pub const fn has_streaming(&self) -> bool {
-        self.flags & Self::STREAMING_FLAG != 0
-    }
-
-    /// Check if embedding is supported - zero allocation
-    #[inline]
-    pub const fn has_embedding(&self) -> bool {
-        self.flags & Self::EMBEDDING_FLAG != 0
-    }
-
-    /// Check if multimodal is supported - zero allocation
-    #[inline]
-    pub const fn has_multimodal(&self) -> bool {
-        self.flags & Self::MULTIMODAL_FLAG != 0
-    }
-
-    /// Check if real-time is supported - zero allocation
-    #[inline]
-    pub const fn has_realtime(&self) -> bool {
-        self.flags & Self::REALTIME_FLAG != 0
-    }
-
-    /// Check if fine-tuning is supported - zero allocation
-    #[inline]
-    pub const fn has_fine_tuning(&self) -> bool {
-        self.flags & Self::FINE_TUNING_FLAG != 0
-    }
-
-    /// Check if batch processing is supported - zero allocation
-    #[inline]
-    pub const fn has_batch_processing(&self) -> bool {
-        self.flags & Self::BATCH_PROCESSING_FLAG != 0
-    }
-
-    /// Enable vision support - zero allocation
-    #[inline]
-    pub const fn with_vision(mut self) -> Self {
-        self.flags |= Self::VISION_FLAG;
-        self
-    }
-
-    /// Enable function calling support - zero allocation
-    #[inline]
-    pub const fn with_function_calling(mut self) -> Self {
-        self.flags |= Self::FUNCTION_CALLING_FLAG;
-        self
-    }
-
-    /// Enable streaming support - zero allocation
-    #[inline]
-    pub const fn with_streaming(mut self) -> Self {
-        self.flags |= Self::STREAMING_FLAG;
-        self
-    }
-
-    /// Enable embedding support - zero allocation
-    #[inline]
-    pub const fn with_embedding(mut self) -> Self {
-        self.flags |= Self::EMBEDDING_FLAG;
-        self
-    }
-
-    /// Enable multimodal support - zero allocation
-    #[inline]
-    pub const fn with_multimodal(mut self) -> Self {
-        self.flags |= Self::MULTIMODAL_FLAG;
-        self
-    }
-
-    /// Enable real-time support - zero allocation
-    #[inline]
-    pub const fn with_realtime(mut self) -> Self {
-        self.flags |= Self::REALTIME_FLAG;
-        self
-    }
-
-    /// Enable fine-tuning support - zero allocation
-    #[inline]
-    pub const fn with_fine_tuning(mut self) -> Self {
-        self.flags |= Self::FINE_TUNING_FLAG;
-        self
-    }
-
-    /// Enable batch processing support - zero allocation
-    #[inline]
-    pub const fn with_batch_processing(mut self) -> Self {
-        self.flags |= Self::BATCH_PROCESSING_FLAG;
-        self
-    }
-}
-
-impl Default for ModelCapabilities {
-    #[inline]
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 /// Zero-allocation token limits with optimized numeric handling
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -354,12 +216,6 @@ pub trait Model: Send + Sync + fmt::Debug {
     /// Get the provider name for this model - zero allocation
     fn provider(&self) -> &'static str;
     
-    /// Get model capabilities - zero allocation
-    #[inline]
-    fn capabilities(&self) -> ModelCapabilities {
-        self.info().capabilities
-    }
-    
     /// Get token limits - zero allocation
     #[inline]
     fn token_limits(&self) -> TokenLimits {
@@ -375,25 +231,49 @@ pub trait Model: Send + Sync + fmt::Debug {
     /// Check if model supports vision - zero allocation
     #[inline]
     fn supports_vision(&self) -> bool {
-        self.capabilities().has_vision()
+        self.info().supports_vision.unwrap_or(false)
     }
     
     /// Check if model supports function calling - zero allocation
     #[inline]
     fn supports_function_calling(&self) -> bool {
-        self.capabilities().has_function_calling()
+        self.info().supports_function_calling.unwrap_or(false)
     }
     
     /// Check if model supports streaming - zero allocation
     #[inline]
     fn supports_streaming(&self) -> bool {
-        self.capabilities().has_streaming()
+        self.info().supports_streaming.unwrap_or(false)
     }
     
     /// Check if model supports embedding - zero allocation
     #[inline]
     fn supports_embedding(&self) -> bool {
-        self.capabilities().has_embedding()
+        self.info().supports_embedding.unwrap_or(false)
+    }
+    
+    /// Check if model supports multimodal inputs - zero allocation
+    #[inline]
+    fn supports_multimodal(&self) -> bool {
+        self.info().supports_multimodal.unwrap_or(false)
+    }
+    
+    /// Check if model supports real-time processing - zero allocation
+    #[inline]
+    fn supports_realtime(&self) -> bool {
+        self.info().supports_realtime.unwrap_or(false)
+    }
+    
+    /// Check if model supports fine-tuning - zero allocation
+    #[inline]
+    fn supports_fine_tuning(&self) -> bool {
+        self.info().supports_fine_tuning.unwrap_or(false)
+    }
+    
+    /// Check if model supports batch processing - zero allocation
+    #[inline]
+    fn supports_batch_processing(&self) -> bool {
+        self.info().supports_batch_processing.unwrap_or(false)
     }
     
     /// Get maximum input tokens - zero allocation

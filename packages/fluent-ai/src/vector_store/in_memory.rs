@@ -286,7 +286,10 @@ impl InMemoryVectorStore {
             };
             
             let mut storage = storage.write();
-            let _ = storage.insert(entry); // Ignore errors for now - would be handled in production
+            if let Err(e) = storage.insert(entry) {
+                eprintln!("Warning: Failed to insert vector entry: {:?}", e);
+                return Err(VectorStoreError::InsertionFailed(format!("Failed to insert entry: {:?}", e)));
+            }
         })
     }
     
@@ -319,7 +322,10 @@ impl InMemoryVectorStore {
             };
             
             let mut storage = storage.write();
-            let _ = storage.insert(entry); // Ignore errors for now
+            if let Err(e) = storage.insert(entry) {
+                eprintln!("Warning: Failed to insert vector entry with content: {:?}", e);
+                return Err(VectorStoreError::InsertionFailed(format!("Failed to insert entry: {:?}", e)));
+            }
         })
     }
     

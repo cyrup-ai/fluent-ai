@@ -30,7 +30,7 @@ pub(crate) mod executor {
     }
 
     /// Accessor that bootstraps lazily.
-    pub(super) fn global() -> &'static GlobalExecutor {
+    pub(super) fn global() -> Option<&'static GlobalExecutor> {
         unsafe {
             INIT.call_once(|| {
                 let pool = ThreadPool::new();
@@ -42,7 +42,7 @@ pub(crate) mod executor {
                     queue: rx,
                 });
             });
-            EXEC.as_ref().unwrap()
+            EXEC.as_ref()
         }
     }
 

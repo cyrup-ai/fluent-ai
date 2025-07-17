@@ -141,11 +141,6 @@ impl<T: Transport> Client<T> {
         }
     }
 
-    #[inline]
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
-        self.request_timeout = timeout;
-        self
-    }
 
     pub async fn call_tool(&self, name: &str, args: Value) -> Result<Value, McpError> {
         let id = self.request_id.fetch_add(1, Ordering::Relaxed);

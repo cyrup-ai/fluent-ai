@@ -14,136 +14,11 @@ pub enum PromptError {
 
 // Import Op from memory_ops
 use super::memory_ops::Op;
-use crate::memory::{Error as MemoryError, MemoryManager, MemoryNode, MemoryType};
+use crate::memory::{Error as MemoryError, MemoryManager, MemoryNode, MemoryType, ImportanceContext, MemoryRecord};
 
 use super::memory_ops;
 
-// Workflow builder module
-mod workflow {
-    // Remove unused super::* import - specify needed imports explicitly
-
-    /// Create a new workflow builder
-    #[inline(always)]
-    pub fn new() -> WorkflowBuilder {
-        WorkflowBuilder::default()
-    }
-
-    /// Zero-allocation workflow builder with lock-free operation composition
-    #[derive(Debug, Clone)]
-    pub struct WorkflowBuilder {
-        ops: Vec<Box<dyn Op<Input = serde_json::Value, Output = serde_json::Value> + Send + Sync>>,
-        parallel_groups: Vec<Vec<usize>>, // Indices into ops for parallel execution
-    }
-
-    impl Default for WorkflowBuilder {
-        #[inline(always)]
-        fn default() -> Self {
-            Self {
-                ops: Vec::new(),
-                parallel_groups: Vec::new(),
-            }
-        }
-    }
-
-    impl WorkflowBuilder {
-        /// Chain a sequential operation with zero allocation hot path
-        #[inline(always)]
-        pub fn chain<O>(mut self, op: O) -> Self
-        where
-            O: Op<Input = serde_json::Value, Output = serde_json::Value> + Send + Sync + 'static,
-        {
-            self.ops.push(Box::new(op));
-            self
-        }
-
-        /// Add operations for parallel execution
-        #[inline(always)]
-        pub fn parallel<I>(mut self, ops: I) -> Self
-        where
-            I: IntoIterator<Item = Box<dyn Op<Input = serde_json::Value, Output = serde_json::Value> + Send + Sync>>,
-        {
-            let start_idx = self.ops.len();
-            let mut indices = Vec::new();
-            
-            for op in ops {
-                indices.push(self.ops.len());
-                self.ops.push(op);
-            }
-            
-            if !indices.is_empty() {
-                self.parallel_groups.push(indices);
-            }
-            
-            self
-        }
-
-        /// Execute the workflow with optimal allocation patterns
-        pub async fn execute(&self, input: serde_json::Value) -> Result<serde_json::Value, WorkflowError> {
-            if self.ops.is_empty() {
-                return Ok(input);
-            }
-
-            let mut current_value = input;
-            let mut op_index = 0;
-
-            // Execute operations in sequence and parallel groups
-            while op_index < self.ops.len() {
-                // Check if this operation is part of a parallel group
-                if let Some(group) = self.parallel_groups.iter().find(|group| group.contains(&op_index)) {
-                    // Execute parallel group
-                    let mut futures = Vec::with_capacity(group.len());
-                    
-                    for &idx in group {
-                        let op = &self.ops[idx];
-                        let input_clone = current_value.clone();
-                        futures.push(op.call(input_clone));
-                    }
-                    
-                    // Await all parallel operations
-                    let results = futures::future::join_all(futures).await;
-                    
-                    // Combine results (take the first successful result or Null)
-                    current_value = results
-                        .into_iter()
-                        .next()
-                        .unwrap_or(serde_json::Value::Null);
-                    
-                    // Skip all operations in this parallel group
-                    op_index = group.iter().max().copied().map(|x| x + 1).unwrap_or(op_index + 1);
-                } else {
-                    // Execute sequential operation
-                    if let Some(op) = self.ops.get(op_index) {
-                        current_value = op.call(current_value).await;
-                    }
-                    op_index += 1;
-                }
-            }
-
-            Ok(current_value)
-        }
-
-        /// Build an executable workflow
-        #[inline(always)]
-        pub fn build(self) -> ExecutableWorkflow {
-            ExecutableWorkflow {
-                builder: self,
-            }
-        }
-    }
-
-    /// Zero-allocation executable workflow
-    pub struct ExecutableWorkflow {
-        builder: WorkflowBuilder,
-    }
-
-    impl ExecutableWorkflow {
-        /// Execute the workflow with the given input
-        #[inline(always)]
-        pub async fn run(&self, input: serde_json::Value) -> Result<serde_json::Value, WorkflowError> {
-            self.builder.execute(input).await
-        }
-    }
-}
+// WorkflowBuilder moved to fluent_ai/src/builders/memory_workflow.rs
 
 // For now, let's simplify and not use parallel macro
 #[allow(dead_code)] // TODO: Implement workflow system
@@ -363,20 +238,31 @@ where
     B::Output: Clone + serde::Serialize + Send,
 {
     type Input = B::Input;
-    type Output = (B::Output, String); // (result, memory_id)
+    type Output = (B::Output, u64); // (result, memory_id)
 
     async fn call(&self, input: Self::Input) -> Self::Output {
         // Execute the base operation
         let output = self.base_op.call(input.clone()).await;
 
-        // Create a memory capturing both input and output
-        let memory_content = serde_json::json!({
-            "input": input,
-            "output": output,
-            "timestamp": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
-        }).to_string();
+        // Create a memory capturing both input and output with zero allocation
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+            
+        // Convert input and output to strings for hashing
+        let input_str = serde_json::to_string(&input).unwrap_or_else(|_| "invalid_input".to_string());
+        let output_str = serde_json::to_string(&output).unwrap_or_else(|_| "invalid_output".to_string());
+        
+        // Create binary memory record with zero allocation
+        let memory_record = MemoryRecord::new(&input_str, &output_str, timestamp);
+        let memory_content = memory_record.to_content_string();
 
-        let memory = MemoryNode::new(memory_content, MemoryType::Episodic).with_importance(0.5); // Initial neutral importance
+        let memory = MemoryNode::new_with_context(
+            memory_content, 
+            MemoryType::Episodic, 
+            ImportanceContext::SuccessfulExecution
+        );
 
         let stored_memory = self
             .memory_manager
@@ -391,10 +277,10 @@ where
 /// Apply feedback to a stored memory
 pub async fn apply_feedback<M: MemoryManager>(
     memory_manager: M,
-    memory_id: String,
+    memory_id: u64,
     feedback: f32,
 ) -> Result<(), MemoryError> {
-    if let Some(mut memory) = memory_manager.get_memory(&memory_id).await? {
+    if let Some(mut memory) = memory_manager.get_memory(memory_id).await? {
         // Update importance based on feedback
         memory.metadata.importance = feedback.clamp(0.0, 1.0);
         memory_manager.update_memory(memory).await?;

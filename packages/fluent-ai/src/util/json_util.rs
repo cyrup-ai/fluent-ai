@@ -302,11 +302,11 @@ pub fn ensure_object_and_merge(target: &mut serde_json::Value, source: serde_jso
 /// Performance: Zero allocation if already an object
 #[inline(always)]
 #[allow(dead_code)] // TODO: Use in provider implementations
-pub fn ensure_object_map(value: &mut serde_json::Value) -> &mut serde_json::Map<String, serde_json::Value> {
+pub fn ensure_object_map(value: &mut serde_json::Value) -> Option<&mut serde_json::Map<String, serde_json::Value>> {
     if !value.is_object() {
         *value = serde_json::Value::Object(serde_json::Map::new());
     }
-    value.as_object_mut().unwrap() // Safe: we just ensured it's an object
+    value.as_object_mut()
 }
 
 /// Insert key-value pair, creating object if necessary
@@ -326,7 +326,10 @@ where
     I: IntoIterator<Item = serde_json::Value>,
 {
     let mut iter = values.into_iter();
-    let mut result = iter.next().unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+    let mut result = match iter.next() {
+        Some(value) => value,
+        None => serde_json::Value::Object(serde_json::Map::new()),
+    };
     
     for value in iter {
         result = merge(result, value);

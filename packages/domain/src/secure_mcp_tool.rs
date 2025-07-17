@@ -229,40 +229,35 @@ impl SecureMcpTool {
         }
     }
     
-    /// Set execution timeout
-    /// 
-    /// # Arguments
-    /// * `seconds` - Maximum execution time in seconds
-    #[inline]
-    pub fn with_timeout(mut self, seconds: u64) -> Self {
-        self.timeout_seconds = seconds;
-        self
-    }
-    
-    /// Set memory limit
-    /// 
-    /// # Arguments
-    /// * `bytes` - Maximum memory usage in bytes
-    #[inline]
-    pub fn with_memory_limit(mut self, bytes: u64) -> Self {
-        self.memory_limit = Some(bytes);
-        self
-    }
-    
-    /// Set CPU core limit
-    /// 
-    /// # Arguments
-    /// * `cores` - Maximum number of CPU cores
-    #[inline]
-    pub fn with_cpu_limit(mut self, cores: u32) -> Self {
-        self.cpu_limit = Some(cores);
-        self
-    }
     
     /// Get the Cylo instance if explicitly set
     #[inline]
     pub fn cylo_instance(&self) -> Option<&CyloInstance> {
         self.cylo_instance.as_ref()
+    }
+    
+    /// Set the Cylo instance
+    #[inline]
+    pub fn set_cylo_instance(&mut self, instance: Option<CyloInstance>) {
+        self.cylo_instance = instance;
+    }
+    
+    /// Set timeout seconds
+    #[inline]
+    pub fn set_timeout_seconds(&mut self, seconds: u64) {
+        self.timeout_seconds = seconds;
+    }
+    
+    /// Set memory limit
+    #[inline]
+    pub fn set_memory_limit(&mut self, bytes: Option<u64>) {
+        self.memory_limit = bytes;
+    }
+    
+    /// Set CPU limit
+    #[inline]
+    pub fn set_cpu_limit(&mut self, cores: Option<u32>) {
+        self.cpu_limit = cores;
     }
 }
 

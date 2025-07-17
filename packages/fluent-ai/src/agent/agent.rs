@@ -55,6 +55,37 @@ impl<M: CompletionModel> Agent<M> {
     pub fn for_provider(model: M) -> AgentBuilder<M, MissingSys, MissingCtx> {
         AgentBuilder::new(model)
     }
+    
+    /// Internal constructor for building from AgentBuilder
+    pub(crate) fn new(
+        model: M,
+        preamble: String,
+        static_context: Vec<Document>,
+        static_tools: Vec<String>,
+        dynamic_context: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
+        dynamic_tools: Vec<(usize, Box<dyn VectorStoreIndexDyn>)>,
+        tools: ToolSet,
+        temperature: Option<f64>,
+        max_tokens: Option<u64>,
+        additional_params: Option<serde_json::Value>,
+        extended_thinking: bool,
+        prompt_cache: bool,
+    ) -> Self {
+        Self {
+            model,
+            preamble,
+            static_context,
+            static_tools,
+            dynamic_context,
+            dynamic_tools,
+            tools,
+            temperature,
+            max_tokens,
+            additional_params,
+            extended_thinking,
+            prompt_cache,
+        }
+    }
 
     /// Start a prompt request - returns async stream
     pub fn prompt(

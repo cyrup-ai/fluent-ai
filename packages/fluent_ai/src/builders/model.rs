@@ -1,8 +1,8 @@
-//! ModelInfo builder implementations
+//! Model builder implementations with zero-allocation, lock-free design
 //!
-//! All model information construction logic and builder patterns.
+//! All model construction logic and builder patterns.
 
-use fluent_ai_domain::model::{ModelInfo, ModelCapabilities, TokenLimits, ModelPricing};
+use fluent_ai_domain::model::{ModelInfo, TokenLimits, ModelPricing};
 use std::borrow::Cow;
 
 /// Optimized model information builder with zero-allocation patterns
@@ -24,8 +24,13 @@ impl ModelInfoBuilder {
                 output_price: None,
                 supports_vision: None,
                 supports_function_calling: None,
+                supports_streaming: None,
+                supports_embedding: None,
+                supports_multimodal: None,
+                supports_realtime: None,
+                supports_fine_tuning: None,
+                supports_batch_processing: None,
                 require_max_tokens: None,
-                capabilities: ModelCapabilities::new(),
                 token_limits: TokenLimits::unlimited(),
                 pricing: ModelPricing::free(),
             },
@@ -60,12 +65,6 @@ impl ModelInfoBuilder {
         self
     }
     
-    /// Set capabilities
-    #[inline]
-    pub fn capabilities(mut self, capabilities: ModelCapabilities) -> Self {
-        self.info.capabilities = capabilities;
-        self
-    }
     
     /// Set token limits
     #[inline]
@@ -101,9 +100,6 @@ impl ModelInfoBuilder {
     #[inline]
     pub fn supports_vision(mut self, supported: bool) -> Self {
         self.info.supports_vision = Some(supported);
-        if supported {
-            self.info.capabilities = self.info.capabilities.with_vision();
-        }
         self
     }
     
@@ -111,9 +107,48 @@ impl ModelInfoBuilder {
     #[inline]
     pub fn supports_function_calling(mut self, supported: bool) -> Self {
         self.info.supports_function_calling = Some(supported);
-        if supported {
-            self.info.capabilities = self.info.capabilities.with_function_calling();
-        }
+        self
+    }
+    
+    /// Set streaming support
+    #[inline]
+    pub fn supports_streaming(mut self, supported: bool) -> Self {
+        self.info.supports_streaming = Some(supported);
+        self
+    }
+    
+    /// Set embedding support
+    #[inline]
+    pub fn supports_embedding(mut self, supported: bool) -> Self {
+        self.info.supports_embedding = Some(supported);
+        self
+    }
+    
+    /// Set multimodal support
+    #[inline]
+    pub fn supports_multimodal(mut self, supported: bool) -> Self {
+        self.info.supports_multimodal = Some(supported);
+        self
+    }
+    
+    /// Set real-time support
+    #[inline]
+    pub fn supports_realtime(mut self, supported: bool) -> Self {
+        self.info.supports_realtime = Some(supported);
+        self
+    }
+    
+    /// Set fine-tuning support
+    #[inline]
+    pub fn supports_fine_tuning(mut self, supported: bool) -> Self {
+        self.info.supports_fine_tuning = Some(supported);
+        self
+    }
+    
+    /// Set batch processing support
+    #[inline]
+    pub fn supports_batch_processing(mut self, supported: bool) -> Self {
+        self.info.supports_batch_processing = Some(supported);
         self
     }
     

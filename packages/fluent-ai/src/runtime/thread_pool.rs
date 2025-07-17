@@ -37,10 +37,12 @@ impl ThreadPool {
             let inj = Arc::clone(&injector);
             let stealers = stealers.clone();
 
-            thread::Builder::new()
+            if let Err(e) = thread::Builder::new()
                 .name(format!("rig-worker-{id}"))
-                .spawn(move || worker_loop(local, inj, stealers))
-                .expect("spawn worker");
+                .spawn(move || worker_loop(local, inj, stealers)) {
+                eprintln!("Failed to spawn worker thread {}: {}", id, e);
+                // Continue with fewer workers rather than panicking
+            }
         }
 
         Self {

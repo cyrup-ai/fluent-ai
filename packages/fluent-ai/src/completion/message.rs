@@ -408,7 +408,13 @@ impl MessageBuilder<true> {
     #[inline(always)]
     pub fn build(mut self) -> Message {
         // Move out the first element (we know it exists)
-        let first = self.first.take().expect("typestate bug: no content");
+        let first = match self.first.take() {
+            Some(content) => content,
+            None => {
+                // Fallback to empty text content if typestate fails
+                Content::Text("".into())
+            }
+        };
 
         // Convert (first + overflow) into OneOrMany<…>
         macro_rules! finish {

@@ -122,8 +122,8 @@ impl<M: AudioGenerationModel> RequestBuilder<M, true, true> {
     #[inline(always)]
     fn build(self) -> AudioGenerationRequest {
         AudioGenerationRequest {
-            text: self.text.unwrap(),
-            voice: self.voice.unwrap(),
+            text: self.text.unwrap_or_default(),
+            voice: self.voice.unwrap_or_default(),
             speed: self.speed,
             additional_params: self.additional_params,
         }

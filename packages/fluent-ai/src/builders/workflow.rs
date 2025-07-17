@@ -228,6 +228,54 @@ impl WorkflowExecutor {
         self.execute_with_context(execution_context).await
     }
     
+    /// Execute with streaming support for intermediate results
+    async fn execute_with_streaming(&self, mut context: ExecutionContext, tx: &mpsc::UnboundedSender<Value>) -> Result<Value, WorkflowError> {
+        let mut operation_index = 0;
+        
+        while operation_index < self.operations.len() {
+            // Send progress update
+            let _ = tx.send(serde_json::json!({
+                "progress": operation_index as f64 / self.operations.len() as f64,
+                "operation_index": operation_index,
+                "status": "executing"
+            }));
+            
+            // Check if this operation is part of a parallel group
+            if let Some(group) = self.find_parallel_group(operation_index) {
+                context.current_value = self.execute_parallel_group(group, &context).await?;
+                operation_index = match group.operation_indices.iter().max().copied() {
+                    Some(max_index) => max_index + 1,
+                    None => operation_index + 1,
+                };
+            } else {
+                // Execute sequential operation
+                if let Some(operation) = self.operations.get(operation_index) {
+                    context.current_value = self.execute_operation_with_retry(
+                        operation.as_ref(),
+                        context.current_value.clone(),
+                        &context,
+                    ).await?;
+                    
+                    // Send intermediate result
+                    let _ = tx.send(serde_json::json!({
+                        "intermediate_result": context.current_value,
+                        "operation_index": operation_index,
+                        "status": "completed_operation"
+                    }));
+                }
+                operation_index += 1;
+            }
+        }
+        
+        // Send final result
+        let _ = tx.send(serde_json::json!({
+            "final_result": context.current_value,
+            "status": "completed"
+        }));
+        
+        Ok(context.current_value)
+    }
+    
     /// Execute with execution context for advanced control
     async fn execute_with_context(&self, mut context: ExecutionContext) -> Result<Value, WorkflowError> {
         let mut operation_index = 0;
@@ -236,7 +284,10 @@ impl WorkflowExecutor {
             // Check if this operation is part of a parallel group
             if let Some(group) = self.find_parallel_group(operation_index) {
                 context.current_value = self.execute_parallel_group(group, &context).await?;
-                operation_index = group.operation_indices.iter().max().copied().map(|x| x + 1).unwrap_or(operation_index + 1);
+                operation_index = match group.operation_indices.iter().max().copied() {
+                    Some(max_index) => max_index + 1,
+                    None => operation_index + 1,
+                };
             } else {
                 // Execute sequential operation
                 if let Some(operation) = self.operations.get(operation_index) {
@@ -300,17 +351,33 @@ impl WorkflowExecutor {
         
         match &self.error_strategy {
             ErrorStrategy::FailFast => {
-                Err(last_error.unwrap_or(WorkflowError::ExecutionFailed("Unknown error".to_string())))
+                match last_error {
+                    Some(error) => Err(error),
+                    None => Err(WorkflowError::ExecutionFailed("Unknown error".to_string())),
+                }
             },
             ErrorStrategy::ContinueOnError => {
                 Ok(Value::Null) // Continue with null value
             },
             ErrorStrategy::RetryOnError => {
-                Err(last_error.unwrap_or(WorkflowError::ExecutionFailed("Max retries exceeded".to_string())))
+                match last_error {
+                    Some(error) => Err(error),
+                    None => Err(WorkflowError::ExecutionFailed("Max retries exceeded".to_string())),
+                }
             },
-            ErrorStrategy::UseFallback(_fallbacks) => {
-                // TODO: Implement fallback execution
-                Ok(Value::Null)
+            ErrorStrategy::UseFallback(fallbacks) => {
+                // Execute fallback operations in sequence until one succeeds
+                for fallback_op in fallbacks {
+                    match self.execute_single_operation(fallback_op.as_ref(), input.clone(), context).await {
+                        Ok(result) => return Ok(result),
+                        Err(_) => continue, // Try next fallback
+                    }
+                }
+                // All fallbacks failed
+                match last_error {
+                    Some(error) => Err(error),
+                    None => Err(WorkflowError::ExecutionFailed("All operations and fallbacks failed".to_string())),
+                }
             },
         }
     }
@@ -481,11 +548,25 @@ impl ExecutableWorkflow {
     /// Execute the workflow with streaming output
     pub async fn run_streaming(&self, input: Value) -> Result<mpsc::UnboundedReceiver<Value>, WorkflowError> {
         let (tx, rx) = mpsc::unbounded_channel();
+        let executor = &self.executor;
         
-        // For now, just send the final result
-        // In a full implementation, this would stream intermediate results
-        let result = self.executor.execute(input).await?;
-        let _ = tx.send(result);
+        // Execute workflow with intermediate result streaming
+        tokio::spawn(async move {
+            let execution_context = ExecutionContext::new(
+                input,
+                executor.timeout_ms,
+                executor.max_retries,
+                &executor.error_strategy,
+            );
+            
+            // Stream intermediate results during execution
+            if let Err(e) = executor.execute_with_streaming(execution_context, &tx).await {
+                let _ = tx.send(serde_json::json!({
+                    "error": e.to_string(),
+                    "status": "failed"
+                }));
+            }
+        });
         
         Ok(rx)
     }

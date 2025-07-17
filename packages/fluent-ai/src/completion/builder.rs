@@ -168,7 +168,7 @@ impl<M: Model> CompletionBuilder<M, NeedsPrompt> {
 /* --------------------------------------------------------------------- */
 impl<M: Model> CompletionBuilder<M, HasPrompt> {
     fn into_request(self) -> CompletionRequest {
-        let mut b = CompletionRequestBuilder::new(self.model.clone(), self.prompt.unwrap())
+        let mut b = CompletionRequestBuilder::new(self.model.clone(), self.prompt.unwrap_or_default())
             .preamble_opt(self.preamble)
             .chat_history(self.chat_history)
             .documents(self.documents)

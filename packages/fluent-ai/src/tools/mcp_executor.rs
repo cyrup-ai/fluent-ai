@@ -4,6 +4,109 @@
 
 use fluent_ai_domain::{Tool, McpTool, McpToolData};
 use serde_json::Value;
+
+/// Cylo integration module for secure tool execution
+mod cylo_integration {
+    use serde_json::Value;
+    
+    /// Execute a tool securely using cylo backend
+    pub async fn execute_secure_tool(name: &str, args: &Value) -> Result<Value, String> {
+        // Implementation of secure tool execution
+        // This integrates with the cylo security sandbox
+        
+        // Validate tool name against allowlist
+        if !is_tool_allowed(name) {
+            return Err(format!("Tool '{}' is not allowed in secure execution", name));
+        }
+        
+        // Validate arguments for security risks
+        if let Err(e) = validate_tool_args(args) {
+            return Err(format!("Tool arguments failed security validation: {}", e));
+        }
+        
+        // Execute in secure sandbox
+        match execute_in_sandbox(name, args).await {
+            Ok(result) => Ok(result),
+            Err(e) => Err(format!("Secure execution failed: {}", e)),
+        }
+    }
+    
+    /// Check if tool is in the security allowlist
+    fn is_tool_allowed(name: &str) -> bool {
+        // Safe tools that are allowed
+        const ALLOWED_TOOLS: &[&str] = &[
+            "calculator",
+            "text_transform",
+            "json_parser", 
+            "date_time",
+            "string_utils",
+        ];
+        
+        ALLOWED_TOOLS.contains(&name)
+    }
+    
+    /// Validate tool arguments for security risks
+    fn validate_tool_args(args: &Value) -> Result<(), String> {
+        // Check for potentially dangerous patterns
+        let args_str = args.to_string();
+        
+        // Block file system access patterns
+        if args_str.contains("../") || args_str.contains("/etc/") || args_str.contains("/proc/") {
+            return Err("File system access patterns detected");
+        }
+        
+        // Block network access patterns
+        if args_str.contains("http://") || args_str.contains("https://") || args_str.contains("ftp://") {
+            return Err("Network access patterns detected");
+        }
+        
+        // Block shell command patterns
+        if args_str.contains("&&") || args_str.contains("||") || args_str.contains(";") || args_str.contains("`") {
+            return Err("Shell command patterns detected");
+        }
+        
+        Ok(())
+    }
+    
+    /// Execute tool in secure sandbox environment
+    async fn execute_in_sandbox(name: &str, args: &Value) -> Result<Value, String> {
+        use tokio::process::Command;
+        use std::process::Stdio;
+        
+        // Prepare secure execution environment
+        let mut cmd = Command::new("cylo");
+        cmd.arg("--sandbox")
+           .arg("--tool")
+           .arg(name)
+           .arg("--args")
+           .arg(args.to_string())
+           .stdin(Stdio::null())
+           .stdout(Stdio::piped())
+           .stderr(Stdio::piped());
+        
+        // Execute with timeout
+        let output = match tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            cmd.output()
+        ).await {
+            Ok(Ok(output)) => output,
+            Ok(Err(e)) => return Err(format!("Failed to execute cylo: {}", e)),
+            Err(_) => return Err("Tool execution timed out".to_string()),
+        };
+        
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("Tool execution failed: {}", stderr));
+        }
+        
+        // Parse result
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        match serde_json::from_str(&stdout) {
+            Ok(result) => Ok(result),
+            Err(e) => Err(format!("Failed to parse tool result: {}", e)),
+        }
+    }
+}
 use std::future::Future;
 use std::pin::Pin;
 
@@ -104,14 +207,16 @@ impl McpTool for McpToolImpl {
 
 /// Execute tool with secure backend (cylo integration)
 async fn execute_with_secure_backend(name: &str, args: &Value) -> Result<Result<Value, String>, String> {
-    // TODO: Integrate with cylo secure execution
-    // For now, return a proper placeholder that matches the expected signature
-    Ok(Ok(serde_json::json!({
-        "tool": name,
-        "args": args,
-        "result": "Secure execution not yet implemented",
-        "status": "placeholder"
-    })))
+    // Integrate with cylo secure execution backend
+    use crate::tools::cylo_integration;
+    
+    match cylo_integration::execute_secure_tool(name, args).await {
+        Ok(result) => Ok(Ok(result)),
+        Err(security_error) => {
+            // Security validation failed, return safe error
+            Ok(Err(format!("Secure execution failed: {}", security_error)))
+        }
+    }
 }
 
 /// Helper function to determine if a tool should use secure execution

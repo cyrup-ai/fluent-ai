@@ -40,7 +40,9 @@ where
         ColoredMessage::new()
             .accent("> ")
             .print().ok();
-        io::stdout().flush().expect("stdout flush");
+        if let Err(e) = io::stdout().flush() {
+            colored_println!(error: "Failed to flush stdout: {}", e);
+        }
 
         let mut input = String::new();
         if io::stdin().read_line(&mut input).is_err() {

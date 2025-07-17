@@ -8,7 +8,7 @@ edition = "2024"
 default = ["hashbrown-json"]
 hashbrown-json = []
 audio = []
-image = []
+image = ["dep:image"]
 
 [dependencies]
 serde = { version = "1.0.219", features = ["derive"] }
@@ -70,9 +70,44 @@ crossbeam-deque = "0.8.6"
 anyhow = "1.0"
 futures-executor = "0.3"
 
+# Candle ML framework dependencies (from GitHub main)
+candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
+candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
+candle-transformers = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
+candle-flash-attn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
+candle-onnx = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
+candle-datasets = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
+
+# ML/AI dependencies
+image = { version = "0.25.6", optional = true }
+hf-hub = { version = "0.4.3", features = ["tokio"], optional = true }
+tokenizers = { version = "0.21", features = ["onig"], optional = true }
+safetensors = { version = "0.6", optional = true }
+
+# Optional acceleration dependencies
+half = { version = "2.6", optional = true }
+
 [lib]
 name = "fluent_ai"
 path = "src/lib.rs"
+
+# OS-specific acceleration dependencies
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+cudarc = { version = "0.16", optional = true, default-features = false, features = ["cublas", "cublaslt", "cudnn", "curand", "dynamic-linking", "f16", "std"] }
+intel-mkl-src = { version = "0.8", optional = true }
+
+[target.'cfg(all(target_os = "windows", target_arch = "x86_64"))'.dependencies]
+cudarc = { version = "0.16", optional = true, default-features = false, features = ["cublas", "cublaslt", "cudnn", "curand", "dynamic-linking", "f16", "std"] }
+intel-mkl-src = { version = "0.8", optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+accelerate-src = { version = "0.3", optional = true }
+
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.build-dependencies]
+bindgen_cuda = { version = "0.1.5", optional = true }
+
+[target.'cfg(all(target_os = "windows", target_arch = "x86_64"))'.build-dependencies]
+bindgen_cuda = { version = "0.1.5", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

@@ -19,6 +19,7 @@ base64 = "0.22"
 # cylo = { path = "../cylo" } # Circular dependency - cylo depends on domain
 tracing = "0.1"
 termcolor = { path = "../termcolor" }
+crossbeam-queue = "0.3"
 
 [dev-dependencies]
 tracing-subscriber = "0.3"
