@@ -160,6 +160,218 @@ Act as an Objective QA Rust developer and rate the work performed previously on 
 
 ---
 
+## Phase 5: Intelligent Tool Selection Pipeline (Future Enhancement)
+
+### 23. Implement BERT Classifier for Tool Relevance Scoring
+**Files**: 
+- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/tool_selection/classifier.rs`
+- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/tool_selection/pipeline.rs`
+**Implementation**: 
+- Integrate BERT-based inference pipeline for tool relevance classification
+- Create semantic similarity scoring between user prompt and tool descriptions
+- Implement `ToolRelevanceClassifier` that scores tools 0.0-1.0 based on prompt context
+- Add `classify_tool_relevance(prompt: &str, tools: &[ToolDefinition]) -> Vec<(ToolDefinition, f64)>`
+- Support contextual filtering (e.g., "planning" requests exclude `github_commit` tool)
+**Architecture**: Pre-completion tool filtering ensures only relevant tools are sent to AI model, staying within 32-tool limit while maximizing utility.
+
+### 24. Implement Dynamic Tool Selection Pipeline
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/tool_selection/selector.rs`
+**Implementation**:
+- Create `ToolSelector` that reduces N tools to ≤32 based on BERT classifier scores
+- Implement smart selection strategies:
+  - **Relevance-based**: Top 32 tools by semantic similarity score
+  - **Category-balanced**: Ensure representation across tool categories (code, planning, communication, etc.)
+  - **Context-aware**: Boost tools based on conversation history and domain context
+- Add `select_optimal_tools(prompt: &str, available_tools: Vec<ToolDefinition>) -> Vec<ToolDefinition>`
+- Ensure deterministic selection within score tiers for reproducible behavior
+**Architecture**: Intelligent tool selection maximizes model effectiveness while respecting 32-tool constraint.
+
+### 25. Integrate Tool Selection into CompletionProvider
+**Files**: All provider completion implementations
+**Implementation**:
+- Modify `tools()` method to accept unlimited tools but intelligently select ≤32
+- Add `enable_tool_selection(bool)` configuration option (default: true)
+- Implement tool selection pipeline in completion builders:
+  ```rust
+  fn tools(mut self, tools: ZeroOneOrMany<ToolDefinition>) -> Result<Self, CompletionError> {
+      let selected_tools = if self.tool_selection_enabled {
+          self.tool_selector.select_optimal_tools(&self.prompt_context, tools)
+      } else {
+          tools.into_iter().take(32).collect() // Fallback to first 32
+      };
+      // Store selected tools in ArrayVec<ToolDefinition, 32>
+  }
+  ```
+- Add logging of tool selection decisions for transparency
+**Architecture**: Seamless integration maintains existing API while adding intelligent tool curation.
+
+### 26. Implement Tool Selection Caching and Performance
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/tool_selection/cache.rs`
+**Implementation**:
+- Add LRU cache for BERT inference results to avoid re-computing similar prompts
+- Implement `ToolSelectionCache` with configurable TTL and memory limits
+- Add batch inference optimization for multiple tool evaluations
+- Create tool fingerprinting for efficient cache key generation
+- Implement async tool classification to avoid blocking completion pipeline
+**Architecture**: High-performance tool selection with sub-millisecond response times through intelligent caching.
+
+### 27. Add Tool Selection Configuration and Observability
+**Files**:
+- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/tool_selection/config.rs`
+- `/Volumes/samsung_t9/fluent-ai/packages/provider/src/tool_selection/metrics.rs`
+**Implementation**:
+- Add `ToolSelectionConfig` with tunable parameters:
+  - `relevance_threshold: f64` - Minimum score for tool inclusion
+  - `max_tools: usize` - Tool limit (default: 32)
+  - `category_balance: bool` - Enable category-balanced selection
+  - `cache_enabled: bool` - Enable/disable result caching
+- Implement tool selection metrics and observability:
+  - Tool selection latency tracking
+  - Cache hit/miss rates
+  - Tool relevance score distributions
+  - Selection decision audit logs
+- Add `ToolSelectionMetrics` for performance monitoring
+**Architecture**: Production-ready tool selection with full observability and tunable performance characteristics.
+
+### 28. QA: Validate Intelligent Tool Selection System
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify:
+- BERT classifier accurately scores tool relevance for different prompt types
+- Tool selection pipeline consistently selects appropriate tools within 32-tool limit
+- Performance meets sub-millisecond requirements with caching
+- Integration preserves existing CompletionProvider API compatibility
+- Tool selection decisions are logged and auditable
+Rate intelligent tool selection implementation quality 1-10.
+
+---
+
+## Anthropic Advanced Features Integration
+
+### 29. Implement Prompt Caching for Anthropic Provider
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
+**Lines**: Add cache_control field to AnthropicCompletionRequest struct and builder methods
+**Implementation**: 
+- Add `with_prompt_caching()` method to AnthropicCompletionBuilder that sets internal boolean flag
+- Modify `build_request()` to include `cache_control: { type: "ephemeral" }` when caching enabled
+- Auto-enable caching for large system prompts (>2048 tokens) and context documents
+- Add cache_control to system prompt, documents, and tool definitions in request structure
+- Handle cache status in streaming responses for observability
+- Integrate with existing Context<File> API - large files auto-cached
+**Architecture**: Transparent prompt caching that reduces costs for repeated content while maintaining clean builder syntax `.with_prompt_caching()` and seamless Context integration.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 30. QA: Validate Anthropic Prompt Caching Implementation
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify prompt caching integrates cleanly with builder syntax, properly structures cache_control in requests, handles large content auto-caching, and maintains cost transparency. Rate implementation quality 1-10.
+
+### 31. Implement Extended Thinking for Anthropic Provider
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
+**Lines**: Add thinking field to AnthropicCompletionRequest struct and builder methods
+**Implementation**: 
+- Add `with_thinking(budget_tokens: Option<u32>)` method to AnthropicCompletionBuilder
+- Modify `build_request()` to include `thinking: { type: "enabled", budget_tokens: n }` when thinking enabled
+- Default budget_tokens to 1024 when None provided, use custom value when Some(n)
+- Extend `parse_sse_chunk()` to handle thinking content blocks in streaming responses
+- Add CompletionChunk::Thinking variant or include thinking content in existing text chunks
+- Preserve existing `on_chunk(|chunk| { Ok => chunk.into(), Err(e) => ... })` syntax unchanged
+- Handle thinking signatures and verification in response parsing
+**Architecture**: Transparent extended thinking that provides reasoning transparency while maintaining existing cyrup_sugars on_chunk syntax and streaming patterns.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 32. QA: Validate Anthropic Extended Thinking Implementation
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify extended thinking integrates cleanly with builder syntax, properly structures thinking requests, handles streaming thinking content, preserves existing on_chunk syntax, and provides reasoning transparency. Rate implementation quality 1-10.
+
+### 33. Implement Citations for Anthropic Provider
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
+**Lines**: Add citations field to AnthropicCompletionBuilder and request processing
+**Implementation**: 
+- Add `with_citations()` method to AnthropicCompletionBuilder that sets internal boolean flag
+- Integrate with existing Context<File>, Context<Files>, Context<Directory> API for automatic source attribution
+- Modify document processing in `build_request()` to include source metadata when citations enabled
+- Extend `parse_sse_chunk()` to handle citation blocks in streaming responses
+- Add citation information to CompletionChunk responses (source file, line numbers, URLs)
+- Preserve existing `on_chunk(|chunk| { Ok => chunk.into(), Err(e) => ... })` syntax unchanged
+- Map Context sources to Anthropic citation format in request structure
+**Architecture**: Transparent citations that provide source attribution for document-based responses while leveraging existing Context API and maintaining clean builder syntax `.with_citations()`.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 34. QA: Validate Anthropic Citations Implementation
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify citations integrate cleanly with builder syntax, leverage existing Context API for source attribution, properly handle citation blocks in streaming, preserve existing on_chunk syntax, and provide accurate source metadata. Rate implementation quality 1-10.
+
+### 35. Implement Search Results Processing for Anthropic Provider
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
+**Lines**: Add search results field to AnthropicCompletionBuilder and context processing
+**Implementation**: 
+- Add `with_search_results()` method to AnthropicCompletionBuilder that sets internal boolean flag
+- Extend context() method to accept ZeroOneOrMany<SearchResult> alongside existing Context types
+- Create SearchResult domain type with title, snippet, url, relevance_score fields
+- Modify `build_request()` to format search results into structured context when flag enabled
+- Apply Anthropic-specific search result formatting (title, snippet, source URL structure)
+- Integrate search results with existing citation system when both flags enabled
+- Preserve existing `on_chunk(|chunk| { Ok => chunk.into(), Err(e) => ... })` syntax unchanged
+- Handle search result metadata in streaming responses for source attribution
+**Architecture**: Transparent search results processing that auto-formats search context using ZeroOneOrMany pattern while maintaining clean builder syntax `.with_search_results()` and existing context API.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 36. QA: Validate Anthropic Search Results Implementation
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify search results integrate cleanly with builder syntax, properly format search context, use ZeroOneOrMany pattern correctly, integrate with citation system, preserve existing on_chunk syntax, and provide structured search formatting. Rate implementation quality 1-10.
+
+### 37. Implement Batch Processing for Anthropic Provider
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
+**Lines**: Add batch processing methods and separate execution path
+**Implementation**: 
+- Add `batch_prompts(args...)` method to AnthropicCompletionBuilder using ZeroOneOrMany variadic pattern
+- Implement `execute_batch()` method that uses Anthropic's `/v1/messages/batches` endpoint
+- Create separate batch request structure with array of individual completion requests
+- Handle batch response parsing with multiple completion results
+- Preserve all existing builder options (model, temperature, system_prompt, etc.) for batch requests
+- Maintain cost optimization through batch API pricing advantages
+- Add batch status tracking and completion polling for async batch processing
+- Preserve existing `on_chunk(|chunk| { Ok => chunk.into(), Err(e) => ... })` syntax for streaming batch results
+**Architecture**: Efficient batch processing that leverages Anthropic's batch API for cost optimization while maintaining clean builder syntax `.batch_prompts("prompt1", "prompt2", "prompt3").execute_batch()` and ZeroOneOrMany variadic pattern.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 38. QA: Validate Anthropic Batch Processing Implementation
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify batch processing integrates cleanly with builder syntax, uses ZeroOneOrMany variadic pattern correctly, leverages Anthropic batch API properly, maintains cost optimization, preserves existing on_chunk syntax, and provides efficient batch execution. Rate implementation quality 1-10.
+
+### 39. Implement Multi-lingual Support for Anthropic Provider
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
+**Lines**: Add multilingual processing and UTF-8 robustness
+**Implementation**: 
+- Add `with_multilingual()` method to AnthropicCompletionBuilder that sets internal boolean flag
+- Enhance UTF-8 handling throughout request building and response parsing
+- Add character encoding validation for system prompts, user prompts, and context documents
+- Implement proper Unicode normalization (NFC) for consistent text processing
+- Add language detection hints in request metadata when multilingual flag enabled
+- Enhance streaming response parsing to handle multi-byte UTF-8 sequences correctly
+- Add proper byte boundary handling in SSE chunk parsing to avoid broken Unicode
+- Preserve existing `on_chunk(|chunk| { Ok => chunk.into(), Err(e) => ... })` syntax unchanged
+- Ensure all text processing maintains Unicode correctness and character integrity
+**Architecture**: Robust multilingual support that ensures proper UTF-8 handling and language processing while maintaining clean builder syntax `.with_multilingual()` and existing streaming patterns.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 40. QA: Validate Anthropic Multi-lingual Implementation
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify multilingual support integrates cleanly with builder syntax, properly handles UTF-8 encoding, maintains Unicode correctness, handles multi-byte sequences in streaming, preserves existing on_chunk syntax, and provides robust language processing. Rate implementation quality 1-10.
+
+### 41. Implement Automatic Token Counting for Anthropic Provider
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/provider/src/clients/anthropic/completion.rs`
+**Lines**: Add automatic token counting and cost transparency
+**Implementation**: 
+- Integrate Anthropic's `/v1/messages/count_tokens` endpoint for pre-request token counting
+- Add automatic token counting in `build_request()` method before sending completion request
+- Count tokens for system prompt, user prompt, chat history, documents, and tool definitions
+- Add token usage tracking in streaming response parsing from usage metadata
+- Implement cost calculation based on model pricing (input/output token rates)
+- Add token budget validation against model limits with intelligent truncation
+- Log token usage and cost information for transparency and optimization
+- Preserve existing `on_chunk(|chunk| { Ok => chunk.into(), Err(e) => ... })` syntax unchanged
+- Include token count and cost data in completion metadata and error messages
+**Architecture**: Transparent automatic token counting that provides cost visibility and request optimization while maintaining existing builder syntax and requiring no user intervention.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 42. QA: Validate Anthropic Token Counting Implementation
+Act as an Objective QA Rust developer and rate the work performed previously on these requirements. Verify automatic token counting integrates seamlessly, provides accurate cost transparency, handles token budget validation, includes proper usage tracking, preserves existing on_chunk syntax, and requires no user syntax changes. Rate implementation quality 1-10.
+
+---
+
 ## SUCCESS CRITERIA
 - [ ] Clean syntax works: `client.completion_model("gpt-4").system_prompt("Be helpful").prompt("Hello")`
 - [ ] All parameters supported: system_prompt, temperature, max_tokens, chat_history, documents, tools, top_p, frequency_penalty, presence_penalty, additional_params

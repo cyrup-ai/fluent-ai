@@ -1,7 +1,10 @@
-//! Base CompletionProvider trait for universal provider interface
+//! Universal CompletionProvider trait enabling `Model::X.prompt()` syntax
 //!
-//! Enables elegant syntax: `Model::MistralMagistral.prompt("What time is it in Paris?")`
-//! All parameters use ZeroOneOrMany with ModelInfo defaults - nothing is Optional
+//! Zero-allocation streaming completions with ZeroOneOrMany defaults:
+//! ```
+//! Model::OpenaiGpt4o.prompt("Hello world")
+//! Model::MistralMagistral.completion()?.temperature(0.8).prompt("Hello")
+//! ```
 
 use fluent_ai_domain::chunk::CompletionChunk;
 use fluent_ai_domain::{Message, Document};
@@ -9,7 +12,7 @@ use fluent_ai_domain::tool::ToolDefinition;
 use crate::AsyncStream;
 use cyrup_sugars::ZeroOneOrMany;
 use serde_json::Value;
-use std::marker::PhantomData;
+use std::env;
 
 /// Typestate: Builder needs prompt to complete
 #[derive(Debug, Clone, Copy)]
@@ -19,19 +22,31 @@ pub struct NeedsPrompt;
 #[derive(Debug, Clone, Copy)]
 pub struct Ready;
 
-/// Universal completion error (zero allocation)
-#[derive(Debug, Clone, Copy)]
+/// Universal completion error (zero allocation, semantic)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompletionError {
+    /// HTTP/network request failed
     HttpError,
+    /// Authentication failed (invalid API key)
     AuthError,
+    /// Model not supported by provider
     UnsupportedModel,
+    /// Request payload too large
     RequestTooLarge,
+    /// Rate limit exceeded
     RateLimited,
+    /// JSON/response parse error
     ParseError,
+    /// Streaming connection error
     StreamError,
+    /// Invalid configuration
+    ConfigError,
+    /// Provider-specific error
+    ProviderError,
 }
 
 impl CompletionError {
+    /// Get static error message (zero allocation)
     #[inline(always)]
     pub const fn message(&self) -> &'static str {
         match self {
@@ -42,6 +57,21 @@ impl CompletionError {
             Self::RateLimited => "Rate limited",
             Self::ParseError => "Parse error",
             Self::StreamError => "Stream error",
+            Self::ConfigError => "Configuration error",
+            Self::ProviderError => "Provider error",
+        }
+    }
+
+    /// Convert HTTP status to semantic error (zero allocation)
+    #[inline(always)]
+    pub const fn from_http_status(status: u16) -> Self {
+        match status {
+            401 | 403 => Self::AuthError,
+            413 => Self::RequestTooLarge,
+            429 => Self::RateLimited,
+            400..=499 => Self::ConfigError,
+            500..=599 => Self::ProviderError,
+            _ => Self::HttpError,
         }
     }
 }
@@ -55,108 +85,178 @@ impl std::fmt::Display for CompletionError {
 
 impl std::error::Error for CompletionError {}
 
-/// cyrup_sugars chunk handler with pattern matching syntax
+/// Chunk handler with cyrup_sugars pattern matching
 pub type ChunkHandler = Box<dyn Fn(Result<CompletionChunk, CompletionError>) + Send + Sync>;
 
-/// Universal completion builder trait with ZeroOneOrMany defaults
+/// Automatic API key discovery using provider's env_api_keys() method
+#[inline(always)]
+pub fn discover_api_key_for_provider<T: CompletionProvider>(provider: &T) -> Option<String> {
+    let env_keys = provider.env_api_keys();
+    
+    match env_keys {
+        ZeroOneOrMany::None => {
+            log::error!("No environment variable patterns defined for provider");
+            None
+        }
+        ZeroOneOrMany::One(key) => {
+            if let Ok(value) = env::var(key) {
+                if !value.is_empty() {
+                    log::debug!("Found API key using {}", key);
+                    return Some(value);
+                }
+            }
+            log::error!("No API key found using {}", key);
+            None
+        }
+        ZeroOneOrMany::Many(keys) => {
+            // Search in order - first found wins (ZeroOneOrMany is ordered)
+            for key in &keys {
+                if let Ok(value) = env::var(key) {
+                    if !value.is_empty() {
+                        log::debug!("Found API key using {} (first found in ordered list)", key);
+                        return Some(value);
+                    }
+                }
+            }
+            log::error!("No API key found. Tried in order: {:?}", keys);
+            None
+        }
+    }
+}
+
+/// Universal completion provider trait
 /// 
-/// All parameters default from ModelInfo - no Optional types
-/// Enables: `Model::MistralMagistral.prompt("What time is it in Paris?")`
-pub trait CompletionProvider<State = NeedsPrompt>: Clone + Send + Sync + 'static {
-    /// Provider-specific model type
-    type Model: Clone + Send + Sync;
+/// All parameters use ZeroOneOrMany with ModelInfo defaults
+/// Enables blazing-fast zero-allocation streaming completions
+pub trait CompletionProvider: Clone + Send + Sync + 'static {
+    /// Create new builder with ModelInfo defaults loaded at compile time
+    fn new(api_key: String, model_name: &'static str) -> Result<Self, CompletionError>;
     
-    /// Create new completion builder with ModelInfo defaults
-    fn new(api_key: String, model: Self::Model) -> Result<Self, CompletionError>;
+    /// Set explicit API key (takes priority over environment variables)
+    fn api_key(self, key: impl Into<String>) -> Self;
     
-    /// Set system prompt (defaults from ModelInfo)
-    #[inline(always)]
+    /// Environment variable names to search for API keys (provider-specific)
+    /// Defaults to all well-known patterns for this provider
+    /// Returns ZeroOneOrMany of environment variable names to search in order
+    fn env_api_keys(&self) -> ZeroOneOrMany<String> {
+        // Default implementation returns None - each provider should override
+        ZeroOneOrMany::None
+    }
+    
+    /// Set system prompt (overrides ModelInfo default)
     fn system_prompt(self, prompt: impl Into<String>) -> Self;
     
-    /// Set temperature (defaults from ModelInfo)
-    #[inline(always)] 
+    /// Set temperature (overrides ModelInfo default)
     fn temperature(self, temp: f64) -> Self;
     
-    /// Set max tokens (defaults from ModelInfo)
-    #[inline(always)]
+    /// Set max tokens (overrides ModelInfo default)
     fn max_tokens(self, tokens: u32) -> Self;
     
-    /// Set top_p (defaults from ModelInfo)
-    #[inline(always)]
+    /// Set top_p (overrides ModelInfo default)
     fn top_p(self, p: f64) -> Self;
     
-    /// Set frequency penalty (defaults from ModelInfo)
-    #[inline(always)]
+    /// Set frequency penalty (overrides ModelInfo default)
     fn frequency_penalty(self, penalty: f64) -> Self;
     
-    /// Set presence penalty (defaults from ModelInfo)
-    #[inline(always)]
+    /// Set presence penalty (overrides ModelInfo default)
     fn presence_penalty(self, penalty: f64) -> Self;
     
-    /// Add chat history (ZeroOneOrMany - defaults to None)
-    #[inline(always)]
+    /// Add chat history (ZeroOneOrMany with bounded capacity)
     fn chat_history(self, history: ZeroOneOrMany<Message>) -> Result<Self, CompletionError>;
     
-    /// Add documents for RAG (ZeroOneOrMany - defaults to None)
-    #[inline(always)]
+    /// Add documents for RAG (ZeroOneOrMany with bounded capacity)
     fn documents(self, docs: ZeroOneOrMany<Document>) -> Result<Self, CompletionError>;
     
-    /// Add tools for function calling (ZeroOneOrMany - defaults to None)
-    #[inline(always)]
+    /// Add tools for function calling (ZeroOneOrMany with bounded capacity)
     fn tools(self, tools: ZeroOneOrMany<ToolDefinition>) -> Result<Self, CompletionError>;
     
-    /// Add provider-specific parameters (defaults to None)
-    #[inline(always)]
+    /// Add provider-specific parameters
     fn additional_params(self, params: Value) -> Self;
     
     /// Set chunk handler with cyrup_sugars pattern matching
+    /// 
     /// ```
     /// .on_chunk(|chunk| {
     ///     Ok => log::info!("Chunk: {:?}", chunk),
     ///     Err => log::error!("Error: {:?}", chunk)
     /// })
     /// ```
-    #[inline(always)]
     fn on_chunk<F>(self, handler: F) -> Self 
     where
         F: Fn(Result<CompletionChunk, CompletionError>) + Send + Sync + 'static;
-}
-
-/// Terminal action trait - converts NeedsPrompt to Ready and executes
-pub trait TerminalPrompt<State> {
+    
     /// Terminal action - execute completion with user prompt
     /// Returns blazing-fast zero-allocation streaming
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk>;
 }
 
 /// Model trait for direct prompting syntax
+/// 
 /// Enables: `Model::MistralMagistral.prompt("What time is it in Paris?")`
-pub trait ModelPrompt {
-    type Provider: CompletionProvider<NeedsPrompt> + TerminalPrompt<NeedsPrompt>;
+/// Each model variant knows its provider and configuration at compile time
+pub trait ModelPrompt: ModelInfo {
+    /// Associated provider type for this model
+    type Provider: CompletionProvider;
     
     /// Direct prompt execution with ModelInfo defaults
-    #[inline(always)]
+    /// Zero allocation, blazing-fast streaming
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk>
     where
-        Self: Sized,
+        Self: Sized + ModelInfo,
     {
-        // This will be implemented by each model enum variant
-        // to create the appropriate provider with defaults
-        unimplemented!("Each model must implement direct prompting")
+        // Create temporary provider to get env_api_keys list
+        let temp_provider = match Self::Provider::new("temp".to_string(), self.name()) {
+            Ok(provider) => provider,
+            Err(e) => {
+                // Return error stream
+                let (sender, receiver) = crate::async_stream_channel();
+                let _ = sender.send(CompletionChunk::error(e.message()));
+                return receiver;
+            }
+        };
+        
+        // Discover API key using provider's env_api_keys() method
+        let api_key = match discover_api_key_for_provider(&temp_provider) {
+            Some(key) => key,
+            None => {
+                // Return error stream - discovery function already logged the error
+                let (sender, receiver) = crate::async_stream_channel();
+                let _ = sender.send(CompletionChunk::error("Missing API key"));
+                return receiver;
+            }
+        };
+        
+        // Create provider with discovered API key and execute
+        match Self::Provider::new(api_key, self.name()) {
+            Ok(provider) => provider.prompt(text),
+            Err(e) => {
+                // Return error stream
+                let (sender, receiver) = crate::async_stream_channel();
+                let _ = sender.send(CompletionChunk::error(e.message()));
+                receiver
+            }
+        }
     }
     
     /// Create completion builder for advanced configuration
-    #[inline(always)]
+    /// All parameters default from ModelInfo - zero allocation setup
     fn completion(self) -> Result<Self::Provider, CompletionError>
     where 
-        Self: Sized,
+        Self: Sized + ModelInfo,
     {
-        // This will be implemented by each model enum variant
-        unimplemented!("Each model must implement completion builder")
+        // Create temporary provider to get env_api_keys list
+        let temp_provider = Self::Provider::new("temp".to_string(), self.name())?;
+        
+        // Discover API key using provider's env_api_keys() method
+        let api_key = discover_api_key_for_provider(&temp_provider)
+            .ok_or(CompletionError::AuthError)?;
+        
+        // Create provider with discovered API key and ModelInfo defaults
+        Self::Provider::new(api_key, self.name())
     }
 }
 
-/// Compile-time model configuration (zero allocation)
+/// Compile-time model configuration (zero allocation constants)
 #[derive(Debug, Clone, Copy)]
 pub struct ModelConfig {
     pub max_tokens: u32,
@@ -169,45 +269,71 @@ pub struct ModelConfig {
     pub supports_tools: bool,
     pub supports_vision: bool,
     pub supports_audio: bool,
+    pub supports_thinking: bool,
+    pub optimal_thinking_budget: u32,
     pub provider: &'static str,
+    pub model_name: &'static str,
 }
 
 /// Universal model info trait for compile-time defaults
+/// 
+/// All model configurations are const and known at compile time
+/// for blazing-fast zero-allocation initialization
 pub trait ModelInfo {
-    /// Get compile-time model configuration
+    /// Compile-time model configuration (zero allocation)
     const CONFIG: ModelConfig;
     
-    /// Get model name (zero allocation)
-    fn name(&self) -> &'static str;
+    /// Get model name (zero allocation string literal)
+    #[inline(always)]
+    fn name(&self) -> &'static str {
+        Self::CONFIG.model_name
+    }
     
-    /// Get provider name (zero allocation)  
+    /// Get provider name (zero allocation string literal)
+    #[inline(always)]
     fn provider(&self) -> &'static str {
         Self::CONFIG.provider
     }
     
-    /// Check capabilities at compile time
+    /// Check tool support at compile time
     #[inline(always)]
-    const fn supports_tools() -> bool {
+    fn supports_tools() -> bool {
         Self::CONFIG.supports_tools
     }
     
+    /// Check vision support at compile time
     #[inline(always)]
-    const fn supports_vision() -> bool {
+    fn supports_vision() -> bool {
         Self::CONFIG.supports_vision
     }
     
+    /// Check audio support at compile time
     #[inline(always)]
-    const fn supports_audio() -> bool {
+    fn supports_audio() -> bool {
         Self::CONFIG.supports_audio
     }
     
+    /// Get context length at compile time
     #[inline(always)]
-    const fn context_length() -> u32 {
+    fn context_length() -> u32 {
         Self::CONFIG.context_length
     }
     
+    /// Get max output tokens at compile time
     #[inline(always)]
-    const fn max_output_tokens() -> u32 {
+    fn max_output_tokens() -> u32 {
         Self::CONFIG.max_tokens
+    }
+    
+    /// Get default temperature at compile time
+    #[inline(always)]
+    fn default_temperature() -> f64 {
+        Self::CONFIG.temperature
+    }
+    
+    /// Get default system prompt at compile time
+    #[inline(always)]
+    fn default_system_prompt() -> &'static str {
+        Self::CONFIG.system_prompt
     }
 }

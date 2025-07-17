@@ -1,0 +1,424 @@
+/*!
+This crate provides a cross platform abstraction for writing colored text to
+a terminal. Colors are written using ANSI escape sequences. Much of this API
+was motivated by use inside command line applications, where colors or styles
+can be configured by the end user and/or the environment.
+
+This crate also provides platform independent support for writing colored text
+to an in memory buffer. While this is easy to do with ANSI escape sequences
+(because they are in the buffer themselves), it is trickier on older Windows
+systems without virtual terminal support.
+
+In ANSI mode, this crate also provides support for writing hyperlinks.
+
+# Organization
+
+The `WriteColor` trait extends the `io::Write` trait with methods for setting
+colors or resetting them.
+
+`StandardStream` and `StandardStreamLock` both satisfy `WriteColor` and are
+analogous to `std::io::Stdout` and `std::io::StdoutLock`, or `std::io::Stderr`
+and `std::io::StderrLock`.
+
+`Buffer` is an in memory buffer that supports colored text. In a parallel
+program, each thread might write to its own buffer. A buffer can be printed to
+using a `BufferWriter`. The advantage of this design is that each thread can
+work in parallel on a buffer without having to synchronize access to global
+resources. Moreover, this design also prevents interleaving of buffer output.
+
+`Ansi` and `NoColor` both satisfy `WriteColor` for arbitrary implementors of
+`io::Write`. These types are useful when you know exactly what you need.
+
+# Example: using `StandardStream`
+
+The `StandardStream` type in this crate works similarly to `std::io::Stdout`,
+except it is augmented with methods for coloring by the `WriteColor` trait.
+For example, to write some green text:
+
+```rust,no_run
+# fn test() -> Result<(), Box<::std::error::Error>> {
+use std::io::Write;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+
+let mut stdout = StandardStream::stdout(ColorChoice::Always);
+stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
+writeln!(&mut stdout, "green text!")?;
+# Ok(()) }
+```
+
+Note that any text written to the terminal now will be colored
+green when using ANSI escape sequences, even if it is written via
+stderr, and even if stderr had previously been set to `Color::Red`.
+Users will need to manage any color changes themselves by calling
+[`WriteColor::set_color`](trait.WriteColor.html#tymethod.set_color), and this
+may include calling [`WriteColor::reset`](trait.WriteColor.html#tymethod.reset)
+before the program exits to a shell.
+
+# Example: using `BufferWriter`
+
+A `BufferWriter` can create buffers and write buffers to stdout or stderr. It
+does *not* implement `io::Write` or `WriteColor` itself. Instead, `Buffer`
+implements `io::Write` and `io::WriteColor`.
+
+This example shows how to print some green text to stderr.
+
+```rust,no_run
+# fn test() -> Result<(), Box<::std::error::Error>> {
+use std::io::Write;
+use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
+
+let mut bufwtr = BufferWriter::stderr(ColorChoice::Always);
+let mut buffer = bufwtr.buffer();
+buffer.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
+writeln!(&mut buffer, "green text!")?;
+bufwtr.print(&buffer)?;
+# Ok(()) }
+```
+
+# Detecting presence of a terminal
+
+In many scenarios when using color, one often wants to enable colors
+automatically when writing to a terminal and disable colors automatically when
+writing to anything else. The typical way to achieve this in Unix environments
+is via libc's
+[`isatty`](https://man7.org/linux/man-pages/man3/isatty.3.html)
+function.
+Unfortunately, this notoriously does not work well in Windows environments. To
+work around that, the recommended solution is to use the standard library's
+[`IsTerminal`](https://doc.rust-lang.org/std/io/trait.IsTerminal.html) trait.
+It goes out of its way to get it as right as possible in Windows environments.
+
+For example, in a command line application that exposes a `--color` flag,
+your logic for how to enable colors might look like this:
+
+```ignore
+use std::io::IsTerminal;
+
+use termcolor::{ColorChoice, StandardStream};
+
+let preference = argv.get_flag("color").unwrap_or("auto");
+let mut choice = preference.parse::<ColorChoice>()?;
+
+// If the user wants auto color, then we should check the environment. If
+// stdout isn't a tty, then we shouldn't automatically use colors.
+if choice == ColorChoice::Auto && !std::io::stdout().is_terminal() {
+    choice = ColorChoice::Never;
+}
+
+let mut stdout = StandardStream::stdout(choice);
+```
+
+# Example: using `StringWriter`
+
+Use `StringWriter` to produce colored output for text output to strings,
+instead of outputting to a tty directly. This approach is useful if you want
+to capture colored text and do something with it that isn't stdout or stderr.
+
+```rust
+use std::io::Write;
+use termcolor::{Color, ColorChoice, ColorSpec, StringWriter, WriteColor};
+
+let mut writer = StringWriter::new(ColorChoice::Always);
+writer.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
+writeln!(&mut writer, "green text!")?;
+println!("The colored result: {}", writer.as_str());
+# Ok::<(), Box<::std::error::Error>>(())
+```
+
+# Example: reading a color specification from a string
+
+Use [`ColorSpec::from_str`](https://docs.rs/termcolor/*/termcolor/struct.ColorSpec.html#method.from_str)
+to read a color specification from a string.
+
+```rust
+use std::str::FromStr;
+use termcolor::{Color, ColorSpec};
+
+let spec = ColorSpec::from_str("blue")?;
+let spec = ColorSpec::from_str("bold,blue")?;
+let spec = ColorSpec::from_str("dimmed,bg:blue,fg:yellow")?;
+# Ok::<(), Box<::std::error::Error>>(())
+```
+
+# Example: string generation without IO
+
+The trait `fmt::Display` is implemented for ColorSpec so that it can be used to
+generate ANSI escape sequences without any IO. For example:
+
+```rust
+use termcolor::Color;
+
+// This creates a string "\x1b[32m".
+let ansi = format!("{}", termcolor::ansi_color(Some(Color::Green), None));
+println!("ANSI green color string: {}", ansi);
+```
+
+# MSRV
+
+This crate's minimum supported Rust version is `1.60.0`.
+*/
+
+mod traits;
+mod types;
+mod writers;
+
+// Re-export core traits and types
+pub use traits::WriteColor;
+pub use types::{Color, ColorChoice, ColorChoiceParseError, ColorSpec, HyperlinkSpec, ParseColorError};
+pub use writers::{
+    Ansi, Buffer, BufferWriter, BufferedStandardStream, NoColor, StandardStream,
+    StandardStreamLock, StringWriter, TermString
+};
+
+use std::fmt;
+use std::io::{self, Write};
+use std::str::FromStr;
+
+impl FromStr for ColorSpec {
+    type Err = ColorSpecParseError;
+
+    fn from_str(spec: &str) -> Result<ColorSpec, ColorSpecParseError> {
+        let mut color_spec = ColorSpec::new();
+        for part in spec.split(',') {
+            let part = part.trim();
+            if part.is_empty() {
+                continue;
+            }
+
+            if part.starts_with("fg:") {
+                let color_str = &part[3..];
+                let color = Color::from_str(color_str)
+                    .map_err(|e| ColorSpecParseError::InvalidColor(e))?;
+                color_spec.set_fg(Some(color));
+            } else if part.starts_with("bg:") {
+                let color_str = &part[3..];
+                let color = Color::from_str(color_str)
+                    .map_err(|e| ColorSpecParseError::InvalidColor(e))?;
+                color_spec.set_bg(Some(color));
+            } else if part == "bold" {
+                color_spec.set_bold(true);
+            } else if part == "dimmed" {
+                color_spec.set_dimmed(true);
+            } else if part == "underline" {
+                color_spec.set_underline(true);
+            } else if part == "italic" {
+                color_spec.set_italic(true);
+            } else if part == "intense" {
+                color_spec.set_intense(true);
+            } else if part == "strikethrough" {
+                color_spec.set_strikethrough(true);
+            } else if part == "reset" {
+                color_spec.set_reset(true);
+            } else if part == "noreset" {
+                color_spec.set_reset(false);
+            } else {
+                let color = Color::from_str(part)
+                    .map_err(|e| ColorSpecParseError::InvalidColor(e))?;
+                color_spec.set_fg(Some(color));
+            }
+        }
+        Ok(color_spec)
+    }
+}
+
+/// An error from parsing an invalid color specification.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ColorSpecParseError {
+    /// An error parsing a color.
+    InvalidColor(ParseColorError),
+}
+
+impl std::error::Error for ColorSpecParseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            ColorSpecParseError::InvalidColor(ref e) => Some(e),
+        }
+    }
+}
+
+impl fmt::Display for ColorSpecParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ColorSpecParseError::InvalidColor(ref e) => write!(f, "{}", e),
+        }
+    }
+}
+
+/// Writes an ANSI escape sequence corresponding to the given color specification.
+///
+/// If `reset` is true, then the reset escape sequence will be written before
+/// any color escape codes.
+///
+/// The caller must provide their own `IoWrite` to write to. Callers should
+/// prefer higher level types in this crate, such as `StandardStream` or
+/// `Buffer`.
+pub fn ansi_spec<W: io::Write>(
+    mut wtr: W,
+    spec: &ColorSpec,
+) -> io::Result<()> {
+    if spec.reset() {
+        write!(wtr, "\x1B[0m")?;
+    }
+    if spec.bold() {
+        write!(wtr, "\x1B[1m")?;
+    }
+    if spec.dimmed() {
+        write!(wtr, "\x1B[2m")?;
+    }
+    if spec.italic() {
+        write!(wtr, "\x1B[3m")?;
+    }
+    if spec.underline() {
+        write!(wtr, "\x1B[4m")?;
+    }
+    if spec.strikethrough() {
+        write!(wtr, "\x1B[9m")?;
+    }
+    if let Some(ref c) = spec.fg() {
+        ansi_color(&mut wtr, c, false)?;
+    }
+    if let Some(ref c) = spec.bg() {
+        ansi_color(&mut wtr, c, true)?;
+    }
+    if spec.intense() {
+        if spec.fg().is_some() {
+            write!(wtr, "\x1B[1m")?;
+        }
+    }
+    Ok(())
+}
+
+/// Writes an ANSI escape sequence corresponding to the given color.
+///
+/// If `bg` is true, then the color is treated as a background color.
+/// Otherwise, it's treated as a foreground color.
+///
+/// The caller must provide their own `IoWrite` to write to. Callers should
+/// prefer higher level types in this crate, such as `StandardStream` or
+/// `Buffer`.
+pub fn ansi_color<W: io::Write>(
+    mut wtr: W,
+    color: &Color,
+    bg: bool,
+) -> io::Result<()> {
+    match *color {
+        Color::Black => {
+            if bg {
+                write!(wtr, "\x1B[40m")
+            } else {
+                write!(wtr, "\x1B[30m")
+            }
+        }
+        Color::Blue => {
+            if bg {
+                write!(wtr, "\x1B[44m")
+            } else {
+                write!(wtr, "\x1B[34m")
+            }
+        }
+        Color::Green => {
+            if bg {
+                write!(wtr, "\x1B[42m")
+            } else {
+                write!(wtr, "\x1B[32m")
+            }
+        }
+        Color::Red => {
+            if bg {
+                write!(wtr, "\x1B[41m")
+            } else {
+                write!(wtr, "\x1B[31m")
+            }
+        }
+        Color::Cyan => {
+            if bg {
+                write!(wtr, "\x1B[46m")
+            } else {
+                write!(wtr, "\x1B[36m")
+            }
+        }
+        Color::Magenta => {
+            if bg {
+                write!(wtr, "\x1B[45m")
+            } else {
+                write!(wtr, "\x1B[35m")
+            }
+        }
+        Color::Yellow => {
+            if bg {
+                write!(wtr, "\x1B[43m")
+            } else {
+                write!(wtr, "\x1B[33m")
+            }
+        }
+        Color::White => {
+            if bg {
+                write!(wtr, "\x1B[47m")
+            } else {
+                write!(wtr, "\x1B[37m")
+            }
+        }
+        Color::Ansi256(n) => {
+            if bg {
+                write!(wtr, "\x1B[48;5;{}m", n)
+            } else {
+                write!(wtr, "\x1B[38;5;{}m", n)
+            }
+        }
+        Color::Rgb(r, g, b) => {
+            if bg {
+                write!(wtr, "\x1B[48;2;{};{};{}m", r, g, b)
+            } else {
+                write!(wtr, "\x1B[38;2;{};{};{}m", r, g, b)
+            }
+        }
+        Color::__Nonexhaustive => unreachable!(),
+    }
+}
+
+/// A convenience function for creating a color specification that can be
+/// formatted to an ANSI color string.
+///
+/// This is a shorthand for creating a `ColorSpec` with the given foreground
+/// and background colors.
+pub fn ansi_color_only(fg: Option<Color>, bg: Option<Color>) -> AnsiColor {
+    AnsiColor { fg, bg }
+}
+
+/// A color specification that can be formatted to an ANSI color string.
+///
+/// This is created by the `ansi_color_only` function.
+pub struct AnsiColor {
+    fg: Option<Color>,
+    bg: Option<Color>,
+}
+
+impl fmt::Display for AnsiColor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut buf = Vec::new();
+        if let Some(ref c) = self.fg {
+            ansi_color(&mut buf, c, false).map_err(|_| fmt::Error)?;
+        }
+        if let Some(ref c) = self.bg {
+            ansi_color(&mut buf, c, true).map_err(|_| fmt::Error)?;
+        }
+        write!(f, "{}", String::from_utf8_lossy(&buf))
+    }
+}
+
+/// A convenience function for creating a color specification that can be
+/// formatted to an ANSI color string.
+///
+/// This is a shorthand for creating a `ColorSpec` with the given foreground
+/// and background colors.
+pub fn ansi_color(fg: Option<Color>, bg: Option<Color>) -> AnsiColor {
+    AnsiColor { fg, bg }
+}
+
+impl fmt::Display for ColorSpec {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut buf = Vec::new();
+        ansi_spec(&mut buf, self).map_err(|_| fmt::Error)?;
+        write!(f, "{}", String::from_utf8_lossy(&buf))
+    }
+}

@@ -1,18 +1,8 @@
 pub mod builder;
 pub use builder::*;
 
-/// Macro for implementing conversion traits for client types
-#[macro_export]
-macro_rules! impl_conversion_traits {
-    ($($trait:ident),+ for $client:ty) => {
-        $(
-            impl $trait for $client {}
-        )+
-    };
-}
-
-/// Re-export the macro for internal use
-pub use impl_conversion_traits;
+// Conversion trait implementations moved to proper trait impls
+// No exposed macros
 
 /// Base trait for provider clients
 pub trait ProviderClient: Send + Sync {

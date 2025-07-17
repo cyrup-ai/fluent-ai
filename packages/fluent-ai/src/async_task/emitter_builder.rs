@@ -49,10 +49,5 @@ impl<T: Send + 'static> EmitterBuilder<T> {
     }
 }
 
-/// Macro for cleaner emit syntax
-#[macro_export]
-macro_rules! emit {
-    ($stream:expr, Ok($items:ident) => $ok:expr, Err($e:ident) => $err:expr) => {
-        $stream.emit(|$items| $ok, |$e| $err)
-    };
-}
+// Emit functionality moved to proper method implementations
+// No exposed macros

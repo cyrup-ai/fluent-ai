@@ -1,28 +1,5 @@
-#[macro_export]
-macro_rules! define_tool {
-    ($name:ident, $def:expr) => {
-        pub struct $name;
-        impl $crate::traits::Tool for $name {
-            fn name(&self) -> &'static str {
-                stringify!($name)
-            }
-            fn definition(&self) -> String {
-                $def.into()
-            }
-        }
-    };
-}
+// define_tool functionality moved to proper trait implementations
+// No exposed macros
 
-/// HashMap-like syntax macro for fluent-ai
-#[macro_export]
-macro_rules! hash_map {
-    { $($key:expr => $value:expr),* $(,)? } => {
-        || {
-            let mut map = hashbrown::HashMap::new();
-            $(
-                map.insert($key.to_string(), $value);
-            )*
-            map
-        }
-    };
-}
+// HashMap functionality now provided by cyrup_sugars::hash_map_fn
+// No exposed macros - use cyrup_sugars::hash_map_fn instead

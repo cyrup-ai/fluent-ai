@@ -60,15 +60,35 @@ impl Tool for McpToolImpl {
     }
     
     fn execute(&self, args: Value) -> Pin<Box<dyn Future<Output = Result<Value, String>> + Send>> {
-        // Default implementation for MCP tools - actual execution would be handled by MCP server
         let name = self.name.clone();
+        let description = self.description.clone();
+        
         Box::pin(async move {
-            // This is a placeholder - real MCP tools would delegate to the MCP server
-            Ok(serde_json::json!({
-                "tool": name,
-                "args": args,
-                "result": "MCP tool execution not implemented yet"
-            }))
+            // Check if this is a code execution tool that should use secure execution
+            if should_use_secure_execution(&name, &description, &args) {
+                // Use secure execution via cylo
+                let executor = crate::secure_executor::get_secure_executor();
+                match executor.execute_tool_with_args(&name, args.clone()).await {
+                    Ok(result) => Ok(result),
+                    Err(e) => {
+                        // Fallback to default behavior if secure execution fails
+                        eprintln!("Secure execution failed for tool '{}': {}. Falling back to default.", name, e);
+                        Ok(serde_json::json!({
+                            "tool": name,
+                            "args": args,
+                            "result": "MCP tool execution not implemented yet",
+                            "secure_execution_error": e
+                        }))
+                    }
+                }
+            } else {
+                // Default implementation for non-code MCP tools
+                Ok(serde_json::json!({
+                    "tool": name,
+                    "args": args,
+                    "result": "MCP tool execution not implemented yet"
+                }))
+            }
         })
     }
 }
@@ -310,4 +330,32 @@ mod tests {
         assert_eq!(tool.name(), "built_tool");
         assert_eq!(tool.description(), "A built tool");
     }
+}
+
+/// Helper function to determine if a tool should use secure execution
+fn should_use_secure_execution(name: &str, description: &str, args: &Value) -> bool {
+    // Check if the tool name suggests code execution
+    let name_lower = name.to_lowercase();
+    let desc_lower = description.to_lowercase();
+    
+    // Common code execution tool patterns
+    let code_execution_patterns = [
+        "exec", "execute", "run", "eval", "script", "code",
+        "python", "javascript", "bash", "shell", "rust", "go",
+        "interpreter", "compiler", "runner"
+    ];
+    
+    // Check if name or description contains code execution patterns
+    let has_code_pattern = code_execution_patterns.iter().any(|pattern| {
+        name_lower.contains(pattern) || desc_lower.contains(pattern)
+    });
+    
+    // Check if args contain code or script
+    let has_code_args = args.get("code").is_some() 
+        || args.get("script").is_some() 
+        || args.get("command").is_some()
+        || args.get("language").is_some();
+    
+    // Use secure execution if either pattern matches
+    has_code_pattern || has_code_args
 }

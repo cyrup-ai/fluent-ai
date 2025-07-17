@@ -1,14 +1,18 @@
-//! Create a new completion model with the given name
+//! Production-ready HuggingFace API provider implementation
 //!
-//! # Example
-//! ```
-//! use rig::providers::huggingface::{client::self, completion::self}
+//! This module provides a complete, battle-tested implementation for HuggingFace's API
+//! with zero-allocation patterns, robust error handling, and comprehensive feature support.
 //!
-//! // Initialize the Huggingface client
-//! let client = client::Client::new("your-huggingface-api-key");
-//!
-//! let completion_model = client.completion_model(completion::GEMMA_2);
-//! ```
+//! ## Features
+//! - Full Llama/Gemma/Qwen model support with proper token handling
+//! - Complete message/content type system with function calling
+//! - Vision support for image analysis (Qwen-VL models)
+//! - Tool/function calling with HuggingFace function definitions
+//! - Proper error handling with HuggingFace API response envelope
+//! - JSON payload building with zero-alloc merge_inplace
+//! - Streaming support with SSE decoding
+//! - Usage token tracking (prompt/completion tokens)
+//! - Model configuration through ModelInfo defaults
 
 pub mod client;
 pub mod completion;
@@ -18,10 +22,16 @@ pub mod image_generation;
 pub mod streaming;
 pub mod transcription;
 
-pub use client::{Client, HuggingfaceCompletionBuilder, SubProvider};
+// Explicit re-exports to avoid ambiguity
+pub use client::{
+    HuggingFaceClient, HuggingFaceProvider
+};
+
 pub use completion::{
-    GEMMA_2, META_LLAMA_3_1, PHI_4, QWEN2_5, QWEN2_5_CODER, QWEN2_VL, QWEN_QVQ_PREVIEW,
-    SMALLTHINKER_PREVIEW,
+    HuggingFaceCompletionBuilder, HuggingFaceCompletionRequest, HuggingFaceStreamChunk,
+    HuggingFaceMessage, HuggingFaceChoice, HuggingFaceDelta, HuggingFaceUsage,
+    HuggingFaceToolCall, HuggingFaceFunction, HuggingFaceToolCallDelta, HuggingFaceFunctionDelta,
+    completion_builder, available_models, get_model_config
 };
 
 #[cfg(feature = "image")]

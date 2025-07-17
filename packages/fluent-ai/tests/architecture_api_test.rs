@@ -2,6 +2,7 @@
 
 use fluent_ai::*;
 use serde_json::Value;
+use cyrup_sugars::hash_map_fn;
 
 #[tokio::test]
 async fn test_exact_architecture_api() {
@@ -42,15 +43,15 @@ async fn test_exact_architecture_api() {
         .mcp_server::<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
         .tools( // trait Tool
             (
-                Tool::<Perplexity>::new(hash_map! {
-                    "citations" => Value::String("true".to_string())
+                Tool::<Perplexity>::new(hash_map_fn!{
+                    "citations" => "true"
                 }),
                 Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
             )
         ) // ZeroOneOrMany `Tool` || `McpTool` || NamedTool (WASM)
-        .additional_params(hash_map! {"beta" => Value::String("true".to_string())})
+        .additional_params(hash_map_fn!{"beta" => "true"})
         .memory(Library::named("obsidian_vault"))
-        .metadata(hash_map! { "key" => Value::String("val".to_string()), "foo" => Value::String("bar".to_string()) })
+        .metadata(hash_map_fn!{ "key" => "val", "foo" => "bar" })
         .on_tool_result(|_results| {
             // do stuff
         })

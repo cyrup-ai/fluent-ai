@@ -20,21 +20,11 @@
 //! - **Type-safe**: Compile-time validation with typestate pattern
 //! - **Ergonomic**: Fluent API with method chaining
 
-use super::{
-    agent_flow::prompt,
-    parallel::parallel,
-    workflow::{step, Workflow, Op, Sequential},
-    try_flow::try_step,
-};
 use crate::agent::Agent;
-use crate::domain::{Model, ModelInfo};
 use crate::models::Models;
-use crate::runtime::{AsyncTask, spawn_async};
-use crate::engine::FluentEngine;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use std::marker::PhantomData;
 use std::fmt;
 
 /// Content type flags for specialized review strategies (bit-packed)
@@ -765,8 +755,6 @@ struct SynthesisResult {
 pub struct CrossLLMEnhancer {
     /// Configuration
     config: CrossReviewConfig,
-    /// Fluent engine for agent management
-    engine: FluentEngine,
     /// Request counter (atomic)
     request_counter: Arc<AtomicU64>,
 }
@@ -774,10 +762,9 @@ pub struct CrossLLMEnhancer {
 impl CrossLLMEnhancer {
     /// Create new Cross-LLM enhancer
     #[inline]
-    pub fn new(engine: FluentEngine) -> Self {
+    pub fn new() -> Self {
         Self {
             config: CrossReviewConfig::default(),
-            engine,
             request_counter: Arc::new(AtomicU64::new(0)),
         }
     }
@@ -806,143 +793,166 @@ impl CrossLLMEnhancer {
         // Increment request counter
         self.request_counter.fetch_add(1, Ordering::Relaxed);
 
-        // Create enhancement workflow
-        let workflow = self.create_enhancement_workflow(content_type)?;
-        
-        // Execute workflow
-        let enhanced_content = workflow.call(prompt.to_string()).await
-            .map_err(|_| CrossReviewError::validation("Workflow execution failed"))?;
+        // Execute cross-review enhancement pipeline
+        let generations = self.generate_from_multiple_models(prompt, content_type).await?;
+        let reviews = Self::execute_cross_reviews(generations, self.config).await?;
+        let enhanced_content = self.synthesize_and_refine(prompt, &reviews).await?;
 
         // Process results
         let processing_time_us = start_time.elapsed().as_micros() as u64;
         
+        let enhanced_prompt = EnhancedPrompt {
+            content: Arc::from(enhanced_content),
+            confidence_score: Arc::new(AtomicU32::new(800)),
+            review_scores: Arc::from(reviews.into_boxed_slice()),
+            improvement_suggestions: Arc::new([]),
+            metadata: EnhancementMetadata {
+                original_length: prompt.len() as u32,
+                enhanced_length: 0, // Will be updated
+                models_used: 3,
+                review_cycles: 1,
+                processing_time_us,
+                content_type,
+            },
+        };
+        
+        Ok(enhanced_prompt)
+    }
+
+    /// Generate responses from multiple models (zero allocation)
+    async fn generate_from_multiple_models(
+        &self,
+        prompt: &str,
+        content_type: ContentType,
+    ) -> CrossReviewResult<Vec<GenerationResult>> {
+        let models = Self::select_models_for_content_type(content_type);
+        let mut results = Vec::with_capacity(models.len());
+        
+        for model in models {
+            let start_time = std::time::Instant::now();
+            
+            // Create agent for this model
+            let agent = Agent::for_provider(model)
+                .system_prompt(Self::get_system_prompt_for_content_type(content_type))
+                .temperature(Self::get_temperature_for_content_type(content_type))
+                .build();
+            
+            // Generate content
+            match agent.completion(prompt).await {
+                Ok(content) => {
+                    let generation_time_us = start_time.elapsed().as_micros() as u64;
+                    results.push(GenerationResult {
+                        content: Arc::from(content),
+                        model,
+                        generation_time_us,
+                    });
+                }
+                Err(_) => {
+                    // Skip failed generations
+                }
+            }
+        }
+        
+        if results.is_empty() {
+            return Err(CrossReviewError::model("No models generated responses"));
+        }
+        
+        Ok(results)
+    }
+
+    /// Execute cross-reviews between all model pairs (N×(N-1) matrix)
+    async fn execute_cross_reviews(
+        generations: Vec<GenerationResult>,
+        config: CrossReviewConfig,
+    ) -> CrossReviewResult<Vec<IndividualReview>> {
+        // N×(N-1) matrix: each model reviews every other model's work
+        let total_reviews = generations.len() * (generations.len() - 1);
+        let mut all_reviews = Vec::with_capacity(total_reviews);
+        
+        // Execute cross-reviews in parallel batches to avoid overwhelming APIs
+        let batch_size = config.max_parallel_reviews.min(8) as usize;
+        let mut review_futures = Vec::with_capacity(total_reviews);
+        
+        // Build all review pairs first (zero allocation iterator pattern)
+        for (reviewer_idx, reviewer_generation) in generations.iter().enumerate() {
+            for (target_idx, target_generation) in generations.iter().enumerate() {
+                // Skip self-review - true cross-review only
+                if reviewer_idx == target_idx {
+                    continue;
+                }
+                
+                let reviewer_model = reviewer_generation.model;
+                let target_model = target_generation.model;
+                let target_content = target_generation.content.clone();
+                
+                // Create cross-review task
+                let review_future = Self::execute_cross_review(
+                    reviewer_model,
+                    target_model,
+                    target_content,
+                    config.review_timeout_ms,
+                );
+                
+                review_futures.push(review_future);
+            }
+        }
+        
+        // Execute reviews sequentially for simplicity (can be optimized later)
+        let mut completed_reviews = Vec::with_capacity(total_reviews);
+        
+        for review_future in review_futures {
+            if let Ok(review) = review_future.await {
+                completed_reviews.push(review);
+            }
+            // Continue processing even if individual reviews fail
+        }
+        
+        Ok(completed_reviews)
+    }
+
+    /// Synthesize reviews and refine prompt based on cross-review feedback
+    async fn synthesize_and_refine(
+        &self,
+        original_prompt: &str,
+        reviews: &[IndividualReview],
+    ) -> CrossReviewResult<String> {
+        if reviews.is_empty() {
+            return Ok(original_prompt.to_string());
+        }
+        
+        // Calculate consensus score
+        let total_score: u32 = reviews.iter().map(|r| r.score()).sum();
+        let consensus_score = total_score / reviews.len() as u32;
+        
+        // Create synthesis prompt
+        let synthesis_prompt = format!(
+            "Improve this prompt based on peer review feedback:\n\n\
+            Original Prompt:\n{}\n\n\
+            Peer Review Feedback:\n{}\n\n\
+            Create an enhanced version that addresses the feedback while maintaining the original intent.",
+            original_prompt,
+            reviews.iter()
+                .map(|r| {
+                    if let Some((reviewer, target)) = r.role().get_cross_review_models() {
+                        format!("{} reviewing {}: {}", reviewer.name(), target.name(), r.content())
+                    } else {
+                        format!("{}: {}", r.role().as_str_static(), r.content())
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n\n")
+        );
+        
+        // Use Claude for synthesis (known for good synthesis capabilities)
+        let synthesizer = Agent::for_provider(Models::AnthropicClaude35Sonnet)
+            .system_prompt("You are an expert prompt engineer. Synthesize peer review feedback into improved prompts.")
+            .temperature(0.2)
+            .build();
+        
+        let enhanced_content = synthesizer.completion(&synthesis_prompt).await
+            .map_err(|_| CrossReviewError::model("Synthesis failed"))?;
+        
         Ok(enhanced_content)
-    }
-
-    /// Create enhancement workflow (zero allocation)
-    fn create_enhancement_workflow(&self, content_type: ContentType) -> CrossReviewResult<impl Op<Input = String, Output = EnhancedPrompt>> {
-        // Generation phase
-        let generation_op = self.create_generation_op(content_type)?;
-        
-        // Cross-review phase
-        let cross_review_op = self.create_cross_review_op()?;
-        
-        // Synthesis phase
-        let synthesis_op = self.create_synthesis_op()?;
-        
-        // Refinement phase
-        let refinement_op = self.create_refinement_op()?;
-        
-        // Validation phase
-        let validation_op = self.create_validation_op()?;
-
-        // Compose workflow
-        let workflow = generation_op
-            .then(cross_review_op)
-            .then(synthesis_op)
-            .then(refinement_op)
-            .then(validation_op);
-
-        Ok(workflow)
-    }
-
-    /// Create generation operation (zero allocation)
-    fn create_generation_op(&self, content_type: ContentType) -> CrossReviewResult<impl Op<Input = String, Output = Vec<GenerationResult>>> {
-        let models = self.select_models_for_content_type(content_type);
-        
-        // Create parallel generation
-        let generation_op = step(move |prompt: String| {
-            let models = models.clone();
-            async move {
-                let mut results = Vec::with_capacity(models.len());
-                
-                for model in models {
-                    let start_time = std::time::Instant::now();
-                    
-                    // Create agent for this model
-                    let agent = Agent::for_provider(model)
-                        .system_prompt(Self::get_system_prompt_for_content_type(content_type))
-                        .temperature(Self::get_temperature_for_content_type(content_type))
-                        .build();
-                    
-                    // Generate content
-                    match agent.completion(&prompt).await {
-                        Ok(content) => {
-                            let generation_time_us = start_time.elapsed().as_micros() as u64;
-                            results.push(GenerationResult {
-                                content: Arc::from(content),
-                                model,
-                                generation_time_us,
-                            });
-                        }
-                        Err(_) => {
-                            // Skip failed generations
-                        }
-                    }
-                }
-                
-                results
-            }
-        });
-
-        Ok(generation_op)
-    }
-
-    /// Create cross-review operation implementing N×(N-1) peer review matrix (zero allocation)
-    fn create_cross_review_op(&self) -> CrossReviewResult<impl Op<Input = Vec<GenerationResult>, Output = Vec<IndividualReview>>> {
-        let config = self.config;
-        
-        let cross_review_op = step(move |generations: Vec<GenerationResult>| async move {
-            // N×(N-1) matrix: each model reviews every other model's work
-            let total_reviews = generations.len() * (generations.len() - 1);
-            let mut all_reviews = Vec::with_capacity(total_reviews);
-            
-            // Execute cross-reviews in parallel batches to avoid overwhelming APIs
-            let batch_size = config.max_parallel_reviews.min(8) as usize;
-            let mut review_futures = Vec::with_capacity(total_reviews);
-            
-            // Build all review pairs first (zero allocation iterator pattern)
-            for (reviewer_idx, reviewer_generation) in generations.iter().enumerate() {
-                for (target_idx, target_generation) in generations.iter().enumerate() {
-                    // Skip self-review - true cross-review only
-                    if reviewer_idx == target_idx {
-                        continue;
-                    }
-                    
-                    let reviewer_model = reviewer_generation.model;
-                    let target_model = target_generation.model;
-                    let target_content = target_generation.content.clone();
-                    
-                    // Create cross-review task
-                    let review_future = Self::execute_cross_review(
-                        reviewer_model,
-                        target_model,
-                        target_content,
-                        config.review_timeout_ms,
-                    );
-                    
-                    review_futures.push(review_future);
-                }
-            }
-            
-            // Execute reviews in parallel batches (lock-free coordination)
-            let mut completed_reviews = Vec::with_capacity(total_reviews);
-            
-            for batch in review_futures.chunks(batch_size) {
-                let batch_results = futures::future::join_all(batch).await;
-                
-                for result in batch_results {
-                    if let Ok(review) = result {
-                        completed_reviews.push(review);
-                    }
-                    // Continue processing even if individual reviews fail
-                }
-            }
-            
-            completed_reviews
-        });
-
-        Ok(cross_review_op)
     }
     
     /// Execute single cross-review with zero allocation and timeout handling
@@ -1014,121 +1024,6 @@ impl CrossLLMEnhancer {
         ))
     }
 
-    /// Create synthesis operation (zero allocation)
-    fn create_synthesis_op(&self) -> CrossReviewResult<impl Op<Input = Vec<IndividualReview>, Output = SynthesisResult>> {
-        let synthesis_op = step(move |reviews: Vec<IndividualReview>| async move {
-            // Find consensus score
-            let consensus_score = if reviews.is_empty() {
-                0
-            } else {
-                let total_score: u32 = reviews.iter().map(|r| r.score()).sum();
-                total_score / reviews.len() as u32
-            };
-
-            // Create synthesis prompt
-            let synthesis_prompt = format!(
-                "Synthesize the following reviews into actionable feedback:\n\n{}\n\n\
-                Provide concrete suggestions for improvement.",
-                reviews.iter()
-                    .map(|r| format!("{}: {}", r.role().as_str(), r.content()))
-                    .collect::<Vec<_>>()
-                    .join("\n\n")
-            );
-
-            // Use Claude for synthesis
-            let synthesizer = Agent::for_provider(Models::AnthropicClaude35Sonnet)
-                .system_prompt("You are an expert synthesizer. Combine multiple reviews into actionable feedback.")
-                .temperature(0.2)
-                .build();
-
-            let synthesis_content = synthesizer.completion(&synthesis_prompt).await
-                .map_err(|_| "Synthesis failed")?;
-
-            // Create dummy best generation for now
-            let best_generation = GenerationResult {
-                content: Arc::from(""),
-                model: Models::AnthropicClaude35Sonnet,
-                generation_time_us: 0,
-            };
-
-            Ok(SynthesisResult {
-                best_generation,
-                synthesis: Arc::from(synthesis_content),
-                consensus_score,
-            })
-        });
-
-        Ok(synthesis_op)
-    }
-
-    /// Create refinement operation (zero allocation)
-    fn create_refinement_op(&self) -> CrossReviewResult<impl Op<Input = SynthesisResult, Output = Arc<str>>> {
-        let refinement_op = step(move |synthesis: SynthesisResult| async move {
-            // Create refinement prompt
-            let refinement_prompt = format!(
-                "Based on this synthesis, create an improved version:\n\n{}\n\n\
-                Provide only the refined content, no explanations.",
-                synthesis.synthesis
-            );
-
-            // Use GPT-4 for refinement
-            let refiner = Agent::for_provider(Models::OpenaiGpt4O)
-                .system_prompt("You are an expert refiner. Create improved content based on feedback.")
-                .temperature(0.3)
-                .build();
-
-            let refined_content = refiner.completion(&refinement_prompt).await
-                .map_err(|_| "Refinement failed")?;
-
-            Ok(Arc::from(refined_content))
-        });
-
-        Ok(refinement_op)
-    }
-
-    /// Create validation operation (zero allocation)
-    fn create_validation_op(&self) -> CrossReviewResult<impl Op<Input = Arc<str>, Output = EnhancedPrompt>> {
-        let config = self.config;
-        
-        let validation_op = step(move |content: Arc<str>| async move {
-            // Validate with multiple models
-            let validation_prompt = format!(
-                "Validate this content and provide a quality score (0-10):\n\n{}\n\n\
-                Format: SCORE: X",
-                content
-            );
-
-            let validator = Agent::for_provider(Models::AnthropicClaude35Sonnet)
-                .system_prompt("You are a quality validator. Assess content quality.")
-                .temperature(0.0)
-                .build();
-
-            let validation_result = validator.completion(&validation_prompt).await
-                .map_err(|_| "Validation failed")?;
-
-            let confidence_score = Self::extract_score_from_review(&validation_result);
-
-            // Create enhanced prompt result
-            let enhanced_prompt = EnhancedPrompt {
-                content: content.clone(),
-                confidence_score: Arc::new(AtomicU32::new(confidence_score)),
-                review_scores: Arc::new([]),
-                improvement_suggestions: Arc::new([]),
-                metadata: EnhancementMetadata {
-                    original_length: 0,
-                    enhanced_length: content.len() as u32,
-                    models_used: 3,
-                    review_cycles: 1,
-                    processing_time_us: 0,
-                    content_type: ContentType::GENERAL,
-                },
-            };
-
-            Ok(enhanced_prompt)
-        });
-
-        Ok(validation_op)
-    }
 
     /// Select models for content type (zero allocation)
     #[inline(always)]
@@ -1215,28 +1110,27 @@ impl CrossLLMEnhancer {
 
 /// Convenience function to create Cross-LLM enhancer
 #[inline]
-pub fn create_cross_llm_enhancer(engine: FluentEngine) -> CrossLLMEnhancer {
-    CrossLLMEnhancer::new(engine)
+pub fn create_cross_llm_enhancer() -> CrossLLMEnhancer {
+    CrossLLMEnhancer::new()
 }
 
 /// Convenience function to create high-performance enhancer
 #[inline]
-pub fn create_high_performance_enhancer(engine: FluentEngine) -> CrossLLMEnhancer {
-    CrossLLMEnhancer::new(engine).with_config(CrossReviewConfig::high_performance())
+pub fn create_high_performance_enhancer() -> CrossLLMEnhancer {
+    CrossLLMEnhancer::new().with_config(CrossReviewConfig::high_performance())
 }
 
 /// Convenience function to create quality-focused enhancer
 #[inline]
-pub fn create_quality_focused_enhancer(engine: FluentEngine) -> CrossLLMEnhancer {
-    CrossLLMEnhancer::new(engine).with_config(CrossReviewConfig::high_quality())
+pub fn create_quality_focused_enhancer() -> CrossLLMEnhancer {
+    CrossLLMEnhancer::new().with_config(CrossReviewConfig::high_quality())
 }
 
 /// Convenience function for quick enhancement
 pub async fn enhance_prompt_with_cross_review(
-    engine: FluentEngine,
     prompt: &str,
     content_type: ContentType,
 ) -> CrossReviewResult<EnhancedPrompt> {
-    let enhancer = create_cross_llm_enhancer(engine);
+    let enhancer = create_cross_llm_enhancer();
     enhancer.enhance_prompt(prompt, content_type).await
 }

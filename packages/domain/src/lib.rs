@@ -6,6 +6,10 @@
 // Re-export cyrup_sugars for convenience
 pub use cyrup_sugars::{OneOrMany, ZeroOneOrMany, ByteSize};
 
+// Re-export hash_map_fn macro for transparent JSON syntax
+#[doc(hidden)]
+pub use cyrup_sugars::hash_map_fn;
+
 // Use std HashMap instead
 pub use std::collections::HashMap;
 
@@ -194,6 +198,7 @@ pub mod library;
 pub mod loader;
 pub mod mcp;
 pub mod mcp_tool;
+pub mod secure_mcp_tool;
 pub mod memory;
 pub mod memory_ops;
 pub mod memory_workflow;
@@ -204,6 +209,9 @@ pub mod prompt;
 pub mod provider;
 pub mod tool;
 pub mod tool_v2;
+pub mod tool_syntax_test;
+pub mod architecture_syntax_test;
+pub mod secure_executor;
 pub mod workflow;
 
 // Re-export all types for convenience
@@ -258,6 +266,9 @@ pub use mcp::Tool as McpTool;
 pub use mcp_tool::{McpToolImpl, McpToolBuilder, McpToolBuilderWithHandler};
 pub use mcp_tool::Tool as McpToolTrait;
 
+// Secure MCP Tool module exports
+pub use secure_mcp_tool::{SecureMcpTool, SecureMcpToolBuilder};
+
 // Memory module exports
 pub use memory::*;
 
@@ -289,6 +300,9 @@ pub use provider::*;
 pub use tool::{ToolSet, NamedTool, ExecToText, ToolEmbeddingDyn};
 pub use tool::Tool as ToolGeneric;
 pub use tool::ToolDefinition as ToolDefinitionEnum;
+
+// Secure executor module exports
+pub use secure_executor::{SecureToolExecutor, SecureExecutionConfig, SecureExecutable, get_secure_executor, set_secure_executor_config};
 
 // Workflow module exports
 pub use workflow::*;

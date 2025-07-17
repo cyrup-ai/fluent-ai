@@ -7,7 +7,7 @@
 // • Macros now point at `workflow` instead of the old `pipeline` paths.
 // ============================================================================
 
-#[macro_export]
+// Internal macro - not exported
 macro_rules! conditional {
     ($enum:ident, $( $variant:ident => $op:expr ),+ $(,)?) => {{
         #[allow(non_camel_case_types)]
@@ -40,7 +40,7 @@ macro_rules! conditional {
     }};
 }
 
-#[macro_export]
+// Internal macro - not exported
 macro_rules! try_conditional {
     ($enum:ident, $( $variant:ident => $op:expr ),+ $(,)?) => {{
         #[allow(non_camel_case_types)]

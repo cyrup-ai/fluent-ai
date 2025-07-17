@@ -1,11 +1,45 @@
 use crate::domain::CompletionModel;
 use crate::domain::*;
 use crate::{Models, memory, workflow};
+use termcolor::{ThemeConfig, set_global_theme};
 
 /// Master builder for Fluent AI - semantic entry point for all builders
 pub struct FluentAi;
 
+/// Builder for configuring the global FluentAi environment
+pub struct FluentAiBuilder {
+    theme_config: ThemeConfig,
+}
+
+impl Default for FluentAiBuilder {
+    fn default() -> Self {
+        Self {
+            theme_config: ThemeConfig::Default,
+        }
+    }
+}
+
+impl FluentAiBuilder {
+    /// Set theme configuration (use Cyrup.ai default colors)
+    pub fn theme(mut self, config: ThemeConfig) -> Self {
+        self.theme_config = config;
+        self
+    }
+    
+    /// Build and apply global configuration
+    pub fn build(self) -> FluentAi {
+        // Apply theme configuration globally
+        set_global_theme(self.theme_config);
+        FluentAi
+    }
+}
+
 impl FluentAi {
+    /// Create a new FluentAi builder for global configuration
+    pub fn builder() -> FluentAiBuilder {
+        FluentAiBuilder::default()
+    }
+    
     /// Create an AI agent with persistent context and tools
     pub fn agent(model: Models) -> agent::AgentBuilder {
         agent::Agent::with_model(model)

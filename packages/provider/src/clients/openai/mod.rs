@@ -19,6 +19,7 @@
 
 pub mod client;
 pub mod completion; 
+pub mod model_info;
 pub mod messages;
 pub mod streaming;
 pub mod tools;
@@ -30,13 +31,21 @@ pub mod error;
 
 // Explicit re-exports to avoid ambiguity
 pub use client::{
-    OpenAIClient, OpenAIClientConfig
+    OpenAIClient, OpenAIProvider
 };
 
 pub use completion::{
     OpenAICompletionRequest, OpenAICompletionResponse, StreamOptions, ResponseFormat as CompletionResponseFormat,
-    CompletionChoice, CompletionUsage, OpenAIProvider, CompletionConfig, ToolConfig,
-    StreamingConfig, from_env, with_model, send_compatible_streaming_request, CompletionResponse
+    CompletionChoice, CompletionUsage, CompletionConfig, ToolConfig,
+    StreamingConfig, from_env, with_model, send_compatible_streaming_request, CompletionResponse,
+    OpenAICompletionBuilder, completion_builder
+};
+
+pub use model_info::{
+    Gpt4o, Gpt4oMini, Gpt4Turbo, Gpt35Turbo,
+    get_model_config, model_name_from_variant,
+    model_supports_tools, model_supports_vision, model_supports_audio,
+    get_model_context_length, get_model_max_output_tokens
 };
 
 pub use audio::{

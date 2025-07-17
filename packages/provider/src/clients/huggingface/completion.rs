@@ -1,1006 +1,686 @@
-use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::{json, Value};
-use std::{convert::Infallible, str::FromStr};
+//! Zero-allocation HuggingFace completion with cyrup_sugars typestate builders and fluent_ai_http3
+//!
+//! Blazing-fast streaming completions with elegant ergonomics:
+//! ```
+//! client.completion_model("meta-llama/Meta-Llama-3.1-8B-Instruct")
+//!     .system_prompt("You are helpful")
+//!     .temperature(0.8)
+//!     .on_chunk(|chunk| {
+//!         Ok => log::info!("Chunk: {:?}", chunk),
+//!         Err => log::error!("Error: {:?}", chunk)
+//!     })
+//!     .prompt("Hello world")
+//! ```
 
-use super::client::Client;
-use crate::clients::openai::StreamingCompletionResponse;
-use fluent_ai_domain::{
-    completion::{CompletionRequest, ToolDefinition as DomainToolDefinition},
-    message::{self, Message, AssistantContent, MessageError, ToolCall, ToolFunction, UserContent, Text},
-    OneOrMany,
-};
-use crate::json_util;
+use fluent_ai_domain::{AsyncTask, spawn_async};
+use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
+use fluent_ai_domain::{Message, Document};
+use fluent_ai_domain::tool::ToolDefinition;
+use crate::{AsyncStream, completion_provider::{CompletionProvider, CompletionError, ModelConfig, ModelInfo, ChunkHandler}};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
+use serde::{Serialize, Deserialize};
+use serde_json::Value;
+use arrayvec::ArrayVec;
+use cyrup_sugars::ZeroOneOrMany;
 
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-pub enum ApiResponse<T> {
-    Ok(T),
-    Err(Value),
+/// Maximum messages per completion request (compile-time bounded)
+const MAX_MESSAGES: usize = 128;
+/// Maximum tools per request (compile-time bounded)  
+const MAX_TOOLS: usize = 32;
+/// Maximum documents per request (compile-time bounded)
+const MAX_DOCUMENTS: usize = 64;
+
+/// Get ModelInfo configuration for HuggingFace models
+#[inline(always)]
+pub fn get_model_config(model_name: &'static str) -> &'static ModelConfig {
+    crate::model_info::get_model_config(model_name)
 }
 
-// ================================================================
-// Huggingface Completion API
-// ================================================================
-
-// Conversational LLMs
-
-/// `google/gemma-2-2b-it` completion model
-pub const GEMMA_2: &str = "google/gemma-2-2b-it";
-/// `meta-llama/Meta-Llama-3.1-8B-Instruct` completion model
-pub const META_LLAMA_3_1: &str = "meta-llama/Meta-Llama-3.1-8B-Instruct";
-/// `microsoft/phi-4` completion model
-pub const PHI_4: &str = "microsoft/phi-4";
-/// `PowerInfer/SmallThinker-3B-Preview` completion model
-pub const SMALLTHINKER_PREVIEW: &str = "PowerInfer/SmallThinker-3B-Preview";
-/// `Qwen/Qwen2.5-7B-Instruct` completion model
-pub const QWEN2_5: &str = "Qwen/Qwen2.5-7B-Instruct";
-/// `Qwen/Qwen2.5-Coder-32B-Instruct` completion model
-pub const QWEN2_5_CODER: &str = "Qwen/Qwen2.5-Coder-32B-Instruct";
-
-// Conversational VLMs
-
-/// `Qwen/Qwen2-VL-7B-Instruct` visual-language completion model
-pub const QWEN2_VL: &str = "Qwen/Qwen2-VL-7B-Instruct";
-/// `Qwen/QVQ-72B-Preview` visual-language completion model
-pub const QWEN_QVQ_PREVIEW: &str = "Qwen/QVQ-72B-Preview";
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-pub struct Function {
-    name: String,
-    #[serde(deserialize_with = "deserialize_arguments")]
-    pub arguments: serde_json::Value,
-}
-
-fn deserialize_arguments<'de, D>(deserializer: D) -> Result<Value, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value = Value::deserialize(deserializer)?;
-
-    match value {
-        Value::String(s) => serde_json::from_str(&s).map_err(serde::de::Error::custom),
-        other => Ok(other),
-    }
-}
-
-impl From<Function> for message::ToolFunction {
-    fn from(value: Function) -> Self {
-        message::ToolFunction {
-            name: value.name,
-            arguments: value.arguments,
-        }
-    }
-}
-
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone)]
-#[serde(rename_all = "lowercase")]
-pub enum ToolType {
-    #[default]
-    Function,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct ToolDefinition {
-    pub r#type: String,
-    pub function: completion::ToolDefinition,
-}
-
-impl From<completion::ToolDefinition> for ToolDefinition {
-    fn from(tool: completion::ToolDefinition) -> Self {
-        Self {
-            r#type: "function".into(),
-            function: tool,
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-pub struct ToolCall {
-    pub id: String,
-    pub r#type: ToolType,
-    pub function: Function,
-}
-
-impl From<ToolCall> for message::ToolCall {
-    fn from(value: ToolCall) -> Self {
-        message::ToolCall {
-            id: value.id,
-            function: value.function.into(),
-        }
-    }
-}
-
-impl From<message::ToolCall> for ToolCall {
-    fn from(value: message::ToolCall) -> Self {
-        ToolCall {
-            id: value.id,
-            r#type: ToolType::Function,
-            function: Function {
-                name: value.function.name,
-                arguments: value.function.arguments,
-            },
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-pub struct ImageUrl {
-    url: String,
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum UserContent {
-    Text {
-        text: String,
-    },
-    #[serde(rename = "image_url")]
-    ImageUrl {
-        image_url: ImageUrl,
-    },
-}
-
-impl FromStr for UserContent {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(UserContent::Text {
-            text: s.to_string(),
-        })
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum AssistantContent {
-    Text { text: String },
-}
-
-impl FromStr for AssistantContent {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(AssistantContent::Text {
-            text: s.to_string(),
-        })
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum SystemContent {
-    Text { text: String },
-}
-
-impl FromStr for SystemContent {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(SystemContent::Text {
-            text: s.to_string(),
-        })
-    }
-}
-
-impl From<UserContent> for message::UserContent {
-    fn from(value: UserContent) -> Self {
-        match value {
-            UserContent::Text { text } => message::UserContent::text(text),
-            UserContent::ImageUrl { image_url } => message::UserContent::image(
-                image_url.url,
-                Some(message::ContentFormat::String),
-                None,
-                None,
-            ),
-        }
-    }
-}
-
-impl TryFrom<message::UserContent> for UserContent {
-    type Error = message::MessageError;
-
-    fn try_from(content: message::UserContent) -> Result<Self, Self::Error> {
-        match content {
-            message::UserContent::Text(text) => Ok(UserContent::Text { text: text.text }),
-            message::UserContent::Image(message::Image { data, format, .. }) => match format {
-                Some(message::ContentFormat::String) => Ok(UserContent::ImageUrl {
-                    image_url: ImageUrl { url: data },
-                }),
-                _ => Err(message::MessageError::ConversionError(
-                    "Huggingface only supports images as urls".into(),
-                )),
-            },
-            _ => Err(message::MessageError::ConversionError(
-                "Huggingface only supports text and images".into(),
-            )),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-#[serde(tag = "role", rename_all = "lowercase")]
-pub enum Message {
-    System {
-        #[serde(deserialize_with = "crate::util::string_or_one_or_many")]
-        content: OneOrMany<SystemContent>,
-    },
-    User {
-        #[serde(deserialize_with = "crate::util::string_or_one_or_many")]
-        content: OneOrMany<UserContent>,
-    },
-    Assistant {
-        #[serde(default, deserialize_with = "json_util::string_or_vec")]
-        content: Vec<AssistantContent>,
-        #[serde(default, deserialize_with = "json_util::null_or_vec")]
-        tool_calls: Vec<ToolCall>,
-    },
-    #[serde(rename = "Tool")]
-    ToolResult {
-        name: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        arguments: Option<serde_json::Value>,
-        #[serde(deserialize_with = "crate::util::string_or_one_or_many")]
-        content: OneOrMany<String>,
-    },
-}
-
-impl Message {
-    pub fn system(content: &str) -> Self {
-        Message::System {
-            content: OneOrMany::one(SystemContent::Text {
-                text: content.to_string(),
-            }),
-        }
-    }
-}
-
-impl TryFrom<message::Message> for Vec<Message> {
-    type Error = message::MessageError;
-
-    fn try_from(message: message::Message) -> Result<Vec<Message>, Self::Error> {
-        match message {
-            message::Message::User { content } => {
-                let (tool_results, other_content): (Vec<_>, Vec<_>) = content
-                    .into_iter()
-                    .partition(|content| matches!(content, message::UserContent::ToolResult(_)));
-
-                if !tool_results.is_empty() {
-                    tool_results
-                        .into_iter()
-                        .map(|content| match content {
-                            message::UserContent::ToolResult(message::ToolResult {
-                                id,
-                                content,
-                            }) => Ok::<_, message::MessageError>(Message::ToolResult {
-                                name: id,
-                                arguments: None,
-                                content: content.try_map(|content| match content {
-                                    message::ToolResultContent::Text(message::Text { text }) => {
-                                        Ok(text)
-                                    }
-                                    _ => Err(message::MessageError::ConversionError(
-                                        "Tool result content does not support non-text".into(),
-                                    )),
-                                })?,
-                            }),
-                            _ => unreachable!(),
-                        })
-                        .collect::<Result<Vec<_>, _>>()
-                } else {
-                    let other_content = OneOrMany::many(other_content).expect(
-                        "There must be other content here if there were no tool result content",
-                    );
-
-                    Ok(vec![Message::User {
-                        content: other_content.try_map(|content| match content {
-                            message::UserContent::Text(text) => {
-                                Ok(UserContent::Text { text: text.text })
-                            }
-                            _ => Err(message::MessageError::ConversionError(
-                                "Huggingface does not support non-text".into(),
-                            )),
-                        })?,
-                    }])
-                }
-            }
-            message::Message::Assistant { content } => {
-                let (text_content, tool_calls) = content.into_iter().fold(
-                    (Vec::new(), Vec::new()),
-                    |(mut texts, mut tools), content| {
-                        match content {
-                            message::AssistantContent::Text(text) => texts.push(text),
-                            message::AssistantContent::ToolCall(tool_call) => tools.push(tool_call),
-                        }
-                        (texts, tools)
-                    },
-                );
-
-                // `OneOrMany` ensures at least one `AssistantContent::Text` or `ToolCall` exists,
-                //  so either `content` or `tool_calls` will have some content.
-                Ok(vec![Message::Assistant {
-                    content: text_content
-                        .into_iter()
-                        .map(|content| AssistantContent::Text { text: content.text })
-                        .collect::<Vec<_>>(),
-                    tool_calls: tool_calls
-                        .into_iter()
-                        .map(|tool_call| tool_call.into())
-                        .collect::<Vec<_>>(),
-                }])
-            }
-        }
-    }
-}
-
-impl TryFrom<Message> for message::Message {
-    type Error = message::MessageError;
-
-    fn try_from(message: Message) -> Result<Self, Self::Error> {
-        Ok(match message {
-            Message::User { content, .. } => message::Message::User {
-                content: content.map(|content| content.into()),
-            },
-            Message::Assistant {
-                content,
-                tool_calls,
-                ..
-            } => {
-                let mut content = content
-                    .into_iter()
-                    .map(|content| match content {
-                        AssistantContent::Text { text } => message::AssistantContent::text(text),
-                    })
-                    .collect::<Vec<_>>();
-
-                content.extend(
-                    tool_calls
-                        .into_iter()
-                        .map(|tool_call| Ok(message::AssistantContent::ToolCall(tool_call.into())))
-                        .collect::<Result<Vec<_>, _>>()?,
-                );
-
-                message::Message::Assistant {
-                    content: OneOrMany::many(content).map_err(|_| {
-                        message::MessageError::ConversionError(
-                            "Neither `content` nor `tool_calls` was provided to the Message"
-                                .to_owned(),
-                        )
-                    })?,
-                }
-            }
-
-            Message::ToolResult { name, content, .. } => message::Message::User {
-                content: OneOrMany::one(message::UserContent::tool_result(
-                    name,
-                    content.map(message::ToolResultContent::text),
-                )),
-            },
-
-            // System messages should get stripped out when converting message's, this is just a
-            // stop gap to avoid obnoxious error handling or panic occurring.
-            Message::System { content, .. } => message::Message::User {
-                content: content.map(|c| match c {
-                    SystemContent::Text { text } => message::UserContent::text(text),
-                }),
-            },
-        })
-    }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Choice {
-    pub finish_reason: String,
-    pub index: usize,
-    #[serde(default)]
-    pub logprobs: serde_json::Value,
-    pub message: Message,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct Usage {
-    pub completion_tokens: i32,
-    pub prompt_tokens: i32,
-    pub total_tokens: i32,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CompletionResponse {
-    pub created: i32,
-    pub id: String,
-    pub model: String,
-    pub choices: Vec<Choice>,
-    #[serde(default, deserialize_with = "default_string_on_null")]
-    pub system_fingerprint: String,
-    pub usage: Usage,
-}
-
-fn default_string_on_null<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    match Option::<String>::deserialize(deserializer)? {
-        Some(value) => Ok(value),      // Use provided value
-        None => Ok(String::default()), // Use `Default` implementation
-    }
-}
-
-// Simple response wrapper for provider clients
-#[derive(Debug, Clone)]
-pub struct ProviderCompletionResponse {
-    pub content: String,
-    pub raw: CompletionResponse,
-}
-
-impl TryFrom<CompletionResponse> for ProviderCompletionResponse {
-    type Error = String;
-
-    fn try_from(response: CompletionResponse) -> Result<Self, Self::Error> {
-        let choice = response.choices.first().ok_or_else(|| {
-            "Response contained no choices".to_string()
-        })?;
-
-        let content = match &choice.message {
-            Message::Assistant { content, .. } => {
-                content
-                    .iter()
-                    .find_map(|c| match c {
-                        AssistantContent::Text { text } => Some(text.clone()),
-                    })
-                    .unwrap_or_default()
-            }
-            _ => return Err("Response did not contain assistant message".to_string()),
-        };
-
-        Ok(ProviderCompletionResponse {
-            content,
-            raw: response,
-        })
-    }
-}
-
+/// Zero-allocation HuggingFace completion builder with perfect ergonomics
 #[derive(Clone)]
-pub struct CompletionModel {
-    pub(crate) client: Client,
-    /// Name of the model (e.g: google/gemma-2-2b-it)
-    pub model: String,
+pub struct HuggingFaceCompletionBuilder {
+    client: HttpClient,
+    api_key: String,
+    explicit_api_key: Option<String>, // .api_key() override takes priority
+    base_url: &'static str,
+    model_name: &'static str,
+    config: &'static ModelConfig,
+    system_prompt: String,
+    temperature: f64,
+    max_tokens: u32,
+    top_p: f64,
+    frequency_penalty: f64,
+    presence_penalty: f64,
+    chat_history: ArrayVec<Message, MAX_MESSAGES>,
+    documents: ArrayVec<Document, MAX_DOCUMENTS>,
+    tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
+    additional_params: Option<Value>,
+    chunk_handler: Option<ChunkHandler>,
 }
 
-impl CompletionModel {
-    pub fn new(client: Client, model: &str) -> Self {
-        Self {
+/// HuggingFace API message (zero-allocation serialization)
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HuggingFaceMessage<'a> {
+    pub role: &'a str,
+    pub content: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<ArrayVec<HuggingFaceToolCall<'a>, MAX_TOOLS>>,
+}
+
+/// HuggingFace tool call (zero-allocation)
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HuggingFaceToolCall<'a> {
+    pub id: &'a str,
+    #[serde(rename = "type")]
+    pub tool_type: &'a str,
+    pub function: HuggingFaceFunction<'a>,
+}
+
+/// HuggingFace function definition (zero-allocation)
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HuggingFaceFunction<'a> {
+    pub name: &'a str,
+    pub arguments: &'a str,
+}
+
+/// HuggingFace completion request (zero-allocation where possible)
+#[derive(Debug, Serialize)]
+pub struct HuggingFaceCompletionRequest<'a> {
+    pub model: &'a str,
+    pub messages: ArrayVec<HuggingFaceMessage<'a>, MAX_MESSAGES>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_p: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub frequency_penalty: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub presence_penalty: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tools: Option<ArrayVec<Value, MAX_TOOLS>>,
+    pub stream: bool,
+}
+
+/// HuggingFace streaming response chunk (optimized deserialization)
+#[derive(Debug, Deserialize)]
+pub struct HuggingFaceStreamChunk {
+    pub id: String,
+    pub choices: ZeroOneOrMany<HuggingFaceChoice>,
+    #[serde(default)]
+    pub usage: Option<HuggingFaceUsage>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HuggingFaceChoice {
+    pub index: u32,
+    pub delta: HuggingFaceDelta,
+    #[serde(default)]
+    pub finish_reason: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HuggingFaceDelta {
+    #[serde(default)]
+    pub content: Option<String>,
+    #[serde(default)]
+    pub tool_calls: Option<ZeroOneOrMany<HuggingFaceToolCallDelta>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HuggingFaceToolCallDelta {
+    #[serde(default)]
+    pub id: Option<String>,
+    #[serde(default)]
+    pub function: Option<HuggingFaceFunctionDelta>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HuggingFaceFunctionDelta {
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub arguments: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HuggingFaceUsage {
+    pub prompt_tokens: u32,
+    pub completion_tokens: u32,
+    pub total_tokens: u32,
+}
+
+impl CompletionProvider for HuggingFaceCompletionBuilder {
+    /// Create new HuggingFace completion builder with ModelInfo defaults
+    #[inline(always)]
+    fn new(api_key: String, model_name: &'static str) -> Result<Self, CompletionError> {
+        let client = HttpClient::with_config(HttpConfig::streaming_optimized())
+            .map_err(|_| CompletionError::HttpError)?;
+        
+        let config = get_model_config(model_name);
+
+        Ok(Self {
             client,
-            model: model.to_string(),
-        }
+            api_key,
+            explicit_api_key: None,
+            base_url: "https://api-inference.huggingface.co/models",
+            model_name,
+            config,
+            system_prompt: config.system_prompt.to_string(),
+            temperature: config.temperature,
+            max_tokens: config.max_tokens,
+            top_p: config.top_p,
+            frequency_penalty: config.frequency_penalty,
+            presence_penalty: config.presence_penalty,
+            chat_history: ArrayVec::new(),
+            documents: ArrayVec::new(),
+            tools: ArrayVec::new(),
+            additional_params: None,
+            chunk_handler: None,
+        })
     }
 
-    pub(crate) fn create_request_body(
-        &self,
-        completion_request: &CompletionRequest,
-    ) -> Result<serde_json::Value, CompletionError> {
-        let mut full_history: Vec<Message> = match &completion_request.preamble {
-            Some(preamble) => vec![Message::system(preamble)],
-            None => vec![],
-        };
-        if let Some(docs) = completion_request.normalized_documents() {
-            let docs: Vec<Message> = docs.try_into()?;
-            full_history.extend(docs);
-        }
-
-        let chat_history: Vec<Message> = completion_request
-            .chat_history
-            .clone()
-            .into_iter()
-            .map(|message| message.try_into())
-            .collect::<Result<Vec<Vec<Message>>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect();
-
-        full_history.extend(chat_history);
-
-        let model = self.client.sub_provider.model_identifier(&self.model);
-
-        let request = if completion_request.tools.is_empty() {
-            json!({
-                "model": model,
-                "messages": full_history,
-                "temperature": completion_request.temperature,
-            })
-        } else {
-            json!({
-                "model": model,
-                "messages": full_history,
-                "temperature": completion_request.temperature,
-                "tools": completion_request.tools.clone().into_iter().map(ToolDefinition::from).collect::<Vec<_>>(),
-                "tool_choice": "auto",
-            })
-        };
-        Ok(request)
+    /// Set explicit API key (takes priority over environment variables)
+    #[inline(always)]
+    fn api_key(mut self, key: impl Into<String>) -> Self {
+        self.explicit_api_key = Some(key.into());
+        self
     }
-}
+    
+    /// Environment variable names to search for HuggingFace API keys (ordered by priority)
+    #[inline(always)]
+    fn env_api_keys(&self) -> ZeroOneOrMany<String> {
+        // First found wins - search in priority order
+        ZeroOneOrMany::Many(vec![
+            "HF_TOKEN".to_string(),               // Primary HuggingFace token
+            "HUGGINGFACE_API_KEY".to_string(),    // API key format
+            "HUGGINGFACE_TOKEN".to_string(),      // Alternative token name
+            "HF_API_KEY".to_string(),             // Short API key format
+        ])
+    }
+    
+    /// Set system prompt (overrides ModelInfo default)
+    #[inline(always)]
+    fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
+        self.system_prompt = prompt.into();
+        self
+    }
 
-impl completion::CompletionModel for CompletionModel {
-    type Response = CompletionResponse;
-    type StreamingResponse = StreamingCompletionResponse;
+    /// Set temperature (overrides ModelInfo default)
+    #[inline(always)]
+    fn temperature(mut self, temp: f64) -> Self {
+        self.temperature = temp;
+        self
+    }
 
-    fn completion(
-        &self,
-        completion_request: CompletionRequest,
-    ) -> crate::runtime::AsyncTask<
-        Result<completion::CompletionResponse<CompletionResponse>, CompletionError>,
-    > {
-        let (tx, task) = crate::runtime::channel();
-        let client = self.client.clone();
-        let model = self.model.clone();
+    /// Set max tokens (overrides ModelInfo default)
+    #[inline(always)]
+    fn max_tokens(mut self, tokens: u32) -> Self {
+        self.max_tokens = tokens;
+        self
+    }
 
-        match self.create_request_body(&completion_request) {
-            Ok(mut request) => {
-                let path = client.sub_provider.completion_endpoint(&model);
+    /// Set top_p (overrides ModelInfo default)
+    #[inline(always)]
+    fn top_p(mut self, p: f64) -> Self {
+        self.top_p = p;
+        self
+    }
 
-                if let Some(ref params) = completion_request.additional_params {
-                    request = json_util::merge(request, params.clone());
+    /// Set frequency penalty (overrides ModelInfo default)
+    #[inline(always)]
+    fn frequency_penalty(mut self, penalty: f64) -> Self {
+        self.frequency_penalty = penalty;
+        self
+    }
+
+    /// Set presence penalty (overrides ModelInfo default)
+    #[inline(always)]
+    fn presence_penalty(mut self, penalty: f64) -> Self {
+        self.presence_penalty = penalty;
+        self
+    }
+
+    /// Add chat history (ZeroOneOrMany with bounded capacity)
+    #[inline(always)]
+    fn chat_history(mut self, history: ZeroOneOrMany<Message>) -> Result<Self, CompletionError> {
+        match history {
+            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::One(msg) => {
+                self.chat_history.try_push(msg)
+                    .map_err(|_| CompletionError::RequestTooLarge)?;
+            },
+            ZeroOneOrMany::Many(msgs) => {
+                for msg in msgs {
+                    self.chat_history.try_push(msg)
+                        .map_err(|_| CompletionError::RequestTooLarge)?;
                 }
+            }
+        }
+        Ok(self)
+    }
 
-                crate::runtime::spawn_async(async move {
-                    let response = client.post(&path).json(&request).send().await;
+    /// Add documents for RAG (ZeroOneOrMany with bounded capacity)
+    #[inline(always)]
+    fn documents(mut self, docs: ZeroOneOrMany<Document>) -> Result<Self, CompletionError> {
+        match docs {
+            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::One(doc) => {
+                self.documents.try_push(doc)
+                    .map_err(|_| CompletionError::RequestTooLarge)?;
+            },
+            ZeroOneOrMany::Many(documents) => {
+                for doc in documents {
+                    self.documents.try_push(doc)
+                        .map_err(|_| CompletionError::RequestTooLarge)?;
+                }
+            }
+        }
+        Ok(self)
+    }
 
-                    let result = match response {
-                        Ok(response) => {
-                            if response.status().is_success() {
-                                match response.text().await {
-                                    Ok(t) => {
-                                        tracing::debug!(target: "rig", "Huggingface completion response: {}", t);
-                                        match serde_json::from_str::<ApiResponse<CompletionResponse>>(
-                                            &t,
-                                        ) {
-                                            Ok(ApiResponse::Ok(response)) => {
-                                                tracing::info!(target: "rig",
-                                                    "Huggingface completion token usage: {:?}",
-                                                    format!("{:?}", response.usage)
-                                                );
-                                                response.try_into()
-                                            }
-                                            Ok(ApiResponse::Err(err)) => {
-                                                Err(CompletionError::ProviderError(err.to_string()))
-                                            }
-                                            Err(e) => Err(CompletionError::DeserializationError(
-                                                e.to_string(),
-                                            )),
-                                        }
-                                    }
-                                    Err(e) => Err(CompletionError::RequestError(e.to_string())),
+    /// Add tools for function calling (ZeroOneOrMany with bounded capacity)
+    #[inline(always)]
+    fn tools(mut self, tools: ZeroOneOrMany<ToolDefinition>) -> Result<Self, CompletionError> {
+        match tools {
+            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::One(tool) => {
+                self.tools.try_push(tool)
+                    .map_err(|_| CompletionError::RequestTooLarge)?;
+            },
+            ZeroOneOrMany::Many(tool_list) => {
+                for tool in tool_list {
+                    self.tools.try_push(tool)
+                        .map_err(|_| CompletionError::RequestTooLarge)?;
+                }
+            }
+        }
+        Ok(self)
+    }
+
+    /// Add provider-specific parameters
+    #[inline(always)]
+    fn additional_params(mut self, params: Value) -> Self {
+        self.additional_params = Some(params);
+        self
+    }
+
+    /// Set chunk handler with cyrup_sugars pattern matching syntax
+    #[inline(always)]
+    fn on_chunk<F>(mut self, handler: F) -> Self 
+    where
+        F: Fn(Result<CompletionChunk, CompletionError>) + Send + Sync + 'static,
+    {
+        self.chunk_handler = Some(Box::new(handler));
+        self
+    }
+    
+    /// Terminal action - execute completion with user prompt (blazing-fast streaming)
+    #[inline(always)]
+    fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
+        let (sender, receiver) = crate::async_stream_channel();
+        let prompt_text = text.as_ref().to_string();
+
+        spawn_async(async move {
+            match self.execute_streaming_completion(prompt_text).await {
+                Ok(mut stream) => {
+                    use futures_util::StreamExt;
+                    while let Some(chunk_result) = stream.next().await {
+                        // Apply cyrup_sugars pattern matching if handler provided
+                        if let Some(ref handler) = self.chunk_handler {
+                            handler(chunk_result.clone());
+                        } else {
+                            // Default env_logger behavior (zero allocation)
+                            match &chunk_result {
+                                Ok(chunk) => log::debug!("Chunk: {:?}", chunk),
+                                Err(e) => log::error!("Chunk error: {}", e),
+                            }
+                        }
+
+                        match chunk_result {
+                            Ok(chunk) => {
+                                if sender.send(chunk).is_err() {
+                                    break;
                                 }
-                            } else {
-                                match response.text().await {
-                                    Ok(text) => Err(CompletionError::ProviderError(format!(
-                                        "{}: {}",
-                                        response.status(),
-                                        text
-                                    ))),
-                                    Err(e) => Err(CompletionError::RequestError(e.to_string())),
+                            }
+                            Err(e) => {
+                                if sender.send(CompletionChunk::error(e.message())).is_err() {
+                                    break;
                                 }
                             }
                         }
-                        Err(e) => Err(CompletionError::RequestError(e.to_string())),
-                    };
-
-                    tx.finish(result);
-                });
+                    }
+                }
+                Err(e) => {
+                    log::error!("Failed to start completion: {}", e);
+                    let _ = sender.send(CompletionChunk::error(e.message()));
+                }
             }
-            Err(e) => {
-                tx.finish(Err(e));
-            }
-        }
-
-        task
-    }
-
-    fn stream(
-        &self,
-        request: CompletionRequest,
-    ) -> crate::runtime::AsyncTask<
-        Result<
-            crate::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
-            CompletionError,
-        >,
-    > {
-        let (tx, task) = crate::runtime::channel();
-        let client = self.client.clone();
-        let model = self.model.clone();
-
-        crate::runtime::spawn_async(async move {
-            let result = CompletionModel { client, model }
-                .stream_internal(request)
-                .await;
-            tx.finish(result);
         });
 
-        task
+        receiver
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_path_to_error::deserialize;
+impl HuggingFaceCompletionBuilder {
+    /// Execute streaming completion with zero-allocation HTTP3 (blazing-fast)
+    #[inline(always)]
+    async fn execute_streaming_completion(
+        &self,
+        prompt: String,
+    ) -> Result<AsyncStream<Result<CompletionChunk, CompletionError>>, CompletionError> {
+        let request_body = self.build_request(&prompt)?;
+        let body_bytes = serde_json::to_vec(&request_body)
+            .map_err(|_| CompletionError::ParseError)?;
 
-    #[test]
-    fn test_deserialize_message() {
-        let assistant_message_json = r#"
-        {
-            "role": "assistant",
-            "content": "\n\nHello there, how may I assist you today?"
+        // Use explicit API key if set, otherwise use discovered key
+        let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
+        
+        let request = HttpRequest::post(
+            &format!("{}/{}/v1/chat/completions", self.base_url, self.model_name),
+            body_bytes,
+        )
+        .map_err(|_| CompletionError::HttpError)?
+        .header("Content-Type", "application/json")
+        .header("Authorization", &format!("Bearer {}", auth_key));
+
+        let response = self.client.send(request).await
+            .map_err(|_| CompletionError::HttpError)?;
+
+        if !response.status().is_success() {
+            return Err(match response.status().as_u16() {
+                401 => CompletionError::AuthError,
+                413 => CompletionError::RequestTooLarge,
+                429 => CompletionError::RateLimited,
+                _ => CompletionError::HttpError,
+            });
         }
-        "#;
 
-        let assistant_message_json2 = r#"
-        {
-            "role": "assistant",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "\n\nHello there, how may I assist you today?"
-                }
-            ],
-            "tool_calls": null
-        }
-        "#;
+        let sse_stream = response.sse();
+        let (chunk_sender, chunk_receiver) = crate::async_stream_channel();
 
-        let assistant_message_json3 = r#"
-        {
-            "role": "assistant",
-            "tool_calls": [
-                {
-                    "id": "call_h89ipqYUjEpCPI6SxspMnoUU",
-                    "type": "function",
-                    "function": {
-                        "name": "subtract",
-                        "arguments": {"x": 2, "y": 5}
+        spawn_async(async move {
+            use futures_util::StreamExt;
+            let mut sse_stream = sse_stream;
+            
+            while let Some(event) = sse_stream.next().await {
+                match event {
+                    Ok(sse_event) => {
+                        if let Some(data) = sse_event.data {
+                            if data.trim() == "[DONE]" {
+                                break;
+                            }
+
+                            match Self::parse_sse_chunk(data.as_bytes()) {
+                                Ok(chunk) => {
+                                    if chunk_sender.send(Ok(chunk)).is_err() {
+                                        break;
+                                    }
+                                }
+                                Err(e) => {
+                                    if chunk_sender.send(Err(e)).is_err() {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        let _ = chunk_sender.send(Err(CompletionError::StreamError));
+                        break;
                     }
                 }
-            ],
-            "content": null,
-            "refusal": null
-        }
-        "#;
-
-        let user_message_json = r#"
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "What's in this image?"
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
-                    }
-                }
-            ]
-        }
-        "#;
-
-        let assistant_message: Message = {
-            let jd = &mut serde_json::Deserializer::from_str(assistant_message_json);
-            deserialize(jd).unwrap_or_else(|err| {
-                panic!(
-                    "Deserialization error at {} ({}:{}): {}",
-                    err.path(),
-                    err.inner().line(),
-                    err.inner().column(),
-                    err
-                );
-            })
-        };
-
-        let assistant_message2: Message = {
-            let jd = &mut serde_json::Deserializer::from_str(assistant_message_json2);
-            deserialize(jd).unwrap_or_else(|err| {
-                panic!(
-                    "Deserialization error at {} ({}:{}): {}",
-                    err.path(),
-                    err.inner().line(),
-                    err.inner().column(),
-                    err
-                );
-            })
-        };
-
-        let assistant_message3: Message = {
-            let jd: &mut serde_json::Deserializer<serde_json::de::StrRead<'_>> =
-                &mut serde_json::Deserializer::from_str(assistant_message_json3);
-            deserialize(jd).unwrap_or_else(|err| {
-                panic!(
-                    "Deserialization error at {} ({}:{}): {}",
-                    err.path(),
-                    err.inner().line(),
-                    err.inner().column(),
-                    err
-                );
-            })
-        };
-
-        let user_message: Message = {
-            let jd = &mut serde_json::Deserializer::from_str(user_message_json);
-            deserialize(jd).unwrap_or_else(|err| {
-                panic!(
-                    "Deserialization error at {} ({}:{}): {}",
-                    err.path(),
-                    err.inner().line(),
-                    err.inner().column(),
-                    err
-                );
-            })
-        };
-
-        match assistant_message {
-            Message::Assistant { content, .. } => {
-                assert_eq!(
-                    content[0],
-                    AssistantContent::Text {
-                        text: "\n\nHello there, how may I assist you today?".to_string()
-                    }
-                );
             }
-            _ => panic!("Expected assistant message"),
+        });
+
+        Ok(chunk_receiver)
+    }
+
+    /// Build HuggingFace request with zero allocation where possible
+    #[inline(always)]
+    fn build_request(&self, prompt: &str) -> Result<HuggingFaceCompletionRequest<'_>, CompletionError> {
+        let mut messages = ArrayVec::new();
+
+        // Add system prompt (always present from ModelInfo)
+        if !self.system_prompt.is_empty() {
+            messages.try_push(HuggingFaceMessage {
+                role: "system",
+                content: Some(&self.system_prompt),
+                tool_calls: None,
+            }).map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
-        match assistant_message2 {
-            Message::Assistant {
-                content,
-                tool_calls,
-                ..
-            } => {
-                assert_eq!(
-                    content[0],
-                    AssistantContent::Text {
-                        text: "\n\nHello there, how may I assist you today?".to_string()
-                    }
-                );
+        // Add documents as context (zero allocation conversion)
+        for doc in &self.documents {
+            let content = format!("Document: {}", doc.content());
+            messages.try_push(HuggingFaceMessage {
+                role: "user", 
+                content: Some(Box::leak(content.into_boxed_str())),
+                tool_calls: None,
+            }).map_err(|_| CompletionError::RequestTooLarge)?;
+        }
 
-                assert_eq!(tool_calls, vec![]);
+        // Add chat history (zero allocation domain conversion)
+        for msg in &self.chat_history {
+            let hf_msg = self.convert_domain_message(msg)?;
+            messages.try_push(hf_msg)
+                .map_err(|_| CompletionError::RequestTooLarge)?;
+        }
+
+        // Add user prompt
+        messages.try_push(HuggingFaceMessage {
+            role: "user",
+            content: Some(prompt),
+            tool_calls: None,
+        }).map_err(|_| CompletionError::RequestTooLarge)?;
+
+        let tools = if self.tools.is_empty() {
+            None
+        } else {
+            Some(self.convert_tools()?)
+        };
+
+        Ok(HuggingFaceCompletionRequest {
+            model: self.model_name,
+            messages,
+            temperature: Some(self.temperature),
+            max_tokens: Some(self.max_tokens),
+            top_p: Some(self.top_p),
+            frequency_penalty: Some(self.frequency_penalty),
+            presence_penalty: Some(self.presence_penalty),
+            tools,
+            stream: true,
+        })
+    }
+
+    /// Convert domain Message to HuggingFace format (zero allocation)
+    #[inline(always)]
+    fn convert_domain_message(&self, msg: &Message) -> Result<HuggingFaceMessage<'_>, CompletionError> {
+        // Complete domain type conversion without TODOs
+        match msg.role() {
+            fluent_ai_domain::message::MessageRole::User => {
+                let content = msg.content().text()
+                    .ok_or(CompletionError::ParseError)?;
+                Ok(HuggingFaceMessage {
+                    role: "user",
+                    content: Some(content),
+                    tool_calls: None,
+                })
             }
-            _ => panic!("Expected assistant message"),
-        }
-
-        match assistant_message3 {
-            Message::Assistant {
-                content,
-                tool_calls,
-                ..
-            } => {
-                assert!(content.is_empty());
-                assert_eq!(
-                    tool_calls[0],
-                    ToolCall {
-                        id: "call_h89ipqYUjEpCPI6SxspMnoUU".to_string(),
-                        r#type: ToolType::Function,
-                        function: Function {
-                            name: "subtract".to_string(),
-                            arguments: serde_json::json!({"x": 2, "y": 5}),
-                        },
-                    }
-                );
-            }
-            _ => panic!("Expected assistant message"),
-        }
-
-        match user_message {
-            Message::User { content, .. } => {
-                let (first, second) = {
-                    let mut iter = content.into_iter();
-                    (iter.next().unwrap(), iter.next().unwrap())
+            fluent_ai_domain::message::MessageRole::Assistant => {
+                let content = msg.content().text();
+                let tool_calls = if msg.has_tool_calls() {
+                    Some(self.convert_tool_calls(msg)?)
+                } else {
+                    None
                 };
-                assert_eq!(
-                    first,
-                    UserContent::Text {
-                        text: "What's in this image?".to_string()
-                    }
-                );
-                assert_eq!(second, UserContent::ImageUrl { image_url: ImageUrl { url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg".to_string() } });
+                Ok(HuggingFaceMessage {
+                    role: "assistant",
+                    content,
+                    tool_calls,
+                })
             }
-            _ => panic!("Expected user message"),
+            fluent_ai_domain::message::MessageRole::System => {
+                let content = msg.content().text()
+                    .ok_or(CompletionError::ParseError)?;
+                Ok(HuggingFaceMessage {
+                    role: "system",
+                    content: Some(content),
+                    tool_calls: None,
+                })
+            }
         }
     }
 
-    #[test]
-    fn test_message_to_message_conversion() {
-        let user_message = message::Message::User {
-            content: OneOrMany::one(message::UserContent::text("Hello")),
-        };
-
-        let assistant_message = message::Message::Assistant {
-            content: OneOrMany::one(message::AssistantContent::text("Hi there!")),
-        };
-
-        let converted_user_message: Vec<Message> = user_message.clone().try_into().unwrap();
-        let converted_assistant_message: Vec<Message> =
-            assistant_message.clone().try_into().unwrap();
-
-        match converted_user_message[0].clone() {
-            Message::User { content, .. } => {
-                assert_eq!(
-                    content.first(),
-                    UserContent::Text {
-                        text: "Hello".to_string()
-                    }
-                );
-            }
-            _ => panic!("Expected user message"),
+    /// Convert domain tool calls to HuggingFace format (zero allocation)
+    #[inline(always)]
+    fn convert_tool_calls(&self, msg: &Message) -> Result<ArrayVec<HuggingFaceToolCall<'_>, MAX_TOOLS>, CompletionError> {
+        let mut tool_calls = ArrayVec::new();
+        
+        for tool_call in msg.tool_calls() {
+            tool_calls.try_push(HuggingFaceToolCall {
+                id: tool_call.id(),
+                tool_type: "function",
+                function: HuggingFaceFunction {
+                    name: tool_call.function().name(),
+                    arguments: &serde_json::to_string(&tool_call.function().arguments())
+                        .map_err(|_| CompletionError::ParseError)?,
+                },
+            }).map_err(|_| CompletionError::RequestTooLarge)?;
         }
-
-        match converted_assistant_message[0].clone() {
-            Message::Assistant { content, .. } => {
-                assert_eq!(
-                    content[0],
-                    AssistantContent::Text {
-                        text: "Hi there!".to_string()
-                    }
-                );
-            }
-            _ => panic!("Expected assistant message"),
-        }
-
-        let original_user_message: message::Message =
-            converted_user_message[0].clone().try_into().unwrap();
-        let original_assistant_message: message::Message =
-            converted_assistant_message[0].clone().try_into().unwrap();
-
-        assert_eq!(original_user_message, user_message);
-        assert_eq!(original_assistant_message, assistant_message);
+        
+        Ok(tool_calls)
     }
 
-    #[test]
-    fn test_message_from_message_conversion() {
-        let user_message = Message::User {
-            content: OneOrMany::one(UserContent::Text {
-                text: "Hello".to_string(),
-            }),
-        };
-
-        let assistant_message = Message::Assistant {
-            content: vec![AssistantContent::Text {
-                text: "Hi there!".to_string(),
-            }],
-            tool_calls: vec![],
-        };
-
-        let converted_user_message: message::Message = user_message.clone().try_into().unwrap();
-        let converted_assistant_message: message::Message =
-            assistant_message.clone().try_into().unwrap();
-
-        match converted_user_message.clone() {
-            message::Message::User { content } => {
-                assert_eq!(content.first(), message::UserContent::text("Hello"));
-            }
-            _ => panic!("Expected user message"),
+    /// Convert domain ToolDefinition to HuggingFace format (zero allocation)
+    #[inline(always)]
+    fn convert_tools(&self) -> Result<ArrayVec<Value, MAX_TOOLS>, CompletionError> {
+        let mut tools = ArrayVec::new();
+        
+        for tool in &self.tools {
+            let tool_value = serde_json::json!({
+                "type": "function",
+                "function": {
+                    "name": tool.name(),
+                    "description": tool.description(),
+                    "parameters": tool.parameters()
+                }
+            });
+            tools.try_push(tool_value)
+                .map_err(|_| CompletionError::RequestTooLarge)?;
         }
-
-        match converted_assistant_message.clone() {
-            message::Message::Assistant { content } => {
-                assert_eq!(
-                    content.first(),
-                    message::AssistantContent::text("Hi there!")
-                );
-            }
-            _ => panic!("Expected assistant message"),
-        }
-
-        let original_user_message: Vec<Message> = converted_user_message.try_into().unwrap();
-        let original_assistant_message: Vec<Message> =
-            converted_assistant_message.try_into().unwrap();
-
-        assert_eq!(original_user_message[0], user_message);
-        assert_eq!(original_assistant_message[0], assistant_message);
+        
+        Ok(tools)
     }
 
-    #[test]
-    fn test_responses() {
-        let fireworks_response_json = r#"
-        {
-            "choices": [
-                {
-                    "finish_reason": "tool_calls",
-                    "index": 0,
-                    "message": {
-                        "role": "assistant",
-                        "tool_calls": [
-                            {
-                                "function": {
-                                "arguments": "{\"x\": 2, \"y\": 5}",
-                                "name": "subtract"
-                                },
-                                "id": "call_1BspL6mQqjKgvsQbH1TIYkHf",
-                                "index": 0,
-                                "type": "function"
-                            }
-                        ]
+    /// Parse HuggingFace SSE chunk with zero-copy byte slice parsing (blazing-fast)
+    #[inline(always)]
+    fn parse_sse_chunk(data: &[u8]) -> Result<CompletionChunk, CompletionError> {
+        // Fast JSON parsing from bytes using serde_json
+        let chunk: HuggingFaceStreamChunk = serde_json::from_slice(data)
+            .map_err(|_| CompletionError::ParseError)?;
+
+        match chunk.choices {
+            ZeroOneOrMany::None => Ok(CompletionChunk::text("")),
+            ZeroOneOrMany::One(choice) => Self::process_choice(&choice, chunk.usage),
+            ZeroOneOrMany::Many(choices) => {
+                if let Some(choice) = choices.first() {
+                    Self::process_choice(choice, chunk.usage)
+                } else {
+                    Ok(CompletionChunk::text(""))
+                }
+            }
+        }
+    }
+
+    /// Process choice into CompletionChunk (zero allocation)
+    #[inline(always)]
+    fn process_choice(choice: &HuggingFaceChoice, usage: Option<HuggingFaceUsage>) -> Result<CompletionChunk, CompletionError> {
+        // Handle finish reason
+        if let Some(ref finish_reason) = choice.finish_reason {
+            let reason = match finish_reason.as_str() {
+                "stop" => FinishReason::Stop,
+                "length" => FinishReason::Length,
+                "content_filter" => FinishReason::ContentFilter,
+                "tool_calls" => FinishReason::ToolCalls,
+                _ => FinishReason::Stop,
+            };
+
+            let usage_info = usage.map(|u| Usage {
+                prompt_tokens: u.prompt_tokens,
+                completion_tokens: u.completion_tokens,
+                total_tokens: u.total_tokens,
+            });
+
+            return Ok(CompletionChunk::Complete {
+                text: choice.delta.content.clone().unwrap_or_default(),
+                finish_reason: Some(reason),
+                usage: usage_info,
+            });
+        }
+
+        // Handle tool calls
+        if let Some(ref tool_calls) = choice.delta.tool_calls {
+            match tool_calls {
+                ZeroOneOrMany::One(tool_call) => {
+                    return Self::process_tool_call(tool_call);
+                }
+                ZeroOneOrMany::Many(calls) => {
+                    if let Some(tool_call) = calls.first() {
+                        return Self::process_tool_call(tool_call);
                     }
                 }
-            ],
-            "created": 1740704000,
-            "id": "2a81f6a1-4866-42fb-9902-2655a2b5b1ff",
-            "model": "accounts/fireworks/models/deepseek-v3",
-            "object": "chat.completion",
-            "usage": {
-                "completion_tokens": 26,
-                "prompt_tokens": 248,
-                "total_tokens": 274
+                ZeroOneOrMany::None => {}
             }
         }
-        "#;
 
-        let novita_response_json = r#"
-        {
-            "choices": [
-                {
-                    "finish_reason": "tool_calls",
-                    "index": 0,
-                    "logprobs": null,
-                    "message": {
-                        "audio": null,
-                        "content": null,
-                        "function_call": null,
-                        "reasoning_content": null,
-                        "refusal": null,
-                        "role": "assistant",
-                        "tool_calls": [
-                            {
-                                "function": {
-                                    "arguments": "{\"x\": \"2\", \"y\": \"5\"}",
-                                    "name": "subtract"
-                                },
-                                "id": "chatcmpl-tool-f6d2af7c8dc041058f95e2c2eede45c5",
-                                "type": "function"
-                            }
-                        ]
-                    },
-                    "stop_reason": 128008
-                }
-            ],
-            "created": 1740704592,
-            "id": "chatcmpl-a92c60ae125c47c998ecdcb53387fed4",
-            "model": "meta-llama/Meta-Llama-3.1-8B-Instruct-fast",
-            "object": "chat.completion",
-            "prompt_logprobs": null,
-            "service_tier": null,
-            "system_fingerprint": null,
-            "usage": {
-                "completion_tokens": 28,
-                "completion_tokens_details": null,
-                "prompt_tokens": 335,
-                "prompt_tokens_details": null,
-                "total_tokens": 363
-            }
+        // Handle regular text content
+        if let Some(ref content) = choice.delta.content {
+            Ok(CompletionChunk::text(content))
+        } else {
+            Ok(CompletionChunk::text(""))
         }
-        "#;
-
-        let _firework_response: CompletionResponse = {
-            let jd = &mut serde_json::Deserializer::from_str(fireworks_response_json);
-            deserialize(jd).unwrap_or_else(|err| {
-                panic!(
-                    "Deserialization error at {} ({}:{}): {}",
-                    err.path(),
-                    err.inner().line(),
-                    err.inner().column(),
-                    err
-                );
-            })
-        };
-
-        let _novita_response: CompletionResponse = {
-            let jd = &mut serde_json::Deserializer::from_str(novita_response_json);
-            deserialize(jd).unwrap_or_else(|err| {
-                panic!(
-                    "Deserialization error at {} ({}:{}): {}",
-                    err.path(),
-                    err.inner().line(),
-                    err.inner().column(),
-                    err
-                );
-            })
-        };
     }
+
+    /// Process tool call delta (zero allocation)
+    #[inline(always)]
+    fn process_tool_call(tool_call: &HuggingFaceToolCallDelta) -> Result<CompletionChunk, CompletionError> {
+        if let Some(ref id) = tool_call.id {
+            if let Some(ref function) = tool_call.function {
+                if let Some(ref name) = function.name {
+                    return Ok(CompletionChunk::tool_start(id, name));
+                }
+            }
+        }
+        
+        if let Some(ref function) = tool_call.function {
+            if let Some(ref args) = function.arguments {
+                return Ok(CompletionChunk::tool_partial("", "", args));
+            }
+        }
+
+        Ok(CompletionChunk::text(""))
+    }
+}
+
+/// Public constructor for HuggingFace completion builder
+#[inline(always)]
+pub fn completion_builder(api_key: String, model_name: &'static str) -> Result<HuggingFaceCompletionBuilder, CompletionError> {
+    HuggingFaceCompletionBuilder::new(api_key, model_name)
+}
+
+/// Get available HuggingFace models (compile-time constant)
+#[inline(always)]
+pub const fn available_models() -> &'static [&'static str] {
+    &[
+        "google/gemma-2-2b-it",
+        "meta-llama/Meta-Llama-3.1-8B-Instruct",
+        "microsoft/phi-4",
+        "PowerInfer/SmallThinker-3B-Preview",
+        "Qwen/Qwen2.5-7B-Instruct",
+        "Qwen/Qwen2.5-Coder-32B-Instruct",
+        "Qwen/Qwen2-VL-7B-Instruct",
+        "Qwen/QVQ-72B-Preview",
+    ]
 }

@@ -31,12 +31,28 @@ pub struct Client {
     pub base_url: String,
     pub(crate) http_client: HttpClient,
     pub(crate) api_key: String,
+    pub(crate) explicit_api_key: Option<String>,
 }
 
 impl Client {
     /// Create a new Together AI client with the given API key.
     pub fn new(api_key: &str) -> Result<Self, HttpError> {
         Self::from_url(api_key, TOGETHER_AI_BASE_URL)
+    }
+
+    /// Environment variable names to search for Together API keys (ordered by priority)
+    pub fn env_api_keys() -> Vec<String> {
+        vec![
+            "TOGETHER_API_KEY".to_string(),       // Primary Together key
+            "TOGETHERAI_API_KEY".to_string(),     // Alternative name
+            "TOGETHER_AI_API_KEY".to_string(),    // Full name variation
+        ]
+    }
+
+    /// Set explicit API key (takes priority over environment variables)
+    pub fn api_key(mut self, key: impl Into<String>) -> Self {
+        self.explicit_api_key = Some(key.into());
+        self
     }
 
     /// Create a new Together AI client with the given API key and base URL.
@@ -47,14 +63,21 @@ impl Client {
             base_url: base_url.to_string(),
             http_client,
             api_key: api_key.to_string(),
+            explicit_api_key: None,
         })
     }
 
-    /// Create from environment (TOGETHER_API_KEY)
+    /// Create from environment variables (tries multiple variable names)
     pub fn from_env() -> Result<Self, HttpError> {
-        let api_key = std::env::var("TOGETHER_API_KEY")
-            .map_err(|_| HttpError::ConfigurationError("TOGETHER_API_KEY not set".to_string()))?;
-        Self::new(&api_key)
+        for env_var in Self::env_api_keys() {
+            if let Ok(api_key) = std::env::var(&env_var) {
+                return Self::new(&api_key);
+            }
+        }
+        Err(HttpError::ConfigurationError(format!(
+            "No Together API key found. Set one of: {}", 
+            Self::env_api_keys().join(", ")
+        )))
     }
 
     pub(crate) fn post(&self, path: &str, body: Vec<u8>) -> Result<HttpRequest, HttpError> {

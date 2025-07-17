@@ -199,9 +199,10 @@ mod tests {
 
         let messages = conversation.messages();
         assert_eq!(messages.len(), 3);
-        assert_eq!(messages[0], "User 1");
-        assert_eq!(messages[1], "Assistant 1");
-        assert_eq!(messages[2], "User 2");
+        let messages_vec: Vec<_> = messages.into_iter().collect();
+        assert_eq!(messages_vec[0], "User 1");
+        assert_eq!(messages_vec[1], "Assistant 1");
+        assert_eq!(messages_vec[2], "User 2");
     }
 
     #[test]

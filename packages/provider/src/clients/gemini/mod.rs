@@ -12,10 +12,12 @@
 pub mod client;
 pub mod completion;
 pub mod embedding;
+pub mod model_info;
 pub mod streaming;
 pub mod transcription;
 
-pub use client::{Client, GeminiCompletionBuilder};
+pub use client::{Client, GeminiCompletionBuilder as OldGeminiCompletionBuilder};
+pub use completion::{GeminiCompletionBuilder, completion_builder};
 
 // API Response wrapper for compatibility
 #[derive(Debug, serde::Deserialize)]

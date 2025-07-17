@@ -157,6 +157,10 @@ struct ModelConfig {
     supports_function_calling: Option<bool>,
     #[serde(default)]
     require_max_tokens: Option<bool>,
+    #[serde(default)]
+    supports_thinking: Option<bool>,
+    #[serde(default)]
+    optimal_thinking_budget: Option<u32>,
 }
 
 #[tokio::main]
@@ -479,6 +483,8 @@ fn generate_model_info_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn st
     content.push_str("    pub supports_vision: Option<bool>,\n");
     content.push_str("    pub supports_function_calling: Option<bool>,\n");
     content.push_str("    pub require_max_tokens: Option<bool>,\n");
+    content.push_str("    pub supports_thinking: Option<bool>,\n");
+    content.push_str("    pub optimal_thinking_budget: Option<u32>,\n");
     content.push_str("}\n\n");
 
     // Generate info functions
@@ -526,6 +532,20 @@ fn generate_model_info_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn st
                 "        require_max_tokens: {:?},\n",
                 model.require_max_tokens
             ));
+            
+            // Auto-detect thinking models by ":thinking" suffix and set thinking fields
+            let is_thinking_model = model.name.contains(":thinking");
+            let supports_thinking = if is_thinking_model { "Some(true)" } else { "Some(false)" };
+            let optimal_thinking_budget = if is_thinking_model { "Some(8192)" } else { "Some(1024)" };
+            
+            content.push_str(&format!(
+                "        supports_thinking: {},\n",
+                supports_thinking
+            ));
+            content.push_str(&format!(
+                "        optimal_thinking_budget: {},\n",
+                optimal_thinking_budget
+            ));
             content.push_str("    }\n");
             content.push_str("}\n\n");
         }
@@ -563,8 +583,86 @@ fn generate_model_info_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn st
     content.push_str("            supports_vision: None,\n");
     content.push_str("            supports_function_calling: None,\n");
     content.push_str("            require_max_tokens: None,\n");
+    content.push_str("            supports_thinking: None,\n");
+    content.push_str("            optimal_thinking_budget: None,\n");
     content.push_str("        }\n");
     content.push_str("    }\n");
+    content.push_str("}\n\n");
+    
+    // Generate ModelInfoData to ModelConfig conversion function
+    content.push_str("/// Convert ModelInfoData to ModelConfig - zero allocation lookup\n");
+    content.push_str("pub fn model_info_to_config(info: &ModelInfoData, model_name: &'static str) -> crate::completion_provider::ModelConfig {\n");
+    content.push_str("    crate::completion_provider::ModelConfig {\n");
+    content.push_str("        max_tokens: info.max_output_tokens.unwrap_or(4096) as u32,\n");
+    content.push_str("        temperature: 0.7,\n");
+    content.push_str("        top_p: 0.9,\n");
+    content.push_str("        frequency_penalty: 0.0,\n");
+    content.push_str("        presence_penalty: 0.0,\n");
+    content.push_str("        context_length: info.max_input_tokens.unwrap_or(128000) as u32,\n");
+    content.push_str("        system_prompt: \"You are a helpful AI assistant.\",\n");
+    content.push_str("        supports_tools: info.supports_function_calling.unwrap_or(false),\n");
+    content.push_str("        supports_vision: info.supports_vision.unwrap_or(false),\n");
+    content.push_str("        supports_audio: false,\n");
+    content.push_str("        supports_thinking: info.supports_thinking.unwrap_or(false),\n");
+    content.push_str("        optimal_thinking_budget: info.optimal_thinking_budget.unwrap_or(1024),\n");
+    content.push_str("        provider: Box::leak(info.provider_name.clone().into_boxed_str()),\n");
+    content.push_str("        model_name,\n");
+    content.push_str("    }\n");
+    content.push_str("}\n\n");
+    
+    // Generate central get_model_config function with zero-allocation caching
+    content.push_str("use std::sync::OnceLock;\n");
+    content.push_str("use std::collections::HashMap;\n\n");
+    content.push_str("/// Zero-allocation caching for model configs\n");
+    content.push_str("static MODEL_CONFIG_CACHE: OnceLock<HashMap<&'static str, crate::completion_provider::ModelConfig>> = OnceLock::new();\n\n");
+    content.push_str("/// Get model configuration with zero-allocation caching\n");
+    content.push_str("pub fn get_model_config(model_name: &'static str) -> &'static crate::completion_provider::ModelConfig {\n");
+    content.push_str("    let cache = MODEL_CONFIG_CACHE.get_or_init(|| {\n");
+    content.push_str("        let mut map = HashMap::new();\n");
+    
+    // Add entries for all models
+    for provider in providers {
+        for model in &provider.models {
+            let variant_name = to_pascal_case_optimized(&model.name);
+            let function_name = format!("get_{}_info", variant_name.to_lowercase());
+            content.push_str(&format!(
+                "        let info = {}();\n",
+                function_name
+            ));
+            content.push_str(&format!(
+                "        let config = model_info_to_config(&info, \"{}\");\n",
+                variant_name
+            ));
+            content.push_str(&format!(
+                "        map.insert(\"{}\", config);\n",
+                variant_name
+            ));
+        }
+    }
+    
+    content.push_str("        map\n");
+    content.push_str("    });\n");
+    content.push_str("    \n");
+    content.push_str("    cache.get(model_name).unwrap_or_else(|| {\n");
+    content.push_str("        // Fallback for unknown models\n");
+    content.push_str("        static DEFAULT_CONFIG: crate::completion_provider::ModelConfig = crate::completion_provider::ModelConfig {\n");
+    content.push_str("            max_tokens: 4096,\n");
+    content.push_str("            temperature: 0.7,\n");
+    content.push_str("            top_p: 0.9,\n");
+    content.push_str("            frequency_penalty: 0.0,\n");
+    content.push_str("            presence_penalty: 0.0,\n");
+    content.push_str("            context_length: 128000,\n");
+    content.push_str("            system_prompt: \"You are a helpful AI assistant.\",\n");
+    content.push_str("            supports_tools: false,\n");
+    content.push_str("            supports_vision: false,\n");
+    content.push_str("            supports_audio: false,\n");
+    content.push_str("            supports_thinking: false,\n");
+    content.push_str("            optimal_thinking_budget: 1024,\n");
+    content.push_str("            provider: \"unknown\",\n");
+    content.push_str("            model_name: \"unknown\",\n");
+    content.push_str("        };\n");
+    content.push_str("        &DEFAULT_CONFIG\n");
+    content.push_str("    })\n");
     content.push_str("}\n\n");
 
     content.push_str("// AUTO-GENERATED END\n");

@@ -25,6 +25,8 @@ futures-util = "0.3"
 async-stream = "0.3"
 mime_guess = "2.0"
 tracing = "0.1"
+arrayvec = "0.7"
+termcolor = { path = "../termcolor" }
 
 [build-dependencies]
 fluent_ai_http3 = { path = "../http3" }

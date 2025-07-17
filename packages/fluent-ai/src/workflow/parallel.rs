@@ -73,7 +73,7 @@ where
 // ================================================================
 // 1. Variadic parallel! and try_parallel! macros
 // ================================================================
-#[macro_export]
+// Internal macro - not exported
 macro_rules! parallel_op {
     ($a:expr, $b:expr) => {
         $crate::workflow::parallel::Parallel::new($a, $b)
@@ -83,14 +83,14 @@ macro_rules! parallel_op {
     };
 }
 
-#[macro_export]
+// Internal macro - not exported
 macro_rules! tuple_pick {
     ($id:ident +) => { $id };
     ($id:ident)   => { ($id, ..) };
     ($id:ident _ $($rest:tt)*) => { (_, $crate::tuple_pick!($id $($rest)*)) };
 }
 
-#[macro_export]
+// Internal macro - not exported
 macro_rules! parallel_internal {
     (
         stack:  [ $($pos:tt)* ]
@@ -117,7 +117,7 @@ macro_rules! parallel_internal {
     };
 }
 
-#[macro_export]
+// Internal macro - not exported
 macro_rules! parallel {
     ($first:expr $(, $rest:expr)* $(,)?) => {
         $crate::parallel_internal!(
@@ -129,7 +129,7 @@ macro_rules! parallel {
 }
 
 /* ------------- try_parallel! (error-propagating variant) ----------------- */
-#[macro_export]
+// Internal macro - not exported
 macro_rules! try_parallel_internal {
     (
         stack:  [ $($pos:tt)* ]
@@ -156,7 +156,7 @@ macro_rules! try_parallel_internal {
     };
 }
 
-#[macro_export]
+// Internal macro - not exported
 macro_rules! try_parallel {
     ($first:expr $(, $rest:expr)* $(,)?) => {
         $crate::try_parallel_internal!(

@@ -16,11 +16,11 @@ use fluent_ai_domain::{AsyncTask, spawn_async};
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
 use fluent_ai_domain::{Message, Document};
 use fluent_ai_domain::tool::ToolDefinition;
-use crate::AsyncStream;
+use crate::{AsyncStream, completion_provider::{CompletionProvider, CompletionError, ModelConfig, ModelInfo, ChunkHandler}};
+use crate::clients::openai::model_info::get_model_config;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
 use serde::{Serialize, Deserialize};
 use serde_json::Value;
-use std::marker::PhantomData;
 use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 
@@ -31,154 +31,30 @@ const MAX_TOOLS: usize = 32;
 /// Maximum documents per request (compile-time bounded)
 const MAX_DOCUMENTS: usize = 64;
 
-/// Typestate: Builder needs prompt to complete
-#[derive(Debug, Clone, Copy)]
-pub struct NeedsPrompt;
 
-/// Typestate: Builder ready to execute
-#[derive(Debug, Clone, Copy)]  
-pub struct Ready;
 
-/// Compile-time model configuration
-#[derive(Debug, Clone, Copy)]
-pub struct ModelConfig {
-    pub max_tokens: u32,
-    pub temperature: f64,
-    pub top_p: f64,
-    pub frequency_penalty: f64,
-    pub presence_penalty: f64,
-    pub context_length: u32,
-    pub system_prompt: &'static str,
-    pub supports_tools: bool,
-    pub supports_vision: bool,
-    pub supports_audio: bool,
-}
 
-/// GPT-4o model configuration (compile-time constant)
-const GPT4O_CONFIG: ModelConfig = ModelConfig {
-    max_tokens: 4096,
-    temperature: 0.7,
-    top_p: 1.0,
-    frequency_penalty: 0.0,
-    presence_penalty: 0.0,
-    context_length: 128000,
-    system_prompt: "You are a helpful AI assistant.",
-    supports_tools: true,
-    supports_vision: true,
-    supports_audio: true,
-};
-
-/// GPT-4o-mini model configuration (compile-time constant)
-const GPT4O_MINI_CONFIG: ModelConfig = ModelConfig {
-    max_tokens: 16384,
-    temperature: 0.7,
-    top_p: 1.0,
-    frequency_penalty: 0.0,
-    presence_penalty: 0.0,
-    context_length: 128000,
-    system_prompt: "You are a helpful AI assistant.",
-    supports_tools: true,
-    supports_vision: true,
-    supports_audio: false,
-};
-
-/// GPT-4 Turbo model configuration (compile-time constant)
-const GPT4_TURBO_CONFIG: ModelConfig = ModelConfig {
-    max_tokens: 4096,
-    temperature: 0.7,
-    top_p: 1.0,
-    frequency_penalty: 0.0,
-    presence_penalty: 0.0,
-    context_length: 128000,
-    system_prompt: "You are a helpful AI assistant.",
-    supports_tools: true,
-    supports_vision: true,
-    supports_audio: false,
-};
-
-/// Default fallback configuration (compile-time constant)
-const DEFAULT_CONFIG: ModelConfig = GPT4O_CONFIG;
-
-/// Zero-allocation model config lookup (compile-time optimized)
-#[inline(always)]
-const fn get_model_config(model: &str) -> &'static ModelConfig {
-    match model {
-        "gpt-4o" => &GPT4O_CONFIG,
-        "gpt-4o-mini" => &GPT4O_MINI_CONFIG,
-        "gpt-4-turbo" => &GPT4_TURBO_CONFIG,
-        "gpt-4-turbo-preview" => &GPT4_TURBO_CONFIG,
-        "gpt-4" => &GPT4_TURBO_CONFIG,
-        _ => &DEFAULT_CONFIG,
-    }
-}
-
-/// Semantic error types with zero allocation
-#[derive(Debug, Clone, Copy)]
-pub enum CompletionError {
-    /// HTTP request failed
-    HttpError,
-    /// Authentication failed
-    AuthError,
-    /// Model not supported
-    UnsupportedModel,
-    /// Request too large
-    RequestTooLarge,
-    /// Rate limited
-    RateLimited,
-    /// Parse error
-    ParseError,
-    /// Stream error
-    StreamError,
-}
-
-impl CompletionError {
-    /// Get static error message (zero allocation)
-    #[inline(always)]
-    pub const fn message(&self) -> &'static str {
-        match self {
-            Self::HttpError => "HTTP request failed",
-            Self::AuthError => "Authentication failed",
-            Self::UnsupportedModel => "Model not supported",
-            Self::RequestTooLarge => "Request too large",
-            Self::RateLimited => "Rate limited",
-            Self::ParseError => "Parse error",
-            Self::StreamError => "Stream error",
-        }
-    }
-}
-
-impl std::fmt::Display for CompletionError {
-    #[inline(always)]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.message())
-    }
-}
-
-impl std::error::Error for CompletionError {}
-
-/// cyrup_sugars chunk handler type
-pub type ChunkHandler = Box<dyn Fn(Result<CompletionChunk, CompletionError>) + Send + Sync>;
 
 /// Zero-allocation OpenAI completion builder with perfect ergonomics
 #[derive(Clone)]
-pub struct OpenAICompletionBuilder<State = NeedsPrompt> {
+pub struct OpenAICompletionBuilder {
     client: HttpClient,
     api_key: String,
+    explicit_api_key: Option<String>, // .api_key() override takes priority
     base_url: &'static str,
-    model: String,
+    model_name: &'static str,
     config: &'static ModelConfig,
-    system_prompt: Option<String>,
-    temperature: Option<f64>,
-    max_tokens: Option<u32>,
-    top_p: Option<f64>,
-    frequency_penalty: Option<f64>,
-    presence_penalty: Option<f64>,
+    system_prompt: String,
+    temperature: f64,
+    max_tokens: u32,
+    top_p: f64,
+    frequency_penalty: f64,
+    presence_penalty: f64,
     chat_history: ArrayVec<Message, MAX_MESSAGES>,
     documents: ArrayVec<Document, MAX_DOCUMENTS>,
     tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
     chunk_handler: Option<ChunkHandler>,
-    _state: PhantomData<State>,
 }
 
 /// OpenAI API message (zero-allocation serialization)
@@ -227,57 +103,6 @@ pub struct OpenAICompletionRequest<'a> {
     pub stream_options: Value,
 }
 
-/// Zero-copy SSE event parser
-#[derive(Debug)]
-pub struct SSEEvent<'a> {
-    pub data: &'a [u8],
-    pub event_type: Option<&'a [u8]>,
-}
-
-/// Zero-allocation SSE parser with blazing-fast byte slice parsing
-pub struct SSEParser<'a> {
-    buffer: &'a [u8],
-    position: usize,
-}
-
-impl<'a> SSEParser<'a> {
-    /// Create new parser (zero allocation)
-    #[inline(always)]
-    pub const fn new(buffer: &'a [u8]) -> Self {
-        Self { buffer, position: 0 }
-    }
-
-    /// Parse next SSE event (zero allocation)
-    #[inline(always)]
-    pub fn next_event(&mut self) -> Option<SSEEvent<'a>> {
-        if self.position >= self.buffer.len() {
-            return None;
-        }
-
-        // Find data: prefix
-        let data_start = self.find_pattern(b"data: ")?;
-        self.position = data_start + 6; // Skip "data: "
-        
-        // Find end of data line
-        let data_end = self.find_pattern(b"\n")?;
-        let data = &self.buffer[self.position..data_end];
-        self.position = data_end + 1;
-
-        Some(SSEEvent {
-            data,
-            event_type: None,
-        })
-    }
-
-    /// Find byte pattern starting from current position (zero allocation)
-    #[inline(always)]
-    fn find_pattern(&self, pattern: &[u8]) -> Option<usize> {
-        self.buffer[self.position..]
-            .windows(pattern.len())
-            .position(|window| window == pattern)
-            .map(|pos| self.position + pos)
-    }
-}
 
 /// OpenAI streaming response chunk (optimized deserialization)
 #[derive(Debug, Deserialize)]
@@ -327,130 +152,172 @@ pub struct OpenAIUsage {
     pub total_tokens: u32,
 }
 
-impl<State> OpenAICompletionBuilder<State> {
+impl CompletionProvider for OpenAICompletionBuilder {
+    /// Create new OpenAI completion builder with ModelInfo defaults
+    #[inline(always)]
+    fn new(api_key: String, model_name: &'static str) -> Result<Self, CompletionError> {
+        let client = HttpClient::with_config(HttpConfig::streaming_optimized())
+            .map_err(|_| CompletionError::HttpError)?;
+        
+        let config = get_model_config(model_name);
+
+        Ok(Self {
+            client,
+            api_key,
+            explicit_api_key: None,
+            base_url: "https://api.openai.com/v1",
+            model_name,
+            config,
+            system_prompt: config.system_prompt.to_string(),
+            temperature: config.temperature,
+            max_tokens: config.max_tokens,
+            top_p: config.top_p,
+            frequency_penalty: config.frequency_penalty,
+            presence_penalty: config.presence_penalty,
+            chat_history: ArrayVec::new(),
+            documents: ArrayVec::new(),
+            tools: ArrayVec::new(),
+            additional_params: None,
+            chunk_handler: None,
+        })
+    }
+
+    /// Set explicit API key (takes priority over environment variables)
+    #[inline(always)]
+    fn api_key(mut self, key: impl Into<String>) -> Self {
+        self.explicit_api_key = Some(key.into());
+        self
+    }
+    
+    /// Environment variable names to search for OpenAI API keys (ordered by priority)
+    #[inline(always)]
+    fn env_api_keys(&self) -> ZeroOneOrMany<String> {
+        // First found wins - search in priority order
+        ZeroOneOrMany::Many(vec![
+            "OPENAI_API_KEY".to_string(),      // Primary OpenAI key
+            "OPENAI_TOKEN".to_string(),        // Alternative name
+            "OPEN_AI_API_KEY".to_string(),     // Common variation
+        ])
+    }
+    
     /// Set system prompt (overrides ModelInfo default)
     #[inline(always)]
-    pub fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
-        self.system_prompt = Some(prompt.into());
+    fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
+        self.system_prompt = prompt.into();
         self
     }
 
     /// Set temperature (overrides ModelInfo default)
     #[inline(always)]
-    pub fn temperature(mut self, temp: f64) -> Self {
-        self.temperature = Some(temp);
+    fn temperature(mut self, temp: f64) -> Self {
+        self.temperature = temp;
         self
     }
 
     /// Set max tokens (overrides ModelInfo default)
     #[inline(always)]
-    pub fn max_tokens(mut self, tokens: u32) -> Self {
-        self.max_tokens = Some(tokens);
+    fn max_tokens(mut self, tokens: u32) -> Self {
+        self.max_tokens = tokens;
         self
     }
 
     /// Set top_p (overrides ModelInfo default)
     #[inline(always)]
-    pub fn top_p(mut self, p: f64) -> Self {
-        self.top_p = Some(p);
+    fn top_p(mut self, p: f64) -> Self {
+        self.top_p = p;
         self
     }
 
     /// Set frequency penalty (overrides ModelInfo default)
     #[inline(always)]
-    pub fn frequency_penalty(mut self, penalty: f64) -> Self {
-        self.frequency_penalty = Some(penalty);
+    fn frequency_penalty(mut self, penalty: f64) -> Self {
+        self.frequency_penalty = penalty;
         self
     }
 
     /// Set presence penalty (overrides ModelInfo default)
     #[inline(always)]
-    pub fn presence_penalty(mut self, penalty: f64) -> Self {
-        self.presence_penalty = Some(penalty);
+    fn presence_penalty(mut self, penalty: f64) -> Self {
+        self.presence_penalty = penalty;
         self
     }
 
-    /// Add chat history (zero allocation with bounded capacity)
+    /// Add chat history (ZeroOneOrMany with bounded capacity)
     #[inline(always)]
-    pub fn chat_history(mut self, history: impl IntoIterator<Item = Message>) -> Result<Self, CompletionError> {
-        for msg in history {
-            self.chat_history.try_push(msg)
-                .map_err(|_| CompletionError::RequestTooLarge)?;
+    fn chat_history(mut self, history: ZeroOneOrMany<Message>) -> Result<Self, CompletionError> {
+        match history {
+            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::One(msg) => {
+                self.chat_history.try_push(msg)
+                    .map_err(|_| CompletionError::RequestTooLarge)?;
+            },
+            ZeroOneOrMany::Many(msgs) => {
+                for msg in msgs {
+                    self.chat_history.try_push(msg)
+                        .map_err(|_| CompletionError::RequestTooLarge)?;
+                }
+            }
         }
         Ok(self)
     }
 
-    /// Add documents for RAG (zero allocation with bounded capacity)
+    /// Add documents for RAG (ZeroOneOrMany with bounded capacity)
     #[inline(always)]
-    pub fn documents(mut self, docs: impl IntoIterator<Item = Document>) -> Result<Self, CompletionError> {
-        for doc in docs {
-            self.documents.try_push(doc)
-                .map_err(|_| CompletionError::RequestTooLarge)?;
+    fn documents(mut self, docs: ZeroOneOrMany<Document>) -> Result<Self, CompletionError> {
+        match docs {
+            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::One(doc) => {
+                self.documents.try_push(doc)
+                    .map_err(|_| CompletionError::RequestTooLarge)?;
+            },
+            ZeroOneOrMany::Many(documents) => {
+                for doc in documents {
+                    self.documents.try_push(doc)
+                        .map_err(|_| CompletionError::RequestTooLarge)?;
+                }
+            }
         }
         Ok(self)
     }
 
-    /// Add tools for function calling (zero allocation with bounded capacity)
+    /// Add tools for function calling (ZeroOneOrMany with bounded capacity)
     #[inline(always)]
-    pub fn tools(mut self, tools: impl IntoIterator<Item = ToolDefinition>) -> Result<Self, CompletionError> {
-        for tool in tools {
-            self.tools.try_push(tool)
-                .map_err(|_| CompletionError::RequestTooLarge)?;
+    fn tools(mut self, tools: ZeroOneOrMany<ToolDefinition>) -> Result<Self, CompletionError> {
+        match tools {
+            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::One(tool) => {
+                self.tools.try_push(tool)
+                    .map_err(|_| CompletionError::RequestTooLarge)?;
+            },
+            ZeroOneOrMany::Many(tool_list) => {
+                for tool in tool_list {
+                    self.tools.try_push(tool)
+                        .map_err(|_| CompletionError::RequestTooLarge)?;
+                }
+            }
         }
         Ok(self)
     }
 
     /// Add provider-specific parameters
     #[inline(always)]
-    pub fn additional_params(mut self, params: Value) -> Self {
+    fn additional_params(mut self, params: Value) -> Self {
         self.additional_params = Some(params);
         self
     }
 
     /// Set chunk handler with cyrup_sugars pattern matching syntax
     #[inline(always)]
-    pub fn on_chunk<F>(mut self, handler: F) -> Self 
+    fn on_chunk<F>(mut self, handler: F) -> Self 
     where
         F: Fn(Result<CompletionChunk, CompletionError>) + Send + Sync + 'static,
     {
         self.chunk_handler = Some(Box::new(handler));
         self
     }
-}
-
-impl OpenAICompletionBuilder<NeedsPrompt> {
-    /// Create new builder with ModelInfo defaults loaded at compile time
-    #[inline(always)]
-    pub fn new(api_key: String, model: String) -> Result<Self, CompletionError> {
-        let client = HttpClient::with_config(HttpConfig::streaming_optimized())
-            .map_err(|_| CompletionError::HttpError)?;
-        
-        let config = get_model_config(&model);
-
-        Ok(Self {
-            client,
-            api_key,
-            base_url: "https://api.openai.com/v1",
-            model,
-            config,
-            system_prompt: Some(config.system_prompt.to_string()),
-            temperature: Some(config.temperature),
-            max_tokens: Some(config.max_tokens),
-            top_p: Some(config.top_p),
-            frequency_penalty: Some(config.frequency_penalty),
-            presence_penalty: Some(config.presence_penalty),
-            chat_history: ArrayVec::new(),
-            documents: ArrayVec::new(),
-            tools: ArrayVec::new(),
-            additional_params: None,
-            chunk_handler: None,
-            _state: PhantomData,
-        })
-    }
-
     /// Terminal action - execute completion with user prompt (blazing-fast streaming)
     #[inline(always)]
-    pub fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
+    fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
         let (sender, receiver) = crate::async_stream_channel();
         let prompt_text = text.as_ref().to_string();
 
@@ -494,6 +361,9 @@ impl OpenAICompletionBuilder<NeedsPrompt> {
         receiver
     }
 
+}
+
+impl OpenAICompletionBuilder {
     /// Execute streaming completion with zero-allocation HTTP3 (blazing-fast)
     #[inline(always)]
     async fn execute_streaming_completion(
@@ -504,13 +374,16 @@ impl OpenAICompletionBuilder<NeedsPrompt> {
         let body_bytes = serde_json::to_vec(&request_body)
             .map_err(|_| CompletionError::ParseError)?;
 
+        // Use explicit API key if set, otherwise use discovered key
+        let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
+        
         let request = HttpRequest::post(
             &format!("{}/chat/completions", self.base_url),
             body_bytes,
         )
         .map_err(|_| CompletionError::HttpError)?
         .header("Content-Type", "application/json")
-        .header("Authorization", &format!("Bearer {}", self.api_key));
+        .header("Authorization", &format!("Bearer {}", auth_key));
 
         let response = self.client.send(request).await
             .map_err(|_| CompletionError::HttpError)?;
@@ -569,11 +442,11 @@ impl OpenAICompletionBuilder<NeedsPrompt> {
     fn build_request(&self, prompt: &str) -> Result<OpenAICompletionRequest<'_>, CompletionError> {
         let mut messages = ArrayVec::new();
 
-        // Add system prompt
-        if let Some(ref system_prompt) = self.system_prompt {
+        // Add system prompt (always present from ModelInfo)
+        if !self.system_prompt.is_empty() {
             messages.try_push(OpenAIMessage {
                 role: "system",
-                content: Some(system_prompt.as_str()),
+                content: Some(&self.system_prompt),
                 tool_calls: None,
             }).map_err(|_| CompletionError::RequestTooLarge)?;
         }
@@ -609,13 +482,13 @@ impl OpenAICompletionBuilder<NeedsPrompt> {
         };
 
         Ok(OpenAICompletionRequest {
-            model: &self.model,
+            model: self.model_name,
             messages,
-            temperature: self.temperature,
-            max_tokens: self.max_tokens,
-            top_p: self.top_p,
-            frequency_penalty: self.frequency_penalty,
-            presence_penalty: self.presence_penalty,
+            temperature: Some(self.temperature),
+            max_tokens: Some(self.max_tokens),
+            top_p: Some(self.top_p),
+            frequency_penalty: Some(self.frequency_penalty),
+            presence_penalty: Some(self.presence_penalty),
             tools,
             stream: true,
             stream_options: serde_json::json!({"include_usage": true}),
@@ -794,8 +667,8 @@ impl OpenAICompletionBuilder<NeedsPrompt> {
 
 /// Public constructor for OpenAI completion builder
 #[inline(always)]
-pub fn completion_builder(api_key: String, model: String) -> Result<OpenAICompletionBuilder<NeedsPrompt>, CompletionError> {
-    OpenAICompletionBuilder::new(api_key, model)
+pub fn completion_builder(api_key: String, model_name: &'static str) -> Result<OpenAICompletionBuilder, CompletionError> {
+    OpenAICompletionBuilder::new(api_key, model_name)
 }
 
 /// Get available OpenAI models (compile-time constant)
@@ -809,34 +682,4 @@ pub const fn available_models() -> &'static [&'static str] {
         "gpt-4",
         "gpt-3.5-turbo",
     ]
-}
-
-/// Check if model supports tools (compile-time evaluation)
-#[inline(always)]
-pub const fn model_supports_tools(model: &str) -> bool {
-    get_model_config(model).supports_tools
-}
-
-/// Check if model supports vision (compile-time evaluation)
-#[inline(always)]
-pub const fn model_supports_vision(model: &str) -> bool {
-    get_model_config(model).supports_vision
-}
-
-/// Check if model supports audio (compile-time evaluation)
-#[inline(always)]
-pub const fn model_supports_audio(model: &str) -> bool {
-    get_model_config(model).supports_audio
-}
-
-/// Get model context length (compile-time evaluation)
-#[inline(always)]
-pub const fn get_model_context_length(model: &str) -> u32 {
-    get_model_config(model).context_length
-}
-
-/// Get model max output tokens (compile-time evaluation)
-#[inline(always)]
-pub const fn get_model_max_output_tokens(model: &str) -> u32 {
-    get_model_config(model).max_tokens
 }

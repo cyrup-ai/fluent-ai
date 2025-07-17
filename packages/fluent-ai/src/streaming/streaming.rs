@@ -225,26 +225,33 @@ pub fn stream_to_stdout<M: CompletionModel>(
 ) -> AsyncTask<Result<(), std::io::Error>> {
     spawn_async(async move {
         use std::io::{self, Write};
+        use termcolor::{colored_print, colored_println, info, ColoredMessage};
 
         let mut stream = stream;
-        print!("Response: ");
+        colored_print!(primary: "Response: ");
         while let Some(chunk) = stream.next().await {
             match chunk {
                 Ok(AssistantContent::Text(t)) => {
-                    print!("{}", t.text);
+                    colored_print!(text_primary: "{}", t.text);
                     io::stdout().flush()?;
                 }
                 Ok(AssistantContent::ToolCall(tc)) => {
                     // Note: This would need the agent tools to be async-compatible
-                    println!("\nTool call: {} with args: {}", tc.function.name, tc.function.arguments);
+                    ColoredMessage::new()
+                        .newline()
+                        .info("Tool call: ")
+                        .accent(&tc.function.name)
+                        .text_secondary(" with args: ")
+                        .text_muted(&tc.function.arguments.to_string())
+                        .println().ok();
                 }
                 Err(e) => {
-                    eprintln!("Error: {e}");
+                    colored_println!(error: "Error: {e}");
                     break;
                 }
             }
         }
-        println!();
+        colored_println!();
         Ok(())
     })
 }

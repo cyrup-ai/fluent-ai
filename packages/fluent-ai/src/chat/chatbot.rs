@@ -13,6 +13,7 @@ use std::io::{self, Write};
 use std::thread::yield_now;
 
 use futures_util::FutureExt; // for `now_or_never`
+use termcolor::{colored_println, info_i, ColoredMessage};
 
 use crate::{
     completion::{Chat, Message, PromptError},
@@ -30,15 +31,20 @@ where
     let mut chat_log = Vec::new();
     let executor = Executor::default();
 
-    println!("Welcome to the chatbot! Type `exit` or `quit` to leave.");
+    // Display welcome message with Cyrup.ai branding
+    ColoredMessage::cyrup_header().println().ok();
+    info_i!("Type 'exit' or 'quit' to leave the chat");
 
     loop {
-        print!("> ");
+        // Colored prompt
+        ColoredMessage::new()
+            .accent("> ")
+            .print().ok();
         io::stdout().flush().expect("stdout flush");
 
         let mut input = String::new();
         if io::stdin().read_line(&mut input).is_err() {
-            eprintln!("Error reading input.");
+            colored_println!(error: "Error reading input.");
             continue;
         }
         let prompt = input.trim();
@@ -70,7 +76,14 @@ where
         chat_log.push(Message::user(prompt));
         chat_log.push(Message::assistant(&reply));
 
-        println!("\n=== Response ===\n{reply}\n");
+        // Display response with elegant formatting
+        ColoredMessage::new()
+            .newline()
+            .primary("=== Response ===")
+            .newline()
+            .text_primary(&reply)
+            .newline()
+            .println().ok();
     }
 
     Ok(())

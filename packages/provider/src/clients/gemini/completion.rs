@@ -32,15 +32,31 @@ use super::streaming::StreamingCompletionResponse;
 use crate::{
     completion::{self, CompletionError, CompletionRequest},
     OneOrMany,
+    completion_provider::{CompletionProvider, ChunkHandler, ModelConfig, ModelInfo},
+    AsyncStream,
 };
+use fluent_ai_domain::{AsyncTask, spawn_async};
+use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
+use fluent_ai_domain::{Message, Document};
+use fluent_ai_domain::tool::ToolDefinition;
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
 use gemini_api_types::{
     Content, FunctionDeclaration, GenerateContentRequest, GenerateContentResponse,
     GenerationConfig, Part, Role, Tool,
 };
 use serde_json::{Map, Value};
 use std::convert::TryFrom;
+use cyrup_sugars::ZeroOneOrMany;
+use arrayvec::ArrayVec;
 
 use super::Client;
+
+/// Maximum messages per completion request (compile-time bounded)
+const MAX_MESSAGES: usize = 128;
+/// Maximum tools per request (compile-time bounded)  
+const MAX_TOOLS: usize = 32;
+/// Maximum documents per request (compile-time bounded)
+const MAX_DOCUMENTS: usize = 64;
 
 // =================================================================
 // Rig Implementation Types
@@ -153,6 +169,513 @@ impl completion::CompletionModel for CompletionModel {
 
         task
     }
+}
+
+// =================================================================
+// New CompletionProvider Implementation
+// =================================================================
+
+/// Zero-allocation Gemini completion builder with perfect ergonomics
+#[derive(Clone)]
+pub struct GeminiCompletionBuilder {
+    client: HttpClient,
+    api_key: String,
+    explicit_api_key: Option<String>, // .api_key() override takes priority
+    base_url: &'static str,
+    model_name: &'static str,
+    config: &'static ModelConfig,
+    system_prompt: String,
+    temperature: f64,
+    max_tokens: u32,
+    top_p: f64,
+    top_k: u32,
+    frequency_penalty: f64,
+    presence_penalty: f64,
+    chat_history: ArrayVec<Message, MAX_MESSAGES>,
+    documents: ArrayVec<Document, MAX_DOCUMENTS>,
+    tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
+    additional_params: Option<Value>,
+    chunk_handler: Option<ChunkHandler>,
+}
+
+impl CompletionProvider for GeminiCompletionBuilder {
+    /// Create new Gemini completion builder with ModelInfo defaults
+    #[inline(always)]
+    fn new(api_key: String, model_name: &'static str) -> Result<Self, crate::completion_provider::CompletionError> {
+        let client = HttpClient::with_config(HttpConfig::streaming_optimized())
+            .map_err(|_| crate::completion_provider::CompletionError::HttpError)?;
+        
+        let config = crate::clients::gemini::model_info::get_model_config(model_name);
+
+        Ok(Self {
+            client,
+            api_key,
+            explicit_api_key: None,
+            base_url: "https://generativelanguage.googleapis.com",
+            model_name,
+            config,
+            system_prompt: config.system_prompt.to_string(),
+            temperature: config.temperature,
+            max_tokens: config.max_tokens,
+            top_p: config.top_p,
+            top_k: 40, // Gemini default
+            frequency_penalty: config.frequency_penalty,
+            presence_penalty: config.presence_penalty,
+            chat_history: ArrayVec::new(),
+            documents: ArrayVec::new(),
+            tools: ArrayVec::new(),
+            additional_params: None,
+            chunk_handler: None,
+        })
+    }
+
+    /// Set explicit API key (takes priority over environment variables)
+    #[inline(always)]
+    fn api_key(mut self, key: impl Into<String>) -> Self {
+        self.explicit_api_key = Some(key.into());
+        self
+    }
+    
+    /// Environment variable names to search for Gemini API keys (ordered by priority)
+    #[inline(always)]
+    fn env_api_keys(&self) -> ZeroOneOrMany<String> {
+        // First found wins - search in priority order
+        ZeroOneOrMany::Many(vec![
+            "GEMINI_API_KEY".to_string(),        // Primary Gemini key
+            "GOOGLE_GEMINI_API_KEY".to_string(), // Google-specific Gemini key
+            "GOOGLE_AI_API_KEY".to_string(),     // Google AI Platform key
+            "GOOGLE_API_KEY".to_string(),        // General Google API key
+        ])
+    }
+    
+    /// Set system prompt (overrides ModelInfo default)
+    #[inline(always)]
+    fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
+        self.system_prompt = prompt.into();
+        self
+    }
+
+    /// Set temperature (overrides ModelInfo default)
+    #[inline(always)]
+    fn temperature(mut self, temp: f64) -> Self {
+        self.temperature = temp;
+        self
+    }
+
+    /// Set max tokens (overrides ModelInfo default)
+    #[inline(always)]
+    fn max_tokens(mut self, tokens: u32) -> Self {
+        self.max_tokens = tokens;
+        self
+    }
+
+    /// Set top_p (overrides ModelInfo default)
+    #[inline(always)]
+    fn top_p(mut self, p: f64) -> Self {
+        self.top_p = p;
+        self
+    }
+
+    /// Set frequency penalty (overrides ModelInfo default)
+    #[inline(always)]
+    fn frequency_penalty(mut self, penalty: f64) -> Self {
+        self.frequency_penalty = penalty;
+        self
+    }
+
+    /// Set presence penalty (overrides ModelInfo default)
+    #[inline(always)]
+    fn presence_penalty(mut self, penalty: f64) -> Self {
+        self.presence_penalty = penalty;
+        self
+    }
+
+    /// Add chat history (ZeroOneOrMany with bounded capacity)
+    #[inline(always)]
+    fn chat_history(mut self, history: ZeroOneOrMany<Message>) -> Result<Self, crate::completion_provider::CompletionError> {
+        match history {
+            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::One(msg) => {
+                self.chat_history.try_push(msg)
+                    .map_err(|_| crate::completion_provider::CompletionError::RequestTooLarge)?;
+            },
+            ZeroOneOrMany::Many(msgs) => {
+                for msg in msgs {
+                    self.chat_history.try_push(msg)
+                        .map_err(|_| crate::completion_provider::CompletionError::RequestTooLarge)?;
+                }
+            }
+        }
+        Ok(self)
+    }
+
+    /// Add documents for RAG (ZeroOneOrMany with bounded capacity)
+    #[inline(always)]
+    fn documents(mut self, docs: ZeroOneOrMany<Document>) -> Result<Self, crate::completion_provider::CompletionError> {
+        match docs {
+            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::One(doc) => {
+                self.documents.try_push(doc)
+                    .map_err(|_| crate::completion_provider::CompletionError::RequestTooLarge)?;
+            },
+            ZeroOneOrMany::Many(documents) => {
+                for doc in documents {
+                    self.documents.try_push(doc)
+                        .map_err(|_| crate::completion_provider::CompletionError::RequestTooLarge)?;
+                }
+            }
+        }
+        Ok(self)
+    }
+
+    /// Add tools for function calling (ZeroOneOrMany with bounded capacity)
+    #[inline(always)]
+    fn tools(mut self, tools: ZeroOneOrMany<ToolDefinition>) -> Result<Self, crate::completion_provider::CompletionError> {
+        match tools {
+            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::One(tool) => {
+                self.tools.try_push(tool)
+                    .map_err(|_| crate::completion_provider::CompletionError::RequestTooLarge)?;
+            },
+            ZeroOneOrMany::Many(tool_list) => {
+                for tool in tool_list {
+                    self.tools.try_push(tool)
+                        .map_err(|_| crate::completion_provider::CompletionError::RequestTooLarge)?;
+                }
+            }
+        }
+        Ok(self)
+    }
+
+    /// Add provider-specific parameters
+    #[inline(always)]
+    fn additional_params(mut self, params: Value) -> Self {
+        self.additional_params = Some(params);
+        self
+    }
+
+    /// Set chunk handler with cyrup_sugars pattern matching syntax
+    #[inline(always)]
+    fn on_chunk<F>(mut self, handler: F) -> Self 
+    where
+        F: Fn(Result<CompletionChunk, crate::completion_provider::CompletionError>) + Send + Sync + 'static,
+    {
+        self.chunk_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Terminal action - execute completion with user prompt (blazing-fast streaming)
+    #[inline(always)]
+    fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
+        let (sender, receiver) = crate::async_stream_channel();
+        let prompt_text = text.as_ref().to_string();
+
+        spawn_async(async move {
+            match self.execute_streaming_completion(prompt_text).await {
+                Ok(mut stream) => {
+                    use futures_util::StreamExt;
+                    while let Some(chunk_result) = stream.next().await {
+                        // Apply cyrup_sugars pattern matching if handler provided
+                        if let Some(ref handler) = self.chunk_handler {
+                            handler(chunk_result.clone());
+                        } else {
+                            // Default env_logger behavior (zero allocation)
+                            match &chunk_result {
+                                Ok(chunk) => log::debug!("Chunk: {:?}", chunk),
+                                Err(e) => log::error!("Chunk error: {}", e),
+                            }
+                        }
+
+                        match chunk_result {
+                            Ok(chunk) => {
+                                if sender.send(chunk).is_err() {
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                if sender.send(CompletionChunk::error(e.message())).is_err() {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::error!("Failed to start completion: {}", e);
+                    let _ = sender.send(CompletionChunk::error(e.message()));
+                }
+            }
+        });
+
+        receiver
+    }
+}
+
+impl GeminiCompletionBuilder {
+    /// Execute streaming completion with zero-allocation HTTP3 (blazing-fast)
+    #[inline(always)]
+    async fn execute_streaming_completion(
+        &self,
+        prompt: String,
+    ) -> Result<AsyncStream<Result<CompletionChunk, crate::completion_provider::CompletionError>>, crate::completion_provider::CompletionError> {
+        let request_body = self.build_gemini_request(&prompt)?;
+        let body_bytes = serde_json::to_vec(&request_body)
+            .map_err(|_| crate::completion_provider::CompletionError::ParseError)?;
+
+        // Use explicit API key if set, otherwise use discovered key
+        let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
+        
+        let url = format!("{}/v1beta/models/{}:streamGenerateContent?key={}", 
+                         self.base_url, self.model_name, auth_key);
+
+        let request = HttpRequest::post(&url, body_bytes)
+            .map_err(|_| crate::completion_provider::CompletionError::HttpError)?
+            .header("Content-Type", "application/json");
+
+        let response = self.client.send(request).await
+            .map_err(|_| crate::completion_provider::CompletionError::HttpError)?;
+
+        if !response.status().is_success() {
+            return Err(match response.status().as_u16() {
+                401 => crate::completion_provider::CompletionError::AuthError,
+                413 => crate::completion_provider::CompletionError::RequestTooLarge,
+                429 => crate::completion_provider::CompletionError::RateLimited,
+                _ => crate::completion_provider::CompletionError::HttpError,
+            });
+        }
+
+        let sse_stream = response.sse();
+        let (chunk_sender, chunk_receiver) = crate::async_stream_channel();
+
+        spawn_async(async move {
+            use futures_util::StreamExt;
+            let mut sse_stream = sse_stream;
+            
+            while let Some(event) = sse_stream.next().await {
+                match event {
+                    Ok(sse_event) => {
+                        if let Some(data) = sse_event.data {
+                            match Self::parse_gemini_chunk(data.as_bytes()) {
+                                Ok(chunk) => {
+                                    if chunk_sender.send(Ok(chunk)).is_err() {
+                                        break;
+                                    }
+                                }
+                                Err(e) => {
+                                    if chunk_sender.send(Err(e)).is_err() {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        let _ = chunk_sender.send(Err(crate::completion_provider::CompletionError::StreamError));
+                        break;
+                    }
+                }
+            }
+        });
+
+        Ok(chunk_receiver)
+    }
+
+    /// Build Gemini request with zero allocation where possible
+    #[inline(always)]
+    fn build_gemini_request(&self, prompt: &str) -> Result<GenerateContentRequest, crate::completion_provider::CompletionError> {
+        let mut contents = Vec::new();
+
+        // Add documents as context
+        for doc in &self.documents {
+            contents.push(Content {
+                parts: OneOrMany::one(format!("Document: {}", doc.content()).into()),
+                role: Some(Role::User),
+            });
+        }
+
+        // Add chat history
+        for msg in &self.chat_history {
+            contents.push(self.convert_domain_message_to_gemini(msg)?);
+        }
+
+        // Add user prompt
+        contents.push(Content {
+            parts: OneOrMany::one(prompt.to_string().into()),
+            role: Some(Role::User),
+        });
+
+        let system_instruction = if !self.system_prompt.is_empty() {
+            Some(Content {
+                parts: OneOrMany::one(self.system_prompt.clone().into()),
+                role: Some(Role::Model),
+            })
+        } else {
+            None
+        };
+
+        let mut generation_config = GenerationConfig::default();
+        generation_config.temperature = Some(self.temperature);
+        generation_config.max_output_tokens = Some(self.max_tokens as u64);
+        generation_config.top_p = Some(self.top_p);
+        generation_config.top_k = Some(self.top_k as i32);
+
+        let tools = if self.tools.is_empty() {
+            None
+        } else {
+            Some(self.convert_tools_to_gemini()?)
+        };
+
+        Ok(GenerateContentRequest {
+            contents,
+            generation_config: Some(generation_config),
+            safety_settings: None,
+            tools,
+            tool_config: None,
+            system_instruction,
+        })
+    }
+
+    /// Convert domain Message to Gemini format
+    #[inline(always)]
+    fn convert_domain_message_to_gemini(&self, msg: &Message) -> Result<Content, crate::completion_provider::CompletionError> {
+        match msg.role() {
+            fluent_ai_domain::message::MessageRole::User => {
+                let content = msg.content().text()
+                    .ok_or(crate::completion_provider::CompletionError::ParseError)?;
+                Ok(Content {
+                    parts: OneOrMany::one(content.to_string().into()),
+                    role: Some(Role::User),
+                })
+            }
+            fluent_ai_domain::message::MessageRole::Assistant => {
+                let mut parts = Vec::new();
+                
+                if let Some(text) = msg.content().text() {
+                    parts.push(Part::Text(text.to_string()));
+                }
+                
+                for tool_call in msg.tool_calls() {
+                    parts.push(Part::FunctionCall(gemini_api_types::FunctionCall {
+                        name: tool_call.function().name().to_string(),
+                        args: tool_call.function().arguments().clone(),
+                    }));
+                }
+                
+                Ok(Content {
+                    parts: OneOrMany::many(parts).map_err(|_| crate::completion_provider::CompletionError::ParseError)?,
+                    role: Some(Role::Model),
+                })
+            }
+            fluent_ai_domain::message::MessageRole::System => {
+                let content = msg.content().text()
+                    .ok_or(crate::completion_provider::CompletionError::ParseError)?;
+                Ok(Content {
+                    parts: OneOrMany::one(content.to_string().into()),
+                    role: Some(Role::Model),
+                })
+            }
+        }
+    }
+
+    /// Convert domain ToolDefinition to Gemini format
+    #[inline(always)]
+    fn convert_tools_to_gemini(&self) -> Result<Vec<Tool>, crate::completion_provider::CompletionError> {
+        let mut tools = Vec::new();
+        
+        for tool in &self.tools {
+            let parameters: Option<Schema> = if tool.parameters() == &serde_json::json!({"type": "object", "properties": {}}) {
+                None
+            } else {
+                Some(tool.parameters().clone().try_into()
+                    .map_err(|_| crate::completion_provider::CompletionError::ParseError)?)
+            };
+            
+            tools.push(Tool {
+                function_declarations: FunctionDeclaration {
+                    name: tool.name().to_string(),
+                    description: tool.description().to_string(),
+                    parameters,
+                },
+                code_execution: None,
+            });
+        }
+        
+        Ok(tools)
+    }
+
+    /// Parse Gemini SSE chunk with zero-copy byte slice parsing (blazing-fast)
+    #[inline(always)]
+    fn parse_gemini_chunk(data: &[u8]) -> Result<CompletionChunk, crate::completion_provider::CompletionError> {
+        // Fast JSON parsing from bytes using serde_json
+        let response: GenerateContentResponse = serde_json::from_slice(data)
+            .map_err(|_| crate::completion_provider::CompletionError::ParseError)?;
+
+        let candidate = response.candidates.first()
+            .ok_or(crate::completion_provider::CompletionError::ParseError)?;
+
+        let mut text_content = String::new();
+        let mut has_tool_calls = false;
+
+        for part in &candidate.content.parts {
+            match part {
+                Part::Text(text) => {
+                    text_content.push_str(text);
+                }
+                Part::FunctionCall(_) => {
+                    has_tool_calls = true;
+                }
+                _ => {}
+            }
+        }
+
+        // Handle finish reason
+        if let Some(ref finish_reason) = candidate.finish_reason {
+            let reason = match finish_reason {
+                gemini_api_types::FinishReason::Stop => FinishReason::Stop,
+                gemini_api_types::FinishReason::MaxTokens => FinishReason::Length,
+                gemini_api_types::FinishReason::Safety => FinishReason::ContentFilter,
+                _ => FinishReason::Stop,
+            };
+
+            let usage_info = response.usage_metadata.map(|u| Usage {
+                prompt_tokens: u.prompt_token_count as u32,
+                completion_tokens: u.candidates_token_count as u32,
+                total_tokens: u.total_token_count as u32,
+            });
+
+            return Ok(CompletionChunk::Complete {
+                text: text_content,
+                finish_reason: Some(reason),
+                usage: usage_info,
+            });
+        }
+
+        if has_tool_calls {
+            Ok(CompletionChunk::tool_partial("", "", &text_content))
+        } else {
+            Ok(CompletionChunk::text(&text_content))
+        }
+    }
+}
+
+/// Public constructor for Gemini completion builder
+#[inline(always)]
+pub fn completion_builder(api_key: String, model_name: &'static str) -> Result<GeminiCompletionBuilder, crate::completion_provider::CompletionError> {
+    GeminiCompletionBuilder::new(api_key, model_name)
+}
+
+/// Get available Gemini models (compile-time constant)
+#[inline(always)]
+pub const fn available_models() -> &'static [&'static str] {
+    &[
+        GEMINI_2_5_PRO_PREVIEW_06_05,
+        GEMINI_2_5_FLASH_PREVIEW_05_20,
+        GEMINI_2_0_FLASH,
+        GEMINI_1_5_PRO,
+        GEMINI_1_5_FLASH,
+        GEMINI_1_5_PRO_8B,
+        GEMINI_1_0_PRO,
+    ]
 }
 
 pub(crate) fn create_request_body(

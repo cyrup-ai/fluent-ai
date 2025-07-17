@@ -62,6 +62,7 @@ pub use huggingface::{
 // Mistral client
 pub use mistral::{
     Client as MistralClient, MistralCompletionBuilder,
+    NewMistralCompletionBuilder, mistral_completion_builder, available_mistral_models,
     CODESTRAL, CODESTRAL_MAMBA, MINISTRAL_3B, MINISTRAL_8B, MISTRAL_LARGE,
     MISTRAL_NEMO, MISTRAL_SABA, MISTRAL_SMALL, PIXTRAL_LARGE, PIXTRAL_SMALL,
     MISTRAL_EMBED,

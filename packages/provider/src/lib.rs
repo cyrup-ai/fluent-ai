@@ -19,9 +19,13 @@ pub mod clients;
 // Client traits (NOT domain objects)
 pub mod client;
 
+// Universal completion provider trait
+pub mod completion_provider;
+
 // CORE EXPORTS: The dynamically generated enumerations (THE MAIN VALUE!)
 // Re-export client traits for provider implementations
 pub use client::*;
+pub use completion_provider::*;
 pub use model_info::ModelInfoData;
 pub use models::Models;
 pub use providers::Providers;

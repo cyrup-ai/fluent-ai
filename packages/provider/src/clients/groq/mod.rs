@@ -9,7 +9,7 @@ mod completion;
 mod streaming;
 
 pub use client::{Client, GroqCompletionBuilder};
-pub use completion::CompletionModel;
+pub use completion::{CompletionModel, GroqCompletionBuilder as GroqProvider};
 
 // Re-export model constants
 pub use completion::{
