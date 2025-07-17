@@ -13,6 +13,8 @@ pub struct ModelInfoData {
     pub supports_vision: Option<bool>,
     pub supports_function_calling: Option<bool>,
     pub require_max_tokens: Option<bool>,
+    pub supports_thinking: Option<bool>,
+    pub optimal_thinking_budget: Option<u32>,
 }
 
 /// Get model info for gpt-4.1
@@ -27,6 +29,8 @@ pub fn get_gpt41_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -42,6 +46,8 @@ pub fn get_gpt41mini_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -57,6 +63,8 @@ pub fn get_gpt41nano_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -72,6 +80,8 @@ pub fn get_gpt4o_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -87,6 +97,8 @@ pub fn get_gpt4osearchpreview_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -102,6 +114,8 @@ pub fn get_gpt4omini_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -117,6 +131,8 @@ pub fn get_gpt4ominisearchpreview_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -132,6 +148,8 @@ pub fn get_chatgpt4olatest_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -147,6 +165,8 @@ pub fn get_o4mini_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -162,6 +182,8 @@ pub fn get_o4minihigh_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -177,6 +199,8 @@ pub fn get_o3_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -192,6 +216,8 @@ pub fn get_o3mini_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -207,6 +233,8 @@ pub fn get_o3minihigh_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -222,6 +250,8 @@ pub fn get_gpt4turbo_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -237,6 +267,8 @@ pub fn get_gpt35turbo_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -252,6 +284,8 @@ pub fn get_textembedding3large_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -267,6 +301,8 @@ pub fn get_textembedding3small_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -282,6 +318,8 @@ pub fn get_gemini25flash_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -297,6 +335,8 @@ pub fn get_gemini25pro_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -312,6 +352,8 @@ pub fn get_gemini25flashlitepreview0617_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -327,6 +369,8 @@ pub fn get_gemini20flash_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -342,6 +386,8 @@ pub fn get_gemini20flashlite_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -357,6 +403,8 @@ pub fn get_gemma327bit_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -372,6 +420,8 @@ pub fn get_textembedding004_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -387,6 +437,8 @@ pub fn get_mistralmediumlatest_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -402,6 +454,8 @@ pub fn get_mistralsmalllatest_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -417,6 +471,8 @@ pub fn get_magistralmediumlatest_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -432,6 +488,8 @@ pub fn get_magistralsmalllatest_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -447,6 +505,8 @@ pub fn get_devstralmediumlatest_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -462,6 +522,8 @@ pub fn get_devstralsmalllatest_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -477,6 +539,8 @@ pub fn get_codestrallatest_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -492,6 +556,8 @@ pub fn get_mistralembed_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -507,6 +573,8 @@ pub fn get_grok3_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -522,6 +590,8 @@ pub fn get_grok3fast_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -537,6 +607,8 @@ pub fn get_grok3mini_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -552,6 +624,8 @@ pub fn get_grok3minifast_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -567,6 +641,8 @@ pub fn get_grok4_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -582,6 +658,8 @@ pub fn get_sonarpro_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -597,6 +675,8 @@ pub fn get_sonar_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -612,6 +692,8 @@ pub fn get_sonarreasoningpro_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -627,6 +709,8 @@ pub fn get_sonarreasoning_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -642,6 +726,8 @@ pub fn get_sonardeepresearch_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -657,6 +743,8 @@ pub fn get_r11776_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -672,6 +760,8 @@ pub fn get_metallamallama4maverick17b128einstruct_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -687,6 +777,8 @@ pub fn get_metallamallama4scout17b16einstruct_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -702,6 +794,8 @@ pub fn get_llama3370bversatile_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -717,6 +811,8 @@ pub fn get_qwenqwq32b_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -732,6 +828,8 @@ pub fn get_qwenqwen332b_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -747,6 +845,8 @@ pub fn get_compoundbeta_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -762,6 +862,8 @@ pub fn get_compoundbetamini_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -777,6 +879,8 @@ pub fn get_deepseekchat_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -792,6 +896,8 @@ pub fn get_deepseekreasoner_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -807,6 +913,8 @@ pub fn get_openaigpt41_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -822,6 +930,8 @@ pub fn get_openaigpt41mini_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -837,6 +947,8 @@ pub fn get_openaigpt41nano_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -852,6 +964,8 @@ pub fn get_openaigpt4o_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -867,6 +981,8 @@ pub fn get_openaigpt4osearchpreview_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -882,6 +998,8 @@ pub fn get_openaigpt4omini_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -897,6 +1015,8 @@ pub fn get_openaigpt4ominisearchpreview_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -912,6 +1032,8 @@ pub fn get_openaichatgpt4olatest_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -927,6 +1049,8 @@ pub fn get_openaio4mini_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -942,6 +1066,8 @@ pub fn get_openaio4minihigh_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -957,6 +1083,8 @@ pub fn get_openaio3pro_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -972,6 +1100,8 @@ pub fn get_openaio3_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -987,6 +1117,8 @@ pub fn get_openaio3mini_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1002,6 +1134,8 @@ pub fn get_openaio3minihigh_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1017,6 +1151,8 @@ pub fn get_googlegemini25flash_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1032,6 +1168,8 @@ pub fn get_googlegemini25pro_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1047,6 +1185,8 @@ pub fn get_googlegemini25flashlitepreview0617_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1062,6 +1202,8 @@ pub fn get_googlegemini20flash001_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1077,6 +1219,8 @@ pub fn get_googlegemini20flashlite001_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1092,6 +1236,8 @@ pub fn get_googlegemma327bit_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1107,6 +1253,8 @@ pub fn get_anthropicclaudeopus4_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: Some(true),
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1122,6 +1270,8 @@ pub fn get_anthropicclaudesonnet4_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: Some(true),
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1137,6 +1287,8 @@ pub fn get_anthropicclaude37sonnet_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: Some(true),
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1152,6 +1304,8 @@ pub fn get_anthropicclaude37sonnetthinking_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: None,
         require_max_tokens: Some(true),
+        supports_thinking: Some(true),
+        optimal_thinking_budget: Some(8192),
     }
 }
 
@@ -1167,6 +1321,8 @@ pub fn get_anthropicclaude35sonnet_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: Some(true),
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1182,6 +1338,8 @@ pub fn get_anthropicclaude35haiku_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: Some(true),
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1197,6 +1355,8 @@ pub fn get_metallamallama4maverick_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1212,6 +1372,8 @@ pub fn get_metallamallama4scout_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1227,6 +1389,8 @@ pub fn get_metallamallama3370binstruct_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1242,6 +1406,8 @@ pub fn get_mistralaimistralmedium3_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1257,6 +1423,8 @@ pub fn get_mistralaimistralsmall3224binstruct_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1272,6 +1440,8 @@ pub fn get_mistralaimagistralmedium2506_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1287,6 +1457,8 @@ pub fn get_mistralaimagistralmedium2506thinking_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(true),
+        optimal_thinking_budget: Some(8192),
     }
 }
 
@@ -1302,6 +1474,8 @@ pub fn get_mistralaimagistralsmall2506_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1317,6 +1491,8 @@ pub fn get_mistralaidevstralmedium_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1332,6 +1508,8 @@ pub fn get_mistralaidevstralsmall2505_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1347,6 +1525,8 @@ pub fn get_mistralaicodestral2501_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1362,6 +1542,8 @@ pub fn get_ai21jamba16large_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1377,6 +1559,8 @@ pub fn get_ai21jamba16mini_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1392,6 +1576,8 @@ pub fn get_coherecommanda_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1407,6 +1593,8 @@ pub fn get_coherecommandr7b122024_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1422,6 +1610,8 @@ pub fn get_deepseekdeepseekchatv30324_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1437,6 +1627,8 @@ pub fn get_deepseekdeepseekr10528_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1452,6 +1644,8 @@ pub fn get_qwenqwenmax_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1467,6 +1661,8 @@ pub fn get_qwenqwenplus_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1482,6 +1678,8 @@ pub fn get_qwenqwenturbo_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1497,6 +1695,8 @@ pub fn get_qwenqwenvlplus_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1512,6 +1712,8 @@ pub fn get_qwenqwen3235ba22b_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1527,6 +1729,8 @@ pub fn get_qwenqwen330ba3b_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1542,6 +1746,8 @@ pub fn get_qwenqwen2572binstruct_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1557,6 +1763,8 @@ pub fn get_qwenqwen25vl72binstruct_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1572,6 +1780,8 @@ pub fn get_qwenqwen25coder32binstruct_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1587,6 +1797,8 @@ pub fn get_moonshotaikimik2_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1602,6 +1814,8 @@ pub fn get_xaigrok4_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1617,6 +1831,8 @@ pub fn get_xaigrok3_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: Some(true),
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1632,6 +1848,8 @@ pub fn get_xaigrok3mini_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1647,6 +1865,8 @@ pub fn get_amazonnovaprov1_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1662,6 +1882,8 @@ pub fn get_amazonnovalitev1_info() -> ModelInfoData {
         supports_vision: Some(true),
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1677,6 +1899,8 @@ pub fn get_amazonnovamicrov1_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1692,6 +1916,8 @@ pub fn get_perplexitysonarpro_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1707,6 +1933,8 @@ pub fn get_perplexitysonar_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1722,6 +1950,8 @@ pub fn get_perplexitysonarreasoningpro_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1737,6 +1967,8 @@ pub fn get_perplexitysonarreasoning_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1752,6 +1984,8 @@ pub fn get_perplexitysonardeepresearch_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1767,6 +2001,8 @@ pub fn get_perplexityr11776_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1782,6 +2018,8 @@ pub fn get_minimaxminimax01_info() -> ModelInfoData {
         supports_vision: None,
         supports_function_calling: None,
         require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
     }
 }
 
@@ -1924,8 +2162,425 @@ impl Default for ModelInfoData {
             supports_vision: None,
             supports_function_calling: None,
             require_max_tokens: None,
+            supports_thinking: None,
+            optimal_thinking_budget: None,
         }
     }
+}
+
+/// Convert ModelInfoData to ModelConfig - zero allocation lookup
+pub fn model_info_to_config(info: &ModelInfoData, model_name: &'static str) -> crate::completion_provider::ModelConfig {
+    crate::completion_provider::ModelConfig {
+        max_tokens: info.max_output_tokens.unwrap_or(4096) as u32,
+        temperature: 0.7,
+        top_p: 0.9,
+        frequency_penalty: 0.0,
+        presence_penalty: 0.0,
+        context_length: info.max_input_tokens.unwrap_or(128000) as u32,
+        system_prompt: "You are a helpful AI assistant.",
+        supports_tools: info.supports_function_calling.unwrap_or(false),
+        supports_vision: info.supports_vision.unwrap_or(false),
+        supports_audio: false,
+        supports_thinking: info.supports_thinking.unwrap_or(false),
+        optimal_thinking_budget: info.optimal_thinking_budget.unwrap_or(1024),
+        provider: Box::leak(info.provider_name.clone().into_boxed_str()),
+        model_name,
+    }
+}
+
+use std::sync::OnceLock;
+use std::collections::HashMap;
+
+/// Zero-allocation caching for model configs
+static MODEL_CONFIG_CACHE: OnceLock<HashMap<&'static str, crate::completion_provider::ModelConfig>> = OnceLock::new();
+
+/// Get model configuration with zero-allocation caching
+pub fn get_model_config(model_name: &'static str) -> &'static crate::completion_provider::ModelConfig {
+    let cache = MODEL_CONFIG_CACHE.get_or_init(|| {
+        let mut map = HashMap::new();
+        let info = get_gpt41_info();
+        let config = model_info_to_config(&info, "Gpt41");
+        map.insert("Gpt41", config);
+        let info = get_gpt41mini_info();
+        let config = model_info_to_config(&info, "Gpt41Mini");
+        map.insert("Gpt41Mini", config);
+        let info = get_gpt41nano_info();
+        let config = model_info_to_config(&info, "Gpt41Nano");
+        map.insert("Gpt41Nano", config);
+        let info = get_gpt4o_info();
+        let config = model_info_to_config(&info, "Gpt4O");
+        map.insert("Gpt4O", config);
+        let info = get_gpt4osearchpreview_info();
+        let config = model_info_to_config(&info, "Gpt4OSearchPreview");
+        map.insert("Gpt4OSearchPreview", config);
+        let info = get_gpt4omini_info();
+        let config = model_info_to_config(&info, "Gpt4OMini");
+        map.insert("Gpt4OMini", config);
+        let info = get_gpt4ominisearchpreview_info();
+        let config = model_info_to_config(&info, "Gpt4OMiniSearchPreview");
+        map.insert("Gpt4OMiniSearchPreview", config);
+        let info = get_chatgpt4olatest_info();
+        let config = model_info_to_config(&info, "Chatgpt4OLatest");
+        map.insert("Chatgpt4OLatest", config);
+        let info = get_o4mini_info();
+        let config = model_info_to_config(&info, "O4Mini");
+        map.insert("O4Mini", config);
+        let info = get_o4minihigh_info();
+        let config = model_info_to_config(&info, "O4MiniHigh");
+        map.insert("O4MiniHigh", config);
+        let info = get_o3_info();
+        let config = model_info_to_config(&info, "O3");
+        map.insert("O3", config);
+        let info = get_o3mini_info();
+        let config = model_info_to_config(&info, "O3Mini");
+        map.insert("O3Mini", config);
+        let info = get_o3minihigh_info();
+        let config = model_info_to_config(&info, "O3MiniHigh");
+        map.insert("O3MiniHigh", config);
+        let info = get_gpt4turbo_info();
+        let config = model_info_to_config(&info, "Gpt4Turbo");
+        map.insert("Gpt4Turbo", config);
+        let info = get_gpt35turbo_info();
+        let config = model_info_to_config(&info, "Gpt35Turbo");
+        map.insert("Gpt35Turbo", config);
+        let info = get_textembedding3large_info();
+        let config = model_info_to_config(&info, "TextEmbedding3Large");
+        map.insert("TextEmbedding3Large", config);
+        let info = get_textembedding3small_info();
+        let config = model_info_to_config(&info, "TextEmbedding3Small");
+        map.insert("TextEmbedding3Small", config);
+        let info = get_gemini25flash_info();
+        let config = model_info_to_config(&info, "Gemini25Flash");
+        map.insert("Gemini25Flash", config);
+        let info = get_gemini25pro_info();
+        let config = model_info_to_config(&info, "Gemini25Pro");
+        map.insert("Gemini25Pro", config);
+        let info = get_gemini25flashlitepreview0617_info();
+        let config = model_info_to_config(&info, "Gemini25FlashLitePreview0617");
+        map.insert("Gemini25FlashLitePreview0617", config);
+        let info = get_gemini20flash_info();
+        let config = model_info_to_config(&info, "Gemini20Flash");
+        map.insert("Gemini20Flash", config);
+        let info = get_gemini20flashlite_info();
+        let config = model_info_to_config(&info, "Gemini20FlashLite");
+        map.insert("Gemini20FlashLite", config);
+        let info = get_gemma327bit_info();
+        let config = model_info_to_config(&info, "Gemma327BIt");
+        map.insert("Gemma327BIt", config);
+        let info = get_textembedding004_info();
+        let config = model_info_to_config(&info, "TextEmbedding004");
+        map.insert("TextEmbedding004", config);
+        let info = get_mistralmediumlatest_info();
+        let config = model_info_to_config(&info, "MistralMediumLatest");
+        map.insert("MistralMediumLatest", config);
+        let info = get_mistralsmalllatest_info();
+        let config = model_info_to_config(&info, "MistralSmallLatest");
+        map.insert("MistralSmallLatest", config);
+        let info = get_magistralmediumlatest_info();
+        let config = model_info_to_config(&info, "MagistralMediumLatest");
+        map.insert("MagistralMediumLatest", config);
+        let info = get_magistralsmalllatest_info();
+        let config = model_info_to_config(&info, "MagistralSmallLatest");
+        map.insert("MagistralSmallLatest", config);
+        let info = get_devstralmediumlatest_info();
+        let config = model_info_to_config(&info, "DevstralMediumLatest");
+        map.insert("DevstralMediumLatest", config);
+        let info = get_devstralsmalllatest_info();
+        let config = model_info_to_config(&info, "DevstralSmallLatest");
+        map.insert("DevstralSmallLatest", config);
+        let info = get_codestrallatest_info();
+        let config = model_info_to_config(&info, "CodestralLatest");
+        map.insert("CodestralLatest", config);
+        let info = get_mistralembed_info();
+        let config = model_info_to_config(&info, "MistralEmbed");
+        map.insert("MistralEmbed", config);
+        let info = get_grok3_info();
+        let config = model_info_to_config(&info, "Grok3");
+        map.insert("Grok3", config);
+        let info = get_grok3fast_info();
+        let config = model_info_to_config(&info, "Grok3Fast");
+        map.insert("Grok3Fast", config);
+        let info = get_grok3mini_info();
+        let config = model_info_to_config(&info, "Grok3Mini");
+        map.insert("Grok3Mini", config);
+        let info = get_grok3minifast_info();
+        let config = model_info_to_config(&info, "Grok3MiniFast");
+        map.insert("Grok3MiniFast", config);
+        let info = get_grok4_info();
+        let config = model_info_to_config(&info, "Grok4");
+        map.insert("Grok4", config);
+        let info = get_sonarpro_info();
+        let config = model_info_to_config(&info, "SonarPro");
+        map.insert("SonarPro", config);
+        let info = get_sonar_info();
+        let config = model_info_to_config(&info, "Sonar");
+        map.insert("Sonar", config);
+        let info = get_sonarreasoningpro_info();
+        let config = model_info_to_config(&info, "SonarReasoningPro");
+        map.insert("SonarReasoningPro", config);
+        let info = get_sonarreasoning_info();
+        let config = model_info_to_config(&info, "SonarReasoning");
+        map.insert("SonarReasoning", config);
+        let info = get_sonardeepresearch_info();
+        let config = model_info_to_config(&info, "SonarDeepResearch");
+        map.insert("SonarDeepResearch", config);
+        let info = get_r11776_info();
+        let config = model_info_to_config(&info, "R11776");
+        map.insert("R11776", config);
+        let info = get_metallamallama4maverick17b128einstruct_info();
+        let config = model_info_to_config(&info, "MetaLlamaLlama4Maverick17B128EInstruct");
+        map.insert("MetaLlamaLlama4Maverick17B128EInstruct", config);
+        let info = get_metallamallama4scout17b16einstruct_info();
+        let config = model_info_to_config(&info, "MetaLlamaLlama4Scout17B16EInstruct");
+        map.insert("MetaLlamaLlama4Scout17B16EInstruct", config);
+        let info = get_llama3370bversatile_info();
+        let config = model_info_to_config(&info, "Llama3370BVersatile");
+        map.insert("Llama3370BVersatile", config);
+        let info = get_qwenqwq32b_info();
+        let config = model_info_to_config(&info, "QwenQwq32B");
+        map.insert("QwenQwq32B", config);
+        let info = get_qwenqwen332b_info();
+        let config = model_info_to_config(&info, "QwenQwen332B");
+        map.insert("QwenQwen332B", config);
+        let info = get_compoundbeta_info();
+        let config = model_info_to_config(&info, "CompoundBeta");
+        map.insert("CompoundBeta", config);
+        let info = get_compoundbetamini_info();
+        let config = model_info_to_config(&info, "CompoundBetaMini");
+        map.insert("CompoundBetaMini", config);
+        let info = get_deepseekchat_info();
+        let config = model_info_to_config(&info, "DeepseekChat");
+        map.insert("DeepseekChat", config);
+        let info = get_deepseekreasoner_info();
+        let config = model_info_to_config(&info, "DeepseekReasoner");
+        map.insert("DeepseekReasoner", config);
+        let info = get_openaigpt41_info();
+        let config = model_info_to_config(&info, "OpenaiGpt41");
+        map.insert("OpenaiGpt41", config);
+        let info = get_openaigpt41mini_info();
+        let config = model_info_to_config(&info, "OpenaiGpt41Mini");
+        map.insert("OpenaiGpt41Mini", config);
+        let info = get_openaigpt41nano_info();
+        let config = model_info_to_config(&info, "OpenaiGpt41Nano");
+        map.insert("OpenaiGpt41Nano", config);
+        let info = get_openaigpt4o_info();
+        let config = model_info_to_config(&info, "OpenaiGpt4O");
+        map.insert("OpenaiGpt4O", config);
+        let info = get_openaigpt4osearchpreview_info();
+        let config = model_info_to_config(&info, "OpenaiGpt4OSearchPreview");
+        map.insert("OpenaiGpt4OSearchPreview", config);
+        let info = get_openaigpt4omini_info();
+        let config = model_info_to_config(&info, "OpenaiGpt4OMini");
+        map.insert("OpenaiGpt4OMini", config);
+        let info = get_openaigpt4ominisearchpreview_info();
+        let config = model_info_to_config(&info, "OpenaiGpt4OMiniSearchPreview");
+        map.insert("OpenaiGpt4OMiniSearchPreview", config);
+        let info = get_openaichatgpt4olatest_info();
+        let config = model_info_to_config(&info, "OpenaiChatgpt4OLatest");
+        map.insert("OpenaiChatgpt4OLatest", config);
+        let info = get_openaio4mini_info();
+        let config = model_info_to_config(&info, "OpenaiO4Mini");
+        map.insert("OpenaiO4Mini", config);
+        let info = get_openaio4minihigh_info();
+        let config = model_info_to_config(&info, "OpenaiO4MiniHigh");
+        map.insert("OpenaiO4MiniHigh", config);
+        let info = get_openaio3pro_info();
+        let config = model_info_to_config(&info, "OpenaiO3Pro");
+        map.insert("OpenaiO3Pro", config);
+        let info = get_openaio3_info();
+        let config = model_info_to_config(&info, "OpenaiO3");
+        map.insert("OpenaiO3", config);
+        let info = get_openaio3mini_info();
+        let config = model_info_to_config(&info, "OpenaiO3Mini");
+        map.insert("OpenaiO3Mini", config);
+        let info = get_openaio3minihigh_info();
+        let config = model_info_to_config(&info, "OpenaiO3MiniHigh");
+        map.insert("OpenaiO3MiniHigh", config);
+        let info = get_googlegemini25flash_info();
+        let config = model_info_to_config(&info, "GoogleGemini25Flash");
+        map.insert("GoogleGemini25Flash", config);
+        let info = get_googlegemini25pro_info();
+        let config = model_info_to_config(&info, "GoogleGemini25Pro");
+        map.insert("GoogleGemini25Pro", config);
+        let info = get_googlegemini25flashlitepreview0617_info();
+        let config = model_info_to_config(&info, "GoogleGemini25FlashLitePreview0617");
+        map.insert("GoogleGemini25FlashLitePreview0617", config);
+        let info = get_googlegemini20flash001_info();
+        let config = model_info_to_config(&info, "GoogleGemini20Flash001");
+        map.insert("GoogleGemini20Flash001", config);
+        let info = get_googlegemini20flashlite001_info();
+        let config = model_info_to_config(&info, "GoogleGemini20FlashLite001");
+        map.insert("GoogleGemini20FlashLite001", config);
+        let info = get_googlegemma327bit_info();
+        let config = model_info_to_config(&info, "GoogleGemma327BIt");
+        map.insert("GoogleGemma327BIt", config);
+        let info = get_anthropicclaudeopus4_info();
+        let config = model_info_to_config(&info, "AnthropicClaudeOpus4");
+        map.insert("AnthropicClaudeOpus4", config);
+        let info = get_anthropicclaudesonnet4_info();
+        let config = model_info_to_config(&info, "AnthropicClaudeSonnet4");
+        map.insert("AnthropicClaudeSonnet4", config);
+        let info = get_anthropicclaude37sonnet_info();
+        let config = model_info_to_config(&info, "AnthropicClaude37Sonnet");
+        map.insert("AnthropicClaude37Sonnet", config);
+        let info = get_anthropicclaude37sonnetthinking_info();
+        let config = model_info_to_config(&info, "AnthropicClaude37Sonnetthinking");
+        map.insert("AnthropicClaude37Sonnetthinking", config);
+        let info = get_anthropicclaude35sonnet_info();
+        let config = model_info_to_config(&info, "AnthropicClaude35Sonnet");
+        map.insert("AnthropicClaude35Sonnet", config);
+        let info = get_anthropicclaude35haiku_info();
+        let config = model_info_to_config(&info, "AnthropicClaude35Haiku");
+        map.insert("AnthropicClaude35Haiku", config);
+        let info = get_metallamallama4maverick_info();
+        let config = model_info_to_config(&info, "MetaLlamaLlama4Maverick");
+        map.insert("MetaLlamaLlama4Maverick", config);
+        let info = get_metallamallama4scout_info();
+        let config = model_info_to_config(&info, "MetaLlamaLlama4Scout");
+        map.insert("MetaLlamaLlama4Scout", config);
+        let info = get_metallamallama3370binstruct_info();
+        let config = model_info_to_config(&info, "MetaLlamaLlama3370BInstruct");
+        map.insert("MetaLlamaLlama3370BInstruct", config);
+        let info = get_mistralaimistralmedium3_info();
+        let config = model_info_to_config(&info, "MistralaiMistralMedium3");
+        map.insert("MistralaiMistralMedium3", config);
+        let info = get_mistralaimistralsmall3224binstruct_info();
+        let config = model_info_to_config(&info, "MistralaiMistralSmall3224BInstruct");
+        map.insert("MistralaiMistralSmall3224BInstruct", config);
+        let info = get_mistralaimagistralmedium2506_info();
+        let config = model_info_to_config(&info, "MistralaiMagistralMedium2506");
+        map.insert("MistralaiMagistralMedium2506", config);
+        let info = get_mistralaimagistralmedium2506thinking_info();
+        let config = model_info_to_config(&info, "MistralaiMagistralMedium2506Thinking");
+        map.insert("MistralaiMagistralMedium2506Thinking", config);
+        let info = get_mistralaimagistralsmall2506_info();
+        let config = model_info_to_config(&info, "MistralaiMagistralSmall2506");
+        map.insert("MistralaiMagistralSmall2506", config);
+        let info = get_mistralaidevstralmedium_info();
+        let config = model_info_to_config(&info, "MistralaiDevstralMedium");
+        map.insert("MistralaiDevstralMedium", config);
+        let info = get_mistralaidevstralsmall2505_info();
+        let config = model_info_to_config(&info, "MistralaiDevstralSmall2505");
+        map.insert("MistralaiDevstralSmall2505", config);
+        let info = get_mistralaicodestral2501_info();
+        let config = model_info_to_config(&info, "MistralaiCodestral2501");
+        map.insert("MistralaiCodestral2501", config);
+        let info = get_ai21jamba16large_info();
+        let config = model_info_to_config(&info, "Ai21Jamba16Large");
+        map.insert("Ai21Jamba16Large", config);
+        let info = get_ai21jamba16mini_info();
+        let config = model_info_to_config(&info, "Ai21Jamba16Mini");
+        map.insert("Ai21Jamba16Mini", config);
+        let info = get_coherecommanda_info();
+        let config = model_info_to_config(&info, "CohereCommandA");
+        map.insert("CohereCommandA", config);
+        let info = get_coherecommandr7b122024_info();
+        let config = model_info_to_config(&info, "CohereCommandR7b122024");
+        map.insert("CohereCommandR7b122024", config);
+        let info = get_deepseekdeepseekchatv30324_info();
+        let config = model_info_to_config(&info, "DeepseekDeepseekChatV30324");
+        map.insert("DeepseekDeepseekChatV30324", config);
+        let info = get_deepseekdeepseekr10528_info();
+        let config = model_info_to_config(&info, "DeepseekDeepseekR10528");
+        map.insert("DeepseekDeepseekR10528", config);
+        let info = get_qwenqwenmax_info();
+        let config = model_info_to_config(&info, "QwenQwenMax");
+        map.insert("QwenQwenMax", config);
+        let info = get_qwenqwenplus_info();
+        let config = model_info_to_config(&info, "QwenQwenPlus");
+        map.insert("QwenQwenPlus", config);
+        let info = get_qwenqwenturbo_info();
+        let config = model_info_to_config(&info, "QwenQwenTurbo");
+        map.insert("QwenQwenTurbo", config);
+        let info = get_qwenqwenvlplus_info();
+        let config = model_info_to_config(&info, "QwenQwenVlPlus");
+        map.insert("QwenQwenVlPlus", config);
+        let info = get_qwenqwen3235ba22b_info();
+        let config = model_info_to_config(&info, "QwenQwen3235BA22b");
+        map.insert("QwenQwen3235BA22b", config);
+        let info = get_qwenqwen330ba3b_info();
+        let config = model_info_to_config(&info, "QwenQwen330BA3b");
+        map.insert("QwenQwen330BA3b", config);
+        let info = get_qwenqwen332b_info();
+        let config = model_info_to_config(&info, "QwenQwen332B");
+        map.insert("QwenQwen332B", config);
+        let info = get_qwenqwq32b_info();
+        let config = model_info_to_config(&info, "QwenQwq32B");
+        map.insert("QwenQwq32B", config);
+        let info = get_qwenqwen2572binstruct_info();
+        let config = model_info_to_config(&info, "QwenQwen2572BInstruct");
+        map.insert("QwenQwen2572BInstruct", config);
+        let info = get_qwenqwen25vl72binstruct_info();
+        let config = model_info_to_config(&info, "QwenQwen25Vl72BInstruct");
+        map.insert("QwenQwen25Vl72BInstruct", config);
+        let info = get_qwenqwen25coder32binstruct_info();
+        let config = model_info_to_config(&info, "QwenQwen25Coder32BInstruct");
+        map.insert("QwenQwen25Coder32BInstruct", config);
+        let info = get_moonshotaikimik2_info();
+        let config = model_info_to_config(&info, "MoonshotaiKimiK2");
+        map.insert("MoonshotaiKimiK2", config);
+        let info = get_xaigrok4_info();
+        let config = model_info_to_config(&info, "XAiGrok4");
+        map.insert("XAiGrok4", config);
+        let info = get_xaigrok3_info();
+        let config = model_info_to_config(&info, "XAiGrok3");
+        map.insert("XAiGrok3", config);
+        let info = get_xaigrok3mini_info();
+        let config = model_info_to_config(&info, "XAiGrok3Mini");
+        map.insert("XAiGrok3Mini", config);
+        let info = get_amazonnovaprov1_info();
+        let config = model_info_to_config(&info, "AmazonNovaProV1");
+        map.insert("AmazonNovaProV1", config);
+        let info = get_amazonnovalitev1_info();
+        let config = model_info_to_config(&info, "AmazonNovaLiteV1");
+        map.insert("AmazonNovaLiteV1", config);
+        let info = get_amazonnovamicrov1_info();
+        let config = model_info_to_config(&info, "AmazonNovaMicroV1");
+        map.insert("AmazonNovaMicroV1", config);
+        let info = get_perplexitysonarpro_info();
+        let config = model_info_to_config(&info, "PerplexitySonarPro");
+        map.insert("PerplexitySonarPro", config);
+        let info = get_perplexitysonar_info();
+        let config = model_info_to_config(&info, "PerplexitySonar");
+        map.insert("PerplexitySonar", config);
+        let info = get_perplexitysonarreasoningpro_info();
+        let config = model_info_to_config(&info, "PerplexitySonarReasoningPro");
+        map.insert("PerplexitySonarReasoningPro", config);
+        let info = get_perplexitysonarreasoning_info();
+        let config = model_info_to_config(&info, "PerplexitySonarReasoning");
+        map.insert("PerplexitySonarReasoning", config);
+        let info = get_perplexitysonardeepresearch_info();
+        let config = model_info_to_config(&info, "PerplexitySonarDeepResearch");
+        map.insert("PerplexitySonarDeepResearch", config);
+        let info = get_perplexityr11776_info();
+        let config = model_info_to_config(&info, "PerplexityR11776");
+        map.insert("PerplexityR11776", config);
+        let info = get_minimaxminimax01_info();
+        let config = model_info_to_config(&info, "MinimaxMinimax01");
+        map.insert("MinimaxMinimax01", config);
+        map
+    });
+    
+    cache.get(model_name).unwrap_or_else(|| {
+        // Fallback for unknown models
+        static DEFAULT_CONFIG: crate::completion_provider::ModelConfig = crate::completion_provider::ModelConfig {
+            max_tokens: 4096,
+            temperature: 0.7,
+            top_p: 0.9,
+            frequency_penalty: 0.0,
+            presence_penalty: 0.0,
+            context_length: 128000,
+            system_prompt: "You are a helpful AI assistant.",
+            supports_tools: false,
+            supports_vision: false,
+            supports_audio: false,
+            supports_thinking: false,
+            optimal_thinking_budget: 1024,
+            provider: "unknown",
+            model_name: "unknown",
+        };
+        &DEFAULT_CONFIG
+    })
 }
 
 // AUTO-GENERATED END

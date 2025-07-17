@@ -222,14 +222,10 @@ pub trait VectorStoreIndexDyn: Send + Sync {
 }
 
 pub struct VectorStoreIndex {
-    backend: Box<dyn VectorStoreIndexDyn>,
+    pub backend: Box<dyn VectorStoreIndexDyn>,
 }
 
-pub struct VectorQueryBuilder<'a> {
-    index: &'a VectorStoreIndex,
-    query: String,
-    n: usize,
-}
+// VectorQueryBuilder moved to fluent_ai/src/builders/memory.rs
 
 impl VectorStoreIndex {
     // Direct creation from backend
@@ -237,53 +233,5 @@ impl VectorStoreIndex {
         VectorStoreIndex {
             backend: Box::new(backend),
         }
-    }
-
-    // Semantic query entry point
-    pub fn search(&self, query: impl Into<String>) -> VectorQueryBuilder<'_> {
-        VectorQueryBuilder {
-            index: self,
-            query: query.into(),
-            n: 10, // default
-        }
-    }
-}
-
-impl<'a> VectorQueryBuilder<'a> {
-    pub fn top(mut self, n: usize) -> Self {
-        self.n = n;
-        self
-    }
-
-    // Terminal method - returns full results with metadata
-    pub fn retrieve(self) -> AsyncTask<ZeroOneOrMany<(f64, String, Value)>> {
-        let _future = self.index.backend.top_n(&self.query, self.n);
-        spawn_async(async move {
-            // This would properly await the future
-            ZeroOneOrMany::None
-        })
-    }
-
-    // Terminal method - returns just IDs
-    pub fn retrieve_ids(self) -> AsyncTask<ZeroOneOrMany<(f64, String)>> {
-        let _future = self.index.backend.top_n_ids(&self.query, self.n);
-        spawn_async(async move {
-            // This would properly await the future
-            ZeroOneOrMany::None
-        })
-    }
-
-    // Terminal method with result handler
-    pub fn on_results<F, T>(self, handler: F) -> AsyncTask<T>
-    where
-        F: FnOnce(ZeroOneOrMany<(f64, String, Value)>) -> T + Send + 'static,
-        T: Send + 'static + crate::async_task::NotResult,
-    {
-        let _future = self.index.backend.top_n(&self.query, self.n);
-        spawn_async(async move {
-            // This would properly await the future and pass to handler
-            let result = ZeroOneOrMany::None;
-            handler(result)
-        })
     }
 }

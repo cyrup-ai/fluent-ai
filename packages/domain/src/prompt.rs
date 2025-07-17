@@ -25,18 +25,7 @@ impl Prompt {
     }
 }
 
-pub struct PromptBuilder {
-    content: String,
-}
-
-impl Prompt {
-    // Semantic entry point
-    pub fn ask(content: impl Into<String>) -> PromptBuilder {
-        PromptBuilder {
-            content: content.into(),
-        }
-    }
-}
+// PromptBuilder moved to fluent-ai/src/builders/prompt.rs
 
 impl Into<String> for Prompt {
     fn into(self) -> String {
@@ -44,8 +33,4 @@ impl Into<String> for Prompt {
     }
 }
 
-impl Into<Prompt> for PromptBuilder {
-    fn into(self) -> Prompt {
-        Prompt::new(self.content)
-    }
-}
+// PromptBuilder implementation moved to fluent-ai/src/builders/prompt.rs

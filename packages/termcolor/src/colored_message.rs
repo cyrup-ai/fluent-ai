@@ -285,7 +285,6 @@ impl ColoredMessage {
                 }
                 MessageStyle::BoldItalic => {
                     // Use bold+italic color spec
-                    use std::io::Write;
                     if let Some(theme) = get_current_theme() {
                         let mut spec = theme.spec(part.semantic);
                         spec.set_bold(true);

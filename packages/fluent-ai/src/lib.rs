@@ -58,6 +58,7 @@ pub mod extractor;
 pub mod http;
 pub mod providers;
 pub mod runtime;
+pub mod tools;
 pub mod transcription;
 
 // Utility modules for provider implementations and core systems
@@ -72,6 +73,21 @@ pub mod json_util {
 pub mod message {
     pub use crate::domain::message::*;
 }
+
+// Re-export builders for easy access
+pub use crate::builders::{
+    AgentRoleBuilder, McpServerBuilder, Stdio,
+    AgentRoleBuilderWithHandler, AgentRoleBuilderWithChunkHandler,
+    AudioBuilder, AudioBuilderWithHandler,
+    ConversationBuilder,
+    ImageBuilder, ImageBuilderWithHandler,
+    McpClientBuilder, McpToolBuilder, McpToolImpl,
+    ModelInfoBuilder,
+    PromptBuilder,
+    SecureMcpToolBuilder,
+    VectorQueryBuilder,
+    WorkflowBuilder
+};
 
 // Re-export embeddings module for compatibility
 pub mod embeddings {
@@ -162,6 +178,8 @@ pub use engine::{
 pub use fluent::{Ai, FluentAi};
 // Re-export from fluent_ai_provider crate
 pub use fluent_ai_provider::{Model, ModelInfoData, Models, Provider, Providers};
+// Re-export builder implementations
+pub use builders::*;
 // Note: cyrup_sugars is already re-exported at the top of the file
 
 #[cfg(test)]

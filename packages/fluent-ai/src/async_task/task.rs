@@ -24,6 +24,12 @@ impl<T> AsyncTask<T>
 where
     T: Send + 'static,
 {
+    /// Create AsyncTask from crossbeam receiver for first-class streaming
+    #[inline]
+    pub fn new(rx: Receiver<T>) -> Self {
+        AsyncTask { rx }
+    }
+
     /// Create an AsyncTask that immediately resolves to the given value
     #[inline]
     pub fn from_value(value: T) -> Self {

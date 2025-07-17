@@ -76,99 +76,7 @@ impl Conversation for ConversationImpl {
     }
 }
 
-/// Builder for creating and configuring conversations
-pub struct ConversationBuilder {
-    #[allow(dead_code)] // TODO: Use for setting the starting message of a conversation
-    initial_message: Option<String>,
-    #[allow(dead_code)] // TODO: Use for conversation builder error handling before terminal methods
-    error_handler: Option<Box<dyn FnMut(String) + Send + 'static>>,
-}
-
-/// Builder with error handler - exposes terminal methods
-pub struct ConversationBuilderWithHandler {
-    #[allow(dead_code)] // TODO: Use for setting the starting message of a conversation
-    initial_message: Option<String>,
-    #[allow(dead_code)] // TODO: Use for polymorphic error handling during conversation operations
-    error_handler: Box<dyn FnMut(String) + Send + 'static>,
-    #[allow(dead_code)] // TODO: Use for conversation result processing and transformation
-    result_handler: Option<Box<dyn FnOnce(ConversationImpl) -> ConversationImpl + Send + 'static>>,
-    #[allow(dead_code)] // TODO: Use for conversation streaming and incremental processing
-    chunk_handler: Option<Box<dyn FnMut(ConversationImpl) -> ConversationImpl + Send + 'static>>,
-}
-
-impl ConversationBuilder {
-    /// Create a new conversation builder
-    pub fn new() -> Self {
-        Self {
-            initial_message: None,
-            error_handler: None,
-        }
-    }
-
-    /// Set the initial user message
-    pub fn initial_message(mut self, message: impl Into<String>) -> Self {
-        self.initial_message = Some(message.into());
-        self
-    }
-
-    /// Add error handler to enable terminal methods
-    pub fn on_error<F>(self, error_handler: F) -> ConversationBuilderWithHandler
-    where
-        F: FnMut(String) + Send + 'static,
-    {
-        ConversationBuilderWithHandler {
-            initial_message: self.initial_message,
-            error_handler: Box::new(error_handler),
-            result_handler: None,
-            chunk_handler: None,
-        }
-    }
-
-    pub fn on_result<F>(self, handler: F) -> ConversationBuilderWithHandler
-    where
-        F: FnOnce(ConversationImpl) -> ConversationImpl + Send + 'static,
-    {
-        ConversationBuilderWithHandler {
-            initial_message: self.initial_message,
-            error_handler: Box::new(|e| eprintln!("Conversation error: {}", e)),
-            result_handler: Some(Box::new(handler)),
-            chunk_handler: None,
-        }
-    }
-
-    pub fn on_chunk<F>(self, handler: F) -> ConversationBuilderWithHandler
-    where
-        F: FnMut(ConversationImpl) -> ConversationImpl + Send + 'static,
-    {
-        ConversationBuilderWithHandler {
-            initial_message: self.initial_message,
-            error_handler: Box::new(|e| eprintln!("Conversation chunk error: {}", e)),
-            result_handler: None,
-            chunk_handler: Some(Box::new(handler)),
-        }
-    }
-}
-
-impl ConversationBuilderWithHandler {
-    /// Build and return a conversation implementation
-    pub fn build(self) -> impl Conversation {
-        let message = self.initial_message.unwrap_or_else(|| "".to_string());
-        ConversationImpl::new(message)
-    }
-
-    /// Build asynchronously and return a conversation implementation
-    pub fn build_async(self) -> AsyncTask<impl Conversation> {
-        let message = self.initial_message.unwrap_or_else(|| "".to_string());
-
-        spawn_async(async move { ConversationImpl::new(message) })
-    }
-}
-
-impl Default for ConversationBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Builder implementations moved to fluent_ai/src/builders/conversation.rs
 
 #[cfg(test)]
 mod tests {
@@ -207,10 +115,7 @@ mod tests {
 
     #[test]
     fn test_conversation_builder() {
-        let conversation = ConversationBuilder::new()
-            .initial_message("Test message")
-            .on_error(|_| {})
-            .build();
+        let conversation = ConversationImpl::new("Test message");
 
         assert_eq!(conversation.latest_user_message(), "Test message");
         assert_eq!(conversation.message_count(), 1);

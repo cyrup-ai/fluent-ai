@@ -255,76 +255,8 @@ pub struct McpClient<T: Transport> {
     pub client: Arc<Client<T>>,
 }
 
-pub struct McpClientBuilder<T: Transport> {
-    client: Arc<Client<T>>,
-    name: Option<String>,
-    description: Option<String>,
-    input_schema: Option<Value>,
-}
+// McpClientBuilder moved to fluent-ai/src/builders/mcp.rs
 
-impl<T: Transport> McpClient<T> {
-    #[inline]
-    pub fn define(name: impl Into<String>, client: Client<T>) -> McpClientBuilder<T> {
-        McpClientBuilder {
-            client: Arc::new(client),
-            name: Some(name.into()),
-            description: None,
-            input_schema: None,
-        }
-    }
-}
+// McpClient::define moved to fluent-ai/src/builders/mcp.rs
 
-impl<T: Transport> McpClientBuilder<T> {
-    #[inline]
-    pub fn description(mut self, desc: impl Into<String>) -> Self {
-        self.description = Some(desc.into());
-        self
-    }
-
-    #[inline]
-    pub fn input_schema(mut self, schema: Value) -> Self {
-        self.input_schema = Some(schema);
-        self
-    }
-
-    #[inline]
-    pub fn parameters(mut self, schema: Value) -> Self {
-        self.input_schema = Some(schema);
-        self
-    }
-
-    #[inline]
-    pub fn register(self) -> McpClient<T> {
-        McpClient {
-            definition: Tool {
-                name: self.name.unwrap_or_else(|| "unnamed_tool".to_string()),
-                description: self
-                    .description
-                    .unwrap_or_else(|| "No description provided".to_string()),
-                input_schema: self
-                    .input_schema
-                    .unwrap_or(Value::Object(Default::default())),
-            },
-            client: self.client,
-        }
-    }
-
-    #[inline]
-    pub fn execute(self, args: Value) -> AsyncTask<Value> {
-        let tool = self.register();
-        let client = tool.client.clone();
-        let name = tool.definition.name.clone();
-
-        spawn_async(async move {
-            match client.call_tool(&name, args).await {
-                Ok(result) => result,
-                Err(McpError::ToolNotFound) => Value::String(format!("Tool '{}' not found", name)),
-                Err(McpError::ExecutionFailed(msg)) => {
-                    Value::String(format!("Execution failed: {}", msg))
-                }
-                Err(McpError::Timeout) => Value::String("Tool execution timed out".to_string()),
-                Err(_) => Value::String("Tool execution failed".to_string()),
-            }
-        })
-    }
-}
+// McpClientBuilder implementation moved to fluent-ai/src/builders/mcp.rs

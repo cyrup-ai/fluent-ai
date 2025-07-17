@@ -13,7 +13,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime};
-use fluent_ai_domain::async_task::{AsyncTask, AsyncTaskBuilder};
+use crate::async_task::{AsyncTask, AsyncTaskBuilder};
 use crate::execution_env::{CyloInstance, CyloError, CyloResult};
 use crate::backends::{ExecutionBackend, BackendConfig, HealthStatus, create_backend};
 

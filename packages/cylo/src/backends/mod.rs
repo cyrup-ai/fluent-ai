@@ -13,7 +13,8 @@
 use std::collections::HashMap;
 use std::time::Duration;
 use serde::{Deserialize, Serialize};
-use fluent_ai_domain::async_task::AsyncTask;
+// Local AsyncTask type alias to avoid circular dependency with fluent_ai_domain
+pub type AsyncTask<T> = tokio::task::JoinHandle<T>;
 use crate::execution_env::{CyloError, CyloResult};
 
 /// Core execution backend trait

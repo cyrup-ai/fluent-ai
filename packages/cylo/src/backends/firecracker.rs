@@ -18,7 +18,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant, SystemTime};
 use serde::{Deserialize, Serialize};
-use fluent_ai_domain::async_task::{AsyncTask, AsyncTaskBuilder};
+use crate::backends::AsyncTask;
+use crate::async_task::AsyncTaskBuilder;
 use crate::backends::{
     ExecutionBackend, ExecutionRequest, ExecutionResult, HealthStatus,
     BackendConfig, BackendError, BackendResult, ResourceUsage

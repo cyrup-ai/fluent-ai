@@ -27,29 +27,29 @@ pub mod workflow;
 pub use agent::*;
 pub use agent_role::*;
 pub use audio::{
-    Audio, AudioBuilder, AudioBuilderWithHandler, AudioMediaType,
+    Audio, AudioMediaType,
     ContentFormat as AudioContentFormat,
 };
 pub use chunk::*;
 pub use completion::*;
 pub use context::*;
-pub use conversation::{Conversation as ConversationTrait, ConversationBuilder, ConversationImpl};
+pub use conversation::{Conversation as ConversationTrait, ConversationImpl};
 pub use document::*;
 pub use embedding::*;
 pub use extractor::*;
 pub use image::{
-    ContentFormat as ImageContentFormat, Image, ImageBuilder, ImageBuilderWithHandler,
+    ContentFormat as ImageContentFormat, Image,
     ImageMediaType,
 };
 pub use library::*;
 pub use loader::*;
 pub use mcp::*;
-pub use mcp_tool::{McpTool, McpToolBuilder, McpToolImpl, Tool};
+pub use mcp_tool::{McpTool, Tool};
 pub use memory::*;
 pub use memory_ops::*;
 pub use memory_workflow::{Prompt as PromptTrait, PromptError, WorkflowError};
 pub use message::*;
 pub use model_info_provider::*;
-pub use prompt::{Prompt, PromptBuilder};
+pub use prompt::Prompt;
 pub use tool::{NamedTool, Perplexity, Tool as ToolV2};
 pub use workflow::*;

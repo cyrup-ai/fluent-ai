@@ -22,16 +22,16 @@ use super::memory_ops;
 mod workflow {
     // Remove unused super::* import - specify needed imports explicitly
 
+    // WorkflowBuilder moved to fluent_ai/src/builders/workflow.rs
     #[allow(dead_code)] // TODO: Implement workflow system
-    pub fn new() -> WorkflowBuilder {
-        WorkflowBuilder
+    pub fn new() -> WorkflowStub {
+        WorkflowStub
     }
-
-    #[allow(dead_code)] // TODO: Implement workflow system
-    pub struct WorkflowBuilder;
-
-    impl WorkflowBuilder {
-        #[allow(dead_code)] // TODO: Implement workflow system
+    
+    /// Stub for WorkflowBuilder that was moved to fluent_ai
+    pub struct WorkflowStub;
+    
+    impl WorkflowStub {
         pub fn chain<O>(self, op: O) -> O {
             op
         }

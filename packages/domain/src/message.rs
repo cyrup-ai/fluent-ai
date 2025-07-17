@@ -284,34 +284,7 @@ impl Message {
     }
 }
 
-// Message builder traits
-pub trait MessageBuilder {
-    type Content: Content;
-    fn add_content(self, content: Self::Content) -> Self;
-    fn build(self) -> Message;
-}
-
-pub trait UserMessageBuilderTrait: MessageBuilder<Content = UserContent> {
-    fn text(self, text: impl Into<String>) -> Self;
-    fn image(self, image: crate::Image) -> Self;
-    fn audio(self, audio: crate::Audio) -> Self;
-    fn document(self, document: crate::Document) -> Self;
-    fn say(self) -> Message;
-}
-
-pub trait AssistantMessageBuilderTrait: MessageBuilder<Content = AssistantContent> {
-    fn text(self, text: impl Into<String>) -> Self;
-    fn tool_call(self, id: impl Into<String>, name: impl Into<String>, arguments: Value) -> Self;
-    fn tool_result(self, tool_call_id: impl Into<String>, result: Value) -> Self;
-    fn tool_error(self, tool_call_id: impl Into<String>, error: impl Into<String>) -> Self;
-    fn respond(self) -> Message;
-}
-
-// Trait for creating message builders
-pub trait MessageFactory {
-    fn user_message() -> impl UserMessageBuilderTrait;
-    fn assistant_message() -> impl AssistantMessageBuilderTrait;
-}
+// Message builder traits moved to fluent_ai/src/builders/message.rs
 
 // Now let's also define a content container trait
 pub trait ContentContainer: Content {

@@ -329,6 +329,96 @@ impl CyloError {
 // Result type alias for convenience
 pub type CyloResult<T> = Result<T, CyloError>;
 
+/// Validate an instance name for compliance with naming rules
+/// 
+/// Instance names must:
+/// - Be non-empty
+/// - Contain only alphanumeric characters, hyphens, and underscores
+/// - Not start or end with hyphens or underscores
+/// 
+/// # Arguments
+/// * `name` - The instance name to validate
+/// 
+/// # Returns
+/// * `Ok(())` if the name is valid
+/// * `Err(CyloError)` if the name is invalid
+pub fn validate_instance_name(name: &str) -> CyloResult<()> {
+    if name.is_empty() {
+        return Err(CyloError::validation("Instance name cannot be empty"));
+    }
+    
+    if name.len() > 63 {
+        return Err(CyloError::validation("Instance name cannot exceed 63 characters"));
+    }
+    
+    // Check first and last characters
+    let first_char = name.chars().next().unwrap();
+    let last_char = name.chars().last().unwrap();
+    
+    if first_char == '-' || first_char == '_' {
+        return Err(CyloError::validation("Instance name cannot start with hyphen or underscore"));
+    }
+    
+    if last_char == '-' || last_char == '_' {
+        return Err(CyloError::validation("Instance name cannot end with hyphen or underscore"));
+    }
+    
+    // Check all characters are valid
+    for ch in name.chars() {
+        if !ch.is_alphanumeric() && ch != '-' && ch != '_' {
+            return Err(CyloError::validation(
+                "Instance name can only contain alphanumeric characters, hyphens, and underscores"
+            ));
+        }
+    }
+    
+    Ok(())
+}
+
+/// Validate an environment specification for the given backend type
+/// 
+/// Different backends have different validation requirements:
+/// - LandLock: Path must be absolute and exist
+/// - FireCracker/Apple: Image specification must include tag
+/// 
+/// # Arguments
+/// * `env` - The Cylo environment to validate
+/// 
+/// # Returns
+/// * `Ok(())` if the environment specification is valid
+/// * `Err(CyloError)` if the specification is invalid
+pub fn validate_environment_spec(env: &Cylo) -> CyloResult<()> {
+    match env {
+        Cylo::LandLock(path) => {
+            if path.is_empty() {
+                return Err(CyloError::validation("LandLock path cannot be empty"));
+            }
+            
+            if !path.starts_with('/') {
+                return Err(CyloError::validation("LandLock path must be absolute"));
+            }
+            
+            Ok(())
+        },
+        Cylo::FireCracker(image) | Cylo::Apple(image) => {
+            if image.is_empty() {
+                return Err(CyloError::validation("Container image specification cannot be empty"));
+            }
+            
+            if !image.contains(':') {
+                return Err(CyloError::validation("Container image must include tag (e.g., 'image:tag')"));
+            }
+            
+            let parts: Vec<&str> = image.split(':').collect();
+            if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
+                return Err(CyloError::validation("Invalid container image format (expected 'name:tag')"));
+            }
+            
+            Ok(())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

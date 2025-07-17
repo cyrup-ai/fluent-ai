@@ -63,10 +63,6 @@ pub use backends::{
     create_backend,
 };
 
-// Platform-specific re-exports with feature gates
-#[cfg(target_os = "macos")]
-pub use backends::apple::AppleBackend;
-
 #[cfg(target_os = "linux")]
 pub use backends::{
     landlock::LandLockBackend,
@@ -132,16 +128,55 @@ pub mod prelude {
     };
     
     // AsyncTask re-export for convenience
-    pub use fluent_ai_domain::async_task::{AsyncTask, AsyncTaskBuilder};
+    pub use crate::async_task::{AsyncTask, AsyncTaskBuilder};
 }
 
 // ============================================================================
 // Feature-gated exports
 // ============================================================================
 
+// ============================================================================
+// AsyncTask module - simple wrapper around tokio for backend compatibility
+// ============================================================================
+
+pub mod async_task {
+    /// AsyncTask is a type alias for tokio::task::JoinHandle
+    pub type AsyncTask<T> = tokio::task::JoinHandle<T>;
+    
+    /// Simple AsyncTaskBuilder for fluent construction
+    pub struct AsyncTaskBuilder<F> {
+        future: F,
+    }
+    
+    impl<F, T> AsyncTaskBuilder<F>
+    where
+        F: std::future::Future<Output = T> + Send + 'static,
+        T: Send + 'static,
+    {
+        /// Create a new AsyncTaskBuilder
+        pub fn new(future: F) -> Self {
+            Self { future }
+        }
+        
+        /// Spawn the task and return the AsyncTask handle
+        pub fn spawn(self) -> AsyncTask<T> {
+            tokio::spawn(self.future)
+        }
+    }
+    
+    /// Convenience function to spawn an async task
+    pub fn spawn_async<F, T>(future: F) -> AsyncTask<T>
+    where
+        F: std::future::Future<Output = T> + Send + 'static,
+        T: Send + 'static,
+    {
+        tokio::spawn(future)
+    }
+}
+
 // Re-export AsyncTask types for backend implementations
 #[doc(hidden)]
-pub use fluent_ai_domain::async_task::{AsyncTask, AsyncTaskBuilder};
+pub use async_task::{AsyncTask, AsyncTaskBuilder};
 
 // UUID re-export for instance ID generation
 #[doc(hidden)]

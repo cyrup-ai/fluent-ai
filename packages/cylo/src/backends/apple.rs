@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant, SystemTime};
 use serde::{Deserialize, Serialize};
-use fluent_ai_domain::async_task::{AsyncTask, AsyncTaskBuilder};
+use crate::backends::AsyncTask;
 use crate::backends::{
     ExecutionBackend, ExecutionRequest, ExecutionResult, HealthStatus, 
     BackendConfig, BackendError, BackendResult, ResourceUsage

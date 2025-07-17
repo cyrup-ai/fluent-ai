@@ -4,7 +4,6 @@
 
 use crate::{Color, ColorSpec, WriteColor};
 use std::io;
-use std::sync::OnceLock;
 
 /// Cyrup.ai brand theme with modern AI aesthetic
 #[derive(Debug, Clone)]
@@ -370,9 +369,6 @@ fn production_theme() -> CyrupTheme {
     }
 }
 
-/// Global theme management
-static GLOBAL_THEME: OnceLock<ThemeConfig> = OnceLock::new();
-
 /// Set global theme configuration
 pub fn set_global_theme(config: ThemeConfig) {
     // Since OnceLock can only be set once, we use a workaround with thread_local for runtime changes
@@ -416,7 +412,7 @@ pub fn write_colored<W: WriteColor>(
     semantic: SemanticColor,
     text: &str,
 ) -> io::Result<()> {
-    use std::io::Write;
+    // Note: std::io::Write is available via WriteColor supertrait bound
     if let Some(theme) = get_current_theme() {
         let spec = theme.spec(semantic);
         writer.set_color(&spec)?;
@@ -435,7 +431,7 @@ pub fn write_colored_bold<W: WriteColor>(
     semantic: SemanticColor,
     text: &str,
 ) -> io::Result<()> {
-    use std::io::Write;
+    // Note: std::io::Write is available via WriteColor supertrait bound
     if let Some(theme) = get_current_theme() {
         let spec = theme.bold_spec(semantic);
         writer.set_color(&spec)?;
@@ -454,7 +450,7 @@ pub fn write_colored_italic<W: WriteColor>(
     semantic: SemanticColor,
     text: &str,
 ) -> io::Result<()> {
-    use std::io::Write;
+    // Note: std::io::Write is available via WriteColor supertrait bound
     if let Some(theme) = get_current_theme() {
         let spec = theme.italic_spec(semantic);
         writer.set_color(&spec)?;
