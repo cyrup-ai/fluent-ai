@@ -9,7 +9,7 @@
 
 use crate::completion_provider::{CompletionProvider, CompletionError, CompletionResponse, StreamingResponse};
 use super::error::{BedrockError, Result};
-use super::models::{get_model_metadata, validate_model_capability};
+use super::models::validate_model_capability;
 use super::sigv4::SigV4Signer;
 use super::streaming::BedrockStream;
 use fluent_ai_http3::{HttpClient, HttpRequest};

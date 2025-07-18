@@ -36,7 +36,7 @@ use crate::client::{CompletionClient, ProviderClient};
 pub use client::BedrockClient;
 pub use completion::BedrockCompletionBuilder;
 pub use error::{BedrockError, Result};
-pub use models::{BedrockModel, ModelMetadata, MODEL_REGISTRY};
+pub use models::validate_model_capability;
 pub use sigv4::{SigV4Signer, AwsCredentials};
 pub use streaming::BedrockStream;
 

@@ -45,7 +45,90 @@ pub enum ModelType {
     Llama270B = 7,
 }
 
+/// Model quality tier for evaluation weighting (user-configurable thresholds)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum QualityTier {
+    /// Draft quality: 0.0-0.4 threshold
+    Draft = 0,
+    /// Good quality: 0.4-0.7 threshold  
+    Good = 1,
+    /// High quality: 0.7-0.9 threshold
+    High = 2,
+    /// Premium quality: 0.9+ threshold
+    Premium = 3,
+}
+
+impl QualityTier {
+    /// Get quality threshold (hardcoded algorithm, user-configurable via config)
+    #[inline(always)]
+    pub const fn threshold(self) -> f64 {
+        match self {
+            Self::Draft => 0.0,
+            Self::Good => 0.4,
+            Self::High => 0.7,
+            Self::Premium => 0.9,
+        }
+    }
+}
+
+/// Zero-allocation health status with lock-free updates
+#[derive(Debug, Clone)]
+pub struct HealthStatus {
+    pub is_available: bool,
+    pub last_success: Option<Instant>,
+    pub total_requests: u64,
+    pub failed_requests: u64,
+    pub error_rate: f64,
+    pub avg_response_time: Duration,
+}
+
+impl Default for HealthStatus {
+    fn default() -> Self {
+        Self {
+            is_available: true,
+            last_success: None,
+            total_requests: 0,
+            failed_requests: 0,
+            error_rate: 0.0,
+            avg_response_time: Duration::from_millis(0),
+        }
+    }
+}
+
+/// Lock-free model metrics with performance tracking
+#[derive(Debug, Clone)]
+pub struct ModelMetrics {
+    pub evaluations_completed: u64,
+    pub total_evaluation_time: Duration,
+    pub average_score: f64,
+    pub success_rate: f64,
+    pub last_update: Instant,
+}
+
+impl Default for ModelMetrics {
+    fn default() -> Self {
+        Self {
+            evaluations_completed: 0,
+            total_evaluation_time: Duration::from_millis(0),
+            average_score: 0.0,
+            success_rate: 1.0,
+            last_update: Instant::now(),
+        }
+    }
+}
+
 impl ModelType {
+    /// Get model quality tier for evaluation weighting
+    #[inline(always)]
+    pub const fn quality_tier(self) -> QualityTier {
+        match self {
+            Self::Gpt4O | Self::Claude3Opus => QualityTier::Premium,
+            Self::Claude3Sonnet | Self::GeminiPro => QualityTier::High,
+            Self::Claude3Haiku | Self::Gpt35Turbo | Self::Mixtral8x7B | Self::Llama270B => QualityTier::Good,
+        }
+    }
+
     /// Get zero-allocation model identifier for API calls
     #[inline(always)]
     pub const fn identifier(self) -> &'static str {

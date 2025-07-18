@@ -1,16 +1,34 @@
-//! Consensus building and decision aggregation for committee evaluations
-//! 
-//! This module implements sophisticated algorithms for combining individual
-//! committee member evaluations into final decisions, handling disagreement,
-//! weighing different perspectives, and ensuring robust consensus formation.
+//! Blazing-fast Committee Consensus Engine with Zero-Allocation Performance
+//!
+//! This module implements lock-free consensus algorithms for committee-based
+//! evaluation systems. The consensus engine operates on user-configurable
+//! thresholds with hardcoded optimization algorithms.
+//!
+//! ## Architecture
+//!
+//! The consensus follows a strict pipeline:
+//! 1. **Collect**: Gather evaluations from committee members
+//! 2. **Weight**: Apply model-specific confidence weighting
+//! 3. **Aggregate**: Lock-free score aggregation with quality tiers
+//! 4. **Validate**: Consensus threshold validation
+//! 5. **Decide**: Generate final consensus decision
+//!
+//! ## Performance Characteristics
+//!
+//! - **Zero allocation**: Stack-allocated consensus with const operations
+//! - **Lock-free**: Atomic consensus scoring and validation
+//! - **Blazing-fast**: Inlined consensus algorithms, bit operations
+//! - **Type-safe**: Compile-time consensus validation
+//! - **User-configurable**: Threshold parameters with hardcoded algorithms
 
 use super::committee_types::{
-    CommitteeEvaluation, ConsensusDecision, ModelType, QualityTier, CommitteeError, CommitteeResult,
-    EvaluationMetrics
+    CommitteeEvaluation, QualityTier, ModelType, CommitteeError, CommitteeResult,
+    MAX_COMMITTEE_SIZE
 };
-use std::collections::HashMap;
+use arrayvec::ArrayVec;
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, info, warn};
 
 /// Core consensus building engine
 #[derive(Debug)]

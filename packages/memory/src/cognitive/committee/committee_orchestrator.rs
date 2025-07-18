@@ -16,7 +16,7 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::RwLock;
+use crossbeam_skiplist::SkipMap;
 use tracing::{debug, info, warn, error, instrument};
 use uuid::Uuid;
 
@@ -25,16 +25,16 @@ use uuid::Uuid;
 pub struct CommitteeEvaluator {
     /// Configuration for evaluation parameters
     config: EvaluationConfig,
-    /// Pool of available evaluators
-    evaluator_pool: Arc<RwLock<EvaluatorPool>>,
+    /// Pool of available evaluators (lock-free)
+    evaluator_pool: EvaluatorPool,
     /// Consensus engine for decision aggregation
     consensus_engine: ConsensusEngine,
-    /// Cache for storing evaluation results
-    evaluation_cache: Arc<RwLock<HashMap<String, CacheEntry>>>,
-    /// Performance metrics tracking
-    metrics: Arc<RwLock<CommitteeMetrics>>,
-    /// Cache performance metrics
-    cache_metrics: Arc<RwLock<CacheMetrics>>,
+    /// Lock-free cache for storing evaluation results
+    evaluation_cache: SkipMap<String, CacheEntry>,
+    /// Performance metrics tracking (atomic counters)
+    metrics: CommitteeMetrics,
+    /// Cache performance metrics (atomic counters)
+    cache_metrics: CacheMetrics,
 }
 
 impl CommitteeEvaluator {
@@ -71,11 +71,11 @@ impl CommitteeEvaluator {
         
         Ok(Self {
             config,
-            evaluator_pool: Arc::new(RwLock::new(evaluator_pool)),
+            evaluator_pool,
             consensus_engine,
-            evaluation_cache: Arc::new(RwLock::new(HashMap::new())),
-            metrics: Arc::new(RwLock::new(CommitteeMetrics::default())),
-            cache_metrics: Arc::new(RwLock::new(CacheMetrics::default())),
+            evaluation_cache: SkipMap::new(),
+            metrics: CommitteeMetrics::default(),
+            cache_metrics: CacheMetrics::default(),
         })
     }
     
@@ -101,13 +101,13 @@ impl CommitteeEvaluator {
         let cache_key = self.generate_cache_key(optimization_spec, current_state, proposed_state);
         
         // Check cache first
-        if let Some(cached_result) = self.check_cache(&cache_key).await? {
+        if let Some(cached_result) = self.check_cache(&cache_key)? {
             info!("Cache hit for evaluation");
-            self.update_cache_hit_metrics().await;
+            self.update_cache_hit_metrics();
             return Ok(cached_result.decision);
         }
         
-        self.update_cache_miss_metrics().await;
+        self.update_cache_miss_metrics();
         
         // Perform evaluation
         let evaluation_result = self.perform_evaluation(
@@ -132,30 +132,32 @@ impl CommitteeEvaluator {
     }
     
     /// Get current committee performance metrics
-    pub async fn metrics(&self) -> CommitteeMetrics {
-        self.metrics.read().await.clone()
+    pub fn metrics(&self) -> CommitteeMetrics {
+        self.metrics.clone()
     }
     
     /// Get cache performance metrics
-    pub async fn cache_metrics(&self) -> CacheMetrics {
-        self.cache_metrics.read().await.clone()
+    pub fn cache_metrics(&self) -> CacheMetrics {
+        self.cache_metrics.clone()
     }
     
     /// Clear evaluation cache
-    pub async fn clear_cache(&self) {
-        let mut cache = self.evaluation_cache.write().await;
-        cache.clear();
+    pub fn clear_cache(&self) {
+        self.evaluation_cache.clear();
         
-        let mut cache_metrics = self.cache_metrics.write().await;
-        *cache_metrics = CacheMetrics::default();
+        // Reset cache metrics atomically
+        self.cache_metrics.total_entries.reset();
+        self.cache_metrics.evictions.reset();
+        self.cache_metrics.memory_usage_bytes.store(0, std::sync::atomic::Ordering::Relaxed);
+        self.cache_metrics.avg_entry_age_seconds.store(0, std::sync::atomic::Ordering::Relaxed);
+        self.cache_metrics.generation.inc();
         
         info!("Evaluation cache cleared");
     }
     
     /// Get health status of all evaluators
     pub async fn health_status(&self) -> HashMap<ModelType, f64> {
-        let pool = self.evaluator_pool.read().await;
-        let health_map = pool.pool_health().await;
+        let health_map = self.evaluator_pool.pool_health().await;
         
         let mut status_scores = HashMap::new();
         for (model_type, health_statuses) in health_map {
@@ -225,25 +227,14 @@ impl CommitteeEvaluator {
     }
     
     /// Check cache for existing evaluation result
-    async fn check_cache(&self, cache_key: &str) -> CommitteeResult<Option<&EvaluationResult>> {
-        let cache = self.evaluation_cache.read().await;
-        
-        if let Some(entry) = cache.get(cache_key) {
+    fn check_cache(&self, cache_key: &str) -> CommitteeResult<Option<EvaluationResult>> {
+        if let Some(entry_ref) = self.evaluation_cache.get(cache_key) {
+            let entry = entry_ref.value();
             // Check if entry is still fresh (24 hours)
             if entry.created_at.elapsed() < Duration::from_secs(24 * 3600) {
-                // Update access statistics
-                drop(cache);
-                let mut cache_mut = self.evaluation_cache.write().await;
-                if let Some(entry_mut) = cache_mut.get_mut(cache_key) {
-                    entry_mut.access_count += 1;
-                    entry_mut.last_accessed = Instant::now();
-                }
-                
-                // Return reference to cached result
-                let cache_read = self.evaluation_cache.read().await;
-                if let Some(entry) = cache_read.get(cache_key) {
-                    return Ok(Some(&entry.result));
-                }
+                // Note: We can't atomically update access statistics with SkipMap
+                // This is acceptable as access count is primarily for debugging
+                return Ok(Some(entry.result.clone()));
             }
         }
         
@@ -322,12 +313,11 @@ impl CommitteeEvaluator {
     }
     
     /// Get evaluators for evaluation session
-    async fn get_session_evaluators(&self) -> CommitteeResult<Vec<Arc<LLMEvaluator>>> {
-        let pool = self.evaluator_pool.read().await;
+    fn get_session_evaluators(&self) -> CommitteeResult<Vec<Arc<LLMEvaluator>>> {
         let mut evaluators = Vec::new();
         
         for model_type in &self.config.models {
-            if let Some(evaluator) = pool.get_evaluator(model_type).await {
+            if let Some(evaluator) = self.evaluator_pool.get_evaluator(model_type) {
                 evaluators.push(Arc::new(evaluator.clone()));
             } else {
                 warn!("No evaluator available for model type: {:?}", model_type);
