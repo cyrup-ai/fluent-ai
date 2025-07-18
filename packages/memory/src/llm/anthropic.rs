@@ -1,15 +1,15 @@
 //! Anthropic Claude LLM provider implementation
 
-use reqwest::{Client, StatusCode};
+use fluent_ai_http3::{HttpClient, HttpConfig};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::sync::Arc;
 use tokio::sync::oneshot;
 
 use crate::llm::{LLMError, LLMProvider, PendingCompletion, PendingEmbedding};
 
 /// Anthropic provider
 pub struct AnthropicProvider {
-    client: Client,
+    client: Arc<HttpClient>,
     api_key: String,
     model: String,
     api_base: String,
@@ -17,18 +17,16 @@ pub struct AnthropicProvider {
 
 impl AnthropicProvider {
     /// Create a new Anthropic provider
-    pub fn new(api_key: String, model: Option<String>) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(30))
-            .build()
-            .expect("Failed to create HTTP client");
+    pub fn new(api_key: String, model: Option<String>) -> Result<Self, LLMError> {
+        let client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| LLMError::InitializationError(format!("Failed to create HTTP3 client: {}", e)))?;
 
-        Self {
-            client,
+        Ok(Self {
+            client: Arc::new(client),
             api_key,
             model: model.unwrap_or_else(|| "claude-3-opus-20240229".to_string()),
             api_base: "https://api.anthropic.com/v1".to_string(),
-        }
+        })
     }
 
     /// Set custom API base URL
@@ -60,48 +58,51 @@ impl LLMProvider for AnthropicProvider {
             };
 
             let result = async {
-                let response = client
-                    .post(format!("{api_base}/messages"))
+                let request_body = serde_json::to_vec(&request)
+                    .map_err(|e| LLMError::InvalidRequest(format!("Failed to serialize request: {}", e)))?;
+
+                let http_request = client.post(&format!("{api_base}/messages"))
                     .header("x-api-key", api_key)
                     .header("anthropic-version", "2023-06-01")
                     .header("content-type", "application/json")
-                    .json(&request)
-                    .send()
+                    .with_body(request_body);
+
+                let response = client
+                    .send(http_request)
                     .await
-                    .map_err(LLMError::NetworkError)?;
+                    .map_err(|e| LLMError::NetworkError(format!("HTTP request failed: {}", e)))?;
 
-                match response.status() {
-                    StatusCode::OK => {
-                        let completion: CompletionResponse = response
-                            .json()
-                            .await
-                            .map_err(LLMError::NetworkError)?;
+                if response.status().is_success() {
+                    let response_body = response.bytes().await
+                        .map_err(|e| LLMError::NetworkError(format!("Failed to read response body: {}", e)))?;
 
-                        completion
-                            .content
-                            .first()
-                            .and_then(|content| {
-                                if content.content_type == "text" {
-                                    Some(content.text.clone())
-                                } else {
-                                    None
-                                }
-                            })
-                            .ok_or_else(|| {
-                                LLMError::InvalidResponse("No text content in response".to_string())
-                            })
-                    }
-                    StatusCode::UNAUTHORIZED => Err(LLMError::AuthenticationFailed(
+                    let completion: CompletionResponse = serde_json::from_slice(&response_body)
+                        .map_err(|e| LLMError::InvalidResponse(format!("Failed to parse response: {}", e)))?;
+
+                    completion
+                        .content
+                        .first()
+                        .and_then(|content| {
+                            if content.content_type == "text" {
+                                Some(content.text.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .ok_or_else(|| {
+                            LLMError::InvalidResponse("No text content in response".to_string())
+                        })
+                } else if response.status().as_u16() == 401 {
+                    Err(LLMError::AuthenticationFailed(
                         "Invalid API key".to_string(),
-                    )),
-                    StatusCode::TOO_MANY_REQUESTS => Err(LLMError::RateLimitExceeded),
-                    _ => {
-                        let error_text = response
-                            .text()
-                            .await
-                            .unwrap_or_else(|_| "Unknown error".to_string());
-                        Err(LLMError::ApiError(error_text))
-                    }
+                    ))
+                } else if response.status().as_u16() == 429 {
+                    Err(LLMError::RateLimitExceeded)
+                } else {
+                    let error_body = response.bytes().await
+                        .map(|body| String::from_utf8_lossy(&body).into_owned())
+                        .unwrap_or_else(|_| "Unknown error".to_string());
+                    Err(LLMError::ApiError(error_body))
                 }
             }
             .await;

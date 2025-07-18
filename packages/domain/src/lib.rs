@@ -635,6 +635,7 @@ pub mod memory_ops;
 pub mod memory_workflow;
 pub mod message;
 pub mod message_processing;
+pub mod text_processing;
 pub mod model;
 pub mod model_info_provider;
 pub mod prompt;
@@ -751,6 +752,14 @@ pub use message_processing::{
     get_global_processor, send_message
 };
 pub use message_processing::MessageError as ProcessingMessageError;
+
+// Text processing module exports - SIMD-optimized text processing pipeline  
+pub use text_processing::{
+    TextProcessor, SIMDTokenizer, SIMDPatternMatcher, SIMDTextAnalyzer, SIMDStringBuilder,
+    Token, TokenType, Pattern, PatternMatch, TextStatistics, TextProcessingStats,
+    extract_text_features_for_routing, optimize_document_content_processing
+};
+pub use text_processing::TextProcessingError;
 
 // Model module exports
 pub use model::*;

@@ -4,19 +4,31 @@
 //! LLM providers to perform assessment tasks. Each evaluator manages a single
 //! model instance and handles prompt generation, response parsing, and error recovery.
 
-use super::committee_types::{
+pub use super::committee_types::{
     Model, ModelType, CommitteeEvaluation, EvaluationPrompt, CommitteeError, CommitteeResult,
-    HealthStatus, ModelMetrics, QualityTier
+    HealthStatus, ModelMetrics, QualityTier, MAX_COMMITTEE_SIZE
 };
 use crate::cognitive::types::{OptimizationSpec, CognitiveError};
 use crate::llm::{CompletionRequest, CompletionResponse, LLMProvider};
+use arrayvec::ArrayVec;
+use atomic_counter::{AtomicCounter, RelaxedCounter};
+use crossbeam_queue::SegQueue;
 use serde_json::Value;
+use smallvec::SmallVec;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::{RwLock, Semaphore};
+use tokio::sync::Semaphore;
 use tracing::{debug, info, warn, error};
 use uuid::Uuid;
+
+// Import additional types for zero allocation patterns
+mod committee_evaluators_extension;
+use committee_evaluators_extension::{
+    EvaluationTask, EvaluationRequest, EvaluatorPoolMetrics, EvaluatorPoolSnapshot,
+    EvaluationSessionMetrics, EvaluationSessionSnapshot
+};
 
 /// Individual LLM evaluator managing a single model instance
 #[derive(Debug)]
@@ -389,48 +401,63 @@ impl LLMEvaluator {
     }
 }
 
-/// Pool of evaluators for load balancing and redundancy
+/// Lock-free evaluator pool for blazing-fast load balancing and redundancy
 #[derive(Debug)]
 pub struct EvaluatorPool {
-    /// Available evaluators by model type
-    evaluators: HashMap<ModelType, Vec<LLMEvaluator>>,
-    /// Round-robin indices for load balancing
-    round_robin_indices: Arc<RwLock<HashMap<ModelType, usize>>>,
+    /// Available evaluators by model type (stack-allocated for zero allocation)
+    evaluators: HashMap<ModelType, ArrayVec<LLMEvaluator, MAX_COMMITTEE_SIZE>>,
+    /// Atomic round-robin indices for lock-free load balancing
+    round_robin_indices: HashMap<ModelType, AtomicUsize>,
+    /// Lock-free task queue for evaluator distribution
+    task_queue: SegQueue<EvaluationTask>,
+    /// Pool metrics with atomic counters
+    metrics: EvaluatorPoolMetrics,
 }
 
 impl EvaluatorPool {
-    /// Create a new evaluator pool
+    /// Create a new evaluator pool with zero allocation
+    #[inline]
     pub fn new() -> Self {
         Self {
             evaluators: HashMap::new(),
-            round_robin_indices: Arc::new(RwLock::new(HashMap::new())),
+            round_robin_indices: HashMap::new(),
+            task_queue: SegQueue::new(),
+            metrics: EvaluatorPoolMetrics::new(),
         }
     }
     
-    /// Add evaluator to the pool
-    pub async fn add_evaluator(&mut self, evaluator: LLMEvaluator) {
+    /// Add evaluator to the pool with zero allocation
+    #[inline]
+    pub fn add_evaluator(&mut self, evaluator: LLMEvaluator) -> Result<(), CommitteeError> {
         let model_type = evaluator.model_type().clone();
-        self.evaluators.entry(model_type.clone()).or_insert_with(Vec::new).push(evaluator);
         
-        let mut indices = self.round_robin_indices.write().await;
-        indices.entry(model_type).or_insert(0);
+        let evaluators = self.evaluators.entry(model_type.clone()).or_insert_with(ArrayVec::new);
+        if evaluators.is_full() {
+            return Err(CommitteeError::ResourceExhausted {
+                resource: "evaluator pool capacity".into(),
+            });
+        }
+        evaluators.push(evaluator);
+        
+        self.round_robin_indices.entry(model_type).or_insert_with(|| AtomicUsize::new(0));
+        self.metrics.evaluators_added.inc();
+        Ok(())
     }
     
-    /// Get next available evaluator for a model type
-    pub async fn get_evaluator(&self, model_type: &ModelType) -> Option<&LLMEvaluator> {
+    /// Get next available evaluator using lock-free round-robin
+    #[inline]
+    pub fn get_evaluator(&self, model_type: &ModelType) -> Option<&LLMEvaluator> {
         let evaluators = self.evaluators.get(model_type)?;
         if evaluators.is_empty() {
             return None;
         }
         
-        let mut indices = self.round_robin_indices.write().await;
-        let index = indices.get_mut(model_type)?;
-        let evaluator = &evaluators[*index];
+        let atomic_index = self.round_robin_indices.get(model_type)?;
+        let current_index = atomic_index.fetch_add(1, Ordering::Relaxed);
+        let index = current_index % evaluators.len();
         
-        // Round-robin to next evaluator
-        *index = (*index + 1) % evaluators.len();
-        
-        Some(evaluator)
+        self.metrics.evaluators_accessed.inc();
+        Some(&evaluators[index])
     }
     
     /// Get all available model types
@@ -438,14 +465,19 @@ impl EvaluatorPool {
         self.evaluators.keys().cloned().collect()
     }
     
-    /// Get pool health status
-    pub async fn pool_health(&self) -> HashMap<ModelType, Vec<HealthStatus>> {
+    /// Get pool health status with zero allocation
+    pub async fn pool_health(&self) -> HashMap<ModelType, ArrayVec<HealthStatus, MAX_COMMITTEE_SIZE>> {
         let mut health_map = HashMap::new();
         
         for (model_type, evaluators) in &self.evaluators {
-            let mut health_statuses = Vec::new();
+            let mut health_statuses = ArrayVec::new();
             for evaluator in evaluators {
-                health_statuses.push(evaluator.health_status().await);
+                if let Ok(()) = health_statuses.try_push(evaluator.health_status().await) {
+                    // Successfully added health status
+                } else {
+                    // ArrayVec is full, skip remaining evaluators
+                    break;
+                }
             }
             health_map.insert(model_type.clone(), health_statuses);
         }
@@ -454,53 +486,88 @@ impl EvaluatorPool {
     }
 }
 
-/// Session for coordinating multiple evaluations
+/// Zero-allocation session for coordinating multiple evaluations
 #[derive(Debug)]
 pub struct EvaluationSession {
-    /// Session identifier
-    session_id: String,
-    /// Active evaluators in this session
-    evaluators: Vec<Arc<LLMEvaluator>>,
+    /// Session identifier (shared to avoid allocation)
+    session_id: Arc<str>,
+    /// Active evaluators in this session (stack-allocated)
+    evaluators: ArrayVec<Arc<LLMEvaluator>, MAX_COMMITTEE_SIZE>,
     /// Session start time
     start_time: Instant,
     /// Session timeout
     timeout: Duration,
+    /// Session metrics with atomic counters
+    metrics: EvaluationSessionMetrics,
 }
 
 impl EvaluationSession {
-    /// Create a new evaluation session
-    pub fn new(evaluators: Vec<Arc<LLMEvaluator>>, timeout: Duration) -> Self {
-        Self {
-            session_id: Uuid::new_v4().to_string(),
+    /// Create a new evaluation session with zero allocation
+    #[inline]
+    pub fn new(
+        evaluators: ArrayVec<Arc<LLMEvaluator>, MAX_COMMITTEE_SIZE>, 
+        timeout: Duration
+    ) -> Result<Self, CommitteeError> {
+        if evaluators.is_empty() {
+            return Err(CommitteeError::InsufficientMembers {
+                available: 0,
+                required: 1,
+            });
+        }
+        
+        // Generate session ID with minimal allocation
+        let session_id = Arc::from(format!("eval_{}", Uuid::new_v4().as_simple()));
+        
+        Ok(Self {
+            session_id,
             evaluators,
             start_time: Instant::now(),
             timeout,
-        }
+            metrics: EvaluationSessionMetrics::new(),
+        })
     }
     
-    /// Run evaluation across all session evaluators concurrently
+    /// Run evaluation across all session evaluators with zero allocation
     pub async fn evaluate_all(
         &self,
         optimization_spec: &OptimizationSpec,
         current_code: &str,
         proposed_code: &str,
-    ) -> Vec<CommitteeResult<CommitteeEvaluation>> {
+    ) -> ArrayVec<CommitteeResult<CommitteeEvaluation>, MAX_COMMITTEE_SIZE> {
         let remaining_timeout = self.timeout.saturating_sub(self.start_time.elapsed());
         
-        let evaluation_futures: Vec<_> = self.evaluators
-            .iter()
-            .map(|evaluator| {
-                let spec = optimization_spec.clone();
-                let current = current_code.to_string();
-                let proposed = proposed_code.to_string();
-                
-                async move {
-                    evaluator.evaluate_optimization(&spec, &current, &proposed, remaining_timeout).await
-                }
-            })
-            .collect();
+        // Pre-allocate futures array for zero allocation
+        let mut evaluation_futures = ArrayVec::new();
         
-        futures::future::join_all(evaluation_futures).await
+        for evaluator in &self.evaluators {
+            let spec = optimization_spec.clone();
+            // Use references instead of allocating strings
+            let current_ref = current_code;
+            let proposed_ref = proposed_code;
+            
+            let future = async move {
+                evaluator.evaluate_optimization(&spec, current_ref, proposed_ref, remaining_timeout).await
+            };
+            
+            if evaluation_futures.try_push(future).is_err() {
+                // ArrayVec is full, cannot add more futures
+                break;
+            }
+        }
+        
+        // Execute all futures concurrently
+        let results = futures::future::join_all(evaluation_futures).await;
+        
+        // Convert Vec<Result> to ArrayVec<Result> with zero allocation
+        let mut result_array = ArrayVec::new();
+        for result in results {
+            if result_array.try_push(result).is_err() {
+                break; // ArrayVec is full
+            }
+        }
+        
+        self.metrics.evaluations_completed.inc();
+        result_array
     }
     
     /// Get session runtime

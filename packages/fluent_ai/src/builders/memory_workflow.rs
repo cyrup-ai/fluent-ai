@@ -9,6 +9,8 @@ use fluent_ai_domain::{
 };
 use serde_json::Value;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tracing::{error, warn};
 
 /// Create a new workflow builder - EXACT syntax: workflow::new()
 #[inline(always)]
@@ -378,23 +380,83 @@ where
         // Execute the base operation
         let output = self.base_op.call(input.clone()).await;
 
-        // Create a memory capturing both input and output
+        // Create a memory capturing both input and output with safe timestamp handling
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or_else(|_| {
+                warn!("Failed to get system time, using fallback timestamp");
+                0 // Safe fallback to epoch time
+            });
+
         let memory_content = serde_json::json!({
             "input": input,
             "output": output,
-            "timestamp": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+            "timestamp": timestamp,
         }).to_string();
 
         let memory = MemoryNode::new(memory_content, MemoryType::Episodic).with_importance(0.5); // Initial neutral importance
 
-        let stored_memory = self
-            .memory_manager
-            .create_memory(memory)
-            .await
-            .expect("Failed to store memory");
+        // Attempt to store memory with exponential backoff retry logic
+        let memory_id = store_memory_with_retry(&self.memory_manager, memory).await;
 
-        (output, stored_memory.id)
+        (output, memory_id)
     }
+}
+
+/// Store memory with exponential backoff retry logic
+/// 
+/// Attempts to store a memory with up to 3 retries using exponential backoff.
+/// If all attempts fail, returns a fallback error ID to maintain system stability.
+async fn store_memory_with_retry<M: MemoryManager>(
+    memory_manager: &M,
+    memory: MemoryNode,
+) -> String {
+    const MAX_RETRIES: u32 = 3;
+    const BASE_DELAY_MS: u64 = 100;
+    
+    for attempt in 0..MAX_RETRIES {
+        match memory_manager.create_memory(memory.clone()).await {
+            Ok(stored_memory) => {
+                return stored_memory.id;
+            }
+            Err(e) => {
+                if attempt == MAX_RETRIES - 1 {
+                    error!(
+                        "Failed to store memory after {} attempts: {}. Using fallback ID.", 
+                        MAX_RETRIES, e
+                    );
+                    // Return a fallback error ID to maintain API compatibility
+                    return format!("error_fallback_{}", timestamp_safe());
+                } else {
+                    warn!(
+                        "Memory storage attempt {} failed ({}), retrying in {}ms: {}", 
+                        attempt + 1, 
+                        MAX_RETRIES,
+                        BASE_DELAY_MS * (1 << attempt), // Exponential backoff: 100ms, 200ms, 400ms
+                        e
+                    );
+                    
+                    // Exponential backoff delay
+                    let delay = Duration::from_millis(BASE_DELAY_MS * (1 << attempt));
+                    tokio::time::sleep(delay).await;
+                }
+            }
+        }
+    }
+    
+    // This should never be reached due to the return in the last iteration,
+    // but provide a final fallback for safety
+    format!("error_exhausted_{}", timestamp_safe())
+}
+
+/// Safe timestamp generation for fallback scenarios
+#[inline(always)]
+fn timestamp_safe() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 /// Apply feedback to a stored memory - EXACT syntax: apply_feedback(manager, id, feedback)

@@ -19,6 +19,13 @@ pub mod prompt_templates;
 /// Result type for LLM operations
 pub type Result<T> = std::result::Result<T, LLMError>;
 
+/// Temporary Message struct while LLM providers are disabled during HTTP3 migration
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Message {
+    pub role: String,
+    pub content: String,
+}
+
 /// A pending LLM completion that can be awaited
 pub struct PendingCompletion {
     rx: oneshot::Receiver<Result<String>>,
@@ -103,7 +110,13 @@ pub enum LLMError {
     AuthenticationFailed(String),
 
     #[error("Network error: {0}")]
-    NetworkError(#[from] reqwest::Error),
+    NetworkError(String),
+
+    #[error("Invalid request: {0}")]
+    InvalidRequest(String),
+
+    #[error("Initialization error: {0}")]
+    InitializationError(String),
 
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),

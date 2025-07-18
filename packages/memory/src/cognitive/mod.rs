@@ -5,6 +5,7 @@
 //! evaluation and Monte Carlo Tree Search (MCTS).
 
 pub mod committee;
+pub mod committee_old; // Legacy committee implementation - kept for backward compatibility
 pub mod compiler;
 pub mod evolution;
 pub mod mcts;
@@ -22,8 +23,8 @@ pub mod quantum;
 pub mod quantum_mcts;
 pub mod quantum_orchestrator;
 
-// Re-exports for convenience
-pub use committee::{CommitteeEvent, EvaluationCommittee};
+// Re-exports for convenience  
+pub use committee::{CommitteeEvaluator, ConsensusDecision, CommitteeEvaluation, ModelType, EvaluationConfig, CommitteeEvent, EvaluationCommittee};
 pub use evolution::{CodeEvolution, CognitiveCodeEvolution, EvolutionEngine, EvolutionResult, PerformanceMetrics};
 pub use mcts::{CodeState, MCTS};
 pub use orchestrator::InfiniteOrchestrator;

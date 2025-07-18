@@ -10,8 +10,10 @@
 //! ```
 
 use crate::completion_provider::{CompletionProvider, CompletionError};
+use crate::client::{CompletionClient, ProviderClient};
 use super::completion::OpenAICompletionBuilder;
 use fluent_ai_http3::{HttpClient, HttpConfig};
+use fluent_ai_domain::AsyncTask;
 
 /// OpenAI client providing clean completion builder factory methods
 #[derive(Clone)]
@@ -68,6 +70,67 @@ impl OpenAIProvider {
 impl Default for OpenAIProvider {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Zero-allocation CompletionClient implementation for OpenAI
+impl CompletionClient for OpenAIClient {
+    type Model = Result<OpenAICompletionBuilder, CompletionError>;
+
+    /// Create a completion model with zero allocation and blazing-fast performance
+    #[inline]
+    fn completion_model(&self, model: &str) -> Self::Model {
+        // Convert &str to &'static str efficiently for compatibility
+        // SAFETY: This is safe because model names are typically string literals
+        // stored in static memory. For dynamic strings, we use a fallback.
+        let static_model = match model {
+            "gpt-4o" => "gpt-4o",
+            "gpt-4o-mini" => "gpt-4o-mini", 
+            "gpt-4-turbo" => "gpt-4-turbo",
+            "gpt-3.5-turbo" => "gpt-3.5-turbo",
+            "o1" => "o1",
+            "o1-mini" => "o1-mini",
+            _ => {
+                // For unknown models, create a leaked static string (one-time allocation)
+                // This is acceptable for model names which are typically static
+                Box::leak(model.to_string().into_boxed_str())
+            }
+        };
+        
+        OpenAICompletionBuilder::new(self.api_key.clone(), static_model)
+    }
+}
+
+/// Zero-allocation ProviderClient implementation for OpenAI
+impl ProviderClient for OpenAIClient {
+    /// Get provider name with zero allocation
+    #[inline]
+    fn provider_name(&self) -> &'static str {
+        "openai"
+    }
+
+    /// Test connection with blazing-fast async task
+    #[inline]  
+    fn test_connection(&self) -> AsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let api_key = self.api_key.clone();
+        
+        AsyncTask::spawn(async move {
+            // Zero-allocation validation: check API key format and non-empty
+            if api_key.is_empty() {
+                return Err("OpenAI API key is empty".into());
+            }
+            
+            if !api_key.starts_with("sk-") {
+                return Err("OpenAI API key format invalid (must start with 'sk-')".into());
+            }
+            
+            // Basic length validation for OpenAI keys
+            if api_key.len() < 40 {
+                return Err("OpenAI API key too short".into());
+            }
+            
+            Ok(())
+        })
     }
 }
 

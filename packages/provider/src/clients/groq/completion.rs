@@ -20,10 +20,11 @@ use crate::{
 use fluent_ai_domain::{Message, Document};
 use fluent_ai_domain::tool::ToolDefinition as DomainToolDefinition;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage as DomainUsage};
-use fluent_ai_http3::{HttpClient, HttpConfig};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
 use cyrup_sugars::ZeroOneOrMany;
 use arrayvec::ArrayVec;
-use futures;
+use futures::{self, StreamExt};
+use tokio_stream;
 
 use super::client::Client;
 use super::streaming;
@@ -582,8 +583,242 @@ impl CompletionProvider for GroqCompletionBuilder {
     /// Terminal action - execute completion with user prompt
     /// Returns blazing-fast zero-allocation streaming
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
-        // TODO: Implement the actual completion request
-        // For now, return a placeholder stream
-        Box::pin(futures::stream::empty())
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let prompt_text = text.as_ref().to_string();
+        
+        // Use the explicit API key if provided, otherwise fall back to the original
+        let api_key = self.explicit_api_key.unwrap_or(self.api_key);
+        
+        tokio::spawn(async move {
+            let result = Self::execute_completion(
+                self,
+                prompt_text,
+                api_key,
+                tx.clone()
+            ).await;
+            
+            if let Err(e) = result {
+                let error_chunk = CompletionChunk {
+                    id: "error".to_string(),
+                    model: self.model_name.to_string(),
+                    content: Some(format!("Error: {}", e)),
+                    finish_reason: Some(FinishReason::Stop),
+                    usage: None,
+                    tool_calls: vec![],
+                };
+                let _ = tx.send(error_chunk);
+            }
+        });
+        
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
+    }
+
+    /// Execute the completion request with streaming
+    async fn execute_completion(
+        mut builder: Self,
+        prompt_text: String,
+        api_key: String,
+        tx: tokio::sync::mpsc::UnboundedSender<CompletionChunk>,
+    ) -> Result<(), String> {
+        // Add the user prompt to messages
+        let user_message = Message::User {
+            content: cyrup_sugars::OneOrMany::One(
+                fluent_ai_domain::UserContent::Text {
+                    text: prompt_text,
+                }
+            )
+        };
+        if builder.messages.try_push(user_message).is_err() {
+            return Err("Too many messages".to_string());
+        }
+
+        // Build the request JSON
+        let mut request_json = json!({
+            "model": builder.model_name,
+            "stream": true,
+            "stream_options": {"include_usage": true},
+            "temperature": builder.temperature,
+            "max_tokens": builder.max_tokens,
+            "top_p": builder.top_p,
+            "frequency_penalty": builder.frequency_penalty,
+            "presence_penalty": builder.presence_penalty,
+        });
+
+        // Add system prompt if provided
+        let mut messages = Vec::new();
+        if !builder.system_prompt.is_empty() {
+            messages.push(json!({
+                "role": "system",
+                "content": builder.system_prompt
+            }));
+        }
+
+        // Convert documents to context message if any
+        if !builder.documents.is_empty() {
+            let context = builder.documents.iter()
+                .map(|doc| format!("Document: {}\nContent: {}", doc.name, doc.content))
+                .collect::<Vec<_>>()
+                .join("\n\n");
+            messages.push(json!({
+                "role": "system", 
+                "content": format!("Context documents:\n{}", context)
+            }));
+        }
+
+        // Convert messages to Groq format
+        for message in builder.messages.iter() {
+            match message {
+                Message::User { content } => {
+                    let text = content.iter()
+                        .filter_map(|c| match c {
+                            fluent_ai_domain::UserContent::Text { text } => Some(text.clone()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    messages.push(json!({
+                        "role": "user",
+                        "content": text
+                    }));
+                },
+                Message::Assistant { content } => {
+                    let text = content.iter()
+                        .filter_map(|c| match c {
+                            fluent_ai_domain::AssistantContent::Text { text } => Some(text.clone()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    messages.push(json!({
+                        "role": "assistant",
+                        "content": text
+                    }));
+                },
+            }
+        }
+
+        request_json["messages"] = json!(messages);
+
+        // Add tools if any
+        if !builder.tools.is_empty() {
+            let tools: Vec<Value> = builder.tools.iter()
+                .map(|tool| json!({
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.parameters
+                    }
+                }))
+                .collect();
+            request_json["tools"] = json!(tools);
+            request_json["tool_choice"] = json!("auto");
+        }
+
+        // Add additional params if provided
+        if let Some(additional) = &builder.additional_params {
+            if let Some(obj) = additional.as_object() {
+                for (key, value) in obj {
+                    request_json[key] = value.clone();
+                }
+            }
+        }
+
+        // Create HTTP request
+        let request_body = serde_json::to_vec(&request_json)
+            .map_err(|e| format!("Failed to serialize request: {}", e))?;
+
+        let url = format!("{}/chat/completions", builder.base_url);
+        let http_request = HttpRequest::post(&url, request_body)
+            .map_err(|e| format!("Failed to create HTTP request: {}", e))?
+            .header("Content-Type", "application/json")
+            .header("Authorization", &format!("Bearer {}", api_key));
+
+        // Send the request using HTTP3 client
+        let response = builder.client.send(http_request).await
+            .map_err(|e| format!("HTTP request failed: {}", e))?;
+
+        if !response.status().is_success() {
+            let error_body = String::from_utf8_lossy(response.body());
+            return Err(format!("HTTP error {}: {}", response.status(), error_body));
+        }
+
+        // Process SSE stream
+        let mut sse_stream = response.sse();
+        let mut request_id = "groq-req".to_string();
+
+        while let Some(event) = sse_stream.next().await {
+            match event {
+                Ok(sse_event) => {
+                    if let Some(data) = sse_event.data {
+                        if data == "[DONE]" {
+                            break;
+                        }
+
+                        // Parse the streaming response
+                        match serde_json::from_str::<streaming::StreamingCompletionResponse>(&data) {
+                            Ok(response) => {
+                                request_id = response.id.clone();
+                                
+                                if let Some(choice) = response.choices.first() {
+                                    let mut chunk = CompletionChunk {
+                                        id: response.id.clone(),
+                                        model: response.model.clone(),
+                                        content: None,
+                                        finish_reason: None,
+                                        usage: None,
+                                        tool_calls: vec![],
+                                    };
+
+                                    // Handle delta content
+                                    if let Some(delta) = &choice.delta {
+                                        if let Some(content) = &delta.content {
+                                            chunk.content = Some(content.clone());
+                                        }
+                                        
+                                        if let Some(finish_reason) = &choice.finish_reason {
+                                            chunk.finish_reason = match finish_reason.as_str() {
+                                                "stop" => Some(FinishReason::Stop),
+                                                "length" => Some(FinishReason::Length),
+                                                "tool_calls" => Some(FinishReason::ToolCalls),
+                                                _ => Some(FinishReason::Stop),
+                                            };
+                                        }
+                                    }
+
+                                    // Handle usage information
+                                    if let Some(usage) = &response.usage {
+                                        chunk.usage = Some(DomainUsage {
+                                            prompt_tokens: usage.prompt_tokens as u64,
+                                            completion_tokens: usage.completion_tokens as u64,
+                                            total_tokens: usage.total_tokens as u64,
+                                        });
+                                    }
+
+                                    // Call chunk handler if provided
+                                    if let Some(handler) = &builder.chunk_handler {
+                                        handler(Ok(chunk.clone()));
+                                    }
+
+                                    // Send chunk to stream
+                                    if tx.send(chunk).is_err() {
+                                        break; // Receiver dropped
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to parse streaming response: {}", e);
+                                continue;
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    return Err(format!("SSE stream error: {}", e));
+                }
+            }
+        }
+
+        Ok(())
     }
 }

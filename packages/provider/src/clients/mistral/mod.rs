@@ -1,6 +1,7 @@
 pub mod client;
 pub mod completion;
 pub mod embedding;
+pub mod model_info;
 
 pub use client::{Client, MistralCompletionBuilder};
 pub use completion::{
@@ -10,3 +11,8 @@ pub use completion::{
     available_mistral_models,
 };
 pub use embedding::{EmbeddingModel, MISTRAL_EMBED};
+pub use model_info::{
+    MistralLarge, Codestral, PixtralLarge, MistralSaba,
+    Ministral3B, Ministral8B, MistralSmall, PixtralSmall,
+    MistralNemo, CodestralMamba,
+};

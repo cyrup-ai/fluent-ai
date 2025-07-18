@@ -14,7 +14,7 @@ pub mod providers;
 pub mod clients;
 
 // Client factory for provider-to-client mapping
-// pub mod client_factory; // Temporarily disabled during async pattern conversion
+pub mod client_factory;
 
 // Client traits (NOT domain objects)
 pub mod client;

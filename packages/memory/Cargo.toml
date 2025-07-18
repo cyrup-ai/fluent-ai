@@ -25,7 +25,8 @@ thiserror = { version = "2.0.12" }
 anyhow = { version = "1.0.98" }
 tracing = { version = "0.1.41" }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-reqwest = { version = "0.12.22", features = ["json"] }
+# reqwest removed - replaced with fluent_ai_http3 per project mandate
+fluent_ai_http3 = { path = "../http3" }
 bincode = { version = "2.0.1" }
 prometheus = { version = "0.14.0" }
 
@@ -45,9 +46,16 @@ walkdir = { version = "2.5.0" }
 num_cpus = { version = "1.17.0" }
 num-complex = { version = "0.4.6" }
 
-# Lock-free operations
+# Zero-allocation and lock-free operations
 arc-swap = { version = "1.7.1" }
 crossbeam-queue = { version = "0.3.12" }
+crossbeam-skiplist = { version = "0.1.3" }
+crossbeam-utils = { version = "0.8.20" }
+arrayvec = { version = "0.7.6" }
+smallvec = { version = "2.0.0-alpha.11" }
+atomic-counter = { version = "1.0.1" }
+wide = { version = "0.7.33" }
+regex = { version = "1.11.1" }
 
 # Optional vector store implementations
 faiss = { version = "0.12.1", optional = true }
@@ -106,3 +114,7 @@ path = "examples/async_patterns.rs"
 [lib]
 name = "fluent_ai_memory"
 path = "src/lib.rs"
+
+[[test]]
+name = "state_tests"
+path = "tests/cognitive/state_tests.rs"

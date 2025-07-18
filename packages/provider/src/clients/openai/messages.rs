@@ -3,10 +3,11 @@
 //! Provides complete message conversion and handling for OpenAI's chat completion API
 //! with support for text, images, audio, tool calls, and function calls.
 
-use crate::domain::{Message as DomainMessage, MessageRole};
+use crate::domain::{Message as DomainMessage, MessageRole, ToolCall as DomainToolCall, ToolFunction};
 use super::{OpenAIError, OpenAIResult};
 use crate::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use base64::Engine;
 
 /// OpenAI message structure for chat completions
@@ -284,7 +285,41 @@ impl OpenAIMessage {
     }
 }
 
-/// Convert fluent-ai Message to OpenAI format with zero allocations
+/// Convert domain ToolCall to OpenAI format with zero allocations
+#[inline(always)]
+fn convert_tool_call(tool_call: &DomainToolCall) -> OpenAIResult<OpenAIToolCall> {
+    Ok(OpenAIToolCall {
+        id: tool_call.id.clone(),
+        call_type: "function".to_string(), // OpenAI uses "function" as the type
+        function: OpenAIFunctionCall {
+            name: tool_call.function.name.clone(),
+            arguments: tool_call.function.parameters.to_string(),
+        },
+    })
+}
+
+/// Extract tool calls from message content if present in structured format
+#[inline(always)]
+fn extract_tool_calls_from_content(content: &str) -> Option<Vec<DomainToolCall>> {
+    // Attempt to parse content as JSON that might contain tool calls
+    // This handles cases where tool calls are embedded in the message content
+    if let Ok(parsed) = serde_json::from_str::<Value>(content) {
+        if let Some(tool_calls_array) = parsed.get("tool_calls").and_then(|v| v.as_array()) {
+            let mut tool_calls = Vec::new();
+            for tool_call_value in tool_calls_array {
+                if let Ok(tool_call) = serde_json::from_value::<DomainToolCall>(tool_call_value.clone()) {
+                    tool_calls.push(tool_call);
+                }
+            }
+            if !tool_calls.is_empty() {
+                return Some(tool_calls);
+            }
+        }
+    }
+    None
+}
+
+/// Convert fluent-ai Message to OpenAI format with comprehensive tool call support
 #[inline(always)]
 pub fn convert_message(message: &Message) -> OpenAIResult<OpenAIMessage> {
     let role = match message.role {
@@ -294,18 +329,46 @@ pub fn convert_message(message: &Message) -> OpenAIResult<OpenAIMessage> {
         MessageRole::Tool => "tool",
     };
 
-    // Handle different content types
-    let content = if message.content.is_empty() {
-        None
+    // Extract tool calls from content if present
+    let (content, tool_calls) = if message.content.is_empty() {
+        (None, None)
     } else {
-        Some(OpenAIContent::Text(message.content.clone()))
+        // Check if content contains structured tool calls
+        if let Some(domain_tool_calls) = extract_tool_calls_from_content(&message.content) {
+            // Convert domain tool calls to OpenAI format
+            let openai_tool_calls: Result<Vec<_>, _> = domain_tool_calls
+                .iter()
+                .map(convert_tool_call)
+                .collect();
+            
+            match openai_tool_calls {
+                Ok(calls) if !calls.is_empty() => {
+                    // If we have tool calls, content might be empty or contain additional text
+                    let content = if message.content.trim().starts_with('{') && message.content.trim().ends_with('}') {
+                        // Content is pure JSON with tool calls, no additional text content
+                        None
+                    } else {
+                        // Content has additional text besides tool calls
+                        Some(OpenAIContent::Text(message.content.clone()))
+                    };
+                    (content, Some(calls))
+                }
+                _ => {
+                    // Failed to convert tool calls, treat as regular text content
+                    (Some(OpenAIContent::Text(message.content.clone())), None)
+                }
+            }
+        } else {
+            // No tool calls found, treat as regular text content
+            (Some(OpenAIContent::Text(message.content.clone())), None)
+        }
     };
 
     Ok(OpenAIMessage {
         role: role.to_string(),
         content,
         name: message.name.clone(),
-        tool_calls: None, // TODO: Convert tool calls if present
+        tool_calls,
         tool_call_id: None,
         function_call: None,
     })

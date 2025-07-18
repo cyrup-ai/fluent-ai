@@ -19,10 +19,13 @@ use arc_swap::ArcSwap;
 use once_cell::sync::Lazy;
 
 // SIMD integration
-use packed_simd_2::f32x8;
+use wide::f32x8;
 
 // Integration with memory operations
 use crate::memory_ops::{simd_cosine_similarity, generate_pooled_embedding, return_embedding_to_pool};
+
+// Integration with text processing for intelligent routing
+use crate::text_processing::{extract_text_features_for_routing, TextProcessor};
 
 /// LINES 1-50: MESSAGE TYPE DEFINITIONS
 
@@ -225,7 +228,7 @@ impl MessageProcessor {
         })
     }
     
-    /// Route message to appropriate queue based on type
+    /// Route message to appropriate queue based on type with text processing enhancement
     #[inline(always)]
     pub fn route_message(&self, message: Message) -> Result<(), MessageError> {
         let start_time = Instant::now();
@@ -233,8 +236,32 @@ impl MessageProcessor {
         // Update queue depth counter
         self.queue_depth.inc();
         
-        // Route based on message type for optimal performance
-        let result = match message.message_type {
+        // Enhanced routing with text processing for AgentChat messages
+        let enhanced_message_type = if message.message_type == MessageType::AgentChat {
+            match message.content_str() {
+                Ok(content) => {
+                    // Use text processing to determine optimal routing
+                    match extract_text_features_for_routing(content) {
+                        Ok(features) => {
+                            // Classify based on text complexity
+                            let complexity_score = features.get(1).unwrap_or(&0.5);
+                            if *complexity_score > 0.8 {
+                                MessageType::ContextUpdate // Route complex text to context processing
+                            } else {
+                                MessageType::AgentChat // Keep simple text in regular chat queue
+                            }
+                        }
+                        Err(_) => message.message_type, // Fallback to original type
+                    }
+                }
+                Err(_) => message.message_type, // Fallback to original type
+            }
+        } else {
+            message.message_type
+        };
+        
+        // Route based on enhanced message type for optimal performance
+        let result = match enhanced_message_type {
             MessageType::AgentChat => {
                 self.chat_queue.push(message)
                     .map_err(|_| MessageError::QueueFull(self.chat_queue.len()))

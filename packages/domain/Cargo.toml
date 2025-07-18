@@ -30,8 +30,8 @@ crossbeam-skiplist = "0.1.3"        # Lock-free skip list
 crossbeam-utils = "0.8.21"          # Lock-free utilities and atomic operations
 rkyv = "0.8.10"                     # Zero-copy serialization
 wide = "0.7.33"                     # SIMD vector operations
-packed_simd_2 = "0.3.8"             # SIMD vector operations with AVX2/AVX-512 support
-jemalloc-sys = "0.5.4+5.3.0-patched" # Custom allocator for vector operations
+# packed_simd removed due to Rust 1.78+ compatibility issues - using wide crate instead
+jemalloc-sys = "0.5.4"  # Custom allocator for vector operations
 lz4 = "1.28.1"                      # Fast compression
 jemallocator = "0.5.4"              # High-performance allocator backed by jemalloc
 quanta = "0.12.6"                   # High-speed timing library

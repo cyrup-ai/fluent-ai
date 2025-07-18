@@ -82,18 +82,37 @@ impl CompletionModel {
                         continue;
                     };
 
-                    let choice = data.candidates.first().expect("Should have at least one choice");
+                    // Handle missing candidates gracefully instead of panicking
+                    let Some(choice) = data.candidates.first() else {
+                        yield Err(CompletionError::ResponseError(
+                            "Streaming response missing candidates".to_string()
+                        ));
+                        continue;
+                    };
 
                     match choice.content.parts.first() {
-                        super::completion::gemini_api_types::Part::Text(text)
-                            => yield Ok(streaming::RawStreamingChoice::Message(text)),
-                        super::completion::gemini_api_types::Part::FunctionCall(function_call)
-                            => yield Ok(streaming::RawStreamingChoice::ToolCall {
-                                    name: function_call.name,
-                                    id: "".to_string(),
-                                    arguments: function_call.args
-                                }),
-                        _ => panic!("Unsupported response type with streaming.")
+                        Some(super::completion::gemini_api_types::Part::Text(text)) =>
+                            yield Ok(streaming::RawStreamingChoice::Message(text)),
+                        Some(super::completion::gemini_api_types::Part::FunctionCall(function_call)) =>
+                            yield Ok(streaming::RawStreamingChoice::ToolCall {
+                                name: function_call.name,
+                                id: "".to_string(),
+                                arguments: function_call.args
+                            }),
+                        Some(_) => {
+                            // Handle unsupported response types gracefully
+                            yield Err(CompletionError::ResponseError(
+                                "Unsupported response type in streaming".to_string()
+                            ));
+                            continue;
+                        }
+                        None => {
+                            // Handle missing parts gracefully
+                            yield Err(CompletionError::ResponseError(
+                                "Streaming response missing content parts".to_string()
+                            ));
+                            continue;
+                        }
                     };
 
                     if choice.finish_reason.is_some() {

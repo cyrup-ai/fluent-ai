@@ -188,11 +188,16 @@ impl SandboxManager {
             )));
         }
 
-        let python = python_cmd.unwrap();
+        let python = python_cmd.expect("python_cmd is guaranteed to be Some at this point");
 
         // Try to create a virtual environment
+        let env_path_str = env_path.to_str()
+            .ok_or_else(|| ExecError::RuntimeError(
+                "Invalid path for Python virtual environment".to_string()
+            ))?;
+        
         let output = Command::new(python)
-            .args(["-m", "venv", env_path.to_str().unwrap()])
+            .args(["-m", "venv", env_path_str])
             .output();
 
         match output {
@@ -202,18 +207,30 @@ impl SandboxManager {
                     env.is_valid = true;
 
                     // Add environment variables
-                    env.add_env_var("VIRTUAL_ENV", env_path.to_str().unwrap());
+                    let virtual_env_path = env_path.to_str()
+                        .ok_or_else(|| ExecError::RuntimeError(
+                            "Invalid virtual environment path".to_string()
+                        ))?;
+                    env.add_env_var("VIRTUAL_ENV", virtual_env_path);
+                    
+                    let bin_path = env_path.join("bin").to_str()
+                        .ok_or_else(|| ExecError::RuntimeError(
+                            "Invalid bin path for virtual environment".to_string()
+                        ))?;
                     env.add_env_var(
                         "PATH",
                         &format!(
                             "{}:{}",
-                            env_path.join("bin").to_str().unwrap(),
+                            bin_path,
                             std::env::var("PATH").unwrap_or_default()
                         ),
                     );
 
                     self.add_environment(env);
-                    Ok(self.get_environment("python").unwrap())
+                    self.get_environment("python")
+                        .ok_or_else(|| ExecError::RuntimeError(
+                            "Failed to retrieve Python environment after creation".to_string()
+                        ))
                 } else {
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     warn!("Failed to create Python virtual environment: {}", stderr);

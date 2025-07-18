@@ -55,8 +55,10 @@ pub use committee_types::{
 };
 
 pub use committee_evaluators::{
-    LLMEvaluator, EvaluatorPool, EvaluationSession, EvaluationPrompt
+    LLMEvaluator, EvaluatorPool, EvaluationSession
 };
+
+pub use committee_types::EvaluationPrompt;
 
 pub use committee_consensus::{
     ConsensusBuilder, DecisionAggregator, ConsensusEngine, QualityMetrics
@@ -72,6 +74,9 @@ mod committee_evaluators;
 mod committee_consensus;
 mod committee_orchestrator;
 
+// Re-export legacy types from committee_old.rs for backward compatibility
+pub use crate::cognitive::committee_old::{EvaluationCommittee, CommitteeEvent};
+
 /// High-level API for common committee operations
 /// 
 /// This provides convenient wrapper functions for the most common committee
@@ -79,7 +84,7 @@ mod committee_orchestrator;
 pub mod api {
     use super::*;
     use crate::cognitive::mcts::CodeState;
-    use crate::cognitive::types::{OptimizationSpec, CognitiveError};
+    use crate::cognitive::types::{CognitiveError, OptimizationSpec};
     use std::time::Duration;
     
     /// Create a balanced committee with recommended model diversity
@@ -198,6 +203,8 @@ pub mod constants {
 pub mod utils {
     use super::*;
     use sha2::{Digest, Sha256};
+    use std::time::Duration;
+    use crate::cognitive::types::OptimizationSpec;
     
     /// Generate cache key for evaluation request
     /// 

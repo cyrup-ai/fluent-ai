@@ -1,5 +1,6 @@
 pub mod anthropic;
 pub mod azure;
+pub mod bedrock;
 pub mod candle;
 pub mod deepseek;
 pub mod gemini;
@@ -24,6 +25,11 @@ pub use anthropic::{
 pub use openai::{
     OpenAIProvider, OpenAIClient, OpenAIError, OpenAIResult,
     OpenAICompletionRequest, OpenAICompletionResponse,
+};
+
+pub use bedrock::{
+    BedrockProvider, BedrockClient, BedrockError, BedrockCompletionBuilder,
+    AwsCredentials, SigV4Signer,
 };
 
 // Azure OpenAI client

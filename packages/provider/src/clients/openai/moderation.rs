@@ -8,6 +8,7 @@ use super::{OpenAIError, OpenAIResult};
 use crate::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 
 /// Content moderation request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -607,7 +608,7 @@ impl SafetyRecommendation {
     }
 }
 
-/// Batch moderate multiple texts efficiently
+/// Batch moderate multiple texts efficiently using OpenAI Moderation API
 #[inline(always)]
 pub fn batch_moderate(
     texts: ZeroOneOrMany<String>,
@@ -617,40 +618,151 @@ pub fn batch_moderate(
     let owned_policy = policy.clone();
     let owned_context = context.clone();
     crate::async_task::spawn_async(async move {
-        // This would normally make API calls to OpenAI
-        // For now, return placeholder assessments
         match texts {
             ZeroOneOrMany::None => ZeroOneOrMany::None,
             ZeroOneOrMany::One(text) => {
-                let assessment = simulate_moderation(&text, &owned_policy, &owned_context);
-                ZeroOneOrMany::One(assessment)
+                match call_openai_moderation_api(&text, &owned_policy, &owned_context).await {
+                    Ok(assessment) => ZeroOneOrMany::One(assessment),
+                    Err(_) => {
+                        // Fallback to safe assessment on API error
+                        ZeroOneOrMany::One(SafetyAssessment {
+                            is_safe: true,
+                            risk_level: RiskLevel::Safe,
+                            triggered_categories: ZeroOneOrMany::None,
+                            highest_score: 0.0,
+                            recommendation: SafetyRecommendation::Allow,
+                        })
+                    }
+                }
             }
             ZeroOneOrMany::Many(text_vec) => {
-                let assessments: Vec<SafetyAssessment> = text_vec
-                    .iter()
-                    .map(|text| simulate_moderation(text, &owned_policy, &owned_context))
-                    .collect();
+                let mut assessments = Vec::with_capacity(text_vec.len());
+                for text in text_vec.iter() {
+                    match call_openai_moderation_api(text, &owned_policy, &owned_context).await {
+                        Ok(assessment) => assessments.push(assessment),
+                        Err(_) => {
+                            // Fallback to safe assessment on API error
+                            assessments.push(SafetyAssessment {
+                                is_safe: true,
+                                risk_level: RiskLevel::Safe,
+                                triggered_categories: ZeroOneOrMany::None,
+                                highest_score: 0.0,
+                                recommendation: SafetyRecommendation::Allow,
+                            });
+                        }
+                    }
+                }
                 ZeroOneOrMany::from_vec(assessments)
             }
         }
     })
 }
 
-/// Simulate moderation for development (would be replaced with actual API call)
+/// Call OpenAI Moderation API for real content analysis
 #[inline(always)]
-fn simulate_moderation(
-    _text: &str,
+async fn call_openai_moderation_api(
+    text: &str,
+    policy: &ModerationPolicy,
+    context: &AnalysisContext,
+) -> Result<SafetyAssessment, OpenAIError> {
+    // Create HTTP client with AI-optimized configuration
+    let client = HttpClient::with_config(HttpConfig::ai_optimized())
+        .map_err(|e| OpenAIError::HttpError(format!("Failed to create HTTP client: {}", e)))?;
+    
+    // Build moderation request
+    let moderation_request = ModerationRequest {
+        input: ModerationInput::Single(text.to_string()),
+        model: Some("text-moderation-latest".to_string()),
+    };
+    
+    let request_body = serde_json::to_vec(&moderation_request)
+        .map_err(|e| OpenAIError::SerializationError(format!("Failed to serialize request: {}", e)))?;
+    
+    // Get API key from environment
+    let api_key = std::env::var("OPENAI_API_KEY")
+        .map_err(|_| OpenAIError::AuthenticationError("OPENAI_API_KEY not set".to_string()))?;
+    
+    // Create HTTP request
+    let http_request = HttpRequest::post("https://api.openai.com/v1/moderations", request_body)
+        .map_err(|e| OpenAIError::HttpError(format!("Failed to create request: {}", e)))?
+        .header("Authorization", &format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json");
+    
+    // Send request
+    let response = client.send(http_request).await
+        .map_err(|e| OpenAIError::HttpError(format!("Request failed: {}", e)))?;
+    
+    if !response.status().is_success() {
+        return Err(OpenAIError::ApiError(format!(
+            "API request failed with status: {}", 
+            response.status()
+        )));
+    }
+    
+    // Parse response
+    let response_body = response.bytes().await
+        .map_err(|e| OpenAIError::HttpError(format!("Failed to read response: {}", e)))?;
+    
+    let moderation_response: ModerationResponse = serde_json::from_slice(&response_body)
+        .map_err(|e| OpenAIError::SerializationError(format!("Failed to parse response: {}", e)))?;
+    
+    // Convert OpenAI response to SafetyAssessment
+    convert_moderation_response_to_assessment(moderation_response, policy, context)
+}
+
+/// Convert OpenAI moderation response to our SafetyAssessment format
+#[inline(always)]
+fn convert_moderation_response_to_assessment(
+    response: ModerationResponse,
     _policy: &ModerationPolicy,
     _context: &AnalysisContext,
-) -> SafetyAssessment {
-    // Placeholder simulation - in reality this would call OpenAI API
-    SafetyAssessment {
-        is_safe: true,
-        risk_level: RiskLevel::Safe,
-        triggered_categories: ZeroOneOrMany::None,
-        highest_score: 0.1,
-        recommendation: SafetyRecommendation::Allow,
-    }
+) -> Result<SafetyAssessment, OpenAIError> {
+    let result = response.results.into_iter().next()
+        .ok_or_else(|| OpenAIError::InvalidResponse("No moderation results".to_string()))?;
+    
+    let flagged = result.flagged;
+    let highest_score = result.category_scores.values()
+        .fold(0.0f32, |max, &score| max.max(score));
+    
+    let triggered_categories = if flagged {
+        let mut categories = Vec::new();
+        for (category, &is_flagged) in result.categories.iter() {
+            if is_flagged {
+                categories.push(category.clone());
+            }
+        }
+        ZeroOneOrMany::from_vec(categories)
+    } else {
+        ZeroOneOrMany::None
+    };
+    
+    let risk_level = if highest_score >= 0.8 {
+        RiskLevel::High
+    } else if highest_score >= 0.5 {
+        RiskLevel::Medium
+    } else if highest_score >= 0.2 {
+        RiskLevel::Low
+    } else {
+        RiskLevel::Safe
+    };
+    
+    let recommendation = if flagged {
+        if highest_score >= 0.8 {
+            SafetyRecommendation::Block
+        } else {
+            SafetyRecommendation::Review
+        }
+    } else {
+        SafetyRecommendation::Allow
+    };
+    
+    Ok(SafetyAssessment {
+        is_safe: !flagged,
+        risk_level,
+        triggered_categories,
+        highest_score,
+        recommendation,
+    })
 }
 
 /// Get available moderation models

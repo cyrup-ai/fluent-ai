@@ -13,7 +13,7 @@ use crate::memory::{
 };
 
 // SIMD and performance dependencies
-use packed_simd_2::f32x8;
+// use packed_simd::f32x8; // Replaced with wide for Rust 1.78+ compatibility
 use wide::f32x8 as WideF32x8;
 use memmap2::{MmapOptions, Mmap};
 use jemalloc_sys as jemalloc;
@@ -207,8 +207,8 @@ fn simd_cosine_similarity_fallback(a: &[f32], b: &[f32]) -> Result<f32, MemoryEr
     for i in 0..chunks {
         let offset = i * SIMD_WIDTH;
         
-        let va = f32x8::from_slice_unaligned(&a[offset..offset + SIMD_WIDTH]);
-        let vb = f32x8::from_slice_unaligned(&b[offset..offset + SIMD_WIDTH]);
+        let va = WideF32x8::from_slice_unaligned(&a[offset..offset + SIMD_WIDTH]);
+        let vb = WideF32x8::from_slice_unaligned(&b[offset..offset + SIMD_WIDTH]);
         
         dot_sum += (va * vb).sum();
         norm_a_sum += (va * va).sum();
@@ -320,8 +320,8 @@ fn simd_euclidean_distance_fallback(a: &[f32], b: &[f32]) -> Result<f32, MemoryE
     for i in 0..chunks {
         let offset = i * SIMD_WIDTH;
         
-        let va = f32x8::from_slice_unaligned(&a[offset..offset + SIMD_WIDTH]);
-        let vb = f32x8::from_slice_unaligned(&b[offset..offset + SIMD_WIDTH]);
+        let va = WideF32x8::from_slice_unaligned(&a[offset..offset + SIMD_WIDTH]);
+        let vb = WideF32x8::from_slice_unaligned(&b[offset..offset + SIMD_WIDTH]);
         let diff = va - vb;
         
         sum += (diff * diff).sum();

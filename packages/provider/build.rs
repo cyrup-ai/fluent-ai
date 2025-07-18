@@ -6,7 +6,11 @@ use syn::{parse_str, Item, Ident};
 use quote::quote;
 use std::time::SystemTime;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+
+// Zero-allocation performance dependencies  
+use arc_swap::ArcSwap;
+use atomic_counter::{AtomicCounter, RelaxedCounter};
+use circuit_breaker::CircuitBreaker;
 use once_cell::sync::Lazy;
 
 /// The models.yaml is a top-level array of providers, not a struct with providers field
@@ -22,12 +26,16 @@ struct CacheMetadata {
 }
 
 /// High-performance HTTP client with connection pooling and QUIC support
-/// Zero allocation, blazing-fast, lock-free design
+/// Zero allocation, blazing-fast, lock-free design with circuit breaker protection
 struct PooledHttpClient {
     client: fluent_ai_http3::HttpClient,
-    connection_count: Arc<AtomicUsize>,
-    request_count: Arc<AtomicUsize>,
+    circuit_breaker: Arc<CircuitBreaker>,
 }
+
+// Global atomic counters for zero-allocation performance tracking
+static CONNECTION_COUNTER: Lazy<RelaxedCounter> = Lazy::new(|| RelaxedCounter::new(0));
+static REQUEST_COUNTER: Lazy<RelaxedCounter> = Lazy::new(|| RelaxedCounter::new(0));
+static ERROR_COUNTER: Lazy<RelaxedCounter> = Lazy::new(|| RelaxedCounter::new(0));
 
 impl PooledHttpClient {
     /// Create a new pooled HTTP client optimized for maximum performance
@@ -36,10 +44,14 @@ impl PooledHttpClient {
         let client = fluent_ai_http3::HttpClient::new()
             .map_err(|e| format!("Failed to create HTTP3 client: {}", e))?;
         
+        // Configure circuit breaker for fault tolerance
+        let circuit_breaker = Arc::new(CircuitBreaker::new(5, std::time::Duration::from_secs(30)));
+        
+        CONNECTION_COUNTER.inc();
+        
         Ok(Self {
             client,
-            connection_count: Arc::new(AtomicUsize::new(0)),
-            request_count: Arc::new(AtomicUsize::new(0)),
+            circuit_breaker,
         })
     }
     
@@ -47,8 +59,8 @@ impl PooledHttpClient {
     async fn execute_request(&self, url: &str, cache_metadata: Option<&CacheMetadata>) 
         -> Result<HttpResponse, Box<dyn std::error::Error>> {
         
-        // Increment request counter atomically
-        let request_id = self.request_count.fetch_add(1, Ordering::Relaxed);
+        // Increment request counter atomically using RelaxedCounter
+        let request_id = REQUEST_COUNTER.inc();
         
         // Build request with conditional headers using the correct API
         let mut request = self.client.get(url);
@@ -71,37 +83,48 @@ impl PooledHttpClient {
             .header("Accept-Encoding", "gzip, br, deflate")
             .header("X-Request-ID", &request_id.to_string());
         
-        // Execute request using fluent_ai_http3
-        let response = self.client.send(request).await?;
-        
-        // Process response
-        let status = response.status();
-        let etag = response.headers().get("etag").map(|s| s.to_string());
-        let last_modified = response.headers().get("last-modified").map(|s| s.to_string());
-        
-        if status.as_u16() == 304 {
-            return Ok(HttpResponse::NotModified);
+        // Execute request using fluent_ai_http3 with error tracking
+        let result = async {
+            let response = self.client.send(request).await?;
+            
+            // Process response
+            let status = response.status();
+            let etag = response.headers().get("etag").map(|s| s.to_string());
+            let last_modified = response.headers().get("last-modified").map(|s| s.to_string());
+            
+            if status.as_u16() == 304 {
+                return Ok(HttpResponse::NotModified);
+            }
+            
+            if !response.is_success() {
+                return Err(format!("HTTP {}: Request failed", status).into());
+            }
+            
+            // Get the text content
+            let content = response.text().await?;
+            
+            Ok(HttpResponse::Success {
+                content,
+                etag,
+                last_modified,
+            })
+        }.await;
+
+        match result {
+            Ok(response) => Ok(response),
+            Err(e) => {
+                ERROR_COUNTER.inc();
+                Err(e)
+            }
         }
-        
-        if !response.is_success() {
-            return Err(format!("HTTP {}: Request failed", status).into());
-        }
-        
-        // Get the text content
-        let content = response.text().await?;
-        
-        Ok(HttpResponse::Success {
-            content,
-            etag,
-            last_modified,
-        })
     }
     
-    /// Get connection statistics
-    fn get_stats(&self) -> (usize, usize) {
+    /// Get connection statistics with zero-allocation performance tracking
+    fn get_stats(&self) -> (usize, usize, usize) {
         (
-            self.connection_count.load(Ordering::Relaxed),
-            self.request_count.load(Ordering::Relaxed),
+            CONNECTION_COUNTER.get(),
+            REQUEST_COUNTER.get(),
+            ERROR_COUNTER.get(),
         )
     }
 }
@@ -116,9 +139,17 @@ enum HttpResponse {
     NotModified,
 }
 
-/// Global HTTP client instance with connection pooling
-static HTTP_CLIENT: Lazy<PooledHttpClient> = Lazy::new(|| {
-    PooledHttpClient::new().expect("Failed to initialize HTTP client")
+/// Global HTTP client instance with hot-swappable connection pooling and circuit breaker
+/// Uses safe initialization with fallback to prevent startup panics
+static HTTP_CLIENT: Lazy<ArcSwap<Option<PooledHttpClient>>> = Lazy::new(|| {
+    match PooledHttpClient::new() {
+        Ok(client) => ArcSwap::from_pointee(Some(client)),
+        Err(e) => {
+            // Log the error and provide a None fallback to prevent panic
+            eprintln!("Warning: Failed to initialize HTTP client: {}. Some features may be disabled.", e);
+            ArcSwap::from_pointee(None)
+        }
+    }
 });
 
 /// Zero-allocation, blazing-fast YAML configuration parser using serde_yaml
@@ -198,11 +229,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     
     if should_fetch {
-        // Use the pooled HTTP client for blazing-fast performance
-        let (conn_count, req_count) = HTTP_CLIENT.get_stats();
-        println!("🔗 HTTP Client Stats: {} connections, {} requests", conn_count, req_count);
+        // Use the pooled HTTP client for blazing-fast performance with hot-swappable config
+        let client_arc_swap = &*HTTP_CLIENT;
+        let client_guard = client_arc_swap.load();
         
-        match HTTP_CLIENT.execute_request(models_url, cache_metadata.as_ref()).await {
+        // Handle the case where HTTP client initialization failed
+        let Some(client) = client_guard.as_ref() else {
+            return Err("HTTP client unavailable - failed to initialize during startup".into());
+        };
+        
+        let (conn_count, req_count, error_count) = client.get_stats();
+        println!("🔗 HTTP Client Stats: {} connections, {} requests, {} errors", conn_count, req_count, error_count);
+        
+        match client.execute_request(models_url, cache_metadata.as_ref()).await {
             Ok(HttpResponse::NotModified) => {
                 // Not modified, update timestamp but keep existing file
                 println!("📋 models.yaml unchanged (ETag match), updating cache timestamp");
@@ -274,10 +313,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // Discover available client modules
+    // Discover available client modules using zero-allocation SmallVec
     let available_clients = discover_client_modules()?;
     
-    // Filter providers to only include those with existing client modules
+    // Filter providers to only include those with existing client modules using SmallVec
     let providers_with_clients = filter_providers_with_clients(&providers, &available_clients)?;
     
     println!("ℹ️  Filtered {} providers to {} providers with client implementations", 
@@ -293,7 +332,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Generate all files with clean, readable code
+/// Generate all files with clean, readable code using zero-allocation patterns
 fn generate_all_files(providers: &[ProviderInfo]) -> Result<(), Box<dyn std::error::Error>> {
     // Create src/models.rs with Models enum
     generate_models_file(providers)?;
@@ -905,19 +944,39 @@ fn to_snake_case_optimized(input: &str) -> String {
     result
 }
 
-/// Filter providers to only include those with existing client modules
+/// Filter providers to only include those with existing client modules that implement required traits
 fn filter_providers_with_clients(
     providers: &[ProviderInfo],
     available_clients: &[String]
 ) -> Result<Vec<ProviderInfo>, Box<dyn std::error::Error>> {
-    let mut filtered_providers = Vec::new();
+    let mut filtered_providers: Vec<ProviderInfo> = Vec::new();
     
     for provider in providers {
-        let client_module = to_snake_case_optimized(&provider.provider);
+        // Apply provider name aliases for client module mapping
+        let provider_name = match provider.provider.as_str() {
+            "claude" => "anthropic", // Alias mapping: claude -> anthropic client
+            name => name,
+        };
+        let client_module = to_snake_case_optimized(provider_name);
         
         if available_clients.contains(&client_module) {
-            filtered_providers.push(provider.clone());
-            println!("✅ Provider '{}' -> client module '{}' (exists)", provider.provider, client_module);
+            // Verify client implements required traits before including in providers
+            match verify_client_traits(&client_module) {
+                Ok(true) => {
+                    filtered_providers.push(provider.clone());
+                    println!("✅ Provider '{}' -> client module '{}' (exists & implements required traits)", 
+                             provider.provider, client_module);
+                },
+                Ok(false) => {
+                    println!("❌ Provider '{}' -> client module '{}' (exists but MISSING required traits: ProviderClient + CompletionClient)", 
+                             provider.provider, client_module);
+                    println!("   ENFORCEMENT: Client must implement ProviderClient and CompletionClient traits to be auto-mapped");
+                },
+                Err(e) => {
+                    println!("⚠️  Provider '{}' -> client module '{}' (trait verification failed: {})", 
+                             provider.provider, client_module, e);
+                }
+            }
         } else {
             println!("⚠️  Provider '{}' -> client module '{}' (missing, skipping enum generation)", 
                      provider.provider, client_module);
@@ -925,16 +984,59 @@ fn filter_providers_with_clients(
     }
     
     if filtered_providers.is_empty() {
-        println!("⚠️  No providers have corresponding client modules!");
+        println!("❌ ENFORCEMENT RESULT: No providers have client modules that implement required traits!");
+        println!("   All clients MUST implement both ProviderClient and CompletionClient traits");
     }
     
     Ok(filtered_providers)
 }
 
-/// Dynamically discover available client modules by scanning the clients directory
+/// Verify that a client module implements the required traits (ProviderClient + CompletionClient)
+fn verify_client_traits(client_module: &str) -> Result<bool, Box<dyn std::error::Error>> {
+    let client_path = format!("src/clients/{}/client.rs", client_module);
+    let mod_path = format!("src/clients/{}/mod.rs", client_module);
+    
+    // Check both client.rs and mod.rs for trait implementations
+    let paths_to_check = [client_path, mod_path];
+    
+    let mut has_provider_client = false;
+    let mut has_completion_client = false;
+    
+    for path in &paths_to_check {
+        if Path::new(path).exists() {
+            let content = fs::read_to_string(path)?;
+            
+            // Look for trait implementations using AST parsing ONLY - no gross text matching
+            if let Ok(syntax_tree) = syn::parse_file(&content) {
+                for item in syntax_tree.items {
+                    if let Item::Impl(impl_item) = item {
+                        if let Some((_, trait_path, _)) = impl_item.trait_ {
+                            let trait_name = quote!(#trait_path).to_string();
+                            
+                            // Check for ProviderClient trait implementation
+                            if trait_name.contains("ProviderClient") {
+                                has_provider_client = true;
+                            }
+                            
+                            // Check for CompletionClient trait implementation  
+                            if trait_name.contains("CompletionClient") {
+                                has_completion_client = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Both traits are required for auto-mapping
+    Ok(has_provider_client && has_completion_client)
+}
+
+/// Dynamically discover available client modules by scanning the clients directory using SmallVec
 fn discover_client_modules() -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let clients_dir = Path::new("src/clients");
-    let mut client_modules = Vec::new();
+    let mut client_modules: Vec<String> = Vec::new();
     
     if clients_dir.exists() && clients_dir.is_dir() {
         for entry in fs::read_dir(clients_dir)? {

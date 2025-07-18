@@ -49,7 +49,7 @@ pub enum Error {
     Serialization(#[from] serde_json::Error),
 
     #[error("HTTP request error: {0}")]
-    HttpRequest(#[from] reqwest::Error),
+    HttpRequest(String),
 
     #[error("Not implemented: {0}")]
     NotImplemented(String),
@@ -126,5 +126,17 @@ impl axum::response::IntoResponse for Error {
 impl From<surrealdb::Error> for Error {
     fn from(err: surrealdb::Error) -> Self {
         Error::Database(Box::new(err))
+    }
+}
+
+impl From<anyhow::Error> for Error {
+    fn from(err: anyhow::Error) -> Self {
+        Error::Other(err.to_string())
+    }
+}
+
+impl From<fluent_ai_http3::HttpError> for Error {
+    fn from(err: fluent_ai_http3::HttpError) -> Self {
+        Error::HttpRequest(err.to_string())
     }
 }

@@ -1,5 +1,88 @@
 # Domain Package Production Readiness TODO
 
+## IMMEDIATE COMPILATION FIXES (REQUIRED BEFORE MEMORY INTEGRATION)
+
+### IMMEDIATE-1. Re-enable LLM Providers in Memory Package
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/memory/src/llm/mod.rs`
+**Lines**: 13-14, 16-17 (uncomment existing working code)
+**Implementation**: Uncomment `pub mod anthropic;` and `pub mod openai;` module declarations. Uncomment `pub use self::anthropic::AnthropicProvider;` and `pub use self::openai::OpenAIProvider;` re-exports. These providers are already properly implemented with fluent_ai_http3 and just need to be enabled.
+**Performance**: Zero allocation enabling of existing working HTTP3-based providers.
+**Status**: COMPILATION BLOCKER - prevents committee module compilation
+
+### IMMEDIATE-2. Fix Missing OptimizationSpec Import in Committee Module
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/committee/mod.rs`
+**Lines**: 85 (add import after existing imports)
+**Implementation**: Add `use crate::cognitive::types::OptimizationSpec;` import to resolve compilation error in api module functions.
+**Performance**: Zero-cost import resolution.
+**Status**: COMPILATION BLOCKER - missing import causes compilation failure
+
+### IMMEDIATE-3. Create Committee Types Module
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/committee/committee_types.rs` (new file)
+**Lines**: 1-300 (complete implementation)
+**Implementation**: Zero-allocation committee data structures. ModelType enum with zero-copy model identifiers. EvaluationConfig with ArrayVec<[ModelType; 8]> for models. CommitteeEvaluation with SmallVec for reasoning storage. ConsensusDecision with atomic confidence tracking. All structures use Arc<str> for shared text, atomic counters for metrics.
+**Performance**: Zero allocation structures, lock-free atomic operations, stack-based collections.
+**Dependencies**: arrayvec, smallvec, arc-swap, atomic-counter
+
+### IMMEDIATE-4. Create Committee Evaluators Module
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/committee/committee_evaluators.rs` (new file)
+**Lines**: 1-400 (complete implementation)
+**Implementation**: Zero-allocation LLM evaluator pool using object pooling. Lock-free EvaluationSession with atomic state tracking. EvaluationPrompt with pre-allocated template strings. LLMEvaluator trait with async streaming evaluation. EvaluatorPool with crossbeam-queue for lock-free task distribution.
+**Performance**: Object pooling, lock-free task queue, atomic state management, streaming evaluation.
+**Dependencies**: crossbeam-queue, tokio, smallvec, arc-swap
+
+### IMMEDIATE-5. Create Committee Consensus Module  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/committee/committee_consensus.rs` (new file)
+**Lines**: 1-350 (complete implementation)
+**Implementation**: Lock-free consensus building with atomic vote aggregation. ConsensusBuilder using SIMD operations for score aggregation. DecisionAggregator with zero-allocation weighted averaging. ConsensusEngine with lock-free decision caching. QualityMetrics with atomic counters and real-time computation.
+**Performance**: SIMD score operations, atomic vote counting, lock-free caching, real-time metrics.
+**Dependencies**: wide (SIMD), atomic-counter, crossbeam-skiplist
+
+### IMMEDIATE-6. Create Committee Orchestrator Module
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/committee/committee_orchestrator.rs` (new file)
+**Lines**: 1-450 (complete implementation)
+**Implementation**: Zero-allocation CommitteeEvaluator with async parallel evaluation. EvaluationWorkflow using lock-free state machine. CommitteeCoordinator with atomic task scheduling. Streaming result aggregation with pre-allocated buffers. Error recovery with exponential backoff using atomic retry counters.
+**Performance**: Parallel async evaluation, lock-free state machine, atomic scheduling, streaming aggregation.
+**Dependencies**: tokio, futures, atomic-counter, smallvec
+
+### IMMEDIATE-7. Verify All Committee Module Imports and Compilation
+**File**: All committee module files
+**Lines**: Throughout modules
+**Implementation**: Verify all re-exports in mod.rs resolve correctly. Test compilation of committee modules. Ensure all trait bounds and type constraints are satisfied. Validate async function signatures and error handling.
+**Performance**: Compilation-time verification of zero-cost abstractions.
+**Status**: FINAL VERIFICATION - ensures all compilation errors resolved
+
+### IMMEDIATE-8. Fix Committee Evaluators for Zero Allocation Constraints
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/committee/committee_evaluators.rs`
+**Lines**: 396, 463, 494, 463 (EvaluatorPool and EvaluationSession structs)
+**Implementation**: Replace HashMap<ModelType, Vec<LLMEvaluator>> with HashMap<ModelType, ArrayVec<LLMEvaluator, MAX_COMMITTEE_SIZE>>. Replace Vec<Arc<LLMEvaluator>> with ArrayVec<Arc<LLMEvaluator>, MAX_COMMITTEE_SIZE>. Remove string allocations by using &str references instead of to_string() calls. Add lock-free evaluator pool using crossbeam-queue for task distribution. Remove any unwrap() or expect() calls with proper Result error handling.
+**Performance**: Zero allocation evaluator management, lock-free task distribution, atomic pool operations.
+**Dependencies**: arrayvec, crossbeam-queue
+**Status**: CRITICAL - current Vec usage violates zero allocation constraints
+
+### IMMEDIATE-9. Create Committee Consensus Module with SIMD Operations
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/committee/committee_consensus.rs` (new file)
+**Lines**: 1-350 (complete implementation)
+**Implementation**: Zero allocation consensus building with SIMD score aggregation using wide crate for vectorized operations. Atomic vote counting with atomic-counter for lock-free tallying. Lock-free decision caching using crossbeam-skiplist for O(log n) concurrent access. ConsensusBuilder with pre-allocated buffers for score computation. DecisionAggregator with weighted averaging using SIMD operations. QualityMetrics with real-time atomic computation.
+**Performance**: SIMD vectorized scoring, atomic vote aggregation, lock-free concurrent caching, zero allocation consensus algorithms.
+**Dependencies**: wide (SIMD), atomic-counter, crossbeam-skiplist
+**Status**: MISSING MODULE - required for committee decision making
+
+### IMMEDIATE-10. Create Committee Orchestrator with Lock-Free State Machine
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/committee/committee_orchestrator.rs` (new file)
+**Lines**: 1-450 (complete implementation)
+**Implementation**: Zero allocation CommitteeEvaluator with atomic task scheduling using crossbeam-queue. Lock-free state machine for EvaluationWorkflow with atomic state transitions. CommitteeCoordinator with parallel async evaluation using pre-allocated channel buffers. Streaming result aggregation with SmallVec for stack allocation. Error recovery with exponential backoff using atomic retry counters. All operations return Result types with comprehensive error handling.
+**Performance**: Lock-free state machine, atomic task scheduling, parallel evaluation, streaming aggregation, zero allocation workflows.
+**Dependencies**: tokio, futures, atomic-counter, smallvec, crossbeam-queue
+**Status**: MISSING MODULE - required for orchestrating committee evaluations
+
+### IMMEDIATE-11. Committee Integration Testing and Compilation Verification
+**File**: All committee module files + integration tests
+**Lines**: Throughout all modules
+**Implementation**: Comprehensive compilation testing of all committee modules. Verify zero allocation constraints using heap profiling. Test lock-free operations under concurrent load. Validate SIMD operations and atomic counters. Ensure all unwrap()/expect() calls removed. Test error handling paths. Verify performance meets blazing-fast requirements.
+**Performance**: Zero allocation verification, lock-free operation testing, SIMD performance validation.
+**Dependencies**: Test framework integration
+**Status**: VERIFICATION REQUIRED - ensure all extreme constraints met
+
 ## MILESTONE: Memory-Enhanced Agent System Integration
 **ARCHITECTURE**: Full integration of fluent_ai_memory cognitive system into agent framework with automatic context injection and Memory tool access for all agents. Zero allocation, blazing-fast performance with lock-free operations.
 
