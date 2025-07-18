@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
+
 use surrealdb::sql::Value;
 
 use crate::utils::error::Result;
@@ -27,10 +28,7 @@ pub trait VectorStore: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = Result<()>> + Send>>;
 
     /// Get a vector by ID
-    fn get_vector(
-        &self,
-        id: &str,
-    ) -> VectorStoreFuture<(Vec<f32>, VectorMetadata)>;
+    fn get_vector(&self, id: &str) -> VectorStoreFuture<(Vec<f32>, VectorMetadata)>;
 
     /// Update a vector
     fn update_vector(

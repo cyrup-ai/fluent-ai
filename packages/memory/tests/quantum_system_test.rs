@@ -3,6 +3,7 @@
 #![cfg(feature = "cognitive")]
 
 use std::sync::Arc;
+
 use fluent_ai_memory::cognitive::quantum::{
     EnhancedQuery, QuantumConfig, QuantumRouter, QueryIntent,
 };

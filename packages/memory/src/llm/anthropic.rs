@@ -1,8 +1,9 @@
 //! Anthropic Claude LLM provider implementation
 
+use std::sync::Arc;
+
 use fluent_ai_http3::{HttpClient, HttpConfig};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tokio::sync::oneshot;
 
 use crate::llm::{LLMError, LLMProvider, PendingCompletion, PendingEmbedding};
@@ -18,8 +19,9 @@ pub struct AnthropicProvider {
 impl AnthropicProvider {
     /// Create a new Anthropic provider
     pub fn new(api_key: String, model: Option<String>) -> Result<Self, LLMError> {
-        let client = HttpClient::with_config(HttpConfig::ai_optimized())
-            .map_err(|e| LLMError::InitializationError(format!("Failed to create HTTP3 client: {}", e)))?;
+        let client = HttpClient::with_config(HttpConfig::ai_optimized()).map_err(|e| {
+            LLMError::InitializationError(format!("Failed to create HTTP3 client: {}", e))
+        })?;
 
         Ok(Self {
             client: Arc::new(client),
@@ -58,10 +60,12 @@ impl LLMProvider for AnthropicProvider {
             };
 
             let result = async {
-                let request_body = serde_json::to_vec(&request)
-                    .map_err(|e| LLMError::InvalidRequest(format!("Failed to serialize request: {}", e)))?;
+                let request_body = serde_json::to_vec(&request).map_err(|e| {
+                    LLMError::InvalidRequest(format!("Failed to serialize request: {}", e))
+                })?;
 
-                let http_request = client.post(&format!("{api_base}/messages"))
+                let http_request = client
+                    .post(&format!("{api_base}/messages"))
                     .header("x-api-key", api_key)
                     .header("anthropic-version", "2023-06-01")
                     .header("content-type", "application/json")
@@ -73,11 +77,14 @@ impl LLMProvider for AnthropicProvider {
                     .map_err(|e| LLMError::NetworkError(format!("HTTP request failed: {}", e)))?;
 
                 if response.status().is_success() {
-                    let response_body = response.bytes().await
-                        .map_err(|e| LLMError::NetworkError(format!("Failed to read response body: {}", e)))?;
+                    let response_body = response.bytes().await.map_err(|e| {
+                        LLMError::NetworkError(format!("Failed to read response body: {}", e))
+                    })?;
 
                     let completion: CompletionResponse = serde_json::from_slice(&response_body)
-                        .map_err(|e| LLMError::InvalidResponse(format!("Failed to parse response: {}", e)))?;
+                        .map_err(|e| {
+                            LLMError::InvalidResponse(format!("Failed to parse response: {}", e))
+                        })?;
 
                     completion
                         .content
@@ -99,7 +106,9 @@ impl LLMProvider for AnthropicProvider {
                 } else if response.status().as_u16() == 429 {
                     Err(LLMError::RateLimitExceeded)
                 } else {
-                    let error_body = response.bytes().await
+                    let error_body = response
+                        .bytes()
+                        .await
                         .map(|body| String::from_utf8_lossy(&body).into_owned())
                         .unwrap_or_else(|_| "Unknown error".to_string());
                     Err(LLMError::ApiError(error_body))

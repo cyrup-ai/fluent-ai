@@ -18,7 +18,7 @@ macro_rules! colored_print {
             print!($($arg)*);
         }
     }};
-    
+
     // No color specified, use text_primary
     ($($arg:tt)*) => {{
         use std::io::Write;
@@ -46,7 +46,7 @@ macro_rules! colored_println {
             println!($($arg)*);
         }
     }};
-    
+
     // No color specified, use text_primary
     ($($arg:tt)*) => {{
         use std::io::Write;
@@ -74,7 +74,7 @@ macro_rules! colored_eprint {
             eprint!($($arg)*);
         }
     }};
-    
+
     // No color specified, use text_primary
     ($($arg:tt)*) => {{
         use std::io::Write;
@@ -102,7 +102,7 @@ macro_rules! colored_eprintln {
             eprintln!($($arg)*);
         }
     }};
-    
+
     // No color specified, use error color for stderr
     ($($arg:tt)*) => {{
         use std::io::Write;

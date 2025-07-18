@@ -4,14 +4,16 @@
 //! This module provides versioning and history tracking for memory nodes,
 //! with support for evolution tracking, history queries, and diff/merge operations.
 
+use std::collections::HashMap;
+use std::fmt::Debug;
+
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use surrealdb::sql::Value;
+
 use crate::graph::entity::{BaseEntity, Entity};
 use crate::utils::Result;
 use crate::utils::error::Error;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fmt::Debug;
-use surrealdb::sql::Value;
 
 /// Change type enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,9 +68,7 @@ impl ChangeType {
                     Ok(ChangeType::Custom(0))
                 }
             }
-            _ => Err(Error::ValidationError(format!(
-                "Invalid change type: {s}"
-            ))),
+            _ => Err(Error::ValidationError(format!("Invalid change type: {s}"))),
         }
     }
 

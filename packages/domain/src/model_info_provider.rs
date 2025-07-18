@@ -2,7 +2,7 @@
 
 // Domain should NOT depend on provider - provider depends on domain
 // These types should be defined in domain or passed as generics
-use crate::{Models, ModelInfoData};
+use crate::{ModelInfoData, Models};
 
 /// Error types for ModelInfo operations
 #[derive(Debug, thiserror::Error)]

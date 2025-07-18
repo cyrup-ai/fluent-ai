@@ -1,37 +1,40 @@
 //! Agent role builder implementation following ARCHITECTURE.md exactly
 
+use std::fmt;
+use std::future::Future;
+use std::marker::PhantomData;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::future::Future;
-use std::pin::Pin;
-use crate::MessageRole;
-use crate::chunk::ChatMessageChunk;
-use crate::HashMap;
-use crate::ZeroOneOrMany;
-use crate::memory::{Memory, MemoryError, MemoryType, MemoryNode};
-use crate::memory_tool::MemoryTool;
-use crate::async_task::AsyncStream;
-use serde_json::Value;
-use std::fmt;
-use std::marker::PhantomData;
 
 // Ultra-high-performance zero-allocation imports
 use arrayvec::ArrayVec;
-use ropey::Rope;
-use wide::f32x8;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
-use once_cell::sync::Lazy;
 use crossbeam_utils::CachePadded;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
+use once_cell::sync::Lazy;
+use ropey::Rope;
+use serde_json::Value;
+use wide::f32x8;
+
+use crate::HashMap;
+use crate::MessageRole;
+use crate::ZeroOneOrMany;
+use crate::async_task::AsyncStream;
+use crate::chunk::ChatMessageChunk;
+use crate::memory::{Memory, MemoryError, MemoryNode, MemoryType};
+use crate::memory_tool::MemoryTool;
 
 /// Maximum number of relevant memories for context injection
 const MAX_RELEVANT_MEMORIES: usize = 10;
 
 /// Global atomic counter for memory node creation
-static MEMORY_NODE_COUNTER: Lazy<CachePadded<RelaxedCounter>> = Lazy::new(|| CachePadded::new(RelaxedCounter::new(0)));
+static MEMORY_NODE_COUNTER: Lazy<CachePadded<RelaxedCounter>> =
+    Lazy::new(|| CachePadded::new(RelaxedCounter::new(0)));
 
 /// Global atomic counter for attention scoring operations
-static ATTENTION_SCORE_COUNTER: Lazy<CachePadded<AtomicUsize>> = Lazy::new(|| CachePadded::new(AtomicUsize::new(0)));
+static ATTENTION_SCORE_COUNTER: Lazy<CachePadded<AtomicUsize>> =
+    Lazy::new(|| CachePadded::new(AtomicUsize::new(0)));
 
 /// MCP Server configuration
 #[derive(Debug, Clone)]
@@ -48,16 +51,16 @@ struct McpServerConfig {
 pub trait AgentRole: Send + Sync + fmt::Debug + Clone {
     /// Get the name of the agent role
     fn name(&self) -> &str;
-    
+
     /// Get the temperature setting
     fn temperature(&self) -> Option<f64>;
-    
+
     /// Get the max tokens setting
     fn max_tokens(&self) -> Option<u64>;
-    
+
     /// Get the system prompt
     fn system_prompt(&self) -> Option<&str>;
-    
+
     /// Create a new agent role with the given name
     fn new(name: impl Into<String>) -> Self;
 }
@@ -78,7 +81,8 @@ pub struct AgentRoleImpl {
     tools: Option<ZeroOneOrMany<Box<dyn std::any::Any + Send + Sync>>>,
     #[allow(dead_code)] // TODO: Use for MCP server configuration and management
     mcp_servers: Option<ZeroOneOrMany<McpServerConfig>>,
-    #[allow(dead_code)] // TODO: Use for provider-specific parameters (beta features, custom options)
+    #[allow(dead_code)]
+    // TODO: Use for provider-specific parameters (beta features, custom options)
     additional_params: Option<HashMap<String, Value>>,
     #[allow(dead_code)] // TODO: Use for persistent memory and conversation storage
     memory: Option<Box<dyn std::any::Any + Send + Sync>>,
@@ -122,7 +126,7 @@ impl Clone for AgentRoleImpl {
             system_prompt: self.system_prompt.clone(),
             api_key: self.api_key.clone(),
             contexts: None, // Can't clone trait objects
-            tools: None, // Can't clone trait objects
+            tools: None,    // Can't clone trait objects
             mcp_servers: self.mcp_servers.clone(),
             additional_params: self.additional_params.clone(),
             memory: None, // Can't clone trait objects
@@ -137,19 +141,19 @@ impl AgentRole for AgentRoleImpl {
     fn name(&self) -> &str {
         &self.name
     }
-    
+
     fn temperature(&self) -> Option<f64> {
         self.temperature
     }
-    
+
     fn max_tokens(&self) -> Option<u64> {
         self.max_tokens
     }
-    
+
     fn system_prompt(&self) -> Option<&str> {
         self.system_prompt.as_deref()
     }
-    
+
     fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -211,15 +215,15 @@ pub struct MemoryEnhancedChatResponse {
 
 impl AgentRoleImpl {
     /// Context-aware chat with automatic memory injection and memorization
-    /// 
+    ///
     /// # Arguments
     /// * `message` - User message to process
     /// * `memory` - Shared memory instance for context injection
     /// * `memory_tool` - Memory tool for conversation management
-    /// 
+    ///
     /// # Returns
     /// Result containing memory-enhanced chat response
-    /// 
+    ///
     /// # Performance
     /// Zero allocation context processing, lock-free concurrent memory access, inlined relevance scoring
     #[inline]
@@ -230,35 +234,37 @@ impl AgentRoleImpl {
         memory_tool: &MemoryTool,
     ) -> Result<MemoryEnhancedChatResponse, ChatError> {
         let message = message.into();
-        
+
         // Zero-allocation context injection using pre-allocated buffers
         let context_result = self.inject_memory_context(&message, &memory).await?;
-        
+
         // Create enhanced prompt with injected context
         let enhanced_prompt = self.build_enhanced_prompt(&message, &context_result)?;
-        
+
         // Generate response using OpenAI completion provider
         let response_content = self.generate_response(&enhanced_prompt).await?;
-        
+
         // Automatic memorization with zero-copy operations
-        let memorized_nodes = self.memorize_conversation(&message, &response_content, memory_tool).await?;
-        
+        let memorized_nodes = self
+            .memorize_conversation(&message, &response_content, memory_tool)
+            .await?;
+
         Ok(MemoryEnhancedChatResponse {
             content: response_content,
             memorized_nodes,
             context_used: context_result,
         })
     }
-    
+
     /// Inject memory context with zero-allocation processing
-    /// 
+    ///
     /// # Arguments
     /// * `message` - User message for context relevance
     /// * `memory` - Shared memory instance for queries
-    /// 
+    ///
     /// # Returns
     /// Result containing context injection result
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with lock-free memory queries and quantum routing
     #[inline]
@@ -271,15 +277,18 @@ impl AgentRoleImpl {
         let mut recall_stream = memory.recall(message);
         let mut relevant_memories: ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES> = ArrayVec::new();
         let mut relevance_scores: ArrayVec<f64, MAX_RELEVANT_MEMORIES> = ArrayVec::new();
-        
+
         // Streaming attention-based relevance scoring with SIMD operations
         while let Some(result) = futures::StreamExt::next(&mut recall_stream).await {
             match result {
                 Ok(memory_node) => {
                     // Calculate relevance score using SIMD-enhanced attention mechanism
-                    let relevance_score = self.calculate_relevance_score_simd(message, &memory_node).await?;
-                    
-                    if relevance_score > 0.5 { // Threshold for relevance
+                    let relevance_score = self
+                        .calculate_relevance_score_simd(message, &memory_node)
+                        .await?;
+
+                    if relevance_score > 0.5 {
+                        // Threshold for relevance
                         // Use try_push for zero-allocation error handling
                         if relevant_memories.try_push(memory_node).is_err() {
                             break; // Buffer full, stop processing
@@ -288,7 +297,7 @@ impl AgentRoleImpl {
                             relevant_memories.pop(); // Keep arrays in sync
                             break;
                         }
-                        
+
                         // Increment atomic counter for lock-free statistics
                         ATTENTION_SCORE_COUNTER.fetch_add(1, Ordering::Relaxed);
                     }
@@ -298,13 +307,13 @@ impl AgentRoleImpl {
                     tracing::warn!("Memory recall error: {}", e);
                 }
             }
-            
+
             // Limit context to maximum relevant memories for performance
             if relevant_memories.len() >= MAX_RELEVANT_MEMORIES {
                 break;
             }
         }
-        
+
         // Sort by relevance score (descending) with zero allocation
         let mut indexed_memories: ArrayVec<(usize, f64), MAX_RELEVANT_MEMORIES> = ArrayVec::new();
         for (i, &score) in relevance_scores.iter().enumerate() {
@@ -313,7 +322,7 @@ impl AgentRoleImpl {
             }
         }
         indexed_memories.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
+
         // Reorder memories and scores by relevance with zero allocation
         let mut sorted_memories: ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES> = ArrayVec::new();
         let mut sorted_scores: ArrayVec<f64, MAX_RELEVANT_MEMORIES> = ArrayVec::new();
@@ -328,26 +337,26 @@ impl AgentRoleImpl {
                 }
             }
         }
-        
+
         // Build enhanced prompt with rope-based context injection
         let enhanced_prompt = self.build_context_enhanced_prompt_rope(message, &sorted_memories)?;
-        
+
         Ok(ContextInjectionResult {
             enhanced_prompt,
             relevant_memories: sorted_memories,
             relevance_scores: sorted_scores,
         })
     }
-    
+
     /// Calculate relevance score using attention mechanism
-    /// 
+    ///
     /// # Arguments
     /// * `message` - User message
     /// * `memory_node` - Memory node to score
-    /// 
+    ///
     /// # Returns
     /// Result containing relevance score (0.0 to 1.0)
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with inlined relevance calculations
     #[inline]
@@ -359,37 +368,37 @@ impl AgentRoleImpl {
         // Simple text similarity scoring (in production, use embeddings)
         let message_words: Vec<&str> = message.split_whitespace().collect();
         let memory_words: Vec<&str> = memory_node.content.split_whitespace().collect();
-        
+
         let mut common_words = 0;
         for message_word in &message_words {
             if memory_words.contains(message_word) {
                 common_words += 1;
             }
         }
-        
+
         let max_words = message_words.len().max(memory_words.len());
         if max_words == 0 {
             return Ok(0.0);
         }
-        
+
         let similarity = (common_words as f64) / (max_words as f64);
-        
+
         // Apply importance weighting from memory metadata
         let importance_weight = memory_node.metadata.importance as f64 / 100.0;
         let final_score = similarity * importance_weight;
-        
+
         Ok(final_score.min(1.0))
     }
-    
+
     /// Calculate relevance score using SIMD-enhanced attention mechanism
-    /// 
+    ///
     /// # Arguments
     /// * `message` - User message
     /// * `memory_node` - Memory node to score
-    /// 
+    ///
     /// # Returns
     /// Result containing relevance score (0.0 to 1.0)
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with SIMD-optimized relevance calculations
     #[inline(always)]
@@ -401,7 +410,7 @@ impl AgentRoleImpl {
         // Use ArrayVec for zero-allocation word processing
         let mut message_words: ArrayVec<&str, 64> = ArrayVec::new();
         let mut memory_words: ArrayVec<&str, 64> = ArrayVec::new();
-        
+
         // Collect words with zero allocation
         for word in message.split_whitespace() {
             if message_words.try_push(word).is_err() {
@@ -413,7 +422,7 @@ impl AgentRoleImpl {
                 break; // Buffer full
             }
         }
-        
+
         // SIMD-enhanced word similarity calculation
         let mut common_words = 0;
         for message_word in &message_words {
@@ -421,32 +430,33 @@ impl AgentRoleImpl {
                 common_words += 1;
             }
         }
-        
+
         let max_words = message_words.len().max(memory_words.len());
         if max_words == 0 {
             return Ok(0.0);
         }
-        
+
         // Use SIMD for fast floating point operations
         let similarity_vec = f32x8::splat(common_words as f32) / f32x8::splat(max_words as f32);
-        let importance_vec = f32x8::splat(memory_node.metadata.importance as f32) / f32x8::splat(100.0);
+        let importance_vec =
+            f32x8::splat(memory_node.metadata.importance as f32) / f32x8::splat(100.0);
         let final_score_vec = similarity_vec * importance_vec;
-        
+
         // Extract result from SIMD vector
         let final_score = final_score_vec.extract(0) as f64;
-        
+
         Ok(final_score.min(1.0))
     }
-    
+
     /// Build context-enhanced prompt with zero-allocation processing
-    /// 
+    ///
     /// # Arguments
     /// * `message` - User message
     /// * `relevant_memories` - Relevant memory nodes for context
-    /// 
+    ///
     /// # Returns
     /// Result containing enhanced prompt
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with pre-allocated string buffers
     #[inline]
@@ -456,13 +466,13 @@ impl AgentRoleImpl {
         relevant_memories: &[MemoryNode],
     ) -> Result<String, ChatError> {
         let mut enhanced_prompt = String::new();
-        
+
         // Add system prompt if available
         if let Some(system_prompt) = &self.system_prompt {
             enhanced_prompt.push_str(system_prompt);
             enhanced_prompt.push_str("\n\n");
         }
-        
+
         // Add relevant context from memory
         if !relevant_memories.is_empty() {
             enhanced_prompt.push_str("Relevant context from memory:\n");
@@ -471,24 +481,24 @@ impl AgentRoleImpl {
             }
             enhanced_prompt.push_str("\n");
         }
-        
+
         // Add user message
         enhanced_prompt.push_str("User: ");
         enhanced_prompt.push_str(message);
         enhanced_prompt.push_str("\n\nAssistant:");
-        
+
         Ok(enhanced_prompt)
     }
-    
+
     /// Build context-enhanced prompt with rope-based zero-allocation processing
-    /// 
+    ///
     /// # Arguments
     /// * `message` - User message
     /// * `relevant_memories` - Relevant memory nodes for context
-    /// 
+    ///
     /// # Returns
     /// Result containing enhanced prompt
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with rope data structure for efficient string building
     #[inline(always)]
@@ -498,13 +508,13 @@ impl AgentRoleImpl {
         relevant_memories: &ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>,
     ) -> Result<String, ChatError> {
         let mut rope = Rope::new();
-        
+
         // Add system prompt if available using rope operations
         if let Some(system_prompt) = &self.system_prompt {
             rope.insert(rope.len_chars(), system_prompt);
             rope.insert(rope.len_chars(), "\n\n");
         }
-        
+
         // Add relevant context from memory using rope for zero-allocation string building
         if !relevant_memories.is_empty() {
             rope.insert(rope.len_chars(), "Relevant context from memory:\n");
@@ -515,25 +525,25 @@ impl AgentRoleImpl {
             }
             rope.insert(rope.len_chars(), "\n");
         }
-        
+
         // Add user message using rope operations
         rope.insert(rope.len_chars(), "User: ");
         rope.insert(rope.len_chars(), message);
         rope.insert(rope.len_chars(), "\n\nAssistant:");
-        
+
         // Convert rope to string efficiently
         Ok(rope.to_string())
     }
-    
+
     /// Build enhanced prompt from context injection result
-    /// 
+    ///
     /// # Arguments
     /// * `message` - User message
     /// * `context_result` - Context injection result
-    /// 
+    ///
     /// # Returns
     /// Result containing enhanced prompt
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with direct string reference
     #[inline]
@@ -544,26 +554,23 @@ impl AgentRoleImpl {
     ) -> Result<String, ChatError> {
         Ok(context_result.enhanced_prompt.clone())
     }
-    
+
     /// Generate response using HTTP3 streaming completion provider
-    /// 
+    ///
     /// # Arguments
     /// * `enhanced_prompt` - Enhanced prompt with memory context
-    /// 
+    ///
     /// # Returns
     /// Result containing response content
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with HTTP3 streaming response processing
     #[inline(always)]
-    async fn generate_response(
-        &self,
-        enhanced_prompt: &str,
-    ) -> Result<String, ChatError> {
+    async fn generate_response(&self, enhanced_prompt: &str) -> Result<String, ChatError> {
         // Use HTTP3 client for high-performance streaming
         let client = HttpClient::with_config(HttpConfig::ai_optimized())
             .map_err(|e| ChatError::System(format!("HTTP3 client creation failed: {}", e)))?;
-        
+
         // Create completion request payload
         let request_payload = serde_json::json!({
             "model": "gpt-4",
@@ -575,26 +582,30 @@ impl AgentRoleImpl {
             "temperature": self.temperature.unwrap_or(0.7),
             "max_tokens": self.max_tokens.unwrap_or(1000)
         });
-        
+
         // Get API key from configuration or environment
         let api_key = self.get_api_key()?;
-        
+
         // Create HTTP3 request with streaming
-        let request = HttpRequest::post("https://api.openai.com/v1/chat/completions", 
-                                      serde_json::to_vec(&request_payload)
-                                        .map_err(|e| ChatError::System(format!("JSON serialization failed: {}", e)))?)
-            .map_err(|e| ChatError::System(format!("HTTP request creation failed: {}", e)))?
-            .header("Content-Type", "application/json")
-            .header("Authorization", &format!("Bearer {}", api_key));
-        
+        let request = HttpRequest::post(
+            "https://api.openai.com/v1/chat/completions",
+            serde_json::to_vec(&request_payload)
+                .map_err(|e| ChatError::System(format!("JSON serialization failed: {}", e)))?,
+        )
+        .map_err(|e| ChatError::System(format!("HTTP request creation failed: {}", e)))?
+        .header("Content-Type", "application/json")
+        .header("Authorization", &format!("Bearer {}", api_key));
+
         // Send request and stream response
-        let response = client.send(request).await
+        let response = client
+            .send(request)
+            .await
             .map_err(|e| ChatError::System(format!("HTTP3 request failed: {}", e)))?;
-        
+
         // Use rope for zero-allocation response building
         let mut response_rope = Rope::new();
         let mut sse_stream = response.sse();
-        
+
         while let Some(event) = sse_stream.next().await {
             match event {
                 Ok(sse_event) => {
@@ -602,10 +613,11 @@ impl AgentRoleImpl {
                         if data.trim() == "[DONE]" {
                             break;
                         }
-                        
+
                         // Parse streaming completion chunk
                         if let Ok(chunk) = serde_json::from_str::<serde_json::Value>(&data) {
-                            if let Some(content) = chunk["choices"][0]["delta"]["content"].as_str() {
+                            if let Some(content) = chunk["choices"][0]["delta"]["content"].as_str()
+                            {
                                 response_rope.insert(response_rope.len_chars(), content);
                             }
                         }
@@ -616,20 +628,20 @@ impl AgentRoleImpl {
                 }
             }
         }
-        
+
         Ok(response_rope.to_string())
     }
-    
+
     /// Memorize conversation with lock-free atomic counters and zero-copy operations
-    /// 
+    ///
     /// # Arguments
     /// * `user_message` - User message to memorize
     /// * `assistant_response` - Assistant response to memorize
     /// * `memory_tool` - Memory tool for storage operations
-    /// 
+    ///
     /// # Returns
     /// Result containing memorized nodes
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with lock-free atomic counters for memory node tracking
     #[inline(always)]
@@ -640,76 +652,82 @@ impl AgentRoleImpl {
         memory_tool: &MemoryTool,
     ) -> Result<ArrayVec<MemoryNode, 3>, ChatError> {
         let mut memorized_nodes: ArrayVec<MemoryNode, 3> = ArrayVec::new();
-        
+
         // Increment atomic counter for lock-free memory node creation tracking
         MEMORY_NODE_COUNTER.inc();
-        
+
         // Memorize user message as episodic memory with atomic tracking
         let user_memory = memory_tool
             .memorize(user_message.to_string(), MemoryType::Episodic)
             .await
             .map_err(|e| ChatError::Memory(e.into()))?;
-        
+
         if memorized_nodes.try_push(user_memory).is_err() {
-            return Err(ChatError::System("Failed to add user memory to result buffer".to_string()));
+            return Err(ChatError::System(
+                "Failed to add user memory to result buffer".to_string(),
+            ));
         }
-        
+
         // Increment counter for assistant memory
         MEMORY_NODE_COUNTER.inc();
-        
+
         // Memorize assistant response as episodic memory with atomic tracking
         let assistant_memory = memory_tool
             .memorize(assistant_response.to_string(), MemoryType::Episodic)
             .await
             .map_err(|e| ChatError::Memory(e.into()))?;
-        
+
         if memorized_nodes.try_push(assistant_memory).is_err() {
-            return Err(ChatError::System("Failed to add assistant memory to result buffer".to_string()));
+            return Err(ChatError::System(
+                "Failed to add assistant memory to result buffer".to_string(),
+            ));
         }
-        
+
         // Increment counter for conversation context
         MEMORY_NODE_COUNTER.inc();
-        
+
         // Create conversation context as semantic memory using rope for zero-allocation
         let mut context_rope = Rope::new();
         context_rope.insert(0, "User: ");
         context_rope.insert(context_rope.len_chars(), user_message);
         context_rope.insert(context_rope.len_chars(), "\nAssistant: ");
         context_rope.insert(context_rope.len_chars(), assistant_response);
-        
+
         let conversation_context = context_rope.to_string();
         let context_memory = memory_tool
             .memorize(conversation_context, MemoryType::Semantic)
             .await
             .map_err(|e| ChatError::Memory(e.into()))?;
-        
+
         if memorized_nodes.try_push(context_memory).is_err() {
-            return Err(ChatError::System("Failed to add context memory to result buffer".to_string()));
+            return Err(ChatError::System(
+                "Failed to add context memory to result buffer".to_string(),
+            ));
         }
-        
+
         Ok(memorized_nodes)
     }
-    
+
     /// Get memory tool reference if available
-    /// 
+    ///
     /// # Returns
     /// Optional reference to memory tool
-    /// 
+    ///
     /// # Performance
     /// Zero cost abstraction with direct memory access
     #[inline]
     pub fn get_memory_tool(&self) -> Option<&dyn std::any::Any> {
         self.memory.as_ref().map(|m| m.as_ref())
     }
-    
+
     /// Set memory tool for agent role
-    /// 
+    ///
     /// # Arguments
     /// * `memory_tool` - Memory tool instance to set
-    /// 
+    ///
     /// # Returns
     /// Updated agent role instance
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with direct field assignment
     #[inline]
@@ -789,9 +807,7 @@ impl AgentConversationMessage {
 pub struct AgentWithHistory {
     #[allow(dead_code)] // TODO: Use for accessing agent role configuration during chat
     inner: Box<dyn std::any::Any + Send + Sync>,
-    chunk_handler: Box<
-        dyn Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync,
-    >,
+    chunk_handler: Box<dyn Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync>,
     #[allow(dead_code)] // TODO: Use for loading previous conversation context during chat
     conversation_history: Option<ZeroOneOrMany<(MessageRole, String)>>,
 }
@@ -810,4 +826,3 @@ pub trait ToolArgs {
 pub trait ConversationHistoryArgs {
     fn into_history(self) -> Option<ZeroOneOrMany<(MessageRole, String)>>;
 }
-

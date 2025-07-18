@@ -1,5 +1,5 @@
 //! MCP Tool domain traits
-//! 
+//!
 //! Pure trait definitions for MCP tools. Implementation is in fluent_ai package.
 
 // Re-export from the clean traits module

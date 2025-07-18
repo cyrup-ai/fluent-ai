@@ -2,17 +2,18 @@
 //!
 //! This module provides the Tool trait and implementations that support
 //! the transparent JSON syntax: Tool<Perplexity>::new({"citations" => "true"})
-//! 
+//!
 //! The syntax works automatically without exposing any macros to users.
 
-use crate::HashMap;
-use serde_json::Value;
 use std::marker::PhantomData;
 
 // Import Cylo execution environment types
 // Note: Using conditional compilation to handle optional cylo dependency
 #[cfg(feature = "cylo")]
 use fluent_ai_cylo::{CyloInstance, execution_env::Cylo};
+use serde_json::Value;
+
+use crate::HashMap;
 
 // Note: The transparent JSON syntax {"key" => "value"} should work automatically
 // through cyrup_sugars transformation without requiring explicit macro imports
@@ -28,7 +29,7 @@ impl ToolSet {
     pub fn new() -> Self {
         Self(Vec::new())
     }
-    
+
     pub fn push(&mut self, tool: ToolDefinition) {
         self.0.push(tool);
     }
@@ -68,15 +69,15 @@ pub struct Tool<T> {
 
 impl<T> Tool<T> {
     /// Create new tool with config - EXACT syntax: Tool<Perplexity>::new({"citations" => "true"})
-    /// 
+    ///
     /// This method accepts the transparent JSON syntax {"key" => "value"} which is
     /// automatically transformed by cyrup_sugars into the appropriate HashMap.
-    /// 
+    ///
     /// Examples:
     /// ```rust
     /// // Single parameter
     /// Tool::<Perplexity>::new({"citations" => "true"})
-    /// 
+    ///
     /// // Multiple parameters
     /// Tool::<CustomTool>::new({"param1" => "value1", "param2" => "value2"})
     /// ```
@@ -87,32 +88,32 @@ impl<T> Tool<T> {
     {
         let config_map = config.into();
         let mut map = HashMap::with_capacity(config_map.len());
-        
+
         for (k, v) in config_map {
             map.insert(k.to_string(), Value::String(v.to_string()));
         }
-        
+
         Self {
             _phantom: PhantomData,
             config: map,
             cylo_instance: None,
         }
     }
-    
+
     /// Set Cylo execution environment - EXACT syntax: .cylo(Cylo::Apple("python:alpine3.20").instance("env_name"))
-    /// 
+    ///
     /// Allows specifying a specific execution environment for the tool's code execution.
-    /// 
+    ///
     /// Examples:
     /// ```rust
     /// // Apple containerization
     /// Tool::<CustomTool>::new({"param" => "value"})
     ///     .cylo(Cylo::Apple("python:alpine3.20").instance("python_env"))
-    /// 
+    ///
     /// // LandLock sandboxing
     /// Tool::<CustomTool>::new({"param" => "value"})
     ///     .cylo(Cylo::LandLock("/path/to/jail").instance("secure_env"))
-    /// 
+    ///
     /// // FireCracker microVM
     /// Tool::<CustomTool>::new({"param" => "value"})
     ///     .cylo(Cylo::FireCracker("rust:alpine3.20").instance("vm_env"))
@@ -122,19 +123,19 @@ impl<T> Tool<T> {
         self.cylo_instance = Some(instance);
         self
     }
-    
+
     /// Set Cylo execution environment (no-op when cylo feature is disabled)
     #[cfg(not(feature = "cylo"))]
     pub fn cylo(self, _instance: ()) -> Self {
         self
     }
-    
+
     /// Get the Cylo execution environment instance if set
     #[cfg(feature = "cylo")]
     pub fn get_cylo_instance(&self) -> Option<&CyloInstance> {
         self.cylo_instance.as_ref()
     }
-    
+
     /// Get the Cylo execution environment instance (returns None when cylo feature is disabled)
     #[cfg(not(feature = "cylo"))]
     pub fn get_cylo_instance(&self) -> Option<&()> {
@@ -182,18 +183,18 @@ impl NamedTool {
         self.description = Some(desc.into());
         self
     }
-    
+
     /// Set Cylo execution environment - EXACT syntax: .cylo(Cylo::Apple("python:alpine3.20").instance("env_name"))
-    /// 
+    ///
     /// Allows specifying a specific execution environment for the named tool's execution.
-    /// 
+    ///
     /// Examples:
     /// ```rust
     /// // Apple containerization with named tool
     /// Tool::named("cargo")
     ///     .bin("~/.cargo/bin")
     ///     .cylo(Cylo::Apple("rust:alpine3.20").instance("rust_env"))
-    /// 
+    ///
     /// // LandLock sandboxing with named tool
     /// Tool::named("python")
     ///     .bin("/usr/bin/python3")
@@ -204,19 +205,19 @@ impl NamedTool {
         self.cylo_instance = Some(instance);
         self
     }
-    
+
     /// Set Cylo execution environment (no-op when cylo feature is disabled)
     #[cfg(not(feature = "cylo"))]
     pub fn cylo(self, _instance: ()) -> Self {
         self
     }
-    
+
     /// Get the Cylo execution environment instance if set
     #[cfg(feature = "cylo")]
     pub fn get_cylo_instance(&self) -> Option<&CyloInstance> {
         self.cylo_instance.as_ref()
     }
-    
+
     /// Get the Cylo execution environment instance (returns None when cylo feature is disabled)
     #[cfg(not(feature = "cylo"))]
     pub fn get_cylo_instance(&self) -> Option<&()> {
@@ -245,10 +246,10 @@ impl ExecToText for &str {
 pub trait ToolEmbeddingDyn: Send + Sync {
     /// Get tool name
     fn name(&self) -> String;
-    
+
     /// Get embedding documentation strings
     fn embedding_docs(&self) -> Vec<String>;
-    
+
     /// Get tool context as JSON value
     fn context(&self) -> Result<Value, Box<dyn std::error::Error + Send + Sync>>;
 }

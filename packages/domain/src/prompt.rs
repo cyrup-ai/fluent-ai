@@ -1,5 +1,6 @@
-use crate::MessageRole;
 use serde::{Deserialize, Serialize};
+
+use crate::MessageRole;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Prompt {

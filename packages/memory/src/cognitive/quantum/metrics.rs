@@ -1,8 +1,9 @@
 //! Quantum system metrics and performance tracking
 
-use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
+
+use serde::Serialize;
 
 /// Comprehensive metrics collection for quantum operations
 #[derive(Debug, Default, Serialize)]

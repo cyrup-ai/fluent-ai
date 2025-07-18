@@ -1,31 +1,31 @@
 //! High-performance terminal color writers with modular architecture
-//! 
+//!
 //! This module provides blazing-fast, zero-allocation writers for colored terminal output
 //! with excellent separation of concerns and production-ready performance characteristics.
-//! 
+//!
 //! ## Architecture
-//! 
+//!
 //! The writers module is organized into specialized submodules:
-//! 
+//!
 //! - **ansi_writer**: ANSI escape sequence handling with zero allocation
 //! - **buffer_writer**: Buffered writing and stream management
 //! - **color_writer**: Color specification and WriteColor implementations  
 //! - **formatting_writer**: Text formatting and cross-platform stream management
-//! 
+//!
 //! ## Usage
-//! 
+//!
 //! ```rust
 //! use termcolor::{StandardStream, ColorChoice, ColorSpec, Color, WriteColor};
 //! use std::io::Write;
-//! 
+//!
 //! let mut stdout = StandardStream::stdout(ColorChoice::Always);
 //! stdout.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
 //! writeln!(&mut stdout, "This text is red!")?;
 //! stdout.reset()?;
 //! ```
-//! 
+//!
 //! ## Performance Characteristics
-//! 
+//!
 //! - **Zero allocation**: Optimized patterns minimize heap allocation
 //! - **Lock-free operation**: No synchronization primitives during normal operation
 //! - **Cross-platform**: Handles Windows console and Unix terminal differences
@@ -36,7 +36,7 @@ pub use crate::ansi_writer::Ansi;
 pub use crate::buffer_writer::{Buffer, BufferWriter};
 pub use crate::color_writer::NoColor;
 pub use crate::formatting_writer::{
-    StandardStream, StandardStreamLock, BufferedStandardStream
+    BufferedStandardStream, StandardStream, StandardStreamLock,
 };
 
 // Additional utility types for compatibility
@@ -44,12 +44,12 @@ use crate::{ColorSpec, HyperlinkSpec, WriteColor};
 use std::io;
 
 /// WriteColor implementation for Vec<u8> (in-memory buffer)
-/// 
+///
 /// This provides a no-op WriteColor implementation for byte vectors,
 /// which is useful for testing and in-memory operations.
 impl WriteColor for Vec<u8> {
     /// Vec<u8> does not support color output
-    /// 
+    ///
     /// # Returns
     /// * Always returns false
     #[inline(always)]
@@ -58,7 +58,7 @@ impl WriteColor for Vec<u8> {
     }
 
     /// Vec<u8> does not support hyperlinks
-    /// 
+    ///
     /// # Returns
     /// * Always returns false
     #[inline(always)]
@@ -67,10 +67,10 @@ impl WriteColor for Vec<u8> {
     }
 
     /// No-op color setting for Vec<u8>
-    /// 
+    ///
     /// # Arguments
     /// * `_spec` - Unused color specification
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -79,10 +79,10 @@ impl WriteColor for Vec<u8> {
     }
 
     /// No-op hyperlink setting for Vec<u8>
-    /// 
+    ///
     /// # Arguments
     /// * `_link` - Unused hyperlink specification
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -91,7 +91,7 @@ impl WriteColor for Vec<u8> {
     }
 
     /// No-op reset for Vec<u8>
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -100,7 +100,7 @@ impl WriteColor for Vec<u8> {
     }
 
     /// Vec<u8> is not synchronous output
-    /// 
+    ///
     /// # Returns
     /// * Always returns false
     #[inline(always)]
@@ -114,9 +114,9 @@ impl WriteColor for Vec<u8> {
 /// This fixes compatibility where libraries expect WriteColor on string-like writers.
 /// The StringWriter collects written data into an internal String buffer without any
 /// color formatting (colors are ignored for maximum performance).
-/// 
+///
 /// ## Performance Features
-/// 
+///
 /// - **Zero allocation**: Efficient string building with minimal allocation
 /// - **UTF-8 validation**: Ensures all written data is valid UTF-8
 /// - **No-op color operations**: Maximum performance by ignoring color directives
@@ -128,7 +128,7 @@ pub struct StringWriter {
 
 impl StringWriter {
     /// Creates a new empty StringWriter
-    /// 
+    ///
     /// # Returns
     /// * Empty StringWriter ready for writing
     #[inline(always)]
@@ -137,10 +137,10 @@ impl StringWriter {
     }
 
     /// Creates a new StringWriter with the specified capacity
-    /// 
+    ///
     /// # Arguments
     /// * `capacity` - Initial capacity for the internal string buffer
-    /// 
+    ///
     /// # Returns
     /// * StringWriter with pre-allocated capacity
     #[inline(always)]
@@ -149,7 +149,7 @@ impl StringWriter {
     }
 
     /// Consumes the StringWriter and returns the internal String
-    /// 
+    ///
     /// # Returns
     /// * Internal string containing all written data
     #[inline(always)]
@@ -158,7 +158,7 @@ impl StringWriter {
     }
 
     /// Returns a string slice of the internal buffer
-    /// 
+    ///
     /// # Returns
     /// * String slice view of the written data
     #[inline(always)]
@@ -169,10 +169,10 @@ impl StringWriter {
 
 impl io::Write for StringWriter {
     /// Write UTF-8 bytes to the internal string buffer
-    /// 
+    ///
     /// # Arguments
     /// * `buf` - Buffer of UTF-8 bytes to write
-    /// 
+    ///
     /// # Returns
     /// * Number of bytes written or UTF-8 validation error
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -183,13 +183,13 @@ impl io::Write for StringWriter {
             }
             Err(_) => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Invalid UTF-8 sequence in StringWriter"
+                "Invalid UTF-8 sequence in StringWriter",
             )),
         }
     }
 
     /// Flush the StringWriter (no-op for string buffers)
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -200,7 +200,7 @@ impl io::Write for StringWriter {
 
 impl WriteColor for StringWriter {
     /// StringWriter does not support color output
-    /// 
+    ///
     /// # Returns
     /// * Always returns false
     #[inline(always)]
@@ -209,7 +209,7 @@ impl WriteColor for StringWriter {
     }
 
     /// StringWriter does not support hyperlinks
-    /// 
+    ///
     /// # Returns
     /// * Always returns false
     #[inline(always)]
@@ -218,10 +218,10 @@ impl WriteColor for StringWriter {
     }
 
     /// No-op color setting for maximum performance
-    /// 
+    ///
     /// # Arguments
     /// * `_spec` - Unused color specification
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -230,10 +230,10 @@ impl WriteColor for StringWriter {
     }
 
     /// No-op hyperlink setting for maximum performance
-    /// 
+    ///
     /// # Arguments
     /// * `_link` - Unused hyperlink specification
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -242,7 +242,7 @@ impl WriteColor for StringWriter {
     }
 
     /// No-op reset for maximum performance
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -251,7 +251,7 @@ impl WriteColor for StringWriter {
     }
 
     /// StringWriter is not synchronous
-    /// 
+    ///
     /// # Returns
     /// * Always returns false
     #[inline(always)]
@@ -265,9 +265,9 @@ impl WriteColor for StringWriter {
 /// This type provides backward compatibility with libraries that expect
 /// string-like writers to implement `WriteColor`. It's a zero-cost wrapper around
 /// `String` that adds the necessary trait implementations.
-/// 
+///
 /// ## Performance Features
-/// 
+///
 /// - **Zero-cost wrapper**: No runtime overhead over String
 /// - **Transparent representation**: Direct memory layout compatibility
 /// - **Full String compatibility**: All standard String operations available
@@ -277,7 +277,7 @@ pub struct TermString(pub String);
 
 impl TermString {
     /// Creates a new empty `TermString`
-    /// 
+    ///
     /// # Returns
     /// * Empty TermString ready for writing
     #[inline(always)]
@@ -286,10 +286,10 @@ impl TermString {
     }
 
     /// Creates a new `TermString` with the specified capacity
-    /// 
+    ///
     /// # Arguments
     /// * `capacity` - Initial capacity for the internal string
-    /// 
+    ///
     /// # Returns
     /// * TermString with pre-allocated capacity
     #[inline(always)]
@@ -298,7 +298,7 @@ impl TermString {
     }
 
     /// Consumes the `TermString` and returns the inner `String`
-    /// 
+    ///
     /// # Returns
     /// * Inner String containing all data
     #[inline(always)]
@@ -307,7 +307,7 @@ impl TermString {
     }
 
     /// Returns a string slice of the `TermString` contents
-    /// 
+    ///
     /// # Returns
     /// * String slice view of the contents
     #[inline(always)]
@@ -316,7 +316,7 @@ impl TermString {
     }
 
     /// Appends a string slice to the end of this `TermString`
-    /// 
+    ///
     /// # Arguments
     /// * `s` - String slice to append
     #[inline(always)]
@@ -327,10 +327,10 @@ impl TermString {
 
 impl From<String> for TermString {
     /// Convert a String to TermString with zero cost
-    /// 
+    ///
     /// # Arguments
     /// * `s` - String to convert
-    /// 
+    ///
     /// # Returns
     /// * TermString wrapping the input string
     #[inline(always)]
@@ -341,10 +341,10 @@ impl From<String> for TermString {
 
 impl From<TermString> for String {
     /// Convert a TermString to String with zero cost
-    /// 
+    ///
     /// # Arguments
     /// * `ts` - TermString to convert
-    /// 
+    ///
     /// # Returns
     /// * Inner String
     #[inline(always)]
@@ -355,7 +355,7 @@ impl From<TermString> for String {
 
 impl AsRef<str> for TermString {
     /// Get string slice reference
-    /// 
+    ///
     /// # Returns
     /// * String slice view
     #[inline(always)]
@@ -366,10 +366,10 @@ impl AsRef<str> for TermString {
 
 impl std::fmt::Display for TermString {
     /// Format the TermString for display
-    /// 
+    ///
     /// # Arguments
     /// * `f` - Formatter
-    /// 
+    ///
     /// # Returns
     /// * Format result
     #[inline(always)]
@@ -380,10 +380,10 @@ impl std::fmt::Display for TermString {
 
 impl io::Write for TermString {
     /// Write UTF-8 bytes to the TermString
-    /// 
+    ///
     /// # Arguments
     /// * `buf` - Buffer of UTF-8 bytes to write
-    /// 
+    ///
     /// # Returns
     /// * Number of bytes written or UTF-8 validation error
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -394,13 +394,13 @@ impl io::Write for TermString {
             }
             Err(_) => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Invalid UTF-8 sequence in TermString"
+                "Invalid UTF-8 sequence in TermString",
             )),
         }
     }
 
     /// Flush the TermString (no-op for string buffers)
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -411,7 +411,7 @@ impl io::Write for TermString {
 
 impl WriteColor for TermString {
     /// TermString does not support color output
-    /// 
+    ///
     /// # Returns
     /// * Always returns false
     #[inline(always)]
@@ -420,7 +420,7 @@ impl WriteColor for TermString {
     }
 
     /// TermString does not support hyperlinks
-    /// 
+    ///
     /// # Returns
     /// * Always returns false
     #[inline(always)]
@@ -429,10 +429,10 @@ impl WriteColor for TermString {
     }
 
     /// No-op color setting for maximum performance
-    /// 
+    ///
     /// # Arguments
     /// * `_spec` - Unused color specification
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -441,10 +441,10 @@ impl WriteColor for TermString {
     }
 
     /// No-op hyperlink setting for maximum performance
-    /// 
+    ///
     /// # Arguments
     /// * `_link` - Unused hyperlink specification
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -453,7 +453,7 @@ impl WriteColor for TermString {
     }
 
     /// No-op reset for maximum performance
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -462,7 +462,7 @@ impl WriteColor for TermString {
     }
 
     /// TermString is not synchronous
-    /// 
+    ///
     /// # Returns
     /// * Always returns false
     #[inline(always)]
@@ -474,63 +474,63 @@ impl WriteColor for TermString {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ColorChoice, ColorSpec, Color};
-    
+    use crate::{Color, ColorChoice, ColorSpec};
+
     #[test]
     fn test_modular_structure_integration() {
         // Test that all components work together
         let mut stdout = StandardStream::stdout(ColorChoice::Never);
         let mut buffer = BufferWriter::stdout(ColorChoice::Always).buffer();
-        
+
         // Should be able to use all writers
         assert!(!stdout.supports_color()); // Never choice
         assert!(buffer.supports_color()); // Always choice
     }
-    
+
     #[test]
     fn test_string_writer() {
         let mut writer = StringWriter::new();
-        
+
         assert!(!writer.supports_color());
         assert!(!writer.supports_hyperlinks());
-        
+
         writer.write_all(b"hello world").unwrap();
         writer.flush().unwrap();
-        
+
         assert_eq!(writer.as_str(), "hello world");
         assert_eq!(writer.into_string(), "hello world");
     }
-    
+
     #[test]
     fn test_term_string() {
         let mut term_string = TermString::new();
-        
+
         assert!(!term_string.supports_color());
         assert!(!term_string.supports_hyperlinks());
-        
+
         term_string.write_all(b"test").unwrap();
         term_string.push_str(" string");
-        
+
         assert_eq!(term_string.as_str(), "test string");
         assert_eq!(String::from(term_string), "test string");
     }
-    
+
     #[test]
     fn test_vec_u8_write_color() {
         let mut vec = Vec::new();
-        
+
         assert!(!vec.supports_color());
         assert!(!vec.supports_hyperlinks());
-        
+
         // All operations should be no-ops
         vec.set_color(&ColorSpec::new()).unwrap();
         vec.set_hyperlink(&crate::HyperlinkSpec::new()).unwrap();
         vec.reset().unwrap();
-        
+
         vec.write_all(b"data").unwrap();
         assert_eq!(vec, b"data");
     }
-    
+
     #[test]
     fn test_backward_compatibility() {
         // Test that all original APIs are still available
@@ -540,21 +540,21 @@ mod tests {
         let _buffer_writer = BufferWriter::stdout(ColorChoice::Auto);
         let _buffer = Buffer::ansi();
         let _no_color_buffer = Buffer::no_color();
-        
+
         // Test writer types
         let _ansi_writer = Ansi::new(std::io::sink());
         let _no_color_writer = NoColor::new(std::io::sink());
     }
-    
+
     #[test]
     fn test_utf8_validation() {
         let mut string_writer = StringWriter::new();
         let mut term_string = TermString::new();
-        
+
         // Valid UTF-8 should work
         assert!(string_writer.write(b"hello").is_ok());
         assert!(term_string.write(b"world").is_ok());
-        
+
         // Invalid UTF-8 should fail
         assert!(string_writer.write(b"\xFF\xFE").is_err());
         assert!(term_string.write(b"\xFF\xFE").is_err());

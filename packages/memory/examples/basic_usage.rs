@@ -7,12 +7,12 @@
 //! - Creating relationships between memories
 //! - Searching memories by content and vector similarity
 
-use futures::StreamExt;
 use fluent_ai_memory::memory::{
     memory_manager::{MemoryManager, SurrealDBMemoryManager},
     memory_node::{MemoryNode, MemoryType},
     memory_relationship::MemoryRelationship,
 };
+use futures::StreamExt;
 use surrealdb::{
     Surreal,
     engine::{

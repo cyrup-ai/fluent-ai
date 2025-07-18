@@ -1,8 +1,9 @@
 //! Quantum hardware backend configurations
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
+
+use serde::{Deserialize, Serialize};
 
 /// Configuration for quantum router
 #[derive(Debug, Clone)]

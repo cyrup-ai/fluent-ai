@@ -1,23 +1,24 @@
 // src/cognitive/evolution.rs
 //! Self-optimizing component using MCTS with committee evaluation
 
+use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
+
+use arc_swap::ArcSwap;
+use crossbeam_queue::ArrayQueue;
+use tokio::sync::{mpsc, oneshot};
+use tracing::{error, info};
+
 use crate::cognitive::committee::{CommitteeEvent, EvaluationCommittee};
 use crate::cognitive::mcts::{CodeState, MCTS};
 use crate::cognitive::performance::PerformanceAnalyzer;
-use crate::cognitive::types::{
-    CognitiveError, OptimizationOutcome, OptimizationSpec, PendingOptimizationResult,
-    MutationEvent, MutationType,
-};
-
+use crate::cognitive::state::CognitiveStateManager;
 // Re-export types for external use
 pub use crate::cognitive::types::EvolutionMetadata;
-use crate::cognitive::state::CognitiveStateManager;
-use std::sync::Arc;
-use tokio::sync::{mpsc, oneshot};
-use tracing::{error, info};
-use std::collections::{HashMap, VecDeque};
-use arc_swap::ArcSwap;
-use crossbeam_queue::ArrayQueue;
+use crate::cognitive::types::{
+    CognitiveError, MutationEvent, MutationType, OptimizationOutcome, OptimizationSpec,
+    PendingOptimizationResult,
+};
 
 pub trait CodeEvolution {
     fn evolve_routing_logic(&self) -> PendingOptimizationResult;
@@ -41,6 +42,7 @@ impl CognitiveCodeEvolution {
     ) -> Result<Self, CognitiveError> {
         let initial_state = CodeState {
             code: initial_code,
+            code_content: String::new(),
             latency: initial_latency,
             memory: initial_memory,
             relevance: initial_relevance,
@@ -71,6 +73,7 @@ impl CodeEvolution for CognitiveCodeEvolution {
                     match event {
                         CommitteeEvent::ConsensusReached {
                             action,
+                            decision,
                             factors,
                             rounds_taken,
                         } => {
@@ -161,8 +164,9 @@ impl CodeEvolution for CognitiveCodeEvolution {
                             format!("Memory usage improved by {:.2}%", memory_improvement),
                             format!("Relevance improved by {:.2}%", relevance_improvement),
                         ],
-                        performance_gain: (latency_improvement + memory_improvement) / 2.0,
-                        quality_score: relevance_improvement / 10.0,
+                        performance_gain: ((latency_improvement + memory_improvement) / 2.0) as f32,
+                        applied: true,
+                        quality_score: (relevance_improvement / 10.0) as f32,
                         metadata: HashMap::new(),
                     };
 
@@ -188,6 +192,7 @@ impl CodeEvolution for CognitiveCodeEvolution {
                             "Consider adjusting improvement thresholds".to_string(),
                             "Try different optimization strategies".to_string(),
                         ],
+                        applied: false,
                     }));
                 }
             } else {
@@ -199,6 +204,7 @@ impl CodeEvolution for CognitiveCodeEvolution {
                         "Check evaluation committee configuration".to_string(),
                         "Verify agent evaluation is working correctly".to_string(),
                     ],
+                    applied: false,
                 }));
             }
         });
@@ -285,13 +291,13 @@ impl EvolutionEngine {
     /// Record fitness metrics for evolution tracking
     pub fn record_fitness(&mut self, metrics: PerformanceMetrics) {
         let fitness = self.calculate_fitness(&metrics);
-        
+
         // Update fitness history with bounded capacity
         if self.fitness_history.len() >= self.capacity {
             self.fitness_history.pop_front();
         }
         self.fitness_history.push_back(fitness);
-        
+
         // Update recent metrics atomically
         self.recent_metrics.store(Arc::new(metrics));
     }
@@ -307,7 +313,7 @@ impl EvolutionEngine {
 
         let mutations = self.generate_mutations();
         let fitness_score = self.calculate_current_fitness();
-        
+
         // Apply mutations if we have a state manager
         if let Some(state_manager) = &self.state_manager {
             for mutation in &mutations {
@@ -352,14 +358,15 @@ impl EvolutionEngine {
         }
 
         // Check minimum generations between evolutions
-        if self.generation - self.last_evolution_generation < self.min_generations_between_evolution {
+        if self.generation - self.last_evolution_generation < self.min_generations_between_evolution
+        {
             return false;
         }
 
         // Check if fitness is stagnating or declining
         let recent_fitness: Vec<f64> = self.fitness_history.iter().rev().take(5).cloned().collect();
         let avg_recent = recent_fitness.iter().sum::<f64>() / recent_fitness.len() as f64;
-        
+
         if let Some(older_fitness) = self.fitness_history.iter().rev().nth(5) {
             let improvement_rate = (avg_recent - older_fitness) / older_fitness;
             improvement_rate.abs() < self.evolution_threshold
@@ -374,7 +381,7 @@ impl EvolutionEngine {
 
         // Generate different types of mutations based on current performance
         let current_metrics = self.recent_metrics.load();
-        
+
         if current_metrics.latency > 0.1 {
             mutations.push(MutationEvent {
                 timestamp: chrono::Utc::now(),
@@ -414,7 +421,11 @@ impl EvolutionEngine {
     }
 
     /// Apply mutation to the system
-    async fn apply_mutation(&self, state_manager: &CognitiveStateManager, mutation: &MutationEvent) -> Result<(), CognitiveError> {
+    async fn apply_mutation(
+        &self,
+        state_manager: &CognitiveStateManager,
+        mutation: &MutationEvent,
+    ) -> Result<(), CognitiveError> {
         match mutation.mutation_type {
             MutationType::AttentionWeightAdjustment => {
                 // Adjust attention weights based on recent performance
@@ -444,7 +455,7 @@ impl EvolutionEngine {
 
     /// Calculate predicted improvement from mutations
     fn calculate_predicted_improvement(&self, mutations: &[MutationEvent]) -> f64 {
-        mutations.iter().map(|m| m.impact_score).sum::<f64>() / mutations.len() as f64
+        mutations.iter().map(|m| m.impact_score as f64).sum::<f64>() / mutations.len() as f64
     }
 
     /// Get current generation

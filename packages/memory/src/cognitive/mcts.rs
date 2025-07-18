@@ -1,21 +1,24 @@
 // src/cognitive/mcts.rs
 //! MCTS for exploring code modifications with committee-based evaluation
 
-use crate::cognitive::committee::{CommitteeEvent, EvaluationCommittee};
-use crate::cognitive::performance::PerformanceAnalyzer;
-use crate::cognitive::types::{CognitiveError, OptimizationSpec};
-use rand::Rng;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use rand::Rng;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tracing::{debug, error, info};
+
+use crate::cognitive::committee::{CommitteeEvent, EvaluationCommittee};
+use crate::cognitive::performance::PerformanceAnalyzer;
+use crate::cognitive::types::{CognitiveError, OptimizationSpec};
 
 /// Codebase state with metrics
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CodeState {
     pub code: String,
+    pub code_content: String,
     pub latency: f64,
     pub memory: f64,
     pub relevance: f64,
@@ -171,11 +174,10 @@ impl MCTS {
         };
 
         self.tree.insert(child_id.clone(), child_node);
-        self.tree
+        let parent_node = self.tree
             .get_mut(node_id)
-            .unwrap()
-            .children
-            .insert(action, child_id.clone());
+            .ok_or_else(|| CognitiveError::TreeError(format!("Parent node {} not found in tree", node_id)))?;
+        parent_node.children.insert(action, child_id.clone());
 
         Ok(Some(child_id))
     }

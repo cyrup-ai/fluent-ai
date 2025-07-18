@@ -1,15 +1,16 @@
 //! Production quantum router implementation
 
-use crate::cognitive::quantum::{
-    BasisType, Complex64, EntanglementGraph, EntanglementLink, EntanglementType, MeasurementBasis,
-    PhaseEvolution, QuantumConfig, QuantumErrorCorrection, QuantumMetrics, SuperpositionState,
-    TimeDependentTerm, types::*,
-};
-use crate::cognitive::state::CognitiveStateManager;
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
 use tokio::sync::RwLock;
+
+use crate::cognitive::quantum::{
+    BasisType, Complex64, EntanglementGraph, QuantumConfig, QuantumErrorCorrection, QuantumMetrics, SuperpositionState,
+    types::*,
+};
+use crate::cognitive::state::CognitiveStateManager;
 
 /// Production quantum router with full superposition state management
 pub struct QuantumRouter {

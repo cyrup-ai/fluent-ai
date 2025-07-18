@@ -39,8 +39,7 @@
 
 pub mod execution_env;
 pub use execution_env::{
-    Cylo, CyloInstance, CyloError, CyloResult,
-    validate_instance_name, validate_environment_spec
+    validate_environment_spec, validate_instance_name, Cylo, CyloError, CyloInstance, CyloResult,
 };
 
 // ============================================================================
@@ -49,25 +48,28 @@ pub use execution_env::{
 
 pub mod backends;
 pub use backends::{
-    // Core traits
-    ExecutionBackend, BackendConfig, BackendError, BackendResult,
-    
-    // Request/Response types
-    ExecutionRequest, ExecutionResult, ExecutionLimits, HealthStatus,
-    ResourceUsage,
-    
-    // Backend implementations
-    AppleBackend, LandLockBackend, FireCrackerBackend,
-    
     // Factory function
     create_backend,
-};
+    // Backend implementations
+    AppleBackend,
+    BackendConfig,
+    BackendError,
+    BackendResult,
 
-#[cfg(target_os = "linux")]
-pub use backends::{
-    landlock::LandLockBackend,
-    firecracker::FireCrackerBackend,
+    // Core traits
+    ExecutionBackend,
+    ExecutionLimits,
+    // Request/Response types
+    ExecutionRequest,
+    ExecutionResult,
+    FireCrackerBackend,
+
+    HealthStatus,
+    LandLockBackend,
+    ResourceUsage,
 };
+#[cfg(target_os = "linux")]
+pub use backends::{firecracker::FireCrackerBackend, landlock::LandLockBackend};
 
 // ============================================================================
 // Platform detection and capability assessment
@@ -75,22 +77,35 @@ pub use backends::{
 
 pub mod platform;
 pub use platform::{
-    // Core platform information
-    PlatformInfo, OperatingSystem, Architecture,
-    
-    // Capability detection
-    PlatformCapabilities, VirtualizationSupport, ContainerSupport,
-    SecurityFeatures, NetworkCapabilities, FilesystemFeatures,
-    
-    // Performance characteristics
-    PerformanceHints, TmpDirPerformance, IOCharacteristics,
-    
+    // Utility functions
+    detect_platform,
+    get_available_backends,
+    get_recommended_backend,
+    has_kvm,
+    has_landlock,
+    is_apple_silicon,
+    is_linux,
+    Architecture,
+
     // Backend availability
     BackendAvailability,
-    
-    // Utility functions
-    detect_platform, is_apple_silicon, is_linux, has_landlock, has_kvm,
-    get_recommended_backend, get_available_backends,
+
+    ContainerSupport,
+    FilesystemFeatures,
+
+    IOCharacteristics,
+
+    NetworkCapabilities,
+    OperatingSystem,
+    // Performance characteristics
+    PerformanceHints,
+    // Capability detection
+    PlatformCapabilities,
+    // Core platform information
+    PlatformInfo,
+    SecurityFeatures,
+    TmpDirPerformance,
+    VirtualizationSupport,
 };
 
 // ============================================================================
@@ -99,11 +114,11 @@ pub use platform::{
 
 pub mod instance_manager;
 pub use instance_manager::{
+    // Global access functions
+    global_instance_manager,
+    init_global_instance_manager,
     // Core manager types
     InstanceManager,
-    
-    // Global access functions
-    global_instance_manager, init_global_instance_manager,
 };
 
 // ============================================================================
@@ -112,23 +127,28 @@ pub use instance_manager::{
 
 /// Common imports for Cylo usage
 pub mod prelude {
-    pub use crate::{
-        // Core types
-        Cylo, CyloInstance, CyloError, CyloResult,
-        
-        // Execution types
-        ExecutionRequest, ExecutionResult, ExecutionBackend,
-        BackendConfig, HealthStatus,
-        
-        // Platform detection
-        detect_platform, get_recommended_backend,
-        
-        // Instance management
-        global_instance_manager,
-    };
-    
     // AsyncTask re-export for convenience
     pub use crate::async_task::{AsyncTask, AsyncTaskBuilder};
+    pub use crate::{
+        // Platform detection
+        detect_platform,
+        get_recommended_backend,
+
+        // Instance management
+        global_instance_manager,
+        BackendConfig,
+        // Core types
+        Cylo,
+        CyloError,
+        CyloInstance,
+        CyloResult,
+
+        ExecutionBackend,
+        // Execution types
+        ExecutionRequest,
+        ExecutionResult,
+        HealthStatus,
+    };
 }
 
 // ============================================================================
@@ -142,12 +162,12 @@ pub mod prelude {
 pub mod async_task {
     /// AsyncTask is a type alias for tokio::task::JoinHandle
     pub type AsyncTask<T> = tokio::task::JoinHandle<T>;
-    
+
     /// Simple AsyncTaskBuilder for fluent construction
     pub struct AsyncTaskBuilder<F> {
         future: F,
     }
-    
+
     impl<F, T> AsyncTaskBuilder<F>
     where
         F: std::future::Future<Output = T> + Send + 'static,
@@ -157,13 +177,13 @@ pub mod async_task {
         pub fn new(future: F) -> Self {
             Self { future }
         }
-        
+
         /// Spawn the task and return the AsyncTask handle
         pub fn spawn(self) -> AsyncTask<T> {
             tokio::spawn(self.future)
         }
     }
-    
+
     /// Convenience function to spawn an async task
     pub fn spawn_async<F, T>(future: F) -> AsyncTask<T>
     where
@@ -177,14 +197,12 @@ pub mod async_task {
 // Re-export AsyncTask types for backend implementations
 #[doc(hidden)]
 pub use async_task::{AsyncTask, AsyncTaskBuilder};
-
-// UUID re-export for instance ID generation
-#[doc(hidden)]
-pub use uuid;
-
 // Serde re-exports for serialization support
 #[doc(hidden)]
 pub use serde::{Deserialize, Serialize};
+// UUID re-export for instance ID generation
+#[doc(hidden)]
+pub use uuid;
 
 // ============================================================================
 // Version and metadata
@@ -257,7 +275,7 @@ impl ConstCylo {
             ConstCylo::FireCracker(image) => Cylo::FireCracker(image.to_string()),
         }
     }
-    
+
     /// Create named instance with zero allocation
     #[inline]
     pub fn instance(self, name: &'static str) -> CyloInstance {
@@ -273,48 +291,44 @@ impl ConstCylo {
 // ============================================================================
 
 /// Execute code directly with automatic backend selection and instance management
-/// 
+///
 /// This is a high-level convenience function that:
 /// 1. Detects the best available backend for the current platform
 /// 2. Creates a temporary execution instance
 /// 3. Executes the code with optimal settings
 /// 4. Cleans up resources automatically
-/// 
+///
 /// For production use, prefer explicit instance management for better performance.
 #[inline]
-pub fn execute_code_auto(
-    code: &str, 
-    language: &str
-) -> AsyncTask<CyloResult<ExecutionResult>> {
-    AsyncTaskBuilder::new()
-        .spawn(move || async move {
-            let platform_info = detect_platform();
-            
-            let backend_name = get_recommended_backend()
-                .ok_or_else(|| CyloError::no_backend_available())?;
-            
-            let cylo_env = match backend_name {
-                "Apple" => Cylo::Apple("python:alpine3.20".to_string()),
-                "LandLock" => Cylo::LandLock("/tmp/cylo_auto".to_string()),
-                "FireCracker" => Cylo::FireCracker("python:alpine3.20".to_string()),
-                _ => return Err(CyloError::unsupported_backend(backend_name)),
-            };
-            
-            let instance_name = format!("auto_{}", uuid::Uuid::new_v4().simple());
-            let instance = cylo_env.instance(instance_name);
-            
-            let manager = global_instance_manager();
-            manager.register_instance(instance.clone()).await?;
-            
-            let backend = manager.get_instance(&instance.id()).await?;
-            let request = ExecutionRequest::new(code, language);
-            let result = backend.execute_code(request).await;
-            
-            // Clean up instance
-            let _ = manager.remove_instance(&instance.id()).await;
-            
-            Ok(result)
-        })
+pub fn execute_code_auto(code: &str, language: &str) -> AsyncTask<CyloResult<ExecutionResult>> {
+    AsyncTaskBuilder::new().spawn(move || async move {
+        let platform_info = detect_platform();
+
+        let backend_name =
+            get_recommended_backend().ok_or_else(|| CyloError::no_backend_available())?;
+
+        let cylo_env = match backend_name {
+            "Apple" => Cylo::Apple("python:alpine3.20".to_string()),
+            "LandLock" => Cylo::LandLock("/tmp/cylo_auto".to_string()),
+            "FireCracker" => Cylo::FireCracker("python:alpine3.20".to_string()),
+            _ => return Err(CyloError::unsupported_backend(backend_name)),
+        };
+
+        let instance_name = format!("auto_{}", uuid::Uuid::new_v4().simple());
+        let instance = cylo_env.instance(instance_name);
+
+        let manager = global_instance_manager();
+        manager.register_instance(instance.clone()).await?;
+
+        let backend = manager.get_instance(&instance.id()).await?;
+        let request = ExecutionRequest::new(code, language);
+        let result = backend.execute_code(request).await;
+
+        // Clean up instance
+        let _ = manager.remove_instance(&instance.id()).await;
+
+        Ok(result)
+    })
 }
 
 /// Execute Python code with automatic backend selection
@@ -353,26 +367,23 @@ pub fn execute_go(code: &str) -> AsyncTask<CyloResult<ExecutionResult>> {
 
 /// Get comprehensive platform and backend diagnostics
 pub fn get_diagnostics() -> AsyncTask<DiagnosticsReport> {
-    AsyncTaskBuilder::new()
-        .spawn(|| async move {
-            let platform_info = detect_platform();
-            let available_backends = get_available_backends();
-            let manager = global_instance_manager();
-            
-            let health_results = manager.health_check_all().await
-                .unwrap_or_default();
-            
-            let instance_list = manager.list_instances()
-                .unwrap_or_default();
-            
-            DiagnosticsReport {
-                platform: platform_info.clone(),
-                available_backends: available_backends.iter().map(|&s| s.to_string()).collect(),
-                backend_health: health_results,
-                active_instances: instance_list,
-                performance_hints: platform_info.performance.clone(),
-            }
-        })
+    AsyncTaskBuilder::new().spawn(|| async move {
+        let platform_info = detect_platform();
+        let available_backends = get_available_backends();
+        let manager = global_instance_manager();
+
+        let health_results = manager.health_check_all().await.unwrap_or_default();
+
+        let instance_list = manager.list_instances().unwrap_or_default();
+
+        DiagnosticsReport {
+            platform: platform_info.clone(),
+            available_backends: available_backends.iter().map(|&s| s.to_string()).collect(),
+            backend_health: health_results,
+            active_instances: instance_list,
+            performance_hints: platform_info.performance.clone(),
+        }
+    })
 }
 
 /// Comprehensive diagnostics report

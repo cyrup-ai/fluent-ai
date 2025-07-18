@@ -2,11 +2,12 @@
 //!
 //! Tests for cognitive state, emotional valence, and state manager functionality
 
-use fluent_ai_memory::cognitive::state::{
-    CognitiveState, CognitiveStateManager, SemanticContext, EmotionalValence,
-    AbstractionLevel, Association, AssociationType,
-};
 use std::time::Duration;
+
+use fluent_ai_memory::cognitive::state::{
+    AbstractionLevel, Association, AssociationType, CognitiveState, CognitiveStateManager,
+    EmotionalValence, SemanticContext,
+};
 use uuid::Uuid;
 
 #[test]
@@ -45,7 +46,7 @@ fn test_emotional_valence_neutral() {
 #[test]
 fn test_emotional_valence_clamping() {
     let v = EmotionalValence::new(2.0, -2.0, 1.5);
-    assert_eq!(v.arousal, 1.0);  // Clamped to 1.0
+    assert_eq!(v.arousal, 1.0); // Clamped to 1.0
     assert_eq!(v.valence, -1.0); // Clamped to -1.0
     assert_eq!(v.dominance, 1.0); // Clamped to 1.0
 }
@@ -63,11 +64,14 @@ fn test_cognitive_state_associations() {
     let target_id = Uuid::new_v4();
 
     state.add_association(target_id, 0.8, AssociationType::Semantic);
-    
+
     assert_eq!(state.associations.len(), 1);
     assert_eq!(state.associations[0].target_id, target_id);
     assert_eq!(state.associations[0].strength, 0.8);
-    matches!(state.associations[0].association_type, AssociationType::Semantic);
+    matches!(
+        state.associations[0].association_type,
+        AssociationType::Semantic
+    );
 }
 
 #[test]
@@ -104,7 +108,7 @@ fn test_cognitive_state_activation() {
     let initial_activation = state.activation_level;
 
     state.activate(0.3);
-    
+
     // Should be clamped to 1.0 since initial was already 1.0
     assert_eq!(state.activation_level, 1.0);
 
@@ -202,7 +206,7 @@ fn test_abstraction_levels() {
     // Test that all abstraction levels can be created and matched
     let levels = vec![
         AbstractionLevel::Concrete,
-        AbstractionLevel::Intermediate, 
+        AbstractionLevel::Intermediate,
         AbstractionLevel::Abstract,
         AbstractionLevel::MetaCognitive,
     ];
@@ -258,10 +262,10 @@ fn test_cognitive_state_activity_decay() {
     };
 
     let state = CognitiveState::new(context);
-    
+
     // Should be active with reasonable decay time
     assert!(state.is_active(Duration::from_secs(300)));
-    
+
     // Should be active with very short decay time initially
     assert!(state.is_active(Duration::from_millis(1)));
 }
@@ -278,10 +282,10 @@ async fn test_cleanup_inactive_states() {
     };
 
     let mut state = CognitiveState::new(context);
-    
+
     // Artificially set very low activation to simulate decay
     state.activation_level = 0.05;
-    
+
     let id = manager.add_state(state).await;
 
     // Verify state exists

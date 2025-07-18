@@ -1,7 +1,8 @@
 //! Prompt templates for memory operations
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 /// Prompt template for memory operations
 #[derive(Debug, Clone, Serialize, Deserialize)]

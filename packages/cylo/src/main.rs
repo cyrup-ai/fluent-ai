@@ -6,8 +6,6 @@ use std::time::Duration;
 
 use anyhow::Result;
 use clap::Parser;
-use tracing::{error, info, warn, Level};
-
 use cylo::{
     cli::Cli,
     error::ExecError,
@@ -16,6 +14,7 @@ use cylo::{
     state::{ExecutionFlow, PipelineEvent, State},
     watcher::watch_directory,
 };
+use tracing::{error, info, warn, Level};
 
 fn main() -> Result<(), ExecError> {
     let cli = Cli::parse();

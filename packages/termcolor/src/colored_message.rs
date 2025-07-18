@@ -2,7 +2,10 @@
 //!
 //! Provides fluent API for building complex colored messages with perfect ergonomics.
 
-use crate::theme::{SemanticColor, get_current_theme, write_colored, write_colored_bold, write_colored_italic};
+use crate::theme::{
+    SemanticColor, get_current_theme, write_colored, write_colored_bold,
+    write_colored_italic,
+};
 use crate::{BufferedStandardStream, ColorChoice, WriteColor};
 use std::io::{self, Write};
 
@@ -33,17 +36,15 @@ impl ColoredMessage {
     /// Create new empty colored message
     #[inline(always)]
     pub fn new() -> Self {
-        Self {
-            parts: Vec::new(),
-        }
+        Self { parts: Vec::new() }
     }
-    
+
     /// Create new message builder (alias for new)
     #[inline(always)]
     pub fn builder() -> Self {
         Self::new()
     }
-    
+
     /// Add text with primary color
     #[inline(always)]
     pub fn primary(mut self, text: impl Into<String>) -> Self {
@@ -54,7 +55,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add text with secondary color
     #[inline(always)]
     pub fn secondary(mut self, text: impl Into<String>) -> Self {
@@ -65,7 +66,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add text with accent color
     #[inline(always)]
     pub fn accent(mut self, text: impl Into<String>) -> Self {
@@ -76,7 +77,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add text with success color
     #[inline(always)]
     pub fn success(mut self, text: impl Into<String>) -> Self {
@@ -87,7 +88,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add text with warning color
     #[inline(always)]
     pub fn warning(mut self, text: impl Into<String>) -> Self {
@@ -98,7 +99,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add text with error color
     #[inline(always)]
     pub fn error(mut self, text: impl Into<String>) -> Self {
@@ -109,7 +110,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add text with info color
     #[inline(always)]
     pub fn info(mut self, text: impl Into<String>) -> Self {
@@ -120,7 +121,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add text with debug color
     #[inline(always)]
     pub fn debug(mut self, text: impl Into<String>) -> Self {
@@ -131,7 +132,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add text with primary text color
     #[inline(always)]
     pub fn text_primary(mut self, text: impl Into<String>) -> Self {
@@ -142,7 +143,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add text with secondary text color
     #[inline(always)]
     pub fn text_secondary(mut self, text: impl Into<String>) -> Self {
@@ -153,7 +154,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add text with muted text color
     #[inline(always)]
     pub fn text_muted(mut self, text: impl Into<String>) -> Self {
@@ -164,7 +165,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add newline
     #[inline(always)]
     pub fn newline(mut self) -> Self {
@@ -175,7 +176,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add space
     #[inline(always)]
     pub fn space(mut self) -> Self {
@@ -186,7 +187,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Add tab
     #[inline(always)]
     pub fn tab(mut self) -> Self {
@@ -197,7 +198,7 @@ impl ColoredMessage {
         });
         self
     }
-    
+
     /// Make the last added text bold
     #[inline(always)]
     pub fn bold(mut self) -> Self {
@@ -210,7 +211,7 @@ impl ColoredMessage {
         }
         self
     }
-    
+
     /// Make the last added text italic
     #[inline(always)]
     pub fn italic(mut self) -> Self {
@@ -223,18 +224,19 @@ impl ColoredMessage {
         }
         self
     }
-    
+
     /// Add custom text with semantic color and style
     #[inline(always)]
-    pub fn custom(mut self, text: impl Into<String>, semantic: SemanticColor, style: MessageStyle) -> Self {
-        self.parts.push(MessagePart {
-            text: text.into(),
-            semantic,
-            style,
-        });
+    pub fn custom(
+        mut self,
+        text: impl Into<String>,
+        semantic: SemanticColor,
+        style: MessageStyle,
+    ) -> Self {
+        self.parts.push(MessagePart { text: text.into(), semantic, style });
         self
     }
-    
+
     /// Print message to stdout
     #[inline(always)]
     pub fn print(self) -> io::Result<()> {
@@ -242,7 +244,7 @@ impl ColoredMessage {
         self.write_to(&mut stdout)?;
         stdout.flush()
     }
-    
+
     /// Print message to stderr
     #[inline(always)]
     pub fn eprint(self) -> io::Result<()> {
@@ -250,7 +252,7 @@ impl ColoredMessage {
         self.write_to(&mut stderr)?;
         stderr.flush()
     }
-    
+
     /// Print message to stdout with newline
     #[inline(always)]
     pub fn println(self) -> io::Result<()> {
@@ -259,7 +261,7 @@ impl ColoredMessage {
         writeln!(stdout)?;
         stdout.flush()
     }
-    
+
     /// Print message to stderr with newline
     #[inline(always)]
     pub fn eprintln(self) -> io::Result<()> {
@@ -268,7 +270,7 @@ impl ColoredMessage {
         writeln!(stderr)?;
         stderr.flush()
     }
-    
+
     /// Write message to any WriteColor implementation
     #[inline(always)]
     pub fn write_to<W: WriteColor>(self, writer: &mut W) -> io::Result<()> {
@@ -300,11 +302,12 @@ impl ColoredMessage {
         }
         Ok(())
     }
-    
+
     /// Convert to string (without colors)
     #[inline(always)]
     pub fn to_string(self) -> String {
-        self.parts.into_iter()
+        self.parts
+            .into_iter()
             .map(|part| part.text)
             .collect::<Vec<_>>()
             .join("")
@@ -321,22 +324,23 @@ impl Default for ColoredMessage {
 impl ColoredMessage {
     /// Create a timestamp message
     #[inline(always)]
-    pub fn timestamp(text: impl Into<String>, semantic: SemanticColor) -> Self {
+    pub fn timestamp(
+        text: impl Into<String>,
+        semantic: SemanticColor,
+    ) -> Self {
         Self::new()
             .text_muted("[")
             .custom(text, semantic, MessageStyle::Normal)
             .text_muted("]")
             .space()
     }
-    
+
     /// Create a level indicator message (INFO, WARN, ERROR, etc.)
     #[inline(always)]
     pub fn level(level: impl Into<String>, semantic: SemanticColor) -> Self {
-        Self::new()
-            .custom(level, semantic, MessageStyle::Bold)
-            .space()
+        Self::new().custom(level, semantic, MessageStyle::Bold).space()
     }
-    
+
     /// Create a structured log message with timestamp and level
     #[inline(always)]
     pub fn log(
@@ -350,7 +354,7 @@ impl ColoredMessage {
         msg.parts.extend(level_msg.parts);
         msg.text_primary(message)
     }
-    
+
     /// Create a progress message with percentage
     #[inline(always)]
     pub fn progress(
@@ -362,7 +366,7 @@ impl ColoredMessage {
         let bar_width = 20;
         let filled = (current * bar_width / total).min(bar_width);
         let bar = "█".repeat(filled) + &"░".repeat(bar_width - filled);
-        
+
         Self::new()
             .text_muted("[")
             .info(bar)
@@ -371,43 +375,31 @@ impl ColoredMessage {
             .space()
             .text_primary(message)
     }
-    
+
     /// Create a success checkmark message
     #[inline(always)]
     pub fn success_check(message: impl Into<String>) -> Self {
-        Self::new()
-            .success("✅")
-            .space()
-            .text_primary(message)
+        Self::new().success("✅").space().text_primary(message)
     }
-    
+
     /// Create a warning triangle message
     #[inline(always)]
     pub fn warning_triangle(message: impl Into<String>) -> Self {
-        Self::new()
-            .warning("⚠️ ")
-            .space()
-            .text_primary(message)
+        Self::new().warning("⚠️ ").space().text_primary(message)
     }
-    
+
     /// Create an error X message
     #[inline(always)]
     pub fn error_x(message: impl Into<String>) -> Self {
-        Self::new()
-            .error("❌")
-            .space()
-            .text_primary(message)
+        Self::new().error("❌").space().text_primary(message)
     }
-    
+
     /// Create an info i message
     #[inline(always)]
     pub fn info_i(message: impl Into<String>) -> Self {
-        Self::new()
-            .info("ℹ️ ")
-            .space()
-            .text_primary(message)
+        Self::new().info("ℹ️ ").space().text_primary(message)
     }
-    
+
     /// Create a Cyrup.ai branded header
     #[inline(always)]
     pub fn cyrup_header() -> Self {

@@ -1,6 +1,7 @@
+use std::sync::Arc;
+
 use fluent_ai::engine::builder::{EngineBuilder, engine_builder};
 use fluent_ai::engine::{NoOpEngine, get_default_engine, get_engine};
-use std::sync::Arc;
 
 #[tokio::test]
 async fn test_builder_basic_flow() {

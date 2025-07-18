@@ -23,20 +23,24 @@ pub mod quantum;
 pub mod quantum_mcts;
 pub mod quantum_orchestrator;
 
-// Re-exports for convenience  
-pub use committee::{CommitteeEvaluator, ConsensusDecision, CommitteeEvaluation, ModelType, EvaluationConfig, CommitteeEvent, EvaluationCommittee};
-pub use evolution::{CodeEvolution, CognitiveCodeEvolution, EvolutionEngine, EvolutionResult, PerformanceMetrics};
+// Re-exports for convenience
+// Re-export existing cognitive components
+pub use attention::AttentionMechanism;
+pub use committee::{
+    CommitteeEvaluation, CommitteeEvaluator, CommitteeEvent, ConsensusDecision,
+    EvaluationCommittee, EvaluationConfig, ModelType,
+};
+pub use evolution::{
+    CodeEvolution, CognitiveCodeEvolution, EvolutionEngine, EvolutionResult, PerformanceMetrics,
+};
+pub use manager::CognitiveMemoryManager;
 pub use mcts::{CodeState, MCTS};
 pub use orchestrator::InfiniteOrchestrator;
 pub use quantum_mcts::{QuantumMCTS, QuantumMCTSConfig, QuantumNodeState, QuantumTreeStatistics};
 pub use quantum_orchestrator::{QuantumOrchestrationConfig, QuantumOrchestrator, RecursiveState};
+pub use state::CognitiveState;
 pub use types::{
     CognitiveError, CognitiveMemoryNode, CognitiveSettings, EvolutionMetadata, ImpactFactors,
     OptimizationOutcome, OptimizationSpec, OptimizationType, PendingOptimizationResult,
     QuantumSignature,
 };
-
-// Re-export existing cognitive components
-pub use attention::AttentionMechanism;
-pub use manager::CognitiveMemoryManager;
-pub use state::CognitiveState;

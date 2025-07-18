@@ -2,9 +2,10 @@
 //!
 //! Provides trait-based conversation management with builder pattern
 
-use crate::{AsyncTask, spawn_async};
-use crate::ZeroOneOrMany;
 use std::fmt;
+
+use crate::ZeroOneOrMany;
+use crate::{AsyncTask, spawn_async};
 
 /// Core conversation trait for managing message history
 pub trait Conversation: Send + Sync + fmt::Debug + Clone {
@@ -58,7 +59,7 @@ impl Conversation for ConversationImpl {
                 } else {
                     ZeroOneOrMany::None
                 }
-            },
+            }
             _ => ZeroOneOrMany::many(self.messages.clone()),
         }
     }

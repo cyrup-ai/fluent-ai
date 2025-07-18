@@ -82,7 +82,7 @@ pub struct PendingMemory {
 }
 
 impl PendingMemory {
-    fn new(rx: tokio::sync::oneshot::Receiver<Result<MemoryNode>>) -> Self {
+    pub fn new(rx: tokio::sync::oneshot::Receiver<Result<MemoryNode>>) -> Self {
         Self { rx }
     }
 }

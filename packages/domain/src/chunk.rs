@@ -3,10 +3,11 @@
 //! These types represent partial data that flows through AsyncStream<T>
 //! and are designed to work with the NotResult constraint.
 
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 /// Chunk of document content for streaming file operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,34 +126,31 @@ pub struct Usage {
 pub enum CompletionChunk {
     /// Text content chunk
     Text(String),
-    
+
     /// Tool call started
-    ToolCallStart {
-        id: String,
-        name: String,
-    },
-    
+    ToolCallStart { id: String, name: String },
+
     /// Partial tool call with streaming input
     ToolCall {
         id: String,
         name: String,
         partial_input: String,
     },
-    
+
     /// Tool call completed
     ToolCallComplete {
         id: String,
         name: String,
         input: String,
     },
-    
+
     /// Completion finished with final information
     Complete {
         text: String,
         finish_reason: Option<FinishReason>,
         usage: Option<Usage>,
     },
-    
+
     /// Error occurred during streaming
     Error(String),
 }
@@ -269,9 +267,9 @@ impl CompletionChunk {
 
     /// Create a partial tool call chunk
     pub fn tool_partial(
-        id: impl Into<String>, 
+        id: impl Into<String>,
         name: impl Into<String>,
-        partial_input: impl Into<String>
+        partial_input: impl Into<String>,
     ) -> Self {
         Self::ToolCall {
             id: id.into(),
@@ -282,9 +280,9 @@ impl CompletionChunk {
 
     /// Create a completed tool call chunk
     pub fn tool_complete(
-        id: impl Into<String>, 
+        id: impl Into<String>,
         name: impl Into<String>,
-        input: impl Into<String>
+        input: impl Into<String>,
     ) -> Self {
         Self::ToolCallComplete {
             id: id.into(),
@@ -297,7 +295,7 @@ impl CompletionChunk {
     pub fn complete(
         text: impl Into<String>,
         finish_reason: Option<FinishReason>,
-        usage: Option<Usage>
+        usage: Option<Usage>,
     ) -> Self {
         Self::Complete {
             text: text.into(),

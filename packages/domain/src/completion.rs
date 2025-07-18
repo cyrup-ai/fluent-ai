@@ -3,11 +3,12 @@
 //! Contains pure data structures and traits for completion.
 //! Builder implementations are in fluent_ai package.
 
-use crate::chunk::CompletionChunk;
-use crate::prompt::Prompt;
-use crate::{ZeroOneOrMany, Models};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+use crate::chunk::CompletionChunk;
+use crate::prompt::Prompt;
+use crate::{Models, ZeroOneOrMany};
 
 /// Core trait for completion models
 pub trait CompletionModel: Send + Sync + Clone {

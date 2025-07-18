@@ -1,73 +1,115 @@
-use crate::domain::conversation::{ConversationImpl, Conversation as ConversationTrait};
-use crate::domain::message::{Message, MessageRole};
+//! Conversation builder implementations
+//!
+//! All conversation construction logic and builder patterns.
 
-/// Builder for Conversation objects
-pub struct ConversationBuilder {
-    messages: Vec<Message>,
+use fluent_ai_domain::{AsyncTask, spawn_async, ZeroOneOrMany};
+use fluent_ai_domain::conversation::Conversation;
+use std::fmt;
+
+/// Default implementation of the Conversation trait
+#[derive(Debug, Clone)]
+pub struct ConversationImpl {
+    messages: Vec<String>,
+    latest_user_message: String,
 }
 
-impl ConversationBuilder {
-    /// Create a new ConversationBuilder
-    pub fn new() -> Self {
-        Self {
-            messages: Vec::new(),
+impl Conversation for ConversationImpl {
+    fn latest_user_message(&self) -> &str {
+        &self.latest_user_message
+    }
+
+    fn add_user_message(&mut self, message: impl Into<String>) {
+        let message = message.into();
+        self.messages.push(message.clone());
+        self.latest_user_message = message;
+    }
+
+    fn add_assistant_response(&mut self, response: impl Into<String>) {
+        self.messages.push(response.into());
+    }
+
+    fn messages(&self) -> ZeroOneOrMany<String> {
+        match self.messages.len() {
+            0 => ZeroOneOrMany::None,
+            1 => {
+                if let Some(message) = self.messages.first() {
+                    ZeroOneOrMany::One(message.clone())
+                } else {
+                    ZeroOneOrMany::None
+                }
+            },
+            _ => ZeroOneOrMany::many(self.messages.clone()),
         }
     }
 
-    /// Add a message to the conversation
-    pub fn message(mut self, message: Message) -> Self {
-        self.messages.push(message);
+    fn message_count(&self) -> usize {
+        self.messages.len()
+    }
+
+    fn new(user_message: impl Into<String>) -> Self {
+        let message = user_message.into();
+        Self {
+            messages: vec![message.clone()],
+            latest_user_message: message,
+        }
+    }
+}
+
+/// Builder for creating and configuring conversations
+pub struct ConversationBuilder {
+    initial_message: Option<String>,
+    error_handler: Option<Box<dyn FnMut(String) + Send + 'static>>,
+}
+
+/// Builder with error handler - exposes terminal methods
+pub struct ConversationBuilderWithHandler {
+    initial_message: Option<String>,
+    error_handler: Box<dyn FnMut(String) + Send + 'static>,
+    result_handler: Option<Box<dyn FnOnce(ConversationImpl) -> ConversationImpl + Send + 'static>>,
+    chunk_handler: Option<Box<dyn FnMut(ConversationImpl) -> ConversationImpl + Send + 'static>>,
+}
+
+impl ConversationBuilder {
+    /// Create a new conversation builder
+    pub fn new() -> Self {
+        Self {
+            initial_message: None,
+            error_handler: None,
+        }
+    }
+
+    /// Set the initial message for the conversation
+    pub fn with_message(mut self, message: impl Into<String>) -> Self {
+        self.initial_message = Some(message.into());
         self
     }
 
-    /// Add a user message to the conversation
-    pub fn user_message(mut self, content: String) -> Self {
-        let message = Message {
-            role: MessageRole::User,
-            content: content.into(),
-            ..Default::default()
-        };
-        self.messages.push(message);
-        self
+    /// Set error handler - required before terminal methods
+    pub fn on_error<F>(self, handler: F) -> ConversationBuilderWithHandler
+    where
+        F: FnMut(String) + Send + 'static,
+    {
+        ConversationBuilderWithHandler {
+            initial_message: self.initial_message,
+            error_handler: Box::new(handler),
+            result_handler: None,
+            chunk_handler: None,
+        }
     }
+}
 
-    /// Add an assistant message to the conversation
-    pub fn assistant_message(mut self, content: String) -> Self {
-        let message = Message {
-            role: MessageRole::Assistant,
-            content: content.into(),
-            ..Default::default()
-        };
-        self.messages.push(message);
-        self
-    }
-
-    /// Add a system message to the conversation
-    pub fn system_message(mut self, content: String) -> Self {
-        let message = Message {
-            role: MessageRole::System,
-            content: content.into(),
-            ..Default::default()
-        };
-        self.messages.push(message);
-        self
-    }
-
-    /// Build the Conversation object
+impl ConversationBuilderWithHandler {
+    /// Terminal method - create conversation
     pub fn build(self) -> ConversationImpl {
-        ConversationImpl::new(self.messages)
+        let initial_message = self.initial_message.unwrap_or_else(|| "".to_string());
+        ConversationImpl::new(initial_message)
     }
-}
 
-impl Default for ConversationBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ConversationImpl {
-    /// Create a new ConversationBuilder
-    pub fn builder() -> ConversationBuilder {
-        ConversationBuilder::new()
+    /// Terminal method - create conversation with async handling
+    pub fn build_async(self) -> AsyncTask<ConversationImpl> {
+        let initial_message = self.initial_message.unwrap_or_else(|| "".to_string());
+        spawn_async(async move {
+            ConversationImpl::new(initial_message)
+        })
     }
 }

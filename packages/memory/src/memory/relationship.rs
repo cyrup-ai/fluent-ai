@@ -1,7 +1,8 @@
 //! Memory relationship management
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 /// Types of relationships between memories
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -167,28 +168,32 @@ impl RelationshipGraph {
         strength: f32,
     ) {
         // Add forward edge
-        self.edges
-            .entry(source.clone())
-            .or_default()
-            .push((target.clone(), relationship_type.clone(), strength));
+        self.edges.entry(source.clone()).or_default().push((
+            target.clone(),
+            relationship_type.clone(),
+            strength,
+        ));
 
         // Add reverse edge
-        self.reverse_edges
-            .entry(target.clone())
-            .or_default()
-            .push((source.clone(), relationship_type.clone(), strength));
+        self.reverse_edges.entry(target.clone()).or_default().push((
+            source.clone(),
+            relationship_type.clone(),
+            strength,
+        ));
 
         // If bidirectional, add the opposite direction
         if relationship_type.is_bidirectional() {
-            self.edges
-                .entry(target.clone())
-                .or_default()
-                .push((source.clone(), relationship_type.clone(), strength));
+            self.edges.entry(target.clone()).or_default().push((
+                source.clone(),
+                relationship_type.clone(),
+                strength,
+            ));
 
-            self.reverse_edges
-                .entry(source)
-                .or_default()
-                .push((target, relationship_type, strength));
+            self.reverse_edges.entry(source).or_default().push((
+                target,
+                relationship_type,
+                strength,
+            ));
         }
     }
 

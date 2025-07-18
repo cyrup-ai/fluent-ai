@@ -1,10 +1,10 @@
-use fluent_ai::prelude::*;
-use fluent_ai::domain::context::{Context, File, Files, Directory, Github};
-use fluent_ai::domain::tool::{Tool, ExecToText};
-use fluent_ai::json_map;
-use fluent_ai::domain::library::Library;
 use fluent_ai::domain::agent_role::Stdio;
+use fluent_ai::domain::context::{Context, Directory, File, Files, Github};
+use fluent_ai::domain::library::Library;
 use fluent_ai::domain::message::MessageRole;
+use fluent_ai::domain::tool::{ExecToText, Tool};
+use fluent_ai::json_map;
+use fluent_ai::prelude::*;
 use fluent_ai_provider::Models;
 use futures::StreamExt;
 // use cyrup_sugars::*;

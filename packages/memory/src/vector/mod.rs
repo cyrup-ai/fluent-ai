@@ -9,17 +9,17 @@ pub mod vector_search;
 pub mod vector_store;
 
 // Re-export main types
-pub use embedding_model::*;
-pub use in_memory_async::InMemoryVectorStore;
-pub use vector_index::*;
-pub use vector_repository::*;
-pub use vector_search::*;
-
-use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+
+pub use embedding_model::*;
+pub use in_memory_async::InMemoryVectorStore;
+use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
+pub use vector_index::*;
+pub use vector_repository::*;
+pub use vector_search::*;
 
 /// Distance metrics for vector comparison
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

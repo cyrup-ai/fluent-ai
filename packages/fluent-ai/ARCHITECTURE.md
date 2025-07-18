@@ -98,8 +98,7 @@ FluentAi::agent_role("helpful assistant")
             }
         }
     })?
-    .collect()
-    .collect()
+    .collect();
 ```
 
 ## Agent

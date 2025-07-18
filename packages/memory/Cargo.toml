@@ -50,7 +50,7 @@ num-complex = { version = "0.4.6" }
 arc-swap = { version = "1.7.1" }
 crossbeam-queue = { version = "0.3.12" }
 crossbeam-skiplist = { version = "0.1.3" }
-crossbeam-utils = { version = "0.8.20" }
+crossbeam-utils = { version = "0.8.21" }
 arrayvec = { version = "0.7.6" }
 smallvec = { version = "2.0.0-alpha.11" }
 atomic-counter = { version = "1.0.1" }

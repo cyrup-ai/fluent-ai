@@ -208,8 +208,11 @@ impl CognitiveMesh {
         
         // Use strongest pattern to guide routing
         let strongest_pattern = patterns.into_iter()
-            .max_by(|a, b| a.strength.partial_cmp(&b.strength).unwrap())
-            .unwrap();
+            .max_by(|a, b| {
+                a.strength.partial_cmp(&b.strength)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .ok_or_else(|| CognitiveError::RoutingError("No patterns available for routing".to_string()))?;
         
         // Route based on pattern characteristics
         let strategy = match strongest_pattern.pattern_type {
@@ -382,8 +385,11 @@ impl MetaConsciousness {
         
         // Find decision with highest confidence
         let best_decision = decisions.into_iter()
-            .max_by(|a, b| a.confidence.partial_cmp(&b.confidence).unwrap())
-            .unwrap();
+            .max_by(|a, b| {
+                a.confidence.partial_cmp(&b.confidence)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .ok_or_else(|| CognitiveError::MetaConsciousnessError("No decisions available to combine".to_string()))?;
         
         Ok(best_decision)
     }

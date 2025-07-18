@@ -3,6 +3,7 @@
 #![cfg(feature = "cognitive")]
 
 use std::time::Duration;
+
 use fluent_ai_memory::{
     CognitiveMemoryManager, CognitiveSettings, MemoryManager, MemoryNode, MemoryType,
 };
@@ -122,6 +123,7 @@ async fn test_cognitive_search() {
 #[tokio::test]
 async fn test_quantum_routing_performance() {
     use std::sync::Arc;
+
     use fluent_ai_memory::cognitive::quantum::{
         EnhancedQuery, QuantumConfig, QuantumRouter, QueryIntent,
     };
@@ -156,6 +158,7 @@ async fn test_quantum_routing_performance() {
 #[tokio::test]
 async fn test_memory_usage() {
     use std::sync::Arc;
+
     use fluent_ai_memory::cognitive::quantum::QuantumRouter;
     use fluent_ai_memory::cognitive::state::CognitiveStateManager;
 
@@ -197,6 +200,7 @@ async fn test_memory_usage() {
 #[tokio::test]
 async fn test_evolution_engine() {
     use std::time::Duration;
+
     use fluent_ai_memory::cognitive::evolution::{EvolutionEngine, PerformanceMetrics};
 
     let mut engine = EvolutionEngine::new(0.1);

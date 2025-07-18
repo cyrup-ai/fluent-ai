@@ -19,11 +19,8 @@ pub trait EmbeddingModel: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = Result<Vec<f32>>> + Send>>;
 
     /// Generate embeddings for multiple texts
-    fn batch_embed(
-        &self,
-        texts: &[String],
-        task: Option<String>,
-    ) -> EmbeddingFuture<Vec<Vec<f32>>>;
+    fn batch_embed(&self, texts: &[String], task: Option<String>)
+    -> EmbeddingFuture<Vec<Vec<f32>>>;
 
     /// Get the dimension of the embedding vectors
     fn dimension(&self) -> usize;

@@ -1,7 +1,8 @@
 //! Attention mechanism for cognitive memory management
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 /// Attention mechanism for relevance scoring and focus management
 #[derive(Debug, Clone)]

@@ -1,11 +1,13 @@
 // src/schema/relationship_schema.rs
 //! Relationship schema definition.
 
-use crate::utils;
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 use surrealdb::RecordId;
+
+use crate::utils;
 
 /// Type alias for backwards compatibility
 pub type RelationshipSchema = Relationship;

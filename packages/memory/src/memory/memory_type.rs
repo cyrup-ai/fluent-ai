@@ -1,16 +1,17 @@
 // src/memory/memory_type.rs
 //! Memory type definitions and traits for the memory system.
 
+use std::collections::HashMap;
+use std::fmt::{self, Debug};
+
+use base64::Engine;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
-use std::fmt::{self, Debug};
 
 use crate::graph::entity::BaseEntity;
 use crate::utils::Result;
 use crate::utils::error::Error;
-use base64::Engine;
 
 /// Convert serde_json::Value to surrealdb::sql::Value
 fn json_to_surreal_value(json: serde_json::Value) -> surrealdb::sql::Value {
@@ -88,9 +89,7 @@ impl MemoryTypeEnum {
                 })?;
                 Ok(MemoryTypeEnum::Custom(id))
             }
-            _ => Err(Error::ConversionError(format!(
-                "Unknown memory type: {s}"
-            ))),
+            _ => Err(Error::ConversionError(format!("Unknown memory type: {s}"))),
         }
     }
 }
@@ -205,11 +204,13 @@ impl MemoryMetadata {
         );
         entity.insert(
             "importance".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.importance as f64).unwrap()),
+            Value::Number(serde_json::Number::from_f64(self.importance as f64)
+                .unwrap_or_else(|| serde_json::Number::from(0))),
         );
         entity.insert(
             "relevance".to_string(),
-            Value::Number(serde_json::Number::from_f64(self.relevance as f64).unwrap()),
+            Value::Number(serde_json::Number::from_f64(self.relevance as f64)
+                .unwrap_or_else(|| serde_json::Number::from(0))),
         );
 
         if !self.custom.is_empty() {
@@ -328,9 +329,7 @@ impl MemoryContentType {
             "text" => Ok(MemoryContentType::Text),
             "json" => Ok(MemoryContentType::Json),
             "binary" => Ok(MemoryContentType::Binary),
-            _ => Err(Error::ConversionError(format!(
-                "Unknown content type: {s}"
-            ))),
+            _ => Err(Error::ConversionError(format!("Unknown content type: {s}"))),
         }
     }
 }
@@ -486,9 +485,10 @@ impl MemoryContent {
             let mut embedding = Vec::new();
             for value in arr.iter() {
                 if let Value::Number(n) = value
-                    && let Some(f) = n.as_f64() {
-                        embedding.push(f as f32);
-                    }
+                    && let Some(f) = n.as_f64()
+                {
+                    embedding.push(f as f32);
+                }
             }
             if !embedding.is_empty() {
                 Some(embedding)

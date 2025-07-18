@@ -1,7 +1,8 @@
 //! Core cognitive types and structures
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Cognitive state representing the current understanding and context
@@ -60,7 +61,9 @@ pub struct CognitiveMemoryNode {
 impl CognitiveMemoryNode {
     /// Check if this memory node has enhanced cognitive capabilities
     pub fn is_enhanced(&self) -> bool {
-        self.quantum_signature.is_some() || self.evolution_metadata.is_some() || !self.attention_weights.is_empty()
+        self.quantum_signature.is_some()
+            || self.evolution_metadata.is_some()
+            || !self.attention_weights.is_empty()
     }
 }
 
@@ -275,10 +278,10 @@ pub enum CognitiveError {
 
     #[error("Cognitive capacity exceeded: {0}")]
     CapacityExceeded(String),
-    
+
     #[error("Configuration error: {0}")]
     ConfigError(String),
-    
+
     #[error("API error: {0}")]
     ApiError(String),
 
@@ -296,6 +299,9 @@ pub enum CognitiveError {
 
     #[error("Parse error: {0}")]
     ParseError(String),
+
+    #[error("Evaluation failed: {0}")]
+    EvaluationFailed(String),
 }
 
 pub type CognitiveResult<T> = Result<T, CognitiveError>;
@@ -323,7 +329,6 @@ pub enum OptimizationType {
     Accuracy,
     Custom(String),
 }
-
 
 /// Result of optimization operations
 #[derive(Debug, Clone, Serialize, Deserialize)]

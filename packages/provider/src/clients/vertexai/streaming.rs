@@ -145,7 +145,13 @@ impl VertexAIStream {
             match result {
                 Ok(sse_event) => {
                     let event_type = ArrayString::from(sse_event.event_type.as_deref().unwrap_or("data"))
-                        .unwrap_or_else(|_| ArrayString::from("data").unwrap());
+                        .unwrap_or_else(|_| {
+                            // Fallback to compile-time verified string
+                            ArrayString::from("data").unwrap_or_else(|_| {
+                                // This should never happen as "data" is 4 chars and fits in ArrayString
+                                ArrayString::new()
+                            })
+                        });
                     
                     let id = sse_event.id.and_then(|id| ArrayString::from(&id).ok());
                     

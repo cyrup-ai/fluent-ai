@@ -3,9 +3,10 @@
 //! This module provides integration with various LLM providers for
 //! memory enhancement, query processing, and natural language understanding.
 
-use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::pin::Pin;
+
+use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 
 // Re-export types

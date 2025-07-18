@@ -1,9 +1,10 @@
 // src/migration/converter.rs
 //! Data conversion utilities for import/export.
 
-use serde_json;
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use serde_json;
 
 use crate::migration::Result;
 
@@ -59,7 +60,7 @@ impl DataConverter {
     pub fn convert(&self, data: &ImportData) -> Result<ImportData> {
         // Check if we have a custom rule for this conversion
         let key_lookup = (&self.source_version, &self.target_version);
-        
+
         // Find rule by comparing with existing keys
         if let Some(rule) = self.custom_rules.iter().find_map(|(key, rule)| {
             if (&key.0, &key.1) == key_lookup {
@@ -375,7 +376,8 @@ mod tests {
             tags: vec![],
             metadata: Some(serde_json::Value::Object(serde_json::Map::new())),
         };
-        data.memories.push(serde_json::to_value(memory).expect("Failed to serialize memory"));
+        data.memories
+            .push(serde_json::to_value(memory).expect("Failed to serialize memory"));
 
         // Add a test relationship
         let relationship =
@@ -395,7 +397,9 @@ mod tests {
         if let serde_json::Value::Object(memory_obj) = memory {
             if let Some(serde_json::Value::Object(metadata)) = memory_obj.get("metadata") {
                 assert_eq!(
-                    metadata.get("schema_version").expect("Missing schema_version"),
+                    metadata
+                        .get("schema_version")
+                        .expect("Missing schema_version"),
                     &serde_json::json!("0.2.0")
                 );
             } else {
@@ -411,7 +415,9 @@ mod tests {
         if let serde_json::Value::Object(rel_obj) = relationship {
             if let Some(serde_json::Value::Object(metadata)) = rel_obj.get("metadata") {
                 assert_eq!(
-                    metadata.get("schema_version").expect("Missing schema_version"),
+                    metadata
+                        .get("schema_version")
+                        .expect("Missing schema_version"),
                     &serde_json::json!("0.2.0")
                 );
             } else {
@@ -456,7 +462,8 @@ mod tests {
             tags: vec![],
             metadata: Some(serde_json::Value::Object(memory_metadata)),
         };
-        data.memories.push(serde_json::to_value(memory).expect("Failed to serialize memory"));
+        data.memories
+            .push(serde_json::to_value(memory).expect("Failed to serialize memory"));
 
         // Add a test relationship with schema version
         let mut relationship =

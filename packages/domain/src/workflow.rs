@@ -1,8 +1,10 @@
 // Define traits locally - no external dependencies
-use crate::ZeroOneOrMany;
-use serde::{Deserialize, Serialize};
 // use serde_json::Value; // Commented out - unused
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
+
+use crate::ZeroOneOrMany;
 
 /// A workflow step that can be stored and executed
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,14 +1,16 @@
 //! Quantum entanglement graph management
 
+use std::collections::{HashMap, VecDeque};
+use std::time::{Duration, Instant};
+
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
 use crate::cognitive::quantum::{
     Complex64,
     types::{CognitiveError, CognitiveResult},
 };
 use crate::cognitive::types::EntanglementType;
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
-use std::time::{Duration, Instant};
-use uuid::Uuid;
 
 /// Comprehensive entanglement graph with quantum correlations
 #[derive(Debug, Clone)]

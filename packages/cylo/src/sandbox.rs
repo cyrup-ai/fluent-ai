@@ -8,9 +8,38 @@ use tracing::{debug, error, info, warn};
 
 use crate::{
     config::RamdiskConfig,
-    error::{ExecError, Result},
+    error::{ExecError, Result, SandboxError, SandboxResult},
     exec::find_command,
 };
+use std::sync::Arc;
+
+/// Safe path to string conversion with zero-allocation optimization
+/// 
+/// Uses direct path.to_str() in the happy path (no allocation), falls back to
+/// path.to_string_lossy() only when UTF-8 conversion is required.
+#[inline]
+fn safe_path_to_str(path: &Path) -> SandboxResult<&str> {
+    path.to_str().ok_or_else(|| {
+        SandboxError::PathInvalid {
+            detail: Arc::from(format!(
+                "Path contains invalid UTF-8 characters: {}",
+                path.to_string_lossy()
+            ))
+        }
+    })
+}
+
+/// Safe path to owned string conversion with minimal allocation
+/// 
+/// Only allocates when UTF-8 conversion is necessary, maintaining zero-allocation
+/// characteristics for valid UTF-8 paths.
+#[inline]
+fn safe_path_to_string(path: &Path) -> SandboxResult<String> {
+    match path.to_str() {
+        Some(s) => Ok(s.to_string()),
+        None => Ok(path.to_string_lossy().into_owned()),
+    }
+}
 
 /// Represents a sandboxed environment for a specific language runtime
 ///
@@ -79,11 +108,11 @@ impl SandboxedEnvironment {
     /// # Returns
     /// * The command's stdout output if successful
     /// * An error if the command fails or the environment is invalid
-    pub fn execute_command(&self, command: &str, args: &[&str]) -> Result<String> {
+    pub fn execute_command(&self, command: &str, args: &[&str]) -> SandboxResult<String> {
         if !self.is_valid {
-            return Err(ExecError::RuntimeError(
-                "Cannot execute command in invalid sandbox environment".into(),
-            ));
+            return Err(SandboxError::EnvironmentInvalid {
+                detail: Arc::from("Cannot execute command in invalid sandbox environment")
+            });
         }
 
         let binary_path = self.get_binary_path(command);
@@ -95,14 +124,18 @@ impl SandboxedEnvironment {
             cmd.env(key, value);
         }
 
-        let output = cmd.output()?;
+        let output = cmd.output().map_err(|e| SandboxError::ProcessLaunch {
+            detail: Arc::from(format!("Failed to launch command '{}': {}", command, e))
+        })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(ExecError::CommandFailed(format!(
-                "Failed to execute {} command in sandbox: {}",
-                command, stderr
-            )))
+            Err(SandboxError::ProcessLaunch {
+                detail: Arc::from(format!(
+                    "Failed to execute {} command in sandbox: {}",
+                    command, stderr
+                ))
+            })
         } else {
             let stdout = String::from_utf8_lossy(&output.stdout);
             Ok(stdout.to_string())
@@ -188,7 +221,7 @@ impl SandboxManager {
             )));
         }
 
-        let python = python_cmd.expect("python_cmd is guaranteed to be Some at this point");
+        let python = python_cmd?;
 
         // Try to create a virtual environment
         let env_path_str = env_path.to_str()
@@ -222,7 +255,7 @@ impl SandboxManager {
                         &format!(
                             "{}:{}",
                             bin_path,
-                            std::env::var("PATH").unwrap_or_default()
+                            std::env::var("PATH").unwrap_or_else(|_| String::new())
                         ),
                     );
 
@@ -249,10 +282,12 @@ impl SandboxManager {
                 }
 
                 // Create an activation script that sets PATH
+                let env_path_str = safe_path_to_str(&env_path)?;
+                let bin_path_str = safe_path_to_str(&env_path.join("bin"))?;
                 let activate_script = format!(
                     "#!/bin/sh\nexport VIRTUAL_ENV=\"{}\"\nexport PATH=\"{}:$PATH\"\n",
-                    env_path.to_str().unwrap(),
-                    env_path.join("bin").to_str().unwrap()
+                    env_path_str,
+                    bin_path_str
                 );
 
                 if let Err(e) = fs::write(env_path.join("bin").join("activate"), activate_script) {
@@ -260,9 +295,10 @@ impl SandboxManager {
                 }
 
                 // Create a simple wrapper script for python
+                let env_path_str = safe_path_to_str(&env_path)?;
                 let python_wrapper = format!(
                     "#!/bin/sh\nexport PYTHONUSERBASE=\"{}\"\n{} \"$@\"\n",
-                    env_path.to_str().unwrap(),
+                    env_path_str,
                     python
                 );
 
@@ -281,19 +317,24 @@ impl SandboxManager {
                     env.is_valid = true;
 
                     // Add environment variables
-                    env.add_env_var("VIRTUAL_ENV", env_path.to_str().unwrap());
-                    env.add_env_var("PYTHONUSERBASE", env_path.to_str().unwrap());
+                    let env_path_str = safe_path_to_str(&env_path)?;
+                    let bin_path_str = safe_path_to_str(&env_path.join("bin"))?;
+                    env.add_env_var("VIRTUAL_ENV", env_path_str);
+                    env.add_env_var("PYTHONUSERBASE", env_path_str);
                     env.add_env_var(
                         "PATH",
                         &format!(
                             "{}:{}",
-                            env_path.join("bin").to_str().unwrap(),
-                            std::env::var("PATH").unwrap_or_default()
+                            bin_path_str,
+                            std::env::var("PATH").unwrap_or_else(|_| String::new())
                         ),
                     );
 
                     self.add_environment(env);
-                    return Ok(self.get_environment("python").unwrap());
+                    return self.get_environment("python")
+                        .ok_or_else(|| ExecError::RuntimeError(
+                            "Failed to retrieve Python environment after creation".to_string()
+                        ));
                 }
 
                 Err(ExecError::CommandFailed(format!(
@@ -313,7 +354,10 @@ impl SandboxManager {
             info!("Node.js environment already exists at {:?}", env_path);
             env.is_valid = true;
             self.add_environment(env);
-            return Ok(self.get_environment("node").unwrap());
+            return self.get_environment("node")
+                .ok_or_else(|| ExecError::RuntimeError(
+                    "Failed to retrieve Node.js environment after adding it to sandbox".to_string()
+                ));
         }
 
         info!("Creating Node.js environment at {:?}", env_path);
@@ -322,8 +366,9 @@ impl SandboxManager {
         if find_command(&["fnm"]).is_some() {
             info!("Using fnm to create Node.js environment");
 
+            let env_path_str = safe_path_to_str(&env_path)?;
             let output = Command::new("fnm")
-                .args(["install", "--fnm-dir", env_path.to_str().unwrap(), "lts"])
+                .args(["install", "--fnm-dir", env_path_str, "lts"])
                 .output();
 
             match output {
@@ -333,18 +378,23 @@ impl SandboxManager {
                         env.is_valid = true;
 
                         // Add environment variables
-                        env.add_env_var("FNM_DIR", env_path.to_str().unwrap());
+                        let env_path_str = safe_path_to_str(&env_path)?;
+                        let bin_path_str = safe_path_to_str(&env_path.join("bin"))?;
+                        env.add_env_var("FNM_DIR", env_path_str);
                         env.add_env_var(
                             "PATH",
                             &format!(
                                 "{}:{}",
-                                env_path.join("bin").to_str().unwrap(),
-                                std::env::var("PATH").unwrap_or_default()
+                                bin_path_str,
+                                std::env::var("PATH").unwrap_or_else(|_| String::new())
                             ),
                         );
 
                         self.add_environment(env);
-                        return Ok(self.get_environment("node").unwrap());
+                        return self.get_environment("node")
+                            .ok_or_else(|| ExecError::RuntimeError(
+                                "Failed to retrieve Node.js environment after creation".to_string()
+                            ));
                     } else {
                         let stderr = String::from_utf8_lossy(&output.stderr);
                         warn!("Failed to create Node.js environment with fnm: {}", stderr);
@@ -386,12 +436,15 @@ impl SandboxManager {
             )));
         }
 
-        let node = node_cmd.unwrap();
+        let node = node_cmd.ok_or_else(|| ExecError::RuntimeError(
+            "Node.js command unexpectedly became None after validation".to_string()
+        ))?;
 
         // Create a wrapper script for node
+        let node_modules_path_str = safe_path_to_str(&env_path.join("node_modules"))?;
         let node_wrapper = format!(
             "#!/bin/sh\nexport NODE_PATH=\"{}:$NODE_PATH\"\n{} \"$@\"\n",
-            env_path.join("node_modules").to_str().unwrap(),
+            node_modules_path_str,
             node
         );
 
@@ -422,25 +475,30 @@ impl SandboxManager {
         env.is_valid = true;
 
         // Add environment variables
+        let node_modules_path_str = safe_path_to_str(&env_path.join("node_modules"))?;
+        let bin_path_str = safe_path_to_str(&env_path.join("bin"))?;
         env.add_env_var(
             "NODE_PATH",
             &format!(
                 "{}:{}",
-                env_path.join("node_modules").to_str().unwrap(),
-                std::env::var("NODE_PATH").unwrap_or_default()
+                node_modules_path_str,
+                std::env::var("NODE_PATH").unwrap_or_else(|_| String::new())
             ),
         );
         env.add_env_var(
             "PATH",
             &format!(
                 "{}:{}",
-                env_path.join("bin").to_str().unwrap(),
-                std::env::var("PATH").unwrap_or_default()
+                bin_path_str,
+                std::env::var("PATH").unwrap_or_else(|_| String::new())
             ),
         );
 
         self.add_environment(env);
-        Ok(self.get_environment("node").unwrap())
+        self.get_environment("node")
+            .ok_or_else(|| ExecError::RuntimeError(
+                "Failed to retrieve Node.js environment after creation".to_string()
+            ))
     }
 
     /// Create a Rust environment with its own cargo directory
@@ -452,7 +510,10 @@ impl SandboxManager {
             info!("Rust environment already exists at {:?}", env_path);
             env.is_valid = true;
             self.add_environment(env);
-            return Ok(self.get_environment("rust").unwrap());
+            return self.get_environment("rust")
+                .ok_or_else(|| ExecError::RuntimeError(
+                    "Failed to retrieve Rust environment after adding it to sandbox".to_string()
+                ));
         }
 
         info!("Creating Rust environment at {:?}", env_path);
@@ -522,21 +583,26 @@ edition = "2021"
             )));
         }
 
-        let rustc = rustc_cmd.unwrap();
-        let cargo = cargo_cmd.unwrap();
+        let rustc = rustc_cmd.ok_or_else(|| ExecError::RuntimeError(
+            "Rust compiler command unexpectedly became None after validation".to_string()
+        ))?;
+        let cargo = cargo_cmd.ok_or_else(|| ExecError::RuntimeError(
+            "Cargo command unexpectedly became None after validation".to_string()
+        ))?;
 
         // Create wrapper scripts
+        let env_path_str = safe_path_to_str(&env_path)?;
         let rustc_wrapper = format!(
             "#!/bin/sh\nexport CARGO_HOME=\"{}\"\nexport RUSTUP_HOME=\"{}\"\n{} \"$@\"\n",
-            env_path.to_str().unwrap(),
-            env_path.to_str().unwrap(),
+            env_path_str,
+            env_path_str,
             rustc
         );
 
         let cargo_wrapper = format!(
             "#!/bin/sh\nexport CARGO_HOME=\"{}\"\nexport RUSTUP_HOME=\"{}\"\n{} \"$@\"\n",
-            env_path.to_str().unwrap(),
-            env_path.to_str().unwrap(),
+            env_path_str,
+            env_path_str,
             cargo
         );
 
@@ -571,19 +637,24 @@ edition = "2021"
         env.is_valid = true;
 
         // Add environment variables
-        env.add_env_var("CARGO_HOME", env_path.to_str().unwrap());
-        env.add_env_var("RUSTUP_HOME", env_path.to_str().unwrap());
+        let env_path_str = safe_path_to_str(&env_path)?;
+        let bin_path_str = safe_path_to_str(&env_path.join("bin"))?;
+        env.add_env_var("CARGO_HOME", env_path_str);
+        env.add_env_var("RUSTUP_HOME", env_path_str);
         env.add_env_var(
             "PATH",
             &format!(
                 "{}:{}",
-                env_path.join("bin").to_str().unwrap(),
-                std::env::var("PATH").unwrap_or_default()
+                bin_path_str,
+                std::env::var("PATH").unwrap_or_else(|_| String::new())
             ),
         );
 
         self.add_environment(env);
-        Ok(self.get_environment("rust").unwrap())
+        self.get_environment("rust")
+            .ok_or_else(|| ExecError::RuntimeError(
+                "Failed to retrieve Rust environment after creation".to_string()
+            ))
     }
 
     /// Create a Go environment with its own GOPATH and workspace
@@ -595,7 +666,10 @@ edition = "2021"
             info!("Go environment already exists at {:?}", env_path);
             env.is_valid = true;
             self.add_environment(env);
-            return Ok(self.get_environment("go").unwrap());
+            return self.get_environment("go")
+                .ok_or_else(|| ExecError::RuntimeError(
+                    "Failed to retrieve Go environment after adding it to sandbox".to_string()
+                ));
         }
 
         info!("Creating Go environment at {:?}", env_path);
@@ -639,14 +713,19 @@ edition = "2021"
             )));
         }
 
-        let go = go_cmd.unwrap();
+        let go = go_cmd.ok_or_else(|| ExecError::RuntimeError(
+            "Go command unexpectedly became None after validation".to_string()
+        ))?;
 
         // Create a wrapper script for Go
+        let env_path_str = safe_path_to_str(&env_path)?;
+        let pkg_path_str = safe_path_to_str(&env_path.join("pkg"))?;
+        let tmp_path_str = safe_path_to_str(&env_path.join("tmp"))?;
         let go_wrapper = format!(
             "#!/bin/sh\nexport GOPATH=\"{}\"\nexport GOCACHE=\"{}\"\nexport GOTMPDIR=\"{}\"\n{} \"$@\"\n",
-            env_path.to_str().unwrap(),
-            env_path.join("pkg").to_str().unwrap(),
-            env_path.join("tmp").to_str().unwrap(),
+            env_path_str,
+            pkg_path_str,
+            tmp_path_str,
             go
         );
 
@@ -692,20 +771,27 @@ func main() {
         env.is_valid = true;
 
         // Add environment variables
-        env.add_env_var("GOPATH", env_path.to_str().unwrap());
-        env.add_env_var("GOCACHE", env_path.join("pkg").to_str().unwrap());
-        env.add_env_var("GOTMPDIR", env_path.join("tmp").to_str().unwrap());
+        let env_path_str = safe_path_to_str(&env_path)?;
+        let pkg_path_str = safe_path_to_str(&env_path.join("pkg"))?;
+        let tmp_path_str = safe_path_to_str(&env_path.join("tmp"))?;
+        let bin_path_str = safe_path_to_str(&env_path.join("bin"))?;
+        env.add_env_var("GOPATH", env_path_str);
+        env.add_env_var("GOCACHE", pkg_path_str);
+        env.add_env_var("GOTMPDIR", tmp_path_str);
         env.add_env_var(
             "PATH",
             &format!(
                 "{}:{}",
-                env_path.join("bin").to_str().unwrap(),
-                std::env::var("PATH").unwrap_or_default()
+                bin_path_str,
+                std::env::var("PATH").unwrap_or_else(|_| String::new())
             ),
         );
 
         self.add_environment(env);
-        Ok(self.get_environment("go").unwrap())
+        self.get_environment("go")
+            .ok_or_else(|| ExecError::RuntimeError(
+                "Failed to retrieve Go environment after creation".to_string()
+            ))
     }
 
     /// Clean up all environments

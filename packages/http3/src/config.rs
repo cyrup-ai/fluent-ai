@@ -7,115 +7,115 @@ use std::time::Duration;
 pub struct HttpConfig {
     /// Maximum number of idle connections per host
     pub pool_max_idle_per_host: usize,
-    
+
     /// Pool idle timeout
     pub pool_idle_timeout: Duration,
-    
+
     /// Request timeout
     pub timeout: Duration,
-    
+
     /// Connection timeout
     pub connect_timeout: Duration,
-    
+
     /// TCP keep-alive duration
     pub tcp_keepalive: Option<Duration>,
-    
+
     /// Enable TCP_NODELAY
     pub tcp_nodelay: bool,
-    
+
     /// Enable HTTP/2 adaptive window
     pub http2_adaptive_window: bool,
-    
+
     /// HTTP/2 max frame size
     pub http2_max_frame_size: Option<u32>,
-    
+
     /// Use native root certificates
     pub use_native_certs: bool,
-    
+
     /// Require HTTPS
     pub https_only: bool,
-    
+
     /// Enable gzip compression
     pub gzip: bool,
-    
+
     /// Enable brotli compression
     pub brotli: bool,
-    
+
     /// Enable deflate compression
     pub deflate: bool,
-    
+
     /// User agent string
     pub user_agent: String,
-    
+
     /// Enable HTTP/3 (QUIC)
     pub http3_enabled: bool,
-    
+
     /// Connection pool size
     pub pool_size: usize,
-    
+
     /// Maximum number of redirects to follow
     pub max_redirects: usize,
-    
+
     /// Enable cookie storage
     pub cookie_store: bool,
-    
+
     /// Enable response compression
     pub response_compression: bool,
-    
+
     /// Enable request compression
     pub request_compression: bool,
-    
+
     /// DNS cache duration
     pub dns_cache_duration: Duration,
-    
+
     /// Enable DNS over HTTPS
     pub dns_over_https: bool,
-    
+
     /// Enable happy eyeballs for IPv6
     pub happy_eyeballs: bool,
-    
+
     /// Local address to bind to
     pub local_address: Option<std::net::IpAddr>,
-    
+
     /// Interface to bind to
     pub interface: Option<String>,
-    
+
     /// Enable HTTP/2 server push
     pub http2_server_push: bool,
-    
+
     /// HTTP/2 initial stream window size
     pub http2_initial_stream_window_size: Option<u32>,
-    
+
     /// HTTP/2 initial connection window size
     pub http2_initial_connection_window_size: Option<u32>,
-    
+
     /// HTTP/2 max concurrent streams
     pub http2_max_concurrent_streams: Option<u32>,
-    
+
     /// Enable HTTP/2 keep-alive
     pub http2_keep_alive: bool,
-    
+
     /// HTTP/2 keep-alive interval
     pub http2_keep_alive_interval: Option<Duration>,
-    
+
     /// HTTP/2 keep-alive timeout
     pub http2_keep_alive_timeout: Option<Duration>,
-    
+
     /// Enable HTTP/2 adaptive window scaling
     pub http2_adaptive_window_scaling: bool,
-    
+
     /// Trust DNS
     pub trust_dns: bool,
-    
+
     /// Enable metrics collection
     pub metrics_enabled: bool,
-    
+
     /// Enable tracing
     pub tracing_enabled: bool,
-    
+
     /// Connection reuse strategy
     pub connection_reuse: ConnectionReuse,
-    
+
     /// Retry policy
     pub retry_policy: RetryPolicy,
 }
@@ -136,22 +136,22 @@ pub enum ConnectionReuse {
 pub struct RetryPolicy {
     /// Maximum number of retries
     pub max_retries: usize,
-    
+
     /// Base delay between retries
     pub base_delay: Duration,
-    
+
     /// Maximum delay between retries
     pub max_delay: Duration,
-    
+
     /// Exponential backoff factor
     pub backoff_factor: f64,
-    
+
     /// Jitter factor (0.0 to 1.0)
     pub jitter_factor: f64,
-    
+
     /// Retry on specific status codes
     pub retry_on_status: Vec<u16>,
-    
+
     /// Retry on specific errors
     pub retry_on_errors: Vec<RetryableError>,
 }
@@ -293,7 +293,7 @@ impl HttpConfig {
             },
         }
     }
-    
+
     /// Create a new configuration optimized for streaming
     pub fn streaming_optimized() -> Self {
         let mut config = Self::ai_optimized();
@@ -306,7 +306,7 @@ impl HttpConfig {
         config.retry_policy.max_retries = 2; // Fewer retries for streaming
         config
     }
-    
+
     /// Create a new configuration optimized for batch processing
     pub fn batch_optimized() -> Self {
         let mut config = Self::ai_optimized();
@@ -318,7 +318,7 @@ impl HttpConfig {
         config.retry_policy.max_delay = Duration::from_secs(120);
         config
     }
-    
+
     /// Create a new configuration for low-latency applications
     pub fn low_latency() -> Self {
         let mut config = Self::ai_optimized();
@@ -331,37 +331,37 @@ impl HttpConfig {
         config.retry_policy.max_delay = Duration::from_secs(5);
         config
     }
-    
+
     /// Enable HTTP/3 (QUIC) support
     pub fn with_http3(mut self, enabled: bool) -> Self {
         self.http3_enabled = enabled;
         self
     }
-    
+
     /// Set the timeout
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
-    
+
     /// Set the connect timeout
     pub fn with_connect_timeout(mut self, timeout: Duration) -> Self {
         self.connect_timeout = timeout;
         self
     }
-    
+
     /// Set the pool size
     pub fn with_pool_size(mut self, size: usize) -> Self {
         self.pool_size = size;
         self
     }
-    
+
     /// Set the user agent
     pub fn with_user_agent(mut self, user_agent: String) -> Self {
         self.user_agent = user_agent;
         self
     }
-    
+
     /// Enable or disable compression
     pub fn with_compression(mut self, enabled: bool) -> Self {
         self.gzip = enabled;
@@ -369,25 +369,25 @@ impl HttpConfig {
         self.deflate = enabled;
         self
     }
-    
+
     /// Enable or disable HTTPS only
     pub fn with_https_only(mut self, enabled: bool) -> Self {
         self.https_only = enabled;
         self
     }
-    
+
     /// Set the retry policy
     pub fn with_retry_policy(mut self, policy: RetryPolicy) -> Self {
         self.retry_policy = policy;
         self
     }
-    
+
     /// Enable or disable metrics
     pub fn with_metrics(mut self, enabled: bool) -> Self {
         self.metrics_enabled = enabled;
         self
     }
-    
+
     /// Enable or disable tracing
     pub fn with_tracing(mut self, enabled: bool) -> Self {
         self.tracing_enabled = enabled;

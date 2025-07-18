@@ -1,7 +1,9 @@
-use crate::async_task::error_handlers::BadTraitImpl;
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+
+use crate::async_task::error_handlers::BadTraitImpl;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Document {

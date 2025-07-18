@@ -1,9 +1,10 @@
 //! Cognitive state management for memory nodes
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -16,7 +17,7 @@ pub struct CognitiveState {
     pub processing_depth: f32,
     pub activation_level: f32,
     pub associations: Vec<Association>,
-    #[serde(skip)]
+    #[serde(skip, default = "std::time::Instant::now")]
     pub timestamp: Instant,
 }
 

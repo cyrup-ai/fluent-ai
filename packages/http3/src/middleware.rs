@@ -1,24 +1,34 @@
 //! HTTP middleware for request/response processing
 
-use crate::{HttpRequest, HttpResponse, HttpResult, HttpError};
-use std::sync::Arc;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
+
+use crate::{HttpError, HttpRequest, HttpResponse, HttpResult};
 
 /// HTTP middleware trait using native async
 pub trait Middleware: Send + Sync {
     /// Process request before sending
-    fn process_request(&self, request: HttpRequest) -> Pin<Box<dyn Future<Output = HttpResult<HttpRequest>> + Send + '_>> {
+    fn process_request(
+        &self,
+        request: HttpRequest,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpRequest>> + Send + '_>> {
         Box::pin(async move { Ok(request) })
     }
-    
+
     /// Process response after receiving
-    fn process_response(&self, response: HttpResponse) -> Pin<Box<dyn Future<Output = HttpResult<HttpResponse>> + Send + '_>> {
+    fn process_response(
+        &self,
+        response: HttpResponse,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpResponse>> + Send + '_>> {
         Box::pin(async move { Ok(response) })
     }
-    
+
     /// Handle errors
-    fn handle_error(&self, error: HttpError) -> Pin<Box<dyn Future<Output = HttpResult<HttpError>> + Send + '_>> {
+    fn handle_error(
+        &self,
+        error: HttpError,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpError>> + Send + '_>> {
         Box::pin(async move { Ok(error) })
     }
 }
@@ -35,13 +45,13 @@ impl MiddlewareChain {
             middleware: Vec::new(),
         }
     }
-    
+
     /// Add middleware to the chain
     pub fn add<M: Middleware + 'static>(mut self, middleware: M) -> Self {
         self.middleware.push(Arc::new(middleware));
         self
     }
-    
+
     /// Process request through all middleware
     pub async fn process_request(&self, mut request: HttpRequest) -> HttpResult<HttpRequest> {
         for middleware in &self.middleware {
@@ -49,7 +59,7 @@ impl MiddlewareChain {
         }
         Ok(request)
     }
-    
+
     /// Process response through all middleware (in reverse order)
     pub async fn process_response(&self, mut response: HttpResponse) -> HttpResult<HttpResponse> {
         for middleware in self.middleware.iter().rev() {
@@ -57,7 +67,7 @@ impl MiddlewareChain {
         }
         Ok(response)
     }
-    
+
     /// Handle error through all middleware
     pub async fn handle_error(&self, mut error: HttpError) -> HttpResult<HttpError> {
         for middleware in &self.middleware {
@@ -92,38 +102,36 @@ impl RetryMiddleware {
             retry_on_status: vec![429, 500, 502, 503, 504],
         }
     }
-    
+
     /// Set base delay
     pub fn with_base_delay(mut self, delay: std::time::Duration) -> Self {
         self.base_delay = delay;
         self
     }
-    
+
     /// Set backoff factor
     pub fn with_backoff_factor(mut self, factor: f64) -> Self {
         self.backoff_factor = factor;
         self
     }
-    
+
     /// Set retry status codes
     pub fn with_retry_on_status(mut self, status_codes: Vec<u16>) -> Self {
         self.retry_on_status = status_codes;
         self
     }
-    
+
     /// Check if error should be retried
     fn should_retry(&self, error: &HttpError) -> bool {
         match error {
-            HttpError::HttpStatus { status, .. } => {
-                self.retry_on_status.contains(status)
-            }
-            HttpError::NetworkError { .. } |
-            HttpError::Timeout { .. } |
-            HttpError::ConnectionError { .. } => true,
+            HttpError::HttpStatus { status, .. } => self.retry_on_status.contains(status),
+            HttpError::NetworkError { .. }
+            | HttpError::Timeout { .. }
+            | HttpError::ConnectionError { .. } => true,
             _ => false,
         }
     }
-    
+
     /// Calculate delay for retry attempt
     #[allow(dead_code)]
     fn calculate_delay(&self, attempt: usize) -> std::time::Duration {
@@ -133,7 +141,10 @@ impl RetryMiddleware {
 }
 
 impl Middleware for RetryMiddleware {
-    fn handle_error(&self, error: HttpError) -> Pin<Box<dyn Future<Output = HttpResult<HttpError>> + Send + '_>> {
+    fn handle_error(
+        &self,
+        error: HttpError,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpError>> + Send + '_>> {
         let should_retry = self.should_retry(&error);
         Box::pin(async move {
             if should_retry {
@@ -160,19 +171,19 @@ impl RequestIdMiddleware {
             header_name: "X-Request-ID".to_string(),
         }
     }
-    
+
     /// Set the header name
     pub fn with_header_name(mut self, name: String) -> Self {
         self.header_name = name;
         self
     }
-    
+
     /// Generate a new request ID
     #[allow(dead_code)]
     fn generate_request_id(&self) -> String {
         Self::generate_request_id_static()
     }
-    
+
     /// Generate a new request ID (static version)
     fn generate_request_id_static() -> String {
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -190,7 +201,10 @@ impl Default for RequestIdMiddleware {
 }
 
 impl Middleware for RequestIdMiddleware {
-    fn process_request(&self, mut request: HttpRequest) -> Pin<Box<dyn Future<Output = HttpResult<HttpRequest>> + Send + '_>> {
+    fn process_request(
+        &self,
+        mut request: HttpRequest,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpRequest>> + Send + '_>> {
         let header_name = self.header_name.clone();
         Box::pin(async move {
             if !request.headers().contains_key(&header_name) {
@@ -218,19 +232,19 @@ impl LoggingMiddleware {
             log_errors: true,
         }
     }
-    
+
     /// Enable/disable request logging
     pub fn with_request_logging(mut self, enabled: bool) -> Self {
         self.log_requests = enabled;
         self
     }
-    
+
     /// Enable/disable response logging
     pub fn with_response_logging(mut self, enabled: bool) -> Self {
         self.log_responses = enabled;
         self
     }
-    
+
     /// Enable/disable error logging
     pub fn with_error_logging(mut self, enabled: bool) -> Self {
         self.log_errors = enabled;
@@ -245,7 +259,10 @@ impl Default for LoggingMiddleware {
 }
 
 impl Middleware for LoggingMiddleware {
-    fn process_request(&self, request: HttpRequest) -> Pin<Box<dyn Future<Output = HttpResult<HttpRequest>> + Send + '_>> {
+    fn process_request(
+        &self,
+        request: HttpRequest,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpRequest>> + Send + '_>> {
         let log_requests = self.log_requests;
         Box::pin(async move {
             if log_requests {
@@ -255,15 +272,18 @@ impl Middleware for LoggingMiddleware {
                     url = %request.url(),
                     "Sending HTTP request"
                 );
-                
+
                 #[cfg(not(feature = "tracing"))]
                 println!("HTTP {} {}", request.method(), request.url());
             }
             Ok(request)
         })
     }
-    
-    fn process_response(&self, response: HttpResponse) -> Pin<Box<dyn Future<Output = HttpResult<HttpResponse>> + Send + '_>> {
+
+    fn process_response(
+        &self,
+        response: HttpResponse,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpResponse>> + Send + '_>> {
         let log_responses = self.log_responses;
         Box::pin(async move {
             if log_responses {
@@ -272,15 +292,18 @@ impl Middleware for LoggingMiddleware {
                     status = %response.status(),
                     "Received HTTP response"
                 );
-                
+
                 #[cfg(not(feature = "tracing"))]
                 println!("HTTP {} response", response.status());
             }
             Ok(response)
         })
     }
-    
-    fn handle_error(&self, error: HttpError) -> Pin<Box<dyn Future<Output = HttpResult<HttpError>> + Send + '_>> {
+
+    fn handle_error(
+        &self,
+        error: HttpError,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpError>> + Send + '_>> {
         let log_errors = self.log_errors;
         Box::pin(async move {
             if log_errors {
@@ -289,7 +312,7 @@ impl Middleware for LoggingMiddleware {
                     error = %error,
                     "HTTP request failed"
                 );
-                
+
                 #[cfg(not(feature = "tracing"))]
                 eprintln!("HTTP error: {}", error);
             }
@@ -316,20 +339,26 @@ impl MetricsMiddleware {
             total_response_time: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         }
     }
-    
+
     /// Get metrics
     pub fn metrics(&self) -> Metrics {
-        let requests = self.request_count.load(std::sync::atomic::Ordering::Relaxed);
-        let responses = self.response_count.load(std::sync::atomic::Ordering::Relaxed);
+        let requests = self
+            .request_count
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let responses = self
+            .response_count
+            .load(std::sync::atomic::Ordering::Relaxed);
         let errors = self.error_count.load(std::sync::atomic::Ordering::Relaxed);
-        let total_time = self.total_response_time.load(std::sync::atomic::Ordering::Relaxed);
-        
+        let total_time = self
+            .total_response_time
+            .load(std::sync::atomic::Ordering::Relaxed);
+
         let average_response_time = if responses > 0 {
             std::time::Duration::from_millis(total_time / responses as u64)
         } else {
             std::time::Duration::from_millis(0)
         };
-        
+
         Metrics {
             requests,
             responses,
@@ -346,18 +375,30 @@ impl Default for MetricsMiddleware {
 }
 
 impl Middleware for MetricsMiddleware {
-    fn process_request(&self, request: HttpRequest) -> Pin<Box<dyn Future<Output = HttpResult<HttpRequest>> + Send + '_>> {
-        self.request_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    fn process_request(
+        &self,
+        request: HttpRequest,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpRequest>> + Send + '_>> {
+        self.request_count
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Box::pin(async move { Ok(request) })
     }
-    
-    fn process_response(&self, response: HttpResponse) -> Pin<Box<dyn Future<Output = HttpResult<HttpResponse>> + Send + '_>> {
-        self.response_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+    fn process_response(
+        &self,
+        response: HttpResponse,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpResponse>> + Send + '_>> {
+        self.response_count
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Box::pin(async move { Ok(response) })
     }
-    
-    fn handle_error(&self, error: HttpError) -> Pin<Box<dyn Future<Output = HttpResult<HttpError>> + Send + '_>> {
-        self.error_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+    fn handle_error(
+        &self,
+        error: HttpError,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpError>> + Send + '_>> {
+        self.error_count
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Box::pin(async move { Ok(error) })
     }
 }
@@ -388,7 +429,10 @@ impl UserAgentMiddleware {
 }
 
 impl Middleware for UserAgentMiddleware {
-    fn process_request(&self, mut request: HttpRequest) -> Pin<Box<dyn Future<Output = HttpResult<HttpRequest>> + Send + '_>> {
+    fn process_request(
+        &self,
+        mut request: HttpRequest,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpRequest>> + Send + '_>> {
         let user_agent = self.user_agent.clone();
         Box::pin(async move {
             if !request.headers().contains_key("User-Agent") {
@@ -411,7 +455,7 @@ impl CompressionMiddleware {
             accept_encoding: "gzip, br, deflate".to_string(),
         }
     }
-    
+
     /// Set accept encoding
     pub fn with_accept_encoding(mut self, encoding: String) -> Self {
         self.accept_encoding = encoding;
@@ -426,7 +470,10 @@ impl Default for CompressionMiddleware {
 }
 
 impl Middleware for CompressionMiddleware {
-    fn process_request(&self, mut request: HttpRequest) -> Pin<Box<dyn Future<Output = HttpResult<HttpRequest>> + Send + '_>> {
+    fn process_request(
+        &self,
+        mut request: HttpRequest,
+    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpRequest>> + Send + '_>> {
         let accept_encoding = self.accept_encoding.clone();
         Box::pin(async move {
             if !request.headers().contains_key("Accept-Encoding") {

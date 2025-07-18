@@ -4,9 +4,9 @@
 //! circuit breaker patterns, and lock-free error aggregation for blazing-fast performance.
 
 use std::fmt;
-use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
-use std::time::{Duration, Instant};
 use std::marker::PhantomData;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use circuit_breaker::{CircuitBreaker, CircuitBreakerBuilder};
@@ -79,30 +79,30 @@ impl<const N: usize> ZeroAllocMessage<N> {
     pub const fn new(message: &str) -> Self {
         let bytes = message.as_bytes();
         let len = if bytes.len() > N { N } else { bytes.len() };
-        
+
         let mut data = [0u8; N];
         let mut i = 0;
         while i < len {
             data[i] = bytes[i];
             i += 1;
         }
-        
+
         Self { data, len }
     }
-    
+
     /// Get message as string slice
     #[inline(always)]
     pub fn as_str(&self) -> &str {
         // SAFETY: We only store valid UTF-8 bytes
         unsafe { std::str::from_utf8_unchecked(&self.data[..self.len]) }
     }
-    
+
     /// Check if message is empty
     #[inline(always)]
     pub const fn is_empty(&self) -> bool {
         self.len == 0
     }
-    
+
     /// Get message length
     #[inline(always)]
     pub const fn len(&self) -> usize {
@@ -175,7 +175,7 @@ impl ZeroAllocError {
             metadata_count: 0,
         }
     }
-    
+
     /// Add location information
     #[inline(always)]
     pub fn with_location(mut self, file: &str, line: u32) -> Self {
@@ -183,45 +183,45 @@ impl ZeroAllocError {
         self.location = Some(ErrorMessage::new(&location));
         self
     }
-    
+
     /// Add cause chain
     #[inline(always)]
     pub fn with_cause(mut self, cause: ZeroAllocError) -> Self {
         self.cause = Some(Box::new(cause));
         self
     }
-    
+
     /// Add metadata key-value pair
     #[inline(always)]
     pub fn with_metadata(mut self, key: &str, value: &str) -> Self {
         if self.metadata_count < 4 {
-            self.metadata[self.metadata_count] = (
-                ErrorMessage::new(key),
-                ErrorMessage::new(value),
-            );
+            self.metadata[self.metadata_count] = (ErrorMessage::new(key), ErrorMessage::new(value));
             self.metadata_count += 1;
         }
         self
     }
-    
+
     /// Check if error is retriable
     #[inline(always)]
     pub fn is_retriable(&self) -> bool {
-        matches!(self.recoverability, ErrorRecoverability::Retriable | ErrorRecoverability::RetriableWithBackoff)
+        matches!(
+            self.recoverability,
+            ErrorRecoverability::Retriable | ErrorRecoverability::RetriableWithBackoff
+        )
     }
-    
+
     /// Check if error is permanent
     #[inline(always)]
     pub fn is_permanent(&self) -> bool {
         matches!(self.recoverability, ErrorRecoverability::Permanent)
     }
-    
+
     /// Check if error requires manual intervention
     #[inline(always)]
     pub fn is_manual(&self) -> bool {
         matches!(self.recoverability, ErrorRecoverability::Manual)
     }
-    
+
     /// Get error age since occurrence
     #[inline(always)]
     pub fn age(&self) -> Duration {
@@ -231,23 +231,29 @@ impl ZeroAllocError {
 
 impl fmt::Display for ZeroAllocError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{:?}:{:?}] {}", self.category, self.severity, self.message)?;
-        
+        write!(
+            f,
+            "[{:?}:{:?}] {}",
+            self.category, self.severity, self.message
+        )?;
+
         if let Some(location) = &self.location {
             write!(f, " at {}", location)?;
         }
-        
+
         if let Some(cause) = &self.cause {
             write!(f, " caused by: {}", cause)?;
         }
-        
+
         Ok(())
     }
 }
 
 impl std::error::Error for ZeroAllocError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        self.cause.as_ref().map(|e| e.as_ref() as &dyn std::error::Error)
+        self.cause
+            .as_ref()
+            .map(|e| e.as_ref() as &dyn std::error::Error)
     }
 }
 
@@ -273,23 +279,33 @@ impl ErrorCounter {
         Self {
             total: RelaxedCounter::new(0),
             by_category: [
-                RelaxedCounter::new(0), RelaxedCounter::new(0), RelaxedCounter::new(0),
-                RelaxedCounter::new(0), RelaxedCounter::new(0), RelaxedCounter::new(0),
-                RelaxedCounter::new(0), RelaxedCounter::new(0), RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
                 RelaxedCounter::new(0),
             ],
             by_severity: [
-                RelaxedCounter::new(0), RelaxedCounter::new(0),
-                RelaxedCounter::new(0), RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
             ],
             by_recoverability: [
-                RelaxedCounter::new(0), RelaxedCounter::new(0),
-                RelaxedCounter::new(0), RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
             ],
             last_error: AtomicU64::new(0),
         }
     }
-    
+
     /// Record error occurrence
     #[inline(always)]
     pub fn record(&self, error: &ZeroAllocError) {
@@ -297,35 +313,35 @@ impl ErrorCounter {
         self.by_category[error.category as usize].inc();
         self.by_severity[error.severity as usize].inc();
         self.by_recoverability[error.recoverability as usize].inc();
-        
+
         let timestamp = error.timestamp.elapsed().as_nanos() as u64;
         self.last_error.store(timestamp, Ordering::Relaxed);
     }
-    
+
     /// Get total error count
     #[inline(always)]
     pub fn total(&self) -> usize {
         self.total.get()
     }
-    
+
     /// Get error count by category
     #[inline(always)]
     pub fn by_category(&self, category: ErrorCategory) -> usize {
         self.by_category[category as usize].get()
     }
-    
+
     /// Get error count by severity
     #[inline(always)]
     pub fn by_severity(&self, severity: ErrorSeverity) -> usize {
         self.by_severity[severity as usize].get()
     }
-    
+
     /// Get error count by recoverability
     #[inline(always)]
     pub fn by_recoverability(&self, recoverability: ErrorRecoverability) -> usize {
         self.by_recoverability[recoverability as usize].get()
     }
-    
+
     /// Get last error timestamp
     #[inline(always)]
     pub fn last_error_time(&self) -> Option<Duration> {
@@ -336,7 +352,7 @@ impl ErrorCounter {
             None
         }
     }
-    
+
     /// Reset all counters
     #[inline(always)]
     pub fn reset(&self) {
@@ -383,7 +399,7 @@ impl ErrorCircuitBreaker {
             .failure_threshold(failure_threshold)
             .recovery_timeout(recovery_timeout)
             .build();
-        
+
         Self {
             breaker,
             counter: ErrorCounter::new(),
@@ -392,7 +408,7 @@ impl ErrorCircuitBreaker {
             half_open_requests: AtomicU64::new(0),
         }
     }
-    
+
     /// Execute operation with circuit breaker protection
     #[inline(always)]
     pub fn execute<T, E, F>(&self, operation: F) -> Result<T, ZeroAllocError>
@@ -420,25 +436,25 @@ impl ErrorCircuitBreaker {
             }
         }
     }
-    
+
     /// Check if circuit breaker is open
     #[inline(always)]
     pub fn is_open(&self) -> bool {
         matches!(self.breaker.state(), circuit_breaker::State::Open)
     }
-    
+
     /// Check if circuit breaker is half-open
     #[inline(always)]
     pub fn is_half_open(&self) -> bool {
         matches!(self.breaker.state(), circuit_breaker::State::HalfOpen)
     }
-    
+
     /// Get error statistics
     #[inline(always)]
     pub fn stats(&self) -> &ErrorCounter {
         &self.counter
     }
-    
+
     /// Reset circuit breaker
     #[inline(always)]
     pub fn reset(&self) {
@@ -471,22 +487,32 @@ impl ErrorAggregator {
         const INIT_COUNTER: ErrorCounter = ErrorCounter {
             total: RelaxedCounter::new(0),
             by_category: [
-                RelaxedCounter::new(0), RelaxedCounter::new(0), RelaxedCounter::new(0),
-                RelaxedCounter::new(0), RelaxedCounter::new(0), RelaxedCounter::new(0),
-                RelaxedCounter::new(0), RelaxedCounter::new(0), RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
                 RelaxedCounter::new(0),
             ],
             by_severity: [
-                RelaxedCounter::new(0), RelaxedCounter::new(0),
-                RelaxedCounter::new(0), RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
             ],
             by_recoverability: [
-                RelaxedCounter::new(0), RelaxedCounter::new(0),
-                RelaxedCounter::new(0), RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
+                RelaxedCounter::new(0),
             ],
             last_error: AtomicU64::new(0),
         };
-        
+
         Self {
             counters: [INIT_COUNTER; 10],
             breakers: [
@@ -507,7 +533,7 @@ impl ErrorAggregator {
             max_errors_per_window,
         }
     }
-    
+
     /// Record error with rate limiting
     #[inline(always)]
     pub fn record(&self, error: &ZeroAllocError) -> bool {
@@ -515,26 +541,26 @@ impl ErrorAggregator {
         if !self.check_rate_limit() {
             return false;
         }
-        
+
         // Record in category-specific counter
         self.counters[error.category as usize].record(error);
-        
+
         true
     }
-    
+
     /// Check rate limit
     #[inline(always)]
     fn check_rate_limit(&self) -> bool {
         let now = Instant::now().elapsed().as_nanos() as u64;
         let last_reset = self.last_reset.load(Ordering::Relaxed);
         let rate_window_nanos = self.rate_window.as_nanos() as u64;
-        
+
         // Reset rate limiter if window expired
         if now - last_reset > rate_window_nanos {
             self.rate_limiter.store(0, Ordering::Relaxed);
             self.last_reset.store(now, Ordering::Relaxed);
         }
-        
+
         // Check if under rate limit
         let current_count = self.rate_limiter.load(Ordering::Relaxed);
         if current_count < self.max_errors_per_window as u64 {
@@ -544,25 +570,25 @@ impl ErrorAggregator {
             false
         }
     }
-    
+
     /// Get error statistics by category
     #[inline(always)]
     pub fn stats(&self, category: ErrorCategory) -> &ErrorCounter {
         &self.counters[category as usize]
     }
-    
+
     /// Get circuit breaker by category
     #[inline(always)]
     pub fn breaker(&self, category: ErrorCategory) -> &ErrorCircuitBreaker {
         &self.breakers[category as usize]
     }
-    
+
     /// Get total error count across all categories
     #[inline(always)]
     pub fn total_errors(&self) -> usize {
         self.counters.iter().map(|c| c.total()).sum()
     }
-    
+
     /// Reset all statistics
     #[inline(always)]
     pub fn reset(&self) {
@@ -578,9 +604,8 @@ impl ErrorAggregator {
 }
 
 /// Global error aggregator instance
-static ERROR_AGGREGATOR: once_cell::sync::Lazy<ErrorAggregator> = once_cell::sync::Lazy::new(|| {
-    ErrorAggregator::new(1000, Duration::from_secs(60))
-});
+static ERROR_AGGREGATOR: once_cell::sync::Lazy<ErrorAggregator> =
+    once_cell::sync::Lazy::new(|| ErrorAggregator::new(1000, Duration::from_secs(60)));
 
 /// Record error in global aggregator
 #[inline(always)]
@@ -616,14 +641,8 @@ pub fn reset_error_stats() {
 #[macro_export]
 macro_rules! error {
     ($category:expr, $severity:expr, $recoverability:expr, $message:expr, $code:expr) => {
-        $crate::error::ZeroAllocError::new(
-            $category,
-            $severity,
-            $recoverability,
-            $message,
-            $code,
-        )
-        .with_location(file!(), line!())
+        $crate::error::ZeroAllocError::new($category, $severity, $recoverability, $message, $code)
+            .with_location(file!(), line!())
     };
 }
 
@@ -766,11 +785,11 @@ pub trait ZeroAllocResultExt<T> {
     fn map_zero_alloc_err<F>(self, f: F) -> ZeroAllocResult<T>
     where
         F: FnOnce() -> ZeroAllocError;
-    
+
     fn with_error_metadata(self, key: &str, value: &str) -> ZeroAllocResult<T>;
-    
+
     fn with_error_code(self, code: u64) -> ZeroAllocResult<T>;
-    
+
     fn record_error(self) -> ZeroAllocResult<T>;
 }
 
@@ -787,14 +806,14 @@ where
             Err(_) => Err(f()),
         }
     }
-    
+
     fn with_error_metadata(self, key: &str, value: &str) -> ZeroAllocResult<T> {
         match self {
             Ok(value) => Ok(value),
             Err(e) => Err(e.into_zero_alloc_error().with_metadata(key, value)),
         }
     }
-    
+
     fn with_error_code(self, code: u64) -> ZeroAllocResult<T> {
         match self {
             Ok(value) => Ok(value),
@@ -805,7 +824,7 @@ where
             }
         }
     }
-    
+
     fn record_error(self) -> ZeroAllocResult<T> {
         match self {
             Ok(value) => Ok(value),
@@ -828,14 +847,14 @@ impl<T> ZeroAllocResultExt<T> for ZeroAllocResult<T> {
             Err(_) => Err(f()),
         }
     }
-    
+
     fn with_error_metadata(self, key: &str, value: &str) -> ZeroAllocResult<T> {
         match self {
             Ok(value) => Ok(value),
             Err(e) => Err(e.with_metadata(key, value)),
         }
     }
-    
+
     fn with_error_code(self, code: u64) -> ZeroAllocResult<T> {
         match self {
             Ok(value) => Ok(value),
@@ -845,7 +864,7 @@ impl<T> ZeroAllocResultExt<T> for ZeroAllocResult<T> {
             }
         }
     }
-    
+
     fn record_error(self) -> ZeroAllocResult<T> {
         match self {
             Ok(value) => Ok(value),

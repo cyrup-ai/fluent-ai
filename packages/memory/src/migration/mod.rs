@@ -10,16 +10,16 @@ pub mod schema_migrations;
 pub mod validator;
 
 // Re-export main types
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
 pub use converter::*;
 pub use exporter::*;
 pub use importer::*;
 pub use schema_migrations::*;
-pub use validator::*;
-
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 use tokio::sync::oneshot;
+pub use validator::*;
 
 /// Result type for migration operations
 pub type Result<T> = std::result::Result<T, MigrationError>;

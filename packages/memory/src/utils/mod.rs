@@ -3,9 +3,8 @@
 pub mod config;
 pub mod error;
 
-pub use error::{Error, Result};
-
 use chrono::Utc;
+pub use error::{Error, Result};
 
 /// Get current timestamp in milliseconds
 pub fn current_timestamp_ms() -> u64 {

@@ -4,12 +4,14 @@
 //! This module provides a specialized memory type for storing action sequences
 //! and procedural knowledge, with support for steps, conditions, and execution.
 
-use crate::graph::graph_db::{GraphError, Result};
-use crate::memory::memory_type::{BaseMemory, MemoryContent, MemoryTypeEnum};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
+
+use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Object, Value};
+
+use crate::graph::graph_db::{GraphError, Result};
+use crate::memory::memory_type::{BaseMemory, MemoryContent, MemoryTypeEnum};
 
 /// Step status enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

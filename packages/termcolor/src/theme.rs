@@ -10,21 +10,21 @@ use std::io;
 pub struct CyrupTheme {
     // Primary brand colors
     pub primary: Color,
-    pub secondary: Color, 
+    pub secondary: Color,
     pub accent: Color,
-    
+
     // Semantic colors
     pub success: Color,
     pub warning: Color,
     pub error: Color,
     pub info: Color,
     pub debug: Color,
-    
+
     // Text colors
     pub text_primary: Color,
     pub text_secondary: Color,
     pub text_muted: Color,
-    
+
     // Background accents
     pub bg_highlight: Color,
     pub bg_code: Color,
@@ -35,25 +35,25 @@ impl Default for CyrupTheme {
     fn default() -> Self {
         Self {
             // Primary brand colors
-            primary: Color::Rgb(0, 150, 255),        // Cyrup blue
-            secondary: Color::Rgb(64, 224, 208),     // Turquoise accent  
-            accent: Color::Rgb(255, 165, 0),         // Orange highlight
-            
+            primary: Color::Rgb(0, 150, 255), // Cyrup blue
+            secondary: Color::Rgb(64, 224, 208), // Turquoise accent
+            accent: Color::Rgb(255, 165, 0),  // Orange highlight
+
             // Semantic colors
-            success: Color::Green,                    // Operations completed
-            warning: Color::Yellow,                   // Cautions, fallbacks
-            error: Color::Red,                        // Failures, critical issues
-            info: Color::Cyan,                        // General information
-            debug: Color::Magenta,                    // Debug/development output
-            
+            success: Color::Green,  // Operations completed
+            warning: Color::Yellow, // Cautions, fallbacks
+            error: Color::Red,      // Failures, critical issues
+            info: Color::Cyan,      // General information
+            debug: Color::Magenta,  // Debug/development output
+
             // Text colors
-            text_primary: Color::White,               // Main text
+            text_primary: Color::White, // Main text
             text_secondary: Color::Rgb(200, 200, 200), // Secondary text
-            text_muted: Color::Rgb(128, 128, 128),   // Muted/disabled text
-            
-            // Background accents  
-            bg_highlight: Color::Rgb(30, 30, 30),    // Subtle highlights
-            bg_code: Color::Rgb(40, 40, 40),         // Code blocks
+            text_muted: Color::Rgb(128, 128, 128), // Muted/disabled text
+
+            // Background accents
+            bg_highlight: Color::Rgb(30, 30, 30), // Subtle highlights
+            bg_code: Color::Rgb(40, 40, 40),      // Code blocks
         }
     }
 }
@@ -64,7 +64,7 @@ impl CyrupTheme {
     pub fn builder() -> CyrupThemeBuilder {
         CyrupThemeBuilder::new()
     }
-    
+
     /// Get color by semantic name
     #[inline(always)]
     pub fn get_color(&self, semantic: SemanticColor) -> Color {
@@ -84,7 +84,7 @@ impl CyrupTheme {
             SemanticColor::BgCode => self.bg_code,
         }
     }
-    
+
     /// Create ColorSpec for semantic color with optional bold/italic
     #[inline(always)]
     pub fn spec(&self, semantic: SemanticColor) -> ColorSpec {
@@ -92,7 +92,7 @@ impl CyrupTheme {
         spec.set_fg(Some(self.get_color(semantic)));
         spec
     }
-    
+
     /// Create bold ColorSpec for semantic color
     #[inline(always)]
     pub fn bold_spec(&self, semantic: SemanticColor) -> ColorSpec {
@@ -100,7 +100,7 @@ impl CyrupTheme {
         spec.set_bold(true);
         spec
     }
-    
+
     /// Create italic ColorSpec for semantic color
     #[inline(always)]
     pub fn italic_spec(&self, semantic: SemanticColor) -> ColorSpec {
@@ -120,102 +120,100 @@ impl CyrupThemeBuilder {
     /// Create new theme builder with Cyrup.ai defaults
     #[inline(always)]
     pub fn new() -> Self {
-        Self {
-            theme: CyrupTheme::default(),
-        }
+        Self { theme: CyrupTheme::default() }
     }
-    
+
     /// Set primary brand color
     #[inline(always)]
     pub fn primary(mut self, color: Color) -> Self {
         self.theme.primary = color;
         self
     }
-    
+
     /// Set secondary brand color
     #[inline(always)]
     pub fn secondary(mut self, color: Color) -> Self {
         self.theme.secondary = color;
         self
     }
-    
+
     /// Set accent color
     #[inline(always)]
     pub fn accent(mut self, color: Color) -> Self {
         self.theme.accent = color;
         self
     }
-    
+
     /// Set success color
     #[inline(always)]
     pub fn success(mut self, color: Color) -> Self {
         self.theme.success = color;
         self
     }
-    
+
     /// Set warning color
     #[inline(always)]
     pub fn warning(mut self, color: Color) -> Self {
         self.theme.warning = color;
         self
     }
-    
+
     /// Set error color
     #[inline(always)]
     pub fn error(mut self, color: Color) -> Self {
         self.theme.error = color;
         self
     }
-    
+
     /// Set info color
     #[inline(always)]
     pub fn info(mut self, color: Color) -> Self {
         self.theme.info = color;
         self
     }
-    
+
     /// Set debug color
     #[inline(always)]
     pub fn debug(mut self, color: Color) -> Self {
         self.theme.debug = color;
         self
     }
-    
+
     /// Set primary text color
     #[inline(always)]
     pub fn text_primary(mut self, color: Color) -> Self {
         self.theme.text_primary = color;
         self
     }
-    
+
     /// Set secondary text color
     #[inline(always)]
     pub fn text_secondary(mut self, color: Color) -> Self {
         self.theme.text_secondary = color;
         self
     }
-    
+
     /// Set muted text color
     #[inline(always)]
     pub fn text_muted(mut self, color: Color) -> Self {
         self.theme.text_muted = color;
         self
     }
-    
+
     /// Set background highlight color
     #[inline(always)]
     pub fn bg_highlight(mut self, color: Color) -> Self {
         self.theme.bg_highlight = color;
         self
     }
-    
+
     /// Set code background color
     #[inline(always)]
     pub fn bg_code(mut self, color: Color) -> Self {
         self.theme.bg_code = color;
         self
     }
-    
+
     /// Build the final theme
     #[inline(always)]
     pub fn build(self) -> CyrupTheme {
@@ -334,14 +332,14 @@ fn auto_detect_theme() -> CyrupTheme {
 /// High contrast development theme
 fn development_theme() -> CyrupTheme {
     CyrupTheme {
-        primary: Color::Rgb(100, 200, 255),      // Bright blue
-        secondary: Color::Rgb(100, 255, 200),   // Bright cyan
-        accent: Color::Rgb(255, 200, 100),      // Bright orange
-        success: Color::Rgb(100, 255, 100),     // Bright green
-        warning: Color::Rgb(255, 255, 100),     // Bright yellow
-        error: Color::Rgb(255, 100, 100),       // Bright red
-        info: Color::Rgb(150, 150, 255),        // Light blue
-        debug: Color::Rgb(255, 150, 255),       // Light magenta
+        primary: Color::Rgb(100, 200, 255), // Bright blue
+        secondary: Color::Rgb(100, 255, 200), // Bright cyan
+        accent: Color::Rgb(255, 200, 100),  // Bright orange
+        success: Color::Rgb(100, 255, 100), // Bright green
+        warning: Color::Rgb(255, 255, 100), // Bright yellow
+        error: Color::Rgb(255, 100, 100),   // Bright red
+        info: Color::Rgb(150, 150, 255),    // Light blue
+        debug: Color::Rgb(255, 150, 255),   // Light magenta
         text_primary: Color::White,
         text_secondary: Color::Rgb(220, 220, 220),
         text_muted: Color::Rgb(150, 150, 150),
@@ -353,14 +351,14 @@ fn development_theme() -> CyrupTheme {
 /// Subtle professional production theme
 fn production_theme() -> CyrupTheme {
     CyrupTheme {
-        primary: Color::Rgb(70, 130, 200),       // Muted blue
-        secondary: Color::Rgb(70, 200, 180),     // Muted teal
-        accent: Color::Rgb(200, 140, 70),        // Muted orange
-        success: Color::Rgb(70, 180, 70),        // Muted green
-        warning: Color::Rgb(200, 180, 70),       // Muted yellow
-        error: Color::Rgb(180, 70, 70),          // Muted red
-        info: Color::Rgb(100, 140, 180),         // Muted cyan
-        debug: Color::Rgb(140, 100, 180),        // Muted magenta
+        primary: Color::Rgb(70, 130, 200), // Muted blue
+        secondary: Color::Rgb(70, 200, 180), // Muted teal
+        accent: Color::Rgb(200, 140, 70),  // Muted orange
+        success: Color::Rgb(70, 180, 70),  // Muted green
+        warning: Color::Rgb(200, 180, 70), // Muted yellow
+        error: Color::Rgb(180, 70, 70),    // Muted red
+        info: Color::Rgb(100, 140, 180),   // Muted cyan
+        debug: Color::Rgb(140, 100, 180),  // Muted magenta
         text_primary: Color::Rgb(240, 240, 240),
         text_secondary: Color::Rgb(180, 180, 180),
         text_muted: Color::Rgb(120, 120, 120),

@@ -1,7 +1,8 @@
-use crate::{AsyncTask, spawn_async};
-use crate::chunk::EmbeddingChunk;
-use crate::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
+
+use crate::ZeroOneOrMany;
+use crate::chunk::EmbeddingChunk;
+use crate::{AsyncTask, spawn_async};
 
 /// Core trait for embedding models
 pub trait EmbeddingModel: Send + Sync + Clone {
@@ -9,7 +10,10 @@ pub trait EmbeddingModel: Send + Sync + Clone {
     fn embed(&self, text: &str) -> AsyncTask<ZeroOneOrMany<f32>>;
 
     /// Create embeddings for multiple texts with streaming
-    fn embed_batch(&self, texts: ZeroOneOrMany<String>) -> crate::async_task::AsyncStream<EmbeddingChunk>;
+    fn embed_batch(
+        &self,
+        texts: ZeroOneOrMany<String>,
+    ) -> crate::async_task::AsyncStream<EmbeddingChunk>;
 
     /// Simple embedding with handler
     /// Performance: Zero allocation, direct await without Result unwrapping

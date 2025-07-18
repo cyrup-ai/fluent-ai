@@ -1,7 +1,8 @@
 //! Graph database schema definitions
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 /// Graph node schema
 #[derive(Debug, Clone, Serialize, Deserialize)]

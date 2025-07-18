@@ -1,9 +1,9 @@
 //! Memory relationships implementation
 //! This module provides functionality for connecting memory nodes with relationships
 
-use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Represents the direction of a relationship

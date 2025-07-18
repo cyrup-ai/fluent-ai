@@ -1,10 +1,11 @@
 // src/vector/vector_search.rs
 //! Vector search functionality for the vector module.
 
-use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::cmp::Ordering;
+
+use serde::{Deserialize, Serialize};
 use surrealdb::sql::Value;
 
 use crate::constants::SEARCH_TASK;
@@ -92,7 +93,10 @@ impl VectorSearch {
         options: Option<SearchOptions>,
     ) -> Result<Vec<SearchResult>> {
         // Generate embedding for the text
-        let embedding = self.embedding_model.embed(text, task_string(SEARCH_TASK)).await?;
+        let embedding = self
+            .embedding_model
+            .embed(text, task_string(SEARCH_TASK))
+            .await?;
 
         // Search by embedding
         self.search_by_embedding(&embedding, options).await
@@ -310,8 +314,8 @@ impl HybridSearch {
         combined_results.sort_by(|a, b| {
             match (a.similarity.is_nan(), b.similarity.is_nan()) {
                 (true, true) => Ordering::Equal,
-                (true, false) => Ordering::Greater,  // NaN goes to end
-                (false, true) => Ordering::Less,     // NaN goes to end
+                (true, false) => Ordering::Greater, // NaN goes to end
+                (false, true) => Ordering::Less,    // NaN goes to end
                 (false, false) => {
                     // Safe to compare non-NaN values (descending order)
                     if b.similarity > a.similarity {

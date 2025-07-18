@@ -578,6 +578,176 @@ pub fn get_mistralembed_info() -> ModelInfoData {
     }
 }
 
+/// Get model info for jamba-large
+pub fn get_jambalarge_info() -> ModelInfoData {
+    ModelInfoData {
+        provider_name: "ai21".to_string(),
+        name: "jamba-large".to_string(),
+        max_input_tokens: Some(256000),
+        max_output_tokens: None,
+        input_price: Some(2.0),
+        output_price: Some(8.0),
+        supports_vision: None,
+        supports_function_calling: Some(true),
+        require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
+    }
+}
+
+/// Get model info for jamba-mini
+pub fn get_jambamini_info() -> ModelInfoData {
+    ModelInfoData {
+        provider_name: "ai21".to_string(),
+        name: "jamba-mini".to_string(),
+        max_input_tokens: Some(256000),
+        max_output_tokens: None,
+        input_price: Some(0.2),
+        output_price: Some(0.4),
+        supports_vision: None,
+        supports_function_calling: Some(true),
+        require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
+    }
+}
+
+/// Get model info for command-a-03-2025
+pub fn get_commanda032025_info() -> ModelInfoData {
+    ModelInfoData {
+        provider_name: "cohere".to_string(),
+        name: "command-a-03-2025".to_string(),
+        max_input_tokens: Some(256000),
+        max_output_tokens: Some(8192),
+        input_price: Some(2.5),
+        output_price: Some(10.0),
+        supports_vision: None,
+        supports_function_calling: Some(true),
+        require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
+    }
+}
+
+/// Get model info for command-r7b-12-2024
+pub fn get_commandr7b122024_info() -> ModelInfoData {
+    ModelInfoData {
+        provider_name: "cohere".to_string(),
+        name: "command-r7b-12-2024".to_string(),
+        max_input_tokens: Some(128000),
+        max_output_tokens: Some(4096),
+        input_price: Some(0.0375),
+        output_price: Some(0.15),
+        supports_vision: None,
+        supports_function_calling: None,
+        require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
+    }
+}
+
+/// Get model info for embed-v4.0
+pub fn get_embedv40_info() -> ModelInfoData {
+    ModelInfoData {
+        provider_name: "cohere".to_string(),
+        name: "embed-v4.0".to_string(),
+        max_input_tokens: None,
+        max_output_tokens: None,
+        input_price: Some(0.12),
+        output_price: None,
+        supports_vision: None,
+        supports_function_calling: None,
+        require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
+    }
+}
+
+/// Get model info for embed-english-v3.0
+pub fn get_embedenglishv30_info() -> ModelInfoData {
+    ModelInfoData {
+        provider_name: "cohere".to_string(),
+        name: "embed-english-v3.0".to_string(),
+        max_input_tokens: None,
+        max_output_tokens: None,
+        input_price: Some(0.1),
+        output_price: None,
+        supports_vision: None,
+        supports_function_calling: None,
+        require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
+    }
+}
+
+/// Get model info for embed-multilingual-v3.0
+pub fn get_embedmultilingualv30_info() -> ModelInfoData {
+    ModelInfoData {
+        provider_name: "cohere".to_string(),
+        name: "embed-multilingual-v3.0".to_string(),
+        max_input_tokens: None,
+        max_output_tokens: None,
+        input_price: Some(0.1),
+        output_price: None,
+        supports_vision: None,
+        supports_function_calling: None,
+        require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
+    }
+}
+
+/// Get model info for rerank-v3.5
+pub fn get_rerankv35_info() -> ModelInfoData {
+    ModelInfoData {
+        provider_name: "cohere".to_string(),
+        name: "rerank-v3.5".to_string(),
+        max_input_tokens: Some(4096),
+        max_output_tokens: None,
+        input_price: None,
+        output_price: None,
+        supports_vision: None,
+        supports_function_calling: None,
+        require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
+    }
+}
+
+/// Get model info for rerank-english-v3.0
+pub fn get_rerankenglishv30_info() -> ModelInfoData {
+    ModelInfoData {
+        provider_name: "cohere".to_string(),
+        name: "rerank-english-v3.0".to_string(),
+        max_input_tokens: Some(4096),
+        max_output_tokens: None,
+        input_price: None,
+        output_price: None,
+        supports_vision: None,
+        supports_function_calling: None,
+        require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
+    }
+}
+
+/// Get model info for rerank-multilingual-v3.0
+pub fn get_rerankmultilingualv30_info() -> ModelInfoData {
+    ModelInfoData {
+        provider_name: "cohere".to_string(),
+        name: "rerank-multilingual-v3.0".to_string(),
+        max_input_tokens: Some(4096),
+        max_output_tokens: None,
+        input_price: None,
+        output_price: None,
+        supports_vision: None,
+        supports_function_calling: None,
+        require_max_tokens: None,
+        supports_thinking: Some(false),
+        optimal_thinking_budget: Some(1024),
+    }
+}
+
 /// Get model info for gemini-2.5-flash
 pub fn get_gemini25flash_info() -> ModelInfoData {
     ModelInfoData {
@@ -1090,6 +1260,16 @@ pub fn get_model_info_by_name(name: &str) -> ModelInfoData {
         "DevstralSmallLatest" => get_devstralsmalllatest_info(),
         "CodestralLatest" => get_codestrallatest_info(),
         "MistralEmbed" => get_mistralembed_info(),
+        "JambaLarge" => get_jambalarge_info(),
+        "JambaMini" => get_jambamini_info(),
+        "CommandA032025" => get_commanda032025_info(),
+        "CommandR7b122024" => get_commandr7b122024_info(),
+        "EmbedV40" => get_embedv40_info(),
+        "EmbedEnglishV30" => get_embedenglishv30_info(),
+        "EmbedMultilingualV30" => get_embedmultilingualv30_info(),
+        "RerankV35" => get_rerankv35_info(),
+        "RerankEnglishV30" => get_rerankenglishv30_info(),
+        "RerankMultilingualV30" => get_rerankmultilingualv30_info(),
         "Gemini25Flash" => get_gemini25flash_info(),
         "Gemini25Pro" => get_gemini25pro_info(),
         "Gemini25FlashLitePreview0617" => get_gemini25flashlitepreview0617_info(),
@@ -1276,6 +1456,36 @@ pub fn get_model_config(model_name: &'static str) -> &'static crate::completion_
         let info = get_mistralembed_info();
         let config = model_info_to_config(&info, "MistralEmbed");
         map.insert("MistralEmbed", config);
+        let info = get_jambalarge_info();
+        let config = model_info_to_config(&info, "JambaLarge");
+        map.insert("JambaLarge", config);
+        let info = get_jambamini_info();
+        let config = model_info_to_config(&info, "JambaMini");
+        map.insert("JambaMini", config);
+        let info = get_commanda032025_info();
+        let config = model_info_to_config(&info, "CommandA032025");
+        map.insert("CommandA032025", config);
+        let info = get_commandr7b122024_info();
+        let config = model_info_to_config(&info, "CommandR7b122024");
+        map.insert("CommandR7b122024", config);
+        let info = get_embedv40_info();
+        let config = model_info_to_config(&info, "EmbedV40");
+        map.insert("EmbedV40", config);
+        let info = get_embedenglishv30_info();
+        let config = model_info_to_config(&info, "EmbedEnglishV30");
+        map.insert("EmbedEnglishV30", config);
+        let info = get_embedmultilingualv30_info();
+        let config = model_info_to_config(&info, "EmbedMultilingualV30");
+        map.insert("EmbedMultilingualV30", config);
+        let info = get_rerankv35_info();
+        let config = model_info_to_config(&info, "RerankV35");
+        map.insert("RerankV35", config);
+        let info = get_rerankenglishv30_info();
+        let config = model_info_to_config(&info, "RerankEnglishV30");
+        map.insert("RerankEnglishV30", config);
+        let info = get_rerankmultilingualv30_info();
+        let config = model_info_to_config(&info, "RerankMultilingualV30");
+        map.insert("RerankMultilingualV30", config);
         let info = get_gemini25flash_info();
         let config = model_info_to_config(&info, "Gemini25Flash");
         map.insert("Gemini25Flash", config);

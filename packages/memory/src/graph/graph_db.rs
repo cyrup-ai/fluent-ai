@@ -1,11 +1,12 @@
 //! Graph database abstraction
 
-use futures::Stream;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+
+use futures::Stream;
+use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 
 /// Result type for graph operations

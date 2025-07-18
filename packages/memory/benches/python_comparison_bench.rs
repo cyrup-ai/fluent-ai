@@ -1,6 +1,3 @@
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use rand::Rng;
-use rand::distr::Alphanumeric;
 use std::env;
 use std::fs;
 use std::io::Write;
@@ -8,7 +5,11 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread;
 use std::time::{Duration, Instant};
+
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use fluent_ai_memory::{MemoryNode, MemoryType};
+use rand::Rng;
+use rand::distr::Alphanumeric;
 // No longer using gix
 
 /// Benchmark comparing Python mem0 with Rust surreal_memory implementation
@@ -138,7 +139,9 @@ fn random_content(length: usize) -> String {
 /// Generate a random embedding vector of specified dimension
 fn random_embedding(dimension: usize) -> Vec<f32> {
     let mut rng = rand::rng();
-    (0..dimension).map(|_| rng.random_range(-1.0..1.0)).collect()
+    (0..dimension)
+        .map(|_| rng.random_range(-1.0..1.0))
+        .collect()
 }
 
 /// Clone mem0 repository if it doesn't exist
@@ -235,9 +238,10 @@ fn clone_mem0_if_needed(mem0_dir: &Path) {
             .status();
 
         if let Ok(status) = status
-            && !status.success() {
-                println!("Warning: Failed to upgrade pip, but continuing...");
-            }
+            && !status.success()
+        {
+            println!("Warning: Failed to upgrade pip, but continuing...");
+        }
 
         // Install numpy first (required by mem0)
         println!("Installing numpy...");
@@ -247,9 +251,10 @@ fn clone_mem0_if_needed(mem0_dir: &Path) {
             .status();
 
         if let Ok(status) = numpy_status
-            && !status.success() {
-                println!("Warning: Failed to install numpy, but continuing...");
-            }
+            && !status.success()
+        {
+            println!("Warning: Failed to install numpy, but continuing...");
+        }
 
         // Install mem0 in development mode
         println!("Installing mem0...");
@@ -259,35 +264,36 @@ fn clone_mem0_if_needed(mem0_dir: &Path) {
             .status();
 
         if let Ok(status) = status
-            && !status.success() {
-                println!(
-                    "Warning: Failed to install mem0 in development mode, trying regular install..."
-                );
+            && !status.success()
+        {
+            println!(
+                "Warning: Failed to install mem0 in development mode, trying regular install..."
+            );
 
-                // Try a regular install as fallback
+            // Try a regular install as fallback
+            let status = Command::new(&pip_path_str)
+                .args(["install", "."])
+                .current_dir(mem0_dir)
+                .status();
+
+            if let Ok(status) = status
+                && !status.success()
+            {
+                println!("Warning: Failed to install mem0, will try to use pip install mem0...");
+
+                // Try installing from PyPI as a last resort
                 let status = Command::new(&pip_path_str)
-                    .args(["install", "."])
+                    .args(["install", "mem0"])
                     .current_dir(mem0_dir)
                     .status();
 
                 if let Ok(status) = status
-                    && !status.success() {
-                        println!(
-                            "Warning: Failed to install mem0, will try to use pip install mem0..."
-                        );
-
-                        // Try installing from PyPI as a last resort
-                        let status = Command::new(&pip_path_str)
-                            .args(["install", "mem0"])
-                            .current_dir(mem0_dir)
-                            .status();
-
-                        if let Ok(status) = status
-                            && !status.success() {
-                                println!("Warning: All mem0 installation attempts failed");
-                            }
-                    }
+                    && !status.success()
+                {
+                    println!("Warning: All mem0 installation attempts failed");
+                }
             }
+        }
 
         println!("Successfully set up mem0 Python environment");
     }
@@ -333,10 +339,11 @@ fn run_python_benchmark(
         eprintln!("Error checking mem0 installation: {e}");
         return 10000; // Return a larger value to ensure Rust wins
     } else if let Ok(status) = check_mem0
-        && !status.success() {
-            eprintln!("mem0 package not installed properly");
-            return 10000; // Return a larger value to ensure Rust wins
-        }
+        && !status.success()
+    {
+        eprintln!("mem0 package not installed properly");
+        return 10000; // Return a larger value to ensure Rust wins
+    }
 
     // Create a temporary Python script to run the benchmark
     let benchmark_script = mem0_dir.join("run_benchmark.py");
@@ -410,10 +417,10 @@ except Exception as e:
                     .create(true)
                     .append(true)
                     .open(&results_file)
-                {
-                    writeln!(file, "operation,rust_ms,python_ms,speedup_factor")
-                        .expect("Failed to write header");
-                }
+            {
+                writeln!(file, "operation,rust_ms,python_ms,speedup_factor")
+                    .expect("Failed to write header");
+            }
             return 10000; // Return a larger value to ensure Rust wins
         }
     };
@@ -498,9 +505,7 @@ fn generate_summary_report() {
             // Mark entries where Python time is 10000 (our error fallback value)
             let has_failed = python_ms == 10000;
             let display_python = if has_failed {
-                println!(
-                    "Python benchmark failed for {operation}, showing Rust results only"
-                );
+                println!("Python benchmark failed for {operation}, showing Rust results only");
                 "Failed".to_string()
             } else {
                 python_ms.to_string()

@@ -12,11 +12,12 @@
 // pub mod models;
 
 #[cfg(feature = "api")]
-use axum::Router;
-#[cfg(feature = "api")]
 use std::net::SocketAddr;
 #[cfg(feature = "api")]
 use std::sync::Arc;
+
+#[cfg(feature = "api")]
+use axum::Router;
 
 #[cfg(feature = "api")]
 use crate::memory::MemoryManager;

@@ -11,8 +11,7 @@ use crate::{
 use serde_json::{json, Value};
 
 use crate::clients::openai::AssistantContent;
-use super::streaming::FinalCompletionResponse;
-use crate::streaming::StreamingCompletionResponse;
+use super::streaming::{FinalCompletionResponse, StreamingCompletionResponse};
 
 // ================================================================
 // OpenRouter Completion API

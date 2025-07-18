@@ -3,11 +3,11 @@
 //! This shows how the sync trait methods return concrete Future/Stream types
 //! that can be awaited, following the pattern of no async_trait or Box<dyn Future>
 
-use futures::StreamExt;
 use fluent_ai_memory::memory::{
     memory_manager::{MemoryManager, SurrealDBMemoryManager},
     memory_node::{MemoryNode, MemoryType},
 };
+use futures::StreamExt;
 use surrealdb::{
     Surreal,
     engine::{

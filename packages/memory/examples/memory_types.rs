@@ -5,11 +5,11 @@
 //! - Episodic memories (personal experiences)
 //! - Procedural memories (how-to knowledge)
 
-use futures::StreamExt;
 use fluent_ai_memory::memory::{
     memory_manager::{MemoryManager, SurrealDBMemoryManager},
     memory_node::{MemoryNode, MemoryType},
 };
+use futures::StreamExt;
 use surrealdb::{
     Surreal,
     engine::{
@@ -147,35 +147,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Link semantic memory to episodic memory
     let _rel1 = memory_manager
-        .create_relationship(
-            fluent_ai_memory::memory::MemoryRelationship::new(
-                rust_mem.id.clone(),
-                episode1.id.clone(),
-                "triggered".to_string(),
-            ),
-        )
+        .create_relationship(fluent_ai_memory::memory::MemoryRelationship::new(
+            rust_mem.id.clone(),
+            episode1.id.clone(),
+            "triggered".to_string(),
+        ))
         .await?;
 
     // Link episodic memories in sequence
     let _rel2 = memory_manager
-        .create_relationship(
-            fluent_ai_memory::memory::MemoryRelationship::new(
-                episode1.id.clone(),
-                episode2.id.clone(),
-                "led_to".to_string(),
-            ),
-        )
+        .create_relationship(fluent_ai_memory::memory::MemoryRelationship::new(
+            episode1.id.clone(),
+            episode2.id.clone(),
+            "led_to".to_string(),
+        ))
         .await?;
 
     // Link procedural memory to semantic memory
     let _rel3 = memory_manager
-        .create_relationship(
-            fluent_ai_memory::memory::MemoryRelationship::new(
-                stored_procedure.id.clone(),
-                rust_mem.id.clone(),
-                "implements".to_string(),
-            ),
-        )
+        .create_relationship(fluent_ai_memory::memory::MemoryRelationship::new(
+            stored_procedure.id.clone(),
+            rust_mem.id.clone(),
+            "implements".to_string(),
+        ))
         .await?;
 
     println!("✅ Created relationships:");

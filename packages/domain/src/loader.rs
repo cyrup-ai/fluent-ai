@@ -1,7 +1,8 @@
-use crate::ZeroOneOrMany;
-use crate::{AsyncTask, spawn_async};
 use std::fmt;
 use std::path::PathBuf;
+
+use crate::ZeroOneOrMany;
+use crate::{AsyncTask, spawn_async};
 
 /// Trait defining the core file loading interface
 pub trait Loader<T>: Send + Sync + fmt::Debug + Clone
@@ -10,32 +11,32 @@ where
 {
     /// Get the current file pattern
     fn pattern(&self) -> Option<&str>;
-    
+
     /// Get the recursive setting
     fn recursive(&self) -> bool;
-    
+
     /// Load all files matching the criteria
     fn load_all(&self) -> AsyncTask<ZeroOneOrMany<T>>
     where
         T: crate::async_task::NotResult;
-    
+
     /// Stream files one by one
     fn stream_files(&self) -> crate::async_task::AsyncStream<T>
     where
         T: crate::async_task::NotResult;
-    
+
     /// Process each file with a processor function
     fn process_each<F, U>(&self, processor: F) -> AsyncTask<ZeroOneOrMany<U>>
     where
         F: Fn(&T) -> U + Send + Sync + 'static,
         U: Send + Sync + fmt::Debug + Clone + 'static + crate::async_task::NotResult;
-    
+
     /// Create new loader with pattern
     fn new(pattern: impl Into<String>) -> Self;
-    
+
     /// Set recursive loading
     fn with_recursive(self, recursive: bool) -> Self;
-    
+
     /// Apply filter to results
     fn with_filter<F>(self, filter: F) -> Self
     where
@@ -72,7 +73,7 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static> Clone for LoaderImpl<T> {
         Self {
             pattern: self.pattern.clone(),
             recursive: self.recursive,
-            iterator: None, // Can't clone trait objects
+            iterator: None,  // Can't clone trait objects
             filter_fn: None, // Can't clone function pointers
         }
     }
@@ -82,11 +83,11 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
     fn pattern(&self) -> Option<&str> {
         self.pattern.as_deref()
     }
-    
+
     fn recursive(&self) -> bool {
         self.recursive
     }
-    
+
     fn load_all(&self) -> AsyncTask<ZeroOneOrMany<PathBuf>>
     where
         PathBuf: crate::async_task::NotResult,
@@ -102,7 +103,7 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
                 }
                 None => Vec::new(),
             };
-            
+
             // Convert Vec<PathBuf> to ZeroOneOrMany<PathBuf> without unwrap
             match results.len() {
                 0 => ZeroOneOrMany::None,
@@ -113,19 +114,19 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
                     } else {
                         ZeroOneOrMany::None
                     }
-                },
+                }
                 _ => ZeroOneOrMany::many(results),
             }
         })
     }
-    
+
     fn stream_files(&self) -> crate::async_task::AsyncStream<PathBuf>
     where
         PathBuf: crate::async_task::NotResult,
     {
         let pattern = self.pattern.clone();
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        
+
         tokio::spawn(async move {
             if let Some(p) = pattern {
                 if let Ok(paths) = glob::glob(&p) {
@@ -137,10 +138,10 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
                 }
             }
         });
-        
+
         crate::async_task::AsyncStream::new(rx)
     }
-    
+
     fn process_each<F, U>(&self, processor: F) -> AsyncTask<ZeroOneOrMany<U>>
     where
         F: Fn(&PathBuf) -> U + Send + Sync + 'static,
@@ -157,7 +158,7 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
                 ZeroOneOrMany::One(path) => vec![processor(&path)],
                 ZeroOneOrMany::Many(paths) => paths.iter().map(|p| processor(p)).collect(),
             };
-            
+
             // Convert Vec<U> to ZeroOneOrMany<U> without unwrap
             match results.len() {
                 0 => ZeroOneOrMany::None,
@@ -168,12 +169,12 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
                     } else {
                         ZeroOneOrMany::None
                     }
-                },
+                }
                 _ => ZeroOneOrMany::many(results),
             }
         })
     }
-    
+
     fn new(pattern: impl Into<String>) -> Self {
         Self {
             pattern: Some(pattern.into()),
@@ -182,12 +183,12 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
             filter_fn: None,
         }
     }
-    
+
     fn with_recursive(mut self, recursive: bool) -> Self {
         self.recursive = recursive;
         self
     }
-    
+
     fn with_filter<F>(mut self, filter: F) -> Self
     where
         F: Fn(&PathBuf) -> bool + Send + Sync + 'static,

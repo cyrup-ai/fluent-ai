@@ -1,7 +1,8 @@
 //! Vector indexing for efficient similarity search
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 use crate::utils::Result;
 use crate::vector::DistanceMetric;
@@ -136,7 +137,10 @@ impl VectorIndex for FlatIndex {
             .collect();
 
         // Sort by distance (ascending for distance metrics, descending for similarity)
-        distances.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        // Handle NaN values by treating them as greater than any finite value
+        distances.sort_by(|a, b| {
+            a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Take top k results
         distances.truncate(k);

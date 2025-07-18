@@ -1,9 +1,9 @@
 //! Termcolor crate for cross-platform colored terminal output with Cyrup.ai theming
 
 pub mod ansi;
-pub mod theme;
 pub mod colored_message;
 pub mod macros;
+pub mod theme;
 mod traits;
 mod types;
 mod writers;
@@ -29,9 +29,16 @@ pub use writers::{
 // Re-export theme system
 pub use theme::{
     CyrupTheme, CyrupThemeBuilder, SemanticColor, ThemeConfig,
-    set_global_theme, get_global_theme, get_current_theme, with_temporary_theme,
-    write_colored, write_colored_bold, write_colored_italic,
+    get_current_theme, get_global_theme, set_global_theme,
+    with_temporary_theme, write_colored, write_colored_bold,
+    write_colored_italic,
 };
 
 // Re-export colored message builder
 pub use colored_message::{ColoredMessage, MessageStyle};
+
+// Re-export terminal color detection functions
+pub use color_writer::color_support::{
+    color_count, detect_color_support, should_use_color, supports_truecolor
+};
+pub use color_writer::color_choice_ext::ColorChoiceExt;

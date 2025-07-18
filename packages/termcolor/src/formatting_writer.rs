@@ -1,13 +1,13 @@
 //! Text formatting and cross-platform stream management for high-performance output
-//! 
+//!
 //! This module provides blazing-fast, zero-allocation stream management with
 //! cross-platform console handling. All implementations are lock-free and
 //! optimized for high-throughput terminal applications.
 
-use crate::{ColorChoice, ColorSpec, HyperlinkSpec, WriteColor};
 use crate::ansi_writer::Ansi;
-use crate::color_writer::{NoColor, color_choice_ext::ColorChoiceExt};
-use std::io::{self, BufWriter};
+use crate::color_writer::NoColor;
+use crate::{ColorChoice, ColorSpec, HyperlinkSpec, WriteColor};
+use std::io;
 
 #[cfg(windows)]
 use winapi_util::console as wincon;
@@ -40,10 +40,10 @@ pub enum IoStandardStream {
 
 impl IoStandardStream {
     /// Create a new standard stream of the specified type
-    /// 
+    ///
     /// # Arguments
     /// * `sty` - Type of standard stream to create
-    /// 
+    ///
     /// # Returns
     /// * Configured standard stream ready for output
     #[inline(always)]
@@ -67,7 +67,7 @@ impl IoStandardStream {
     }
 
     /// Lock the standard stream for exclusive access
-    /// 
+    ///
     /// # Returns
     /// * Locked stream handle for thread-safe writing
     pub fn lock(&self) -> IoStandardStreamLock<'_> {
@@ -82,7 +82,9 @@ impl IoStandardStream {
             | IoStandardStream::StderrBuffered(_) => {
                 // We don't permit this case to ever occur in the public API,
                 // so it's safe to panic with a clear error message.
-                panic!("cannot lock a buffered standard stream - use unbuffered streams for locking")
+                panic!(
+                    "cannot lock a buffered standard stream - use unbuffered streams for locking"
+                )
             }
         }
     }
@@ -90,10 +92,10 @@ impl IoStandardStream {
 
 impl io::Write for IoStandardStream {
     /// Write bytes to the standard stream with optimized performance
-    /// 
+    ///
     /// # Arguments
     /// * `b` - Buffer of bytes to write
-    /// 
+    ///
     /// # Returns
     /// * Number of bytes written or IO error
     #[inline(always)]
@@ -107,7 +109,7 @@ impl io::Write for IoStandardStream {
     }
 
     /// Flush any buffered data to the underlying stream
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -132,10 +134,10 @@ pub enum IoStandardStreamLock<'a> {
 
 impl<'a> io::Write for IoStandardStreamLock<'a> {
     /// Write bytes to the locked stream
-    /// 
+    ///
     /// # Arguments
     /// * `b` - Buffer of bytes to write
-    /// 
+    ///
     /// # Returns
     /// * Number of bytes written or IO error
     #[inline(always)]
@@ -147,7 +149,7 @@ impl<'a> io::Write for IoStandardStreamLock<'a> {
     }
 
     /// Flush the locked stream
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -163,9 +165,9 @@ impl<'a> io::Write for IoStandardStreamLock<'a> {
 ///
 /// This satisfies both `io::Write` and `WriteColor`, and buffers writes
 /// until either `flush` is called or the buffer is full.
-/// 
+///
 /// ## Performance Characteristics
-/// 
+///
 /// - **Zero allocation**: Optimized for minimal memory allocation
 /// - **Lock-free operation**: No synchronization during normal operation
 /// - **Cross-platform**: Handles Windows console and Unix terminal differences
@@ -213,14 +215,17 @@ pub enum WriterInnerLock<W> {
 
 impl<W: io::Write> WriterInner<W> {
     /// Create a new writer inner with the specified color choice
-    /// 
+    ///
     /// # Arguments
     /// * `sty` - Type of standard stream
     /// * `choice` - Color choice preferences
-    /// 
+    ///
     /// # Returns
     /// * Configured writer inner ready for output
-    pub fn create(sty: StandardStreamType, choice: ColorChoice) -> WriterInner<IoStandardStream> {
+    pub fn create(
+        sty: StandardStreamType,
+        choice: ColorChoice,
+    ) -> WriterInner<IoStandardStream> {
         let stream = IoStandardStream::new(sty);
         if choice.should_attempt_color() {
             WriterInner::Ansi(Ansi::new(stream))
@@ -232,10 +237,10 @@ impl<W: io::Write> WriterInner<W> {
 
 impl<W: io::Write> io::Write for WriterInner<W> {
     /// Write bytes with zero-allocation optimization
-    /// 
+    ///
     /// # Arguments
     /// * `buf` - Buffer of bytes to write
-    /// 
+    ///
     /// # Returns
     /// * Number of bytes written or IO error
     #[inline(always)]
@@ -247,7 +252,7 @@ impl<W: io::Write> io::Write for WriterInner<W> {
     }
 
     /// Flush any buffered data
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -261,7 +266,7 @@ impl<W: io::Write> io::Write for WriterInner<W> {
 
 impl<W: io::Write> WriteColor for WriterInner<W> {
     /// Check if this writer supports color output
-    /// 
+    ///
     /// # Returns
     /// * True if color is supported
     #[inline(always)]
@@ -273,7 +278,7 @@ impl<W: io::Write> WriteColor for WriterInner<W> {
     }
 
     /// Check if this writer supports hyperlinks
-    /// 
+    ///
     /// # Returns
     /// * True if hyperlinks are supported
     #[inline(always)]
@@ -285,10 +290,10 @@ impl<W: io::Write> WriteColor for WriterInner<W> {
     }
 
     /// Set color and formatting
-    /// 
+    ///
     /// # Arguments
     /// * `spec` - Color specification
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -300,10 +305,10 @@ impl<W: io::Write> WriteColor for WriterInner<W> {
     }
 
     /// Set hyperlink
-    /// 
+    ///
     /// # Arguments
     /// * `link` - Hyperlink specification
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -315,7 +320,7 @@ impl<W: io::Write> WriteColor for WriterInner<W> {
     }
 
     /// Reset color and formatting
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -329,10 +334,10 @@ impl<W: io::Write> WriteColor for WriterInner<W> {
 
 impl<W: io::Write> io::Write for WriterInnerLock<W> {
     /// Write bytes to locked writer
-    /// 
+    ///
     /// # Arguments
     /// * `buf` - Buffer of bytes to write
-    /// 
+    ///
     /// # Returns
     /// * Number of bytes written or IO error
     #[inline(always)]
@@ -344,7 +349,7 @@ impl<W: io::Write> io::Write for WriterInnerLock<W> {
     }
 
     /// Flush locked writer
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -358,7 +363,7 @@ impl<W: io::Write> io::Write for WriterInnerLock<W> {
 
 impl<W: io::Write> WriteColor for WriterInnerLock<W> {
     /// Check if locked writer supports color
-    /// 
+    ///
     /// # Returns
     /// * True if color is supported
     #[inline(always)]
@@ -370,7 +375,7 @@ impl<W: io::Write> WriteColor for WriterInnerLock<W> {
     }
 
     /// Check if locked writer supports hyperlinks
-    /// 
+    ///
     /// # Returns
     /// * True if hyperlinks are supported
     #[inline(always)]
@@ -382,10 +387,10 @@ impl<W: io::Write> WriteColor for WriterInnerLock<W> {
     }
 
     /// Set color on locked writer
-    /// 
+    ///
     /// # Arguments
     /// * `spec` - Color specification
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -397,10 +402,10 @@ impl<W: io::Write> WriteColor for WriterInnerLock<W> {
     }
 
     /// Set hyperlink on locked writer
-    /// 
+    ///
     /// # Arguments
     /// * `link` - Hyperlink specification
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -412,7 +417,7 @@ impl<W: io::Write> WriteColor for WriterInnerLock<W> {
     }
 
     /// Reset color on locked writer
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -428,30 +433,36 @@ impl StandardStream {
     /// Create a new `StandardStream` with color preferences that writes to stdout
     ///
     /// If coloring is desired, ANSI escape sequences are used.
-    /// 
+    ///
     /// # Arguments
     /// * `choice` - Color output preferences
-    /// 
+    ///
     /// # Returns
     /// * StandardStream configured for stdout output
     #[inline(always)]
     pub fn stdout(choice: ColorChoice) -> StandardStream {
-        let wtr = WriterInner::<IoStandardStream>::create(StandardStreamType::Stdout, choice);
+        let wtr = WriterInner::<IoStandardStream>::create(
+            StandardStreamType::Stdout,
+            choice,
+        );
         StandardStream { wtr: LossyStandardStream::new(wtr) }
     }
 
     /// Create a new `StandardStream` with color preferences that writes to stderr
     ///
     /// If coloring is desired, ANSI escape sequences are used.
-    /// 
+    ///
     /// # Arguments
     /// * `choice` - Color output preferences
-    /// 
+    ///
     /// # Returns
     /// * StandardStream configured for stderr output
     #[inline(always)]
     pub fn stderr(choice: ColorChoice) -> StandardStream {
-        let wtr = WriterInner::<IoStandardStream>::create(StandardStreamType::Stderr, choice);
+        let wtr = WriterInner::<IoStandardStream>::create(
+            StandardStreamType::Stderr,
+            choice,
+        );
         StandardStream { wtr: LossyStandardStream::new(wtr) }
     }
 
@@ -462,7 +473,7 @@ impl StandardStream {
     ///
     /// This method is **not reentrant**. It may panic if `lock` is called
     /// while a `StandardStreamLock` is still alive.
-    /// 
+    ///
     /// # Returns
     /// * Locked stream handle for thread-safe access
     pub fn lock(&self) -> StandardStreamLock<'_> {
@@ -472,10 +483,10 @@ impl StandardStream {
 
 impl<'a> StandardStreamLock<'a> {
     /// Create a locked stream from a standard stream reference
-    /// 
+    ///
     /// # Arguments
     /// * `stream` - Standard stream to lock
-    /// 
+    ///
     /// # Returns
     /// * Locked stream handle
     fn from_stream(stream: &StandardStream) -> StandardStreamLock<'_> {
@@ -493,28 +504,34 @@ impl<'a> StandardStreamLock<'a> {
 
 impl BufferedStandardStream {
     /// Create a new `BufferedStandardStream` for stdout with high throughput
-    /// 
+    ///
     /// # Arguments
     /// * `choice` - Color output preferences
-    /// 
+    ///
     /// # Returns
     /// * Buffered stream for high-throughput stdout output
     #[inline(always)]
     pub fn stdout(choice: ColorChoice) -> BufferedStandardStream {
-        let wtr = WriterInner::<IoStandardStream>::create(StandardStreamType::StdoutBuffered, choice);
+        let wtr = WriterInner::<IoStandardStream>::create(
+            StandardStreamType::StdoutBuffered,
+            choice,
+        );
         BufferedStandardStream { wtr: LossyStandardStream::new(wtr) }
     }
 
     /// Create a new `BufferedStandardStream` for stderr with high throughput
-    /// 
+    ///
     /// # Arguments
     /// * `choice` - Color output preferences
-    /// 
+    ///
     /// # Returns
     /// * Buffered stream for high-throughput stderr output
     #[inline(always)]
     pub fn stderr(choice: ColorChoice) -> BufferedStandardStream {
-        let wtr = WriterInner::<IoStandardStream>::create(StandardStreamType::StderrBuffered, choice);
+        let wtr = WriterInner::<IoStandardStream>::create(
+            StandardStreamType::StderrBuffered,
+            choice,
+        );
         BufferedStandardStream { wtr: LossyStandardStream::new(wtr) }
     }
 }
@@ -551,7 +568,10 @@ macro_rules! impl_write_for_stream {
             }
 
             #[inline(always)]
-            fn set_hyperlink(&mut self, link: &HyperlinkSpec) -> io::Result<()> {
+            fn set_hyperlink(
+                &mut self,
+                link: &HyperlinkSpec,
+            ) -> io::Result<()> {
                 self.wtr.set_hyperlink(link)
             }
 
@@ -568,7 +588,7 @@ impl_write_for_stream!(StandardStreamLock<'_>);
 impl_write_for_stream!(BufferedStandardStream);
 
 /// Cross-platform lossy UTF-8 stream wrapper for Windows console compatibility
-/// 
+///
 /// This wrapper handles the differences between Windows console output and
 /// Unix terminal output, providing consistent behavior across platforms.
 #[derive(Debug)]
@@ -580,10 +600,10 @@ pub struct LossyStandardStream<W> {
 
 impl<W: io::Write> LossyStandardStream<W> {
     /// Create a new lossy stream wrapper (Unix)
-    /// 
+    ///
     /// # Arguments
     /// * `wtr` - Writer to wrap
-    /// 
+    ///
     /// # Returns
     /// * Lossy stream wrapper
     #[cfg(not(windows))]
@@ -593,10 +613,10 @@ impl<W: io::Write> LossyStandardStream<W> {
     }
 
     /// Create a new lossy stream wrapper (Windows)
-    /// 
+    ///
     /// # Arguments
     /// * `wtr` - Writer to wrap
-    /// 
+    ///
     /// # Returns
     /// * Lossy stream wrapper with console detection
     #[cfg(windows)]
@@ -606,10 +626,10 @@ impl<W: io::Write> LossyStandardStream<W> {
     }
 
     /// Wrap another writer with the same console settings (Unix)
-    /// 
+    ///
     /// # Arguments
     /// * `wtr` - Writer to wrap
-    /// 
+    ///
     /// # Returns
     /// * New lossy stream wrapper
     #[cfg(not(windows))]
@@ -619,10 +639,10 @@ impl<W: io::Write> LossyStandardStream<W> {
     }
 
     /// Wrap another writer with the same console settings (Windows)
-    /// 
+    ///
     /// # Arguments
     /// * `wtr` - Writer to wrap
-    /// 
+    ///
     /// # Returns
     /// * New lossy stream wrapper with inherited console settings
     #[cfg(windows)]
@@ -632,7 +652,7 @@ impl<W: io::Write> LossyStandardStream<W> {
     }
 
     /// Get a reference to the underlying writer
-    /// 
+    ///
     /// # Returns
     /// * Reference to the wrapped writer
     #[inline(always)]
@@ -646,22 +666,22 @@ impl<W: WriteColor> WriteColor for LossyStandardStream<W> {
     fn supports_color(&self) -> bool {
         self.wtr.supports_color()
     }
-    
+
     #[inline(always)]
     fn supports_hyperlinks(&self) -> bool {
         self.wtr.supports_hyperlinks()
     }
-    
+
     #[inline(always)]
     fn set_color(&mut self, spec: &ColorSpec) -> io::Result<()> {
         self.wtr.set_color(spec)
     }
-    
+
     #[inline(always)]
     fn set_hyperlink(&mut self, link: &HyperlinkSpec) -> io::Result<()> {
         self.wtr.set_hyperlink(link)
     }
-    
+
     #[inline(always)]
     fn reset(&mut self) -> io::Result<()> {
         self.wtr.reset()
@@ -670,10 +690,10 @@ impl<W: WriteColor> WriteColor for LossyStandardStream<W> {
 
 impl<W: io::Write> io::Write for LossyStandardStream<W> {
     /// Write with platform-specific lossy UTF-8 handling (Unix)
-    /// 
+    ///
     /// # Arguments
     /// * `buf` - Buffer to write
-    /// 
+    ///
     /// # Returns
     /// * Number of bytes written or IO error
     #[cfg(not(windows))]
@@ -683,10 +703,10 @@ impl<W: io::Write> io::Write for LossyStandardStream<W> {
     }
 
     /// Write with Windows console lossy UTF-8 handling
-    /// 
+    ///
     /// # Arguments
     /// * `buf` - Buffer to write
-    /// 
+    ///
     /// # Returns
     /// * Number of bytes written or IO error
     #[cfg(windows)]
@@ -699,7 +719,7 @@ impl<W: io::Write> io::Write for LossyStandardStream<W> {
     }
 
     /// Flush the underlying writer
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -709,7 +729,7 @@ impl<W: io::Write> io::Write for LossyStandardStream<W> {
 }
 
 /// Windows-specific lossy UTF-8 writing for console compatibility
-/// 
+///
 /// This function handles invalid UTF-8 sequences gracefully on Windows
 /// console output, replacing invalid bytes with the Unicode replacement
 /// character to prevent console errors.
@@ -725,63 +745,70 @@ fn write_lossy_utf8<W: io::Write>(mut w: W, buf: &[u8]) -> io::Result<usize> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_standard_stream_creation() {
         let stdout_stream = StandardStream::stdout(ColorChoice::Auto);
         let stderr_stream = StandardStream::stderr(ColorChoice::Never);
-        
+
         // Basic functionality test
         assert!(!stderr_stream.supports_color()); // Never choice should disable color
     }
-    
+
     #[test]
     fn test_buffered_stream_creation() {
-        let stdout_buffered = BufferedStandardStream::stdout(ColorChoice::Always);
-        let stderr_buffered = BufferedStandardStream::stderr(ColorChoice::Auto);
-        
+        let stdout_buffered =
+            BufferedStandardStream::stdout(ColorChoice::Always);
+        let stderr_buffered =
+            BufferedStandardStream::stderr(ColorChoice::Auto);
+
         // Buffered streams should support the same operations
         assert!(stdout_buffered.supports_color());
     }
-    
+
     #[test]
     fn test_color_choice_extensions() {
         assert!(ColorChoice::Always.should_attempt_color());
         assert!(ColorChoice::AlwaysAnsi.should_attempt_color());
         assert!(!ColorChoice::Never.should_attempt_color());
-        
+
         assert!(ColorChoice::AlwaysAnsi.should_force_ansi());
         assert!(!ColorChoice::Always.should_force_ansi());
     }
-    
+
     #[test]
     fn test_writer_inner_creation() {
-        let no_color_writer = WriterInner::create(StandardStreamType::Stdout, ColorChoice::Never);
-        let ansi_writer = WriterInner::create(StandardStreamType::Stderr, ColorChoice::Always);
-        
+        let no_color_writer = WriterInner::create(
+            StandardStreamType::Stdout,
+            ColorChoice::Never,
+        );
+        let ansi_writer = WriterInner::create(
+            StandardStreamType::Stderr,
+            ColorChoice::Always,
+        );
+
         assert!(!no_color_writer.supports_color());
         assert!(ansi_writer.supports_color());
     }
-    
+
     #[test]
     fn test_lossy_stream_wrapping() {
         let inner = io::sink();
         let lossy = LossyStandardStream::new(inner);
         let wrapped = lossy.wrap(io::sink());
-        
+
         // Should be able to wrap successfully
         assert!(!wrapped.supports_color());
     }
-    
+
     #[test]
     fn test_stream_locking() {
         let stream = StandardStream::stdout(ColorChoice::Auto);
         let locked = stream.lock();
-        
+
         // Locked stream should preserve color support
         assert_eq!(stream.supports_color(), locked.supports_color());
     }

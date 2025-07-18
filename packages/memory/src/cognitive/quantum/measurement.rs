@@ -1,8 +1,10 @@
 //! Quantum measurement implementation
 
-use crate::cognitive::quantum::{Complex64, types::CognitiveResult};
-use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
+
+use serde::{Deserialize, Serialize};
+
+use crate::cognitive::quantum::{Complex64, types::CognitiveResult};
 
 /// Measurement basis for quantum measurements
 #[derive(Debug, Clone)]

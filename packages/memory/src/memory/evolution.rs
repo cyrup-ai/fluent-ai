@@ -5,15 +5,17 @@
 //! including transitions, relationships between versions, and
 //! analysis of memory development patterns.
 
+use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
+
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use surrealdb::sql::Value;
+
 use crate::constants::{EMPTY_STRING, METADATA_PREFIX};
 use crate::graph::entity::{BaseEntity, Entity};
 use crate::utils::Result;
 use crate::utils::error::Error;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
-use surrealdb::sql::Value;
 
 /// Evolution transition type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -44,12 +46,11 @@ impl TransitionType {
             TransitionType::Custom(_) => "custom",
         }
     }
-
 }
 
 impl std::str::FromStr for TransitionType {
     type Err = Error;
-    
+
     fn from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "linear" => Ok(TransitionType::Linear),
@@ -137,8 +138,14 @@ impl EvolutionTransition {
         let now = Utc::now();
 
         // Set primary version IDs from first elements of vectors
-        let from_version_id = source_version_ids.first().cloned().unwrap_or_else(|| EMPTY_STRING.to_string());
-        let to_version_id = target_version_ids.first().cloned().unwrap_or_else(|| EMPTY_STRING.to_string());
+        let from_version_id = source_version_ids
+            .first()
+            .cloned()
+            .unwrap_or_else(|| EMPTY_STRING.to_string());
+        let to_version_id = target_version_ids
+            .first()
+            .cloned()
+            .unwrap_or_else(|| EMPTY_STRING.to_string());
 
         Self {
             id: id.to_string(),
@@ -352,9 +359,10 @@ impl EvolutionTransition {
         let mut metadata = HashMap::new();
         for (key, value) in entity.attributes() {
             if key.starts_with(METADATA_PREFIX)
-                && let Some(metadata_key) = key.strip_prefix(METADATA_PREFIX) {
-                    metadata.insert(metadata_key.to_string(), value.clone());
-                }
+                && let Some(metadata_key) = key.strip_prefix(METADATA_PREFIX)
+            {
+                metadata.insert(metadata_key.to_string(), value.clone());
+            }
         }
 
         Ok(Self {

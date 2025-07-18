@@ -1,6 +1,7 @@
 //! Core types and error definitions for the quantum cognitive system
 
 use std::fmt;
+
 use thiserror::Error;
 
 /// Result type for cognitive operations

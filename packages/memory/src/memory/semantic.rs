@@ -5,11 +5,12 @@
 //! and semantic information, with support for concepts, relationships,
 //! and reasoning capabilities.
 
+use std::collections::HashMap;
+use std::fmt::Debug;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
-use std::fmt::Debug;
 
 use crate::memory::memory_type::{BaseMemory, MemoryTypeEnum};
 use crate::utils::Result;

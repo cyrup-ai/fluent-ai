@@ -1,121 +1,167 @@
-use crate::domain::image::{Image, ImageMediaType, ContentFormat as ImageContentFormat, ImageDetail};
-use crate::domain::async_task::error_handlers::BadTraitImpl;
+//! Image builder implementations
+//!
+//! All image construction logic and builder patterns.
 
-/// Builder for Image objects
+use fluent_ai_domain::image::{Image, ContentFormat, ImageMediaType, ImageDetail};
+use fluent_ai_domain::chunk::ImageChunk;
+use fluent_ai_domain::AsyncStream;
+
 pub struct ImageBuilder {
-    data: Vec<u8>,
+    data: String,
+    format: Option<ContentFormat>,
     media_type: Option<ImageMediaType>,
-    format: Option<ImageContentFormat>,
     detail: Option<ImageDetail>,
 }
 
-impl ImageBuilder {
-    /// Create a new ImageBuilder with image data
-    pub fn new(data: Vec<u8>) -> Self {
-        Self {
-            data,
+pub struct ImageBuilderWithHandler {
+    #[allow(dead_code)] // TODO: Use for image data content (base64, URL, file path)
+    data: String,
+    #[allow(dead_code)] // TODO: Use for image content format specification (Base64, URL, Raw)
+    format: Option<ContentFormat>,
+    #[allow(dead_code)] // TODO: Use for image media type specification (PNG, JPEG, GIF, WEBP, SVG)
+    media_type: Option<ImageMediaType>,
+    #[allow(dead_code)] // TODO: Use for image detail level specification (Low, High, Auto)
+    detail: Option<ImageDetail>,
+    #[allow(dead_code)] // TODO: Use for polymorphic error handling during image operations
+    error_handler: Box<dyn Fn(String) + Send + Sync>,
+    #[allow(dead_code)] // TODO: Use for image streaming chunk processing
+    chunk_handler: Option<Box<dyn FnMut(ImageChunk) -> ImageChunk + Send + 'static>>,
+}
+
+impl Image {
+    // Semantic entry points
+    pub fn from_base64(data: impl Into<String>) -> ImageBuilder {
+        ImageBuilder {
+            data: data.into(),
+            format: Some(ContentFormat::Base64),
             media_type: None,
-            format: None,
             detail: None,
         }
     }
 
-    /// Set the media type
+    pub fn from_url(url: impl Into<String>) -> ImageBuilder {
+        ImageBuilder {
+            data: url.into(),
+            format: Some(ContentFormat::Url),
+            media_type: None,
+            detail: None,
+        }
+    }
+
+    pub fn from_path(path: impl Into<String>) -> ImageBuilder {
+        ImageBuilder {
+            data: path.into(),
+            format: Some(ContentFormat::Url),
+            media_type: None,
+            detail: None,
+        }
+    }
+}
+
+impl ImageBuilder {
+    pub fn format(mut self, format: ContentFormat) -> Self {
+        self.format = Some(format);
+        self
+    }
+
     pub fn media_type(mut self, media_type: ImageMediaType) -> Self {
         self.media_type = Some(media_type);
         self
     }
 
-    /// Set the content format
-    pub fn format(mut self, format: ImageContentFormat) -> Self {
-        self.format = Some(format);
-        self
-    }
-
-    /// Set the image detail level
     pub fn detail(mut self, detail: ImageDetail) -> Self {
         self.detail = Some(detail);
         self
     }
 
-    /// Build the Image object
-    pub fn build(self) -> Image {
-        Image {
-            data: self.data,
-            media_type: self.media_type,
-            format: self.format,
-            detail: self.detail,
-            additional_props: Default::default(),
-        }
-    }
-}
-
-/// Builder with error handler for Image objects
-pub struct ImageBuilderWithHandler<F> {
-    builder: ImageBuilder,
-    error_handler: F,
-}
-
-impl<F> ImageBuilderWithHandler<F>
-where
-    F: Fn(&str) + Send + Sync + 'static,
-{
-    /// Create a new ImageBuilderWithHandler
-    pub fn new(data: Vec<u8>, error_handler: F) -> Self {
-        Self {
-            builder: ImageBuilder::new(data),
-            error_handler,
-        }
-    }
-
-    /// Set the media type
-    pub fn media_type(mut self, media_type: ImageMediaType) -> Self {
-        self.builder = self.builder.media_type(media_type);
+    pub fn as_png(mut self) -> Self {
+        self.media_type = Some(ImageMediaType::PNG);
         self
     }
 
-    /// Set the content format
-    pub fn format(mut self, format: ImageContentFormat) -> Self {
-        self.builder = self.builder.format(format);
+    pub fn as_jpeg(mut self) -> Self {
+        self.media_type = Some(ImageMediaType::JPEG);
         self
     }
 
-    /// Set the image detail level
-    pub fn detail(mut self, detail: ImageDetail) -> Self {
-        self.builder = self.builder.detail(detail);
+    pub fn high_detail(mut self) -> Self {
+        self.detail = Some(ImageDetail::High);
         self
     }
 
-    /// Build the Image object with error handling
-    pub fn build(self) -> Image {
-        self.builder.build()
-    }
-}
-
-impl Image {
-    /// Create a new ImageBuilder from raw image data
-    pub fn from_data(data: Vec<u8>) -> ImageBuilder {
-        ImageBuilder::new(data)
+    pub fn low_detail(mut self) -> Self {
+        self.detail = Some(ImageDetail::Low);
+        self
     }
 
-    /// Create image with error handler
-    pub fn from_data_with_handler<F>(data: Vec<u8>, error_handler: F) -> ImageBuilderWithHandler<F>
+    // Error handling - required before terminal methods
+    pub fn on_error<F>(self, handler: F) -> ImageBuilderWithHandler
     where
-        F: Fn(&str) + Send + Sync + 'static,
+        F: Fn(String) + Send + Sync + 'static,
     {
-        ImageBuilderWithHandler::new(data, error_handler)
+        ImageBuilderWithHandler {
+            data: self.data,
+            format: self.format,
+            media_type: self.media_type,
+            detail: self.detail,
+            error_handler: Box::new(handler),
+            chunk_handler: None,
+        }
+    }
+
+    pub fn on_chunk<F>(self, handler: F) -> ImageBuilderWithHandler
+    where
+        F: FnMut(ImageChunk) -> ImageChunk + Send + 'static,
+    {
+        ImageBuilderWithHandler {
+            data: self.data,
+            format: self.format,
+            media_type: self.media_type,
+            detail: self.detail,
+            error_handler: Box::new(|e| eprintln!("Image chunk error: {}", e)),
+            chunk_handler: Some(Box::new(handler)),
+        }
     }
 }
 
-impl BadTraitImpl for Image {
-    fn bad_impl(error: &str) -> Self {
-        eprintln!("Image BadTraitImpl: {}", error);
-        Image {
-            data: vec![],
-            media_type: None,
-            format: Some(ImageContentFormat::Base64),
-            detail: Some(ImageDetail::Auto),
-            additional_props: Default::default(),
-        }
+impl ImageBuilderWithHandler {
+    // Terminal method - returns AsyncStream<ImageChunk>
+    pub fn load(self) -> impl AsyncStream<Item = ImageChunk> {
+        let image = Image {
+            data: self.data,
+            format: self.format,
+            media_type: self.media_type,
+            detail: self.detail,
+        };
+
+        // Convert image data to bytes and create proper ImageChunk
+        let data = image.data.as_bytes().to_vec();
+        let format = match image.media_type.unwrap_or(ImageMediaType::PNG) {
+            ImageMediaType::PNG => fluent_ai_domain::chunk::ImageFormat::PNG,
+            ImageMediaType::JPEG => fluent_ai_domain::chunk::ImageFormat::JPEG,
+            ImageMediaType::GIF => fluent_ai_domain::chunk::ImageFormat::GIF,
+            ImageMediaType::WEBP => fluent_ai_domain::chunk::ImageFormat::WebP,
+            ImageMediaType::SVG => fluent_ai_domain::chunk::ImageFormat::PNG, // fallback
+        };
+
+        let chunk = ImageChunk {
+            data,
+            format,
+            dimensions: None,
+            metadata: std::collections::HashMap::new(),
+        };
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let _ = tx.send(chunk);
+        fluent_ai_domain::async_task::AsyncStream::new(rx)
+    }
+
+    // Terminal method - async load with processing
+    pub fn process<F>(self, _f: F) -> impl AsyncStream<Item = ImageChunk>
+    where
+        F: FnOnce(ImageChunk) -> ImageChunk + Send + 'static,
+    {
+        // For now, just return the load stream
+        // TODO: Implement actual processing
+        self.load()
     }
 }

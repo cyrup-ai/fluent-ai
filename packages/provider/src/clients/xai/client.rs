@@ -260,7 +260,8 @@ impl<'a> XAICompletionBuilder<'a, NeedsPrompt> {
 impl<'a> XAICompletionBuilder<'a, HasPrompt> {
     /// Build the completion request
     fn build_request(&self) -> Result<CompletionRequest, PromptError> {
-        let prompt = self.prompt.as_ref().expect("HasPrompt guarantees prompt");
+        let prompt = self.prompt.as_ref()
+            .ok_or_else(|| PromptError::MissingPrompt("Prompt is required for completion".to_string()))?;
 
         let mut builder =
             CompletionRequestBuilder::new(self.model_name.to_string(), prompt.clone())?;

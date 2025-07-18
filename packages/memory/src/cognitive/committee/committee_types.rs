@@ -4,15 +4,141 @@
 //! All operations are designed for optimal performance with zero heap allocations
 //! in hot paths and comprehensive atomic operations for thread safety.
 
-use crate::cognitive::types::{CognitiveError, OptimizationSpec};
-use arrayvec::ArrayVec;
-use atomic_counter::{AtomicCounter, RelaxedCounter};
-use serde::{Deserialize, Serialize};
-use smallvec::SmallVec;
-use std::sync::atomic::{AtomicU64, AtomicU32, AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
+use tokio::sync::RwLock;
 use std::time::{Duration, Instant};
+
 use arc_swap::ArcSwap;
+use arrayvec::ArrayVec;
+use super::relaxed_counter::RelaxedCounter;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use smallvec::SmallVec;
+use chrono::{DateTime, Utc};
+
+use crate::cognitive::types::{CognitiveError, OptimizationSpec};
+
+/// Zero-allocation custom serialization for ArrayVec and Instant types
+mod committee_serialization {
+    use super::*;
+    use serde::de::{self, SeqAccess, Visitor};
+    use std::fmt;
+    
+    /// Serialize ArrayVec<CommitteeEvaluation, MAX_COMMITTEE_SIZE> as a sequence
+    #[inline(always)]
+    pub fn serialize_committee_evaluations<S>(
+        evaluations: &ArrayVec<CommitteeEvaluation, MAX_COMMITTEE_SIZE>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // Zero-allocation: serialize as slice directly
+        evaluations.as_slice().serialize(serializer)
+    }
+    
+    /// Deserialize ArrayVec<CommitteeEvaluation, MAX_COMMITTEE_SIZE> from a sequence
+    #[inline(always)]
+    pub fn deserialize_committee_evaluations<'de, D>(
+        deserializer: D,
+    ) -> Result<ArrayVec<CommitteeEvaluation, MAX_COMMITTEE_SIZE>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct CommitteeEvaluationVisitor;
+        
+        impl<'de> Visitor<'de> for CommitteeEvaluationVisitor {
+            type Value = ArrayVec<CommitteeEvaluation, MAX_COMMITTEE_SIZE>;
+            
+            #[inline(always)]
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a sequence of committee evaluations")
+            }
+            
+            #[inline(always)]
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut evaluations = ArrayVec::new();
+                
+                // Zero-allocation: fill directly into stack-allocated ArrayVec
+                while let Some(evaluation) = seq.next_element::<CommitteeEvaluation>()? {
+                    if evaluations.try_push(evaluation).is_err() {
+                        return Err(de::Error::custom("too many committee evaluations"));
+                    }
+                }
+                
+                Ok(evaluations)
+            }
+        }
+        
+        deserializer.deserialize_seq(CommitteeEvaluationVisitor)
+    }
+    
+    /// Serialize Instant as DateTime<Utc> timestamp
+    #[inline(always)]
+    pub fn serialize_instant<S>(instant: &Instant, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // Convert Instant to DateTime<Utc> via SystemTime
+        let system_time = std::time::SystemTime::now() - instant.elapsed();
+        let datetime: DateTime<Utc> = system_time.into();
+        datetime.serialize(serializer)
+    }
+    
+    /// Deserialize Instant from DateTime<Utc> timestamp
+    #[inline(always)]
+    pub fn deserialize_instant<'de, D>(deserializer: D) -> Result<Instant, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let datetime = DateTime::<Utc>::deserialize(deserializer)?;
+        let system_time = std::time::SystemTime::from(datetime);
+        
+        // Convert back to Instant (best effort - may be approximate)
+        match system_time.elapsed() {
+            Ok(elapsed) => Ok(Instant::now() - elapsed),
+            Err(_) => {
+                // If system time is in the future, use current instant
+                Ok(Instant::now())
+            }
+        }
+    }
+    
+    /// Serialize SmallVec<u8, N> as a string
+    #[inline(always)]
+    pub fn serialize_smallvec_u8<S, const N: usize>(
+        smallvec: &SmallVec<u8, N>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = String::from_utf8_lossy(smallvec);
+        s.serialize(serializer)
+    }
+    
+    /// Deserialize SmallVec<u8, N> from a string
+    #[inline(always)]
+    pub fn deserialize_smallvec_u8<'de, D, const N: usize>(
+        deserializer: D,
+    ) -> Result<SmallVec<u8, N>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let bytes = s.as_bytes();
+        let mut smallvec = SmallVec::new();
+        
+        // Truncate if too long to fit in SmallVec
+        let len = bytes.len().min(N);
+        smallvec.extend_from_slice(&bytes[..len]);
+        
+        Ok(smallvec)
+    }
+}
 
 /// Maximum committee size for optimal performance and decision quality
 pub const MAX_COMMITTEE_SIZE: usize = 8;
@@ -118,6 +244,23 @@ impl Default for ModelMetrics {
     }
 }
 
+/// Evaluation metrics for committee assessment quality
+#[derive(Debug, Clone)]
+pub struct EvaluationMetrics {
+    /// Number of participating evaluators
+    pub participants: usize,
+    /// Number of evaluators that agreed with consensus
+    pub consensus_count: usize,
+    /// Average response time across all evaluators
+    pub average_response_time: Duration,
+    /// Score variance across evaluators (standard deviation)
+    pub score_variance: f64,
+    /// Quality of reasoning provided by evaluators
+    pub reasoning_quality: f64,
+    /// Whether evaluation completed within timeout
+    pub completed_on_time: bool,
+}
+
 impl ModelType {
     /// Get model quality tier for evaluation weighting
     #[inline(always)]
@@ -125,7 +268,9 @@ impl ModelType {
         match self {
             Self::Gpt4O | Self::Claude3Opus => QualityTier::Premium,
             Self::Claude3Sonnet | Self::GeminiPro => QualityTier::High,
-            Self::Claude3Haiku | Self::Gpt35Turbo | Self::Mixtral8x7B | Self::Llama270B => QualityTier::Good,
+            Self::Claude3Haiku | Self::Gpt35Turbo | Self::Mixtral8x7B | Self::Llama270B => {
+                QualityTier::Good
+            }
         }
     }
 
@@ -222,10 +367,25 @@ impl ModelType {
             Self::Llama270B => 4096,
         }
     }
+
+    /// Get human-readable display name for UI
+    #[inline(always)]
+    pub const fn display_name(self) -> &'static str {
+        match self {
+            Self::Gpt4O => "GPT-4 Omni",
+            Self::Claude3Sonnet => "Claude 3 Sonnet",
+            Self::Claude3Haiku => "Claude 3 Haiku",
+            Self::Claude3Opus => "Claude 3 Opus",
+            Self::Gpt35Turbo => "GPT-3.5 Turbo",
+            Self::GeminiPro => "Gemini Pro",
+            Self::Mixtral8x7B => "Mixtral 8x7B",
+            Self::Llama270B => "Llama 2 70B",
+        }
+    }
 }
 
 /// Zero-allocation model configuration with shared resources
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Model {
     pub model_type: ModelType,
     pub api_key: Arc<str>,
@@ -233,6 +393,9 @@ pub struct Model {
     pub timeout_ms: u64,
     pub max_retries: u8,
     pub rate_limit_per_minute: u32,
+    pub provider: Arc<dyn crate::llm::LLMProvider>,
+    pub health_status: Arc<RwLock<HealthStatus>>,
+    pub metrics: Arc<RwLock<ModelMetrics>>,
 }
 
 impl Model {
@@ -356,7 +519,9 @@ impl EvaluationConfig {
         if self.models.is_empty() {
             return 0;
         }
-        let max_latency = self.models.iter()
+        let max_latency = self
+            .models
+            .iter()
             .map(|m| m.expected_latency_ms())
             .max()
             .unwrap_or(0);
@@ -366,9 +531,7 @@ impl EvaluationConfig {
     /// Get estimated cost factor
     #[inline]
     pub fn estimated_cost_factor(&self) -> f64 {
-        self.models.iter()
-            .map(|m| m.cost_factor())
-            .sum::<f64>()
+        self.models.iter().map(|m| m.cost_factor()).sum::<f64>()
     }
 }
 
@@ -391,19 +554,24 @@ pub struct CommitteeEvaluation {
     /// Numeric score (0.0 - 1.0)
     pub score: f64,
     /// Detailed reasoning (optimized for small stack allocation)
-    pub reasoning: SmallVec<[u8; MAX_REASONING_BYTES]>,
+    #[serde(serialize_with = "committee_serialization::serialize_smallvec_u8", deserialize_with = "committee_serialization::deserialize_smallvec_u8")]
+    pub reasoning: SmallVec<u8, MAX_REASONING_BYTES>,
     /// Confidence in evaluation (0.0 - 1.0)
     pub confidence: f64,
     /// Processing time in milliseconds
     pub processing_time_ms: u64,
     /// Evaluation timestamp
-    pub timestamp: Instant,
+    pub timestamp: DateTime<Utc>,
     /// Objective alignment score (0.0 - 1.0)
     pub objective_alignment: f64,
     /// Implementation quality score (0.0 - 1.0)
     pub implementation_quality: f64,
     /// Risk assessment score (0.0 - 1.0)
     pub risk_assessment: f64,
+    /// Whether evaluation indicates progress toward objectives
+    pub makes_progress: bool,
+    /// Total evaluation time in milliseconds
+    pub evaluation_time: u64,
 }
 
 impl CommitteeEvaluation {
@@ -477,7 +645,7 @@ impl CommitteeEvaluation {
         let confidence_weight = self.confidence;
         let quality_weight = (self.objective_alignment + self.implementation_quality) / 2.0;
         let risk_adjustment = 1.0 - (self.risk_assessment * 0.3);
-        
+
         self.score * base_weight * confidence_weight * quality_weight * risk_adjustment
     }
 
@@ -514,13 +682,17 @@ pub struct ConsensusDecision {
     pub consensus_score: f64,
     /// Aggregated reasoning summary
     pub summary_reasoning: Arc<str>,
-    /// Individual evaluations (stack-allocated)
+    /// Individual evaluations (stack-allocated) with custom serialization
+    #[serde(serialize_with = "committee_serialization::serialize_committee_evaluations")]
+    #[serde(deserialize_with = "committee_serialization::deserialize_committee_evaluations")]
     pub evaluations: ArrayVec<CommitteeEvaluation, MAX_COMMITTEE_SIZE>,
     /// Number of dissenting opinions
     pub dissenting_count: u8,
     /// Total processing time for all evaluations
     pub total_processing_time_ms: u64,
-    /// Decision timestamp
+    /// Decision timestamp with custom serialization
+    #[serde(serialize_with = "committee_serialization::serialize_instant")]
+    #[serde(deserialize_with = "committee_serialization::deserialize_instant")]
     pub decision_timestamp: Instant,
     /// Weighted average score
     pub weighted_average_score: f64,
@@ -556,7 +728,10 @@ impl ConsensusDecision {
 
     /// Add evaluation and update aggregate metrics
     #[inline]
-    pub fn add_evaluation(&mut self, evaluation: CommitteeEvaluation) -> Result<(), CommitteeError> {
+    pub fn add_evaluation(
+        &mut self,
+        evaluation: CommitteeEvaluation,
+    ) -> Result<(), CommitteeError> {
         if self.evaluations.is_full() {
             return Err(CommitteeError::ConfigurationError {
                 message: "Maximum evaluations exceeded".into(),
@@ -577,31 +752,40 @@ impl ConsensusDecision {
         }
 
         // Calculate weighted average score
-        let total_weight: f64 = self.evaluations.iter()
+        let total_weight: f64 = self
+            .evaluations
+            .iter()
             .map(|e| e.model.strength_weight() * e.confidence)
             .sum();
-        
+
         if total_weight > 0.0 {
-            self.weighted_average_score = self.evaluations.iter()
+            self.weighted_average_score = self
+                .evaluations
+                .iter()
                 .map(|e| e.weighted_score())
-                .sum::<f64>() / total_weight;
+                .sum::<f64>()
+                / total_weight;
         }
 
         // Calculate decision quality
-        self.decision_quality = self.evaluations.iter()
+        self.decision_quality = self
+            .evaluations
+            .iter()
             .map(|e| e.quality_metric())
-            .sum::<f64>() / self.evaluations.len() as f64;
+            .sum::<f64>()
+            / self.evaluations.len() as f64;
 
         // Calculate aggregate risk
-        self.aggregate_risk = self.evaluations.iter()
+        self.aggregate_risk = self
+            .evaluations
+            .iter()
             .map(|e| e.risk_assessment * e.confidence)
-            .sum::<f64>() / self.evaluations.len() as f64;
+            .sum::<f64>()
+            / self.evaluations.len() as f64;
 
         // Count dissenting opinions
-        let progress_votes = self.evaluations.iter()
-            .filter(|e| e.score >= 0.5)
-            .count();
-        
+        let progress_votes = self.evaluations.iter().filter(|e| e.score >= 0.5).count();
+
         self.dissenting_count = if self.makes_progress {
             (self.evaluations.len() - progress_votes) as u8
         } else {
@@ -627,13 +811,16 @@ impl ConsensusDecision {
         }
 
         let mean = self.weighted_average_score;
-        let variance = self.evaluations.iter()
+        let variance = self
+            .evaluations
+            .iter()
             .map(|e| {
                 let diff = e.score - mean;
                 diff * diff
             })
-            .sum::<f64>() / self.evaluations.len() as f64;
-        
+            .sum::<f64>()
+            / self.evaluations.len() as f64;
+
         variance.sqrt()
     }
 
@@ -654,13 +841,17 @@ impl ConsensusDecision {
             average_time_ms: if self.evaluations.is_empty() {
                 0
             } else {
-                self.total_processing_time_ms / self.evaluations.len() as u64
+                self.total_processing_time_ms / (self.evaluations.len() as u64)
             },
-            fastest_time_ms: self.evaluations.iter()
+            fastest_time_ms: self
+                .evaluations
+                .iter()
                 .map(|e| e.processing_time_ms)
                 .min()
                 .unwrap_or(0),
-            slowest_time_ms: self.evaluations.iter()
+            slowest_time_ms: self
+                .evaluations
+                .iter()
                 .map(|e| e.processing_time_ms)
                 .max()
                 .unwrap_or(0),
@@ -792,35 +983,32 @@ impl CommitteeMetrics {
 
     /// Record evaluation completion with comprehensive metrics
     #[inline]
-    pub fn record_evaluation(
-        &self,
-        processing_time_ms: u64,
-        from_cache: bool,
-        quality_score: f64,
-    ) {
+    pub fn record_evaluation(&self, processing_time_ms: u64, from_cache: bool, quality_score: f64) {
         self.total_evaluations.inc();
         self.generation.inc();
-        
+
         if from_cache {
             self.cache_hits.inc();
         } else {
             self.cache_misses.inc();
         }
 
-        self.total_processing_time_ms.fetch_add(processing_time_ms, Ordering::Relaxed);
-        
+        self.total_processing_time_ms
+            .fetch_add(processing_time_ms, Ordering::Relaxed);
+
         // Update average response time
         let total_evaluations = self.total_evaluations.get();
         if total_evaluations > 0 {
             let total_time = self.total_processing_time_ms.load(Ordering::Relaxed);
-            let avg = total_time / total_evaluations;
+            let avg = total_time / (total_evaluations as u64);
             self.avg_response_time_ms.store(avg, Ordering::Relaxed);
         }
 
         // Update quality metrics
         let quality_fixed = (quality_score * 1000.0) as u64;
-        self.total_quality_score.fetch_add(quality_fixed, Ordering::Relaxed);
-        
+        self.total_quality_score
+            .fetch_add(quality_fixed, Ordering::Relaxed);
+
         // Update best quality score
         let current_best = self.best_quality_score.load(Ordering::Relaxed);
         if quality_fixed > current_best {
@@ -865,11 +1053,7 @@ impl CommitteeMetrics {
         let hits = self.cache_hits.get() as f64;
         let misses = self.cache_misses.get() as f64;
         let total = hits + misses;
-        if total > 0.0 {
-            hits / total
-        } else {
-            0.0
-        }
+        if total > 0.0 { hits / total } else { 0.0 }
     }
 
     /// Get average quality score
@@ -958,7 +1142,7 @@ impl CacheEntry {
     pub fn new(result: EvaluationResult, ttl_seconds: u64) -> Self {
         let now = Instant::now();
         let expires_at = now + Duration::from_secs(ttl_seconds);
-        
+
         Self {
             result: ArcSwap::from_pointee(result),
             created_at: now,
@@ -1013,7 +1197,7 @@ impl CacheEntry {
 #[derive(Debug)]
 pub struct CacheMetrics {
     /// Total cache entries
-    pub total_entries: RelaxedCounter,
+    pub total_entries: AtomicUsize,
     /// Cache evictions performed
     pub evictions: RelaxedCounter,
     /// Estimated memory usage in bytes
@@ -1029,7 +1213,7 @@ impl CacheMetrics {
     #[inline]
     pub fn new() -> Self {
         Self {
-            total_entries: RelaxedCounter::new(0),
+            total_entries: AtomicUsize::new(0),
             evictions: RelaxedCounter::new(0),
             memory_usage_bytes: AtomicU64::new(0),
             avg_entry_age_seconds: AtomicU64::new(0),
@@ -1040,16 +1224,18 @@ impl CacheMetrics {
     /// Record cache entry addition
     #[inline]
     pub fn record_entry_added(&self, estimated_size_bytes: u64) {
-        self.total_entries.inc();
-        self.memory_usage_bytes.fetch_add(estimated_size_bytes, Ordering::Relaxed);
+        self.total_entries.fetch_add(1, Ordering::Relaxed);
+        self.memory_usage_bytes
+            .fetch_add(estimated_size_bytes, Ordering::Relaxed);
         self.generation.inc();
     }
 
     /// Record cache entry eviction
     #[inline]
     pub fn record_entry_evicted(&self, estimated_size_bytes: u64) {
-        self.total_entries.dec();
-        self.memory_usage_bytes.fetch_sub(estimated_size_bytes, Ordering::Relaxed);
+        self.total_entries.fetch_sub(1, Ordering::Relaxed);
+        self.memory_usage_bytes
+            .fetch_sub(estimated_size_bytes, Ordering::Relaxed);
         self.evictions.inc();
         self.generation.inc();
     }
@@ -1057,9 +1243,9 @@ impl CacheMetrics {
     /// Update average entry age
     #[inline]
     pub fn update_avg_age(&self, total_age_seconds: u64) {
-        let entry_count = self.total_entries.get();
+        let entry_count = self.total_entries.load(Ordering::Relaxed);
         if entry_count > 0 {
-            let avg_age = total_age_seconds / entry_count;
+            let avg_age = total_age_seconds / (entry_count as u64);
             self.avg_entry_age_seconds.store(avg_age, Ordering::Relaxed);
         }
     }
@@ -1067,7 +1253,7 @@ impl CacheMetrics {
     /// Get cache efficiency ratio
     #[inline]
     pub fn efficiency_ratio(&self) -> f64 {
-        let total_entries = self.total_entries.get();
+        let total_entries = self.total_entries.load(Ordering::Relaxed);
         let evictions = self.evictions.get();
         if total_entries + evictions > 0 {
             total_entries as f64 / (total_entries + evictions) as f64
@@ -1080,7 +1266,7 @@ impl CacheMetrics {
     #[inline]
     pub fn snapshot(&self) -> CacheMetricsSnapshot {
         CacheMetricsSnapshot {
-            total_entries: self.total_entries.get(),
+            total_entries: self.total_entries.load(Ordering::Relaxed),
             evictions: self.evictions.get(),
             memory_usage_bytes: self.memory_usage_bytes.load(Ordering::Relaxed),
             avg_entry_age_seconds: self.avg_entry_age_seconds.load(Ordering::Relaxed),
@@ -1121,38 +1307,41 @@ pub struct CacheMetricsSnapshot {
 pub enum CommitteeError {
     #[error("Evaluation timeout after {timeout_ms}ms")]
     EvaluationTimeout { timeout_ms: u64 },
-    
+
     #[error("Insufficient committee members: {available} available, {required} required")]
     InsufficientMembers { available: usize, required: usize },
-    
+
     #[error("Model unavailable: {model_type:?}")]
     ModelUnavailable { model_type: ModelType },
-    
+
     #[error("Consensus not reached: {agreement:.1}% agreement, {threshold:.1}% required")]
     ConsensusNotReached { agreement: f64, threshold: f64 },
-    
+
     #[error("Configuration error: {message}")]
     ConfigurationError { message: Arc<str> },
-    
+
+    #[error("Invalid configuration: {message}")]
+    InvalidConfiguration { message: Arc<str> },
+
     #[error("Validation error in field '{field}': {value}")]
     ValidationError { field: Arc<str>, value: Arc<str> },
-    
+
     #[error("Provider error for {model_type:?}: {source}")]
     ProviderError {
         model_type: ModelType,
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
-    
+
     #[error("Cache error: {message}")]
     CacheError { message: Arc<str> },
-    
+
     #[error("Decoding error: {message}")]
     DecodingError { message: Arc<str> },
-    
+
     #[error("Resource exhausted: {resource}")]
     ResourceExhausted { resource: Arc<str> },
-    
+
     #[error("Quality threshold not met: {actual:.2} < {required:.2}")]
     QualityThresholdNotMet { actual: f64, required: f64 },
 }
@@ -1210,7 +1399,7 @@ impl EvaluationPrompt {
         criteria: Option<EvaluationCriteria>,
     ) -> Self {
         let criteria = criteria.unwrap_or_default();
-        
+
         let system_prompt = Arc::from(format!(
             "You are a world-class code evaluation expert with deep expertise in software optimization, \
              performance analysis, and code quality assessment. Your task is to evaluate optimization \
@@ -1228,7 +1417,7 @@ impl EvaluationPrompt {
             criteria.risk_assessment_weight,
             criteria.innovation_weight
         ));
-        
+
         let user_prompt = Arc::from(format!(
             "## OPTIMIZATION EVALUATION REQUEST\n\n\
              **Objective**: {}\n\n\
@@ -1251,11 +1440,9 @@ impl EvaluationPrompt {
              - Overall recommendation and justification]\n\n\
              **IMPROVEMENT_SUGGESTIONS**:\n\
              [Specific, actionable suggestions for enhancement]",
-            optimization_spec.objective,
-            current_code,
-            proposed_code
+            optimization_spec.objective, current_code, proposed_code
         ));
-        
+
         Self {
             system_prompt,
             user_prompt,
@@ -1272,18 +1459,18 @@ impl EvaluationPrompt {
         criteria: Option<EvaluationCriteria>,
     ) -> Self {
         let criteria = criteria.unwrap_or_default();
-        
+
         let system_prompt = Arc::from(
             "You are an expert evaluator with comprehensive knowledge across multiple domains. \
-             Provide objective, well-reasoned assessments with numerical scoring and detailed analysis."
+             Provide objective, well-reasoned assessments with numerical scoring and detailed analysis.",
         );
-        
+
         let user_prompt = Arc::from(format!(
             "## EVALUATION CONTEXT\n{}\n\n## EVALUATION REQUEST\n{}\n\n\
              Please provide structured evaluation with numerical scores (0.0-1.0) and detailed reasoning.",
             context, evaluation_request
         ));
-        
+
         Self {
             system_prompt,
             user_prompt,
@@ -1323,14 +1510,14 @@ impl EvaluationPrompt {
                 self.max_tokens = 512; // Minimal response for very long prompts
             }
         }
-        
+
         // Adjust temperature based on model characteristics
         self.temperature = match model_type {
             ModelType::Claude3Haiku => 0.05, // Very low for fast, consistent responses
             ModelType::Gpt35Turbo => 0.1,    // Low for consistency
-            _ => 0.15,                        // Slightly higher for more sophisticated models
+            _ => 0.15,                       // Slightly higher for more sophisticated models
         };
-        
+
         self
     }
 }

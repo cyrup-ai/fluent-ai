@@ -1,13 +1,15 @@
 //! Buffered writing and stream management for colored terminal output
-//! 
+//!
 //! This module provides thread-safe, high-performance buffered writing with
 //! atomic operations and zero-lock contention. All buffer operations are
 //! lock-free and optimized for concurrent access patterns.
 
-use crate::{ColorChoice, ColorSpec, HyperlinkSpec, WriteColor};
 use crate::ansi_writer::Ansi;
-use crate::color_writer::{NoColor, color_choice_ext::ColorChoiceExt};
-use crate::formatting_writer::{LossyStandardStream, IoStandardStream, StandardStreamType};
+use crate::color_writer::NoColor;
+use crate::formatting_writer::{
+    IoStandardStream, LossyStandardStream, StandardStreamType,
+};
+use crate::{ColorChoice, ColorSpec, HyperlinkSpec, WriteColor};
 use std::io::{self, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -21,7 +23,7 @@ use winapi_util::console as wincon;
 /// - **Atomic printing**: Buffer contents are written atomically
 /// - **Lock-free operation**: No synchronization primitives during normal operation
 /// - **Zero allocation**: Minimal memory allocation during buffer operations
-/// 
+///
 /// It is intended for a `BufferWriter` to be used from multiple threads
 /// simultaneously, but note that buffer printing is serialized through atomic operations.
 #[derive(Debug)]
@@ -38,11 +40,11 @@ pub struct BufferWriter {
 
 impl BufferWriter {
     /// Create a new `BufferWriter` that writes to a standard stream with color preferences
-    /// 
+    ///
     /// # Arguments
     /// * `sty` - Type of standard stream (stdout/stderr)
     /// * `choice` - Color output preferences
-    /// 
+    ///
     /// # Returns
     /// * BufferWriter configured for the specified stream and color settings
     #[cfg(not(windows))]
@@ -57,11 +59,11 @@ impl BufferWriter {
     }
 
     /// Create a new `BufferWriter` with Windows-specific console handling
-    /// 
+    ///
     /// # Arguments
     /// * `sty` - Type of standard stream (stdout/stderr)
     /// * `choice` - Color output preferences
-    /// 
+    ///
     /// # Returns
     /// * BufferWriter configured for Windows console output
     #[cfg(windows)]
@@ -108,10 +110,10 @@ impl BufferWriter {
     }
 
     /// Create a new `BufferWriter` that writes to stdout with color preferences
-    /// 
+    ///
     /// # Arguments
     /// * `choice` - Color output preferences
-    /// 
+    ///
     /// # Returns
     /// * BufferWriter configured for stdout output
     #[inline(always)]
@@ -120,10 +122,10 @@ impl BufferWriter {
     }
 
     /// Create a new `BufferWriter` that writes to stderr with color preferences
-    /// 
+    ///
     /// # Arguments
     /// * `choice` - Color output preferences
-    /// 
+    ///
     /// # Returns
     /// * BufferWriter configured for stderr output
     #[inline(always)]
@@ -132,10 +134,10 @@ impl BufferWriter {
     }
 
     /// Set the separator printed between buffers
-    /// 
+    ///
     /// If set, the separator given is printed between buffers. By default, no
     /// separator is printed.
-    /// 
+    ///
     /// # Arguments
     /// * `sep` - Optional separator bytes to print between buffers
     #[inline(always)]
@@ -147,16 +149,12 @@ impl BufferWriter {
     ///
     /// A `Buffer` satisfies both `io::Write` and `WriteColor`. A `Buffer` can
     /// be printed using the `print` method.
-    /// 
+    ///
     /// # Returns
     /// * Buffer configured for color or no-color output based on writer settings
     #[inline(always)]
     pub fn buffer(&self) -> Buffer {
-        if self.use_color { 
-            Buffer::ansi() 
-        } else { 
-            Buffer::no_color() 
-        }
+        if self.use_color { Buffer::ansi() } else { Buffer::no_color() }
     }
 
     /// Prints the contents of the given buffer atomically
@@ -165,10 +163,10 @@ impl BufferWriter {
     /// particular, all buffers are written atomically. No interleaving will
     /// occur between buffer contents, though the order of buffer printing
     /// across threads is not guaranteed.
-    /// 
+    ///
     /// # Arguments
     /// * `buf` - Buffer to print to the output stream
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     pub fn print(&self, buf: &Buffer) -> io::Result<()> {
@@ -202,9 +200,9 @@ impl BufferWriter {
 /// method, which will take color preferences and the environment into
 /// account. However, buffers can also be manually created using `no_color`
 /// or `ansi`.
-/// 
+///
 /// ## Performance Characteristics
-/// 
+///
 /// - **Zero allocation**: Buffer operations minimize heap allocation
 /// - **Copy-on-write**: Efficient cloning for concurrent access
 /// - **Vectorized operations**: Optimized bulk data operations
@@ -224,10 +222,10 @@ enum BufferInner {
 
 impl Buffer {
     /// Create a new buffer with the given color settings (Unix)
-    /// 
+    ///
     /// # Arguments
     /// * `choice` - Color choice preferences
-    /// 
+    ///
     /// # Returns
     /// * Buffer configured for the specified color settings
     #[cfg(not(windows))]
@@ -241,10 +239,10 @@ impl Buffer {
     }
 
     /// Create a new buffer with the given color settings (Windows)
-    /// 
+    ///
     /// # Arguments
     /// * `choice` - Color choice preferences
-    /// 
+    ///
     /// # Returns
     /// * Buffer configured for Windows color support
     #[cfg(windows)]
@@ -258,7 +256,7 @@ impl Buffer {
     }
 
     /// Create a buffer that drops all color information for maximum performance
-    /// 
+    ///
     /// # Returns
     /// * Buffer that ignores all color directives
     #[inline(always)]
@@ -267,7 +265,7 @@ impl Buffer {
     }
 
     /// Create a buffer that uses ANSI escape sequences for full color support
-    /// 
+    ///
     /// # Returns
     /// * Buffer that supports full ANSI color output
     #[inline(always)]
@@ -276,7 +274,7 @@ impl Buffer {
     }
 
     /// Returns true if and only if this buffer is empty
-    /// 
+    ///
     /// # Returns
     /// * True if buffer contains no data
     #[inline(always)]
@@ -285,7 +283,7 @@ impl Buffer {
     }
 
     /// Returns the length of this buffer in bytes
-    /// 
+    ///
     /// # Returns
     /// * Number of bytes currently in the buffer
     #[inline(always)]
@@ -306,7 +304,7 @@ impl Buffer {
     }
 
     /// Consume this buffer and return the underlying raw data
-    /// 
+    ///
     /// # Returns
     /// * Vector containing all buffer data
     #[inline(always)]
@@ -318,7 +316,7 @@ impl Buffer {
     }
 
     /// Return the underlying data of the buffer as a slice
-    /// 
+    ///
     /// # Returns
     /// * Byte slice view of buffer contents
     #[inline(always)]
@@ -330,7 +328,7 @@ impl Buffer {
     }
 
     /// Return the underlying data of the buffer as a mutable slice
-    /// 
+    ///
     /// # Returns
     /// * Mutable byte slice view of buffer contents
     #[inline(always)]
@@ -344,10 +342,10 @@ impl Buffer {
 
 impl io::Write for Buffer {
     /// Write bytes to the buffer with zero allocation where possible
-    /// 
+    ///
     /// # Arguments
     /// * `buf` - Bytes to write to buffer
-    /// 
+    ///
     /// # Returns
     /// * Number of bytes written or IO error
     #[inline(always)]
@@ -359,7 +357,7 @@ impl io::Write for Buffer {
     }
 
     /// Flush the buffer (no-op for memory buffers)
-    /// 
+    ///
     /// # Returns
     /// * Always returns success for memory buffers
     #[inline(always)]
@@ -373,7 +371,7 @@ impl io::Write for Buffer {
 
 impl WriteColor for Buffer {
     /// Check if this buffer supports color output
-    /// 
+    ///
     /// # Returns
     /// * True if buffer supports color formatting
     #[inline(always)]
@@ -385,7 +383,7 @@ impl WriteColor for Buffer {
     }
 
     /// Check if this buffer supports hyperlinks
-    /// 
+    ///
     /// # Returns
     /// * True if buffer supports hyperlink formatting
     #[inline(always)]
@@ -397,10 +395,10 @@ impl WriteColor for Buffer {
     }
 
     /// Set color and formatting for subsequent writes
-    /// 
+    ///
     /// # Arguments
     /// * `spec` - Color specification with formatting attributes
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -412,10 +410,10 @@ impl WriteColor for Buffer {
     }
 
     /// Set hyperlink for subsequent writes
-    /// 
+    ///
     /// # Arguments
     /// * `link` - Hyperlink specification with URI
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -427,7 +425,7 @@ impl WriteColor for Buffer {
     }
 
     /// Reset all color and formatting to defaults
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -442,72 +440,72 @@ impl WriteColor for Buffer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_buffer_creation() {
         let no_color_buf = Buffer::no_color();
         let ansi_buf = Buffer::ansi();
-        
+
         assert!(!no_color_buf.supports_color());
         assert!(!no_color_buf.supports_hyperlinks());
-        
+
         assert!(ansi_buf.supports_color());
         assert!(ansi_buf.supports_hyperlinks());
     }
-    
+
     #[test]
     fn test_buffer_operations() {
         let mut buffer = Buffer::ansi();
-        
+
         assert!(buffer.is_empty());
         assert_eq!(buffer.len(), 0);
-        
+
         buffer.write_all(b"test").unwrap();
         assert!(!buffer.is_empty());
         assert_eq!(buffer.len(), 4);
-        
+
         buffer.clear();
         assert!(buffer.is_empty());
         assert_eq!(buffer.len(), 0);
     }
-    
+
     #[test]
     fn test_buffer_data_access() {
         let mut buffer = Buffer::ansi();
         buffer.write_all(b"hello world").unwrap();
-        
+
         assert_eq!(buffer.as_slice(), b"hello world");
-        
+
         let data = buffer.into_inner();
         assert_eq!(data, b"hello world");
     }
-    
+
     #[test]
     fn test_buffer_writer_creation() {
         let stdout_writer = BufferWriter::stdout(ColorChoice::Auto);
         let stderr_writer = BufferWriter::stderr(ColorChoice::Never);
-        
+
         let stdout_buffer = stdout_writer.buffer();
         let stderr_buffer = stderr_writer.buffer();
-        
+
         // Test that buffers are created with appropriate color settings
         assert!(!stderr_buffer.supports_color()); // Never choice should disable color
     }
-    
+
     #[test]
     fn test_buffer_writer_separator() {
         let mut writer = BufferWriter::stdout(ColorChoice::Never);
         writer.separator(Some(b"---".to_vec()));
-        
+
         let buffer = writer.buffer();
         assert!(!buffer.is_empty() || buffer.is_empty()); // Buffer creation should work
     }
-    
+
     #[test]
     fn test_atomic_printing_preparation() {
         let writer = BufferWriter::stdout(ColorChoice::Auto);
         let buffer = writer.buffer();
-        
+
         // Test that empty buffers don't cause issues
         assert!(writer.print(&buffer).is_ok());
     }

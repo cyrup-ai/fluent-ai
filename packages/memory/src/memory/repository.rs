@@ -1,8 +1,9 @@
 //! Memory repository for managing in-memory cache and indexing
 
-use chrono::{DateTime, Utc};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
+
+use chrono::{DateTime, Utc};
 
 use crate::memory::{MemoryNode, MemoryRelationship, MemoryType, filter::MemoryFilter};
 use crate::utils::Result;
@@ -206,7 +207,6 @@ impl MemoryRepository {
             .filter_map(|id| self.memories.get(&id))
             .filter(|memory| {
                 if let Some(time_range) = &filter.time_range {
-                    
                     time_range
                         .start
                         .is_none_or(|start| memory.created_at >= start)
@@ -265,15 +265,17 @@ impl MemoryRepository {
 
         // Remove from user index
         if let Some(user_id) = &memory.metadata.user_id
-            && let Some(user_ids) = self.user_index.get_mut(user_id) {
-                user_ids.remove(&memory.id);
-            }
+            && let Some(user_ids) = self.user_index.get_mut(user_id)
+        {
+            user_ids.remove(&memory.id);
+        }
 
         // Remove from agent index
         if let Some(agent_id) = &memory.metadata.agent_id
-            && let Some(agent_ids) = self.agent_index.get_mut(agent_id) {
-                agent_ids.remove(&memory.id);
-            }
+            && let Some(agent_ids) = self.agent_index.get_mut(agent_id)
+        {
+            agent_ids.remove(&memory.id);
+        }
 
         // Remove from tag index
         for tag in &memory.metadata.tags {

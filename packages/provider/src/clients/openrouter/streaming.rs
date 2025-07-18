@@ -30,8 +30,53 @@ use fluent_ai_domain::chunk::{CompletionChunk, ToolCall, ToolCallDelta, ToolCall
 use fluent_ai_domain::types::{CompletionUsage, FinishReason, ContentType};
 
 use crate::completion::{CompletionError, CompletionRequest};
-use crate::streaming::{StreamingCompletionResponse, RawStreamingChoice};
-use crate::runtime::AsyncTask;
+use crate::{AsyncStream, AsyncStreamSender, async_stream_channel};
+use futures_util::{Stream, StreamExt};
+use async_stream::stream;
+use std::pin::Pin;
+
+// ================================================================================================
+// Streaming Types
+// ================================================================================================
+
+/// Raw streaming choice output
+#[derive(Debug, Clone)]
+pub enum RawStreamingChoice {
+    /// Message content with zero-allocation buffer
+    MessageBuffer(ArrayString<4096>),
+    /// Tool call with zero-allocation buffers
+    ToolCallBuffer {
+        name: ArrayString<256>,
+        id: ArrayString<64>,
+        arguments: serde_json::Value,
+    },
+    /// Final response
+    FinalResponse(FinalCompletionResponse),
+}
+
+/// Streaming completion response wrapper
+#[derive(Debug)]
+pub struct StreamingCompletionResponse<T> {
+    stream: Pin<Box<dyn Stream<Item = Result<RawStreamingChoice, CompletionError>> + Send>>,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T> StreamingCompletionResponse<T> {
+    pub fn new(stream: Pin<Box<dyn Stream<Item = Result<RawStreamingChoice, CompletionError>> + Send>>) -> Self {
+        Self {
+            stream,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T> Stream for StreamingCompletionResponse<T> {
+    type Item = Result<RawStreamingChoice, CompletionError>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+        self.stream.as_mut().poll_next(cx)
+    }
+}
 
 // ================================================================================================
 // Zero-Allocation Tool Call State Machine
@@ -1236,8 +1281,8 @@ impl OpenRouterStream {
         }
     }
 
-    pub async fn process_sse_chunk(&mut self, chunk: &[u8]) -> Result<Vec<RawStreamingChoice>, ToolCallError> {
-        let mut results = Vec::new();
+    pub async fn process_sse_chunk(&mut self, chunk: &[u8]) -> Result<ArrayVec<RawStreamingChoice, 16>, ToolCallError> {
+        let mut results = ArrayVec::new();
         
         // Convert bytes to string
         let chunk_str = std::str::from_utf8(chunk)
@@ -1251,7 +1296,9 @@ impl OpenRouterStream {
         // Process each line in the chunk
         for line in chunk_str.lines() {
             if let Some(processed) = self.process_sse_line(line).await? {
-                results.push(processed);
+                if results.try_push(processed).is_err() {
+                    break; // Stop if we exceed capacity
+                }
             }
         }
 

@@ -1,5 +1,12 @@
 //! Cognitive memory manager implementation
 
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::time::Duration;
+
+use anyhow::Result;
+
 use crate::SurrealDBMemoryManager;
 use crate::cognitive::{
     CognitiveMemoryNode, CognitiveSettings, CognitiveState, QuantumSignature,
@@ -8,16 +15,19 @@ use crate::cognitive::{
     quantum::{EnhancedQuery, QuantumConfig, QuantumRouter, QueryIntent},
     state::CognitiveStateManager,
 };
-use crate::memory::{MemoryManager, MemoryNode, MemoryType, MemoryRelationship, memory_manager::{PendingMemory, MemoryQuery, PendingDeletion, RelationshipStream, MemoryStream, PendingRelationship}};
-use anyhow::Result;
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
+use crate::memory::{
+    MemoryManager, MemoryNode, MemoryRelationship, MemoryType,
+    memory_manager::{
+        MemoryQuery, MemoryStream, PendingDeletion, PendingMemory, PendingRelationship,
+        RelationshipStream,
+    },
+};
 
 /// Enhanced memory manager with cognitive capabilities
+#[derive(Clone)]
 pub struct CognitiveMemoryManager {
     /// Legacy manager for backward compatibility
-    legacy_manager: SurrealDBMemoryManager,
+    legacy_manager: Arc<SurrealDBMemoryManager>,
 
     /// Cognitive mesh components
     cognitive_mesh: Arc<CognitiveMesh>,
@@ -36,7 +46,7 @@ pub struct CognitiveMesh {
 }
 
 /// LLM provider trait
-pub trait LLMProvider: Send + Sync {
+pub trait LLMProvider: Send + Sync + std::fmt::Debug {
     fn analyze_intent(
         &self,
         query: &str,
@@ -57,7 +67,7 @@ impl CognitiveMemoryManager {
         settings: CognitiveSettings,
     ) -> Result<Self> {
         // Initialize legacy manager
-        let legacy_manager = SurrealDBMemoryManager::new(surreal_url, namespace, database).await?;
+        let legacy_manager = Arc::new(SurrealDBMemoryManager::new(surreal_url, namespace, database).await?);
 
         // Initialize cognitive components
         let state_manager = Arc::new(CognitiveStateManager::new());
@@ -79,7 +89,7 @@ impl CognitiveMemoryManager {
         });
 
         let quantum_config = QuantumConfig {
-            default_coherence_time: settings.quantum_coherence_time,
+            default_coherence_time: Duration::from_secs_f64(settings.quantum_coherence_time),
             ..Default::default()
         };
 
@@ -151,7 +161,7 @@ impl CognitiveMemoryManager {
             coherence_fingerprint: embedding,
             entanglement_links: Vec::new(),
             quantum_entropy: 0.0,
-            creation_time: std::time::Instant::now(),
+            creation_time: chrono::Utc::now(),
         })
     }
 
@@ -258,7 +268,7 @@ impl MemoryManager for CognitiveMemoryManager {
     fn create_memory(&self, memory: MemoryNode) -> PendingMemory {
         let manager = self.clone();
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = async {
                 // Enhance memory with cognitive features
@@ -271,15 +281,17 @@ impl MemoryManager for CognitiveMemoryManager {
                     .await?;
 
                 // Store cognitive metadata
-                manager.store_cognitive_metadata(&stored.id, &cognitive_memory)
+                manager
+                    .store_cognitive_metadata(&stored.id, &cognitive_memory)
                     .await?;
 
                 Ok(stored)
-            }.await;
-            
+            }
+            .await;
+
             let _ = tx.send(result);
         });
-        
+
         PendingMemory::new(rx)
     }
 
@@ -290,7 +302,7 @@ impl MemoryManager for CognitiveMemoryManager {
     fn update_memory(&self, memory: MemoryNode) -> PendingMemory {
         let manager = self.clone();
         let (tx, rx) = tokio::sync::oneshot::channel();
-        
+
         tokio::spawn(async move {
             let result = async {
                 // Update base memory
@@ -298,17 +310,20 @@ impl MemoryManager for CognitiveMemoryManager {
 
                 // Re-enhance if cognitive features are enabled
                 if manager.settings.enabled {
-                    let cognitive_memory = manager.enhance_memory_cognitively(updated.clone()).await?;
-                    manager.store_cognitive_metadata(&updated.id, &cognitive_memory)
+                    let cognitive_memory =
+                        manager.enhance_memory_cognitively(updated.clone()).await?;
+                    manager
+                        .store_cognitive_metadata(&updated.id, &cognitive_memory)
                         .await?;
                 }
 
                 Ok(updated)
-            }.await;
-            
+            }
+            .await;
+
             let _ = tx.send(result);
         });
-        
+
         PendingMemory::new(rx)
     }
 
@@ -370,6 +385,7 @@ impl CognitiveMesh {
 }
 
 /// Mock LLM provider for testing
+#[derive(Debug)]
 struct MockLLMProvider;
 
 impl LLMProvider for MockLLMProvider {

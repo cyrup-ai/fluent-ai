@@ -117,9 +117,10 @@ impl MemoryMetadata {
     /// Get custom metadata value
     pub fn get_custom<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Option<T> {
         if let serde_json::Value::Object(ref map) = self.custom
-            && let Some(value) = map.get(key) {
-                return serde_json::from_value(value.clone()).ok();
-            }
+            && let Some(value) = map.get(key)
+        {
+            return serde_json::from_value(value.clone()).ok();
+        }
         None
     }
 }

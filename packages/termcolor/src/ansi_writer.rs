@@ -1,5 +1,5 @@
 //! ANSI escape sequence handling for terminal color output
-//! 
+//!
 //! This module provides zero-allocation, blazing-fast ANSI escape sequence
 //! generation for terminal color and formatting control. All operations are
 //! lock-free and optimized for high-performance terminal output.
@@ -8,10 +8,10 @@ use crate::{Color, ColorSpec, HyperlinkSpec, WriteColor};
 use std::io::{self, Write};
 
 /// Satisfies `WriteColor` using standard ANSI escape sequences with zero allocation
-/// 
+///
 /// This writer wraps any `io::Write` implementation and provides ANSI escape sequence
 /// generation with optimized performance characteristics:
-/// 
+///
 /// - **Zero allocation**: All escape sequences are generated without heap allocation
 /// - **Lock-free operation**: No synchronization primitives required
 /// - **Blazing-fast performance**: Optimized color code generation with compile-time constants
@@ -21,10 +21,10 @@ pub struct Ansi<W>(pub W);
 
 impl<W: Write> Ansi<W> {
     /// Create a new writer that satisfies `WriteColor` using standard ANSI escape sequences
-    /// 
+    ///
     /// # Arguments
     /// * `wtr` - The underlying writer to wrap
-    /// 
+    ///
     /// # Returns
     /// * Ansi writer ready for high-performance color output
     #[inline(always)]
@@ -33,7 +33,7 @@ impl<W: Write> Ansi<W> {
     }
 
     /// Consume this `Ansi` value and return the inner writer
-    /// 
+    ///
     /// # Returns
     /// * The underlying writer without the ANSI wrapper
     #[inline(always)]
@@ -42,7 +42,7 @@ impl<W: Write> Ansi<W> {
     }
 
     /// Return a reference to the inner writer
-    /// 
+    ///
     /// # Returns
     /// * Reference to the underlying writer
     #[inline(always)]
@@ -51,7 +51,7 @@ impl<W: Write> Ansi<W> {
     }
 
     /// Return a mutable reference to the inner writer
-    /// 
+    ///
     /// # Returns
     /// * Mutable reference to the underlying writer
     #[inline(always)]
@@ -62,10 +62,10 @@ impl<W: Write> Ansi<W> {
 
 impl<W: io::Write> io::Write for Ansi<W> {
     /// Write a buffer of bytes to the underlying writer
-    /// 
+    ///
     /// # Arguments
     /// * `buf` - Buffer of bytes to write
-    /// 
+    ///
     /// # Returns
     /// * Number of bytes written or IO error
     #[inline(always)]
@@ -74,16 +74,16 @@ impl<W: io::Write> io::Write for Ansi<W> {
     }
 
     /// Write all bytes from buffer to the underlying writer
-    /// 
+    ///
     /// Adding this method here is not required because it has a default impl,
     /// but it provides significant performance improvement when using
     /// a `BufWriter` with lots of writes.
-    /// 
+    ///
     /// See https://github.com/BurntSushi/termcolor/pull/56 for details
-    /// 
+    ///
     /// # Arguments
     /// * `buf` - Buffer of bytes to write completely
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -92,7 +92,7 @@ impl<W: io::Write> io::Write for Ansi<W> {
     }
 
     /// Flush any buffered data to the underlying writer
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -103,9 +103,9 @@ impl<W: io::Write> io::Write for Ansi<W> {
 
 impl<W: io::Write> WriteColor for Ansi<W> {
     /// Check if this writer supports color output
-    /// 
+    ///
     /// ANSI writers always support color output
-    /// 
+    ///
     /// # Returns
     /// * Always returns true for ANSI terminals
     #[inline(always)]
@@ -114,9 +114,9 @@ impl<W: io::Write> WriteColor for Ansi<W> {
     }
 
     /// Check if this writer supports hyperlinks
-    /// 
+    ///
     /// ANSI writers support OSC 8 hyperlink sequences
-    /// 
+    ///
     /// # Returns
     /// * Always returns true for ANSI terminals
     #[inline(always)]
@@ -125,18 +125,18 @@ impl<W: io::Write> WriteColor for Ansi<W> {
     }
 
     /// Set color and formatting according to the given color specification
-    /// 
+    ///
     /// This method applies multiple formatting attributes in sequence:
     /// 1. Reset (if requested)
     /// 2. Text attributes (bold, italic, etc.)
     /// 3. Foreground color
     /// 4. Background color
-    /// 
+    ///
     /// All escape sequences are generated with zero allocation
-    /// 
+    ///
     /// # Arguments
     /// * `spec` - Color specification with formatting attributes
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -169,10 +169,10 @@ impl<W: io::Write> WriteColor for Ansi<W> {
     }
 
     /// Set hyperlink using OSC 8 escape sequence
-    /// 
+    ///
     /// # Arguments
     /// * `link` - Hyperlink specification with URI
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -185,7 +185,7 @@ impl<W: io::Write> WriteColor for Ansi<W> {
     }
 
     /// Reset all color and formatting to terminal defaults
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -196,10 +196,10 @@ impl<W: io::Write> WriteColor for Ansi<W> {
 
 impl<W: io::Write> Ansi<W> {
     /// Write a string as bytes with zero allocation
-    /// 
+    ///
     /// # Arguments
     /// * `s` - String to write as bytes
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -208,15 +208,15 @@ impl<W: io::Write> Ansi<W> {
     }
 
     /// Write ANSI color escape sequence with zero allocation
-    /// 
+    ///
     /// This method uses compile-time macros and stack-allocated buffers
     /// to generate ANSI color codes without heap allocation.
-    /// 
+    ///
     /// # Arguments
     /// * `fg` - True for foreground color, false for background
     /// * `c` - Color specification
     /// * `intense` - True for bright/intense color variant
-    /// 
+    ///
     /// # Returns
     /// * Success or IO error
     #[inline(always)]
@@ -313,7 +313,7 @@ impl<W: io::Write> Ansi<W> {
                 Color::__Nonexhaustive => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
-                        "invalid color variant"
+                        "invalid color variant",
                     ));
                 }
             }
@@ -332,7 +332,7 @@ impl<W: io::Write> Ansi<W> {
                 Color::__Nonexhaustive => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
-                        "invalid color variant"
+                        "invalid color variant",
                     ));
                 }
             }
@@ -341,12 +341,12 @@ impl<W: io::Write> Ansi<W> {
 }
 
 /// WriteColor implementation for io::Sink (null writer)
-/// 
+///
 /// This provides a no-op implementation for the standard library's sink writer,
 /// which discards all output but needs to satisfy the WriteColor trait.
 impl WriteColor for io::Sink {
     /// Sink never supports color output
-    /// 
+    ///
     /// # Returns
     /// * Always returns false
     #[inline(always)]
@@ -355,7 +355,7 @@ impl WriteColor for io::Sink {
     }
 
     /// Sink never supports hyperlinks
-    /// 
+    ///
     /// # Returns
     /// * Always returns false
     #[inline(always)]
@@ -364,10 +364,10 @@ impl WriteColor for io::Sink {
     }
 
     /// No-op color setting for sink writer
-    /// 
+    ///
     /// # Arguments
     /// * `_` - Unused color specification
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -376,10 +376,10 @@ impl WriteColor for io::Sink {
     }
 
     /// No-op hyperlink setting for sink writer
-    /// 
+    ///
     /// # Arguments
     /// * `_` - Unused hyperlink specification
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -388,7 +388,7 @@ impl WriteColor for io::Sink {
     }
 
     /// No-op reset for sink writer
-    /// 
+    ///
     /// # Returns
     /// * Always returns success
     #[inline(always)]
@@ -401,54 +401,54 @@ impl WriteColor for io::Sink {
 mod tests {
     use super::*;
     use std::io::Cursor;
-    
+
     #[test]
     fn test_ansi_creation() {
         let writer = Cursor::new(Vec::new());
         let ansi_writer = Ansi::new(writer);
-        
+
         assert!(ansi_writer.supports_color());
         assert!(ansi_writer.supports_hyperlinks());
     }
-    
+
     #[test]
     fn test_ansi_color_support() {
         let writer = Cursor::new(Vec::new());
         let ansi_writer = Ansi::new(writer);
-        
+
         assert!(ansi_writer.supports_color());
         assert!(ansi_writer.supports_hyperlinks());
     }
-    
+
     #[test]
     fn test_ansi_reset() {
         let writer = Cursor::new(Vec::new());
         let mut ansi_writer = Ansi::new(writer);
-        
+
         ansi_writer.reset().unwrap();
-        
+
         let output = ansi_writer.into_inner().into_inner();
         assert_eq!(output, b"\x1B[0m");
     }
-    
+
     #[test]
     fn test_ansi_write_operations() {
         let mut buffer = Vec::new();
         let mut ansi_writer = Ansi::new(&mut buffer);
-        
+
         ansi_writer.write_all(b"test").unwrap();
         ansi_writer.flush().unwrap();
-        
+
         assert_eq!(buffer, b"test");
     }
-    
+
     #[test]
     fn test_sink_writer_no_color() {
         let mut sink = io::sink();
-        
+
         assert!(!sink.supports_color());
         assert!(!sink.supports_hyperlinks());
-        
+
         // These should all succeed but do nothing
         sink.set_color(&ColorSpec::new()).unwrap();
         sink.set_hyperlink(&HyperlinkSpec::new()).unwrap();

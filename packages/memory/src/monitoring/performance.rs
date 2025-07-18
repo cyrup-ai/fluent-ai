@@ -4,6 +4,20 @@ use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 use std::collections::HashMap;
 
+/// Performance monitoring errors
+#[derive(Debug, thiserror::Error)]
+pub enum PerformanceError {
+    /// Lock poisoned error
+    #[error("Performance monitor lock poisoned: {0}")]
+    LockPoisoned(String),
+    /// Recording error
+    #[error("Failed to record performance metric: {0}")]
+    RecordingError(String),
+}
+
+/// Result type for performance operations
+pub type PerformanceResult<T> = Result<T, PerformanceError>;
+
 /// Performance metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceMetrics {
@@ -53,8 +67,10 @@ impl PerformanceMonitor {
     }
     
     /// Record a response time
-    pub fn record_response_time(&self, duration: Duration) {
-        let mut times = self.response_times.write().unwrap();
+    pub fn record_response_time(&self, duration: Duration) -> PerformanceResult<()> {
+        let mut times = self.response_times.write().map_err(|e| {
+            PerformanceError::LockPoisoned(format!("Failed to acquire write lock for response times: {}", e))
+        })?;
         times.push(duration);
         
         // Keep only recent times (last 1000)
@@ -63,6 +79,7 @@ impl PerformanceMonitor {
         }
         
         self.total_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Ok(())
     }
     
     /// Record an error
@@ -72,8 +89,10 @@ impl PerformanceMonitor {
     }
     
     /// Get performance metrics
-    pub fn get_metrics(&self) -> PerformanceMetrics {
-        let times = self.response_times.read().unwrap();
+    pub fn get_metrics(&self) -> PerformanceResult<PerformanceMetrics> {
+        let times = self.response_times.read().map_err(|e| {
+            PerformanceError::LockPoisoned(format!("Failed to acquire read lock for response times: {}", e))
+        })?;
         let total_requests = self.total_requests.load(std::sync::atomic::Ordering::Relaxed);
         let error_count = self.error_count.load(std::sync::atomic::Ordering::Relaxed);
         
@@ -116,14 +135,14 @@ impl PerformanceMonitor {
             0.0
         };
         
-        PerformanceMetrics {
+        Ok(PerformanceMetrics {
             avg_response_time_ms,
             p95_response_time_ms: p95,
             p99_response_time_ms: p99,
             throughput,
             error_rate,
             active_connections: 0, // Would be tracked separately
-        }
+        })
     }
 }
 
@@ -152,28 +171,40 @@ impl Profiler {
     }
     
     /// Start a timer
-    pub fn start(&self, name: &str) {
-        self.timers.write().unwrap().insert(name.to_string(), Instant::now());
+    pub fn start(&self, name: &str) -> PerformanceResult<()> {
+        self.timers.write().map_err(|e| {
+            PerformanceError::LockPoisoned(format!("Failed to acquire write lock for timers: {}", e))
+        })?.insert(name.to_string(), Instant::now());
+        Ok(())
     }
     
     /// Stop a timer
-    pub fn stop(&self, name: &str) {
-        if let Some(start) = self.timers.write().unwrap().remove(name) {
+    pub fn stop(&self, name: &str) -> PerformanceResult<()> {
+        let start = self.timers.write().map_err(|e| {
+            PerformanceError::LockPoisoned(format!("Failed to acquire write lock for timers: {}", e))
+        })?.remove(name);
+        
+        if let Some(start) = start {
             let duration = start.elapsed();
             self.durations
                 .write()
-                .unwrap()
+                .map_err(|e| {
+                    PerformanceError::LockPoisoned(format!("Failed to acquire write lock for durations: {}", e))
+                })?
                 .entry(name.to_string())
                 .or_insert_with(Vec::new)
                 .push(duration);
         }
+        Ok(())
     }
     
     /// Get profile report
-    pub fn report(&self) -> HashMap<String, ProfileStats> {
-        self.durations
-            .read()
-            .unwrap()
+    pub fn report(&self) -> PerformanceResult<HashMap<String, ProfileStats>> {
+        let durations = self.durations.read().map_err(|e| {
+            PerformanceError::LockPoisoned(format!("Failed to acquire read lock for durations: {}", e))
+        })?;
+        
+        Ok(durations
             .iter()
             .map(|(name, durations)| {
                 let total: Duration = durations.iter().sum();
@@ -188,7 +219,7 @@ impl Profiler {
                     },
                 )
             })
-            .collect()
+            .collect())
     }
 }
 

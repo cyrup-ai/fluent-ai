@@ -15,29 +15,25 @@ pub mod utils;
 pub mod vector;
 
 // Re-export main types for convenience
-pub use memory::MemoryManager;
-pub use memory::MemoryMetadata;
-pub use memory::MemoryNode;
-pub use memory::SurrealDBMemoryManager;
-pub use memory::SurrealDBMemoryManager as SurrealMemoryManager;
-
+// Conditional re-exports if API feature is enabled
+#[cfg(feature = "api")]
+pub use api::APIServer;
 // Re-export cognitive system (conditional)
 #[cfg(feature = "cognitive")]
 pub use cognitive::{
     CognitiveMemoryManager, CognitiveMemoryNode, CognitiveSettings, CognitiveState,
     EvolutionMetadata, QuantumSignature,
 };
-
+pub use memory::MemoryManager;
+pub use memory::MemoryMetadata;
+pub use memory::MemoryNode;
+pub use memory::SurrealDBMemoryManager;
+pub use memory::SurrealDBMemoryManager as SurrealMemoryManager;
 pub use schema::MemoryType;
-
-pub use utils::config::MemoryConfig;
-pub use utils::error::Error;
-
-// Conditional re-exports if API feature is enabled
-#[cfg(feature = "api")]
-pub use api::APIServer;
 #[cfg(feature = "api")]
 pub use utils::config::APIConfig;
+pub use utils::config::MemoryConfig;
+pub use utils::error::Error;
 
 /// Initialize the cognitive memory system (requires "cognitive" feature)
 #[cfg(feature = "cognitive")]

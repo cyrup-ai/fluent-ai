@@ -1,7 +1,9 @@
-use crate::ZeroOneOrMany;
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+
+use crate::ZeroOneOrMany;
 
 /// Error type for message operations
 #[derive(Debug, thiserror::Error)]
@@ -135,14 +137,19 @@ impl AssistantContent {
         match self {
             AssistantContent::Text(text) => text.content.clone(),
             AssistantContent::ToolCall(call) => {
-                format!("Tool: {} ({})", call.function.name, call.function.parameters)
+                format!(
+                    "Tool: {} ({})",
+                    call.function.name, call.function.parameters
+                )
             }
         }
     }
 
     /// Create text content
     pub fn text(content: impl Into<String>) -> Self {
-        Self::Text(Text { content: content.into() })
+        Self::Text(Text {
+            content: content.into(),
+        })
     }
 }
 
@@ -273,7 +280,7 @@ impl Message {
             chunk: None,
         }
     }
-    
+
     pub fn tool(content: impl Into<String>) -> Self {
         Message {
             role: MessageRole::Tool,

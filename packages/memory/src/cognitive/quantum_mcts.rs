@@ -1,19 +1,18 @@
 // src/cognitive/quantum_mcts.rs
 //! Quantum-enhanced MCTS with recursive improvement loops
 
-use nalgebra::{Complex, DMatrix, DVector};
-use ordered_float::OrderedFloat;
-use rand::Rng;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use rand::Rng;
+use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, mpsc};
 use tokio::task::JoinSet;
-use tracing::{debug, error, info, trace};
+use tracing::{error, info};
 
 use crate::cognitive::{
     committee::{CommitteeEvent, EvaluationCommittee},
-    mcts::{CodeState, TreeStatistics},
+    mcts::CodeState,
     performance::PerformanceAnalyzer,
     quantum::{
         Complex64, EntanglementGraph, EntanglementType, MeasurementBasis, PhaseEvolution,

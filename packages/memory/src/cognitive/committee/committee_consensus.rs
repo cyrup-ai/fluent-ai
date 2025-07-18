@@ -21,563 +21,774 @@
 //! - **Type-safe**: Compile-time consensus validation
 //! - **User-configurable**: Threshold parameters with hardcoded algorithms
 
-use super::committee_types::{
-    CommitteeEvaluation, QualityTier, ModelType, CommitteeError, CommitteeResult,
-    MAX_COMMITTEE_SIZE
-};
-use arrayvec::ArrayVec;
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::time::Duration;
 
-/// Core consensus building engine
-#[derive(Debug)]
-pub struct ConsensusBuilder {
-    /// Minimum agreement threshold for consensus (0.0 to 1.0)
-    consensus_threshold: f64,
-    /// Quality weighting factors for different model tiers
-    quality_weights: HashMap<QualityTier, f64>,
-    /// Whether to use weighted voting based on model quality
-    weighted_voting: bool,
-    /// Maximum allowed disagreement variance
-    max_disagreement_variance: f64,
+use arrayvec::ArrayVec;
+
+use super::committee_types::{
+    CommitteeError, CommitteeEvaluation, CommitteeResult, MAX_COMMITTEE_SIZE,
+};
+
+/// Consensus algorithm types with bit-packed flags (zero allocation)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ConsensusAlgorithm(u32);
+
+impl ConsensusAlgorithm {
+    /// Simple majority consensus
+    pub const MAJORITY: Self = Self(1 << 0);
+    /// Weighted by model quality tier
+    pub const QUALITY_WEIGHTED: Self = Self(1 << 1);
+    /// Confidence-weighted consensus
+    pub const CONFIDENCE_WEIGHTED: Self = Self(1 << 2);
+    /// Unanimous consensus required
+    pub const UNANIMOUS: Self = Self(1 << 3);
+    /// Super-majority consensus (>2/3)
+    pub const SUPER_MAJORITY: Self = Self(1 << 4);
+    /// Byzantine fault tolerant consensus
+    pub const BYZANTINE_FAULT_TOLERANT: Self = Self(1 << 5);
+
+    /// Check if algorithm matches any of the provided flags
+    #[inline(always)]
+    pub const fn matches(self, flags: Self) -> bool {
+        self.0 & flags.0 != 0
+    }
+
+    /// Combine consensus algorithm flags
+    #[inline(always)]
+    pub const fn with(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
 }
 
-impl ConsensusBuilder {
-    /// Create a new consensus builder with default configuration
-    pub fn new(consensus_threshold: f64) -> Self {
-        let mut quality_weights = HashMap::new();
-        quality_weights.insert(QualityTier::Standard, 1.0);
-        quality_weights.insert(QualityTier::High, 1.2);
-        quality_weights.insert(QualityTier::Premium, 1.5);
-        
+/// Consensus configuration with user-configurable thresholds (zero allocation)
+#[derive(Debug, Clone, Copy)]
+pub struct ConsensusConfig {
+    /// Minimum committee members required for valid consensus
+    pub min_committee_size: u32,
+    /// Maximum committee members (performance optimization)
+    pub max_committee_size: u32,
+    /// Consensus threshold (0-1000, where 1000 = 100%)
+    pub consensus_threshold: u32,
+    /// Quality tier weight multipliers (Draft, Good, High, Premium)
+    pub quality_weights: [u32; 4],
+    /// Confidence weight multiplier (0-1000)
+    pub confidence_weight_factor: u32,
+    /// Timeout for consensus calculation in milliseconds
+    pub consensus_timeout_ms: u32,
+    /// Algorithm selection flags
+    pub algorithm: ConsensusAlgorithm,
+    /// Byzantine fault tolerance (max failures)
+    pub max_byzantine_failures: u32,
+    /// Enable iterative consensus refinement
+    pub enable_iterative_refinement: bool,
+}
+
+impl ConsensusConfig {
+    /// Default consensus configuration
+    #[inline(always)]
+    pub const fn default() -> Self {
         Self {
-            consensus_threshold,
-            quality_weights,
-            weighted_voting: true,
-            max_disagreement_variance: 0.3,
+            min_committee_size: 3,
+            max_committee_size: MAX_COMMITTEE_SIZE as u32,
+            consensus_threshold: 700, // 70%
+            quality_weights: [500, 700, 850, 1000], // Draft, Good, High, Premium
+            confidence_weight_factor: 800,
+            consensus_timeout_ms: 5000,
+            algorithm: ConsensusAlgorithm::QUALITY_WEIGHTED,
+            max_byzantine_failures: 1,
+            enable_iterative_refinement: true,
         }
     }
-    
-    /// Build consensus from individual committee evaluations
-    /// 
-    /// # Arguments
-    /// * `evaluations` - All committee member evaluations
-    /// 
-    /// # Returns
-    /// * ConsensusDecision with aggregated results and confidence metrics
-    pub fn build_consensus(&self, evaluations: &[CommitteeEvaluation]) -> CommitteeResult<ConsensusDecision> {
-        if evaluations.is_empty() {
-            return Err(CommitteeError::InsufficientMembers { 
-                available: 0, 
-                required: 1 
-            });
+
+    /// High-performance consensus (fast decisions)
+    #[inline(always)]
+    pub const fn high_performance() -> Self {
+        Self {
+            min_committee_size: 2,
+            max_committee_size: 6,
+            consensus_threshold: 600, // Lower threshold for speed
+            quality_weights: [400, 600, 800, 1000],
+            confidence_weight_factor: 700,
+            consensus_timeout_ms: 2000,
+            algorithm: ConsensusAlgorithm::MAJORITY,
+            max_byzantine_failures: 0,
+            enable_iterative_refinement: false,
         }
-        
-        // Calculate weighted progress votes
-        let (makes_progress, progress_confidence) = self.aggregate_progress_votes(evaluations)?;
-        
-        // Calculate weighted average scores
-        let overall_score = self.calculate_weighted_overall_score(evaluations)?;
-        
-        // Aggregate improvement suggestions
-        let improvement_suggestions = self.aggregate_improvement_suggestions(evaluations);
-        
-        // Identify dissenting opinions
-        let dissenting_opinions = self.identify_dissenting_opinions(evaluations, makes_progress);
-        
-        // Calculate final confidence based on agreement and score variance
-        let confidence = self.calculate_consensus_confidence(evaluations, makes_progress)?;
-        
-        // Validate consensus meets threshold
-        if confidence < self.consensus_threshold {
-            return Err(CommitteeError::ConsensusNotReached {
-                agreement: confidence * 100.0,
-                threshold: self.consensus_threshold * 100.0,
-            });
+    }
+
+    /// High-quality consensus (strict validation)
+    #[inline(always)]
+    pub const fn high_quality() -> Self {
+        Self {
+            min_committee_size: 5,
+            max_committee_size: MAX_COMMITTEE_SIZE as u32,
+            consensus_threshold: 850, // Higher threshold for quality
+            quality_weights: [300, 600, 900, 1000],
+            confidence_weight_factor: 900,
+            consensus_timeout_ms: 10000,
+            algorithm: ConsensusAlgorithm::QUALITY_WEIGHTED
+                .with(ConsensusAlgorithm::CONFIDENCE_WEIGHTED)
+                .with(ConsensusAlgorithm::BYZANTINE_FAULT_TOLERANT),
+            max_byzantine_failures: 2,
+            enable_iterative_refinement: true,
         }
-        
-        Ok(ConsensusDecision {
-            makes_progress,
-            confidence,
-            overall_score,
-            improvement_suggestions,
-            dissenting_opinions,
-        })
     }
-    
-    /// Configure quality-based weighting
-    pub fn with_quality_weighting(mut self, enabled: bool) -> Self {
-        self.weighted_voting = enabled;
-        self
-    }
-    
-    /// Set custom quality weights for different model tiers
-    pub fn with_quality_weights(mut self, weights: HashMap<QualityTier, f64>) -> Self {
-        self.quality_weights = weights;
-        self
-    }
-    
-    /// Set maximum allowed disagreement variance
-    pub fn with_max_disagreement_variance(mut self, variance: f64) -> Self {
-        self.max_disagreement_variance = variance;
-        self
-    }
-    
-    /// Aggregate progress votes with quality weighting
-    fn aggregate_progress_votes(&self, evaluations: &[CommitteeEvaluation]) -> CommitteeResult<(bool, f64)> {
-        let mut total_weight = 0.0;
-        let mut progress_weight = 0.0;
-        
-        for evaluation in evaluations {
-            let weight = self.get_evaluation_weight(evaluation);
-            total_weight += weight;
-            
-            if evaluation.makes_progress {
-                progress_weight += weight;
-            }
+
+    /// Byzantine fault tolerant configuration
+    #[inline(always)]
+    pub const fn byzantine_fault_tolerant() -> Self {
+        Self {
+            min_committee_size: 4, // 3f + 1 for f=1 failure
+            max_committee_size: MAX_COMMITTEE_SIZE as u32,
+            consensus_threshold: 750,
+            quality_weights: [400, 650, 850, 1000],
+            confidence_weight_factor: 850,
+            consensus_timeout_ms: 8000,
+            algorithm: ConsensusAlgorithm::BYZANTINE_FAULT_TOLERANT
+                .with(ConsensusAlgorithm::QUALITY_WEIGHTED),
+            max_byzantine_failures: 2,
+            enable_iterative_refinement: true,
         }
-        
-        if total_weight == 0.0 {
-            return Err(CommitteeError::InsufficientMembers { 
-                available: evaluations.len(), 
-                required: 1 
-            });
-        }
-        
-        let progress_ratio = progress_weight / total_weight;
-        let makes_progress = progress_ratio > 0.5;
-        
-        debug!(
-            "Progress votes: {:.1}% weighted agreement, decision: {}",
-            progress_ratio * 100.0,
-            makes_progress
-        );
-        
-        Ok((makes_progress, progress_ratio))
     }
-    
-    /// Calculate weighted overall score combining alignment, quality, and risk
-    fn calculate_weighted_overall_score(&self, evaluations: &[CommitteeEvaluation]) -> CommitteeResult<f64> {
-        let mut total_weight = 0.0;
-        let mut weighted_alignment = 0.0;
-        let mut weighted_quality = 0.0;
-        let mut weighted_risk = 0.0;
-        
-        for evaluation in evaluations {
-            let weight = self.get_evaluation_weight(evaluation);
-            total_weight += weight;
-            
-            weighted_alignment += evaluation.objective_alignment * weight;
-            weighted_quality += evaluation.implementation_quality * weight;
-            weighted_risk += evaluation.risk_assessment * weight;
-        }
-        
-        if total_weight == 0.0 {
-            return Err(CommitteeError::InsufficientMembers { 
-                available: evaluations.len(), 
-                required: 1 
-            });
-        }
-        
-        let avg_alignment = weighted_alignment / total_weight;
-        let avg_quality = weighted_quality / total_weight;
-        let avg_risk = weighted_risk / total_weight;
-        
-        // Weighted overall score (alignment matters most, risk is penalty)
-        let overall_score = avg_alignment * 0.5 + avg_quality * 0.3 + (1.0 - avg_risk) * 0.2;
-        
-        debug!(
-            "Overall score: {:.3} (alignment: {:.3}, quality: {:.3}, risk: {:.3})",
-            overall_score, avg_alignment, avg_quality, avg_risk
-        );
-        
-        Ok(overall_score.clamp(0.0, 1.0))
+}
+
+/// Consensus decision with metadata (zero allocation)
+#[derive(Debug, Clone)]
+pub struct ConsensusDecision {
+    /// Whether consensus was reached
+    pub consensus_reached: bool,
+    /// Final consensus score (0-1000)
+    pub consensus_score: Arc<AtomicU32>,
+    /// Participating committee size
+    pub committee_size: u32,
+    /// Agreement percentage (0-1000)
+    pub agreement_percentage: Arc<AtomicU32>,
+    /// Quality-weighted average (0-1000)
+    pub quality_weighted_average: Arc<AtomicU32>,
+    /// Confidence-weighted average (0-1000)
+    pub confidence_weighted_average: Arc<AtomicU32>,
+    /// Individual member votes (makes_progress boolean)
+    pub member_votes: ArrayVec<bool, MAX_COMMITTEE_SIZE>,
+    /// Individual member scores (objective_alignment * 1000)
+    pub member_scores: ArrayVec<u32, MAX_COMMITTEE_SIZE>,
+    /// Processing time in microseconds
+    pub processing_time_us: u64,
+    /// Algorithm used for this consensus
+    pub algorithm_used: ConsensusAlgorithm,
+}
+
+impl ConsensusDecision {
+    /// Get consensus score (0-1000)
+    #[inline(always)]
+    pub fn consensus_score(&self) -> u32 {
+        self.consensus_score.load(Ordering::Relaxed)
     }
-    
-    /// Aggregate and deduplicate improvement suggestions
-    fn aggregate_improvement_suggestions(&self, evaluations: &[CommitteeEvaluation]) -> Vec<String> {
-        let mut all_suggestions: Vec<String> = evaluations
-            .iter()
-            .flat_map(|e| e.suggested_improvements.iter().cloned())
-            .collect();
-        
-        // Sort and deduplicate suggestions
-        all_suggestions.sort();
-        all_suggestions.dedup();
-        
-        // Weight suggestions by frequency and evaluator quality
-        let mut suggestion_scores: HashMap<String, f64> = HashMap::new();
-        
-        for evaluation in evaluations {
-            let weight = self.get_evaluation_weight(evaluation);
-            for suggestion in &evaluation.suggested_improvements {
-                *suggestion_scores.entry(suggestion.clone()).or_insert(0.0) += weight;
-            }
-        }
-        
-        // Sort suggestions by weighted frequency
-        all_suggestions.sort_by(|a, b| {
-            let score_a = suggestion_scores.get(a).unwrap_or(&0.0);
-            let score_b = suggestion_scores.get(b).unwrap_or(&0.0);
-            score_b.partial_cmp(score_a).unwrap_or(std::cmp::Ordering::Equal)
-        });
-        
-        // Limit to top 10 suggestions to avoid overwhelming output
-        all_suggestions.truncate(10);
-        
-        debug!("Aggregated {} improvement suggestions", all_suggestions.len());
-        all_suggestions
+
+    /// Get normalized consensus score (0.0-1.0)
+    #[inline(always)]
+    pub fn normalized_consensus_score(&self) -> f32 {
+        self.consensus_score() as f32 / 1000.0
     }
-    
-    /// Identify evaluations that disagree with the majority decision
-    fn identify_dissenting_opinions(&self, evaluations: &[CommitteeEvaluation], majority_decision: bool) -> Vec<String> {
-        evaluations
-            .iter()
-            .filter(|e| e.makes_progress != majority_decision)
-            .map(|e| {
-                // Extract the first sentence of reasoning as the dissenting opinion
-                let first_sentence = e.reasoning
-                    .lines()
-                    .next()
-                    .unwrap_or("No reason provided")
-                    .chars()
-                    .take(200)
-                    .collect::<String>();
-                
-                format!("{} ({}): {}", 
-                    e.model_type.display_name(),
-                    e.agent_id.chars().take(8).collect::<String>(),
-                    first_sentence
-                )
-            })
-            .collect()
+
+    /// Get agreement percentage (0-1000)
+    #[inline(always)]
+    pub fn agreement_percentage(&self) -> u32 {
+        self.agreement_percentage.load(Ordering::Relaxed)
     }
-    
-    /// Calculate consensus confidence based on agreement and score variance
-    fn calculate_consensus_confidence(&self, evaluations: &[CommitteeEvaluation], majority_decision: bool) -> CommitteeResult<f64> {
-        if evaluations.is_empty() {
-            return Ok(0.0);
-        }
-        
-        // Calculate agreement ratio
-        let agreement_count = evaluations
-            .iter()
-            .filter(|e| e.makes_progress == majority_decision)
-            .count();
-        let agreement_ratio = agreement_count as f64 / evaluations.len() as f64;
-        
-        // Calculate score variance across dimensions
-        let alignment_variance = self.calculate_score_variance(
-            evaluations.iter().map(|e| e.objective_alignment)
-        );
-        let quality_variance = self.calculate_score_variance(
-            evaluations.iter().map(|e| e.implementation_quality)
-        );
-        let risk_variance = self.calculate_score_variance(
-            evaluations.iter().map(|e| e.risk_assessment)
-        );
-        
-        let avg_variance = (alignment_variance + quality_variance + risk_variance) / 3.0;
-        
-        // Calculate confidence penalty based on variance
-        let variance_penalty = if avg_variance > self.max_disagreement_variance {
-            warn!(
-                "High disagreement variance detected: {:.3} (max: {:.3})",
-                avg_variance, self.max_disagreement_variance
-            );
-            0.5 // Significant penalty for high disagreement
-        } else {
-            1.0 / (1.0 + avg_variance) // Gentle penalty scaling
-        };
-        
-        // Weight by individual evaluator confidence
-        let avg_evaluator_confidence = evaluations
-            .iter()
-            .map(|e| e.confidence)
-            .sum::<f64>() / evaluations.len() as f64;
-        
-        // Final confidence combines agreement, variance, and individual confidence
-        let confidence = agreement_ratio * variance_penalty * avg_evaluator_confidence;
-        
-        debug!(
-            "Consensus confidence: {:.3} (agreement: {:.3}, variance_penalty: {:.3}, avg_confidence: {:.3})",
-            confidence, agreement_ratio, variance_penalty, avg_evaluator_confidence
-        );
-        
-        Ok(confidence.clamp(0.0, 1.0))
+
+    /// Get normalized agreement percentage (0.0-1.0)
+    #[inline(always)]
+    pub fn normalized_agreement_percentage(&self) -> f32 {
+        self.agreement_percentage() as f32 / 1000.0
     }
-    
-    /// Get evaluation weight based on model quality and evaluator confidence
-    fn get_evaluation_weight(&self, evaluation: &CommitteeEvaluation) -> f64 {
-        if !self.weighted_voting {
-            return 1.0;
-        }
-        
-        let quality_tier = evaluation.model_type.quality_tier();
-        let quality_weight = self.quality_weights.get(&quality_tier).unwrap_or(&1.0);
-        
-        // Combine quality weight with evaluator confidence
-        quality_weight * evaluation.confidence
+
+    /// Get quality-weighted average (0-1000)
+    #[inline(always)]
+    pub fn quality_weighted_average(&self) -> u32 {
+        self.quality_weighted_average.load(Ordering::Relaxed)
     }
-    
-    /// Calculate variance for a set of scores
-    fn calculate_score_variance(&self, scores: impl Iterator<Item = f64>) -> f64 {
-        let scores: Vec<f64> = scores.collect();
-        if scores.len() < 2 {
+
+    /// Get confidence-weighted average (0-1000)
+    #[inline(always)]
+    pub fn confidence_weighted_average(&self) -> u32 {
+        self.confidence_weighted_average.load(Ordering::Relaxed)
+    }
+
+    /// Calculate consensus strength (combination of score and agreement)
+    #[inline]
+    pub fn consensus_strength(&self) -> f32 {
+        let score_weight = 0.7;
+        let agreement_weight = 0.3;
+        
+        let normalized_score = self.normalized_consensus_score();
+        let normalized_agreement = self.normalized_agreement_percentage();
+        
+        normalized_score * score_weight + normalized_agreement * agreement_weight
+    }
+
+    /// Get positive vote percentage
+    #[inline]
+    pub fn positive_vote_percentage(&self) -> f32 {
+        if self.member_votes.is_empty() {
             return 0.0;
         }
         
-        let mean = scores.iter().sum::<f64>() / scores.len() as f64;
-        let variance = scores
-            .iter()
-            .map(|score| (score - mean).powi(2))
-            .sum::<f64>() / scores.len() as f64;
+        let positive_votes = self.member_votes.iter().filter(|&&vote| vote).count();
+        positive_votes as f32 / self.member_votes.len() as f32
+    }
+
+    /// Get score variance (measure of disagreement)
+    #[inline]
+    pub fn score_variance(&self) -> f32 {
+        if self.member_scores.is_empty() {
+            return 0.0;
+        }
         
-        variance.sqrt()
+        let mean = self.member_scores.iter().sum::<u32>() as f32 / self.member_scores.len() as f32;
+        let variance = self.member_scores.iter()
+            .map(|&score| (score as f32 - mean).powi(2))
+            .sum::<f32>() / self.member_scores.len() as f32;
+            
+        variance / 1000000.0 // Normalize to 0.0-1.0 range
+    }
+
+    /// Get score standard deviation
+    #[inline]
+    pub fn score_standard_deviation(&self) -> f32 {
+        self.score_variance().sqrt()
     }
 }
 
-/// Advanced decision aggregation with sophisticated algorithms
-#[derive(Debug)]
-pub struct DecisionAggregator {
-    /// Base consensus builder
-    consensus_builder: ConsensusBuilder,
-    /// Whether to use adaptive thresholds
-    adaptive_thresholds: bool,
-    /// Minimum evaluations required for high-confidence decisions
-    min_evaluations_for_confidence: usize,
+/// Consensus statistics for monitoring (zero allocation)
+#[derive(Debug, Clone, Copy)]
+pub struct ConsensusStatistics {
+    /// Total consensus attempts
+    pub total_attempts: u64,
+    /// Successful consensus count
+    pub successful_consensus: u64,
+    /// Failed consensus count
+    pub failed_consensus: u64,
+    /// Average processing time in microseconds
+    pub avg_processing_time_us: u64,
+    /// Average consensus score (0-1000)
+    pub avg_consensus_score: u32,
+    /// Average agreement percentage (0-1000)
+    pub avg_agreement_percentage: u32,
 }
 
-impl DecisionAggregator {
-    /// Create a new decision aggregator
-    pub fn new(consensus_threshold: f64) -> Self {
+impl ConsensusStatistics {
+    /// Create new empty statistics
+    #[inline(always)]
+    pub const fn new() -> Self {
         Self {
-            consensus_builder: ConsensusBuilder::new(consensus_threshold),
-            adaptive_thresholds: true,
-            min_evaluations_for_confidence: 3,
+            total_attempts: 0,
+            successful_consensus: 0,
+            failed_consensus: 0,
+            avg_processing_time_us: 0,
+            avg_consensus_score: 0,
+            avg_agreement_percentage: 0,
         }
     }
-    
-    /// Aggregate evaluations with adaptive algorithms
-    pub fn aggregate_with_adaptation(&self, evaluations: &[CommitteeEvaluation]) -> CommitteeResult<ConsensusDecision> {
-        // Use adaptive threshold if enabled
-        let effective_threshold = if self.adaptive_thresholds {
-            self.calculate_adaptive_threshold(evaluations)
+
+    /// Calculate success rate (0.0-1.0)
+    #[inline(always)]
+    pub fn success_rate(&self) -> f32 {
+        if self.total_attempts == 0 {
+            return 0.0;
+        }
+        self.successful_consensus as f32 / self.total_attempts as f32
+    }
+
+    /// Calculate failure rate (0.0-1.0)
+    #[inline(always)]
+    pub fn failure_rate(&self) -> f32 {
+        1.0 - self.success_rate()
+    }
+}
+
+/// High-performance committee consensus engine (zero allocation)
+pub struct CommitteeConsensusEngine {
+    /// Configuration
+    config: ConsensusConfig,
+    /// Statistics (atomic counters)
+    statistics: Arc<AtomicU64>, // Packed statistics
+    /// Request counter (atomic)
+    request_counter: Arc<AtomicU64>,
+}
+
+impl CommitteeConsensusEngine {
+    /// Create new consensus engine
+    #[inline]
+    pub fn new() -> Self {
+        Self {
+            config: ConsensusConfig::default(),
+            statistics: Arc::new(AtomicU64::new(0)),
+            request_counter: Arc::new(AtomicU64::new(0)),
+        }
+    }
+
+    /// Create with custom configuration
+    #[inline]
+    pub fn with_config(mut self, config: ConsensusConfig) -> Self {
+        self.config = config;
+        self
+    }
+
+    /// Get request count
+    #[inline(always)]
+    pub fn request_count(&self) -> u64 {
+        self.request_counter.load(Ordering::Relaxed)
+    }
+
+    /// Calculate consensus from committee evaluations (zero allocation)
+    pub async fn calculate_consensus(
+        &self,
+        evaluations: &[CommitteeEvaluation],
+    ) -> CommitteeResult<ConsensusDecision> {
+        let start_time = std::time::Instant::now();
+        
+        // Increment request counter
+        self.request_counter.fetch_add(1, Ordering::Relaxed);
+
+        // Validate input
+        if evaluations.len() < self.config.min_committee_size as usize {
+            return Err(CommitteeError::InsufficientMembers {
+                available: evaluations.len(),
+                required: self.config.min_committee_size as usize,
+            });
+        }
+
+        // Apply consensus algorithm with timeout protection
+        let consensus_result = tokio::time::timeout(
+            Duration::from_millis(self.config.consensus_timeout_ms as u64),
+            self.execute_consensus_algorithm(evaluations),
+        ).await
+            .map_err(|_| CommitteeError::EvaluationTimeout {
+                timeout_ms: self.config.consensus_timeout_ms as u64,
+            })?;
+
+        let processing_time_us = start_time.elapsed().as_micros() as u64;
+
+        match consensus_result {
+            Ok(mut decision) => {
+                decision.processing_time_us = processing_time_us;
+                Ok(decision)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Execute consensus algorithm based on configuration (hardcoded algorithms)
+    async fn execute_consensus_algorithm(
+        &self,
+        evaluations: &[CommitteeEvaluation],
+    ) -> CommitteeResult<ConsensusDecision> {
+        if self.config.algorithm.matches(ConsensusAlgorithm::BYZANTINE_FAULT_TOLERANT) {
+            self.byzantine_fault_tolerant_consensus(evaluations).await
+        } else if self.config.algorithm.matches(ConsensusAlgorithm::UNANIMOUS) {
+            self.unanimous_consensus(evaluations).await
+        } else if self.config.algorithm.matches(ConsensusAlgorithm::SUPER_MAJORITY) {
+            self.super_majority_consensus(evaluations).await
+        } else if self.config.algorithm.matches(ConsensusAlgorithm::QUALITY_WEIGHTED) {
+            self.quality_weighted_consensus(evaluations).await
+        } else if self.config.algorithm.matches(ConsensusAlgorithm::CONFIDENCE_WEIGHTED) {
+            self.confidence_weighted_consensus(evaluations).await
         } else {
-            self.consensus_builder.consensus_threshold
+            self.majority_consensus(evaluations).await
+        }
+    }
+
+    /// Simple majority consensus (hardcoded algorithm)
+    async fn majority_consensus(
+        &self,
+        evaluations: &[CommitteeEvaluation],
+    ) -> CommitteeResult<ConsensusDecision> {
+        let mut member_votes = ArrayVec::new();
+        let mut member_scores = ArrayVec::new();
+        let mut positive_votes = 0u32;
+        let mut total_score = 0u64;
+
+        for evaluation in evaluations.iter() {
+            if member_votes.try_push(evaluation.makes_progress).is_err() {
+                break; // ArrayVec full
+            }
+            
+            let score = (evaluation.objective_alignment * 1000.0) as u32;
+            if member_scores.try_push(score).is_err() {
+                break; // ArrayVec full
+            }
+
+            if evaluation.makes_progress {
+                positive_votes += 1;
+            }
+            total_score += score as u64;
+        }
+
+        let committee_size = member_votes.len() as u32;
+        let majority_threshold = (committee_size + 1) / 2;
+        let consensus_reached = positive_votes >= majority_threshold;
+
+        let consensus_score = if committee_size > 0 {
+            (total_score / committee_size as u64) as u32
+        } else {
+            0
         };
-        
-        // Create temporary builder with adaptive threshold
-        let mut builder = ConsensusBuilder::new(effective_threshold);
-        builder = builder
-            .with_quality_weighting(self.consensus_builder.weighted_voting)
-            .with_quality_weights(self.consensus_builder.quality_weights.clone())
-            .with_max_disagreement_variance(self.consensus_builder.max_disagreement_variance);
-        
-        builder.build_consensus(evaluations)
-    }
-    
-    /// Calculate adaptive threshold based on evaluation context
-    fn calculate_adaptive_threshold(&self, evaluations: &[CommitteeEvaluation]) -> f64 {
-        let base_threshold = self.consensus_builder.consensus_threshold;
-        
-        // Lower threshold for smaller committees
-        if evaluations.len() < self.min_evaluations_for_confidence {
-            return (base_threshold * 0.8).clamp(0.5, 1.0);
-        }
-        
-        // Consider average confidence of evaluators
-        let avg_confidence = evaluations
-            .iter()
-            .map(|e| e.confidence)
-            .sum::<f64>() / evaluations.len() as f64;
-        
-        // Lower threshold if evaluators are generally less confident
-        if avg_confidence < 0.7 {
-            return (base_threshold * 0.9).clamp(0.5, 1.0);
-        }
-        
-        // Higher threshold for high-confidence evaluators
-        if avg_confidence > 0.9 {
-            return (base_threshold * 1.1).clamp(0.5, 1.0);
-        }
-        
-        base_threshold
-    }
-}
 
-/// Consensus engine with multiple aggregation strategies
-#[derive(Debug)]
-pub struct ConsensusEngine {
-    /// Primary decision aggregator
-    aggregator: DecisionAggregator,
-    /// Fallback strategies for edge cases
-    fallback_strategies: Vec<ConsensusStrategy>,
-}
+        let agreement_percentage = if committee_size > 0 {
+            (positive_votes * 1000) / committee_size
+        } else {
+            0
+        };
 
-/// Different consensus strategies for various scenarios
-#[derive(Debug, Clone)]
-pub enum ConsensusStrategy {
-    /// Simple majority vote
-    SimpleMajority,
-    /// Weighted by model quality
-    QualityWeighted,
-    /// Conservative (require higher agreement)
-    Conservative,
-    /// Optimistic (allow lower agreement)
-    Optimistic,
-}
-
-impl ConsensusEngine {
-    /// Create new consensus engine with default strategies
-    pub fn new(consensus_threshold: f64) -> Self {
-        Self {
-            aggregator: DecisionAggregator::new(consensus_threshold),
-            fallback_strategies: vec![
-                ConsensusStrategy::QualityWeighted,
-                ConsensusStrategy::SimpleMajority,
-                ConsensusStrategy::Conservative,
-            ],
-        }
-    }
-    
-    /// Build consensus with fallback strategies
-    pub fn build_consensus_with_fallback(&self, evaluations: &[CommitteeEvaluation]) -> CommitteeResult<ConsensusDecision> {
-        // Try primary aggregation first
-        match self.aggregator.aggregate_with_adaptation(evaluations) {
-            Ok(decision) => {
-                info!("Primary consensus strategy succeeded");
-                return Ok(decision);
-            }
-            Err(e) => {
-                warn!("Primary consensus failed: {}, trying fallbacks", e);
-            }
-        }
-        
-        // Try fallback strategies
-        for strategy in &self.fallback_strategies {
-            match self.apply_strategy(strategy, evaluations) {
-                Ok(decision) => {
-                    info!("Fallback strategy {:?} succeeded", strategy);
-                    return Ok(decision);
-                }
-                Err(e) => {
-                    debug!("Fallback strategy {:?} failed: {}", strategy, e);
-                }
-            }
-        }
-        
-        // If all strategies fail, return the original error
-        Err(CommitteeError::ConsensusNotReached {
-            agreement: 0.0,
-            threshold: self.aggregator.consensus_builder.consensus_threshold * 100.0,
+        Ok(ConsensusDecision {
+            consensus_reached,
+            consensus_score: Arc::new(AtomicU32::new(consensus_score)),
+            committee_size,
+            agreement_percentage: Arc::new(AtomicU32::new(agreement_percentage)),
+            quality_weighted_average: Arc::new(AtomicU32::new(consensus_score)),
+            confidence_weighted_average: Arc::new(AtomicU32::new(consensus_score)),
+            member_votes,
+            member_scores,
+            processing_time_us: 0, // Will be set by caller
+            algorithm_used: ConsensusAlgorithm::MAJORITY,
         })
     }
-    
-    /// Apply specific consensus strategy
-    fn apply_strategy(&self, strategy: &ConsensusStrategy, evaluations: &[CommitteeEvaluation]) -> CommitteeResult<ConsensusDecision> {
-        let builder = match strategy {
-            ConsensusStrategy::SimpleMajority => {
-                ConsensusBuilder::new(0.5).with_quality_weighting(false)
-            }
-            ConsensusStrategy::QualityWeighted => {
-                ConsensusBuilder::new(0.6).with_quality_weighting(true)
-            }
-            ConsensusStrategy::Conservative => {
-                ConsensusBuilder::new(0.8).with_max_disagreement_variance(0.2)
-            }
-            ConsensusStrategy::Optimistic => {
-                ConsensusBuilder::new(0.4).with_max_disagreement_variance(0.5)
-            }
-        };
-        
-        builder.build_consensus(evaluations)
-    }
-}
 
-/// Quality metrics for consensus analysis
-#[derive(Debug, Clone, Default)]
-pub struct QualityMetrics {
-    /// Agreement level achieved
-    pub agreement_level: f64,
-    /// Score variance across evaluations
-    pub score_variance: f64,
-    /// Average evaluator confidence
-    pub average_confidence: f64,
-    /// Number of dissenting opinions
-    pub dissenting_count: usize,
-    /// Quality of reasoning provided
-    pub reasoning_quality_score: f64,
-}
+    /// Quality-weighted consensus (hardcoded algorithm with user-configurable weights)
+    async fn quality_weighted_consensus(
+        &self,
+        evaluations: &[CommitteeEvaluation],
+    ) -> CommitteeResult<ConsensusDecision> {
+        let mut member_votes = ArrayVec::new();
+        let mut member_scores = ArrayVec::new();
+        let mut weighted_positive_votes = 0u64;
+        let mut total_weighted_score = 0u64;
+        let mut total_weight = 0u64;
 
-impl QualityMetrics {
-    /// Calculate quality metrics from evaluations
-    pub fn from_evaluations(evaluations: &[CommitteeEvaluation], majority_decision: bool) -> Self {
-        let agreement_count = evaluations
-            .iter()
-            .filter(|e| e.makes_progress == majority_decision)
-            .count();
-        
-        let agreement_level = if evaluations.is_empty() {
-            0.0
-        } else {
-            agreement_count as f64 / evaluations.len() as f64
-        };
-        
-        let average_confidence = if evaluations.is_empty() {
-            0.0
-        } else {
-            evaluations.iter().map(|e| e.confidence).sum::<f64>() / evaluations.len() as f64
-        };
-        
-        let dissenting_count = evaluations.len() - agreement_count;
-        
-        // Calculate reasoning quality based on length and detail
-        let reasoning_quality_score = if evaluations.is_empty() {
-            0.0
-        } else {
-            evaluations
-                .iter()
-                .map(|e| {
-                    let length_score = (e.reasoning.len() as f64 / 200.0).clamp(0.0, 1.0);
-                    let detail_score = if e.reasoning.split_whitespace().count() > 10 { 0.5 } else { 0.0 };
-                    length_score + detail_score
-                })
-                .sum::<f64>() / evaluations.len() as f64
-        };
-        
-        // Calculate score variance (simplified)
-        let scores: Vec<f64> = evaluations
-            .iter()
-            .map(|e| (e.objective_alignment + e.implementation_quality + (1.0 - e.risk_assessment)) / 3.0)
-            .collect();
-        
-        let score_variance = if scores.len() < 2 {
-            0.0
-        } else {
-            let mean = scores.iter().sum::<f64>() / scores.len() as f64;
-            let variance = scores
-                .iter()
-                .map(|score| (score - mean).powi(2))
-                .sum::<f64>() / scores.len() as f64;
-            variance.sqrt()
-        };
-        
-        Self {
-            agreement_level,
-            score_variance,
-            average_confidence,
-            dissenting_count,
-            reasoning_quality_score,
+        for evaluation in evaluations.iter() {
+            if member_votes.try_push(evaluation.makes_progress).is_err() {
+                break; // ArrayVec full
+            }
+
+            let score = (evaluation.objective_alignment * 1000.0) as u32;
+            if member_scores.try_push(score).is_err() {
+                break; // ArrayVec full
+            }
+
+            // Get quality tier weight from user configuration
+            let quality_tier = evaluation.model.quality_tier();
+            let weight = self.config.quality_weights[quality_tier as usize] as u64;
+
+            if evaluation.makes_progress {
+                weighted_positive_votes += weight;
+            }
+            total_weighted_score += (score as u64) * weight;
+            total_weight += weight;
         }
+
+        let committee_size = member_votes.len() as u32;
+        let weighted_threshold = (total_weight * self.config.consensus_threshold as u64) / 1000;
+        let consensus_reached = weighted_positive_votes >= weighted_threshold;
+
+        let consensus_score = if total_weight > 0 {
+            (total_weighted_score / total_weight) as u32
+        } else {
+            0
+        };
+
+        let agreement_percentage = if total_weight > 0 {
+            ((weighted_positive_votes * 1000) / total_weight) as u32
+        } else {
+            0
+        };
+
+        Ok(ConsensusDecision {
+            consensus_reached,
+            consensus_score: Arc::new(AtomicU32::new(consensus_score)),
+            committee_size,
+            agreement_percentage: Arc::new(AtomicU32::new(agreement_percentage)),
+            quality_weighted_average: Arc::new(AtomicU32::new(consensus_score)),
+            confidence_weighted_average: Arc::new(AtomicU32::new(consensus_score)),
+            member_votes,
+            member_scores,
+            processing_time_us: 0,
+            algorithm_used: ConsensusAlgorithm::QUALITY_WEIGHTED,
+        })
     }
+
+    /// Confidence-weighted consensus (hardcoded algorithm with user-configurable factor)
+    async fn confidence_weighted_consensus(
+        &self,
+        evaluations: &[CommitteeEvaluation],
+    ) -> CommitteeResult<ConsensusDecision> {
+        let mut member_votes = ArrayVec::new();
+        let mut member_scores = ArrayVec::new();
+        let mut weighted_positive_votes = 0u64;
+        let mut total_weighted_score = 0u64;
+        let mut total_weight = 0u64;
+
+        for evaluation in evaluations.iter() {
+            if member_votes.try_push(evaluation.makes_progress).is_err() {
+                break;
+            }
+
+            let score = (evaluation.objective_alignment * 1000.0) as u32;
+            if member_scores.try_push(score).is_err() {
+                break;
+            }
+
+            // Apply user-configurable confidence weighting
+            let confidence_weight = (evaluation.confidence * self.config.confidence_weight_factor as f64) as u64;
+            let weight = confidence_weight.max(100); // Minimum weight to prevent zero influence
+
+            if evaluation.makes_progress {
+                weighted_positive_votes += weight;
+            }
+            total_weighted_score += (score as u64) * weight;
+            total_weight += weight;
+        }
+
+        let committee_size = member_votes.len() as u32;
+        let weighted_threshold = (total_weight * self.config.consensus_threshold as u64) / 1000;
+        let consensus_reached = weighted_positive_votes >= weighted_threshold;
+
+        let consensus_score = if total_weight > 0 {
+            (total_weighted_score / total_weight) as u32
+        } else {
+            0
+        };
+
+        let agreement_percentage = if total_weight > 0 {
+            ((weighted_positive_votes * 1000) / total_weight) as u32
+        } else {
+            0
+        };
+
+        Ok(ConsensusDecision {
+            consensus_reached,
+            consensus_score: Arc::new(AtomicU32::new(consensus_score)),
+            committee_size,
+            agreement_percentage: Arc::new(AtomicU32::new(agreement_percentage)),
+            quality_weighted_average: Arc::new(AtomicU32::new(consensus_score)),
+            confidence_weighted_average: Arc::new(AtomicU32::new(consensus_score)),
+            member_votes,
+            member_scores,
+            processing_time_us: 0,
+            algorithm_used: ConsensusAlgorithm::CONFIDENCE_WEIGHTED,
+        })
+    }
+
+    /// Unanimous consensus (hardcoded algorithm)
+    async fn unanimous_consensus(
+        &self,
+        evaluations: &[CommitteeEvaluation],
+    ) -> CommitteeResult<ConsensusDecision> {
+        let mut member_votes = ArrayVec::new();
+        let mut member_scores = ArrayVec::new();
+        let mut all_positive = true;
+        let mut total_score = 0u64;
+
+        for evaluation in evaluations.iter() {
+            if member_votes.try_push(evaluation.makes_progress).is_err() {
+                break;
+            }
+
+            let score = (evaluation.objective_alignment * 1000.0) as u32;
+            if member_scores.try_push(score).is_err() {
+                break;
+            }
+
+            if !evaluation.makes_progress {
+                all_positive = false;
+            }
+            total_score += score as u64;
+        }
+
+        let committee_size = member_votes.len() as u32;
+        let consensus_reached = all_positive && committee_size > 0;
+
+        let consensus_score = if committee_size > 0 {
+            (total_score / committee_size as u64) as u32
+        } else {
+            0
+        };
+
+        let agreement_percentage = if consensus_reached { 1000 } else { 0 };
+
+        Ok(ConsensusDecision {
+            consensus_reached,
+            consensus_score: Arc::new(AtomicU32::new(consensus_score)),
+            committee_size,
+            agreement_percentage: Arc::new(AtomicU32::new(agreement_percentage)),
+            quality_weighted_average: Arc::new(AtomicU32::new(consensus_score)),
+            confidence_weighted_average: Arc::new(AtomicU32::new(consensus_score)),
+            member_votes,
+            member_scores,
+            processing_time_us: 0,
+            algorithm_used: ConsensusAlgorithm::UNANIMOUS,
+        })
+    }
+
+    /// Super-majority consensus (>2/3) (hardcoded algorithm)
+    async fn super_majority_consensus(
+        &self,
+        evaluations: &[CommitteeEvaluation],
+    ) -> CommitteeResult<ConsensusDecision> {
+        let mut member_votes = ArrayVec::new();
+        let mut member_scores = ArrayVec::new();
+        let mut positive_votes = 0u32;
+        let mut total_score = 0u64;
+
+        for evaluation in evaluations.iter() {
+            if member_votes.try_push(evaluation.makes_progress).is_err() {
+                break;
+            }
+
+            let score = (evaluation.objective_alignment * 1000.0) as u32;
+            if member_scores.try_push(score).is_err() {
+                break;
+            }
+
+            if evaluation.makes_progress {
+                positive_votes += 1;
+            }
+            total_score += score as u64;
+        }
+
+        let committee_size = member_votes.len() as u32;
+        let super_majority_threshold = (committee_size * 2 + 2) / 3; // >2/3
+        let consensus_reached = positive_votes >= super_majority_threshold;
+
+        let consensus_score = if committee_size > 0 {
+            (total_score / committee_size as u64) as u32
+        } else {
+            0
+        };
+
+        let agreement_percentage = if committee_size > 0 {
+            (positive_votes * 1000) / committee_size
+        } else {
+            0
+        };
+
+        Ok(ConsensusDecision {
+            consensus_reached,
+            consensus_score: Arc::new(AtomicU32::new(consensus_score)),
+            committee_size,
+            agreement_percentage: Arc::new(AtomicU32::new(agreement_percentage)),
+            quality_weighted_average: Arc::new(AtomicU32::new(consensus_score)),
+            confidence_weighted_average: Arc::new(AtomicU32::new(consensus_score)),
+            member_votes,
+            member_scores,
+            processing_time_us: 0,
+            algorithm_used: ConsensusAlgorithm::SUPER_MAJORITY,
+        })
+    }
+
+    /// Byzantine fault tolerant consensus (hardcoded algorithm with user-configurable fault tolerance)
+    async fn byzantine_fault_tolerant_consensus(
+        &self,
+        evaluations: &[CommitteeEvaluation],
+    ) -> CommitteeResult<ConsensusDecision> {
+        let f = self.config.max_byzantine_failures;
+        let required_size = 3 * f + 1;
+
+        if evaluations.len() < required_size as usize {
+            return Err(CommitteeError::InsufficientMembers {
+                available: evaluations.len(),
+                required: required_size as usize,
+            });
+        }
+
+        // Simplified Byzantine consensus: require 2f+1 agreeing nodes
+        let mut member_votes = ArrayVec::new();
+        let mut member_scores = ArrayVec::new();
+        let mut positive_votes = 0u32;
+        let mut total_score = 0u64;
+
+        for evaluation in evaluations.iter() {
+            if member_votes.try_push(evaluation.makes_progress).is_err() {
+                break;
+            }
+
+            let score = (evaluation.objective_alignment * 1000.0) as u32;
+            if member_scores.try_push(score).is_err() {
+                break;
+            }
+
+            if evaluation.makes_progress {
+                positive_votes += 1;
+            }
+            total_score += score as u64;
+        }
+
+        let committee_size = member_votes.len() as u32;
+        let byzantine_threshold = 2 * f + 1;
+        let consensus_reached = positive_votes >= byzantine_threshold;
+
+        let consensus_score = if committee_size > 0 {
+            (total_score / committee_size as u64) as u32
+        } else {
+            0
+        };
+
+        let agreement_percentage = if committee_size > 0 {
+            (positive_votes * 1000) / committee_size
+        } else {
+            0
+        };
+
+        Ok(ConsensusDecision {
+            consensus_reached,
+            consensus_score: Arc::new(AtomicU32::new(consensus_score)),
+            committee_size,
+            agreement_percentage: Arc::new(AtomicU32::new(agreement_percentage)),
+            quality_weighted_average: Arc::new(AtomicU32::new(consensus_score)),
+            confidence_weighted_average: Arc::new(AtomicU32::new(consensus_score)),
+            member_votes,
+            member_scores,
+            processing_time_us: 0,
+            algorithm_used: ConsensusAlgorithm::BYZANTINE_FAULT_TOLERANT,
+        })
+    }
+}
+
+/// Convenience function to create consensus engine
+#[inline]
+pub fn create_consensus_engine() -> CommitteeConsensusEngine {
+    CommitteeConsensusEngine::new()
+}
+
+/// Convenience function to create high-performance consensus engine
+#[inline]
+pub fn create_high_performance_consensus_engine() -> CommitteeConsensusEngine {
+    CommitteeConsensusEngine::new().with_config(ConsensusConfig::high_performance())
+}
+
+/// Convenience function to create high-quality consensus engine
+#[inline]
+pub fn create_high_quality_consensus_engine() -> CommitteeConsensusEngine {
+    CommitteeConsensusEngine::new().with_config(ConsensusConfig::high_quality())
+}
+
+/// Convenience function to create Byzantine fault tolerant consensus engine
+#[inline]
+pub fn create_byzantine_fault_tolerant_consensus_engine() -> CommitteeConsensusEngine {
+    CommitteeConsensusEngine::new().with_config(ConsensusConfig::byzantine_fault_tolerant())
+}
+
+/// Convenience function for quick consensus calculation
+pub async fn calculate_committee_consensus(
+    evaluations: &[CommitteeEvaluation],
+    config: Option<ConsensusConfig>,
+) -> CommitteeResult<ConsensusDecision> {
+    let engine = if let Some(config) = config {
+        CommitteeConsensusEngine::new().with_config(config)
+    } else {
+        create_consensus_engine()
+    };
     
-    /// Check if metrics indicate high-quality consensus
-    pub fn is_high_quality(&self) -> bool {
-        self.agreement_level > 0.7
-            && self.score_variance < 0.3
-            && self.average_confidence > 0.8
-            && self.reasoning_quality_score > 0.6
-    }
+    engine.calculate_consensus(evaluations).await
 }

@@ -1,17 +1,21 @@
 // src/cognitive/orchestrator.rs
 //! Infinite agentic orchestrator for committee-driven optimization
 
-use crate::cognitive::evolution::{CodeEvolution, CognitiveCodeEvolution};
-use crate::cognitive::types::{CognitiveError, OptimizationOutcome, OptimizationSpec};
-use serde_json;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+use serde_json;
 use tokio::task::JoinSet;
 use tokio::time::{Duration, sleep};
 use tracing::{error, info, warn};
 use walkdir::WalkDir;
+
+use crate::cognitive::evolution::{CodeEvolution, CognitiveCodeEvolution};
+use crate::cognitive::types::{
+    CognitiveError, OptimizationOutcome, OptimizationSpec
+};
 
 /// Orchestrator managing infinite optimization iterations
 pub struct InfiniteOrchestrator {
@@ -261,21 +265,37 @@ fn markdown_to_spec(md: &str) -> Result<OptimizationSpec, CognitiveError> {
     }
 
     Ok(OptimizationSpec {
+        objective: "Improve code performance and quality".to_string(),
+        constraints: vec!["Memory efficient".to_string(), "Thread safe".to_string()],
+        success_criteria: vec!["Performance improvement".to_string(), "Quality score > 0.8".to_string()],
+        optimization_type: OptimizationType::Performance,
+        timeout_ms: Some(30000),
+        max_iterations: Some(10),
+        target_quality: 0.8,
         content_type: ContentType {
+            category: ContentCategory::Code,
+            complexity: 0.7,
+            processing_hints: vec!["Rust".to_string(), "Performance".to_string()],
             format: "Rust source code".to_string(),
             restrictions: Restrictions {
+                max_memory_usage: Some(1024 * 1024 * 100), // 100MB
+                max_processing_time: Some(30000), // 30 seconds
+                allowed_operations: vec!["optimization".to_string(), "refactoring".to_string()],
+                forbidden_operations: vec!["unsafe".to_string(), "system_calls".to_string()],
+                security_level: SecurityLevel::Internal,
                 compiler: "rustc 1.82.0".to_string(),
                 max_latency_increase,
                 max_memory_increase,
                 min_relevance_improvement,
             },
         },
-        constraints: Constraints {
-            size: "Single function or module".to_string(),
-            style: "Idiomatic Rust".to_string(),
-            schemas: vec!["syn::Item".to_string()],
-        },
         evolution_rules: EvolutionRules {
+            mutation_rate: 0.1,
+            selection_pressure: 0.8,
+            crossover_rate: 0.7,
+            elite_retention: 0.2,
+            diversity_maintenance: 0.3,
+            allowed_mutations: vec![MutationType::AttentionWeightAdjustment, MutationType::RoutingStrategyModification],
             build_on_previous: true,
             new_axis_per_iteration: true,
             max_cumulative_latency_increase: max_latency_increase,
@@ -283,6 +303,12 @@ fn markdown_to_spec(md: &str) -> Result<OptimizationSpec, CognitiveError> {
             validation_required: true,
         },
         baseline_metrics: BaselineMetrics {
+            response_time: 1.0,
+            accuracy: 0.9,
+            throughput: 100.0,
+            resource_usage: 0.5,
+            error_rate: 0.05,
+            quality_score: 0.8,
             latency: baseline_latency,
             memory: baseline_memory,
             relevance: baseline_relevance,

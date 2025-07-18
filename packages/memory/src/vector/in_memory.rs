@@ -1,12 +1,13 @@
 //! In-memory vector store implementation
 
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::cmp::Ordering;
+
 use surrealdb::sql::Value;
 
-use super::vector_store::{VectorStore, VectorSearchResult};
+use super::vector_store::{VectorSearchResult, VectorStore};
 use crate::constants::ERROR_VECTOR_NOT_FOUND;
 use crate::utils::error::{Error, Result};
 
@@ -65,9 +66,7 @@ impl VectorStore for InMemoryVectorStore {
             self.vectors.insert(id.to_string(), vector);
             Box::pin(async { Ok(()) })
         } else {
-            Box::pin(
-                async move { Err(Error::NotFound(ERROR_VECTOR_NOT_FOUND.to_string())) },
-            )
+            Box::pin(async move { Err(Error::NotFound(ERROR_VECTOR_NOT_FOUND.to_string())) })
         }
     }
 
@@ -94,8 +93,8 @@ impl VectorStore for InMemoryVectorStore {
         results.sort_by(|a, b| {
             match (a.1.is_nan(), b.1.is_nan()) {
                 (true, true) => Ordering::Equal,
-                (true, false) => Ordering::Greater,  // NaN goes to end
-                (false, true) => Ordering::Less,     // NaN goes to end
+                (true, false) => Ordering::Greater, // NaN goes to end
+                (false, true) => Ordering::Less,    // NaN goes to end
                 (false, false) => {
                     // Safe to compare non-NaN values (descending order)
                     if b.1 > a.1 {
@@ -158,8 +157,8 @@ impl VectorStore for InMemoryVectorStore {
         results.sort_by(|a, b| {
             match (a.2.is_nan(), b.2.is_nan()) {
                 (true, true) => Ordering::Equal,
-                (true, false) => Ordering::Greater,  // NaN goes to end
-                (false, true) => Ordering::Less,     // NaN goes to end
+                (true, false) => Ordering::Greater, // NaN goes to end
+                (false, true) => Ordering::Less,    // NaN goes to end
                 (false, false) => {
                     // Safe to compare non-NaN values (descending order)
                     if b.2 > a.2 {

@@ -4,6 +4,7 @@
 #![cfg(feature = "cognitive")]
 
 use std::sync::Arc;
+
 use fluent_ai_memory::cognitive::{
     committee::CommitteeEvent,
     mcts::CodeState,

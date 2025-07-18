@@ -219,7 +219,11 @@ impl ExpressionEvaluator {
                 
                 let mut inner_iter = inner.peekable();
                 while inner_iter.peek().is_some() {
-                    let op = inner_iter.next().unwrap().as_str();
+                    let op = inner_iter.next()
+                        .ok_or_else(|| ExpressionError::InvalidExpression {
+                            message: "Missing operator in comparison expression".to_string(),
+                        })?
+                        .as_str();
                     let right = self.evaluate_expression(inner_iter.next()
                         .ok_or_else(|| ExpressionError::InvalidExpression {
                             message: "Missing right operand in comparison".to_string(),
@@ -249,7 +253,11 @@ impl ExpressionEvaluator {
                 
                 let mut inner_iter = inner.peekable();
                 while inner_iter.peek().is_some() {
-                    let op = inner_iter.next().unwrap().as_str();
+                    let op = inner_iter.next()
+                        .ok_or_else(|| ExpressionError::InvalidExpression {
+                            message: "Missing operator in addition expression".to_string(),
+                        })?
+                        .as_str();
                     let right = self.evaluate_expression(inner_iter.next()
                         .ok_or_else(|| ExpressionError::InvalidExpression {
                             message: "Missing right operand in addition".to_string(),
@@ -289,7 +297,11 @@ impl ExpressionEvaluator {
                 
                 let mut inner_iter = inner.peekable();
                 while inner_iter.peek().is_some() {
-                    let op = inner_iter.next().unwrap().as_str();
+                    let op = inner_iter.next()
+                        .ok_or_else(|| ExpressionError::InvalidExpression {
+                            message: "Missing operator in multiplication expression".to_string(),
+                        })?
+                        .as_str();
                     let right = self.evaluate_expression(inner_iter.next()
                         .ok_or_else(|| ExpressionError::InvalidExpression {
                             message: "Missing right operand in multiplication".to_string(),

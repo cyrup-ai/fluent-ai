@@ -2,16 +2,18 @@
 //! Committee-based evaluation system using LLM agents to score optimizations
 //! against user objectives through prompting and rubric-based evaluation.
 
-use crate::cognitive::mcts::CodeState;
-use crate::cognitive::types::{CognitiveError, OptimizationSpec, ImpactFactors};
-use crate::llm::{CompletionRequest, CompletionResponse, LLMProvider};
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use futures::stream::{FuturesUnordered, StreamExt};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::sync::{RwLock, Semaphore, mpsc};
 use tracing::{debug, info, warn};
+
+use crate::cognitive::mcts::CodeState;
+use crate::cognitive::types::{CognitiveError, ImpactFactors, OptimizationSpec};
+use crate::llm::{CompletionRequest, CompletionResponse, LLMProvider};
 
 /// Model type for LLM evaluation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,23 +47,31 @@ pub struct Model {
 }
 
 impl Model {
-    pub async fn create(model_type: ModelType) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn create(
+        model_type: ModelType,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // Create appropriate provider based on model type
         let provider: Arc<dyn LLMProvider> = match model_type {
             ModelType::Gpt35Turbo | ModelType::Gpt4 | ModelType::Gpt4O => {
-                Arc::new(crate::llm::OpenAIProvider::new("".to_string(), Some(model_type.display_name().to_string())))
+                Arc::new(crate::llm::OpenAIProvider::new(
+                    "".to_string(),
+                    Some(model_type.display_name().to_string()),
+                ))
             }
             ModelType::Claude3Opus | ModelType::Claude3Sonnet | ModelType::Claude3Haiku => {
-                Arc::new(crate::llm::AnthropicProvider::new("".to_string(), Some(model_type.display_name().to_string())))
+                Arc::new(crate::llm::AnthropicProvider::new(
+                    "".to_string(),
+                    Some(model_type.display_name().to_string()),
+                ))
             }
         };
-        
+
         Ok(Self {
             model_type,
             provider,
         })
     }
-    
+
     pub fn available_types() -> Vec<ModelType> {
         vec![
             ModelType::Gpt35Turbo,
@@ -72,13 +82,19 @@ impl Model {
             ModelType::Claude3Haiku,
         ]
     }
-    
-    pub async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse, Box<dyn std::error::Error + Send + Sync>> {
+
+    pub async fn complete(
+        &self,
+        request: CompletionRequest,
+    ) -> Result<CompletionResponse, Box<dyn std::error::Error + Send + Sync>> {
         let completion = self.provider.complete(request);
         Ok(completion.await?)
     }
-    
-    pub async fn prompt(&self, prompt: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+
+    pub async fn prompt(
+        &self,
+        prompt: &str,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         let completion = self.provider.complete(prompt).await?;
         Ok(completion)
     }
@@ -152,10 +168,7 @@ impl EvaluationRubric {
                     spec.content_type.restrictions.min_relevance_improvement
                 ),
             ],
-            constraints: vec![
-                spec.constraints.style.clone(),
-                spec.content_type.restrictions.compiler.clone(),
-            ],
+            constraints: spec.constraints.clone(),
             scoring_guidelines,
         }
     }

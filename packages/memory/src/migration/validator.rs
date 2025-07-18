@@ -62,12 +62,13 @@ impl RequiredField {
 impl ValidationRule for RequiredField {
     fn validate(&self, value: &serde_json::Value) -> Result<()> {
         if let serde_json::Value::Object(map) = value
-            && !map.contains_key(&self.field_name) {
-                return Err(MigrationError::ValidationFailed(format!(
-                    "Required field '{}' is missing",
-                    self.field_name
-                )));
-            }
+            && !map.contains_key(&self.field_name)
+        {
+            return Err(MigrationError::ValidationFailed(format!(
+                "Required field '{}' is missing",
+                self.field_name
+            )));
+        }
         Ok(())
     }
 
@@ -103,22 +104,23 @@ impl TypeValidation {
 impl ValidationRule for TypeValidation {
     fn validate(&self, value: &serde_json::Value) -> Result<()> {
         if let serde_json::Value::Object(map) = value
-            && let Some(field_value) = map.get(&self.field_name) {
-                let matches = match self.expected_type {
-                    ValueType::String => field_value.is_string(),
-                    ValueType::Number => field_value.is_number(),
-                    ValueType::Boolean => field_value.is_boolean(),
-                    ValueType::Array => field_value.is_array(),
-                    ValueType::Object => field_value.is_object(),
-                };
+            && let Some(field_value) = map.get(&self.field_name)
+        {
+            let matches = match self.expected_type {
+                ValueType::String => field_value.is_string(),
+                ValueType::Number => field_value.is_number(),
+                ValueType::Boolean => field_value.is_boolean(),
+                ValueType::Array => field_value.is_array(),
+                ValueType::Object => field_value.is_object(),
+            };
 
-                if !matches {
-                    return Err(MigrationError::ValidationFailed(format!(
-                        "Field '{}' has incorrect type",
-                        self.field_name
-                    )));
-                }
+            if !matches {
+                return Err(MigrationError::ValidationFailed(format!(
+                    "Field '{}' has incorrect type",
+                    self.field_name
+                )));
             }
+        }
         Ok(())
     }
 

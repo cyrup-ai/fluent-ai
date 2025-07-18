@@ -4,14 +4,16 @@
 //! This module provides a comprehensive entity model that maps domain objects
 //! to graph nodes, with support for attributes, validation, and serialization.
 
-use crate::graph::graph_db::{GraphDatabase, GraphError, GraphQueryOptions, Node, Result};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
 use surrealdb::sql::Value;
+
+use crate::graph::graph_db::{GraphDatabase, GraphError, GraphQueryOptions, Node, Result};
 
 /// Type alias for entity futures to simplify trait definitions
 pub type EntityFuture<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
@@ -306,10 +308,7 @@ pub struct CustomValidationRule {
 
 impl CustomValidationRule {
     /// Create a new custom validation rule
-    pub fn new(
-        name: &str,
-        validator: EntityValidatorFn,
-    ) -> Self {
+    pub fn new(name: &str, validator: EntityValidatorFn) -> Self {
         Self {
             name: name.to_string(),
             validator,
@@ -367,11 +366,7 @@ impl EntityValidator {
     }
 
     /// Add a custom validation rule
-    pub fn add_custom_rule(
-        &mut self,
-        name: &str,
-        validator: EntityValidatorFn,
-    ) {
+    pub fn add_custom_rule(&mut self, name: &str, validator: EntityValidatorFn) {
         self.add_rule(CustomValidationRule::new(name, validator));
     }
 
@@ -485,9 +480,10 @@ impl<E: Entity + Clone + 'static> EntityRepository for SurrealEntityRepository<E
     fn create(&self, entity: &dyn Entity) -> EntityFuture<Box<dyn Entity>> {
         // Validate the entity synchronously if a validator is configured
         if let Some(validator) = &self.validator
-            && let Err(e) = validator.validate(entity) {
-                return Box::pin(async move { Err(e) });
-            }
+            && let Err(e) = validator.validate(entity)
+        {
+            return Box::pin(async move { Err(e) });
+        }
 
         // Clone necessary data for the async block
         let db = self.db.clone();
@@ -535,9 +531,10 @@ impl<E: Entity + Clone + 'static> EntityRepository for SurrealEntityRepository<E
     fn update(&self, entity: &dyn Entity) -> EntityFuture<Box<dyn Entity>> {
         // Validate the entity synchronously if a validator is configured
         if let Some(validator) = &self.validator
-            && let Err(e) = validator.validate(entity) {
-                return Box::pin(async move { Err(e) });
-            }
+            && let Err(e) = validator.validate(entity)
+        {
+            return Box::pin(async move { Err(e) });
+        }
 
         // Clone necessary data for the async block
         let db = self.db.clone();
@@ -660,9 +657,10 @@ impl<E: Entity + Clone + 'static> EntityRepository for SurrealEntityRepository<E
             use futures::StreamExt;
             while let Some(node_result) = results_stream.next().await {
                 if let Ok(node) = node_result
-                    && let Ok(entity) = E::from_node(node) {
-                        entities.push(Box::new(entity) as Box<dyn Entity>);
-                    }
+                    && let Ok(entity) = E::from_node(node)
+                {
+                    entities.push(Box::new(entity) as Box<dyn Entity>);
+                }
             }
 
             Ok(entities)

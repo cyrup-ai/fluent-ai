@@ -1,17 +1,17 @@
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
-use syn::{parse_str, Item, Ident};
-use quote::quote;
-use std::time::SystemTime;
 use std::sync::Arc;
+use std::time::SystemTime;
 
-// Zero-allocation performance dependencies  
+// Zero-allocation performance dependencies
 use arc_swap::ArcSwap;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use circuit_breaker::CircuitBreaker;
 use once_cell::sync::Lazy;
+use quote::quote;
+use serde::{Deserialize, Serialize};
+use syn::{Ident, Item, parse_str};
 
 /// The models.yaml is a top-level array of providers, not a struct with providers field
 type ModelYaml = Vec<ProviderInfo>;
@@ -43,28 +43,30 @@ impl PooledHttpClient {
         // Use default HTTP3 client with proper SSL configuration
         let client = fluent_ai_http3::HttpClient::new()
             .map_err(|e| format!("Failed to create HTTP3 client: {}", e))?;
-        
+
         // Configure circuit breaker for fault tolerance
         let circuit_breaker = Arc::new(CircuitBreaker::new(5, std::time::Duration::from_secs(30)));
-        
+
         CONNECTION_COUNTER.inc();
-        
+
         Ok(Self {
             client,
             circuit_breaker,
         })
     }
-    
+
     /// Execute HTTP request with connection pooling and intelligent caching
-    async fn execute_request(&self, url: &str, cache_metadata: Option<&CacheMetadata>) 
-        -> Result<HttpResponse, Box<dyn std::error::Error>> {
-        
+    async fn execute_request(
+        &self,
+        url: &str,
+        cache_metadata: Option<&CacheMetadata>,
+    ) -> Result<HttpResponse, Box<dyn std::error::Error>> {
         // Increment request counter atomically using RelaxedCounter
         let request_id = REQUEST_COUNTER.inc();
-        
+
         // Build request with conditional headers using the correct API
         let mut request = self.client.get(url);
-        
+
         // Add caching headers if available
         if let Some(cache) = cache_metadata {
             if let Some(ref etag) = cache.etag {
@@ -74,7 +76,7 @@ impl PooledHttpClient {
                 request = request.header("If-Modified-Since", last_modified);
             }
         }
-        
+
         // Add performance headers
         request = request
             .header("Connection", "keep-alive")
@@ -82,27 +84,39 @@ impl PooledHttpClient {
             .header("Accept", "application/x-yaml, text/yaml, */*")
             .header("Accept-Encoding", "gzip, br, deflate")
             .header("X-Request-ID", &request_id.to_string());
-        
-        // Execute request using fluent_ai_http3 with error tracking
+
+        // Check circuit breaker state before making request
+        if matches!(self.circuit_breaker.state(), circuit_breaker::CircuitState::Open) {
+            ERROR_COUNTER.inc();
+            return Err("Circuit breaker is open, request blocked".into());
+        }
+
+        // Execute request using fluent_ai_http3 with circuit breaker protection
         let result = async {
-            let response = self.client.send(request).await?;
-            
+            let response = self.client.send(request).await.map_err(|e| {
+                ERROR_COUNTER.inc();
+                e
+            })?;
+
             // Process response
             let status = response.status();
             let etag = response.headers().get("etag").map(|s| s.to_string());
-            let last_modified = response.headers().get("last-modified").map(|s| s.to_string());
-            
+            let last_modified = response
+                .headers()
+                .get("last-modified")
+                .map(|s| s.to_string());
+
             if status.as_u16() == 304 {
                 return Ok(HttpResponse::NotModified);
             }
-            
+
             if !response.is_success() {
                 return Err(format!("HTTP {}: Request failed", status).into());
             }
-            
+
             // Get the text content
             let content = response.text().await?;
-            
+
             Ok(HttpResponse::Success {
                 content,
                 etag,
@@ -111,14 +125,20 @@ impl PooledHttpClient {
         }.await;
 
         match result {
-            Ok(response) => Ok(response),
+            Ok(response) => {
+                // Notify circuit breaker of successful request
+                self.circuit_breaker.handle_success();
+                Ok(response)
+            }
             Err(e) => {
+                // Notify circuit breaker of failed request
+                self.circuit_breaker.handle_failure();
                 ERROR_COUNTER.inc();
                 Err(e)
             }
         }
     }
-    
+
     /// Get connection statistics with zero-allocation performance tracking
     fn get_stats(&self) -> (usize, usize, usize) {
         (
@@ -146,7 +166,10 @@ static HTTP_CLIENT: Lazy<ArcSwap<Option<PooledHttpClient>>> = Lazy::new(|| {
         Ok(client) => ArcSwap::from_pointee(Some(client)),
         Err(e) => {
             // Log the error and provide a None fallback to prevent panic
-            eprintln!("Warning: Failed to initialize HTTP client: {}. Some features may be disabled.", e);
+            eprintln!(
+                "Warning: Failed to initialize HTTP client: {}. Some features may be disabled.",
+                e
+            );
             ArcSwap::from_pointee(None)
         }
     }
@@ -204,7 +227,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let models_url = "https://raw.githubusercontent.com/sigoden/aichat/refs/heads/main/models.yaml";
     let cache_file = Path::new("models.yaml.cache");
     let models_file = Path::new("models.yaml");
-    
+
     // Load existing cache metadata
     let cache_metadata = if cache_file.exists() {
         fs::read_to_string(cache_file)
@@ -213,13 +236,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         None
     };
-    
+
     // Check if we should fetch (no cache, expired, or different URL)
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_secs();
-    
+
     let should_fetch = match &cache_metadata {
         Some(cache) => {
             // Check if cache is older than 24 hours (86400 seconds)
@@ -227,21 +250,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         None => true,
     };
-    
+
     if should_fetch {
         // Use the pooled HTTP client for blazing-fast performance with hot-swappable config
         let client_arc_swap = &*HTTP_CLIENT;
         let client_guard = client_arc_swap.load();
-        
+
         // Handle the case where HTTP client initialization failed
         let Some(client) = client_guard.as_ref() else {
             return Err("HTTP client unavailable - failed to initialize during startup".into());
         };
-        
+
         let (conn_count, req_count, error_count) = client.get_stats();
-        println!("🔗 HTTP Client Stats: {} connections, {} requests, {} errors", conn_count, req_count, error_count);
-        
-        match client.execute_request(models_url, cache_metadata.as_ref()).await {
+        println!(
+            "🔗 HTTP Client Stats: {} connections, {} requests, {} errors",
+            conn_count, req_count, error_count
+        );
+
+        match client
+            .execute_request(models_url, cache_metadata.as_ref())
+            .await
+        {
             Ok(HttpResponse::NotModified) => {
                 // Not modified, update timestamp but keep existing file
                 println!("📋 models.yaml unchanged (ETag match), updating cache timestamp");
@@ -251,14 +280,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     fs::write(cache_file, cache_json)?;
                 }
             }
-            Ok(HttpResponse::Success { content, etag, last_modified }) => {
+            Ok(HttpResponse::Success {
+                content,
+                etag,
+                last_modified,
+            }) => {
                 // Debug: Check if content looks like YAML
-                println!("🔍 Downloaded content preview (first 100 chars): {}", 
-                    &content[..content.len().min(100)]);
-                
+                println!(
+                    "🔍 Downloaded content preview (first 100 chars): {}",
+                    &content[..content.len().min(100)]
+                );
+
                 // New content, download and update cache
                 fs::write(models_file, &content)?;
-                
+
                 // Update cache metadata
                 let new_cache = CacheMetadata {
                     etag,
@@ -268,19 +303,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 };
                 let cache_json = serde_json::to_string_pretty(&new_cache)?;
                 fs::write(cache_file, cache_json)?;
-                
-                println!("📥 Downloaded fresh models.yaml ({} bytes) via connection pool", content.len());
+
+                println!(
+                    "📥 Downloaded fresh models.yaml ({} bytes) via connection pool",
+                    content.len()
+                );
             }
             Err(e) => {
                 eprintln!("⚠️  Network error downloading models.yaml: {}", e);
                 // Don't continue with stale or invalid local files when remote fails
-                return Err(format!("Failed to download models.yaml: {}. Build aborted to avoid using stale data.", e).into());
+                return Err(format!(
+                    "Failed to download models.yaml: {}. Build aborted to avoid using stale data.",
+                    e
+                )
+                .into());
             }
         }
     } else {
         println!("📋 Using cached models.yaml (within 24-hour window)");
     }
-    
+
     // Ensure models.yaml exists - if not, this is a real error
     if !models_file.exists() {
         return Err("models.yaml does not exist and network download failed. This is a build error that must be resolved.".into());
@@ -315,16 +357,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Discover available client modules using zero-allocation SmallVec
     let available_clients = discover_client_modules()?;
-    
+
     // Filter providers to only include those with existing client modules using SmallVec
     let providers_with_clients = filter_providers_with_clients(&providers, &available_clients)?;
-    
-    println!("ℹ️  Filtered {} providers to {} providers with client implementations", 
-             providers.len(), providers_with_clients.len());
-    
+
+    println!(
+        "ℹ️  Filtered {} providers to {} providers with client implementations",
+        providers.len(),
+        providers_with_clients.len()
+    );
+
     // Generate all files (only for providers with clients)
     generate_all_files(&providers_with_clients)?;
-    
+
     // Generate provider-to-client mapping
     generate_provider_client_mapping(&providers_with_clients)?;
 
@@ -355,23 +400,23 @@ fn enum_variants_changed(file_path: &Path, yaml_variants: &BTreeSet<String>) -> 
     if !file_path.exists() {
         return true;
     }
-    
+
     let existing_content = match fs::read_to_string(file_path) {
         Ok(content) => content,
         Err(_) => return true,
     };
-    
+
     // Handle empty files
     if existing_content.trim().is_empty() {
         return true;
     }
-    
+
     // Parse existing enum variants
     let existing_variants = match parse_enum_variants(&existing_content) {
         Ok(variants) => variants,
         Err(_) => return true,
     };
-    
+
     // Compare variant sets
     yaml_variants != &existing_variants
 }
@@ -379,9 +424,9 @@ fn enum_variants_changed(file_path: &Path, yaml_variants: &BTreeSet<String>) -> 
 /// Parse enum variants from Rust source code (handles Models and Providers enums)
 fn parse_enum_variants(rust_code: &str) -> Result<BTreeSet<String>, Box<dyn std::error::Error>> {
     let mut variants = BTreeSet::new();
-    
+
     let parsed: syn::File = parse_str(rust_code)?;
-    
+
     for item in parsed.items {
         if let Item::Enum(item_enum) = item {
             let enum_name = item_enum.ident.to_string();
@@ -393,7 +438,7 @@ fn parse_enum_variants(rust_code: &str) -> Result<BTreeSet<String>, Box<dyn std:
             }
         }
     }
-    
+
     Ok(variants)
 }
 
@@ -401,18 +446,18 @@ fn parse_enum_variants(rust_code: &str) -> Result<BTreeSet<String>, Box<dyn std:
 fn generate_models_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn std::error::Error>> {
     let yaml_variants = generate_model_variants_optimized(providers);
     let models_path = Path::new("src/models.rs");
-    
+
     // Check if variants changed
     if !enum_variants_changed(models_path, &yaml_variants) {
         return Ok(());
     }
-    
+
     // Generate enum variants using syn
     let variant_idents: Vec<Ident> = yaml_variants
         .iter()
         .map(|v| syn::parse_str::<Ident>(v).unwrap())
         .collect();
-    
+
     // Generate the enum using quote
     let enum_token = quote! {
         // This file is auto-generated. Do not edit manually.
@@ -425,7 +470,7 @@ fn generate_models_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn std::e
         pub enum Models {
             #(#variant_idents,)*
         }
-        
+
         impl Models {
             /// Get model info with zero allocation - blazing fast lookup
             #[inline]
@@ -439,7 +484,7 @@ fn generate_models_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn std::e
                     },)*
                 }
             }
-            
+
             /// Get model name as static string - zero allocation
             #[inline]
             pub fn name(&self) -> &'static str {
@@ -447,7 +492,7 @@ fn generate_models_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn std::e
                     #(Models::#variant_idents => stringify!(#variant_idents),)*
                 }
             }
-            
+
             /// Get provider name from model info - zero allocation
             #[inline]
             pub fn provider(&self) -> String {
@@ -456,7 +501,7 @@ fn generate_models_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn std::e
         }
         // AUTO-GENERATED END
     };
-    
+
     // Write the generated code
     fs::write("src/models.rs", enum_token.to_string())?;
     println!("cargo:rerun-if-changed=src/models.rs");
@@ -466,24 +511,24 @@ fn generate_models_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn std::e
 /// Generate the Providers enum using syn/quote - only write if changed
 fn generate_providers_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn std::error::Error>> {
     let providers_path = Path::new("src/providers.rs");
-    
+
     // Generate provider variants
     let provider_variants: BTreeSet<String> = providers
         .iter()
         .map(|p| to_pascal_case_optimized(&p.provider))
         .collect();
-    
+
     // Check if variants changed
     if !enum_variants_changed(providers_path, &provider_variants) {
         return Ok(());
     }
-    
+
     // Generate enum variants using syn
     let variant_idents: Vec<Ident> = provider_variants
         .iter()
         .map(|v| syn::parse_str::<Ident>(v).unwrap())
         .collect();
-    
+
     // Generate the enum using quote
     let enum_token = quote! {
         // This file is auto-generated. Do not edit manually.
@@ -496,7 +541,7 @@ fn generate_providers_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn std
         }
         // AUTO-GENERATED END
     };
-    
+
     // Write the generated code
     fs::write("src/providers.rs", enum_token.to_string())?;
     println!("cargo:rerun-if-changed=src/providers.rs");
@@ -571,12 +616,20 @@ fn generate_model_info_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn st
                 "        require_max_tokens: {:?},\n",
                 model.require_max_tokens
             ));
-            
+
             // Auto-detect thinking models by ":thinking" suffix and set thinking fields
             let is_thinking_model = model.name.contains(":thinking");
-            let supports_thinking = if is_thinking_model { "Some(true)" } else { "Some(false)" };
-            let optimal_thinking_budget = if is_thinking_model { "Some(8192)" } else { "Some(1024)" };
-            
+            let supports_thinking = if is_thinking_model {
+                "Some(true)"
+            } else {
+                "Some(false)"
+            };
+            let optimal_thinking_budget = if is_thinking_model {
+                "Some(8192)"
+            } else {
+                "Some(1024)"
+            };
+
             content.push_str(&format!(
                 "        supports_thinking: {},\n",
                 supports_thinking
@@ -594,7 +647,7 @@ fn generate_model_info_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn st
     content.push_str("/// Get model info by name - zero allocation lookup\n");
     content.push_str("pub fn get_model_info_by_name(name: &str) -> ModelInfoData {\n");
     content.push_str("    match name {\n");
-    
+
     for provider in providers {
         for model in &provider.models {
             let variant_name = to_pascal_case_optimized(&model.name);
@@ -605,11 +658,11 @@ fn generate_model_info_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn st
             ));
         }
     }
-    
+
     content.push_str("        _ => ModelInfoData::default(),\n");
     content.push_str("    }\n");
     content.push_str("}\n\n");
-    
+
     content.push_str("impl Default for ModelInfoData {\n");
     content.push_str("    fn default() -> Self {\n");
     content.push_str("        Self {\n");
@@ -627,7 +680,7 @@ fn generate_model_info_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn st
     content.push_str("        }\n");
     content.push_str("    }\n");
     content.push_str("}\n\n");
-    
+
     // Generate ModelInfoData to ModelConfig conversion function
     content.push_str("/// Convert ModelInfoData to ModelConfig - zero allocation lookup\n");
     content.push_str("pub fn model_info_to_config(info: &ModelInfoData, model_name: &'static str) -> crate::completion_provider::ModelConfig {\n");
@@ -643,12 +696,14 @@ fn generate_model_info_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn st
     content.push_str("        supports_vision: info.supports_vision.unwrap_or(false),\n");
     content.push_str("        supports_audio: false,\n");
     content.push_str("        supports_thinking: info.supports_thinking.unwrap_or(false),\n");
-    content.push_str("        optimal_thinking_budget: info.optimal_thinking_budget.unwrap_or(1024),\n");
+    content.push_str(
+        "        optimal_thinking_budget: info.optimal_thinking_budget.unwrap_or(1024),\n",
+    );
     content.push_str("        provider: Box::leak(info.provider_name.clone().into_boxed_str()),\n");
     content.push_str("        model_name,\n");
     content.push_str("    }\n");
     content.push_str("}\n\n");
-    
+
     // Generate central get_model_config function with zero-allocation caching
     content.push_str("use std::sync::OnceLock;\n");
     content.push_str("use std::collections::HashMap;\n\n");
@@ -658,16 +713,13 @@ fn generate_model_info_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn st
     content.push_str("pub fn get_model_config(model_name: &'static str) -> &'static crate::completion_provider::ModelConfig {\n");
     content.push_str("    let cache = MODEL_CONFIG_CACHE.get_or_init(|| {\n");
     content.push_str("        let mut map = HashMap::new();\n");
-    
+
     // Add entries for all models
     for provider in providers {
         for model in &provider.models {
             let variant_name = to_pascal_case_optimized(&model.name);
             let function_name = format!("get_{}_info", variant_name.to_lowercase());
-            content.push_str(&format!(
-                "        let info = {}();\n",
-                function_name
-            ));
+            content.push_str(&format!("        let info = {}();\n", function_name));
             content.push_str(&format!(
                 "        let config = model_info_to_config(&info, \"{}\");\n",
                 variant_name
@@ -678,7 +730,7 @@ fn generate_model_info_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn st
             ));
         }
     }
-    
+
     content.push_str("        map\n");
     content.push_str("    });\n");
     content.push_str("    \n");
@@ -711,11 +763,10 @@ fn generate_model_info_file(providers: &[ProviderInfo]) -> Result<(), Box<dyn st
     Ok(())
 }
 
-
 /// Add Provider trait implementation to providers.rs using syn/quote
 fn add_provider_trait_impl(providers: &[ProviderInfo]) -> Result<(), Box<dyn std::error::Error>> {
     let providers_path = Path::new("src/providers.rs");
-    
+
     // Generate provider variants for matching
     let provider_variants: Vec<(Ident, String)> = providers
         .iter()
@@ -742,7 +793,7 @@ fn add_provider_trait_impl(providers: &[ProviderInfo]) -> Result<(), Box<dyn std
         .map(|provider| {
             let variant_name = to_pascal_case_optimized(&provider.provider);
             let variant_ident = syn::parse_str::<Ident>(&variant_name).unwrap();
-            
+
             let model_variants: Vec<Ident> = provider
                 .models
                 .iter()
@@ -761,12 +812,12 @@ fn add_provider_trait_impl(providers: &[ProviderInfo]) -> Result<(), Box<dyn std
                     quote! {
                         Providers::#variant_ident => ZeroOneOrMany::One(Models::#model)
                     }
-                },
+                }
                 _ => quote! {
                     Providers::#variant_ident => ZeroOneOrMany::Many(vec![
                         #(Models::#model_variants),*
                     ])
-                }
+                },
             }
         })
         .collect();
@@ -777,7 +828,7 @@ fn add_provider_trait_impl(providers: &[ProviderInfo]) -> Result<(), Box<dyn std
         let variant_name = to_pascal_case_optimized(&provider.provider);
         let variant_ident = syn::parse_str::<Ident>(&variant_name).unwrap();
         let provider_name = &provider.provider;
-        
+
         // Add common aliases for major providers
         let aliases = match provider_name.as_str() {
             "openai" => vec!["openai", "gpt"],
@@ -785,7 +836,7 @@ fn add_provider_trait_impl(providers: &[ProviderInfo]) -> Result<(), Box<dyn std
             "gemini" => vec!["gemini", "google"],
             _ => vec![provider_name.as_str()],
         };
-        
+
         for alias in aliases {
             from_name_arms.push(quote! {
                 #alias => Some(Providers::#variant_ident)
@@ -827,13 +878,13 @@ fn add_provider_trait_impl(providers: &[ProviderInfo]) -> Result<(), Box<dyn std
     if providers_path.exists() {
         let existing = fs::read_to_string(providers_path)?;
         let updated = replace_auto_generated_section(&existing, &impl_block.to_string());
-        
+
         // Only write if content changed
         if existing != updated {
             fs::write("src/providers.rs", updated)?;
         }
     }
-    
+
     Ok(())
 }
 
@@ -918,7 +969,7 @@ fn to_snake_case_optimized(input: &str) -> String {
     let mut result = String::with_capacity(input.len() + 8);
     let mut chars = input.chars().peekable();
     let mut first = true;
-    
+
     while let Some(ch) = chars.next() {
         match ch {
             '-' | '_' | '.' | ' ' | '/' | '@' => {
@@ -940,17 +991,17 @@ fn to_snake_case_optimized(input: &str) -> String {
             _ => {} // Skip other characters
         }
     }
-    
+
     result
 }
 
 /// Filter providers to only include those with existing client modules that implement required traits
 fn filter_providers_with_clients(
     providers: &[ProviderInfo],
-    available_clients: &[String]
+    available_clients: &[String],
 ) -> Result<Vec<ProviderInfo>, Box<dyn std::error::Error>> {
     let mut filtered_providers: Vec<ProviderInfo> = Vec::new();
-    
+
     for provider in providers {
         // Apply provider name aliases for client module mapping
         let provider_name = match provider.provider.as_str() {
@@ -958,36 +1009,48 @@ fn filter_providers_with_clients(
             name => name,
         };
         let client_module = to_snake_case_optimized(provider_name);
-        
+
         if available_clients.contains(&client_module) {
             // Verify client implements required traits before including in providers
             match verify_client_traits(&client_module) {
                 Ok(true) => {
                     filtered_providers.push(provider.clone());
-                    println!("✅ Provider '{}' -> client module '{}' (exists & implements required traits)", 
-                             provider.provider, client_module);
-                },
+                    println!(
+                        "✅ Provider '{}' -> client module '{}' (exists & implements required traits)",
+                        provider.provider, client_module
+                    );
+                }
                 Ok(false) => {
-                    println!("❌ Provider '{}' -> client module '{}' (exists but MISSING required traits: ProviderClient + CompletionClient)", 
-                             provider.provider, client_module);
-                    println!("   ENFORCEMENT: Client must implement ProviderClient and CompletionClient traits to be auto-mapped");
-                },
+                    println!(
+                        "❌ Provider '{}' -> client module '{}' (exists but MISSING required traits: ProviderClient + CompletionClient)",
+                        provider.provider, client_module
+                    );
+                    println!(
+                        "   ENFORCEMENT: Client must implement ProviderClient and CompletionClient traits to be auto-mapped"
+                    );
+                }
                 Err(e) => {
-                    println!("⚠️  Provider '{}' -> client module '{}' (trait verification failed: {})", 
-                             provider.provider, client_module, e);
+                    println!(
+                        "⚠️  Provider '{}' -> client module '{}' (trait verification failed: {})",
+                        provider.provider, client_module, e
+                    );
                 }
             }
         } else {
-            println!("⚠️  Provider '{}' -> client module '{}' (missing, skipping enum generation)", 
-                     provider.provider, client_module);
+            println!(
+                "⚠️  Provider '{}' -> client module '{}' (missing, skipping enum generation)",
+                provider.provider, client_module
+            );
         }
     }
-    
+
     if filtered_providers.is_empty() {
-        println!("❌ ENFORCEMENT RESULT: No providers have client modules that implement required traits!");
+        println!(
+            "❌ ENFORCEMENT RESULT: No providers have client modules that implement required traits!"
+        );
         println!("   All clients MUST implement both ProviderClient and CompletionClient traits");
     }
-    
+
     Ok(filtered_providers)
 }
 
@@ -995,30 +1058,30 @@ fn filter_providers_with_clients(
 fn verify_client_traits(client_module: &str) -> Result<bool, Box<dyn std::error::Error>> {
     let client_path = format!("src/clients/{}/client.rs", client_module);
     let mod_path = format!("src/clients/{}/mod.rs", client_module);
-    
+
     // Check both client.rs and mod.rs for trait implementations
     let paths_to_check = [client_path, mod_path];
-    
+
     let mut has_provider_client = false;
     let mut has_completion_client = false;
-    
+
     for path in &paths_to_check {
         if Path::new(path).exists() {
             let content = fs::read_to_string(path)?;
-            
+
             // Look for trait implementations using AST parsing ONLY - no gross text matching
             if let Ok(syntax_tree) = syn::parse_file(&content) {
                 for item in syntax_tree.items {
                     if let Item::Impl(impl_item) = item {
                         if let Some((_, trait_path, _)) = impl_item.trait_ {
                             let trait_name = quote!(#trait_path).to_string();
-                            
+
                             // Check for ProviderClient trait implementation
                             if trait_name.contains("ProviderClient") {
                                 has_provider_client = true;
                             }
-                            
-                            // Check for CompletionClient trait implementation  
+
+                            // Check for CompletionClient trait implementation
                             if trait_name.contains("CompletionClient") {
                                 has_completion_client = true;
                             }
@@ -1028,7 +1091,7 @@ fn verify_client_traits(client_module: &str) -> Result<bool, Box<dyn std::error:
             }
         }
     }
-    
+
     // Both traits are required for auto-mapping
     Ok(has_provider_client && has_completion_client)
 }
@@ -1037,12 +1100,12 @@ fn verify_client_traits(client_module: &str) -> Result<bool, Box<dyn std::error:
 fn discover_client_modules() -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let clients_dir = Path::new("src/clients");
     let mut client_modules: Vec<String> = Vec::new();
-    
+
     if clients_dir.exists() && clients_dir.is_dir() {
         for entry in fs::read_dir(clients_dir)? {
             let entry = entry?;
             let path = entry.path();
-            
+
             // Check if it's a directory and contains a mod.rs file
             if path.is_dir() {
                 let mod_file = path.join("mod.rs");
@@ -1054,28 +1117,34 @@ fn discover_client_modules() -> Result<Vec<String>, Box<dyn std::error::Error>> 
             }
         }
     }
-    
+
     // Sort for consistent output
     client_modules.sort();
-    
-    println!("🔍 Discovered {} client modules: {}", client_modules.len(), client_modules.join(", "));
-    
+
+    println!(
+        "🔍 Discovered {} client modules: {}",
+        client_modules.len(),
+        client_modules.join(", ")
+    );
+
     Ok(client_modules)
 }
 
 /// Generate provider-to-client mapping file
-fn generate_provider_client_mapping(providers: &[ProviderInfo]) -> Result<(), Box<dyn std::error::Error>> {
+fn generate_provider_client_mapping(
+    providers: &[ProviderInfo],
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut content = String::new();
     content.push_str("// This file is auto-generated. Do not edit manually.\n");
     content.push_str("use std::collections::HashMap;\n");
     content.push_str("use once_cell::sync::Lazy;\n\n");
     content.push_str("// AUTO-GENERATED START\n");
-    
+
     // Generate the mapping function
     content.push_str("/// Static mapping of provider names to client module names\n");
     content.push_str("pub static PROVIDER_CLIENT_MAP: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {\n");
     content.push_str("    let mut map = HashMap::new();\n");
-    
+
     // All providers passed to this function should have existing client modules
     for provider in providers {
         let client_module = to_snake_case_optimized(&provider.provider);
@@ -1084,16 +1153,16 @@ fn generate_provider_client_mapping(providers: &[ProviderInfo]) -> Result<(), Bo
             provider.provider, client_module
         ));
     }
-    
+
     content.push_str("    map\n");
     content.push_str("});\n\n");
-    
+
     // Generate helper function
     content.push_str("/// Get client module name for a provider\n");
     content.push_str("pub fn get_client_module(provider: &str) -> Option<&'static str> {\n");
     content.push_str("    PROVIDER_CLIENT_MAP.get(provider).copied()\n");
     content.push_str("}\n\n");
-    
+
     // Generate reverse mapping
     content.push_str("/// Get provider name for a client module\n");
     content.push_str("pub fn get_provider_for_client(client: &str) -> Option<&'static str> {\n");
@@ -1101,15 +1170,16 @@ fn generate_provider_client_mapping(providers: &[ProviderInfo]) -> Result<(), Bo
     content.push_str("        .find(|(_, &v)| v == client)\n");
     content.push_str("        .map(|(&k, _)| k)\n");
     content.push_str("}\n\n");
-    
+
     // Generate all mappings function
     content.push_str("/// Get all provider-to-client mappings\n");
-    content.push_str("pub fn get_all_mappings() -> &'static HashMap<&'static str, &'static str> {\n");
+    content
+        .push_str("pub fn get_all_mappings() -> &'static HashMap<&'static str, &'static str> {\n");
     content.push_str("    &PROVIDER_CLIENT_MAP\n");
     content.push_str("}\n\n");
-    
+
     content.push_str("// AUTO-GENERATED END\n");
-    
+
     fs::write("src/fluent_ai_provider.rs", content)?;
     println!("cargo:rerun-if-changed=src/fluent_ai_provider.rs");
     println!("✅ Generated provider-to-client mapping");

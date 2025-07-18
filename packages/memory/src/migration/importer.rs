@@ -1,9 +1,10 @@
 //! Import functionality for memory data
 
-use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+
+use serde::{Deserialize, Serialize};
 
 use crate::migration::{MigrationError, Result};
 
@@ -44,9 +45,7 @@ impl DataImporter {
         file.read_to_end(&mut buffer)?;
 
         let data: Vec<T> = bincode::decode_from_slice(&buffer, bincode::config::standard())
-            .map_err(|e| {
-                MigrationError::UnsupportedFormat(format!("Binary decoding failed: {e}"))
-            })?
+            .map_err(|e| MigrationError::UnsupportedFormat(format!("Binary decoding failed: {e}")))?
             .0;
         Ok(data)
     }

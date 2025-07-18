@@ -4,13 +4,14 @@
 //! Episodic memory stores sequences of events with temporal information,
 //! allowing for time-based queries and context-aware retrieval.
 
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio::sync::Mutex;
 
 use crate::memory::memory_metadata::MemoryMetadata;

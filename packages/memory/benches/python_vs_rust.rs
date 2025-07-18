@@ -1,10 +1,11 @@
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use rand::Rng;
-use rand::distr::Alphanumeric;
 use std::env;
 use std::path::Path;
 use std::process::Command;
+
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use fluent_ai_memory::{MemoryNode, MemoryType};
+use rand::Rng;
+use rand::distr::Alphanumeric;
 
 /// Generate random content of specified length
 fn random_content(length: usize) -> String {
@@ -18,7 +19,9 @@ fn random_content(length: usize) -> String {
 /// Generate a random embedding vector of specified dimension
 fn random_embedding(dimension: usize) -> Vec<f32> {
     let mut rng = rand::rng();
-    (0..dimension).map(|_| rng.random_range(-1.0..1.0)).collect()
+    (0..dimension)
+        .map(|_| rng.random_range(-1.0..1.0))
+        .collect()
 }
 
 /// Benchmark memory creation

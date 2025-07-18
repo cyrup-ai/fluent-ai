@@ -1,14 +1,16 @@
 // src/cognitive/performance.rs
 //! Performance analysis for code states using committee evaluation
 
+use std::sync::Arc;
+use std::time::Instant;
+
+use tokio::sync::RwLock;
+use tracing::debug;
+
 use crate::cognitive::committee::EvaluationCommittee;
 use crate::cognitive::mcts::CodeState;
 use crate::cognitive::types::ImpactFactors;
 use crate::cognitive::types::{CognitiveError, OptimizationSpec};
-use std::sync::Arc;
-use std::time::Instant;
-use tokio::sync::RwLock;
-use tracing::debug;
 
 /// Tracks performance metrics across evaluations
 #[derive(Debug, Clone)]
@@ -182,8 +184,9 @@ pub enum PerformanceTrend {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tokio::sync::mpsc;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_performance_analyzer() {

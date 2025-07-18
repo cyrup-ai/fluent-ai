@@ -13,10 +13,12 @@ pub enum PromptError {
 }
 
 // Import Op from memory_ops
-use super::memory_ops::Op;
-use crate::memory::{MemoryError, MemoryManager, MemoryNode, MemoryType, ImportanceContext, MemoryRecord, get_cached_timestamp};
-
 use super::memory_ops;
+use super::memory_ops::Op;
+use crate::memory::{
+    ImportanceContext, MemoryError, MemoryManager, MemoryNode, MemoryRecord, MemoryType,
+    get_cached_timestamp,
+};
 
 // WorkflowBuilder moved to fluent_ai/src/builders/memory_workflow.rs
 
@@ -110,15 +112,15 @@ where
         // Format the prompt with context using pre-sized capacity for efficiency
         let mut context_parts = Vec::with_capacity(self.context_limit);
         match memories {
-            crate::ZeroOneOrMany::None => {},
+            crate::ZeroOneOrMany::None => {}
             crate::ZeroOneOrMany::One(memory) => {
                 context_parts.push(format!("- {}", memory.content));
-            },
+            }
             crate::ZeroOneOrMany::Many(memories) => {
                 for memory in memories.iter().take(self.context_limit) {
                     context_parts.push(format!("- {}", memory.content));
                 }
-            },
+            }
         }
         let context = context_parts.join("\n");
 
@@ -246,25 +248,24 @@ where
 
         // Create a memory capturing both input and output with zero allocation
         let timestamp = get_cached_timestamp();
-            
+
         // Convert input and output to strings for hashing
-        let input_str = serde_json::to_string(&input).unwrap_or_else(|_| "invalid_input".to_string());
-        let output_str = serde_json::to_string(&output).unwrap_or_else(|_| "invalid_output".to_string());
-        
+        let input_str =
+            serde_json::to_string(&input).unwrap_or_else(|_| "invalid_input".to_string());
+        let output_str =
+            serde_json::to_string(&output).unwrap_or_else(|_| "invalid_output".to_string());
+
         // Create binary memory record with zero allocation
         let memory_record = MemoryRecord::new(&input_str, &output_str, timestamp);
         let memory_content = memory_record.to_content_string();
 
         let memory = MemoryNode::new_with_context(
-            memory_content, 
-            MemoryType::Episodic, 
-            ImportanceContext::SuccessfulExecution
+            memory_content,
+            MemoryType::Episodic,
+            ImportanceContext::SuccessfulExecution,
         );
 
-        let stored_memory = self
-            .memory_manager
-            .create_memory(memory)
-            .await?;
+        let stored_memory = self.memory_manager.create_memory(memory).await?;
 
         Ok((output, stored_memory.id))
     }

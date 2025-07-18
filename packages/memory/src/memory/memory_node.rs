@@ -2,10 +2,11 @@
 //! Memory node implementation for the memory system.
 //! This module defines the core data structures for memory nodes.
 
+use std::fmt;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::fmt;
 
 use super::memory_metadata::MemoryMetadata;
 

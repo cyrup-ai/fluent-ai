@@ -64,7 +64,26 @@ pub(crate) mod executor {
     where
         F: std::future::Future<Output = ()> + Send + 'static,
     {
-        global().pool.execute(move || futures_executor::block_on(f));
+        // Use tokio's spawn instead of blocking execution
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            // We have a tokio runtime, use it
+            handle.spawn(f);
+        } else {
+            // Fallback: Use thread pool with futures executor in non-blocking way
+            global().pool.execute(move || {
+                // Create a minimal single-threaded executor to avoid blocking
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap_or_else(|_| {
+                        // If tokio runtime creation fails, use futures executor as last resort
+                        futures_executor::block_on(f);
+                        return;
+                    });
+                
+                rt.block_on(f);
+            });
+        }
     }
 
     fn poll_loop(_rx: Receiver<()>) {}

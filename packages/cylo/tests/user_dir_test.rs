@@ -22,10 +22,11 @@ mod tests {
 
     #[test]
     fn test_mount_tmpfs_in_namespace() {
-        use nix::libc::{mount, unshare, CLONE_NEWNS, CLONE_NEWUSER};
         use std::ffi::CString;
         use std::fs;
         use std::path::Path;
+
+        use nix::libc::{mount, unshare, CLONE_NEWNS, CLONE_NEWUSER};
 
         // Check if we're running in a container environment
         let in_container = Path::new("/.dockerenv").exists()

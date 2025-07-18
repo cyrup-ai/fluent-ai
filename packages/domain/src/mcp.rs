@@ -1,11 +1,13 @@
-use crate::{AsyncTask, spawn_async};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio::sync::{RwLock, mpsc};
+
+use crate::{AsyncTask, spawn_async};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tool {
@@ -140,7 +142,6 @@ impl<T: Transport> Client<T> {
             request_timeout: Duration::from_secs(30),
         }
     }
-
 
     pub async fn call_tool(&self, name: &str, args: Value) -> Result<Value, McpError> {
         let id = self.request_id.fetch_add(1, Ordering::Relaxed);

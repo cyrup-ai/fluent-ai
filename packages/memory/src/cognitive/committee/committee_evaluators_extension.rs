@@ -1,10 +1,12 @@
 //! Additional types for zero-allocation committee evaluators
 
-use super::committee_types::{CommitteeResult, CommitteeEvaluation, ModelType, MAX_COMMITTEE_SIZE};
-use crate::cognitive::types::OptimizationSpec;
-use atomic_counter::RelaxedCounter;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use super::relaxed_counter::RelaxedCounter;
+
+use super::committee_types::{CommitteeEvaluation, CommitteeResult, ModelType};
+use crate::cognitive::types::OptimizationSpec;
 
 /// Lock-free evaluation task for task queue distribution
 #[derive(Debug)]
@@ -24,7 +26,7 @@ pub struct EvaluationRequest {
     pub optimization_spec: OptimizationSpec,
     /// Current code reference (no allocation)
     pub current_code: Arc<str>,
-    /// Proposed code reference (no allocation) 
+    /// Proposed code reference (no allocation)
     pub proposed_code: Arc<str>,
     /// Evaluation timeout
     pub timeout: Duration,
@@ -57,15 +59,15 @@ impl EvaluatorPoolMetrics {
             created_at: Instant::now(),
         }
     }
-    
+
     /// Get metrics snapshot
     #[inline]
     pub fn snapshot(&self) -> EvaluatorPoolSnapshot {
         EvaluatorPoolSnapshot {
-            evaluators_added: self.evaluators_added.get(),
-            evaluators_accessed: self.evaluators_accessed.get(),
-            tasks_queued: self.tasks_queued.get(),
-            tasks_completed: self.tasks_completed.get(),
+            evaluators_added: self.evaluators_added.get() as usize,
+            evaluators_accessed: self.evaluators_accessed.get() as usize,
+            tasks_queued: self.tasks_queued.get() as usize,
+            tasks_completed: self.tasks_completed.get() as usize,
             uptime_seconds: self.created_at.elapsed().as_secs(),
         }
     }
@@ -102,26 +104,22 @@ impl EvaluationSessionMetrics {
             created_at: Instant::now(),
         }
     }
-    
+
     /// Record evaluation failure
     #[inline]
     pub fn record_failure(&self) {
         self.evaluation_failures.inc();
     }
-    
+
     /// Get success rate
     #[inline]
     pub fn success_rate(&self) -> f64 {
         let completed = self.evaluations_completed.get() as f64;
         let failed = self.evaluation_failures.get() as f64;
         let total = completed + failed;
-        if total > 0.0 {
-            completed / total
-        } else {
-            1.0
-        }
+        if total > 0.0 { completed / total } else { 1.0 }
     }
-    
+
     /// Get metrics snapshot
     #[inline]
     pub fn snapshot(&self) -> EvaluationSessionSnapshot {

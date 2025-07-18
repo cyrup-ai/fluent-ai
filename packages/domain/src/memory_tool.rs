@@ -8,20 +8,21 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-
 // Ultra-high-performance zero-allocation imports
 use arrayvec::ArrayVec;
-use smallvec::SmallVec;
 use crossbeam_queue::SegQueue;
 use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use smallvec::SmallVec;
 
-use crate::async_task::{AsyncTask, spawn_async, AsyncStream};
+use crate::async_task::{AsyncStream, AsyncTask, spawn_async};
+use crate::error::{
+    ErrorCategory, ErrorRecoverability, ErrorSeverity, ZeroAllocError, ZeroAllocResult,
+};
+use crate::mcp_tool_traits::{McpTool, McpToolData, Tool};
 use crate::memory::{Memory, MemoryError, MemoryNode, MemoryType};
-use crate::mcp_tool_traits::{Tool, McpTool, McpToolData};
-use crate::error::{ZeroAllocResult, ZeroAllocError, ErrorCategory, ErrorSeverity, ErrorRecoverability};
 
 /// Maximum number of memory nodes in result collections
 const MAX_MEMORY_TOOL_RESULTS: usize = 1000;
@@ -30,7 +31,8 @@ const MAX_MEMORY_TOOL_RESULTS: usize = 1000;
 const MAX_STREAMING_RESULTS: usize = 100;
 
 /// Global result aggregation statistics
-static TOOL_STATS: Lazy<CachePadded<AtomicUsize>> = Lazy::new(|| CachePadded::new(AtomicUsize::new(0)));
+static TOOL_STATS: Lazy<CachePadded<AtomicUsize>> =
+    Lazy::new(|| CachePadded::new(AtomicUsize::new(0)));
 
 /// Lock-free result queue for aggregation
 static RESULT_QUEUE: Lazy<SegQueue<MemoryNode>> = Lazy::new(|| SegQueue::new());
@@ -54,27 +56,15 @@ pub enum MemoryOperation {
         memory_type: MemoryType,
     },
     /// Recall memories by content search
-    Recall {
-        query: String,
-        limit: Option<usize>,
-    },
+    Recall { query: String, limit: Option<usize> },
     /// Search memories by vector similarity
-    VectorSearch {
-        vector: Vec<f32>,
-        limit: usize,
-    },
+    VectorSearch { vector: Vec<f32>, limit: usize },
     /// Get specific memory by ID
-    GetMemory {
-        id: String,
-    },
+    GetMemory { id: String },
     /// Update existing memory
-    UpdateMemory {
-        memory: MemoryNode,
-    },
+    UpdateMemory { memory: MemoryNode },
     /// Delete memory by ID
-    DeleteMemory {
-        id: String,
-    },
+    DeleteMemory { id: String },
 }
 
 /// Memory tool result types
@@ -144,13 +134,13 @@ pub type MemoryToolResult<T> = Result<T, MemoryToolError>;
 
 impl MemoryTool {
     /// Create new memory tool with zero-allocation initialization
-    /// 
+    ///
     /// # Arguments
     /// * `memory` - Shared memory instance for concurrent access
-    /// 
+    ///
     /// # Returns
     /// Configured memory tool instance
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with lock-free shared memory access
     #[inline(always)]
@@ -182,75 +172,86 @@ impl MemoryTool {
     }
 
     /// Memorize content with zero-allocation processing
-    /// 
+    ///
     /// # Arguments
     /// * `content` - Content to memorize
     /// * `memory_type` - Type of memory
-    /// 
+    ///
     /// # Returns
     /// Async task with memory node result
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with lock-free cognitive processing
     #[inline(always)]
-    pub fn memorize(&self, content: String, memory_type: MemoryType) -> AsyncTask<Result<MemoryNode, MemoryToolError>> {
+    pub fn memorize(
+        &self,
+        content: String,
+        memory_type: MemoryType,
+    ) -> AsyncTask<Result<MemoryNode, MemoryToolError>> {
         let memory = &self.memory;
-        
+
         // Use Arc reference instead of Arc::clone for zero-allocation
         let memory_ref = Arc::clone(memory);
-        
+
         spawn_async(async move {
             // Increment atomic counter for lock-free statistics
             TOOL_STATS.fetch_add(1, Ordering::Relaxed);
-            
-            memory_ref.memorize(content, memory_type)
+
+            memory_ref
+                .memorize(content, memory_type)
                 .await
                 .map_err(MemoryToolError::Memory)
         })
     }
 
     /// Recall memories with zero-allocation streaming
-    /// 
+    ///
     /// # Arguments
     /// * `query` - Search query string
     /// * `limit` - Optional limit for results
-    /// 
+    ///
     /// # Returns
     /// Zero-allocation streaming results
-    /// 
+    ///
     /// # Performance
     /// Lock-free concurrent search with attention-based relevance scoring
     #[inline(always)]
-    pub fn recall(&self, query: String, limit: Option<usize>) -> AsyncStream<Result<MemoryNode, MemoryToolError>> {
+    pub fn recall(
+        &self,
+        query: String,
+        limit: Option<usize>,
+    ) -> AsyncStream<Result<MemoryNode, MemoryToolError>> {
         let memory = &self.memory;
-        let effective_limit = limit.unwrap_or(MAX_STREAMING_RESULTS).min(MAX_STREAMING_RESULTS);
-        
+        let effective_limit = limit
+            .unwrap_or(MAX_STREAMING_RESULTS)
+            .min(MAX_STREAMING_RESULTS);
+
         // Use crossbeam-queue for zero-copy streaming
         let result_queue = Arc::new(SegQueue::new());
-        
+
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        
+
         // Use Arc reference instead of Arc::clone for zero-allocation
         let memory_ref = Arc::clone(memory);
-        
+
         tokio::spawn(async move {
             let mut stream = memory_ref.recall(&query);
             let mut count = 0;
-            
+
             // Use ArrayVec for zero-allocation result buffering
             let mut result_buffer: ArrayVec<MemoryNode, MAX_STREAMING_RESULTS> = ArrayVec::new();
-            
+
             while let Some(result) = futures::StreamExt::next(&mut stream).await {
                 match result {
                     Ok(memory_node) => {
                         // Use lock-free atomic operations for result aggregation
                         TOOL_STATS.fetch_add(1, Ordering::Relaxed);
-                        
+
                         // Try to add to buffer, break if full
                         if result_buffer.try_push(memory_node).is_err() {
                             break;
                         }
-                        
+
                         count += 1;
                         if count >= effective_limit {
                             break;
@@ -263,7 +264,7 @@ impl MemoryTool {
                     }
                 }
             }
-            
+
             // Send buffered results with zero-copy semantics
             for memory_node in result_buffer.drain(..) {
                 if tx.send(Ok(memory_node)).is_err() {
@@ -271,51 +272,55 @@ impl MemoryTool {
                 }
             }
         });
-        
+
         AsyncStream::new(rx)
     }
 
     /// Search memories by vector similarity with zero-allocation processing
-    /// 
+    ///
     /// # Arguments
     /// * `vector` - Query vector for similarity search
     /// * `limit` - Maximum number of results
-    /// 
+    ///
     /// # Returns
     /// Zero-allocation streaming results ordered by relevance
-    /// 
+    ///
     /// # Performance
     /// Lock-free vector similarity with quantum routing optimization
     #[inline(always)]
-    pub fn vector_search(&self, vector: Vec<f32>, limit: usize) -> AsyncStream<Result<MemoryNode, MemoryToolError>> {
+    pub fn vector_search(
+        &self,
+        vector: Vec<f32>,
+        limit: usize,
+    ) -> AsyncStream<Result<MemoryNode, MemoryToolError>> {
         let memory = &self.memory;
         let effective_limit = limit.min(MAX_STREAMING_RESULTS);
-        
+
         // Use crossbeam-queue for zero-copy streaming
         let result_queue = Arc::new(SegQueue::new());
-        
+
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        
+
         // Use Arc reference instead of Arc::clone for zero-allocation
         let memory_ref = Arc::clone(memory);
-        
+
         tokio::spawn(async move {
             let mut stream = memory_ref.search_by_vector(vector, effective_limit);
-            
+
             // Use ArrayVec for zero-allocation result buffering
             let mut result_buffer: ArrayVec<MemoryNode, MAX_STREAMING_RESULTS> = ArrayVec::new();
-            
+
             while let Some(result) = futures::StreamExt::next(&mut stream).await {
                 match result {
                     Ok(memory_node) => {
                         // Use lock-free atomic operations for result aggregation
                         TOOL_STATS.fetch_add(1, Ordering::Relaxed);
-                        
+
                         // Try to add to buffer, break if full
                         if result_buffer.try_push(memory_node).is_err() {
                             break;
                         }
-                        
+
                         if result_buffer.len() >= effective_limit {
                             break;
                         }
@@ -327,7 +332,7 @@ impl MemoryTool {
                     }
                 }
             }
-            
+
             // Send buffered results with zero-copy semantics
             for memory_node in result_buffer.drain(..) {
                 if tx.send(Ok(memory_node)).is_err() {
@@ -335,86 +340,92 @@ impl MemoryTool {
                 }
             }
         });
-        
+
         AsyncStream::new(rx)
     }
 
     /// Get memory by ID with zero-allocation retrieval
-    /// 
+    ///
     /// # Arguments
     /// * `id` - Memory node ID
-    /// 
+    ///
     /// # Returns
     /// Async task with optional memory node result
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with lock-free concurrent access
     #[inline(always)]
     pub fn get_memory(&self, id: String) -> AsyncTask<Result<Option<MemoryNode>, MemoryToolError>> {
         let memory = &self.memory;
-        
+
         // Use Arc reference instead of Arc::clone for zero-allocation
         let memory_ref = Arc::clone(memory);
-        
+
         spawn_async(async move {
             // Increment atomic counter for lock-free statistics
             TOOL_STATS.fetch_add(1, Ordering::Relaxed);
-            
-            memory_ref.get_memory(&id)
+
+            memory_ref
+                .get_memory(&id)
                 .await
                 .map_err(MemoryToolError::Memory)
         })
     }
 
     /// Update memory with zero-allocation processing
-    /// 
+    ///
     /// # Arguments
     /// * `memory_node` - Memory node to update
-    /// 
+    ///
     /// # Returns
     /// Async task with updated memory node result
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with lock-free concurrent updates
     #[inline(always)]
-    pub fn update_memory(&self, memory_node: MemoryNode) -> AsyncTask<Result<MemoryNode, MemoryToolError>> {
+    pub fn update_memory(
+        &self,
+        memory_node: MemoryNode,
+    ) -> AsyncTask<Result<MemoryNode, MemoryToolError>> {
         let memory = &self.memory;
-        
+
         // Use Arc reference instead of Arc::clone for zero-allocation
         let memory_ref = Arc::clone(memory);
-        
+
         spawn_async(async move {
             // Increment atomic counter for lock-free statistics
             TOOL_STATS.fetch_add(1, Ordering::Relaxed);
-            
-            memory_ref.update_memory(memory_node)
+
+            memory_ref
+                .update_memory(memory_node)
                 .await
                 .map_err(MemoryToolError::Memory)
         })
     }
 
     /// Delete memory with zero-allocation processing
-    /// 
+    ///
     /// # Arguments
     /// * `id` - Memory node ID to delete
-    /// 
+    ///
     /// # Returns
     /// Async task with boolean result
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with lock-free concurrent deletion
     #[inline(always)]
     pub fn delete_memory(&self, id: String) -> AsyncTask<Result<bool, MemoryToolError>> {
         let memory = &self.memory;
-        
+
         // Use Arc reference instead of Arc::clone for zero-allocation
         let memory_ref = Arc::clone(memory);
-        
+
         spawn_async(async move {
             // Increment atomic counter for lock-free statistics
             TOOL_STATS.fetch_add(1, Ordering::Relaxed);
-            
-            memory_ref.delete_memory(&id)
+
+            memory_ref
+                .delete_memory(&id)
                 .await
                 .map(|_| true)
                 .map_err(MemoryToolError::Memory)
@@ -422,56 +433,62 @@ impl MemoryTool {
     }
 
     /// Execute memory operation with zero-allocation processing
-    /// 
+    ///
     /// # Arguments
     /// * `operation` - Memory operation to execute
-    /// 
+    ///
     /// # Returns
     /// Async task with operation result
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with lock-free concurrent execution
     #[inline(always)]
-    async fn execute_operation(&self, operation: MemoryOperation) -> Result<MemoryResult, MemoryToolError> {
+    async fn execute_operation(
+        &self,
+        operation: MemoryOperation,
+    ) -> Result<MemoryResult, MemoryToolError> {
         match operation {
-            MemoryOperation::Memorize { content, memory_type } => {
+            MemoryOperation::Memorize {
+                content,
+                memory_type,
+            } => {
                 let result = self.memorize(content, memory_type).await?;
                 Ok(MemoryResult::Memory(result))
             }
             MemoryOperation::Recall { query, limit } => {
                 let mut stream = self.recall(query, limit);
-                
+
                 // Use ArrayVec instead of Vec::new() for zero-allocation
                 let mut memories: ArrayVec<MemoryNode, MAX_MEMORY_TOOL_RESULTS> = ArrayVec::new();
-                
+
                 while let Some(result) = futures::StreamExt::next(&mut stream).await {
                     let memory_node = result?;
-                    
+
                     // Use try_push for zero-allocation error handling
                     if memories.try_push(memory_node).is_err() {
                         return Err(MemoryToolError::BufferOverflow);
                     }
                 }
-                
+
                 // Convert ArrayVec to Vec for compatibility
                 let memories_vec: Vec<MemoryNode> = memories.into_iter().collect();
                 Ok(MemoryResult::Memories(memories_vec))
             }
             MemoryOperation::VectorSearch { vector, limit } => {
                 let mut stream = self.vector_search(vector, limit);
-                
+
                 // Use ArrayVec instead of Vec::new() for zero-allocation
                 let mut memories: ArrayVec<MemoryNode, MAX_MEMORY_TOOL_RESULTS> = ArrayVec::new();
-                
+
                 while let Some(result) = futures::StreamExt::next(&mut stream).await {
                     let memory_node = result?;
-                    
+
                     // Use try_push for zero-allocation error handling
                     if memories.try_push(memory_node).is_err() {
                         return Err(MemoryToolError::BufferOverflow);
                     }
                 }
-                
+
                 // Convert ArrayVec to Vec for compatibility
                 let memories_vec: Vec<MemoryNode> = memories.into_iter().collect();
                 Ok(MemoryResult::Memories(memories_vec))
@@ -495,31 +512,31 @@ impl MemoryTool {
     }
 
     /// Get memory manager reference for advanced operations
-    /// 
+    ///
     /// # Returns
     /// Reference to underlying memory instance
-    /// 
+    ///
     /// # Performance
     /// Zero cost abstraction with direct memory access
     #[inline(always)]
     pub fn memory(&self) -> &Memory {
         &self.memory
     }
-    
+
     /// Get tool statistics for monitoring
-    /// 
+    ///
     /// # Returns
     /// Current tool operation count
-    /// 
+    ///
     /// # Performance
     /// Lock-free atomic read operation
     #[inline(always)]
     pub fn stats(&self) -> usize {
         TOOL_STATS.load(Ordering::Relaxed)
     }
-    
+
     /// Reset tool statistics
-    /// 
+    ///
     /// # Performance
     /// Lock-free atomic write operation
     #[inline(always)]
@@ -547,22 +564,20 @@ impl Tool for MemoryTool {
     fn execute(&self, args: Value) -> Pin<Box<dyn Future<Output = Result<Value, String>> + Send>> {
         let operation = match serde_json::from_value::<MemoryOperation>(args) {
             Ok(op) => op,
-            Err(e) => return Box::pin(async move { 
-                Err(format!("Invalid memory operation: {}", e)) 
-            }),
+            Err(e) => {
+                return Box::pin(async move { Err(format!("Invalid memory operation: {}", e)) });
+            }
         };
 
         let memory_tool = self.clone();
-        
+
         Box::pin(async move {
             // Increment atomic counter for lock-free operation tracking
             TOOL_STATS.fetch_add(1, Ordering::Relaxed);
-            
+
             match memory_tool.execute_operation(operation).await {
-                Ok(result) => {
-                    serde_json::to_value(result)
-                        .map_err(|e| format!("Failed to serialize result: {}", e))
-                }
+                Ok(result) => serde_json::to_value(result)
+                    .map_err(|e| format!("Failed to serialize result: {}", e)),
                 Err(e) => Err(format!("Memory operation failed: {}", e)),
             }
         })
@@ -579,28 +594,34 @@ impl McpTool for MemoryTool {
         // This implementation requires a Memory instance, so we'll create a safe placeholder
         // In practice, this would be called with proper initialization
         let data = McpToolData::new(name, description, parameters);
-        
-        // SAFETY FIX: Replace unsafe zeroed memory with proper None handling
-        // This is a trait compliance implementation - use MemoryTool::new(memory) for actual usage
+
+        // SAFETY FIX: Replace unsafe zeroed memory with proper safe initialization
+        // Create a minimal, safe Memory instance with default configuration
+        // NOTE: This is a temporary fix - the proper solution is to not implement
+        //       McpTool::new() for MemoryTool, as it requires async initialization
+        let memory = Arc::new(Memory::new_stub().unwrap_or_else(|e| {
+            // If stub creation fails, this is a serious architectural issue
+            // Log the error and create a panic with clear instructions
+            eprintln!("FATAL: Memory stub creation failed: {}", e);
+            panic!("Memory stub creation failed. This indicates a serious architectural issue. \
+                   Use MemoryTool::new(Arc<Memory>) with a pre-initialized Memory instance instead of McpTool::new().")
+        }));
+
         Self {
             data,
-            memory: Arc::new(unsafe { 
-                // This is unsafe but necessary for trait compliance
-                // In production, always use MemoryTool::new(memory) instead
-                std::mem::zeroed() 
-            }),
+            memory,
         }
     }
 }
 
 /// Create memory tool with default configuration
-/// 
+///
 /// # Arguments
 /// * `memory` - Shared memory instance
-/// 
+///
 /// # Returns
 /// Configured memory tool instance
-/// 
+///
 /// # Performance
 /// Zero allocation with pre-configured tool settings
 #[inline(always)]
@@ -609,13 +630,13 @@ pub fn create_memory_tool(memory: Arc<Memory>) -> MemoryTool {
 }
 
 /// Create memory tool with safe initialization
-/// 
+///
 /// # Arguments
 /// * `memory` - Shared memory instance
-/// 
+///
 /// # Returns
 /// Result containing configured memory tool or initialization error
-/// 
+///
 /// # Performance
 /// Zero allocation with proper error handling
 #[inline(always)]
@@ -623,10 +644,10 @@ pub fn create_memory_tool_safe(memory: Arc<Memory>) -> Result<MemoryTool, Memory
     // Validate memory instance is not null/zeroed
     if memory.config().database.connection_string.is_empty() {
         return Err(MemoryToolError::InitializationError(
-            "Invalid memory configuration: connection string is empty".to_string()
+            "Invalid memory configuration: connection string is empty".to_string(),
         ));
     }
-    
+
     Ok(MemoryTool::new(memory))
 }
 
@@ -641,13 +662,13 @@ pub struct MemoryToolBuilder {
 
 impl MemoryToolBuilder {
     /// Create new memory tool builder
-    /// 
+    ///
     /// # Arguments
     /// * `memory` - Shared memory instance
-    /// 
+    ///
     /// # Returns
     /// Memory tool builder instance
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with builder pattern
     #[inline(always)]
@@ -655,19 +676,20 @@ impl MemoryToolBuilder {
         Self {
             memory,
             name: "memory".to_string(),
-            description: "Memory tool for memorize/recall operations with cognitive search".to_string(),
+            description: "Memory tool for memorize/recall operations with cognitive search"
+                .to_string(),
             server: None,
         }
     }
 
     /// Set tool name
-    /// 
+    ///
     /// # Arguments
     /// * `name` - Tool name
-    /// 
+    ///
     /// # Returns
     /// Builder instance for chaining
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with string reuse
     #[inline(always)]
@@ -677,13 +699,13 @@ impl MemoryToolBuilder {
     }
 
     /// Set tool description
-    /// 
+    ///
     /// # Arguments
     /// * `description` - Tool description
-    /// 
+    ///
     /// # Returns
     /// Builder instance for chaining
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with string reuse
     #[inline(always)]
@@ -693,13 +715,13 @@ impl MemoryToolBuilder {
     }
 
     /// Set server identifier
-    /// 
+    ///
     /// # Arguments
     /// * `server` - Server identifier
-    /// 
+    ///
     /// # Returns
     /// Builder instance for chaining
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with optional string storage
     #[inline(always)]
@@ -709,10 +731,10 @@ impl MemoryToolBuilder {
     }
 
     /// Build memory tool instance
-    /// 
+    ///
     /// # Returns
     /// Configured memory tool
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with pre-configured settings
     #[inline(always)]
@@ -751,13 +773,13 @@ pub struct MemoryToolFactory;
 
 impl MemoryToolFactory {
     /// Create memory tool with shared memory instance
-    /// 
+    ///
     /// # Arguments
     /// * `memory` - Shared memory instance for concurrent access
-    /// 
+    ///
     /// # Returns
     /// Configured memory tool instance
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with lock-free memory sharing
     #[inline(always)]
@@ -766,13 +788,13 @@ impl MemoryToolFactory {
     }
 
     /// Create memory tool builder for advanced configuration
-    /// 
+    ///
     /// # Arguments
     /// * `memory` - Shared memory instance
-    /// 
+    ///
     /// # Returns
     /// Memory tool builder instance
-    /// 
+    ///
     /// # Performance
     /// Zero allocation with builder initialization
     #[inline(always)]

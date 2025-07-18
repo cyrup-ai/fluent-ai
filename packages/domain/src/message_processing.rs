@@ -1,31 +1,31 @@
 //! Ultra-High Performance Lock-Free Message Processing Pipeline
-//! 
+//!
 //! This module provides blazing-fast message processing with zero allocation,
 //! lock-free operation, and SIMD-optimized text processing integration.
-//! 
+//!
 //! Performance targets: <1μs routing latency, 100K+ messages/second throughput.
 
+use std::cell::RefCell;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::cell::RefCell;
 
+use arc_swap::ArcSwap;
 // Zero-allocation and lock-free dependencies
 use arrayvec::ArrayVec;
-use smallvec::SmallVec;
-use crossbeam_queue::{ArrayQueue, SegQueue};
-use crossbeam_deque::{Injector, Stealer, Worker};
 use atomic_counter::{AtomicCounter, RelaxedCounter};
-use arc_swap::ArcSwap;
+use crossbeam_deque::{Injector, Stealer, Worker};
+use crossbeam_queue::{ArrayQueue, SegQueue};
 use once_cell::sync::Lazy;
-
+use smallvec::SmallVec;
 // SIMD integration
 use wide::f32x8;
 
 // Integration with memory operations
-use crate::memory_ops::{simd_cosine_similarity, generate_pooled_embedding, return_embedding_to_pool};
-
+use crate::memory_ops::{
+    generate_pooled_embedding, return_embedding_to_pool, simd_cosine_similarity,
+};
 // Integration with text processing for intelligent routing
-use crate::text_processing::{extract_text_features_for_routing, TextProcessor};
+use crate::text_processing::{TextProcessor, extract_text_features_for_routing};
 
 /// LINES 1-50: MESSAGE TYPE DEFINITIONS
 
@@ -63,30 +63,30 @@ impl<const N: usize> Message<N> {
         if content.len() > N {
             return Err(MessageError::ContentTooLarge(content.len()));
         }
-        
+
         let mut msg = Self::default();
         msg.id = id;
         msg.message_type = message_type;
-        msg.content.try_extend_from_slice(content)
+        msg.content
+            .try_extend_from_slice(content)
             .map_err(|_| MessageError::ContentTooLarge(content.len()))?;
         msg.timestamp = Instant::now();
-        
+
         Ok(msg)
     }
-    
+
     /// Get content as string slice with zero allocation
     #[inline(always)]
     pub fn content_str(&self) -> Result<&str, MessageError> {
-        std::str::from_utf8(&self.content)
-            .map_err(|_| MessageError::InvalidContent)
+        std::str::from_utf8(&self.content).map_err(|_| MessageError::InvalidContent)
     }
-    
+
     /// Check if message should be retried
     #[inline(always)]
     pub fn should_retry(&self) -> bool {
         self.retry_count < 3
     }
-    
+
     /// Increment retry count
     #[inline(always)]
     pub fn increment_retry(&mut self) {
@@ -135,21 +135,21 @@ pub struct MessageProcessor {
     memory_queue: ArrayQueue<Message>,
     control_queue: ArrayQueue<Message>,
     health_queue: ArrayQueue<Message>,
-    
+
     // Work-stealing deques for load balancing
     workers: Vec<Worker<Message>>,
     stealers: Vec<Stealer<Message>>,
     injector: Arc<Injector<Message>>,
-    
+
     // Atomic performance counters
     messages_processed: RelaxedCounter,
     processing_latency_nanos: RelaxedCounter,
     queue_depth: RelaxedCounter,
     routing_errors: RelaxedCounter,
-    
+
     // Copy-on-write shared configuration
     config: Arc<ArcSwap<ProcessingConfig>>,
-    
+
     // Message ID generation (atomic)
     next_message_id: RelaxedCounter,
 }
@@ -185,32 +185,32 @@ impl MessageProcessor {
     pub fn new() -> Result<Self, MessageError> {
         Self::with_config(ProcessingConfig::default())
     }
-    
+
     /// Create message processor with custom configuration
     #[inline(always)]
     pub fn with_config(config: ProcessingConfig) -> Result<Self, MessageError> {
         let queue_capacity = config.max_queue_depth;
         let worker_count = config.worker_count;
-        
+
         // Create lock-free queues with optimal capacity
         let chat_queue = ArrayQueue::new(queue_capacity);
         let memory_queue = ArrayQueue::new(queue_capacity);
         let control_queue = ArrayQueue::new(queue_capacity / 4); // Smaller for control messages
         let health_queue = ArrayQueue::new(queue_capacity / 8); // Smallest for health checks
-        
+
         // Create work-stealing deques
         let mut workers = Vec::with_capacity(worker_count);
         let mut stealers = Vec::with_capacity(worker_count);
-        
+
         for _ in 0..worker_count {
             let worker = Worker::new_fifo();
             let stealer = worker.stealer();
             workers.push(worker);
             stealers.push(stealer);
         }
-        
+
         let injector = Arc::new(Injector::new());
-        
+
         Ok(Self {
             chat_queue,
             memory_queue,
@@ -227,15 +227,69 @@ impl MessageProcessor {
             next_message_id: RelaxedCounter::new(1),
         })
     }
-    
+
+    /// Create minimal stub processor for absolute worst-case scenarios
+    ///
+    /// # Returns
+    /// MessageProcessor instance with minimal resource allocation
+    ///
+    /// # Performance
+    /// Minimal allocation with safe defaults that should never fail
+    ///
+    /// # Note
+    /// This is a last resort fallback for when even minimal configurations fail.
+    /// It creates a processor with the absolute minimum viable configuration.
+    #[inline(always)]
+    pub fn new_stub() -> Self {
+        // Use absolute minimum configuration that should never fail
+        let stub_config = ProcessingConfig {
+            max_queue_depth: 4,   // Absolute minimum - divides by 4 and 8 safely
+            worker_count: 1,      // Single worker absolute minimum
+            batch_size: 1,        // Single message processing
+            timeout_micros: 10,   // Minimal timeout
+            retry_limit: 0,       // No retries
+            enable_simd_classification: false, // No complex features
+        };
+
+        // Create minimal queues with absolute minimum capacity
+        let chat_queue = ArrayQueue::new(4);
+        let memory_queue = ArrayQueue::new(4);
+        let control_queue = ArrayQueue::new(1); // Minimal control queue
+        let health_queue = ArrayQueue::new(1);  // Minimal health queue
+
+        // Create single work-stealing deque
+        let worker = Worker::new_fifo();
+        let stealer = worker.stealer();
+        let workers = vec![worker];
+        let stealers = vec![stealer];
+
+        let injector = Arc::new(Injector::new());
+
+        Self {
+            chat_queue,
+            memory_queue,
+            control_queue,
+            health_queue,
+            workers,
+            stealers,
+            injector,
+            messages_processed: RelaxedCounter::new(0),
+            processing_latency_nanos: RelaxedCounter::new(0),
+            queue_depth: RelaxedCounter::new(0),
+            routing_errors: RelaxedCounter::new(0),
+            config: Arc::new(ArcSwap::new(Arc::new(stub_config))),
+            next_message_id: RelaxedCounter::new(1),
+        }
+    }
+
     /// Route message to appropriate queue based on type with text processing enhancement
     #[inline(always)]
     pub fn route_message(&self, message: Message) -> Result<(), MessageError> {
         let start_time = Instant::now();
-        
+
         // Update queue depth counter
         self.queue_depth.inc();
-        
+
         // Enhanced routing with text processing for AgentChat messages
         let enhanced_message_type = if message.message_type == MessageType::AgentChat {
             match message.content_str() {
@@ -259,44 +313,44 @@ impl MessageProcessor {
         } else {
             message.message_type
         };
-        
+
         // Route based on enhanced message type for optimal performance
         let result = match enhanced_message_type {
-            MessageType::AgentChat => {
-                self.chat_queue.push(message)
-                    .map_err(|_| MessageError::QueueFull(self.chat_queue.len()))
-            }
-            MessageType::MemoryStore | MessageType::MemoryRecall => {
-                self.memory_queue.push(message)
-                    .map_err(|_| MessageError::QueueFull(self.memory_queue.len()))
-            }
-            MessageType::SystemControl => {
-                self.control_queue.push(message)
-                    .map_err(|_| MessageError::QueueFull(self.control_queue.len()))
-            }
-            MessageType::HealthCheck | MessageType::MetricsUpdate => {
-                self.health_queue.push(message)
-                    .map_err(|_| MessageError::QueueFull(self.health_queue.len()))
-            }
+            MessageType::AgentChat => self
+                .chat_queue
+                .push(message)
+                .map_err(|_| MessageError::QueueFull(self.chat_queue.len())),
+            MessageType::MemoryStore | MessageType::MemoryRecall => self
+                .memory_queue
+                .push(message)
+                .map_err(|_| MessageError::QueueFull(self.memory_queue.len())),
+            MessageType::SystemControl => self
+                .control_queue
+                .push(message)
+                .map_err(|_| MessageError::QueueFull(self.control_queue.len())),
+            MessageType::HealthCheck | MessageType::MetricsUpdate => self
+                .health_queue
+                .push(message)
+                .map_err(|_| MessageError::QueueFull(self.health_queue.len())),
             MessageType::ContextUpdate => {
                 // High-priority messages go to injector for immediate processing
                 self.injector.push(message);
                 Ok(())
             }
         };
-        
+
         // Record routing latency
         let latency_nanos = start_time.elapsed().as_nanos() as usize;
         self.processing_latency_nanos.add(latency_nanos);
-        
+
         if result.is_err() {
             self.routing_errors.inc();
             self.queue_depth.dec(); // Decrement if routing failed
         }
-        
+
         result
     }
-    
+
     /// Get next message for processing (lock-free)
     #[inline(always)]
     pub fn get_next_message(&self) -> Option<Message> {
@@ -305,28 +359,28 @@ impl MessageProcessor {
             self.queue_depth.dec();
             return Some(message);
         }
-        
+
         // Try health queue for system monitoring
         if let Some(message) = self.health_queue.pop() {
             self.queue_depth.dec();
             return Some(message);
         }
-        
+
         // Try chat queue for user interactions
         if let Some(message) = self.chat_queue.pop() {
             self.queue_depth.dec();
             return Some(message);
         }
-        
+
         // Try memory queue for persistence operations
         if let Some(message) = self.memory_queue.pop() {
             self.queue_depth.dec();
             return Some(message);
         }
-        
+
         None
     }
-    
+
     /// Generate unique message ID
     #[inline(always)]
     pub fn generate_message_id(&self) -> u64 {
@@ -339,24 +393,27 @@ impl MessageProcessor {
 impl MessageProcessor {
     /// Process message with SIMD optimization for classification
     #[inline(always)]
-    pub fn process_message_with_simd(&self, message: &Message) -> Result<ProcessingResult, MessageError> {
+    pub fn process_message_with_simd(
+        &self,
+        message: &Message,
+    ) -> Result<ProcessingResult, MessageError> {
         let config = self.config.load();
-        
+
         if !config.enable_simd_classification {
             return self.process_message_basic(message);
         }
-        
+
         let start_time = Instant::now();
-        
+
         // Convert content to string for SIMD processing
         let content_str = message.content_str()?;
-        
+
         // Generate embedding for content classification using pooled allocation
         let embedding = generate_pooled_embedding(content_str);
-        
+
         // Use SIMD similarity for routing decisions
         let route = self.classify_message_route(&embedding)?;
-        
+
         // Process based on classification and message type
         let result = match (message.message_type, route) {
             (MessageType::AgentChat, RouteType::DirectProcessing) => {
@@ -365,46 +422,35 @@ impl MessageProcessor {
             (MessageType::AgentChat, RouteType::BatchProcessing) => {
                 self.process_chat_message_batch(message)
             }
-            (MessageType::MemoryStore, _) => {
-                self.process_memory_store(message)
-            }
-            (MessageType::MemoryRecall, _) => {
-                self.process_memory_recall(message, &embedding)
-            }
-            (MessageType::ContextUpdate, _) => {
-                self.process_context_update(message, &embedding)
-            }
-            (MessageType::SystemControl, _) => {
-                self.process_system_control(message)
-            }
-            (MessageType::HealthCheck, _) => {
-                self.process_health_check(message)
-            }
-            (MessageType::MetricsUpdate, _) => {
-                self.process_metrics_update(message)
-            }
-            (_, RouteType::ErrorHandling) => {
-                Err(MessageError::ProcessingFailed("SIMD classification error".into()))
-            }
-            _ => {
-                self.process_message_fallback(message)
-            }
+            (MessageType::MemoryStore, _) => self.process_memory_store(message),
+            (MessageType::MemoryRecall, _) => self.process_memory_recall(message, &embedding),
+            (MessageType::ContextUpdate, _) => self.process_context_update(message, &embedding),
+            (MessageType::SystemControl, _) => self.process_system_control(message),
+            (MessageType::HealthCheck, _) => self.process_health_check(message),
+            (MessageType::MetricsUpdate, _) => self.process_metrics_update(message),
+            (_, RouteType::ErrorHandling) => Err(MessageError::ProcessingFailed(
+                "SIMD classification error".into(),
+            )),
+            _ => self.process_message_fallback(message),
         };
-        
+
         // Return embedding to pool for zero allocation
         return_embedding_to_pool(embedding);
-        
+
         // Record processing time
         let processing_time = start_time.elapsed().as_nanos() as usize;
         self.processing_latency_nanos.add(processing_time);
         self.messages_processed.inc();
-        
+
         result
     }
-    
+
     /// Classify message route using SIMD similarity against known patterns
     #[inline(always)]
-    fn classify_message_route(&self, embedding: &ArrayVec<f32, 64>) -> Result<RouteType, MessageError> {
+    fn classify_message_route(
+        &self,
+        embedding: &ArrayVec<f32, 64>,
+    ) -> Result<RouteType, MessageError> {
         // Pre-computed embeddings for route classification (zero allocation)
         static ROUTE_PATTERNS: Lazy<[ArrayVec<f32, 64>; 4]> = Lazy::new(|| {
             [
@@ -442,18 +488,18 @@ impl MessageProcessor {
                 },
             ]
         });
-        
+
         let embedding_slice: &[f32] = embedding.as_slice();
         let mut best_route = RouteType::DirectProcessing;
         let mut best_similarity = -1.0f32;
-        
+
         // Use SIMD similarity computation for fast classification
         for (i, pattern) in ROUTE_PATTERNS.iter().enumerate() {
             let pattern_slice: &[f32] = pattern.as_slice();
-            
+
             let similarity = simd_cosine_similarity(embedding_slice, pattern_slice)
                 .map_err(|_| MessageError::SimdError("Similarity computation failed".into()))?;
-            
+
             if similarity > best_similarity {
                 best_similarity = similarity;
                 best_route = match i {
@@ -465,20 +511,23 @@ impl MessageProcessor {
                 };
             }
         }
-        
+
         // Threshold check to ensure valid classification
         if best_similarity < 0.1 {
             return Ok(RouteType::ErrorHandling);
         }
-        
+
         Ok(best_route)
     }
-    
+
     /// Process different message types with SIMD optimization
     #[inline(always)]
-    fn process_chat_message_direct(&self, message: &Message) -> Result<ProcessingResult, MessageError> {
+    fn process_chat_message_direct(
+        &self,
+        message: &Message,
+    ) -> Result<ProcessingResult, MessageError> {
         let content = message.content_str()?;
-        
+
         Ok(ProcessingResult {
             message_id: message.id,
             processing_time: Duration::from_nanos(100), // Fast direct processing
@@ -487,11 +536,14 @@ impl MessageProcessor {
             metadata: SmallVec::new(),
         })
     }
-    
+
     #[inline(always)]
-    fn process_chat_message_batch(&self, message: &Message) -> Result<ProcessingResult, MessageError> {
+    fn process_chat_message_batch(
+        &self,
+        message: &Message,
+    ) -> Result<ProcessingResult, MessageError> {
         let content = message.content_str()?;
-        
+
         Ok(ProcessingResult {
             message_id: message.id,
             processing_time: Duration::from_nanos(500), // Batch processing takes longer
@@ -500,7 +552,7 @@ impl MessageProcessor {
             metadata: SmallVec::new(),
         })
     }
-    
+
     #[inline(always)]
     fn process_memory_store(&self, message: &Message) -> Result<ProcessingResult, MessageError> {
         Ok(ProcessingResult {
@@ -511,9 +563,13 @@ impl MessageProcessor {
             metadata: SmallVec::from_slice(b"stored"),
         })
     }
-    
+
     #[inline(always)]
-    fn process_memory_recall(&self, message: &Message, _embedding: &ArrayVec<f32, 64>) -> Result<ProcessingResult, MessageError> {
+    fn process_memory_recall(
+        &self,
+        message: &Message,
+        _embedding: &ArrayVec<f32, 64>,
+    ) -> Result<ProcessingResult, MessageError> {
         Ok(ProcessingResult {
             message_id: message.id,
             processing_time: Duration::from_nanos(300),
@@ -522,9 +578,13 @@ impl MessageProcessor {
             metadata: SmallVec::new(),
         })
     }
-    
+
     #[inline(always)]
-    fn process_context_update(&self, message: &Message, _embedding: &ArrayVec<f32, 64>) -> Result<ProcessingResult, MessageError> {
+    fn process_context_update(
+        &self,
+        message: &Message,
+        _embedding: &ArrayVec<f32, 64>,
+    ) -> Result<ProcessingResult, MessageError> {
         Ok(ProcessingResult {
             message_id: message.id,
             processing_time: Duration::from_nanos(150),
@@ -533,7 +593,7 @@ impl MessageProcessor {
             metadata: SmallVec::from_slice(b"context_updated"),
         })
     }
-    
+
     #[inline(always)]
     fn process_system_control(&self, message: &Message) -> Result<ProcessingResult, MessageError> {
         Ok(ProcessingResult {
@@ -544,7 +604,7 @@ impl MessageProcessor {
             metadata: SmallVec::from_slice(b"control_executed"),
         })
     }
-    
+
     #[inline(always)]
     fn process_health_check(&self, message: &Message) -> Result<ProcessingResult, MessageError> {
         Ok(ProcessingResult {
@@ -555,7 +615,7 @@ impl MessageProcessor {
             metadata: SmallVec::from_slice(b"healthy"),
         })
     }
-    
+
     #[inline(always)]
     fn process_metrics_update(&self, message: &Message) -> Result<ProcessingResult, MessageError> {
         Ok(ProcessingResult {
@@ -566,7 +626,7 @@ impl MessageProcessor {
             metadata: SmallVec::from_slice(b"metrics_updated"),
         })
     }
-    
+
     #[inline(always)]
     fn process_message_basic(&self, message: &Message) -> Result<ProcessingResult, MessageError> {
         // Fallback processing without SIMD
@@ -586,9 +646,12 @@ impl MessageProcessor {
             MessageType::MetricsUpdate => self.process_metrics_update(message),
         }
     }
-    
+
     #[inline(always)]
-    fn process_message_fallback(&self, message: &Message) -> Result<ProcessingResult, MessageError> {
+    fn process_message_fallback(
+        &self,
+        message: &Message,
+    ) -> Result<ProcessingResult, MessageError> {
         Ok(ProcessingResult {
             message_id: message.id,
             processing_time: Duration::from_nanos(1000),
@@ -607,13 +670,13 @@ pub struct ProcessingWorker {
     worker: Worker<Message>,
     stealers: Vec<Stealer<Message>>,
     injector: Arc<Injector<Message>>,
-    
+
     // Pre-allocated message pool for zero allocation
     message_pool: ArrayQueue<Message<256>>,
-    
+
     // Worker-specific statistics
     stats: WorkerStats,
-    
+
     // Configuration
     config: Arc<ArcSwap<ProcessingConfig>>,
 }
@@ -642,12 +705,12 @@ impl ProcessingWorker {
         // Pre-allocate message pool
         let pool_size = 64; // Reasonable pool size for zero allocation
         let message_pool = ArrayQueue::new(pool_size);
-        
+
         // Pre-fill pool with default messages
         for _ in 0..pool_size {
             let _ = message_pool.push(Message::default());
         }
-        
+
         Self {
             id,
             worker,
@@ -658,17 +721,17 @@ impl ProcessingWorker {
             config,
         }
     }
-    
+
     /// Run worker event loop with zero allocation
     #[inline(always)]
     pub async fn run_worker_loop(&mut self) -> Result<(), MessageError> {
         let mut consecutive_empty_polls = 0u32;
         let max_empty_polls = 1000;
-        
+
         loop {
             let start_time = Instant::now();
             let mut processed_message = false;
-            
+
             // Try to pop from local queue first (most efficient)
             if let Some(message) = self.worker.pop() {
                 self.process_local_message(message).await?;
@@ -687,7 +750,7 @@ impl ProcessingWorker {
                 self.stats.injector_hits.inc();
                 processed_message = true;
             }
-            
+
             if processed_message {
                 consecutive_empty_polls = 0;
                 let processing_time = start_time.elapsed().as_nanos() as usize;
@@ -695,7 +758,7 @@ impl ProcessingWorker {
                 self.stats.messages_processed.inc();
             } else {
                 consecutive_empty_polls += 1;
-                
+
                 // Adaptive backoff for idle workers
                 if consecutive_empty_polls < 10 {
                     // Spin briefly for low latency
@@ -714,57 +777,64 @@ impl ProcessingWorker {
             }
         }
     }
-    
+
     /// Try to steal work from other workers
     #[inline(always)]
     fn try_steal_work(&mut self) -> Option<Message> {
         self.stats.steal_attempts.inc();
-        
+
         // Try to steal from each worker in round-robin fashion
         let start_idx = self.id % self.stealers.len();
-        
+
         for i in 0..self.stealers.len() {
             let stealer_idx = (start_idx + i) % self.stealers.len();
-            
+
             // Skip our own stealer
             if stealer_idx == self.id {
                 continue;
             }
-            
+
             if let Some(stealer) = self.stealers.get(stealer_idx) {
                 if let crossbeam_deque::Steal::Success(message) = stealer.steal() {
                     return Some(message);
                 }
             }
         }
-        
+
         None
     }
-    
+
     /// Process message from local queue
     #[inline(always)]
     async fn process_local_message(&mut self, message: Message) -> Result<(), MessageError> {
         // Process with high priority (local work)
-        self.process_message_internal(message, ProcessingPriority::High).await
+        self.process_message_internal(message, ProcessingPriority::High)
+            .await
     }
-    
+
     /// Process stolen message
     #[inline(always)]
     async fn process_stolen_message(&mut self, message: Message) -> Result<(), MessageError> {
         // Process with normal priority (stolen work)
-        self.process_message_internal(message, ProcessingPriority::Normal).await
+        self.process_message_internal(message, ProcessingPriority::Normal)
+            .await
     }
-    
+
     /// Process message from injector
     #[inline(always)]
     async fn process_injected_message(&mut self, message: Message) -> Result<(), MessageError> {
         // Process with critical priority (injected work)
-        self.process_message_internal(message, ProcessingPriority::Critical).await
+        self.process_message_internal(message, ProcessingPriority::Critical)
+            .await
     }
-    
+
     /// Internal message processing with priority handling
     #[inline(always)]
-    async fn process_message_internal(&mut self, message: Message, priority: ProcessingPriority) -> Result<(), MessageError> {
+    async fn process_message_internal(
+        &mut self,
+        message: Message,
+        priority: ProcessingPriority,
+    ) -> Result<(), MessageError> {
         // Apply priority-based processing delays
         match priority {
             ProcessingPriority::Critical => {
@@ -783,7 +853,7 @@ impl ProcessingWorker {
                 }
             }
         }
-        
+
         // Simulate message processing (in real implementation, this would route to actual handlers)
         match message.message_type {
             MessageType::AgentChat => {
@@ -811,15 +881,15 @@ impl ProcessingWorker {
                 tokio::time::sleep(Duration::from_nanos(30)).await;
             }
         }
-        
+
         // Return message to pool if possible (zero allocation)
         if message.content.len() <= 256 {
             let _ = self.message_pool.push(message);
         }
-        
+
         Ok(())
     }
-    
+
     /// Get worker statistics
     #[inline(always)]
     pub fn get_stats(&self) -> &WorkerStats {
@@ -842,28 +912,28 @@ enum ProcessingPriority {
 pub enum MessageError {
     #[error("Queue capacity exceeded: {0}")]
     QueueFull(usize),
-    
+
     #[error("Invalid message content")]
     InvalidContent,
-    
+
     #[error("Content too large: {0} bytes")]
     ContentTooLarge(usize),
-    
+
     #[error("Processing timeout")]
     ProcessingTimeout,
-    
+
     #[error("Worker error: {0}")]
     WorkerError(String),
-    
+
     #[error("SIMD processing error: {0}")]
     SimdError(String),
-    
+
     #[error("Processing failed: {0}")]
     ProcessingFailed(String),
-    
+
     #[error("Configuration error: {0}")]
     ConfigurationError(String),
-    
+
     #[error("Resource exhausted: {0}")]
     ResourceExhausted(String),
 }
@@ -919,7 +989,7 @@ impl MessageProcessor {
     pub fn get_performance_stats(&self) -> ProcessingStats {
         let total_processed = self.messages_processed.get();
         let total_latency = self.processing_latency_nanos.get();
-        
+
         ProcessingStats {
             messages_processed: total_processed,
             average_latency_nanos: if total_processed > 0 {
@@ -933,7 +1003,7 @@ impl MessageProcessor {
             worker_stats: SmallVec::new(), // Populated by worker manager
         }
     }
-    
+
     /// Calculate current throughput
     #[inline(always)]
     fn calculate_throughput(&self) -> f64 {
@@ -941,39 +1011,40 @@ impl MessageProcessor {
         // In production, this would use a sliding window
         let processed = self.messages_processed.get() as f64;
         let latency_seconds = (self.processing_latency_nanos.get() as f64) / 1_000_000_000.0;
-        
+
         if latency_seconds > 0.0 {
             processed / latency_seconds
         } else {
             0.0
         }
     }
-    
+
     /// Update configuration atomically
     #[inline(always)]
     pub fn update_config(&self, new_config: ProcessingConfig) {
         self.config.store(Arc::new(new_config));
     }
-    
+
     /// Get current configuration
     #[inline(always)]
     pub fn get_config(&self) -> Arc<ProcessingConfig> {
         self.config.load_full()
     }
-    
+
     /// Health check for the message processor
     #[inline(always)]
     pub fn health_check(&self) -> Result<ProcessingHealth, MessageError> {
         let stats = self.get_performance_stats();
         let config = self.get_config();
-        
-        let queue_utilization = (stats.current_queue_depth as f64) / (config.max_queue_depth as f64);
+
+        let queue_utilization =
+            (stats.current_queue_depth as f64) / (config.max_queue_depth as f64);
         let error_rate = if stats.messages_processed > 0 {
             (stats.routing_errors as f64) / (stats.messages_processed as f64)
         } else {
             0.0
         };
-        
+
         let health_status = if queue_utilization > 0.9 {
             HealthStatus::Critical
         } else if queue_utilization > 0.7 || error_rate > 0.1 {
@@ -983,7 +1054,7 @@ impl MessageProcessor {
         } else {
             HealthStatus::Healthy
         };
-        
+
         Ok(ProcessingHealth {
             status: health_status,
             queue_utilization,
@@ -1025,8 +1096,25 @@ static MESSAGE_PROCESSOR: Lazy<MessageProcessor> = Lazy::new(|| {
             retry_limit: 2,
             enable_simd_classification: false,
         };
-        MessageProcessor::with_config(fallback_config)
-            .expect("Failed to create fallback message processor")
+        MessageProcessor::with_config(fallback_config).unwrap_or_else(|_| {
+            // Last resort minimal configuration with guaranteed safe values
+            // Using 8 as minimum to ensure division operations work properly
+            let minimal_config = ProcessingConfig {
+                max_queue_depth: 8,  // Safe minimum that allows division by 4 and 8
+                worker_count: 1,     // Single worker minimum
+                batch_size: 1,       // Single message batch
+                timeout_micros: 100, // Minimal timeout
+                retry_limit: 0,      // No retries
+                enable_simd_classification: false, // No SIMD complexity
+            };
+            // This configuration uses safe minimums that should never fail
+            MessageProcessor::with_config(minimal_config).unwrap_or_else(|err| {
+                // Instead of panicking, use the stub processor as absolute last resort
+                // This ensures the system can continue running even in extreme resource constraints
+                eprintln!("WARNING: MessageProcessor initialization failed with minimal config. Error: {}. Using stub processor with absolute minimal resources.", err);
+                MessageProcessor::new_stub()
+            })
+        })
     })
 });
 

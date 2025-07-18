@@ -80,7 +80,14 @@ pub struct CounterMetric {
 impl CounterMetric {
     pub fn new(name: &str, help: &str) -> Self {
         let opts = Opts::new(name, help);
-        let counter = Counter::with_opts(opts).unwrap();
+        let counter = Counter::with_opts(opts).unwrap_or_else(|e| {
+            eprintln!("Warning: Failed to create counter metric '{}': {}. Using default counter.", name, e);
+            // Create a simple counter without opts as fallback
+            Counter::new("fallback_counter", "Fallback counter metric").unwrap_or_else(|_| {
+                // If even the fallback fails, create a minimal counter
+                Counter::new("error_counter", "Error counter").expect("Failed to create fallback counter")
+            })
+        });
         Self { counter }
     }
 }
@@ -107,7 +114,14 @@ pub struct GaugeMetric {
 impl GaugeMetric {
     pub fn new(name: &str, help: &str) -> Self {
         let opts = Opts::new(name, help);
-        let gauge = Gauge::with_opts(opts).unwrap();
+        let gauge = Gauge::with_opts(opts).unwrap_or_else(|e| {
+            eprintln!("Warning: Failed to create gauge metric '{}': {}. Using default gauge.", name, e);
+            // Create a simple gauge without opts as fallback
+            Gauge::new("fallback_gauge", "Fallback gauge metric").unwrap_or_else(|_| {
+                // If even the fallback fails, create a minimal gauge
+                Gauge::new("error_gauge", "Error gauge").expect("Failed to create fallback gauge")
+            })
+        });
         Self { gauge }
     }
 }
@@ -134,7 +148,14 @@ pub struct HistogramMetric {
 impl HistogramMetric {
     pub fn new(name: &str, help: &str) -> Self {
         let opts = HistogramOpts::new(name, help);
-        let histogram = Histogram::with_opts(opts).unwrap();
+        let histogram = Histogram::with_opts(opts).unwrap_or_else(|e| {
+            eprintln!("Warning: Failed to create histogram metric '{}': {}. Using default histogram.", name, e);
+            // Create a simple histogram without opts as fallback
+            Histogram::new("fallback_histogram", "Fallback histogram metric").unwrap_or_else(|_| {
+                // If even the fallback fails, create a minimal histogram
+                Histogram::new("error_histogram", "Error histogram").expect("Failed to create fallback histogram")
+            })
+        });
         Self { histogram }
     }
 }

@@ -1,5 +1,5 @@
 // Extension methods for Models enum
-// This file provides the methods that fluent-ai-rig needs
+// This file provides utility methods for working with model names and conversions
 
 use crate::models::Models;
 

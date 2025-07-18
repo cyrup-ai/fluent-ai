@@ -1,7 +1,8 @@
 //! Complex number implementation for quantum amplitude calculations
 
-use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Div, Mul, Sub};
+
+use serde::{Deserialize, Serialize};
 
 /// Complex number representation for quantum amplitudes
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

@@ -1,18 +1,19 @@
 // src/cognitive/quantum_orchestrator.rs
 //! Quantum orchestrator for managing recursive improvement loops
 
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, mpsc};
 use tokio::time::{self, Duration};
-use tracing::{debug, error, info, warn};
+use tracing::{info, warn};
 
 use crate::cognitive::{
     committee::CommitteeEvent,
     evolution::CognitiveCodeEvolution,
     mcts::CodeState,
     performance::PerformanceAnalyzer,
-    quantum::{QuantumConfig, QuantumMetrics, QuantumRouter},
+    quantum::{QuantumConfig, QuantumRouter},
     quantum_mcts::{QuantumMCTS, QuantumMCTSConfig, QuantumNodeState, QuantumTreeStatistics},
     types::{CognitiveError, OptimizationOutcome, OptimizationSpec},
 };

@@ -1,9 +1,11 @@
 //! Quantum superposition state management
 
-use crate::cognitive::quantum::{Complex64, EntanglementLink};
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
+
+use serde::{Deserialize, Serialize};
+
+use crate::cognitive::quantum::{Complex64, EntanglementLink};
 
 /// Quantum superposition state with full quantum properties
 #[derive(Debug, Clone)]

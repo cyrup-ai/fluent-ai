@@ -7,132 +7,132 @@ use thiserror::Error;
 pub enum HttpError {
     /// Network error
     #[error("Network error: {message}")]
-    NetworkError { 
+    NetworkError {
         /// Error message describing the network issue
-        message: String 
+        message: String,
     },
-    
+
     /// Client configuration error
     #[error("Client error: {message}")]
-    ClientError { 
+    ClientError {
         /// Error message describing the client configuration issue
-        message: String 
+        message: String,
     },
-    
+
     /// HTTP status error
     #[error("HTTP {status}: {message}")]
-    HttpStatus { 
+    HttpStatus {
         /// HTTP status code
-        status: u16, 
+        status: u16,
         /// Error message describing the HTTP status
-        message: String, 
+        message: String,
         /// Response body content
-        body: String 
+        body: String,
     },
-    
+
     /// Timeout error
     #[error("Request timeout: {message}")]
-    Timeout { 
+    Timeout {
         /// Error message describing the timeout
-        message: String 
+        message: String,
     },
-    
+
     /// Serialization error
     #[error("Serialization error: {message}")]
-    SerializationError { 
+    SerializationError {
         /// Error message describing the serialization issue
-        message: String 
+        message: String,
     },
-    
+
     /// Deserialization error
     #[error("Deserialization error: {message}")]
-    DeserializationError { 
+    DeserializationError {
         /// Error message describing the deserialization issue
-        message: String 
+        message: String,
     },
-    
+
     /// URL parsing error
     #[error("URL parsing error: {message}")]
-    UrlParseError { 
+    UrlParseError {
         /// Error message describing the URL parsing issue
-        message: String 
+        message: String,
     },
-    
+
     /// TLS error
     #[error("TLS error: {message}")]
-    TlsError { 
+    TlsError {
         /// Error message describing the TLS/SSL issue
-        message: String 
+        message: String,
     },
-    
+
     /// Connection error
     #[error("Connection error: {message}")]
-    ConnectionError { 
+    ConnectionError {
         /// Error message describing the connection issue
-        message: String 
+        message: String,
     },
-    
+
     /// Stream error
     #[error("Stream error: {message}")]
-    StreamError { 
+    StreamError {
         /// Error message describing the stream processing issue
-        message: String 
+        message: String,
     },
-    
+
     /// Cache error
     #[error("Cache error: {message}")]
-    CacheError { 
+    CacheError {
         /// Error message describing the cache issue
-        message: String 
+        message: String,
     },
-    
+
     /// Middleware error
     #[error("Middleware error: {message}")]
-    MiddlewareError { 
+    MiddlewareError {
         /// Error message describing the middleware issue
-        message: String 
+        message: String,
     },
-    
+
     /// Invalid header error
     #[error("Invalid header: {message}")]
-    InvalidHeader { 
+    InvalidHeader {
         /// Error message describing the invalid header
-        message: String 
+        message: String,
     },
-    
+
     /// Invalid body error
     #[error("Invalid body: {message}")]
-    InvalidBody { 
+    InvalidBody {
         /// Error message describing the invalid body
-        message: String 
+        message: String,
     },
-    
+
     /// Too many redirects
     #[error("Too many redirects: {message}")]
-    TooManyRedirects { 
+    TooManyRedirects {
         /// Error message describing the redirect issue
-        message: String 
+        message: String,
     },
-    
+
     /// DNS resolution error
     #[error("DNS resolution error: {message}")]
-    DnsError { 
+    DnsError {
         /// Error message describing the DNS resolution issue
-        message: String 
+        message: String,
     },
-    
+
     /// Proxy error
     #[error("Proxy error: {message}")]
-    ProxyError { 
+    ProxyError {
         /// Error message describing the proxy issue
-        message: String 
+        message: String,
     },
-    
+
     /// Unknown error
     #[error("Unknown error: {message}")]
-    Unknown { 
+    Unknown {
         /// Error message describing the unknown issue
-        message: String 
+        message: String,
     },
 }
 
@@ -143,14 +143,14 @@ impl HttpError {
             message: message.into(),
         }
     }
-    
+
     /// Create a client error
     pub fn client(message: impl Into<String>) -> Self {
         Self::ClientError {
             message: message.into(),
         }
     }
-    
+
     /// Create an HTTP status error
     pub fn http_status(status: u16, message: impl Into<String>, body: impl Into<String>) -> Self {
         Self::HttpStatus {
@@ -159,155 +159,164 @@ impl HttpError {
             body: body.into(),
         }
     }
-    
+
     /// Create a timeout error
     pub fn timeout(message: impl Into<String>) -> Self {
         Self::Timeout {
             message: message.into(),
         }
     }
-    
+
     /// Create a serialization error
     pub fn serialization(message: impl Into<String>) -> Self {
         Self::SerializationError {
             message: message.into(),
         }
     }
-    
+
     /// Create a deserialization error
     pub fn deserialization(message: impl Into<String>) -> Self {
         Self::DeserializationError {
             message: message.into(),
         }
     }
-    
+
     /// Create a URL parsing error
     pub fn url_parse(message: impl Into<String>) -> Self {
         Self::UrlParseError {
             message: message.into(),
         }
     }
-    
+
     /// Create a TLS error
     pub fn tls(message: impl Into<String>) -> Self {
         Self::TlsError {
             message: message.into(),
         }
     }
-    
+
     /// Create a connection error
     pub fn connection(message: impl Into<String>) -> Self {
         Self::ConnectionError {
             message: message.into(),
         }
     }
-    
+
     /// Create a stream error
     pub fn stream(message: impl Into<String>) -> Self {
         Self::StreamError {
             message: message.into(),
         }
     }
-    
+
     /// Create a cache error
     pub fn cache(message: impl Into<String>) -> Self {
         Self::CacheError {
             message: message.into(),
         }
     }
-    
+
     /// Create a middleware error
     pub fn middleware(message: impl Into<String>) -> Self {
         Self::MiddlewareError {
             message: message.into(),
         }
     }
-    
+
     /// Create an invalid header error
     pub fn invalid_header(message: impl Into<String>) -> Self {
         Self::InvalidHeader {
             message: message.into(),
         }
     }
-    
+
     /// Create an invalid body error
     pub fn invalid_body(message: impl Into<String>) -> Self {
         Self::InvalidBody {
             message: message.into(),
         }
     }
-    
+
     /// Create a too many redirects error
     pub fn too_many_redirects(message: impl Into<String>) -> Self {
         Self::TooManyRedirects {
             message: message.into(),
         }
     }
-    
+
     /// Create a DNS error
     pub fn dns(message: impl Into<String>) -> Self {
         Self::DnsError {
             message: message.into(),
         }
     }
-    
+
     /// Create a proxy error
     pub fn proxy(message: impl Into<String>) -> Self {
         Self::ProxyError {
             message: message.into(),
         }
     }
-    
+
     /// Create an unknown error
     pub fn unknown(message: impl Into<String>) -> Self {
         Self::Unknown {
             message: message.into(),
         }
     }
-    
+
     /// Check if error is retriable
     pub fn is_retriable(&self) -> bool {
         matches!(
             self,
-            HttpError::NetworkError { .. } |
-            HttpError::Timeout { .. } |
-            HttpError::ConnectionError { .. } |
-            HttpError::DnsError { .. } |
-            HttpError::HttpStatus { status: 429 | 502 | 503 | 504, .. }
+            HttpError::NetworkError { .. }
+                | HttpError::Timeout { .. }
+                | HttpError::ConnectionError { .. }
+                | HttpError::DnsError { .. }
+                | HttpError::HttpStatus {
+                    status: 429 | 502 | 503 | 504,
+                    ..
+                }
         )
     }
-    
+
     /// Check if error is a client error (4xx)
     pub fn is_client_error(&self) -> bool {
         matches!(
             self,
-            HttpError::HttpStatus { status: 400..=499, .. }
+            HttpError::HttpStatus {
+                status: 400..=499,
+                ..
+            }
         )
     }
-    
+
     /// Check if error is a server error (5xx)
     pub fn is_server_error(&self) -> bool {
         matches!(
             self,
-            HttpError::HttpStatus { status: 500..=599, .. }
+            HttpError::HttpStatus {
+                status: 500..=599,
+                ..
+            }
         )
     }
-    
+
     /// Check if error is a timeout
     pub fn is_timeout(&self) -> bool {
         matches!(self, HttpError::Timeout { .. })
     }
-    
+
     /// Check if error is a network error
     pub fn is_network_error(&self) -> bool {
         matches!(self, HttpError::NetworkError { .. })
     }
-    
+
     /// Check if error is a connection error
     pub fn is_connection_error(&self) -> bool {
         matches!(self, HttpError::ConnectionError { .. })
     }
-    
+
     /// Get the error message
     pub fn message(&self) -> &str {
         match self {
@@ -331,7 +340,7 @@ impl HttpError {
             HttpError::Unknown { message } => message,
         }
     }
-    
+
     /// Get the HTTP status code if applicable
     pub fn status_code(&self) -> Option<u16> {
         match self {
@@ -339,7 +348,7 @@ impl HttpError {
             _ => None,
         }
     }
-    
+
     /// Get the response body if applicable
     pub fn body(&self) -> Option<&str> {
         match self {

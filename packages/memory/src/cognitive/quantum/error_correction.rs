@@ -1,12 +1,13 @@
 //! Quantum error correction implementation
 
+use std::collections::HashMap;
+use std::time::Duration;
+
 use crate::cognitive::quantum::{
     Complex64,
     ml_decoder::{MLDecoder, MLModelType},
-    types::{CognitiveError, CognitiveResult},
+    types::CognitiveResult,
 };
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
 
 /// Quantum error correction system
 pub struct QuantumErrorCorrection {

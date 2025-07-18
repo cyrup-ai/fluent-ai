@@ -1,8 +1,8 @@
 //! Test to verify the EXACT API from ARCHITECTURE.md works
 
+use cyrup_sugars::hash_map_fn;
 use fluent_ai::*;
 use serde_json::Value;
-use cyrup_sugars::hash_map_fn;
 
 #[tokio::test]
 async fn test_exact_architecture_api() {

@@ -667,14 +667,16 @@ pub mod mcp_memory_helpers {
     /// Validate memory capacity constraints
     pub fn validate_memory_capacity(args: &Value) -> Result<(), String> {
         if let Some(ttl) = args.get("ttl")
-            && ttl.as_u64().unwrap_or(0) == 0 {
-                return Err("TTL must be positive".to_string());
-            }
+            && ttl.as_u64().unwrap_or(0) == 0
+        {
+            return Err("TTL must be positive".to_string());
+        }
 
         if let Some(max_size) = args.get("max_size")
-            && max_size.as_u64().unwrap_or(0) == 0 {
-                return Err("Max size must be positive".to_string());
-            }
+            && max_size.as_u64().unwrap_or(0) == 0
+        {
+            return Err("Max size must be positive".to_string());
+        }
 
         Ok(())
     }

@@ -6,8 +6,8 @@
 //! 3. Execute code safely in sandboxed environments
 
 use fluent_ai_domain::{
-    SecureMcpTool, SecureMcpToolBuilder, SecureExecutionConfig, 
-    set_secure_executor_config, McpToolTrait as Tool
+    McpToolTrait as Tool, SecureExecutionConfig, SecureMcpTool, SecureMcpToolBuilder,
+    set_secure_executor_config,
 };
 use serde_json::json;
 
@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 1: Create a Python executor with default security settings
     println!("\n📝 Example 1: Python Code Execution");
     let python_tool = SecureMcpTool::python_executor();
-    
+
     let python_code = json!({
         "code": "print('Hello from secure Python execution!')\nprint('Math calculation:', 2 + 2)",
         "language": "python"
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Example 3: Custom security configuration
     println!("\n🛡️  Example 3: Custom Security Configuration");
-    
+
     let secure_config = SecureExecutionConfig {
         use_firecracker: false, // Keep false for compatibility
         use_landlock: true,
@@ -92,7 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 4: Rust code execution
     println!("\n🦀 Example 4: Rust Code Execution");
     let rust_tool = SecureMcpTool::rust_executor();
-    
+
     let rust_code = json!({
         "code": r#"
 fn main() {
@@ -122,12 +122,19 @@ fn main() {
 
     for tool in tools {
         println!("Tool: {} - {}", tool.name(), tool.description());
-        println!("  Parameters: {}", serde_json::to_string_pretty(tool.parameters())?);
+        println!(
+            "  Parameters: {}",
+            serde_json::to_string_pretty(tool.parameters())?
+        );
     }
 
     println!("\n🎉 All examples completed!");
-    println!("\nNote: Some executions may fail in environments without proper language runtimes installed.");
-    println!("This is expected behavior - cylo provides secure sandboxing when runtimes are available.");
-    
+    println!(
+        "\nNote: Some executions may fail in environments without proper language runtimes installed."
+    );
+    println!(
+        "This is expected behavior - cylo provides secure sandboxing when runtimes are available."
+    );
+
     Ok(())
 }

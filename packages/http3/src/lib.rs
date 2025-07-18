@@ -45,38 +45,37 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use std::collections::HashMap;
+
 use once_cell::sync::Lazy;
 
+pub mod cache;
 pub mod client;
+pub mod config;
+pub mod error;
+pub mod middleware;
 pub mod request;
 pub mod response;
-pub mod error;
 pub mod stream;
-pub mod cache;
-pub mod middleware;
-pub mod config;
 
-pub use client::{HttpClient, ClientStats};
-pub use request::{HttpRequest, HttpMethod};
-pub use response::HttpResponse;
-pub use error::{HttpError, HttpResult};
-pub use stream::HttpStream;
 pub use cache::CacheEntry;
-pub use middleware::{Middleware, MiddlewareChain};
+pub use client::{ClientStats, HttpClient};
 pub use config::HttpConfig;
+pub use error::{HttpError, HttpResult};
+pub use middleware::{Middleware, MiddlewareChain};
+pub use request::{HttpMethod, HttpRequest};
+pub use response::HttpResponse;
+pub use stream::HttpStream;
 
 /// Global HTTP client instance with connection pooling
 /// Uses the Default implementation which provides graceful fallback handling
 /// in case the optimized configuration fails to initialize
-static GLOBAL_CLIENT: Lazy<Arc<HttpClient>> = Lazy::new(|| {
-    Arc::new(HttpClient::default())
-});
+static GLOBAL_CLIENT: Lazy<Arc<HttpClient>> = Lazy::new(|| Arc::new(HttpClient::default()));
 
 /// Get the global HTTP client instance
-/// 
+///
 /// This provides a shared, high-performance HTTP client with connection pooling
 /// and QUIC/HTTP3 support. The client is initialized once and reused across
 /// all requests for maximum efficiency.
@@ -113,7 +112,6 @@ pub fn patch(url: &str) -> HttpRequest {
 pub fn head(url: &str) -> HttpRequest {
     global_client().head(url)
 }
-
 
 /// Get connection pool statistics
 pub fn connection_stats() -> ClientStats {
@@ -152,7 +150,7 @@ impl RequestBuilder {
             cache_control: None,
         }
     }
-    
+
     /// Add a header to the request
     pub fn header<K, V>(mut self, key: K, value: V) -> Self
     where
@@ -162,88 +160,89 @@ impl RequestBuilder {
         self.headers.insert(key.into(), value.into());
         self
     }
-    
+
     /// Add multiple headers to the request
     pub fn headers(mut self, headers: HashMap<String, String>) -> Self {
         self.headers.extend(headers);
         self
     }
-    
+
     /// Set the request body
     pub fn body(mut self, body: Vec<u8>) -> Self {
         self.body = Some(body);
         self
     }
-    
+
     /// Set the request body from a string
     pub fn body_string(mut self, body: String) -> Self {
         self.body = Some(body.into_bytes());
         self
     }
-    
+
     /// Set the request body from JSON
     pub fn json<T: serde::Serialize>(mut self, json: &T) -> HttpResult<Self> {
         let body = serde_json::to_vec(json)?;
-        self.headers.insert("Content-Type".to_string(), "application/json".to_string());
+        self.headers
+            .insert("Content-Type".to_string(), "application/json".to_string());
         self.body = Some(body);
         Ok(self)
     }
-    
+
     /// Set request timeout
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
-    
+
     /// Set cache control header
     pub fn cache_control(mut self, cache_control: String) -> Self {
         self.cache_control = Some(cache_control);
         self
     }
-    
+
     /// Send the request
     pub async fn send(self) -> HttpResult<HttpResponse> {
         let mut request = HttpRequest::new(self.method, self.url);
-        
+
         for (key, value) in self.headers {
             request = request.header(key, value);
         }
-        
+
         if let Some(body) = self.body {
             request = request.set_body(body);
         }
-        
+
         if let Some(timeout) = self.timeout {
             request = request.set_timeout(timeout);
         }
-        
+
         if let Some(cache_control) = self.cache_control {
             request = request.header("Cache-Control", cache_control);
         }
-        
+
         self.client.send(request).await
     }
-    
+
     /// Send the request and return a stream
     pub async fn send_stream(self) -> HttpResult<HttpStream> {
         let mut request = HttpRequest::new(self.method, self.url);
-        
+
         for (key, value) in self.headers {
             request = request.header(key, value);
         }
-        
+
         if let Some(body) = self.body {
             request = request.set_body(body);
         }
-        
+
         if let Some(timeout) = self.timeout {
             request = request.set_timeout(timeout);
         }
-        
+
         if let Some(cache_control) = self.cache_control {
             request = request.header("Cache-Control", cache_control);
         }
-        
+
         self.client.send_stream(request).await
     }
 }

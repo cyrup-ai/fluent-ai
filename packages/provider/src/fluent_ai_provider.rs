@@ -9,6 +9,8 @@ pub static PROVIDER_CLIENT_MAP: Lazy<HashMap<&'static str, &'static str>> = Lazy
     map.insert("openai", "openai");
     map.insert("claude", "claude");
     map.insert("mistral", "mistral");
+    map.insert("ai21", "ai21");
+    map.insert("cohere", "cohere");
     map.insert("vertexai", "vertexai");
     map.insert("bedrock", "bedrock");
     map
