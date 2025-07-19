@@ -63,18 +63,22 @@ impl PerformanceAnalyzer {
     pub async fn estimate_reward(&self, state: &CodeState) -> Result<f64, CognitiveError> {
         // Ask committee to evaluate the state against the objective
         let evaluation_action = "evaluate_current_state";
+        let rubric = crate::cognitive::common::types::EvaluationRubric::from_spec(&self.spec, &self.user_objective);
         let factors = self
             .committee
-            .evaluate_action(state, evaluation_action, &self.spec, &self.user_objective)
+            .evaluate_action(state, evaluation_action, &rubric)
             .await?;
 
+        // Convert ConsensusDecision to ImpactFactors
+        let impact_factors: crate::cognitive::types::ImpactFactors = factors.into();
+        
         // Calculate reward based on how well the state meets the objectives
-        let reward = self.calculate_reward_from_factors(&factors, state);
+        let reward = self.calculate_reward_from_factors(&impact_factors, state);
 
         // Store evaluation in history
         let evaluation = StateEvaluation {
             state: state.clone(),
-            impact_factors: factors.clone(),
+            impact_factors: impact_factors.clone(),
             objective_score: reward,
             timestamp: Instant::now(),
         };

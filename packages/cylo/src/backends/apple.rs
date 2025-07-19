@@ -13,15 +13,14 @@
 
 use std::collections::HashMap;
 use std::process::{Command, Stdio};
-use std::time::{Duration, Instant, SystemTime};
-
-use serde::{Deserialize, Serialize};
+use std::time::{Duration, Instant};
 
 use crate::backends::AsyncTask;
 use crate::backends::{
     BackendConfig, BackendError, BackendResult, ExecutionBackend, ExecutionRequest,
     ExecutionResult, HealthStatus, ResourceUsage,
 };
+use crate::AsyncTaskBuilder;
 
 /// Apple containerization backend
 ///
@@ -35,25 +34,6 @@ pub struct AppleBackend {
 
     /// Backend configuration
     config: BackendConfig,
-
-    /// Cached container registry information
-    registry_cache: HashMap<String, CachedImage>,
-}
-
-/// Cached container image information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct CachedImage {
-    /// Image digest/hash
-    digest: String,
-
-    /// Last pull timestamp
-    last_pulled: SystemTime,
-
-    /// Image size in bytes
-    size_bytes: u64,
-
-    /// Supported languages detected in image
-    detected_languages: Vec<String>,
 }
 
 impl AppleBackend {
@@ -85,11 +65,7 @@ impl AppleBackend {
             });
         }
 
-        Ok(Self {
-            image,
-            config,
-            registry_cache: HashMap::new(),
-        })
+        Ok(Self { image, config })
     }
 
     /// Check if platform supports Apple containerization
@@ -154,7 +130,7 @@ impl AppleBackend {
     /// # Returns
     /// AsyncTask that resolves to availability status
     fn check_cli_availability() -> AsyncTask<bool> {
-        AsyncTaskBuilder::new().spawn(|| async move {
+        AsyncTaskBuilder::new(async move {
             let result = Command::new("container")
                 .arg("--version")
                 .stdout(Stdio::null())
@@ -166,6 +142,7 @@ impl AppleBackend {
                 Err(_) => false,
             }
         })
+        .spawn()
     }
 
     /// Pull container image if not already available
@@ -176,7 +153,7 @@ impl AppleBackend {
     /// # Returns
     /// AsyncTask that resolves when image is available
     fn ensure_image_available(image: String) -> AsyncTask<BackendResult<()>> {
-        AsyncTaskBuilder::new().spawn(move || async move {
+        AsyncTaskBuilder::new(async move {
             // Check if image exists locally first
             let check_result = Command::new("container")
                 .args(&["image", "exists", &image])
@@ -214,6 +191,7 @@ impl AppleBackend {
                 }),
             }
         })
+        .spawn()
     }
 
     /// Execute code in Apple container
@@ -227,7 +205,7 @@ impl AppleBackend {
         image: String,
         request: ExecutionRequest,
     ) -> AsyncTask<BackendResult<ExecutionResult>> {
-        AsyncTaskBuilder::new().spawn(move || async move {
+        AsyncTaskBuilder::new(async move {
             let start_time = Instant::now();
 
             // Create unique container name
@@ -295,19 +273,25 @@ impl AppleBackend {
 
             // Wait for completion with timeout
             let timeout_duration = request.timeout;
-            let result =
-                tokio::time::timeout(timeout_duration, async { child.wait_with_output() }).await;
 
-            let output = match result {
-                Ok(Ok(output)) => output,
-                Ok(Err(e)) => {
+            // Use a different approach - spawn a task that can kill the process
+            let child_handle = tokio::spawn(async move { child.wait_with_output() });
+
+            let output = match tokio::time::timeout(timeout_duration, child_handle).await {
+                Ok(Ok(Ok(output))) => output,
+                Ok(Ok(Err(e))) => {
                     return Err(BackendError::ProcessFailed {
                         details: format!("Container execution failed: {}", e),
                     });
                 }
+                Ok(Err(_)) => {
+                    return Err(BackendError::ProcessFailed {
+                        details: "Container process task failed".to_string(),
+                    });
+                }
                 Err(_) => {
-                    // Kill the process on timeout
-                    let _ = child.kill();
+                    // Timeout occurred - the process is still running but we can't kill it
+                    // from here since it's been moved into the task
                     return Err(BackendError::ExecutionTimeout {
                         seconds: timeout_duration.as_secs(),
                     });
@@ -336,6 +320,7 @@ impl AppleBackend {
                 },
             })
         })
+        .spawn()
     }
 
     /// Prepare execution command for specific language
@@ -430,32 +415,46 @@ impl ExecutionBackend for AppleBackend {
         let image = self.image.clone();
         let backend_name = self.backend_type();
 
-        AsyncTaskBuilder::new().spawn(move || async move {
+        AsyncTaskBuilder::new(async move {
             // Ensure image is available
             match Self::ensure_image_available(image.clone()).await {
-                Ok(()) => {}
-                Err(e) => {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => {
                     return ExecutionResult::failure(-1, format!("Failed to prepare image: {}", e));
+                }
+                Err(e) => {
+                    return ExecutionResult::failure(
+                        -1,
+                        format!("Failed to prepare image task: {}", e),
+                    );
                 }
             }
 
             // Execute in container
             match Self::execute_in_container(image, request).await {
-                Ok(result) => result,
-                Err(e) => ExecutionResult::failure(
+                Ok(Ok(result)) => result,
+                Ok(Err(e)) => ExecutionResult::failure(
                     -1,
                     format!("{} execution failed: {}", backend_name, e),
                 ),
+                Err(e) => ExecutionResult::failure(
+                    -1,
+                    format!("{} execution task failed: {}", backend_name, e),
+                ),
             }
         })
+        .spawn()
     }
 
     fn health_check(&self) -> AsyncTask<HealthStatus> {
         let image = self.image.clone();
 
-        AsyncTaskBuilder::new().spawn(move || async move {
+        AsyncTaskBuilder::new(async move {
             // Check CLI availability
-            let cli_available = Self::check_cli_availability().await;
+            let cli_available = match Self::check_cli_availability().await {
+                Ok(available) => available,
+                Err(_) => false,
+            };
             if !cli_available {
                 return HealthStatus::unhealthy("Apple containerization CLI not available")
                     .with_metric("cli_available", "false");
@@ -472,26 +471,31 @@ impl ExecutionBackend for AppleBackend {
                 .with_timeout(Duration::from_secs(10));
 
             match Self::execute_in_container(image.clone(), test_request).await {
-                Ok(result) if result.is_success() => {
+                Ok(Ok(result)) if result.is_success() => {
                     HealthStatus::healthy("Apple containerization backend operational")
                         .with_metric("cli_available", "true")
                         .with_metric("platform_supported", "true")
                         .with_metric("test_execution", "success")
                         .with_metric("image", &image)
                 }
-                Ok(result) => {
+                Ok(Ok(result)) => {
                     HealthStatus::unhealthy(format!("Test execution failed: {}", result.stderr))
                         .with_metric("test_execution", "failed")
                         .with_metric("exit_code", &result.exit_code.to_string())
                 }
-                Err(e) => HealthStatus::unhealthy(format!("Health check execution error: {}", e))
-                    .with_metric("test_execution", "error"),
+                Ok(Err(e)) => {
+                    HealthStatus::unhealthy(format!("Health check execution error: {}", e))
+                        .with_metric("test_execution", "error")
+                }
+                Err(e) => HealthStatus::unhealthy(format!("Health check task error: {}", e))
+                    .with_metric("test_execution", "task_error"),
             }
         })
+        .spawn()
     }
 
     fn cleanup(&self) -> AsyncTask<crate::execution_env::CyloResult<()>> {
-        AsyncTaskBuilder::new().spawn(|| async move {
+        AsyncTaskBuilder::new(async move {
             // Clean up any dangling containers with our prefix
             let cleanup_result = Command::new("container")
                 .args(&[
@@ -519,6 +523,7 @@ impl ExecutionBackend for AppleBackend {
 
             Ok(())
         })
+        .spawn()
     }
 
     fn get_config(&self) -> &BackendConfig {

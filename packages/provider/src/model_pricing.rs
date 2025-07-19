@@ -5,6 +5,7 @@
 
 use crate::model_capabilities::ModelInfoData;
 use crate::completion_provider::ModelConfig;
+use fluent_ai_domain::PricingTier;
 
 /// Convert ModelInfoData to ModelConfig with zero allocation
 /// 
@@ -68,24 +69,8 @@ fn extract_provider_name(provider_name: &str) -> &'static str {
     }
 }
 
-/// Pricing tier classification for cost analysis
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PricingTier {
-    /// Ultra-low cost models (< $0.50 input, < $1.50 output per 1M tokens)
-    UltraLow,
-    
-    /// Low cost models (< $1.00 input, < $3.00 output per 1M tokens)
-    Low,
-    
-    /// Medium cost models (< $5.00 input, < $15.00 output per 1M tokens)
-    Medium,
-    
-    /// High cost models (< $20.00 input, < $60.00 output per 1M tokens)
-    High,
-    
-    /// Premium cost models (>= $20.00 input or >= $60.00 output per 1M tokens)
-    Premium,
-}
+// Re-export PricingTier from domain for backward compatibility
+pub use fluent_ai_domain::PricingTier;
 
 /// Cost analysis result for model comparison
 #[derive(Debug, Clone)]
@@ -234,18 +219,10 @@ pub struct MonthlyCostEstimate {
 }
 
 /// Classify model into pricing tier based on costs
+/// 
+/// This is now a thin wrapper around `PricingTier::classify` from the domain crate.
 fn classify_pricing_tier(input_cost: f64, output_cost: f64) -> PricingTier {
-    if input_cost < 0.5 && output_cost < 1.5 {
-        PricingTier::UltraLow
-    } else if input_cost < 1.0 && output_cost < 3.0 {
-        PricingTier::Low
-    } else if input_cost < 5.0 && output_cost < 15.0 {
-        PricingTier::Medium
-    } else if input_cost < 20.0 && output_cost < 60.0 {
-        PricingTier::High
-    } else {
-        PricingTier::Premium
-    }
+    PricingTier::classify(input_cost, output_cost)
 }
 
 /// Calculate cost for a typical request (1000 input, 500 output tokens)

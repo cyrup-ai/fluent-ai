@@ -25,6 +25,17 @@ pub struct TemporalContext {
     pub temporal_decay: f32,
 }
 
+impl Default for TemporalContext {
+    fn default() -> Self {
+        Self {
+            history_embedding: Vec::new(),
+            prediction_horizon: Vec::new(),
+            causal_dependencies: Vec::new(),
+            temporal_decay: 0.1,
+        }
+    }
+}
+
 /// Causal relationship between memories
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CausalLink {
@@ -44,6 +55,20 @@ pub struct QuantumSignature {
     pub entanglement_links: Vec<String>,
     pub quantum_entropy: f64,
     pub creation_time: chrono::DateTime<chrono::Utc>,
+}
+
+impl Default for QuantumSignature {
+    fn default() -> Self {
+        Self {
+            coherence_fingerprint: vec![1.0], // Start with maximum coherence
+            entanglement_bonds: Vec::new(),
+            superposition_contexts: vec!["default".to_string()],
+            collapse_probability: 0.0, // Start with 0% collapse probability
+            entanglement_links: Vec::new(),
+            quantum_entropy: 0.0, // Start with minimum entropy
+            creation_time: chrono::Utc::now(),
+        }
+    }
 }
 
 /// Cognitive memory node with enhanced capabilities
@@ -118,6 +143,7 @@ pub enum EntanglementType {
     Werner,
     Weak,
     Bell,
+    BellPair,
 }
 
 /// Evolution metadata tracking system development
@@ -205,10 +231,29 @@ pub struct AlternativeRoute {
 pub struct EnhancedQuery {
     pub original: String,
     pub intent: QueryIntent,
+    pub context: String,
+    pub priority: f32,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
     pub context_embedding: Vec<f32>,
     pub temporal_context: Option<TemporalContext>,
     pub cognitive_hints: Vec<String>,
     pub expected_complexity: f32,
+}
+
+impl Default for EnhancedQuery {
+    fn default() -> Self {
+        Self {
+            original: String::new(),
+            intent: QueryIntent::Retrieval, // Default to Retrieval intent
+            context: String::new(),
+            priority: 1.0, // Default normal priority
+            timestamp: chrono::Utc::now(),
+            context_embedding: Vec::new(),
+            temporal_context: None,
+            cognitive_hints: Vec::new(),
+            expected_complexity: 0.5, // Medium complexity by default
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -258,6 +303,8 @@ pub enum PatternType {
 /// Cognitive error types
 #[derive(Debug, thiserror::Error)]
 pub enum CognitiveError {
+    #[error("Quantum routing error: {0}")]
+    QuantumRoutingError(String),
     #[error("Quantum decoherence occurred: {0}")]
     QuantumDecoherence(String),
 
@@ -282,6 +329,21 @@ pub enum CognitiveError {
     #[error("Configuration error: {0}")]
     ConfigError(String),
 
+    #[error("Memory operation failed: {0}")]
+    MemoryError(String),
+
+    #[error("MCTS node not found")]
+    NodeNotFound,
+
+    #[error("MCTS child node not found")]
+    NoChildFound,
+
+    #[error("MCTS node has no untried actions")]
+    NoUntriedActions,
+
+    #[error("No result from MCTS search")]
+    NoResult,
+
     #[error("API error: {0}")]
     ApiError(String),
 
@@ -302,6 +364,31 @@ pub enum CognitiveError {
 
     #[error("Evaluation failed: {0}")]
     EvaluationFailed(String),
+
+    #[error("Consensus failed: {0}")]
+    ConsensusFailed(String),
+}
+
+impl From<crate::cognitive::quantum::router::QuantumRouterError> for CognitiveError {
+    fn from(error: crate::cognitive::quantum::router::QuantumRouterError) -> Self {
+        match error {
+            crate::cognitive::quantum::router::QuantumRouterError::SuperpositionError(msg) => {
+                CognitiveError::QuantumDecoherence(msg)
+            }
+            crate::cognitive::quantum::router::QuantumRouterError::EntanglementError(msg) => {
+                CognitiveError::QuantumDecoherence(msg)
+            }
+            crate::cognitive::quantum::router::QuantumRouterError::MeasurementError(msg) => {
+                CognitiveError::QuantumDecoherence(msg)
+            }
+            crate::cognitive::quantum::router::QuantumRouterError::ValidationError(msg) => {
+                CognitiveError::ContextProcessingError(msg)
+            }
+            crate::cognitive::quantum::router::QuantumRouterError::IoError(e) => {
+                CognitiveError::ContextProcessingError(e.to_string())
+            }
+        }
+    }
 }
 
 pub type CognitiveResult<T> = Result<T, CognitiveError>;
@@ -310,6 +397,7 @@ pub type CognitiveResult<T> = Result<T, CognitiveError>;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptimizationSpec {
     pub objective: String,
+    pub improvement_threshold: f32,
     pub constraints: Vec<String>,
     pub success_criteria: Vec<String>,
     pub optimization_type: OptimizationType,
@@ -353,6 +441,17 @@ pub enum OptimizationOutcome {
         suggestions: Vec<String>,
         applied: bool,
     },
+}
+
+impl OptimizationOutcome {
+    /// Get whether this optimization was applied
+    pub fn applied(&self) -> bool {
+        match self {
+            OptimizationOutcome::Success { applied, .. } => *applied,
+            OptimizationOutcome::PartialSuccess { applied, .. } => *applied,
+            OptimizationOutcome::Failure { applied, .. } => *applied,
+        }
+    }
 }
 
 /// Async optimization result wrapper
@@ -400,6 +499,22 @@ pub struct Restrictions {
     pub min_relevance_improvement: f64,
 }
 
+impl Default for Restrictions {
+    fn default() -> Self {
+        Self {
+            max_memory_usage: None,
+            max_processing_time: None,
+            allowed_operations: vec!["quantum_optimization".to_string()],
+            forbidden_operations: vec![],
+            security_level: SecurityLevel::Internal,
+            compiler: "default".to_string(),
+            max_latency_increase: 0.1,       // 10% max latency increase
+            max_memory_increase: 0.1,        // 10% max memory increase
+            min_relevance_improvement: 0.01, // 1% minimum relevance improvement
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SecurityLevel {
     Public,
@@ -441,6 +556,17 @@ pub struct EvolutionRules {
     pub max_cumulative_latency_increase: f64,
     pub min_action_diversity: f64,
     pub validation_required: bool,
+}
+
+/// Performance metrics for cognitive operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceMetrics {
+    pub adaptation_rate: f64,
+    pub memory_efficiency: f64,
+    pub response_latency: f64,
+    pub cost_savings: f64,
+    pub accuracy: f64,
+    pub relevance_gain: f64,
 }
 
 /// Baseline performance metrics

@@ -16,6 +16,16 @@ pub struct OpenAIProvider {
     api_base: String,
 }
 
+impl std::fmt::Debug for OpenAIProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OpenAIProvider")
+            .field("model", &self.model)
+            .field("api_base", &self.api_base)
+            .field("api_key", &"[REDACTED]")
+            .finish()
+    }
+}
+
 impl OpenAIProvider {
     /// Create a new OpenAI provider
     pub fn new(api_key: String, model: Option<String>) -> Result<Self, LLMError> {
@@ -76,7 +86,7 @@ impl LLMProvider for OpenAIProvider {
                     .map_err(|e| LLMError::NetworkError(format!("HTTP request failed: {}", e)))?;
 
                 if response.status().is_success() {
-                    let response_body = response.bytes().await.map_err(|e| {
+                    let response_body = response.bytes().map_err(|e| {
                         LLMError::NetworkError(format!("Failed to read response body: {}", e))
                     })?;
 
@@ -101,7 +111,6 @@ impl LLMProvider for OpenAIProvider {
                 } else {
                     let error_body = response
                         .bytes()
-                        .await
                         .map(|body| String::from_utf8_lossy(&body).into_owned())
                         .unwrap_or_else(|_| "Unknown error".to_string());
                     Err(LLMError::ApiError(error_body))
@@ -146,7 +155,7 @@ impl LLMProvider for OpenAIProvider {
                     .map_err(|e| LLMError::NetworkError(format!("HTTP request failed: {}", e)))?;
 
                 if response.status().is_success() {
-                    let response_body = response.bytes().await.map_err(|e| {
+                    let response_body = response.bytes().map_err(|e| {
                         LLMError::NetworkError(format!("Failed to read response body: {}", e))
                     })?;
 
@@ -169,7 +178,6 @@ impl LLMProvider for OpenAIProvider {
                 } else {
                     let error_body = response
                         .bytes()
-                        .await
                         .map(|body| String::from_utf8_lossy(&body).into_owned())
                         .unwrap_or_else(|_| "Unknown error".to_string());
                     Err(LLMError::ApiError(error_body))

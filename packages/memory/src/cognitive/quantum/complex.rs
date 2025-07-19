@@ -108,6 +108,13 @@ impl AddAssign for Complex64 {
     }
 }
 
+impl std::ops::MulAssign<f64> for Complex64 {
+    fn mul_assign(&mut self, scalar: f64) {
+        self.real *= scalar;
+        self.imaginary *= scalar;
+    }
+}
+
 impl Complex64 {
     /// Calculate e^(self) for complex exponential
     pub fn exp(&self) -> Self {

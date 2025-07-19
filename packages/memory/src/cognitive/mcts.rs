@@ -11,6 +11,7 @@ use tokio::task::JoinSet;
 use tracing::{debug, error, info};
 
 use crate::cognitive::committee::{CommitteeEvent, EvaluationCommittee};
+use crate::cognitive::common::types::CommitteeConfig;
 use crate::cognitive::performance::PerformanceAnalyzer;
 use crate::cognitive::types::{CognitiveError, OptimizationSpec};
 
@@ -57,7 +58,8 @@ impl MCTS {
         user_objective: String,
         event_tx: mpsc::Sender<CommitteeEvent>,
     ) -> Result<Self, CognitiveError> {
-        let committee = Arc::new(EvaluationCommittee::new(event_tx, num_cpus::get().min(4)).await?);
+        let config = CommitteeConfig::default();
+        let committee = Arc::new(EvaluationCommittee::new(config, event_tx).await?);
 
         let root_id = "root".to_string();
         let untried_actions = Self::get_possible_actions(&initial_state, &spec);
@@ -167,16 +169,19 @@ impl MCTS {
             total_reward: 0.0,
             children: HashMap::new(),
             parent: Some(node_id.to_string()),
-            state: new_state,
+            state: new_state.clone(),
             untried_actions: Self::get_possible_actions(&new_state, &self.spec),
             is_terminal: false, // Will be determined later
             applied_action: Some(action.clone()),
         };
 
         self.tree.insert(child_id.clone(), child_node);
-        let parent_node = self.tree
-            .get_mut(node_id)
-            .ok_or_else(|| CognitiveError::TreeError(format!("Parent node {} not found in tree", node_id)))?;
+        let parent_node = self.tree.get_mut(node_id).ok_or_else(|| {
+            CognitiveError::ContextProcessingError(format!(
+                "Parent node {} not found in tree",
+                node_id
+            ))
+        })?;
         parent_node.children.insert(action, child_id.clone());
 
         Ok(Some(child_id))
@@ -216,7 +221,7 @@ impl MCTS {
 
     /// Run MCTS for specified iterations
     pub async fn run(&mut self, iterations: u64) -> Result<(), CognitiveError> {
-        let mut join_set = JoinSet::new();
+        let mut join_set: JoinSet<Result<(String, f64), CognitiveError>> = JoinSet::new();
         let mut completed_iterations = 0;
 
         while completed_iterations < iterations {
@@ -414,9 +419,10 @@ impl MCTS {
         action: &str,
     ) -> Result<CodeState, CognitiveError> {
         // Get impact factors from committee
+        let rubric = crate::cognitive::common::types::EvaluationRubric::from_spec(&self.spec, &self.user_objective);
         let factors = self
             .committee
-            .evaluate_action(state, action, &self.spec, &self.user_objective)
+            .evaluate_action(state, action, &rubric)
             .await?;
 
         // Apply factors to current metrics
@@ -463,7 +469,8 @@ impl MCTS {
         );
 
         Ok(CodeState {
-            code: new_code,
+            code: new_code.clone(),
+            code_content: new_code,
             latency: new_latency,
             memory: new_memory,
             relevance: new_relevance,

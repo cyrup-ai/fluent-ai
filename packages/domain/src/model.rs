@@ -12,8 +12,79 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
+/// AI model variants supported by the fluent-ai framework
+/// 
+/// This enum represents the different AI models that can be used with the framework.
+/// Each variant corresponds to a specific model from a provider (e.g., OpenAI, Anthropic).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Models {
+    /// OpenAI's GPT-3.5 Turbo model
+    Gpt35Turbo,
+    /// OpenAI's GPT-4 model
+    Gpt4,
+    /// OpenAI's GPT-4 Omni model
+    Gpt4O,
+    /// Anthropic's Claude 3 Opus model
+    Claude3Opus,
+    /// Anthropic's Claude 3.5 Sonnet model
+    Claude3Sonnet,
+    /// Anthropic's Claude 3 Haiku model
+    Claude3Haiku,
+}
+
+impl Models {
+    /// Get model info for this model
+    #[inline]
+    pub fn info(&self) -> ModelInfo {
+        match self {
+            Models::Gpt35Turbo => ModelInfo {
+                provider_name: Cow::Borrowed("OpenAI"),
+                name: Cow::Borrowed("gpt-3.5-turbo"),
+                max_input_tokens: Some(16385),
+                max_output_tokens: Some(4096),
+                ..Default::default()
+            },
+            Models::Gpt4 => ModelInfo {
+                provider_name: Cow::Borrowed("OpenAI"),
+                name: Cow::Borrowed("gpt-4"),
+                max_input_tokens: Some(8192),
+                max_output_tokens: Some(4096),
+                ..Default::default()
+            },
+            Models::Gpt4O => ModelInfo {
+                provider_name: Cow::Borrowed("OpenAI"),
+                name: Cow::Borrowed("gpt-4o"),
+                max_input_tokens: Some(128000),
+                max_output_tokens: Some(4096),
+                ..Default::default()
+            },
+            Models::Claude3Opus => ModelInfo {
+                provider_name: Cow::Borrowed("Anthropic"),
+                name: Cow::Borrowed("claude-3-opus-20240229"),
+                max_input_tokens: Some(200000),
+                max_output_tokens: Some(4096),
+                ..Default::default()
+            },
+            Models::Claude3Sonnet => ModelInfo {
+                provider_name: Cow::Borrowed("Anthropic"),
+                name: Cow::Borrowed("claude-3-5-sonnet-20241022"),
+                max_input_tokens: Some(200000),
+                max_output_tokens: Some(8192),
+                ..Default::default()
+            },
+            Models::Claude3Haiku => ModelInfo {
+                provider_name: Cow::Borrowed("Anthropic"),
+                name: Cow::Borrowed("claude-3-haiku-20240307"),
+                max_input_tokens: Some(200000),
+                max_output_tokens: Some(4096),
+                ..Default::default()
+            },
+        }
+    }
+}
+
 /// Zero-allocation model information with optimized string handling
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ModelInfo {
     /// Provider name - uses static string when possible for zero allocation
     pub provider_name: Cow<'static, str>,
@@ -323,10 +394,25 @@ pub trait Model: Send + Sync + fmt::Debug {
     }
 }
 
-// ModelInfoBuilder moved to fluent_ai/src/builders/model.rs
-
-/// Type alias for backward compatibility
+// Type alias for backward compatibility with existing code
+#[deprecated(note = "Use ModelInfo instead")]
 pub type ModelInfoData = ModelInfo;
+
+// Implement From<ModelInfoData> for ModelInfo for backward compatibility
+#[allow(deprecated)]
+impl From<ModelInfoData> for ModelInfo {
+    fn from(data: ModelInfoData) -> Self {
+        data
+    }
+}
+
+// Implement From<&ModelInfoData> for ModelInfo for backward compatibility
+#[allow(deprecated)]
+impl From<&ModelInfoData> for ModelInfo {
+    fn from(data: &ModelInfoData) -> Self {
+        data.clone()
+    }
+}
 
 /// High-performance model registry with zero-allocation lookups
 pub struct ModelRegistry<T: Model> {

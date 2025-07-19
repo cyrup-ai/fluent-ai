@@ -16,16 +16,14 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
+// HTTP3 client for Firecracker API integration
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
-// HTTP3 client for Firecracker API integration
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
-
 // Additional async and error handling
 use tokio::sync::RwLock;
 use tokio::time::timeout;
@@ -97,13 +95,13 @@ impl Default for FireCrackerConfig {
 pub struct FireCrackerApiClient {
     /// HTTP3 client for API communication
     http_client: HttpClient,
-    
+
     /// Unix socket path for API communication
     socket_path: PathBuf,
-    
+
     /// Resource monitoring statistics
     resource_stats: Arc<ResourceStats>,
-    
+
     /// Security policy configuration
     security_policy: Arc<SecurityPolicy>,
 }
@@ -113,22 +111,22 @@ pub struct FireCrackerApiClient {
 struct ResourceStats {
     /// Total API calls made
     api_calls: AtomicU64,
-    
+
     /// Failed API calls
     failed_calls: AtomicU64,
-    
+
     /// Average response time in microseconds
     avg_response_time_us: AtomicU64,
-    
+
     /// Current memory usage in bytes
     memory_usage_bytes: AtomicU64,
-    
+
     /// Current CPU usage percentage (0-100)
     cpu_usage_percent: AtomicU64,
-    
+
     /// Network bytes sent
     network_bytes_sent: AtomicU64,
-    
+
     /// Network bytes received
     network_bytes_received: AtomicU64,
 }
@@ -138,19 +136,19 @@ struct ResourceStats {
 struct SecurityPolicy {
     /// Maximum memory allocation per VM (bytes)
     max_memory_bytes: u64,
-    
+
     /// Maximum CPU usage percentage
     max_cpu_percent: u8,
-    
+
     /// Maximum network bandwidth (bytes/second)
     max_network_bandwidth_bps: u64,
-    
+
     /// Maximum execution time (seconds)
     max_execution_time_seconds: u64,
-    
+
     /// Allowed network destinations
     allowed_network_destinations: Vec<String>,
-    
+
     /// Filesystem restrictions
     filesystem_restrictions: FilesystemRestrictions,
 }
@@ -160,10 +158,10 @@ struct SecurityPolicy {
 struct FilesystemRestrictions {
     /// Read-only paths
     readonly_paths: Vec<PathBuf>,
-    
+
     /// Write-allowed paths
     writable_paths: Vec<PathBuf>,
-    
+
     /// Completely blocked paths
     blocked_paths: Vec<PathBuf>,
 }
@@ -174,7 +172,7 @@ impl Default for SecurityPolicy {
             max_memory_bytes: 512 * 1024 * 1024, // 512MB
             max_cpu_percent: 80,
             max_network_bandwidth_bps: 10 * 1024 * 1024, // 10MB/s
-            max_execution_time_seconds: 300, // 5 minutes
+            max_execution_time_seconds: 300,             // 5 minutes
             allowed_network_destinations: vec!["127.0.0.1".to_string()],
             filesystem_restrictions: FilesystemRestrictions::default(),
         }
@@ -191,8 +189,291 @@ impl Default for FilesystemRestrictions {
     }
 }
 
+impl FireCrackerApiClient {
+    /// Create new Firecracker API client
+    pub fn new(socket_path: PathBuf) -> Result<Self, BackendError> {
+        let http_client = HttpClient::with_config(HttpConfig::ai_optimized()).map_err(|e| {
+            BackendError::InitializationFailed {
+                details: format!("Failed to create HTTP3 client: {}", e),
+            }
+        })?;
+
+        Ok(Self {
+            http_client,
+            socket_path,
+            resource_stats: Arc::new(ResourceStats::default()),
+            security_policy: Arc::new(SecurityPolicy::default()),
+        })
+    }
+
+    /// Configure VM with security policy
+    pub async fn configure_vm(&self, vm_config: &Value) -> Result<(), BackendError> {
+        let start_time = Instant::now();
+
+        // Create HTTP request for VM configuration
+        let request_body =
+            serde_json::to_vec(vm_config).map_err(|e| BackendError::ConfigurationFailed {
+                details: format!("Failed to serialize VM config: {}", e),
+            })?;
+
+        let request = HttpRequest::put(
+            &format!("http://unix:{}/machine-config", self.socket_path.display()),
+            request_body,
+        )
+        .map_err(|e| BackendError::ConfigurationFailed {
+            details: format!("Failed to create HTTP request: {}", e),
+        })?
+        .header("Content-Type", "application/json");
+
+        // Send configuration request with timeout
+        let response = timeout(Duration::from_secs(30), self.http_client.send(request))
+            .await
+            .map_err(|_| BackendError::ConfigurationFailed {
+                details: "VM configuration timeout".to_string(),
+            })?
+            .map_err(|e| BackendError::ConfigurationFailed {
+                details: format!("VM configuration failed: {}", e),
+            })?;
+
+        // Update statistics
+        self.resource_stats
+            .api_calls
+            .fetch_add(1, Ordering::Relaxed);
+        let elapsed_us = start_time.elapsed().as_micros() as u64;
+        self.resource_stats
+            .avg_response_time_us
+            .store(elapsed_us, Ordering::Relaxed);
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            self.resource_stats
+                .failed_calls
+                .fetch_add(1, Ordering::Relaxed);
+            Err(BackendError::ConfigurationFailed {
+                details: format!("VM configuration failed with status: {}", response.status()),
+            })
+        }
+    }
+
+    /// Start VM instance
+    pub async fn start_vm(&self) -> Result<(), BackendError> {
+        let start_time = Instant::now();
+
+        let request = HttpRequest::put(
+            &format!("http://unix:{}/actions", self.socket_path.display()),
+            serde_json::to_vec(&serde_json::json!({
+                "action_type": "InstanceStart"
+            }))
+            .map_err(|e| BackendError::StartupFailed {
+                details: format!("Failed to serialize start request: {}", e),
+            })?,
+        )
+        .map_err(|e| BackendError::StartupFailed {
+            details: format!("Failed to create start request: {}", e),
+        })?
+        .header("Content-Type", "application/json");
+
+        let response = timeout(Duration::from_secs(60), self.http_client.send(request))
+            .await
+            .map_err(|_| BackendError::StartupFailed {
+                details: "VM start timeout".to_string(),
+            })?
+            .map_err(|e| BackendError::StartupFailed {
+                details: format!("VM start failed: {}", e),
+            })?;
+
+        // Update statistics
+        self.resource_stats
+            .api_calls
+            .fetch_add(1, Ordering::Relaxed);
+        let elapsed_us = start_time.elapsed().as_micros() as u64;
+        self.resource_stats
+            .avg_response_time_us
+            .store(elapsed_us, Ordering::Relaxed);
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            self.resource_stats
+                .failed_calls
+                .fetch_add(1, Ordering::Relaxed);
+            Err(BackendError::StartupFailed {
+                details: format!("VM start failed with status: {}", response.status()),
+            })
+        }
+    }
+
+    /// Stop VM instance
+    pub async fn stop_vm(&self) -> Result<(), BackendError> {
+        let start_time = Instant::now();
+
+        let request = HttpRequest::put(
+            &format!("http://unix:{}/actions", self.socket_path.display()),
+            serde_json::to_vec(&serde_json::json!({
+                "action_type": "SendCtrlAltDel"
+            }))
+            .map_err(|e| BackendError::ShutdownFailed {
+                details: format!("Failed to serialize stop request: {}", e),
+            })?,
+        )
+        .map_err(|e| BackendError::ShutdownFailed {
+            details: format!("Failed to create stop request: {}", e),
+        })?
+        .header("Content-Type", "application/json");
+
+        let response = timeout(Duration::from_secs(30), self.http_client.send(request))
+            .await
+            .map_err(|_| BackendError::ShutdownFailed {
+                details: "VM stop timeout".to_string(),
+            })?
+            .map_err(|e| BackendError::ShutdownFailed {
+                details: format!("VM stop failed: {}", e),
+            })?;
+
+        // Update statistics
+        self.resource_stats
+            .api_calls
+            .fetch_add(1, Ordering::Relaxed);
+        let elapsed_us = start_time.elapsed().as_micros() as u64;
+        self.resource_stats
+            .avg_response_time_us
+            .store(elapsed_us, Ordering::Relaxed);
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            self.resource_stats
+                .failed_calls
+                .fetch_add(1, Ordering::Relaxed);
+            Err(BackendError::ShutdownFailed {
+                details: format!("VM stop failed with status: {}", response.status()),
+            })
+        }
+    }
+
+    /// Get VM metrics and enforce resource limits
+    pub async fn get_vm_metrics(&self) -> Result<Value, BackendError> {
+        let start_time = Instant::now();
+
+        let request = HttpRequest::get(&format!(
+            "http://unix:{}/metrics",
+            self.socket_path.display()
+        ))
+        .map_err(|e| BackendError::MonitoringFailed {
+            details: format!("Failed to create metrics request: {}", e),
+        })?;
+
+        let response = timeout(Duration::from_secs(10), self.http_client.send(request))
+            .await
+            .map_err(|_| BackendError::MonitoringFailed {
+                details: "Metrics request timeout".to_string(),
+            })?
+            .map_err(|e| BackendError::MonitoringFailed {
+                details: format!("Metrics request failed: {}", e),
+            })?;
+
+        // Update statistics
+        self.resource_stats
+            .api_calls
+            .fetch_add(1, Ordering::Relaxed);
+        let elapsed_us = start_time.elapsed().as_micros() as u64;
+        self.resource_stats
+            .avg_response_time_us
+            .store(elapsed_us, Ordering::Relaxed);
+
+        if response.status().is_success() {
+            let metrics: Value =
+                response
+                    .json()
+                    .await
+                    .map_err(|e| BackendError::MonitoringFailed {
+                        details: format!("Failed to parse metrics response: {}", e),
+                    })?;
+
+            // Enforce resource limits
+            self.enforce_resource_limits(&metrics).await?;
+
+            Ok(metrics)
+        } else {
+            self.resource_stats
+                .failed_calls
+                .fetch_add(1, Ordering::Relaxed);
+            Err(BackendError::MonitoringFailed {
+                details: format!("Metrics request failed with status: {}", response.status()),
+            })
+        }
+    }
+
+    /// Enforce resource limits based on security policy
+    async fn enforce_resource_limits(&self, metrics: &Value) -> Result<(), BackendError> {
+        if let Some(memory_usage) = metrics.get("memory_usage_bytes").and_then(|v| v.as_u64()) {
+            if memory_usage > self.security_policy.max_memory_bytes {
+                return Err(BackendError::ResourceLimitExceeded {
+                    details: format!(
+                        "Memory usage {} exceeds limit {}",
+                        memory_usage, self.security_policy.max_memory_bytes
+                    ),
+                });
+            }
+            self.resource_stats
+                .memory_usage_bytes
+                .store(memory_usage, Ordering::Relaxed);
+        }
+
+        if let Some(cpu_usage) = metrics.get("cpu_usage_percent").and_then(|v| v.as_u64()) {
+            if cpu_usage > self.security_policy.max_cpu_percent as u64 {
+                return Err(BackendError::ResourceLimitExceeded {
+                    details: format!(
+                        "CPU usage {}% exceeds limit {}%",
+                        cpu_usage, self.security_policy.max_cpu_percent
+                    ),
+                });
+            }
+            self.resource_stats
+                .cpu_usage_percent
+                .store(cpu_usage, Ordering::Relaxed);
+        }
+
+        Ok(())
+    }
+
+    /// Get resource statistics
+    pub fn get_resource_stats(&self) -> ResourceStats {
+        ResourceStats {
+            api_calls: AtomicU64::new(self.resource_stats.api_calls.load(Ordering::Relaxed)),
+            failed_calls: AtomicU64::new(self.resource_stats.failed_calls.load(Ordering::Relaxed)),
+            avg_response_time_us: AtomicU64::new(
+                self.resource_stats
+                    .avg_response_time_us
+                    .load(Ordering::Relaxed),
+            ),
+            memory_usage_bytes: AtomicU64::new(
+                self.resource_stats
+                    .memory_usage_bytes
+                    .load(Ordering::Relaxed),
+            ),
+            cpu_usage_percent: AtomicU64::new(
+                self.resource_stats
+                    .cpu_usage_percent
+                    .load(Ordering::Relaxed),
+            ),
+            network_bytes_sent: AtomicU64::new(
+                self.resource_stats
+                    .network_bytes_sent
+                    .load(Ordering::Relaxed),
+            ),
+            network_bytes_received: AtomicU64::new(
+                self.resource_stats
+                    .network_bytes_received
+                    .load(Ordering::Relaxed),
+            ),
+        }
+    }
+}
+
 /// VM instance information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 struct VMInstance {
     /// Unique VM ID
     vm_id: String,
@@ -205,6 +486,10 @@ struct VMInstance {
 
     /// VM process ID
     pid: Option<u32>,
+
+    /// API client for VM management
+    #[serde(skip)]
+    api_client: Option<FireCrackerApiClient>,
 
     /// Creation timestamp
     created_at: SystemTime,
@@ -497,8 +782,115 @@ impl FireCrackerBackend {
             let mut vm_with_pid = vm;
             vm_with_pid.pid = Some(child.id());
 
-            // Wait for VM to be ready (simplified - would use API in production)
-            tokio::time::sleep(Duration::from_secs(2)).await;
+            // Create API client for VM management
+            let api_client =
+                FireCrackerApiClient::new(vm_with_pid.socket_path.clone()).map_err(|e| {
+                    BackendError::InitializationFailed {
+                        details: format!("Failed to create API client: {}", e),
+                    }
+                })?;
+
+            // Configure VM with machine configuration
+            let machine_config = serde_json::json!({
+                "vcpu_count": fc_config.vcpu_count,
+                "mem_size_mib": fc_config.memory_size_mb,
+                "cpu_template": "C3",
+                "track_dirty_pages": false
+            });
+
+            api_client.configure_vm(&machine_config).await?;
+
+            // Configure boot source
+            let boot_source = serde_json::json!({
+                "kernel_image_path": fc_config.kernel_path,
+                "boot_args": "console=ttyS0 reboot=k panic=1 pci=off"
+            });
+
+            let boot_request = HttpRequest::put(
+                &format!(
+                    "http://unix:{}/boot-source",
+                    vm_with_pid.socket_path.display()
+                ),
+                serde_json::to_vec(&boot_source).map_err(|e| {
+                    BackendError::ConfigurationFailed {
+                        details: format!("Failed to serialize boot config: {}", e),
+                    }
+                })?,
+            )
+            .map_err(|e| BackendError::ConfigurationFailed {
+                details: format!("Failed to create boot request: {}", e),
+            })?
+            .header("Content-Type", "application/json");
+
+            api_client
+                .http_client
+                .send(boot_request)
+                .await
+                .map_err(|e| BackendError::ConfigurationFailed {
+                    details: format!("Boot configuration failed: {}", e),
+                })?;
+
+            // Configure root filesystem
+            let rootfs_config = serde_json::json!({
+                "drive_id": "rootfs",
+                "path_on_host": fc_config.rootfs_path,
+                "is_root_device": true,
+                "is_read_only": false
+            });
+
+            let rootfs_request = HttpRequest::put(
+                &format!(
+                    "http://unix:{}/drives/rootfs",
+                    vm_with_pid.socket_path.display()
+                ),
+                serde_json::to_vec(&rootfs_config).map_err(|e| {
+                    BackendError::ConfigurationFailed {
+                        details: format!("Failed to serialize rootfs config: {}", e),
+                    }
+                })?,
+            )
+            .map_err(|e| BackendError::ConfigurationFailed {
+                details: format!("Failed to create rootfs request: {}", e),
+            })?
+            .header("Content-Type", "application/json");
+
+            api_client
+                .http_client
+                .send(rootfs_request)
+                .await
+                .map_err(|e| BackendError::ConfigurationFailed {
+                    details: format!("Rootfs configuration failed: {}", e),
+                })?;
+
+            // Start VM instance
+            api_client.start_vm().await?;
+
+            // Wait for VM to be fully ready with health check
+            for attempt in 0..30 {
+                match api_client.get_vm_metrics().await {
+                    Ok(metrics) => {
+                        if let Some(state) = metrics.get("state").and_then(|v| v.as_str()) {
+                            if state == "Running" {
+                                break;
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        // VM not ready yet, continue waiting
+                    }
+                }
+
+                if attempt == 29 {
+                    return Err(BackendError::StartupFailed {
+                        details: "VM failed to reach running state within timeout".to_string(),
+                    });
+                }
+
+                tokio::time::sleep(Duration::from_millis(1000)).await;
+            }
+
+            // Store API client in VM instance for future use
+            vm_with_pid.api_client = Some(api_client);
 
             Ok(vm_with_pid)
         })

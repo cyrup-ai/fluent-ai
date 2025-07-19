@@ -4,8 +4,8 @@
 //! SIMD-optimized similarity calculations, and zero-allocation patterns for maximum
 //! performance in production workloads.
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// High-performance lock-free counter for vector operations
 #[derive(Debug, Default)]
@@ -20,12 +20,12 @@ impl RelaxedCounter {
             value: AtomicU64::new(initial),
         }
     }
-    
+
     #[inline]
     pub fn get(&self) -> u64 {
         self.value.load(Ordering::Relaxed)
     }
-    
+
     #[inline]
     pub fn inc(&self) -> u64 {
         self.value.fetch_add(1, Ordering::Relaxed)
@@ -78,11 +78,11 @@ impl VectorStoreMetrics {
     #[inline]
     pub fn record_search(&self, duration_us: u64) {
         self.searches_performed.inc();
-        
+
         // Update average search time using atomic operations
         let current_avg = self.avg_search_time_us.load(Ordering::Relaxed);
         let search_count = self.searches_performed.get();
-        
+
         if search_count > 0 {
             let search_count_u64 = search_count as u64;
             let new_avg = ((current_avg * (search_count_u64 - 1)) + duration_us) / search_count_u64;
@@ -96,11 +96,13 @@ impl VectorStoreMetrics {
         let vector_size_bytes = vector_dimension * 4; // f32 = 4 bytes
         match operation {
             StorageOperation::Add => {
-                self.storage_size_bytes.fetch_add(vector_size_bytes as u64, Ordering::Relaxed);
+                self.storage_size_bytes
+                    .fetch_add(vector_size_bytes as u64, Ordering::Relaxed);
                 self.vectors_stored.inc();
             }
             StorageOperation::Remove => {
-                self.storage_size_bytes.fetch_sub(vector_size_bytes as u64, Ordering::Relaxed);
+                self.storage_size_bytes
+                    .fetch_sub(vector_size_bytes as u64, Ordering::Relaxed);
                 // Note: Cannot decrement counter, but that's acceptable for metrics
             }
         }
@@ -296,7 +298,8 @@ impl VectorStore for InMemoryVectorStore {
 
         tokio::spawn(async move {
             // Use stack-allocated results for common cases (zero allocation up to 32 results)
-            let mut results: SmallVec<(String, f32, Option<serde_json::Value>), 32> = SmallVec::new();
+            let mut results: SmallVec<(String, f32, Option<serde_json::Value>), 32> =
+                SmallVec::new();
 
             // Lock-free iteration over vector storage
             for entry in vectors.iter() {
@@ -322,7 +325,11 @@ impl VectorStore for InMemoryVectorStore {
                     if let Some((worst_idx, worst_score)) = results
                         .iter()
                         .enumerate()
-                        .min_by(|a, b| a.1.1.partial_cmp(&b.1.1).unwrap_or(std::cmp::Ordering::Equal))
+                        .min_by(|a, b| {
+                            a.1.1
+                                .partial_cmp(&b.1.1)
+                                .unwrap_or(std::cmp::Ordering::Equal)
+                        })
                         .map(|(idx, (_, score, _))| (idx, *score))
                     {
                         if similarity > worst_score {
@@ -333,9 +340,7 @@ impl VectorStore for InMemoryVectorStore {
             }
 
             // Sort by similarity (descending) with proper error handling
-            results.sort_by(|a, b| {
-                b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
-            });
+            results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
             // Take top k results with zero allocation where possible
             let search_results: SmallVec<VectorSearchResult, 16> = results
@@ -433,7 +438,7 @@ fn simd_cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     // Process SIMD chunks (4 elements at a time for blazing-fast performance)
     for i in 0..simd_chunks {
         let base_idx = i * 4;
-        
+
         // Load 4 f32 values into SIMD registers
         let a_chunk = f32x4::new([
             a[base_idx],
@@ -458,7 +463,7 @@ fn simd_cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     let dot_array: [f32; 4] = dot_product_simd.into();
     let norm_a_array: [f32; 4] = norm_a_simd.into();
     let norm_b_array: [f32; 4] = norm_b_simd.into();
-    
+
     let mut dot_product = dot_array[0] + dot_array[1] + dot_array[2] + dot_array[3];
     let mut norm_a_squared = norm_a_array[0] + norm_a_array[1] + norm_a_array[2] + norm_a_array[3];
     let mut norm_b_squared = norm_b_array[0] + norm_b_array[1] + norm_b_array[2] + norm_b_array[3];

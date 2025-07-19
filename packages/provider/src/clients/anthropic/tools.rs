@@ -309,6 +309,38 @@ pub trait TypedToolTrait<D: Send + Sync + 'static, Req: serde::de::DeserializeOw
     fn execute(&self, conversation: &Conversation, emitter: &Emitter, request: Req) -> impl Future<Output = AnthropicResult<()>> + Send;
 }
 
+/// Internal macro to create tool builders with cleaner syntax
+macro_rules! tool_builder {
+    // Entry point with just name
+    ($name:expr) => {
+        $crate::clients::anthropic::tools::ToolBuilder::named($name)
+    };
+    
+    // With description
+    ($name:expr, $desc:expr) => {
+        $crate::clients::anthropic::tools::ToolBuilder::named($name)
+            .description($desc)
+    };
+    
+    // With description and dependency
+    ($name:expr, $desc:expr, $dep:expr) => {
+        $crate::clients::anthropic::tools::ToolBuilder::named($name)
+            .description($desc)
+            .with($dep)
+    };
+    
+    // Full builder with all parameters
+    ($name:expr, $desc:expr, $dep:expr, $req:ty, $res:ty, $handler:expr) => {
+        $crate::clients::anthropic::tools::ToolBuilder::named($name)
+            .description($desc)
+            .with($dep)
+            .request_schema::<$req>($crate::clients::anthropic::tools::SchemaType::Serde)
+            .result_schema::<$res>($crate::clients::anthropic::tools::SchemaType::Serde)
+            .on_invocation($handler)
+            .build()
+    };
+}
+
 /// Entry point for typestate builder pattern
 pub struct ToolBuilder;
 

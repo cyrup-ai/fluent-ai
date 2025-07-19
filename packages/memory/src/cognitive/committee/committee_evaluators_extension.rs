@@ -3,9 +3,8 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use super::relaxed_counter::RelaxedCounter;
-
 use super::committee_types::{CommitteeEvaluation, CommitteeResult, ModelType};
+use super::relaxed_counter::RelaxedCounter;
 use crate::cognitive::types::OptimizationSpec;
 
 /// Lock-free evaluation task for task queue distribution
@@ -124,8 +123,8 @@ impl EvaluationSessionMetrics {
     #[inline]
     pub fn snapshot(&self) -> EvaluationSessionSnapshot {
         EvaluationSessionSnapshot {
-            evaluations_completed: self.evaluations_completed.get(),
-            evaluation_failures: self.evaluation_failures.get(),
+            evaluations_completed: self.evaluations_completed.get() as usize,
+            evaluation_failures: self.evaluation_failures.get() as usize,
             success_rate: self.success_rate(),
             session_duration_seconds: self.created_at.elapsed().as_secs(),
         }

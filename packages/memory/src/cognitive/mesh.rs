@@ -1,13 +1,15 @@
 //! Cognitive Mesh - The main orchestrator of the cognitive memory system
 
-use crate::cognitive::types::*;
-use crate::cognitive::state::CognitiveStateManager;
-use crate::cognitive::quantum::QuantumRouter;
-use crate::cognitive::attention::AttentionRouter;
-use crate::cognitive::evolution::EvolutionEngine;
 use std::sync::Arc;
+
 use tokio::sync::RwLock;
 use uuid::Uuid;
+
+use crate::cognitive::attention::{AttentionConfig, AttentionRouter};
+use crate::cognitive::evolution::EvolutionEngine;
+use crate::cognitive::quantum::{QuantumConfig, QuantumRouter};
+use crate::cognitive::state::CognitiveStateManager;
+use crate::cognitive::types::*;
 
 /// The main cognitive mesh that orchestrates all cognitive operations
 pub struct CognitiveMesh {
@@ -119,11 +121,60 @@ pub enum PatternDetectionAlgorithm {
 }
 
 impl CognitiveMesh {
+    /// Convert cognitive::types::EnhancedQuery to quantum::types::EnhancedQuery
+    fn convert_to_quantum_query(
+        &self,
+        query: &EnhancedQuery,
+    ) -> crate::cognitive::quantum::types::EnhancedQuery {
+        crate::cognitive::quantum::types::EnhancedQuery {
+            original: query.original.clone(),
+            intent: match query.intent {
+                QueryIntent::Retrieval => crate::cognitive::quantum::types::QueryIntent::Retrieval,
+                QueryIntent::Association => {
+                    crate::cognitive::quantum::types::QueryIntent::Association
+                }
+                QueryIntent::Prediction => {
+                    crate::cognitive::quantum::types::QueryIntent::Prediction
+                }
+                QueryIntent::Reasoning => crate::cognitive::quantum::types::QueryIntent::Reasoning,
+                QueryIntent::Exploration => {
+                    crate::cognitive::quantum::types::QueryIntent::Exploration
+                }
+                QueryIntent::Creation => crate::cognitive::quantum::types::QueryIntent::Creation,
+            },
+            context: vec![query.context.clone()], // Convert String to Vec<String>
+            context_embedding: query.context_embedding.clone(),
+            timestamp: Some(std::time::Instant::now()), // Convert DateTime to Instant
+            temporal_context: query.temporal_context.as_ref().map(|tc| {
+                crate::cognitive::quantum::types::TemporalContext {
+                    timestamp: std::time::Instant::now(),
+                    duration: std::time::Duration::from_secs(1),
+                    temporal_type: crate::cognitive::quantum::types::TemporalType::Present,
+                }
+            }),
+            cognitive_hints: query.cognitive_hints.clone(),
+            expected_complexity: query.expected_complexity as f64,
+            priority: query.priority as u32,
+        }
+    }
     pub async fn new() -> CognitiveResult<Self> {
         let state_manager = Arc::new(CognitiveStateManager::new());
-        let quantum_router = Arc::new(QuantumRouter::new(state_manager.clone()));
-        let attention_router = Arc::new(AttentionRouter::new(state_manager.clone(), 8, 64));
-        let evolution_engine = Arc::new(RwLock::new(EvolutionEngine::with_state_manager(state_manager.clone(), 50)));
+        let quantum_router = Arc::new(
+            QuantumRouter::new(state_manager.clone(), QuantumConfig::default())
+                .await
+                .map_err(|e| CognitiveError::QuantumDecoherence(e.to_string()))?,
+        );
+        let attention_config = AttentionConfig {
+            num_heads: 8,
+            hidden_dim: 512, // head_dim * num_heads = 64 * 8 = 512
+            dropout_rate: 0.1,
+            use_causal_mask: false,
+        };
+        let attention_router = Arc::new(AttentionRouter::new(attention_config));
+        let evolution_engine = Arc::new(RwLock::new(EvolutionEngine::with_state_manager(
+            state_manager.clone(),
+            50,
+        )));
         let meta_consciousness = Arc::new(MetaConsciousness::new());
 
         Ok(Self {
@@ -145,75 +196,103 @@ impl CognitiveMesh {
     /// Main routing decision function
     pub async fn route_query(&self, query: &EnhancedQuery) -> CognitiveResult<RoutingDecision> {
         // Meta-consciousness determines optimal routing strategy
-        let strategy = self.meta_consciousness.select_routing_strategy(query).await?;
-        
+        let strategy = self
+            .meta_consciousness
+            .select_routing_strategy(query)
+            .await?;
+
         match strategy {
             RoutingStrategy::Quantum => {
-                self.quantum_router.route_query(query).await
-            },
+                let quantum_query = self.convert_to_quantum_query(query);
+                self.quantum_router
+                    .route_query(&quantum_query)
+                    .await
+                    .map_err(|e| CognitiveError::QuantumDecoherence(e.to_string()))
+            }
             RoutingStrategy::Attention => {
                 let contexts = self.extract_available_contexts(query).await?;
-                self.attention_router.route_with_attention(query, &contexts).await
-            },
-            RoutingStrategy::Hybrid(strategies) => {
-                self.hybrid_route(query, strategies).await
-            },
-            RoutingStrategy::Emergent => {
-                self.emergent_route(query).await
-            },
-            RoutingStrategy::Causal => {
-                self.causal_route(query).await
-            },
+                self.attention_router
+                    .route_with_attention(query, &contexts)
+                    .await
+            }
+            RoutingStrategy::Hybrid(strategies) => self.hybrid_route(query, strategies).await,
+            RoutingStrategy::Emergent => self.emergent_route(query).await,
+            RoutingStrategy::Causal => self.causal_route(query).await,
         }
     }
 
     /// Hybrid routing combining multiple strategies
-    async fn hybrid_route(&self, query: &EnhancedQuery, strategies: Vec<RoutingStrategy>) -> CognitiveResult<RoutingDecision> {
+    async fn hybrid_route(
+        &self,
+        query: &EnhancedQuery,
+        strategies: Vec<RoutingStrategy>,
+    ) -> CognitiveResult<RoutingDecision> {
         let mut results = Vec::new();
-        
+
         for strategy in strategies {
             match strategy {
                 RoutingStrategy::Quantum => {
-                    if let Ok(result) = self.quantum_router.route_query(query).await {
+                    let quantum_query = self.convert_to_quantum_query(query);
+                    if let Ok(result) = self.quantum_router.route_query(&quantum_query).await {
                         results.push(result);
                     }
-                },
+                }
                 RoutingStrategy::Attention => {
                     let contexts = self.extract_available_contexts(query).await?;
-                    if let Ok(result) = self.attention_router.route_with_attention(query, &contexts).await {
+                    if let Ok(result) = self
+                        .attention_router
+                        .route_with_attention(query, &contexts)
+                        .await
+                    {
                         results.push(result);
                     }
-                },
-                _ => {}, // Other strategies would be handled here
+                }
+                _ => {} // Other strategies would be handled here
             }
         }
-        
+
         if results.is_empty() {
-            return Err(CognitiveError::RoutingError("No valid routing results".to_string()));
+            return Err(CognitiveError::RoutingError(
+                "No valid routing results".to_string(),
+            ));
         }
-        
+
         // Combine results using meta-consciousness
-        self.meta_consciousness.combine_routing_decisions(results).await
+        self.meta_consciousness
+            .combine_routing_decisions(results)
+            .await
     }
 
     /// Emergent routing based on discovered patterns
     async fn emergent_route(&self, query: &EnhancedQuery) -> CognitiveResult<RoutingDecision> {
         // Detect relevant emergent patterns
-        let patterns = self.pattern_detector.detect_relevant_patterns(query).await?;
-        
+        let patterns = self
+            .pattern_detector
+            .detect_relevant_patterns(query)
+            .await?;
+
         if patterns.is_empty() {
             // Fall back to quantum routing
-            return self.quantum_router.route_query(query).await;
+            let quantum_query = self.convert_to_quantum_query(query);
+            return self
+                .quantum_router
+                .route_query(&quantum_query)
+                .await
+                .map_err(|e| CognitiveError::QuantumDecoherence(e.to_string()));
         }
-        
+
         // Use strongest pattern to guide routing
-        let strongest_pattern = patterns.into_iter()
+        let strongest_pattern = patterns
+            .into_iter()
             .max_by(|a, b| {
-                a.strength.partial_cmp(&b.strength)
+                a.strength
+                    .partial_cmp(&b.strength)
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
-            .ok_or_else(|| CognitiveError::RoutingError("No patterns available for routing".to_string()))?;
-        
+            .ok_or_else(|| {
+                CognitiveError::RoutingError("No patterns available for routing".to_string())
+            })?;
+
         // Route based on pattern characteristics
         let strategy = match strongest_pattern.pattern_type {
             PatternType::Temporal => RoutingStrategy::Causal,
@@ -222,13 +301,16 @@ impl CognitiveMesh {
             PatternType::Behavioral => RoutingStrategy::Quantum,
             PatternType::Structural => RoutingStrategy::Attention,
         };
-        
+
         Ok(RoutingDecision {
             strategy,
             target_context: format!("pattern_{}", strongest_pattern.id),
             confidence: strongest_pattern.strength,
             alternatives: Vec::new(),
-            reasoning: format!("Emergent routing based on {} pattern", strongest_pattern.description),
+            reasoning: format!(
+                "Emergent routing based on {} pattern",
+                strongest_pattern.description
+            ),
         })
     }
 
@@ -236,16 +318,19 @@ impl CognitiveMesh {
     async fn causal_route(&self, query: &EnhancedQuery) -> CognitiveResult<RoutingDecision> {
         // Extract causal relationships from query
         let causal_elements = self.extract_causal_elements(query).await?;
-        
+
         if causal_elements.is_empty() {
             // No causal elements found, use attention routing
             let contexts = self.extract_available_contexts(query).await?;
-            return self.attention_router.route_with_attention(query, &contexts).await;
+            return self
+                .attention_router
+                .route_with_attention(query, &contexts)
+                .await;
         }
-        
+
         // Build causal chain for routing
         let causal_chain = self.build_causal_chain(&causal_elements).await?;
-        
+
         Ok(RoutingDecision {
             strategy: RoutingStrategy::Causal,
             target_context: format!("causal_chain_{}", causal_chain.len()),
@@ -260,21 +345,27 @@ impl CognitiveMesh {
         // Trigger evolution engine
         let mut evolution = self.evolution_engine.write().await;
         let summary = evolution.evolve_generation().await?;
-        
+
         // Update system based on evolution results
         if summary.average_fitness > 0.8 {
             // High fitness - maintain current direction
-            self.meta_consciousness.reinforce_current_strategies().await?;
+            self.meta_consciousness
+                .reinforce_current_strategies()
+                .await?;
         } else if summary.average_fitness < 0.3 {
             // Low fitness - trigger intervention
-            self.meta_consciousness.trigger_intervention(TriggerCondition::EvolutionStagnation).await?;
+            self.meta_consciousness
+                .trigger_intervention(TriggerCondition::EvolutionStagnation)
+                .await?;
         }
-        
+
         // Discover new patterns from evolution
         for innovation in summary.innovations {
-            self.pattern_detector.register_innovation(innovation).await?;
+            self.pattern_detector
+                .register_innovation(innovation)
+                .await?;
         }
-        
+
         Ok(())
     }
 
@@ -289,7 +380,10 @@ impl CognitiveMesh {
     }
 
     // Helper methods
-    async fn extract_available_contexts(&self, _query: &EnhancedQuery) -> CognitiveResult<Vec<String>> {
+    async fn extract_available_contexts(
+        &self,
+        _query: &EnhancedQuery,
+    ) -> CognitiveResult<Vec<String>> {
         // Extract available contexts for routing
         Ok(vec![
             "semantic_context".to_string(),
@@ -298,13 +392,19 @@ impl CognitiveMesh {
         ])
     }
 
-    async fn extract_causal_elements(&self, query: &EnhancedQuery) -> CognitiveResult<Vec<CausalElement>> {
+    async fn extract_causal_elements(
+        &self,
+        _query: &EnhancedQuery,
+    ) -> CognitiveResult<Vec<CausalElement>> {
         // Extract causal elements from query
         // This would use NLP to identify causal relationships
         Ok(Vec::new()) // Simplified
     }
 
-    async fn build_causal_chain(&self, _elements: &[CausalElement]) -> CognitiveResult<Vec<CausalLink>> {
+    async fn build_causal_chain(
+        &self,
+        _elements: &[CausalElement],
+    ) -> CognitiveResult<Vec<CausalLink>> {
         // Build causal chain from elements
         Ok(Vec::new()) // Simplified
     }
@@ -322,19 +422,22 @@ impl QueryEnhancer {
     pub async fn enhance(&self, query: &str) -> CognitiveResult<EnhancedQuery> {
         // Analyze query intent
         let intent = self.intent_analyzer.analyze(query).await?;
-        
+
         // Extract context embedding
         let context_embedding = self.context_extractor.extract_embedding(query).await?;
-        
+
         // Extract temporal context if present
-        let temporal_context = self.context_extractor.extract_temporal_context(query).await?;
-        
+        let temporal_context = self
+            .context_extractor
+            .extract_temporal_context(query)
+            .await?;
+
         // Generate cognitive hints
         let cognitive_hints = self.generate_cognitive_hints(query).await?;
-        
+
         // Estimate complexity
         let expected_complexity = self.complexity_estimator.estimate(query).await?;
-        
+
         Ok(EnhancedQuery {
             original: query.to_string(),
             intent,
@@ -342,25 +445,28 @@ impl QueryEnhancer {
             temporal_context,
             cognitive_hints,
             expected_complexity,
+            context: "General".to_string(),
+            priority: 0.5,
+            timestamp: chrono::Utc::now(),
         })
     }
 
     async fn generate_cognitive_hints(&self, query: &str) -> CognitiveResult<Vec<String>> {
         let mut hints = Vec::new();
-        
+
         // Analyze query for cognitive hints
         if query.contains("when") || query.contains("time") {
             hints.push("temporal_analysis".to_string());
         }
-        
+
         if query.contains("because") || query.contains("why") {
             hints.push("causal_reasoning".to_string());
         }
-        
+
         if query.contains("similar") || query.contains("like") {
             hints.push("semantic_similarity".to_string());
         }
-        
+
         Ok(hints)
     }
 }
@@ -374,44 +480,68 @@ impl MetaConsciousness {
         }
     }
 
-    pub async fn select_routing_strategy(&self, query: &EnhancedQuery) -> CognitiveResult<RoutingStrategy> {
+    pub async fn select_routing_strategy(
+        &self,
+        query: &EnhancedQuery,
+    ) -> CognitiveResult<RoutingStrategy> {
         self.strategy_selector.select_optimal_strategy(query).await
     }
 
-    pub async fn combine_routing_decisions(&self, decisions: Vec<RoutingDecision>) -> CognitiveResult<RoutingDecision> {
+    pub async fn combine_routing_decisions(
+        &self,
+        decisions: Vec<RoutingDecision>,
+    ) -> CognitiveResult<RoutingDecision> {
         if decisions.is_empty() {
-            return Err(CognitiveError::MetaConsciousnessError("No decisions to combine".to_string()));
+            return Err(CognitiveError::MetaConsciousnessError(
+                "No decisions to combine".to_string(),
+            ));
         }
-        
+
         // Find decision with highest confidence
-        let best_decision = decisions.into_iter()
+        let best_decision = decisions
+            .into_iter()
             .max_by(|a, b| {
-                a.confidence.partial_cmp(&b.confidence)
+                a.confidence
+                    .partial_cmp(&b.confidence)
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
-            .ok_or_else(|| CognitiveError::MetaConsciousnessError("No decisions available to combine".to_string()))?;
-        
+            .ok_or_else(|| {
+                CognitiveError::MetaConsciousnessError(
+                    "No decisions available to combine".to_string(),
+                )
+            })?;
+
         Ok(best_decision)
     }
 
     pub async fn monitor_and_intervene(&self) -> CognitiveResult<()> {
         loop {
             let metrics = self.system_monitor.collect_metrics().await?;
-            
-            if let Some(intervention) = self.intervention_system.check_intervention_needed(&metrics).await? {
-                self.intervention_system.execute_intervention(intervention).await?;
+
+            if let Some(intervention) = self
+                .intervention_system
+                .check_intervention_needed(&metrics)
+                .await?
+            {
+                self.intervention_system
+                    .execute_intervention(intervention)
+                    .await?;
             }
-            
+
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
     }
 
     pub async fn reinforce_current_strategies(&self) -> CognitiveResult<()> {
-        self.strategy_selector.reinforce_successful_strategies().await
+        self.strategy_selector
+            .reinforce_successful_strategies()
+            .await
     }
 
     pub async fn trigger_intervention(&self, condition: TriggerCondition) -> CognitiveResult<()> {
-        self.intervention_system.trigger_intervention(condition).await
+        self.intervention_system
+            .trigger_intervention(condition)
+            .await
     }
 }
 
@@ -427,33 +557,43 @@ impl EmergentPatternDetector {
         }
     }
 
-    pub async fn detect_relevant_patterns(&self, query: &EnhancedQuery) -> CognitiveResult<Vec<EmergentPattern>> {
+    pub async fn detect_relevant_patterns(
+        &self,
+        query: &EnhancedQuery,
+    ) -> CognitiveResult<Vec<EmergentPattern>> {
         let cache = self.pattern_cache.read().await;
-        
+
         // Filter patterns relevant to the query
-        let relevant = cache.iter()
+        let relevant = cache
+            .iter()
             .filter(|pattern| self.is_pattern_relevant(pattern, query))
             .cloned()
             .collect();
-        
+
         Ok(relevant)
     }
 
     pub async fn discover_patterns(&self) -> CognitiveResult<Vec<EmergentPattern>> {
         let mut new_patterns = Vec::new();
-        
+
         for algorithm in &self.detection_algorithms {
             let patterns = self.run_detection_algorithm(algorithm).await?;
             new_patterns.extend(patterns);
         }
-        
+
         // Add to cache
-        self.pattern_cache.write().await.extend(new_patterns.clone());
-        
+        self.pattern_cache
+            .write()
+            .await
+            .extend(new_patterns.clone());
+
         Ok(new_patterns)
     }
 
-    pub async fn register_innovation(&self, innovation: crate::cognitive::evolution::Innovation) -> CognitiveResult<()> {
+    pub async fn register_innovation(
+        &self,
+        innovation: crate::cognitive::evolution::Innovation,
+    ) -> CognitiveResult<()> {
         // Convert innovation to emergent pattern
         let pattern = EmergentPattern {
             id: innovation.id,
@@ -463,7 +603,7 @@ impl EmergentPatternDetector {
             discovery_timestamp: chrono::Utc::now(),
             description: innovation.description,
         };
-        
+
         self.pattern_cache.write().await.push(pattern);
         Ok(())
     }
@@ -478,7 +618,10 @@ impl EmergentPatternDetector {
         }
     }
 
-    async fn run_detection_algorithm(&self, algorithm: &PatternDetectionAlgorithm) -> CognitiveResult<Vec<EmergentPattern>> {
+    async fn run_detection_algorithm(
+        &self,
+        algorithm: &PatternDetectionAlgorithm,
+    ) -> CognitiveResult<Vec<EmergentPattern>> {
         match algorithm {
             PatternDetectionAlgorithm::TemporalCorrelation => {
                 // Detect temporal patterns
@@ -490,7 +633,7 @@ impl EmergentPatternDetector {
                     discovery_timestamp: chrono::Utc::now(),
                     description: "Temporal correlation pattern detected".to_string(),
                 }])
-            },
+            }
             _ => Ok(Vec::new()), // Other algorithms would be implemented
         }
     }
@@ -509,8 +652,10 @@ pub struct ContextExtractor;
 pub struct ComplexityEstimator;
 
 impl IntentAnalyzer {
-    pub fn new() -> Self { Self }
-    
+    pub fn new() -> Self {
+        Self
+    }
+
     pub async fn analyze(&self, query: &str) -> CognitiveResult<QueryIntent> {
         // Simple intent analysis
         if query.contains("find") || query.contains("search") {
@@ -532,8 +677,10 @@ impl IntentAnalyzer {
 }
 
 impl ContextExtractor {
-    pub fn new() -> Self { Self }
-    
+    pub fn new() -> Self {
+        Self
+    }
+
     pub async fn extract_embedding(&self, query: &str) -> CognitiveResult<Vec<f32>> {
         // Simple embedding extraction (would use proper embedding model)
         let mut embedding = vec![0.0; 128];
@@ -543,9 +690,16 @@ impl ContextExtractor {
         }
         Ok(embedding)
     }
-    
-    pub async fn extract_temporal_context(&self, query: &str) -> CognitiveResult<Option<TemporalContext>> {
-        if query.contains("time") || query.contains("when") || query.contains("before") || query.contains("after") {
+
+    pub async fn extract_temporal_context(
+        &self,
+        query: &str,
+    ) -> CognitiveResult<Option<TemporalContext>> {
+        if query.contains("time")
+            || query.contains("when")
+            || query.contains("before")
+            || query.contains("after")
+        {
             Ok(Some(TemporalContext::default()))
         } else {
             Ok(None)
@@ -554,8 +708,10 @@ impl ContextExtractor {
 }
 
 impl ComplexityEstimator {
-    pub fn new() -> Self { Self }
-    
+    pub fn new() -> Self {
+        Self
+    }
+
     pub async fn estimate(&self, query: &str) -> CognitiveResult<f32> {
         // Simple complexity estimation
         let word_count = query.split_whitespace().count();
@@ -571,7 +727,7 @@ impl SystemMonitor {
             alert_thresholds: AlertThresholds::default(),
         }
     }
-    
+
     pub async fn collect_metrics(&self) -> CognitiveResult<SystemMetrics> {
         // Collect system metrics
         Ok(SystemMetrics::default())
@@ -581,28 +737,32 @@ impl SystemMonitor {
 impl InterventionSystem {
     pub fn new() -> Self {
         Self {
-            intervention_strategies: vec![
-                InterventionStrategy {
-                    name: "Reduce Load".to_string(),
-                    trigger_condition: TriggerCondition::CognitiveOverload,
-                    action: InterventionAction::ReduceCognitiveLoad,
-                    priority: 1,
-                },
-            ],
+            intervention_strategies: vec![InterventionStrategy {
+                name: "Reduce Load".to_string(),
+                trigger_condition: TriggerCondition::CognitiveOverload,
+                action: InterventionAction::ReduceCognitiveLoad,
+                priority: 1,
+            }],
             intervention_history: RwLock::new(Vec::new()),
         }
     }
-    
-    pub async fn check_intervention_needed(&self, _metrics: &SystemMetrics) -> CognitiveResult<Option<InterventionStrategy>> {
+
+    pub async fn check_intervention_needed(
+        &self,
+        _metrics: &SystemMetrics,
+    ) -> CognitiveResult<Option<InterventionStrategy>> {
         // Check if intervention is needed
         Ok(None)
     }
-    
-    pub async fn execute_intervention(&self, _strategy: InterventionStrategy) -> CognitiveResult<()> {
+
+    pub async fn execute_intervention(
+        &self,
+        _strategy: InterventionStrategy,
+    ) -> CognitiveResult<()> {
         // Execute intervention
         Ok(())
     }
-    
+
     pub async fn trigger_intervention(&self, _condition: TriggerCondition) -> CognitiveResult<()> {
         // Trigger specific intervention
         Ok(())
@@ -616,8 +776,11 @@ impl StrategySelector {
             adaptation_rate: 0.1,
         }
     }
-    
-    pub async fn select_optimal_strategy(&self, query: &EnhancedQuery) -> CognitiveResult<RoutingStrategy> {
+
+    pub async fn select_optimal_strategy(
+        &self,
+        query: &EnhancedQuery,
+    ) -> CognitiveResult<RoutingStrategy> {
         // Select strategy based on query characteristics and performance history
         match query.intent {
             QueryIntent::Retrieval => Ok(RoutingStrategy::Attention),
@@ -631,7 +794,7 @@ impl StrategySelector {
             QueryIntent::Creation => Ok(RoutingStrategy::Emergent),
         }
     }
-    
+
     pub async fn reinforce_successful_strategies(&self) -> CognitiveResult<()> {
         // Reinforce strategies that performed well
         Ok(())

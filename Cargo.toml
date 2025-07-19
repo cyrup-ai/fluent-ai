@@ -7,7 +7,7 @@ members = [
     "packages/http3",
     "packages/cylo",
     "packages/termcolor",
-    "packages/memory",
+    "packages/memory"
 ]
 exclude = ["tmp/rig", "tmp/cyrup-agent", "tmp/cyrup-sugars", "tmp/candle"]
 

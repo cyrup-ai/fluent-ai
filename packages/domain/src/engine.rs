@@ -6,9 +6,13 @@
 
 use crate::{AsyncTask, spawn_async};
 use std::sync::Arc;
-use thiserror::Error;
+use std::sync::RwLock;
+use std::time::Duration;
+
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use thiserror::Error;
+
+use crate::completion::{CompletionResponse, CompactCompletionResponse};
 
 /// Engine-specific error types with zero-allocation string sharing
 #[derive(Error, Debug, Clone)]
@@ -179,17 +183,6 @@ impl CompletionRequest {
     }
 }
 
-/// Engine completion response
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CompletionResponse {
-    pub content: Arc<str>,
-    pub model: Arc<str>,
-    pub provider: Arc<str>,
-    pub tokens_used: u32,
-    pub finish_reason: Arc<str>,
-    pub response_time_ms: u64,
-}
-
 /// Core engine implementation with zero-allocation patterns
 pub struct Engine {
     config: Arc<RwLock<EngineConfig>>,
@@ -292,24 +285,25 @@ impl Engine {
             });
         }
 
-        // Simulate AI provider call (in production, this would route to actual providers)
+        // In a real implementation, this would call the appropriate provider
         let response_content = format!(
-            "Response from {} model {} for prompt: {}",
+            "Processed by {} ({}): {}",
             config.provider,
             config.model_name,
             request.prompt
         );
 
-        let response_time = start_time.elapsed().as_millis() as u64;
+        let response_time = start_time.elapsed().as_millis();
+        let tokens_used = request.prompt.len() as u32; // Simplified token count
 
-        Ok(CompletionResponse {
-            content: Arc::from(response_content),
-            model: config.model_name.clone(),
-            provider: config.provider.clone(),
-            tokens_used: request.prompt.len() as u32, // Simplified token count
-            finish_reason: Arc::from("stop"),
-            response_time_ms: response_time,
-        })
+        // Create a standard completion response
+        let response = CompletionResponse::new(&response_content, config.model_name.as_ref())
+            .with_provider(config.provider.as_ref())
+            .with_finish_reason("stop")
+            .with_response_time(response_time);
+
+        // Convert to compact form for the engine's internal use
+        Ok(response.into_compact().into_standard())
     }
 }
 

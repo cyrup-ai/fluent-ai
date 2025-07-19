@@ -84,7 +84,7 @@ impl Future for PendingEmbedding {
 }
 
 /// LLM provider trait
-pub trait LLMProvider: Send + Sync {
+pub trait LLMProvider: Send + Sync + std::fmt::Debug {
     /// Generate a completion for the given prompt
     fn complete(&self, prompt: &str) -> PendingCompletion;
 

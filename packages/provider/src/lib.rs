@@ -1,14 +1,13 @@
 //! Fluent AI Provider Library
 //!
-//! This crate provides the dynamically generated Provider and Model enumerations
-//! and client implementations for AI services.
-//! The enum variants are auto-generated from the AiChat models.yaml file.
+//! This crate provides provider and model implementations for AI services.
+//! The core domain types are now defined in the domain package.
 
-// CORE: Dynamically generated enumerations from models.yaml
-pub mod model_info;
-pub mod models;
-pub mod models_ext; // Extension methods for Models enum
-pub mod providers;
+// Re-export domain types for backward compatibility
+pub use fluent_ai_domain::{
+    model_info::ModelInfoData,
+    models::Models,
+};
 
 // Provider client implementations
 pub mod clients;
@@ -22,12 +21,9 @@ pub mod client;
 // Universal completion provider trait
 pub mod completion_provider;
 
-// CORE EXPORTS: The dynamically generated enumerations (THE MAIN VALUE!)
 // Re-export client traits for provider implementations
 pub use client::*;
 pub use completion_provider::*;
-pub use model_info::ModelInfoData;
-pub use models::Models;
 pub use providers::Providers;
 
 // Re-export fluent-ai types for provider implementations

@@ -341,7 +341,7 @@ mod tests {
             finished: false,
         };
         
-        let test_json = b r#"{"delta": {"text": "Hello"}}"#;
+        let test_json = br#"{"delta": {"text": "Hello"}}"#;
         let parsed = stream.parse_event_data(test_json);
         assert!(parsed.is_ok());
         

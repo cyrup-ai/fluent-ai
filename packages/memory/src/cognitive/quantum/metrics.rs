@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 
 /// Comprehensive metrics collection for quantum operations
-#[derive(Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct QuantumMetrics {
     pub total_routing_requests: u64,
     pub successful_routes: u64,
@@ -21,7 +21,7 @@ pub struct QuantumMetrics {
 }
 
 /// Performance indicators
-#[derive(Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct PerformanceIndicators {
     pub throughput: f64,
     pub latency_percentiles: LatencyPercentiles,
@@ -30,7 +30,7 @@ pub struct PerformanceIndicators {
 }
 
 /// Latency percentiles
-#[derive(Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct LatencyPercentiles {
     pub p50: Duration,
     pub p90: Duration,
@@ -40,7 +40,7 @@ pub struct LatencyPercentiles {
 }
 
 /// Resource utilization metrics
-#[derive(Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct ResourceUtilization {
     pub cpu_usage: f64,
     pub memory_usage: f64,
@@ -49,7 +49,7 @@ pub struct ResourceUtilization {
 }
 
 /// Error rate tracking
-#[derive(Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct ErrorRates {
     pub gate_error_rate: f64,
     pub readout_error_rate: f64,
@@ -58,7 +58,7 @@ pub struct ErrorRates {
 }
 
 /// Historical metrics tracking
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct MetricsHistory {
     pub routing_history: VecDeque<RoutingMetric>,
     pub fidelity_history: VecDeque<FidelityMetric>,

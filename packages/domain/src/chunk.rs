@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use crate::usage::Usage;
 
 /// Chunk of document content for streaming file operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,14 +111,6 @@ pub enum FinishReason {
     ContentFilter,
     ToolCalls,
     Error,
-}
-
-/// Token usage information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Usage {
-    pub prompt_tokens: u32,
-    pub completion_tokens: u32,
-    pub total_tokens: u32,
 }
 
 /// Comprehensive completion chunk supporting all streaming features

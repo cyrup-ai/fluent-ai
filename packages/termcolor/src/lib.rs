@@ -38,7 +38,7 @@ pub use theme::{
 pub use colored_message::{ColoredMessage, MessageStyle};
 
 // Re-export terminal color detection functions
-pub use color_writer::color_support::{
-    color_count, detect_color_support, should_use_color, supports_truecolor
-};
 pub use color_writer::color_choice_ext::ColorChoiceExt;
+pub use color_writer::color_support::{
+    color_count, detect_color_support, should_use_color, supports_truecolor,
+};

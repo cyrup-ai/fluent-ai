@@ -13,12 +13,11 @@ use std::pin::Pin;
 use std::sync::OnceLock;
 use std::time::Duration;
 
-// Import Cylo types with feature gate
-#[cfg(feature = "cylo")]
-use fluent_ai_cylo::{
-    CyloExecutor, RoutingStrategy, BackendPreferences, OptimizationConfig,
+// Import Cylo types for secure execution
+use cylo::{
     ExecutionRequest, ExecutionResult, Cylo, CyloInstance, CyloResult,
-    global_executor, create_executor, create_performance_executor, create_security_executor
+    ExecutionBackend, BackendConfig, HealthStatus, ResourceLimits, create_backend,
+    detect_platform, get_recommended_backend
 };
 
 /// Security level for execution isolation
@@ -71,15 +70,12 @@ impl Default for SecureExecutionConfig {
 }
 
 /// High-performance secure tool executor using Cylo backends
-#[derive(Debug)]
 pub struct SecureToolExecutor {
     /// Execution configuration
     config: SecureExecutionConfig,
-    /// Cylo executor for routing and management
-    #[cfg(feature = "cylo")]
-    executor: CyloExecutor,
+    /// Cylo backend for secure execution
+    backend: Box<dyn ExecutionBackend>,
     /// Cached instance for reuse
-    #[cfg(feature = "cylo")]
     cached_instance: Option<CyloInstance>,
 }
 
@@ -101,35 +97,70 @@ impl SecureToolExecutor {
     /// # Returns
     /// Configured secure executor ready for use
     pub fn with_config(config: SecureExecutionConfig) -> Self {
-        #[cfg(feature = "cylo")]
-        {
-            let executor = match config.security_level {
-                SecurityLevel::Basic | SecurityLevel::Standard => create_executor(),
-                SecurityLevel::High => create_security_executor(),
-                SecurityLevel::Maximum => {
-                    let mut executor = create_security_executor();
-                    let mut preferences = BackendPreferences::default();
-                    // Prefer FireCracker for maximum security
-                    preferences.preferred_order = vec![
-                        "FireCracker".to_string(),
-                        "LandLock".to_string(),
-                        "Apple".to_string(),
-                    ];
-                    executor.update_preferences(preferences);
-                    executor
+        // Create Cylo environment based on security level
+        let cylo_env = match config.security_level {
+            SecurityLevel::Basic | SecurityLevel::Standard => {
+                // Use auto-detection for basic/standard security
+                if let Some(backend_name) = get_recommended_backend() {
+                    match backend_name {
+                        "Apple" => Cylo::Apple("python:alpine3.20".to_string()),
+                        "LandLock" => Cylo::LandLock("/tmp/cylo_jail".to_string()),
+                        "FireCracker" => Cylo::FireCracker("python:alpine3.20".to_string()),
+                        _ => Cylo::Apple("python:alpine3.20".to_string()), // Default fallback
+                    }
+                } else {
+                    Cylo::Apple("python:alpine3.20".to_string()) // Default fallback
                 }
-            };
-            
-            Self {
-                config,
-                executor,
-                cached_instance: None,
             }
-        }
+            SecurityLevel::High => {
+                // Prefer LandLock for high security
+                Cylo::LandLock("/tmp/cylo_jail_high".to_string())
+            }
+            SecurityLevel::Maximum => {
+                // Use FireCracker for maximum security
+                Cylo::FireCracker("python:alpine3.20".to_string())
+            }
+        };
         
-        #[cfg(not(feature = "cylo"))]
-        {
-            Self { config }
+        // Create backend configuration based on security level
+        let backend_config = BackendConfig {
+            name: "secure_executor".to_string(),
+            enabled: true,
+            default_timeout: config.timeout,
+            default_limits: ResourceLimits {
+                max_memory: config.memory_limit,
+                max_cpu_time: Some(config.timeout.as_secs()),
+                max_processes: config.cpu_limit,
+                max_file_size: Some(1024 * 1024 * 100), // 100MB default
+            },
+            backend_specific: config.env_vars.clone(),
+        };
+        
+        // Create backend using cylo factory
+        let backend = create_backend(&cylo_env, backend_config)
+            .unwrap_or_else(|_| {
+                // Fallback to Apple backend on error
+                let fallback_env = Cylo::Apple("python:alpine3.20".to_string());
+                let fallback_config = BackendConfig {
+                    name: "secure_executor_fallback".to_string(),
+                    enabled: true,
+                    default_timeout: config.timeout,
+                    default_limits: ResourceLimits {
+                        max_memory: config.memory_limit,
+                        max_cpu_time: Some(config.timeout.as_secs()),
+                        max_processes: config.cpu_limit,
+                        max_file_size: Some(1024 * 1024 * 100), // 100MB default
+                    },
+                    backend_specific: config.env_vars.clone(),
+                };
+                create_backend(&fallback_env, fallback_config)
+                    .expect("Failed to create fallback backend")
+            });
+        
+        Self {
+            config,
+            backend,
+            cached_instance: None,
         }
     }
     
@@ -142,19 +173,7 @@ impl SecureToolExecutor {
         config.security_level = SecurityLevel::Standard;
         config.instance_reuse = true;
         
-        #[cfg(feature = "cylo")]
-        {
-            Self {
-                config,
-                executor: create_performance_executor(),
-                cached_instance: None,
-            }
-        }
-        
-        #[cfg(not(feature = "cylo"))]
-        {
-            Self { config }
-        }
+        Self::with_config(config)
     }
     
     /// Create a security-focused executor
@@ -166,19 +185,7 @@ impl SecureToolExecutor {
         config.security_level = SecurityLevel::Maximum;
         config.timeout = Duration::from_secs(60); // Longer timeout for security operations
         
-        #[cfg(feature = "cylo")]
-        {
-            Self {
-                config,
-                executor: create_security_executor(),
-                cached_instance: None,
-            }
-        }
-        
-        #[cfg(not(feature = "cylo"))]
-        {
-            Self { config }
-        }
+        Self::with_config(config)
     }
     
     /// Get the current execution configuration
@@ -192,23 +199,15 @@ impl SecureToolExecutor {
     /// # Arguments
     /// * `config` - New configuration to apply
     pub fn update_config(&mut self, config: SecureExecutionConfig) {
-        self.config = config;
+        // Create new executor with updated config
+        let new_executor = Self::with_config(config.clone());
         
-        #[cfg(feature = "cylo")]
-        {
-            // Update Cylo executor optimization config
-            let optimization = OptimizationConfig {
-                instance_reuse: self.config.instance_reuse,
-                instance_pool_size: 5,
-                max_idle_time: Duration::from_secs(300),
-                load_balancing: true,
-                monitoring_interval: Duration::from_secs(60),
-            };
-            self.executor.update_config(optimization);
-            
-            // Clear cached instance when config changes
-            self.cached_instance = None;
-        }
+        // Update our state
+        self.config = config;
+        self.backend = new_executor.backend;
+        
+        // Clear cached instance when config changes
+        self.cached_instance = None;
     }
     
     /// Execute code securely with automatic language detection and routing
@@ -220,27 +219,18 @@ impl SecureToolExecutor {
     /// # Returns
     /// AsyncTask that resolves to execution result
     pub fn execute_code(&self, code: &str, language: &str) -> AsyncTask<Result<Value, String>> {
-        #[cfg(feature = "cylo")]
-        {
-            let request = self.create_execution_request(code, language);
-            let executor = &self.executor;
-            let instance = self.cached_instance.clone();
-            
-            crate::spawn_async(async move {
-                match executor.execute(request, instance.as_ref()).await {
-                    Ok(result) => Ok(Self::format_execution_result(result, language)),
-                    Err(e) => Err(format!("Secure execution failed: {}", e)),
-                }
-            })
-        }
+        let request = self.create_execution_request(code, language);
+        let backend = &self.backend;
         
-        #[cfg(not(feature = "cylo"))]
-        {
-            let language = language.to_string();
-            crate::spawn_async(async move {
-                Err(format!("Cylo feature not enabled. Cannot execute {} code.", language))
-            })
-        }
+        crate::spawn_async(async move {
+            // Execute using the backend's execute_code method
+            let execution_task = backend.execute_code(request);
+            
+            match execution_task.await {
+                Ok(result) => Ok(Self::format_execution_result(result, language)),
+                Err(e) => Err(format!("Secure execution failed: {}", e)),
+            }
+        })
     }
     
     /// Execute Bash/shell code securely
@@ -282,23 +272,14 @@ impl SecureToolExecutor {
     /// 
     /// # Returns
     /// AsyncTask that resolves to execution result
-    #[cfg(feature = "cylo")]
     pub fn execute_with_instance(
         &self,
-        instance: &CyloInstance,
+        _instance: &CyloInstance,
         code: &str,
         language: &str
     ) -> AsyncTask<Result<Value, String>> {
-        let request = self.create_execution_request(code, language);
-        let executor = &self.executor;
-        let instance = instance.clone();
-        
-        crate::spawn_async(async move {
-            match executor.execute_with_instance(&instance, request).await {
-                Ok(result) => Ok(Self::format_execution_result(result, language)),
-                Err(e) => Err(format!("Secure execution with instance failed: {}", e)),
-            }
-        })
+        // For now, delegate to regular execute_code since backend handles instance management
+        self.execute_code(code, language)
     }
     
     /// Execute a tool with arguments securely
@@ -336,22 +317,26 @@ impl SecureToolExecutor {
     /// 
     /// # Returns
     /// AsyncTask that resolves to diagnostic information
-    #[cfg(feature = "cylo")]
     pub fn get_diagnostics(&self) -> AsyncTask<Result<Value, String>> {
-        let executor = &self.executor;
+        let backend = &self.backend;
         
         crate::spawn_async(async move {
-            match executor.get_metrics() {
-                Ok(metrics) => {
+            // Use backend's health_check method
+            let health_task = backend.health_check();
+            
+            match health_task.await {
+                Ok(health_status) => {
                     Ok(serde_json::json!({
-                        "executions_per_backend": metrics.executions_per_backend,
-                        "avg_execution_time": metrics.avg_execution_time
-                            .iter()
-                            .map(|(k, v)| (k.clone(), v.as_millis()))
-                            .collect::<HashMap<String, u128>>(),
-                        "success_rate": metrics.success_rate,
-                        "last_updated": metrics.last_updated
-                            .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs()),
+                        "status": match health_status {
+                            HealthStatus::Healthy => "healthy",
+                            HealthStatus::Degraded => "degraded",
+                            HealthStatus::Unhealthy => "unhealthy",
+                        },
+                        "backend_type": "cylo",
+                        "timestamp": std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs(),
                     }))
                 },
                 Err(e) => Err(format!("Failed to get diagnostics: {}", e)),
@@ -364,7 +349,6 @@ impl SecureToolExecutor {
     // ========================================================================
     
     /// Create execution request from parameters
-    #[cfg(feature = "cylo")]
     fn create_execution_request(&self, code: &str, language: &str) -> ExecutionRequest {
         let mut request = ExecutionRequest::new(code, language)
             .with_timeout(self.config.timeout);
@@ -392,7 +376,6 @@ impl SecureToolExecutor {
     }
     
     /// Format execution result as JSON
-    #[cfg(feature = "cylo")]
     fn format_execution_result(result: ExecutionResult, language: &str) -> Value {
         serde_json::json!({
             "status": if result.is_success() { "success" } else { "error" },
@@ -454,21 +437,8 @@ impl SecureToolExecutor {
 
 impl Clone for SecureToolExecutor {
     fn clone(&self) -> Self {
-        #[cfg(feature = "cylo")]
-        {
-            Self {
-                config: self.config.clone(),
-                executor: create_executor(), // Create new executor instance
-                cached_instance: self.cached_instance.clone(),
-            }
-        }
-        
-        #[cfg(not(feature = "cylo"))]
-        {
-            Self {
-                config: self.config.clone(),
-            }
-        }
+        // Create new executor with same configuration
+        Self::with_config(self.config.clone())
     }
 }
 

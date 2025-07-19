@@ -10,7 +10,10 @@ pub mod graph;
 pub mod llm;
 pub mod memory;
 pub mod migration;
+pub mod monitoring;
+pub mod query;
 pub mod schema;
+pub mod transaction;
 pub mod utils;
 pub mod vector;
 

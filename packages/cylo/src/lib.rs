@@ -53,282 +53,83 @@ pub use backends::{
     // Backend implementations
     AppleBackend,
     BackendConfig,
-    BackendError,
-    BackendResult,
-
-    // Core traits
+    // Trait
     ExecutionBackend,
-    ExecutionLimits,
-    // Request/Response types
     ExecutionRequest,
     ExecutionResult,
-    FireCrackerBackend,
-
     HealthStatus,
-    LandLockBackend,
-    ResourceUsage,
 };
+// Platform-specific backends
 #[cfg(target_os = "linux")]
-pub use backends::{firecracker::FireCrackerBackend, landlock::LandLockBackend};
+pub use backends::{FireCrackerBackend, LandLockBackend};
 
 // ============================================================================
-// Platform detection and capability assessment
+// Platform detection and capabilities
 // ============================================================================
 
 pub mod platform;
 pub use platform::{
-    // Utility functions
-    detect_platform,
     get_available_backends,
     get_recommended_backend,
     has_kvm,
     has_landlock,
     is_apple_silicon,
     is_linux,
+    // Structs
     Architecture,
-
-    // Backend availability
     BackendAvailability,
-
-    ContainerSupport,
-    FilesystemFeatures,
-
-    IOCharacteristics,
-
-    NetworkCapabilities,
     OperatingSystem,
-    // Performance characteristics
     PerformanceHints,
-    // Capability detection
-    PlatformCapabilities,
-    // Core platform information
     PlatformInfo,
-    SecurityFeatures,
-    TmpDirPerformance,
-    VirtualizationSupport,
 };
 
 // ============================================================================
-// Instance lifecycle management
+// Global instance manager
 // ============================================================================
 
 pub mod instance_manager;
 pub use instance_manager::{
-    // Global access functions
-    global_instance_manager,
-    init_global_instance_manager,
-    // Core manager types
-    InstanceManager,
+    global_instance_manager, init_global_instance_manager, InstanceManager,
 };
+// ============================================================================
+// Asynchronous task utilities
+// ============================================================================
+use serde::{Deserialize, Serialize};
+
+// Use our own async task implementations
+pub use crate::async_task::{AsyncTask, AsyncTaskBuilder};
 
 // ============================================================================
-// Prelude for common imports
+// Automatic execution helpers
 // ============================================================================
 
-/// Common imports for Cylo usage
-pub mod prelude {
-    // AsyncTask re-export for convenience
-    pub use crate::async_task::{AsyncTask, AsyncTaskBuilder};
-    pub use crate::{
-        // Platform detection
-        detect_platform,
-        get_recommended_backend,
-
-        // Instance management
-        global_instance_manager,
-        BackendConfig,
-        // Core types
-        Cylo,
-        CyloError,
-        CyloInstance,
-        CyloResult,
-
-        ExecutionBackend,
-        // Execution types
-        ExecutionRequest,
-        ExecutionResult,
-        HealthStatus,
-    };
-}
-
-// ============================================================================
-// Feature-gated exports
-// ============================================================================
-
-// ============================================================================
-// AsyncTask module - simple wrapper around tokio for backend compatibility
-// ============================================================================
-
-pub mod async_task {
-    /// AsyncTask is a type alias for tokio::task::JoinHandle
-    pub type AsyncTask<T> = tokio::task::JoinHandle<T>;
-
-    /// Simple AsyncTaskBuilder for fluent construction
-    pub struct AsyncTaskBuilder<F> {
-        future: F,
-    }
-
-    impl<F, T> AsyncTaskBuilder<F>
-    where
-        F: std::future::Future<Output = T> + Send + 'static,
-        T: Send + 'static,
-    {
-        /// Create a new AsyncTaskBuilder
-        pub fn new(future: F) -> Self {
-            Self { future }
-        }
-
-        /// Spawn the task and return the AsyncTask handle
-        pub fn spawn(self) -> AsyncTask<T> {
-            tokio::spawn(self.future)
-        }
-    }
-
-    /// Convenience function to spawn an async task
-    pub fn spawn_async<F, T>(future: F) -> AsyncTask<T>
-    where
-        F: std::future::Future<Output = T> + Send + 'static,
-        T: Send + 'static,
-    {
-        tokio::spawn(future)
-    }
-}
-
-// Re-export AsyncTask types for backend implementations
-#[doc(hidden)]
-pub use async_task::{AsyncTask, AsyncTaskBuilder};
-// Serde re-exports for serialization support
-#[doc(hidden)]
-pub use serde::{Deserialize, Serialize};
-// UUID re-export for instance ID generation
-#[doc(hidden)]
-pub use uuid;
-
-// ============================================================================
-// Version and metadata
-// ============================================================================
-
-/// Cylo version information
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// Cylo build metadata
-pub const BUILD_INFO: BuildInfo = BuildInfo {
-    version: VERSION,
-    git_hash: option_env!("GIT_HASH").unwrap_or("unknown"),
-    build_time: option_env!("BUILD_TIME").unwrap_or("unknown"),
-    rust_version: option_env!("RUST_VERSION").unwrap_or("unknown"),
-};
-
-/// Build information structure
-#[derive(Debug, Clone, Copy)]
-pub struct BuildInfo {
-    /// Package version
-    pub version: &'static str,
-    /// Git commit hash
-    pub git_hash: &'static str,
-    /// Build timestamp
-    pub build_time: &'static str,
-    /// Rust compiler version
-    pub rust_version: &'static str,
-}
-
-// ============================================================================
-// Zero-allocation convenience constructors
-// ============================================================================
-
-/// Zero-allocation constructor for Apple backend execution environment
-#[inline]
-pub const fn apple_env(image: &'static str) -> ConstCylo {
-    ConstCylo::Apple(image)
-}
-
-/// Zero-allocation constructor for LandLock backend execution environment
-#[inline]
-pub const fn landlock_env(jail_path: &'static str) -> ConstCylo {
-    ConstCylo::LandLock(jail_path)
-}
-
-/// Zero-allocation constructor for FireCracker backend execution environment
-#[inline]
-pub const fn firecracker_env(image: &'static str) -> ConstCylo {
-    ConstCylo::FireCracker(image)
-}
-
-/// Compile-time Cylo environment specification
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConstCylo {
-    /// Apple containerization backend
-    Apple(&'static str),
-    /// LandLock sandboxing backend
-    LandLock(&'static str),
-    /// FireCracker microVM backend
-    FireCracker(&'static str),
-}
-
-impl ConstCylo {
-    /// Convert to runtime Cylo instance with zero allocation in hot path
-    #[inline]
-    pub fn to_runtime(self) -> Cylo {
-        match self {
-            ConstCylo::Apple(image) => Cylo::Apple(image.to_string()),
-            ConstCylo::LandLock(path) => Cylo::LandLock(path.to_string()),
-            ConstCylo::FireCracker(image) => Cylo::FireCracker(image.to_string()),
-        }
-    }
-
-    /// Create named instance with zero allocation
-    #[inline]
-    pub fn instance(self, name: &'static str) -> CyloInstance {
-        CyloInstance {
-            env: self.to_runtime(),
-            name: name.to_string(),
-        }
-    }
-}
-
-// ============================================================================
-// High-performance execution shortcuts
-// ============================================================================
-
-/// Execute code directly with automatic backend selection and instance management
-///
-/// This is a high-level convenience function that:
-/// 1. Detects the best available backend for the current platform
-/// 2. Creates a temporary execution instance
-/// 3. Executes the code with optimal settings
-/// 4. Cleans up resources automatically
-///
-/// For production use, prefer explicit instance management for better performance.
-#[inline]
+/// Execute code with automatic backend selection
 pub fn execute_code_auto(code: &str, language: &str) -> AsyncTask<CyloResult<ExecutionResult>> {
-    AsyncTaskBuilder::new().spawn(move || async move {
-        let platform_info = detect_platform();
+    let code = code.to_string();
+    let language = language.to_string();
 
-        let backend_name =
-            get_recommended_backend().ok_or_else(|| CyloError::no_backend_available())?;
-
-        let cylo_env = match backend_name {
-            "Apple" => Cylo::Apple("python:alpine3.20".to_string()),
-            "LandLock" => Cylo::LandLock("/tmp/cylo_auto".to_string()),
-            "FireCracker" => Cylo::FireCracker("python:alpine3.20".to_string()),
-            _ => return Err(CyloError::unsupported_backend(backend_name)),
+    AsyncTaskBuilder::new(async move {
+        // Use a default environment based on platform
+        let env = if cfg!(target_os = "macos") {
+            Cylo::Apple("python:alpine3.20".to_string())
+        } else if cfg!(target_os = "linux") {
+            Cylo::LandLock("/tmp/cylo_sandbox".to_string())
+        } else {
+            return Err(CyloError::internal("Unsupported platform"));
         };
 
-        let instance_name = format!("auto_{}", uuid::Uuid::new_v4().simple());
-        let instance = cylo_env.instance(instance_name);
-
-        let manager = global_instance_manager();
-        manager.register_instance(instance.clone()).await?;
-
-        let backend = manager.get_instance(&instance.id()).await?;
-        let request = ExecutionRequest::new(code, language);
-        let result = backend.execute_code(request).await;
-
-        // Clean up instance
-        let _ = manager.remove_instance(&instance.id()).await;
-
+        let backend = match create_backend(&env, BackendConfig::default()) {
+            Ok(backend) => backend,
+            Err(e) => return Err(e),
+        };
+        let request = ExecutionRequest::new(&code, &language);
+        let result = backend
+            .execute_code(request)
+            .await
+            .map_err(|e| CyloError::internal(format!("Task execution failed: {}", e)))?;
         Ok(result)
     })
+    .spawn()
 }
 
 /// Execute Python code with automatic backend selection
@@ -367,23 +168,28 @@ pub fn execute_go(code: &str) -> AsyncTask<CyloResult<ExecutionResult>> {
 
 /// Get comprehensive platform and backend diagnostics
 pub fn get_diagnostics() -> AsyncTask<DiagnosticsReport> {
-    AsyncTaskBuilder::new().spawn(|| async move {
-        let platform_info = detect_platform();
+    AsyncTaskBuilder::new(async move {
+        let platform_info = platform::detect_platform();
         let available_backends = get_available_backends();
         let manager = global_instance_manager();
 
-        let health_results = manager.health_check_all().await.unwrap_or_default();
+        let health_results = match manager.health_check_all().await {
+            Ok(Ok(results)) => results,
+            Ok(Err(_)) => std::collections::HashMap::new(),
+            Err(_) => std::collections::HashMap::new(),
+        };
 
         let instance_list = manager.list_instances().unwrap_or_default();
 
         DiagnosticsReport {
             platform: platform_info.clone(),
-            available_backends: available_backends.iter().map(|&s| s.to_string()).collect(),
+            available_backends: available_backends,
             backend_health: health_results,
             active_instances: instance_list,
             performance_hints: platform_info.performance.clone(),
         }
     })
+    .spawn()
 }
 
 /// Comprehensive diagnostics report
@@ -399,4 +205,43 @@ pub struct DiagnosticsReport {
     pub active_instances: Vec<String>,
     /// Performance optimization hints
     pub performance_hints: PerformanceHints,
+}
+
+// ============================================================================
+// AsyncTask module - simple wrapper around tokio for backend compatibility
+// ============================================================================
+
+pub mod async_task {
+    /// AsyncTask is a type alias for tokio::task::JoinHandle
+    pub type AsyncTask<T> = tokio::task::JoinHandle<T>;
+
+    /// Simple AsyncTaskBuilder for fluent construction
+    pub struct AsyncTaskBuilder<F> {
+        future: F,
+    }
+
+    impl<F, T> AsyncTaskBuilder<F>
+    where
+        F: std::future::Future<Output = T> + Send + 'static,
+        T: Send + 'static,
+    {
+        /// Create a new AsyncTaskBuilder
+        pub fn new(future: F) -> Self {
+            Self { future }
+        }
+
+        /// Spawn the task and return the AsyncTask handle
+        pub fn spawn(self) -> AsyncTask<T> {
+            tokio::spawn(self.future)
+        }
+    }
+
+    /// Convenience function to spawn an async task
+    pub fn spawn_async<F, T>(future: F) -> AsyncTask<T>
+    where
+        F: std::future::Future<Output = T> + Send + 'static,
+        T: Send + 'static,
+    {
+        tokio::spawn(future)
+    }
 }

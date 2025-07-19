@@ -1,33 +1,18 @@
-//! Model trait definitions for AI services
+//! Model implementations for AI services
 
-use crate::model_info::ModelInfoData;
+use fluent_ai_domain::model::Model;
+use fluent_ai_domain::model_info::ModelInfo;
 
-/// Trait for AI models
-pub trait Model {
-    /// Get information about this model
-    fn info(&self) -> ModelInfoData;
-}
+// Re-export the Model trait from the domain package
+pub use fluent_ai_domain::model::Model as ModelTrait;
 
 // AUTO-GENERATED START
 use crate::models::Models;
 
-impl crate::Model for Models {
-    fn info(&self) -> ModelInfoData {
-        match self {
-            Models::Ai21Jamba16Large => crate::model_info::get_ai21jamba16large_info(),
-            Models::Ai21Jamba16Mini => crate::model_info::get_ai21jamba16mini_info(),
-            Models::AmazonNovaLiteV1 => crate::model_info::get_amazonnovalitev1_info(),
-            Models::AmazonNovaMicroV1 => crate::model_info::get_amazonnovamicrov1_info(),
-            Models::AmazonNovaProV1 => crate::model_info::get_amazonnovaprov1_info(),
-            Models::AnthropicClaude35Haiku => crate::model_info::get_anthropicclaude35haiku_info(),
-            Models::AnthropicClaude35Haiku20241022V10 => crate::model_info::get_anthropicclaude35haiku20241022v10_info(),
-            Models::AnthropicClaude35Sonnet => crate::model_info::get_anthropicclaude35sonnet_info(),
-            Models::AnthropicClaude35Sonnet20241022V20 => crate::model_info::get_anthropicclaude35sonnet20241022v20_info(),
-            Models::AnthropicClaude37Sonnet => crate::model_info::get_anthropicclaude37sonnet_info(),
-            Models::AnthropicClaude37Sonnetthinking => crate::model_info::get_anthropicclaude37sonnetthinking_info(),
-            Models::AnthropicClaudeOpus4 => crate::model_info::get_anthropicclaudeopus4_info(),
-            Models::AnthropicClaudeSonnet4 => crate::model_info::get_anthropicclaudesonnet4_info(),
-            Models::BaaiBgeLargeEnV15 => crate::model_info::get_baaibgelargeenv15_info(),
+impl Model for Models {
+    fn info(&self) -> ModelInfo {
+        // Convert the provider's ModelInfoData to the domain's ModelInfo
+        let info_data = match self {
             Models::BaaiBgeM3 => crate::model_info::get_baaibgem3_info(),
             Models::BceRerankerBase => crate::model_info::get_bcererankerbase_info(),
             Models::BgeLargeEn => crate::model_info::get_bgelargeen_info(),

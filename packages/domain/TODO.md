@@ -1,5 +1,30 @@
 # Domain Package Production Readiness TODO
 
+## TYPE REFACTORING TASKS (CRITICAL PATH)
+
+### REFACTOR-1. Move EmbeddingResponse to embedding.rs
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/response.rs` -> `/Volumes/samsung_t9/fluent-ai/packages/domain/src/embedding.rs`
+**Implementation**: Move `EmbeddingResponse` struct and its implementation to `embedding.rs`. Ensure zero-allocation patterns using `impl Into<String>` for string parameters. Add `#[inline]` to all methods. Remove `response.rs` after migration.
+**Performance**: Zero allocation, inlined methods, no locking.
+**Dependencies**: None beyond standard library.
+**Status**: CRITICAL - part of domain object migration
+
+### REFACTOR-2. Create usage.rs for Shared Usage Type
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/usage.rs` (new file)
+**Implementation**: Create new module with `Usage` struct and its implementation. Use `#[derive(Clone, Copy)]` for stack allocation. Add `const` constructors. Implement `Default` trait. Add `#[must_use]` where appropriate.
+**Performance**: Zero allocation, no heap, no locking, fully inlinable.
+**Dependencies**: `serde` for serialization.
+**Status**: CRITICAL - shared type used across response types
+
+### REFACTOR-3. Update All References
+**Files**: 
+- `/Volumes/samsung_t9/fluent-ai/packages/domain/src/completion.rs`
+- `/Volumes/samsung_t9/fluent-ai/packages/domain/src/embedding.rs`
+- Any other files using these types
+**Implementation**: Update imports to reference types in their new locations. Use `crate::usage::Usage` pattern. Ensure no duplicate type definitions remain.
+**Performance**: Zero impact - compile-time only changes.
+**Status**: CRITICAL - must be done atomically with type moves
+
 ## IMMEDIATE COMPILATION FIXES (REQUIRED BEFORE MEMORY INTEGRATION)
 
 ### IMMEDIATE-1. Re-enable LLM Providers in Memory Package

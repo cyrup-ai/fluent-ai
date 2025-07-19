@@ -1,15 +1,14 @@
 //! API module for exposing memory system functionality
 //! This module is feature-gated with the "api" feature
 
-// TODO: Implement these modules
-// #[cfg(feature = "api")]
-// pub mod routes;
-// #[cfg(feature = "api")]
-// pub mod handlers;
-// #[cfg(feature = "api")]
-// pub mod middleware;
-// #[cfg(feature = "api")]
-// pub mod models;
+#[cfg(feature = "api")]
+pub mod handlers;
+#[cfg(feature = "api")]
+pub mod middleware;
+#[cfg(feature = "api")]
+pub mod models;
+#[cfg(feature = "api")]
+pub mod routes;
 
 #[cfg(feature = "api")]
 use std::net::SocketAddr;

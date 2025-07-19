@@ -7,11 +7,11 @@
 
 mod errors;
 mod loader;
-mod text_processors;
+mod text_processor;
 
 pub use errors::EpubLoaderError;
 pub use loader::{EpubFileLoader, LoaderIter};
-pub use text_processors::{RawTextProcessor, StripXmlProcessor, TextProcessor};
+pub use text_processor::{RawTextProcessor, StripXmlProcessor, TextProcessor};
 
 // ---------------------------------------------------------------------------
 // End of file

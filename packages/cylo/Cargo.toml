@@ -20,10 +20,11 @@ chrono = { version = "0.4.41", features = ["serde"] }
 uuid = { version = "1.17.0", features = ["v4", "serde"] }
 tokio = { version = "1.46.1", features = ["full"] }
 termcolor = { path = "../termcolor" }
-fluent_ai_domain = { path = "../domain" }
+# fluent_ai_domain = { path = "../domain" } # Removed to avoid circular dependency
 
 # Regular dependencies
 nix = { version = "0.29.0", features = ["user"] }
+num_cpus = "1.16.0"
 
 # Additional dependencies
 statig = "0.4.1"
@@ -38,9 +39,7 @@ assert_fs = "1.1.3"
 assert_cmd = "2.0.17"
 predicates = "3.1.3"
 
-[[bin]]
-name = "cylo"
-path = "src/main.rs"
+# Binary removed - this is a library package
 
 [lib]
 name = "cylo"

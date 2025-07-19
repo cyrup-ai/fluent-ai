@@ -3,133 +3,70 @@
 //! This module provides comprehensive validation for model configurations,
 //! data integrity checks, and production-readiness verification.
 
-use crate::model_capabilities::{ModelInfoData, Capability};
+use crate::model_capabilities::ModelInfoData;
 use crate::completion_provider::ModelConfig;
+use fluent_ai_domain::validation::{
+    ValidationError, ValidationResult, ValidationSeverity, ValidationIssue, ValidationReport
+};
 use std::collections::HashSet;
 
-/// Result type for validation operations
-pub type ValidationResult<T> = Result<T, ValidationError>;
+// Re-export the validation types for convenience
+pub use fluent_ai_domain::validation::{
+    ValidationError, ValidationResult, ValidationSeverity, ValidationIssue, ValidationReport
+};
 
-/// Validation error types for detailed error reporting
-#[derive(Debug, Clone, PartialEq)]
-pub enum ValidationError {
-    /// Missing required field
-    MissingField { field: String, model: String },
-    
-    /// Invalid value range
-    InvalidRange { field: String, value: String, expected: String },
-    
-    /// Inconsistent data between fields
-    InconsistentData { description: String },
-    
-    /// Provider name format error
-    InvalidProvider { provider: String },
-    
-    /// Model name format error
-    InvalidModelName { name: String },
-    
-    /// Pricing validation error
-    InvalidPricing { description: String },
-    
-    /// Capability configuration error
-    InvalidCapability { description: String },
-    
-    /// Configuration safety error
-    UnsafeConfiguration { description: String },
-}
+// Import the Capability type if needed
+use crate::model_capabilities::Capability;
 
-impl std::fmt::Display for ValidationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ValidationError::MissingField { field, model } => {
-                write!(f, "Missing required field '{}' for model '{}'", field, model)
-            }
-            ValidationError::InvalidRange { field, value, expected } => {
-                write!(f, "Invalid value '{}' for field '{}', expected {}", value, field, expected)
-            }
-            ValidationError::InconsistentData { description } => {
-                write!(f, "Data inconsistency: {}", description)
-            }
-            ValidationError::InvalidProvider { provider } => {
-                write!(f, "Invalid provider name: '{}'", provider)
-            }
-            ValidationError::InvalidModelName { name } => {
-                write!(f, "Invalid model name format: '{}'", name)
-            }
-            ValidationError::InvalidPricing { description } => {
-                write!(f, "Pricing validation error: {}", description)
-            }
-            ValidationError::InvalidCapability { description } => {
-                write!(f, "Capability validation error: {}", description)
-            }
-            ValidationError::UnsafeConfiguration { description } => {
-                write!(f, "Unsafe configuration detected: {}", description)
-            }
-        }
-    }
-}
-
-impl std::error::Error for ValidationError {}
-
-/// Validation severity levels
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ValidationSeverity {
-    /// Informational message
-    Info,
-    
-    /// Warning that should be addressed
-    Warning,
-    
-    /// Error that must be fixed
-    Error,
-    
-    /// Critical error that prevents operation
-    Critical,
-}
-
-/// Validation result with severity
-#[derive(Debug, Clone)]
-pub struct ValidationIssue {
-    /// Severity of the issue
-    pub severity: ValidationSeverity,
-    
-    /// Error details
-    pub error: ValidationError,
-    
-    /// Suggested fix for the issue
-    pub suggested_fix: Option<String>,
-}
-
-/// Comprehensive validation report
-#[derive(Debug, Clone)]
-pub struct ValidationReport {
-    /// Model name being validated
-    pub model_name: String,
-    
-    /// All validation issues found
-    pub issues: Vec<ValidationIssue>,
-    
-    /// Overall validation status
-    pub is_valid: bool,
-    
-    /// Production readiness score (0.0 to 1.0)
-    pub readiness_score: f32,
+// Re-export the validation types for backward compatibility
+#[deprecated(note = "Use fluent_ai_domain::validation instead")]
+pub mod validation {
+    pub use fluent_ai_domain::validation::*;
 }
 
 impl ValidationReport {
-    /// Check if there are any critical errors
-    pub fn has_critical_errors(&self) -> bool {
-        self.issues.iter().any(|issue| issue.severity == ValidationSeverity::Critical)
+    /// Create a new validation report for a model
+    pub fn for_model(model_name: &str) -> Self {
+        ValidationReport {
+            model_name: model_name.to_string(),
+            ..Default::default()
+        }
     }
     
-    /// Check if there are any errors (Error or Critical)
-    pub fn has_errors(&self) -> bool {
-        self.issues.iter().any(|issue| matches!(issue.severity, ValidationSeverity::Error | ValidationSeverity::Critical))
+    /// Add a validation issue to the report with the given severity
+    pub fn add_issue_with_severity(&mut self, severity: ValidationSeverity, error: ValidationError) {
+        let issue = ValidationIssue {
+            severity,
+            error,
+            suggested_fix: None,
+        };
+        self.add_issue(issue);
     }
     
-    /// Get issues by severity level
-    pub fn get_issues_by_severity(&self, severity: ValidationSeverity) -> Vec<&ValidationIssue> {
-        self.issues.iter().filter(|issue| issue.severity == severity).collect()
+    /// Add a critical error to the report
+    pub fn add_critical(&mut self, error: ValidationError) {
+        self.add_issue_with_severity(ValidationSeverity::Critical, error);
+    }
+    
+    /// Add an error to the report
+    pub fn add_error(&mut self, error: ValidationError) {
+        self.add_issue_with_severity(ValidationSeverity::Error, error);
+    }
+    
+    /// Add a warning to the report
+    pub fn add_warning(&mut self, error: ValidationError) {
+        self.add_issue_with_severity(ValidationSeverity::Warning, error);
+    }
+    
+    /// Add an info message to the report
+    pub fn add_info(&mut self, error: ValidationError) {
+        self.add_issue_with_severity(ValidationSeverity::Info, error);
+    }
+    
+    /// Update the readiness score based on the current issues
+    pub fn update_readiness(&mut self) {
+        let score = calculate_readiness_score(&self.issues);
+        self.update_readiness_score(score);
     }
     
     /// Generate a summary report

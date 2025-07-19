@@ -5,13 +5,18 @@
 //! evaluation and Monte Carlo Tree Search (MCTS).
 
 pub mod committee;
-pub mod committee_old; // Legacy committee implementation - kept for backward compatibility
+
 pub mod compiler;
 pub mod evolution;
+pub mod evolution_manager;
 pub mod mcts;
+pub mod mesh;
 pub mod orchestrator;
 pub mod performance;
 pub mod types;
+
+// Add the new common module
+pub mod common;
 
 // Core cognitive modules from existing implementation
 pub mod attention;
@@ -25,18 +30,21 @@ pub mod quantum_orchestrator;
 
 // Re-exports for convenience
 // Re-export existing cognitive components
-pub use attention::AttentionMechanism;
-pub use committee::{
-    CommitteeEvaluation, CommitteeEvaluator, CommitteeEvent, ConsensusDecision,
-    EvaluationCommittee, EvaluationConfig, ModelType,
-};
+pub use attention::{AttentionMechanism, AttentionRouter};
+// Re-export the refactored committee types
+pub use committee::{CommitteeEvent, EvaluationCommittee};
+pub use common::models::{Model, ModelType};
+pub use common::types::{CommitteeConfig, ConsensusDecision};
 pub use evolution::{
-    CodeEvolution, CognitiveCodeEvolution, EvolutionEngine, EvolutionResult, PerformanceMetrics,
+    CodeEvolution, CognitiveCodeEvolution, EvolutionEngine, EvolutionResult, Innovation,
+    InnovationType, PerformanceMetrics,
 };
 pub use manager::CognitiveMemoryManager;
 pub use mcts::{CodeState, MCTS};
 pub use orchestrator::InfiniteOrchestrator;
-pub use quantum_mcts::{QuantumMCTS, QuantumMCTSConfig, QuantumNodeState, QuantumTreeStatistics};
+pub use quantum_mcts::{
+    AtomicQuantumMetrics, QuantumMCTS, QuantumMCTSNode, QuantumNodeState, QuantumTreeStatistics,
+};
 pub use quantum_orchestrator::{QuantumOrchestrationConfig, QuantumOrchestrator, RecursiveState};
 pub use state::CognitiveState;
 pub use types::{

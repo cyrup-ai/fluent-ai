@@ -16,6 +16,9 @@ pub struct QuantumConfig {
     pub real_time_optimization: bool,
     pub hardware_backend: QuantumHardwareBackend,
     pub simulation_parameters: SimulationParameters,
+    pub exploration_constant: f64,
+    pub decoherence_rate: f64,
+    pub entanglement_probability: f64,
 }
 
 /// Quantum hardware backend options
@@ -131,6 +134,9 @@ impl Default for QuantumConfig {
             real_time_optimization: true,
             hardware_backend: QuantumHardwareBackend::default_simulator(),
             simulation_parameters: SimulationParameters::default(),
+            exploration_constant: 1.414, // sqrt(2) for UCB1
+            decoherence_rate: 0.01, // 1% decoherence rate
+            entanglement_probability: 0.3, // 30% entanglement probability
         }
     }
 }

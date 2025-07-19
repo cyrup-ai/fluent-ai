@@ -290,6 +290,10 @@ pub enum CyloError {
     /// Internal system error
     #[error("Internal system error: {message}")]
     Internal { message: String },
+
+    /// Validation error
+    #[error("Validation error: {message}")]
+    Validation { message: String },
 }
 
 impl CyloError {
@@ -321,6 +325,21 @@ impl CyloError {
     pub fn internal(message: impl Into<String>) -> Self {
         Self::Internal {
             message: message.into(),
+        }
+    }
+
+    /// Create a validation error with message
+    pub fn validation(message: impl Into<String>) -> Self {
+        Self::Validation {
+            message: message.into(),
+        }
+    }
+}
+
+impl From<tokio::task::JoinError> for CyloError {
+    fn from(error: tokio::task::JoinError) -> Self {
+        Self::Internal {
+            message: format!("Task join error: {}", error),
         }
     }
 }

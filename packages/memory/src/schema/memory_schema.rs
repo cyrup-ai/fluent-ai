@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use surrealdb::RecordId;
 
-use crate::memory::memory_node::MemoryType;
+use crate::memory::primitives::types::MemoryTypeEnum;
 
 /// Database schema for memory nodes
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -14,7 +14,7 @@ pub struct MemoryNodeSchema {
     /// Content of the memory
     pub content: String,
     /// Type of memory
-    pub memory_type: MemoryType,
+    pub memory_type: MemoryTypeEnum,
     /// Metadata associated with the memory
     pub metadata: MemoryMetadataSchema,
 }

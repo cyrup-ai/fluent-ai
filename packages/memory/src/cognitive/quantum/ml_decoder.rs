@@ -1,6 +1,5 @@
 //! Machine learning components for quantum error correction and optimization
 
-
 use serde::{Deserialize, Serialize};
 
 /// Complex number representation for quantum amplitudes

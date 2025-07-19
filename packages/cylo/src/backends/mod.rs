@@ -394,6 +394,12 @@ impl BackendConfig {
     }
 }
 
+impl Default for BackendConfig {
+    fn default() -> Self {
+        Self::new("default")
+    }
+}
+
 /// Backend-specific error types
 ///
 /// Covers errors that can occur during backend operations.

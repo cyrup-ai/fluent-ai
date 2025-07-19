@@ -14,12 +14,12 @@ use sha2::{Digest, Sha256};
 use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
 
-use super::committee_consensus::{CommitteeConsensusEngine, ConsensusConfig};
+use super::committee_consensus::{CommitteeConsensusEngine, ConsensusConfig, ConsensusDecision};
 use super::committee_evaluators::{EvaluationSession, EvaluatorPool, LLMEvaluator};
 use super::committee_types::{
     CacheEntry, CacheMetrics, CommitteeError, CommitteeEvaluation, CommitteeMetrics,
-    CommitteeResult, ConsensusDecision, EvaluationConfig, EvaluationResult, ModelType,
-    MAX_COMMITTEE_SIZE, MAX_CACHE_LIFETIME_SECS,
+    CommitteeResult, EvaluationConfig, EvaluationResult, ModelType,
+    MAX_COMMITTEE_SIZE, MAX_CACHE_LIFETIME_SECS, MetricsSnapshot, CacheMetricsSnapshot,
 };
 use arrayvec::ArrayVec;
 use crate::cognitive::mcts::CodeState;
@@ -76,7 +76,7 @@ impl CommitteeEvaluator {
             info!("Added evaluator for model: {:?}", model_type);
         }
 
-        let consensus_engine = CommitteeConsensusEngine::new().with_config(ConsensusConfig::default());
+        let consensus_engine = CommitteeConsensusEngine::new(ConsensusConfig::default());
 
         Ok(Self {
             config,
@@ -143,13 +143,13 @@ impl CommitteeEvaluator {
     }
 
     /// Get current committee performance metrics
-    pub fn metrics(&self) -> CommitteeMetrics {
-        self.metrics.clone()
+    pub fn metrics(&self) -> MetricsSnapshot {
+        self.metrics.snapshot()
     }
 
     /// Get cache performance metrics
-    pub fn cache_metrics(&self) -> CacheMetrics {
-        self.cache_metrics.clone()
+    pub fn cache_metrics(&self) -> CacheMetricsSnapshot {
+        self.cache_metrics.snapshot()
     }
 
     /// Clear evaluation cache
@@ -157,15 +157,15 @@ impl CommitteeEvaluator {
         self.evaluation_cache.clear();
 
         // Reset cache metrics atomically
-        self.cache_metrics.total_entries.reset();
-        self.cache_metrics.evictions.reset();
+        self.cache_metrics.total_entries.store(0, std::sync::atomic::Ordering::Relaxed);
+        self.cache_metrics.evictions.store(0, std::sync::atomic::Ordering::Relaxed);
         self.cache_metrics
             .memory_usage_bytes
             .store(0, std::sync::atomic::Ordering::Relaxed);
         self.cache_metrics
             .avg_entry_age_seconds
             .store(0, std::sync::atomic::Ordering::Relaxed);
-        self.cache_metrics.generation.inc();
+        self.cache_metrics.generation.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
         info!("Evaluation cache cleared");
     }
@@ -320,25 +320,34 @@ impl CommitteeEvaluator {
             .await?;
 
         // Calculate evaluation metrics
-        let metrics = self.calculate_evaluation_metrics(&successful_evaluations, &decision);
+        let _metrics = self.calculate_evaluation_metrics(&successful_evaluations, &decision);
 
         let total_time = start_time.elapsed();
         let cache_key = self.generate_cache_key(
             optimization_spec,
             &CodeState {
+                code: current_code.to_string(),
                 code_content: current_code.to_string(),
+                latency: 0.0,
+                memory: 0.0,
+                relevance: 1.0,
             },
             &CodeState {
+                code: proposed_code.to_string(),
                 code_content: proposed_code.to_string(),
+                latency: 0.0,
+                memory: 0.0,
+                relevance: 1.0,
             },
         );
 
         Ok(EvaluationResult {
             decision,
-            individual_evaluations: successful_evaluations,
-            metrics,
-            cache_key,
-            total_time,
+            cache_key: cache_key.into(),
+            from_cache: false,
+            request_timestamp: start_time,
+            evaluation_duration_ms: total_time.as_millis() as u64,
+            cache_generation: 0,
         })
     }
 
@@ -370,12 +379,12 @@ impl CommitteeEvaluator {
     fn calculate_evaluation_metrics(
         &self,
         evaluations: &[CommitteeEvaluation],
-        decision: &ConsensusDecision,
+        decision: &super::committee_consensus::ConsensusDecision,
     ) -> super::committee_types::EvaluationMetrics {
         let participants = evaluations.len();
         let consensus_count = evaluations
             .iter()
-            .filter(|e| e.makes_progress == decision.consensus_reached)
+            .filter(|e| e.makes_progress == decision.is_positive())
             .count();
 
         let average_response_time = if evaluations.is_empty() {
@@ -465,7 +474,7 @@ impl CommitteeEvaluator {
     /// Update cache hit metrics
     #[inline]
     fn update_cache_hit_metrics(&self) {
-        self.cache_metrics.total_entries.inc();
+        self.cache_metrics.total_entries.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Update cache miss metrics
@@ -550,7 +559,7 @@ impl EvaluationWorkflow {
             results.push(decision.clone());
 
             // Check if required step failed
-            if step.is_required && !decision.consensus_reached {
+            if step.is_required && !decision.is_positive() {
                 warn!("Required workflow step failed: {}", step.description);
                 break;
             }
@@ -608,7 +617,7 @@ impl CommitteeCoordinator {
     }
 
     /// Get aggregated metrics across all committees
-    pub async fn aggregated_metrics(&self) -> HashMap<String, CommitteeMetrics> {
+    pub async fn aggregated_metrics(&self) -> HashMap<String, MetricsSnapshot> {
         let mut all_metrics = HashMap::new();
 
         for (key, committee) in &self.committees {

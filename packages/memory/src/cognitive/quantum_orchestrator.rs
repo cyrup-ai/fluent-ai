@@ -1,6 +1,7 @@
 // src/cognitive/quantum_orchestrator.rs
 //! Quantum orchestrator for managing recursive improvement loops
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -8,13 +9,17 @@ use tokio::sync::{RwLock, mpsc};
 use tokio::time::{self, Duration};
 use tracing::{info, warn};
 
+use crate::cognitive::state::CognitiveStateManager;
+use crate::cognitive::types::{
+    BaselineMetrics, ContentCategory, ContentType, EvolutionRules, OptimizationType, Restrictions,
+};
 use crate::cognitive::{
     committee::CommitteeEvent,
     evolution::CognitiveCodeEvolution,
     mcts::CodeState,
     performance::PerformanceAnalyzer,
-    quantum::{QuantumConfig, QuantumRouter},
-    quantum_mcts::{QuantumMCTS, QuantumMCTSConfig, QuantumNodeState, QuantumTreeStatistics},
+    quantum::{QuantumConfig, QuantumMetrics, QuantumRouter},
+    quantum_mcts::{QuantumMCTS, QuantumMCTSNode, QuantumNodeState, QuantumTreeStatistics},
     types::{CognitiveError, OptimizationOutcome, OptimizationSpec},
 };
 
@@ -63,7 +68,7 @@ pub struct QuantumOrchestrator {
     /// Configuration
     config: QuantumOrchestrationConfig,
     /// Quantum MCTS config
-    mcts_config: QuantumMCTSConfig,
+    mcts_config: QuantumConfig, // Temporarily using QuantumConfig instead of QuantumMCTSConfig
     /// Performance analyzer
     performance_analyzer: Arc<PerformanceAnalyzer>,
     /// Event channel
@@ -79,13 +84,83 @@ pub struct QuantumOrchestrator {
 impl QuantumOrchestrator {
     pub async fn new(
         config: QuantumOrchestrationConfig,
-        mcts_config: QuantumMCTSConfig,
+        mcts_config: QuantumConfig, // Temporarily using QuantumConfig instead of QuantumMCTSConfig
         performance_analyzer: Arc<PerformanceAnalyzer>,
         event_tx: mpsc::Sender<CommitteeEvent>,
     ) -> Result<Self, CognitiveError> {
+        // Initialize quantum router with proper async handling
         let quantum_config = QuantumConfig::default();
-        let quantum_router = Arc::new(QuantumRouter::new(quantum_config));
-        let evolution_engine = Arc::new(CognitiveCodeEvolution::new());
+        // Create a default CognitiveStateManager for now - this should be injected in production
+        let state_manager = Arc::new(CognitiveStateManager::new());
+        let quantum_router = Arc::new(
+            QuantumRouter::new(state_manager, quantum_config)
+                .await
+                .map_err(|e| CognitiveError::OptimizationError(e.to_string()))?,
+        );
+
+        // Initialize evolution engine with default values
+        // These should be replaced with actual values from the context
+        let initial_code = String::new();
+        let initial_latency = 0.0;
+        let initial_memory = 0.0;
+        let initial_relevance = 0.0;
+
+        // Manually construct OptimizationSpec since it doesn't implement Default
+        let spec = Arc::new(OptimizationSpec {
+            objective: "Optimize quantum routing".to_string(),
+            improvement_threshold: 0.1, // 10% improvement threshold
+            constraints: vec!["No breaking changes".to_string()],
+            success_criteria: vec!["Improved performance".to_string()],
+            optimization_type: OptimizationType::Performance,
+            timeout_ms: Some(5000),
+            max_iterations: Some(100),
+            target_quality: 0.9,
+            baseline_metrics: BaselineMetrics {
+                response_time: 100.0,
+                accuracy: 1.0,
+                throughput: 1000.0,
+                resource_usage: 0.5,
+                error_rate: 0.01,
+                quality_score: 0.9,
+                latency: 100.0,
+                memory: 500.0,
+                relevance: 1.0,
+            },
+            content_type: ContentType {
+                category: ContentCategory::Code,
+                complexity: 0.8,
+                processing_hints: vec!["quantum_optimization".to_string()],
+                format: "rust".to_string(),
+                restrictions: Restrictions::default(),
+            },
+            evolution_rules: EvolutionRules {
+                mutation_rate: 0.1,
+                selection_pressure: 0.5,
+                crossover_rate: 0.8,
+                elite_retention: 0.1,
+                diversity_maintenance: 0.2,
+                allowed_mutations: vec![],
+                build_on_previous: true,
+                new_axis_per_iteration: false,
+                max_cumulative_latency_increase: 100.0,
+                min_action_diversity: 0.1,
+                validation_required: true,
+            },
+        });
+
+        let user_objective = String::from("Optimize quantum routing");
+
+        let evolution_engine = Arc::new(
+            CognitiveCodeEvolution::new(
+                initial_code,
+                initial_latency,
+                initial_memory,
+                initial_relevance,
+                spec,
+                user_objective,
+            )
+            .map_err(|e| CognitiveError::OptimizationError(e.to_string()))?,
+        );
 
         Ok(Self {
             config,
@@ -122,8 +197,7 @@ impl QuantumOrchestrator {
                 user_objective.clone(),
                 self.event_tx.clone(),
                 self.mcts_config.clone(),
-            )
-            .await?;
+            )?;
 
             // Run recursive improvement
             quantum_mcts
@@ -192,9 +266,16 @@ impl QuantumOrchestrator {
                 "recursive_improvement".to_string(),
                 format!("Total improvement: {:.2}%", total_improvement * 100.0),
             ],
-            performance_gain: total_improvement * 100.0,
-            quality_score: current_state.relevance * 100.0,
-            metadata: self.collect_final_metrics(&current_state).await?,
+            performance_gain: (total_improvement * 100.0) as f32,
+            quality_score: (current_state.relevance * 100.0) as f32,
+            metadata: self
+                .collect_final_metrics(&current_state)
+                .await
+                .map_err(|e| {
+                    warn!("Failed to collect final metrics: {}", e);
+                    e
+                })?,
+            applied: true,
         })
     }
 
@@ -243,15 +324,16 @@ impl QuantumOrchestrator {
 
         Ok(QuantumNodeState {
             classical_state: CodeState {
-                code: evolved_code,
+                code: evolved_code.clone(),
+                code_content: evolved_code,
                 latency: quantum_state.classical_state.latency * 0.98,
                 memory: quantum_state.classical_state.memory * 0.98,
                 relevance: quantum_state.classical_state.relevance * 1.01,
             },
-            superposition: quantum_state.superposition.clone(),
-            entanglements: quantum_state.entanglements.clone(),
-            phase: quantum_state.phase + 0.1,
+            superposition_coefficients: quantum_state.superposition_coefficients.clone(),
+            entangled_nodes: quantum_state.entangled_nodes.clone(),
             decoherence: quantum_state.decoherence * 0.95,
+            measurement_history: quantum_state.measurement_history.clone(),
         })
     }
 
@@ -282,24 +364,73 @@ impl QuantumOrchestrator {
     async fn collect_final_metrics(
         &self,
         state: &CodeState,
-    ) -> Result<serde_json::Value, CognitiveError> {
+    ) -> Result<HashMap<String, serde_json::Value>, CognitiveError> {
         let recursive_states = self.recursive_states.read().await;
 
-        Ok(serde_json::json!({
-            "final_latency": state.latency,
-            "final_memory": state.memory,
-            "final_relevance": state.relevance,
-            "recursive_depths": recursive_states.len(),
-            "total_improvement": recursive_states.iter()
-                .map(|s| s.improvement)
-                .sum::<f64>(),
-            "avg_quantum_fidelity": recursive_states.iter()
+        let mut metrics = HashMap::new();
+        metrics.insert(
+            "final_latency".to_string(),
+            serde_json::Value::Number(
+                serde_json::Number::from_f64(state.latency).unwrap_or(serde_json::Number::from(0)),
+            ),
+        );
+        metrics.insert(
+            "final_memory".to_string(),
+            serde_json::Value::Number(
+                serde_json::Number::from_f64(state.memory).unwrap_or(serde_json::Number::from(0)),
+            ),
+        );
+        metrics.insert(
+            "final_relevance".to_string(),
+            serde_json::Value::Number(
+                serde_json::Number::from_f64(state.relevance)
+                    .unwrap_or(serde_json::Number::from(0)),
+            ),
+        );
+        metrics.insert(
+            "recursive_depths".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(recursive_states.len())),
+        );
+
+        let total_improvement = recursive_states.iter().map(|s| s.improvement).sum::<f64>();
+        metrics.insert(
+            "total_improvement".to_string(),
+            serde_json::Value::Number(
+                serde_json::Number::from_f64(total_improvement)
+                    .unwrap_or(serde_json::Number::from(0)),
+            ),
+        );
+
+        let avg_quantum_fidelity = if recursive_states.len() > 0 {
+            recursive_states
+                .iter()
                 .map(|s| s.quantum_fidelity)
-                .sum::<f64>() / recursive_states.len() as f64,
-            "final_decoherence": recursive_states.last()
-                .map(|s| s.decoherence_level)
-                .unwrap_or(0.0),
-        }))
+                .sum::<f64>()
+                / recursive_states.len() as f64
+        } else {
+            0.0
+        };
+        metrics.insert(
+            "avg_quantum_fidelity".to_string(),
+            serde_json::Value::Number(
+                serde_json::Number::from_f64(avg_quantum_fidelity)
+                    .unwrap_or(serde_json::Number::from(0)),
+            ),
+        );
+
+        let final_decoherence = recursive_states
+            .last()
+            .map(|s| s.decoherence_level)
+            .unwrap_or(0.0);
+        metrics.insert(
+            "final_decoherence".to_string(),
+            serde_json::Value::Number(
+                serde_json::Number::from_f64(final_decoherence)
+                    .unwrap_or(serde_json::Number::from(0)),
+            ),
+        );
+
+        Ok(metrics)
     }
 
     /// Get recursive improvement history

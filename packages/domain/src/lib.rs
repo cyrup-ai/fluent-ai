@@ -517,77 +517,32 @@ pub async fn warm_up_connection_pool(
 // Use std HashMap instead
 pub use std::collections::HashMap;
 
+// Validation module for model and configuration validation
+pub mod validation;
+pub use validation::{ValidationError, ValidationResult, ValidationSeverity, ValidationIssue, ValidationReport};
+
+/// Model information and metadata types
+pub mod model_info;
+
+/// Model enumeration types
+pub mod models;
+
+/// Model capabilities and performance characteristics
+pub mod capabilities;
+
+// Re-export commonly used types for convenience
+pub use model_info::{ModelInfoData, ModelRegistry, get_model_info};
+pub use models::Models;
+pub use capabilities::{Capability, ModelCapabilities, ModelPerformance, UseCase};
+
 // Re-export hash_map_fn macro for transparent JSON syntax
 #[doc(hidden)]
 pub use cyrup_sugars::hash_map_fn;
 pub use cyrup_sugars::{ByteSize, OneOrMany, ZeroOneOrMany};
 
-// Re-export Models from provider - temporarily commented out due to circular dependency
-// pub use fluent_ai_provider::{Models, ModelInfoData};
-
-// Temporary models types to break circular dependency
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub enum Models {
-    Gpt35Turbo,
-    Gpt4,
-    Gpt4O,
-    Claude3Opus,
-    Claude3Sonnet,
-    Claude3Haiku,
-    // Add more variants as needed
-}
-
-impl Models {
-    /// Get model info for this model
-    pub fn info(&self) -> ModelInfoData {
-        match self {
-            Models::Gpt35Turbo => ModelInfoData {
-                name: "gpt-3.5-turbo".to_string(),
-                provider: "OpenAI".to_string(),
-                context_length: Some(16385),
-                max_tokens: Some(4096),
-            },
-            Models::Gpt4 => ModelInfoData {
-                name: "gpt-4".to_string(),
-                provider: "OpenAI".to_string(),
-                context_length: Some(8192),
-                max_tokens: Some(4096),
-            },
-            Models::Gpt4O => ModelInfoData {
-                name: "gpt-4o".to_string(),
-                provider: "OpenAI".to_string(),
-                context_length: Some(128000),
-                max_tokens: Some(4096),
-            },
-            Models::Claude3Opus => ModelInfoData {
-                name: "claude-3-opus-20240229".to_string(),
-                provider: "Anthropic".to_string(),
-                context_length: Some(200000),
-                max_tokens: Some(4096),
-            },
-            Models::Claude3Sonnet => ModelInfoData {
-                name: "claude-3-5-sonnet-20241022".to_string(),
-                provider: "Anthropic".to_string(),
-                context_length: Some(200000),
-                max_tokens: Some(8192),
-            },
-            Models::Claude3Haiku => ModelInfoData {
-                name: "claude-3-haiku-20240307".to_string(),
-                provider: "Anthropic".to_string(),
-                context_length: Some(200000),
-                max_tokens: Some(4096),
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct ModelInfoData {
-    pub name: String,
-    pub provider: String,
-    pub context_length: Option<u32>,
-    pub max_tokens: Option<u32>,
-}
+// Re-export model types
+pub use model::{Model, ModelInfo, ModelInfoData, Models};
+pub use model_info_provider::{ModelInfoError, ModelInfoProvider, DefaultModelInfoProvider};
 
 // Define our own async task types
 pub type AsyncTask<T> = tokio::task::JoinHandle<T>;
@@ -715,7 +670,7 @@ pub mod loader;
 pub mod mcp;
 pub mod mcp_tool;
 pub mod mcp_tool_traits;
-// pub mod secure_mcp_tool; // Temporarily disabled due to cylo dependency
+pub mod secure_mcp_tool;
 pub mod architecture_syntax_test;
 pub mod memory;
 pub mod memory_ops;
@@ -731,38 +686,7 @@ pub mod text_processing;
 pub mod tool;
 pub mod tool_syntax_test;
 pub mod tool_v2;
-// pub mod secure_executor; // Temporarily disabled due to compilation issues
-
-// Temporary stub for secure_executor to avoid compilation errors
-pub mod secure_executor {
-    use serde_json::Value;
-
-    use crate::AsyncTask;
-
-    pub fn get_secure_executor() -> SecureToolExecutor {
-        SecureToolExecutor
-    }
-
-    pub struct SecureToolExecutor;
-
-    impl SecureToolExecutor {
-        pub fn execute_code(
-            &self,
-            _code: &str,
-            _language: &str,
-        ) -> AsyncTask<Result<Value, String>> {
-            crate::spawn_async(async { Ok(Value::Null) })
-        }
-
-        pub fn execute_tool_with_args(
-            &self,
-            _name: &str,
-            _args: Value,
-        ) -> AsyncTask<Result<Value, String>> {
-            crate::spawn_async(async { Ok(Value::Null) })
-        }
-    }
-}
+pub mod secure_executor;
 pub mod workflow;
 
 // Re-export all types for convenience
@@ -847,6 +771,19 @@ pub use prompt::Prompt as PromptStruct;
 // Provider module exports
 pub use provider::*;
 pub use text_processing::TextProcessingError;
+
+// Re-export embedding types
+pub use embedding::{Embedding, EmbeddingData, EmbeddingResponse};
+
+// Re-export similarity types
+pub use similarity::{Similarity, SimilarityMetric, SimilarityResult};
+
+// Re-export embedding configuration types
+pub use embedding_config::{EmbeddingConfig, IntoEmbeddingConfig};
+
+// Re-export embedding usage types
+pub use embedding_usage::{EmbeddingUsage, TokenUsage};
+
 // Text processing module exports - SIMD-optimized text processing pipeline
 pub use text_processing::{
     Pattern, PatternMatch, SIMDPatternMatcher, SIMDStringBuilder, SIMDTextAnalyzer, SIMDTokenizer,
@@ -862,3 +799,7 @@ pub use tool::{ExecToText, NamedTool, ToolEmbeddingDyn, ToolSet};
 
 // Workflow module exports
 pub use workflow::*;
+
+// Pricing module exports
+pub mod pricing;
+pub use pricing::PricingTier;

@@ -1,5 +1,5 @@
 //! Query optimization and building module for mem0-rs
-//! 
+//!
 //! This module provides advanced query capabilities including
 //! query building, optimization, monitoring, and index-aware querying.
 
@@ -13,9 +13,7 @@ pub use index_aware_query::*;
 pub use query_builder::*;
 pub use query_monitor::*;
 pub use query_optimizer::*;
-
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Query result type
 pub type Result<T> = std::result::Result<T, QueryError>;
@@ -25,22 +23,22 @@ pub type Result<T> = std::result::Result<T, QueryError>;
 pub enum QueryError {
     #[error("Invalid query: {0}")]
     InvalidQuery(String),
-    
+
     #[error("Execution error: {0}")]
     ExecutionError(String),
-    
+
     #[error("Timeout: query exceeded {0:?}")]
     Timeout(std::time::Duration),
-    
+
     #[error("Resource limit exceeded: {0}")]
     ResourceLimitExceeded(String),
-    
+
     #[error("Index not found: {0}")]
     IndexNotFound(String),
 }
 
 /// Query type enumeration
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QueryType {
     /// Simple equality match
     Exact,

@@ -86,7 +86,10 @@ impl PooledHttpClient {
             .header("X-Request-ID", &request_id.to_string());
 
         // Check circuit breaker state before making request
-        if matches!(self.circuit_breaker.state(), circuit_breaker::CircuitState::Open) {
+        if matches!(
+            self.circuit_breaker.state(),
+            circuit_breaker::CircuitState::Open
+        ) {
             ERROR_COUNTER.inc();
             return Err("Circuit breaker is open, request blocked".into());
         }
@@ -115,14 +118,15 @@ impl PooledHttpClient {
             }
 
             // Get the text content
-            let content = response.text().await?;
+            let content = response.text()?;
 
             Ok(HttpResponse::Success {
                 content,
                 etag,
                 last_modified,
             })
-        }.await;
+        }
+        .await;
 
         match result {
             Ok(response) => {
@@ -311,12 +315,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(e) => {
                 eprintln!("⚠️  Network error downloading models.yaml: {}", e);
-                // Don't continue with stale or invalid local files when remote fails
-                return Err(format!(
-                    "Failed to download models.yaml: {}. Build aborted to avoid using stale data.",
-                    e
-                )
-                .into());
+                // Check if we have a local file we can use as fallback
+                if models_file.exists() {
+                    eprintln!(
+                        "📋 Using existing local models.yaml as fallback (network unavailable)"
+                    );
+                } else {
+                    // Only fail if no local fallback exists
+                    return Err(format!(
+                        "Failed to download models.yaml and no local fallback exists: {}. Build aborted.",
+                        e
+                    )
+                    .into());
+                }
             }
         }
     } else {

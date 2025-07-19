@@ -5,12 +5,12 @@
 //! All operations are lock-free and use atomic counters for thread safety.
 
 use std::collections::HashMap;
+use std::sync::LazyLock;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant, SystemTime};
 
 use bytes::Bytes;
 use crossbeam_skiplist::SkipMap;
-use once_cell::sync::Lazy;
 use reqwest::tls;
 
 use crate::{HttpConfig, HttpError, HttpRequest, HttpResponse, HttpResult, HttpStream};
@@ -70,7 +70,7 @@ struct CacheEntry {
 
 /// Lock-free cache using crossbeam SkipMap for zero-allocation, blazing-fast performance
 /// No locking required - all operations are atomic and thread-safe
-static GLOBAL_CACHE: Lazy<SkipMap<u64, CacheEntry>> = Lazy::new(|| SkipMap::new());
+static GLOBAL_CACHE: LazyLock<SkipMap<u64, CacheEntry>> = LazyLock::new(|| SkipMap::new());
 
 /// Atomic counter for cache cleanup coordination
 static CACHE_CLEANUP_COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -260,7 +260,7 @@ impl HttpClient {
 
         // Update cache for successful GET requests
         if matches!(request.method(), crate::HttpMethod::Get) && http_response.is_success() {
-            self.update_cache(cache_key, &http_response).await;
+            self.update_cache(cache_key, &http_response);
         }
 
         // Update statistics atomically
@@ -335,7 +335,7 @@ impl HttpClient {
     }
 
     /// Clear the global cache - lock-free operation
-    pub async fn clear_cache(&self) {
+    pub fn clear_cache(&self) {
         GLOBAL_CACHE.clear();
     }
 
@@ -413,7 +413,7 @@ impl HttpClient {
     }
 
     /// Update cache with new response
-    async fn update_cache(&self, cache_key: u64, response: &HttpResponse) {
+    fn update_cache(&self, cache_key: u64, response: &HttpResponse) {
         if !self.should_cache_response(response) {
             return;
         }

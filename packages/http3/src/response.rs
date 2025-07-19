@@ -65,12 +65,12 @@ impl HttpResponse {
     }
 
     /// Get the body as a string
-    pub async fn text(&self) -> crate::HttpResult<String> {
+    pub fn text(&self) -> crate::HttpResult<String> {
         Ok(String::from_utf8_lossy(&self.body).to_string())
     }
 
     /// Get the body as bytes
-    pub async fn bytes(&self) -> crate::HttpResult<Bytes> {
+    pub fn bytes(&self) -> crate::HttpResult<Bytes> {
         Ok(Bytes::from(self.body.clone()))
     }
 

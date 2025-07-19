@@ -26,7 +26,7 @@ use crate::execution_env::{CyloError, CyloInstance, CyloResult};
 #[derive(Debug)]
 pub struct InstanceManager {
     /// Registry of active backend instances
-    instances: RwLock<HashMap<String, ManagedInstance>>,
+    instances: Arc<RwLock<HashMap<String, ManagedInstance>>>,
 
     /// Default configuration for new instances
     default_config: BackendConfig,
@@ -43,9 +43,6 @@ pub struct InstanceManager {
 struct ManagedInstance {
     /// The backend instance
     backend: Arc<dyn ExecutionBackend>,
-
-    /// Instance configuration
-    config: CyloInstance,
 
     /// Last access timestamp
     last_accessed: SystemTime,
@@ -67,7 +64,7 @@ impl InstanceManager {
     /// New instance manager with default configuration
     pub fn new() -> Self {
         Self {
-            instances: RwLock::new(HashMap::new()),
+            instances: Arc::new(RwLock::new(HashMap::new())),
             default_config: BackendConfig::new("default"),
             health_check_interval: Duration::from_secs(60),
             max_idle_time: Duration::from_secs(300), // 5 minutes
@@ -89,7 +86,7 @@ impl InstanceManager {
         max_idle_time: Duration,
     ) -> Self {
         Self {
-            instances: RwLock::new(HashMap::new()),
+            instances: Arc::new(RwLock::new(HashMap::new())),
             default_config: config,
             health_check_interval,
             max_idle_time,
@@ -107,10 +104,10 @@ impl InstanceManager {
     /// # Returns
     /// AsyncTask that resolves when instance is registered
     pub fn register_instance(&self, instance: CyloInstance) -> AsyncTask<CyloResult<()>> {
-        let instances_lock = Arc::new(&self.instances);
+        let instances_lock = Arc::clone(&self.instances);
         let default_config = self.default_config.clone();
 
-        AsyncTaskBuilder::new().spawn(move || async move {
+        AsyncTaskBuilder::new(async move {
             // Validate instance configuration
             instance.validate()?;
 
@@ -131,13 +128,15 @@ impl InstanceManager {
             let backend = create_backend(&instance.env, default_config)?;
 
             // Perform initial health check
-            let health_result = backend.health_check().await;
+            let health_result = match backend.health_check().await {
+                Ok(health) => Some(health),
+                Err(_) => None,
+            };
 
             let managed_instance = ManagedInstance {
                 backend: Arc::from(backend),
-                config: instance.clone(),
                 last_accessed: SystemTime::now(),
-                last_health: Some(health_result),
+                last_health: health_result,
                 last_health_check: Some(SystemTime::now()),
                 ref_count: 0,
             };
@@ -153,6 +152,7 @@ impl InstanceManager {
 
             Ok(())
         })
+        .spawn()
     }
 
     /// Get a registered instance by ID
@@ -170,11 +170,11 @@ impl InstanceManager {
         &self,
         instance_id: &str,
     ) -> AsyncTask<CyloResult<Arc<dyn ExecutionBackend>>> {
-        let instances_lock = Arc::new(&self.instances);
+        let instances_lock = Arc::clone(&self.instances);
         let instance_id = instance_id.to_string();
         let health_check_interval = self.health_check_interval;
 
-        AsyncTaskBuilder::new().spawn(move || async move {
+        AsyncTaskBuilder::new(async move {
             // First, try to get the instance with read lock
             let backend = {
                 let instances = instances_lock.read().map_err(|e| {
@@ -209,7 +209,15 @@ impl InstanceManager {
 
             // Perform health check if needed
             if needs_health_check {
-                let health_result = backend.health_check().await;
+                let health_result = match backend.health_check().await {
+                    Ok(health) => health,
+                    Err(e) => {
+                        return Err(CyloError::backend_unavailable(
+                            backend.backend_type(),
+                            format!("Health check failed for instance {}: {}", instance_id, e),
+                        ));
+                    }
+                };
 
                 if !health_result.is_healthy {
                     return Err(CyloError::backend_unavailable(
@@ -250,6 +258,7 @@ impl InstanceManager {
 
             Ok(backend)
         })
+        .spawn()
     }
 
     /// Release a reference to an instance
@@ -289,10 +298,10 @@ impl InstanceManager {
     /// # Returns
     /// AsyncTask that resolves when instance is removed
     pub fn remove_instance(&self, instance_id: &str) -> AsyncTask<CyloResult<()>> {
-        let instances_lock = Arc::new(&self.instances);
+        let instances_lock = Arc::clone(&self.instances);
         let instance_id = instance_id.to_string();
 
-        AsyncTaskBuilder::new().spawn(move || async move {
+        AsyncTaskBuilder::new(async move {
             // Remove the instance from registry
             let managed_instance = {
                 let mut instances = instances_lock.write().map_err(|e| {
@@ -319,6 +328,7 @@ impl InstanceManager {
 
             Ok(())
         })
+        .spawn()
     }
 
     /// Get all registered instance IDs
@@ -359,9 +369,9 @@ impl InstanceManager {
     /// # Returns
     /// AsyncTask that resolves when all health checks complete
     pub fn health_check_all(&self) -> AsyncTask<CyloResult<HashMap<String, HealthStatus>>> {
-        let instances_lock = Arc::new(&self.instances);
+        let instances_lock = Arc::clone(&self.instances);
 
-        AsyncTaskBuilder::new().spawn(move || async move {
+        AsyncTaskBuilder::new(async move {
             let mut results = HashMap::new();
 
             // Get list of instances to check
@@ -381,33 +391,43 @@ impl InstanceManager {
 
             for (instance_id, backend) in instance_list {
                 let id = instance_id.clone();
-                let health_task = AsyncTaskBuilder::new().spawn(move || async move {
+                let health_task = AsyncTaskBuilder::new(async move {
                     let health = backend.health_check().await;
                     (id, health)
-                });
+                })
+                .spawn();
                 health_tasks.push(health_task);
             }
 
             // Collect results
             for task in health_tasks {
-                let (instance_id, health) = task.await;
-                results.insert(instance_id.clone(), health.clone());
-
-                // Update stored health status
-                {
-                    let mut instances = instances_lock.write().map_err(|e| {
-                        CyloError::internal(format!("Failed to acquire write lock: {}", e))
-                    })?;
-
-                    if let Some(managed) = instances.get_mut(&instance_id) {
-                        managed.last_health = Some(health);
-                        managed.last_health_check = Some(SystemTime::now());
+                match task.await {
+                    Ok((instance_id, health)) => {
+                        match health {
+                            Ok(health_status) => {
+                                results.insert(instance_id, health_status);
+                            }
+                            Err(_) => {
+                                // Health check failed, insert unhealthy status
+                                results.insert(
+                                    instance_id,
+                                    HealthStatus::unhealthy("Health check failed"),
+                                );
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        // Task failed, skip this instance
                     }
                 }
+
+                // Note: Health status is already stored in results HashMap
+                // The stored health status in instances is updated when instances are accessed
             }
 
             Ok(results)
         })
+        .spawn()
     }
 
     /// Clean up idle instances
@@ -418,10 +438,10 @@ impl InstanceManager {
     /// # Returns
     /// AsyncTask that resolves with count of cleaned up instances
     pub fn cleanup_idle_instances(&self) -> AsyncTask<CyloResult<u32>> {
-        let instances_lock = Arc::new(&self.instances);
+        let instances_lock = Arc::clone(&self.instances);
         let max_idle_time = self.max_idle_time;
 
-        AsyncTaskBuilder::new().spawn(move || async move {
+        AsyncTaskBuilder::new(async move {
             let now = SystemTime::now();
             let mut to_remove = Vec::new();
 
@@ -468,6 +488,7 @@ impl InstanceManager {
 
             Ok(removed_count)
         })
+        .spawn()
     }
 
     /// Shutdown the instance manager
@@ -478,9 +499,9 @@ impl InstanceManager {
     /// # Returns
     /// AsyncTask that resolves when shutdown is complete
     pub fn shutdown(&self) -> AsyncTask<CyloResult<()>> {
-        let instances_lock = Arc::new(&self.instances);
+        let instances_lock = Arc::clone(&self.instances);
 
-        AsyncTaskBuilder::new().spawn(move || async move {
+        AsyncTaskBuilder::new(async move {
             // Get all instances
             let all_instances = {
                 let mut instances = instances_lock.write().map_err(|e| {
@@ -496,24 +517,26 @@ impl InstanceManager {
 
             for (instance_id, managed) in all_instances {
                 let id = instance_id.clone();
-                let cleanup_task = AsyncTaskBuilder::new().spawn(move || async move {
+                let cleanup_task = AsyncTaskBuilder::new(async move {
                     if let Err(e) = managed.backend.cleanup().await {
                         eprintln!(
                             "Warning: Failed to cleanup instance {} during shutdown: {}",
                             id, e
                         );
                     }
-                });
+                })
+                .spawn();
                 cleanup_tasks.push(cleanup_task);
             }
 
             // Wait for all cleanups to complete
             for task in cleanup_tasks {
-                task.await;
+                let _ = task.await;
             }
 
             Ok(())
         })
+        .spawn()
     }
 }
 

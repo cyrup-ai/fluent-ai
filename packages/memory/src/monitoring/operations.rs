@@ -3,13 +3,11 @@
 //! This module provides blazing-fast operation tracking using lock-free atomic operations
 //! and zero-allocation patterns for maximum performance in production workloads.
 
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::time::Duration;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::sync::Arc;
-
-use arrayvec::ArrayVec;
 /// High-performance lock-free counter for monitoring operations
 #[derive(Debug, Default)]
 pub struct RelaxedCounter {
@@ -23,12 +21,12 @@ impl RelaxedCounter {
             value: AtomicU64::new(initial),
         }
     }
-    
+
     #[inline]
     pub fn get(&self) -> u64 {
         self.value.load(Ordering::Relaxed)
     }
-    
+
     #[inline]
     pub fn inc(&self) -> u64 {
         self.value.fetch_add(1, Ordering::Relaxed)
@@ -38,7 +36,6 @@ impl RelaxedCounter {
 use crossbeam_skiplist::SkipMap;
 use smallvec::SmallVec;
 use uuid::Uuid;
-
 
 /// Operation types
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -83,28 +80,28 @@ pub enum OperationStatus {
 pub struct Operation {
     /// Operation ID
     pub id: String,
-    
+
     /// Operation type
     pub operation_type: OperationType,
-    
+
     /// Operation status
     pub status: OperationStatus,
-    
+
     /// Start time
     pub started_at: DateTime<Utc>,
-    
+
     /// End time
     pub ended_at: Option<DateTime<Utc>>,
-    
+
     /// Duration
     pub duration: Option<Duration>,
-    
+
     /// User ID
     pub user_id: Option<String>,
-    
+
     /// Error message if failed
     pub error: Option<String>,
-    
+
     /// Additional metadata
     pub metadata: serde_json::Value,
 }
@@ -125,13 +122,13 @@ impl Operation {
             metadata: serde_json::Value::Object(serde_json::Map::new()),
         }
     }
-    
+
     /// Start the operation
     pub fn start(&mut self) {
         self.status = OperationStatus::InProgress;
         self.started_at = Utc::now();
     }
-    
+
     /// Complete the operation successfully with blazing-fast atomic operations
     #[inline]
     pub fn complete(&mut self) {
@@ -141,10 +138,10 @@ impl Operation {
         self.duration = Some(
             now.signed_duration_since(self.started_at)
                 .to_std()
-                .unwrap_or(Duration::from_secs(0))
+                .unwrap_or(Duration::from_secs(0)),
         );
     }
-    
+
     /// Fail the operation with comprehensive error tracking
     #[inline]
     pub fn fail(&mut self, error: String) {
@@ -154,7 +151,7 @@ impl Operation {
         self.duration = Some(
             now.signed_duration_since(self.started_at)
                 .to_std()
-                .unwrap_or(Duration::from_secs(0))
+                .unwrap_or(Duration::from_secs(0)),
         );
         self.error = Some(error);
     }
@@ -206,7 +203,7 @@ impl OperationTrackerMetrics {
         // Update average duration using atomic operations
         let current_avg = self.avg_duration_us.load(Ordering::Relaxed);
         let total_completed = self.operations_completed.get() + self.operations_failed.get();
-        
+
         if total_completed > 0 {
             let new_avg = ((current_avg * (total_completed - 1)) + duration_us) / total_completed;
             self.avg_duration_us.store(new_avg, Ordering::Relaxed);
@@ -219,12 +216,8 @@ impl OperationTrackerMetrics {
         let completed = self.operations_completed.get() as f64;
         let failed = self.operations_failed.get() as f64;
         let total = completed + failed;
-        
-        if total > 0.0 {
-            completed / total
-        } else {
-            0.0
-        }
+
+        if total > 0.0 { completed / total } else { 0.0 }
     }
 }
 
@@ -240,13 +233,13 @@ impl Default for OperationTrackerMetrics {
 pub struct OperationTracker {
     /// Active operations (lock-free SkipMap for concurrent access)
     active: SkipMap<String, Operation>,
-    
+
     /// Completed operations (lock-free circular buffer for history)
     completed: SkipMap<String, Operation>,
-    
+
     /// Atomic counters for blazing-fast metrics
     metrics: OperationTrackerMetrics,
-    
+
     /// Maximum completed operations to keep (user-configurable)
     max_history: usize,
 }
@@ -262,7 +255,7 @@ impl OperationTracker {
             max_history,
         }
     }
-    
+
     /// Start tracking an operation with blazing-fast lock-free insertion
     #[inline]
     pub fn start_operation(
@@ -273,69 +266,79 @@ impl OperationTracker {
         let mut operation = Operation::new(operation_type, user_id);
         operation.start();
         let id = operation.id.clone();
-        
+
         // Lock-free insertion with atomic counter update
         self.active.insert(id.clone(), operation);
         self.metrics.operations_started.inc();
         self.metrics.active_count.fetch_add(1, Ordering::Relaxed);
-        
+
         id
     }
-    
+
     /// Complete an operation with lock-free atomic operations
     #[inline]
     pub fn complete_operation(&self, id: String) {
         if let Some(entry) = self.active.remove(&id) {
             let mut operation = entry.value().clone();
-            let start_time = operation.started_at;
+            let _start_time = operation.started_at;
             operation.complete();
-            
+
             // Calculate duration for metrics
-            let duration_us = operation.duration
+            let duration_us = operation
+                .duration
                 .map(|d| d.as_micros() as u64)
                 .unwrap_or(0);
-            
+
             // Lock-free history insertion and metrics update
             self.add_to_history_atomic(operation);
             self.metrics.record_completion(duration_us, true);
             self.metrics.active_count.fetch_sub(1, Ordering::Relaxed);
         }
     }
-    
+
     /// Fail an operation with comprehensive error tracking
     #[inline]
     pub fn fail_operation(&self, id: String, error: String) {
         if let Some(entry) = self.active.remove(&id) {
             let mut operation = entry.value().clone();
-            let start_time = operation.started_at;
+            let _start_time = operation.started_at;
             operation.fail(error);
-            
+
             // Calculate duration for metrics
-            let duration_us = operation.duration
+            let duration_us = operation
+                .duration
                 .map(|d| d.as_micros() as u64)
                 .unwrap_or(0);
-            
+
             // Lock-free history insertion and metrics update
             self.add_to_history_atomic(operation);
             self.metrics.record_completion(duration_us, false);
             self.metrics.active_count.fetch_sub(1, Ordering::Relaxed);
         }
     }
-    
+
     /// Add operation to history with lock-free atomic operations
     #[inline]
     fn add_to_history_atomic(&self, operation: Operation) {
-        let history_key = format!("{}_{}", operation.ended_at.unwrap_or(operation.started_at).timestamp_nanos(), operation.id);
+        let history_key = format!(
+            "{}_{}",
+            operation
+                .ended_at
+                .unwrap_or(operation.started_at)
+                .timestamp_nanos_opt()
+                .unwrap_or(0),
+            operation.id
+        );
         self.completed.insert(history_key, operation);
-        
+
         let current_count = self.metrics.history_count.fetch_add(1, Ordering::Relaxed);
-        
+
         // Simple eviction strategy: remove oldest entries if over limit
         if current_count >= self.max_history {
             // Remove oldest entries (simplified eviction - production would use more sophisticated LRU)
             let entries_to_remove = current_count - self.max_history + 100; // Remove in batches
             let mut removed = 0;
-            
+
             for entry in self.completed.iter() {
                 if removed >= entries_to_remove {
                     break;
@@ -346,59 +349,63 @@ impl OperationTracker {
             }
         }
     }
-    
+
     /// Get active operations with zero allocation where possible
     #[inline]
     pub fn active_operations(&self) -> SmallVec<Operation, 16> {
         let mut operations = SmallVec::new();
-        
+
         for entry in self.active.iter() {
-            if operations.try_push(entry.value().clone()).is_err() {
+            if operations.len() < operations.capacity() {
+                operations.push(entry.value().clone());
+            } else {
                 break; // SmallVec is full, prevent heap allocation
             }
         }
-        
+
         operations
     }
-    
+
     /// Get operation history with efficient iteration
     #[inline]
     pub fn operation_history(&self) -> SmallVec<Operation, 32> {
         let mut operations = SmallVec::new();
-        
+
         for entry in self.completed.iter() {
-            if operations.try_push(entry.value().clone()).is_err() {
+            if operations.len() < operations.capacity() {
+                operations.push(entry.value().clone());
+            } else {
                 break; // SmallVec is full, prevent heap allocation
             }
         }
-        
+
         operations
     }
-    
+
     /// Get operation by ID with lock-free lookup
     #[inline]
     pub fn get_operation(&self, id: &str) -> Option<Operation> {
         self.active.get(id).map(|entry| entry.value().clone())
     }
-    
+
     /// Get current metrics with atomic operations
     #[inline(always)]
     pub fn metrics(&self) -> &OperationTrackerMetrics {
         &self.metrics
     }
-    
+
     /// Get active operations count (atomic)
     #[inline(always)]
     pub fn active_count(&self) -> usize {
         self.metrics.active_count.load(Ordering::Relaxed)
     }
-    
+
     /// Get history count (atomic)
     #[inline(always)]
     pub fn history_count(&self) -> usize {
         self.metrics.history_count.load(Ordering::Relaxed)
     }
-    
+
     /// Clear all completed operations with atomic operations
     #[inline]
     pub fn clear_history(&self) {

@@ -14,7 +14,7 @@ pub struct CacheEntry {
     pub response: HttpResponse,
     /// When the entry was created
     pub created_at: Instant,
-    /// ETag for validation
+    /// `ETag` for validation
     pub etag: Option<String>,
     /// Last-Modified header for validation
     pub last_modified: Option<String>,
@@ -28,6 +28,7 @@ pub struct CacheEntry {
 
 impl CacheEntry {
     /// Create a new cache entry
+    #[must_use]
     pub fn new(response: HttpResponse) -> Self {
         let etag = response.etag().cloned();
         let last_modified = response.last_modified().cloned();
@@ -46,19 +47,20 @@ impl CacheEntry {
     }
 
     /// Check if the cache entry is expired
+    #[must_use]
     pub fn is_expired(&self) -> bool {
         // Check expires header
-        if let Some(expires) = self.expires {
-            if Instant::now() > expires {
-                return true;
-            }
+        if let Some(expires) = self.expires
+            && Instant::now() > expires
+        {
+            return true;
         }
 
         // Check max-age
-        if let Some(max_age) = self.max_age {
-            if self.created_at.elapsed() > max_age {
-                return true;
-            }
+        if let Some(max_age) = self.max_age
+            && self.created_at.elapsed() > max_age
+        {
+            return true;
         }
 
         // Default expiration (1 hour)
@@ -70,6 +72,7 @@ impl CacheEntry {
     }
 
     /// Check if the entry is fresh
+    #[must_use]
     pub fn is_fresh(&self) -> bool {
         !self.is_expired() && !self.is_stale
     }
@@ -80,16 +83,19 @@ impl CacheEntry {
     }
 
     /// Get the age of the entry
+    #[must_use]
     pub fn age(&self) -> Duration {
         self.created_at.elapsed()
     }
 
     /// Check if the entry can be validated
+    #[must_use]
     pub fn can_validate(&self) -> bool {
         self.etag.is_some() || self.last_modified.is_some()
     }
 
     /// Get validation headers
+    #[must_use]
     pub fn validation_headers(&self) -> HashMap<String, String> {
         let mut headers = HashMap::new();
 
@@ -113,6 +119,7 @@ pub struct MemoryCache {
 
 impl MemoryCache {
     /// Create a new memory cache
+    #[must_use]
     pub fn new(max_size: usize) -> Self {
         Self {
             entries: HashMap::new(),
@@ -121,6 +128,7 @@ impl MemoryCache {
     }
 
     /// Get an entry from the cache
+    #[must_use]
     pub fn get(&self, key: &str) -> Option<&CacheEntry> {
         self.entries.get(key)
     }
@@ -133,10 +141,10 @@ impl MemoryCache {
         }
 
         // If still full, remove oldest entry
-        if self.entries.len() >= self.max_size {
-            if let Some(oldest_key) = self.find_oldest_key() {
-                self.entries.remove(&oldest_key);
-            }
+        if self.entries.len() >= self.max_size
+            && let Some(oldest_key) = self.find_oldest_key()
+        {
+            self.entries.remove(&oldest_key);
         }
 
         self.entries.insert(key, entry);
@@ -153,11 +161,13 @@ impl MemoryCache {
     }
 
     /// Get the number of entries in the cache
+    #[must_use]
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
     /// Check if the cache is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
@@ -176,6 +186,7 @@ impl MemoryCache {
     }
 
     /// Get cache statistics
+    #[must_use]
     pub fn stats(&self) -> CacheStats {
         let expired = self.entries.values().filter(|e| e.is_expired()).count();
         let stale = self.entries.values().filter(|e| e.is_stale).count();
@@ -342,12 +353,9 @@ fn timestamp_to_instant(
     second: u32,
 ) -> Option<Instant> {
     // Basic validation
-    if year < 1970
-        || year > 2100
-        || month < 1
-        || month > 12
-        || day < 1
-        || day > 31
+    if !(1970..=2100).contains(&year)
+        || !(1..=12).contains(&month)
+        || !(1..=31).contains(&day)
         || hour > 23
         || minute > 59
         || second > 59
@@ -369,10 +377,11 @@ fn timestamp_to_instant(
     }
 
     // Add days in current month
-    days += (day - 1) as u64;
+    days += u64::from(day - 1);
 
     // Convert to seconds
-    let total_seconds = days * 86400 + hour as u64 * 3600 + minute as u64 * 60 + second as u64;
+    let total_seconds =
+        days * 86400 + u64::from(hour) * 3600 + u64::from(minute) * 60 + u64::from(second);
 
     // Convert to proper timestamp using chrono
     let unix_timestamp = DateTime::from_timestamp(total_seconds as i64, 0)?;

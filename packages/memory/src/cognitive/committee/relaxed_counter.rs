@@ -15,7 +15,7 @@ impl RelaxedCounter {
             value: AtomicU64::new(initial),
         }
     }
-    
+
     /// Create a new counter starting at zero
     #[inline]
     pub const fn default() -> Self {
@@ -23,7 +23,7 @@ impl RelaxedCounter {
             value: AtomicU64::new(0),
         }
     }
-    
+
     /// Create a new counter with initial value (alias for new)
     #[inline]
     pub const fn with_value(initial: u64) -> Self {
@@ -31,92 +31,95 @@ impl RelaxedCounter {
             value: AtomicU64::new(initial),
         }
     }
-    
+
     /// Get current counter value with zero allocation
     /// Uses relaxed memory ordering for maximum performance
     #[inline]
     pub fn get(&self) -> u64 {
         self.value.load(Ordering::Relaxed)
     }
-    
+
     /// Atomic increment returning previous value
     /// Zero-allocation, lock-free operation
     #[inline]
     pub fn inc(&self) -> u64 {
         self.value.fetch_add(1, Ordering::Relaxed)
     }
-    
+
     /// Atomic increment by N returning previous value
     #[inline]
     pub fn inc_by(&self, n: u64) -> u64 {
         self.value.fetch_add(n, Ordering::Relaxed)
     }
-    
+
     /// Atomic fetch_add operation (matches AtomicU64 interface)
     /// Returns previous value before addition
     #[inline]
     pub fn fetch_add(&self, val: u64, _ordering: std::sync::atomic::Ordering) -> u64 {
         self.value.fetch_add(val, Ordering::Relaxed)
     }
-    
+
     /// Atomic decrement with underflow protection
     /// Returns previous value, saturates at 0
     #[inline]
     pub fn sub(&self) -> u64 {
-        self.value.fetch_update(
-            Ordering::Relaxed,
-            Ordering::Relaxed,
-            |current| current.checked_sub(1)
-        ).unwrap_or(0)
+        self.value
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+                current.checked_sub(1)
+            })
+            .unwrap_or(0)
     }
-    
+
     /// Atomic decrement by N with underflow protection
     #[inline]
     pub fn sub_by(&self, n: u64) -> u64 {
-        self.value.fetch_update(
-            Ordering::Relaxed,
-            Ordering::Relaxed,
-            |current| current.checked_sub(n)
-        ).unwrap_or(0)
+        self.value
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+                current.checked_sub(n)
+            })
+            .unwrap_or(0)
     }
-    
+
     /// Reset counter to zero, returns previous value
     #[inline]
     pub fn reset(&self) -> u64 {
         self.value.swap(0, Ordering::Relaxed)
     }
-    
+
     /// Compare and swap operation
     #[inline]
     pub fn compare_and_swap(&self, current: u64, new: u64) -> Result<u64, u64> {
-        self.value.compare_exchange_weak(
-            current,
-            new,
-            Ordering::Relaxed,
-            Ordering::Relaxed
-        )
+        self.value
+            .compare_exchange_weak(current, new, Ordering::Relaxed, Ordering::Relaxed)
     }
-    
+
     /// Set counter to specific value, returns previous value
     #[inline]
     pub fn set(&self, value: u64) -> u64 {
         self.value.swap(value, Ordering::Relaxed)
     }
-    
+
+    /// Store counter value (compatible with AtomicU64 interface)
+    #[inline]
+    pub fn store(&self, value: u64, _ordering: std::sync::atomic::Ordering) {
+        self.value.store(value, Ordering::Relaxed);
+    }
+
     /// Increment counter and return new value
     #[inline]
     pub fn inc_and_get(&self) -> u64 {
         self.value.fetch_add(1, Ordering::Relaxed) + 1
     }
-    
+
     /// Decrement counter and return new value (with underflow protection)
     #[inline]
     pub fn sub_and_get(&self) -> u64 {
-        self.value.fetch_update(
-            Ordering::Relaxed,
-            Ordering::Relaxed,
-            |current| current.checked_sub(1)
-        ).map(|prev| prev.saturating_sub(1)).unwrap_or(0)
+        self.value
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+                current.checked_sub(1)
+            })
+            .map(|prev| prev.saturating_sub(1))
+            .unwrap_or(0)
     }
 }
 

@@ -1,8 +1,12 @@
 //! Attention mechanism for cognitive memory management
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
+
+use crate::cognitive::types::{EnhancedQuery, RoutingDecision, RoutingStrategy};
 
 /// Attention mechanism for relevance scoring and focus management
 #[derive(Debug, Clone)]
@@ -67,7 +71,7 @@ impl AttentionMechanism {
             );
         }
 
-        let seq_len = keys.len();
+        let _seq_len = keys.len();
         let mut all_attention_scores = Vec::with_capacity(self.num_heads);
         let mut all_weighted_values = Vec::with_capacity(self.num_heads * self.head_dim);
 
@@ -261,6 +265,204 @@ impl AttentionWeights {
         (0..size)
             .map(|_| rand::random::<f32>() * 0.1 - 0.05)
             .collect()
+    }
+}
+
+/// Production attention router for cognitive memory management
+///
+/// The AttentionRouter orchestrates attention mechanisms across the cognitive system,
+/// providing routing logic for attention-based operations similar to how QuantumRouter
+/// handles quantum operations.
+#[derive(Debug)]
+pub struct AttentionRouter {
+    /// Core attention mechanism
+    pub attention_mechanism: Arc<RwLock<AttentionMechanism>>,
+    /// Attention configuration
+    pub config: AttentionConfig,
+    /// Attention state cache
+    pub attention_cache: RwLock<HashMap<String, AttentionOutput>>,
+    /// Metrics for attention operations
+    pub metrics: RwLock<AttentionMetrics>,
+}
+
+/// Metrics for attention operations
+#[derive(Debug, Clone, Default)]
+pub struct AttentionMetrics {
+    /// Total number of attention operations
+    pub total_operations: u64,
+    /// Average attention computation time
+    pub avg_computation_time: f64,
+    /// Cache hit rate
+    pub cache_hit_rate: f64,
+    /// Number of cache hits
+    pub cache_hits: u64,
+    /// Number of cache misses
+    pub cache_misses: u64,
+}
+
+impl AttentionRouter {
+    /// Create a new attention router
+    pub fn new(config: AttentionConfig) -> Self {
+        let attention_mechanism = Arc::new(RwLock::new(AttentionMechanism::new(config.clone())));
+
+        Self {
+            attention_mechanism,
+            config,
+            attention_cache: RwLock::new(HashMap::new()),
+            metrics: RwLock::new(AttentionMetrics::default()),
+        }
+    }
+
+    /// Compute attention between two text inputs
+    pub async fn compute_attention(&self, query: &str, key: &str) -> f32 {
+        // In a real implementation, we would:
+        // 1. Get or create embeddings for query and key
+        // 2. Use the attention mechanism to compute attention scores
+        // 3. Return the attention score
+
+        // For now, return a dummy score based on string similarity
+        let similarity = if query == key {
+            1.0
+        } else if !query.is_empty() && !key.is_empty() {
+            let common_chars = query.chars().filter(|c| key.contains(*c)).count();
+            common_chars as f32 / query.len().max(key.len()) as f32
+        } else {
+            0.0
+        };
+
+        // Update metrics
+        let mut metrics = self.metrics.write().await;
+        metrics.total_operations += 1;
+
+        similarity
+    }
+
+    /// Route attention computation with caching
+    pub async fn route_attention(
+        &self,
+        query: &[f32],
+        keys: &[Vec<f32>],
+        values: &[Vec<f32>],
+        cache_key: Option<String>,
+    ) -> crate::cognitive::quantum::types::CognitiveResult<AttentionOutput> {
+        // Check cache if key provided
+        if let Some(ref key) = cache_key {
+            if let Some(cached) = self.attention_cache.read().await.get(key) {
+                let mut metrics = self.metrics.write().await;
+                metrics.cache_hits += 1;
+                metrics.cache_hit_rate =
+                    metrics.cache_hits as f64 / (metrics.cache_hits + metrics.cache_misses) as f64;
+                return Ok(cached.clone());
+            }
+        }
+
+        // Compute attention
+        let start_time = std::time::Instant::now();
+        let mechanism = self.attention_mechanism.read().await;
+        let result = mechanism
+            .calculate_attention_weights(query, keys, values)
+            .await?;
+        let computation_time = start_time.elapsed().as_secs_f64();
+
+        // Update metrics
+        let mut metrics = self.metrics.write().await;
+        metrics.total_operations += 1;
+        metrics.avg_computation_time = (metrics.avg_computation_time
+            * (metrics.total_operations - 1) as f64
+            + computation_time)
+            / metrics.total_operations as f64;
+
+        if cache_key.is_some() {
+            metrics.cache_misses += 1;
+            metrics.cache_hit_rate =
+                metrics.cache_hits as f64 / (metrics.cache_hits + metrics.cache_misses) as f64;
+        }
+
+        // Cache result if key provided
+        if let Some(key) = cache_key {
+            self.attention_cache
+                .write()
+                .await
+                .insert(key, result.clone());
+        }
+
+        Ok(result)
+    }
+
+    /// Route with attention using contextual information
+    pub async fn route_with_attention(
+        &self,
+        query: &EnhancedQuery,
+        contexts: &[String],
+    ) -> crate::cognitive::quantum::types::CognitiveResult<RoutingDecision> {
+        // Convert contexts to attention vectors
+        let context_vectors: Vec<Vec<f32>> = contexts
+            .iter()
+            .map(|context| {
+                // Simple conversion - in practice this would use embeddings
+                context
+                    .chars()
+                    .map(|c| c as u8 as f32 / 255.0)
+                    .take(self.config.hidden_dim / self.config.num_heads)
+                    .chain(std::iter::repeat(0.0))
+                    .take(self.config.hidden_dim / self.config.num_heads)
+                    .collect()
+            })
+            .collect();
+
+        // Convert query to vector
+        let query_vector: Vec<f32> = query
+            .original
+            .chars()
+            .map(|c| c as u8 as f32 / 255.0)
+            .take(self.config.hidden_dim / self.config.num_heads)
+            .chain(std::iter::repeat(0.0))
+            .take(self.config.hidden_dim / self.config.num_heads)
+            .collect();
+
+        // Use attention mechanism
+        let attention_result = self
+            .route_attention(
+                &query_vector,
+                &context_vectors,
+                &context_vectors,
+                Some(format!("route_{}", uuid::Uuid::new_v4())),
+            )
+            .await?;
+
+        // Find the best context based on attention scores
+        let best_context_idx = attention_result
+            .attention_scores
+            .iter()
+            .enumerate()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .map(|(idx, _)| idx)
+            .unwrap_or(0);
+
+        let best_context = contexts
+            .get(best_context_idx)
+            .unwrap_or(&"default_context".to_string());
+
+        Ok(RoutingDecision {
+            strategy: RoutingStrategy::Attention,
+            target_context: best_context.clone(),
+            confidence: attention_result.attention_scores[best_context_idx][0].min(1.0),
+            alternatives: Vec::new(),
+            reasoning: format!(
+                "Attention-based routing selected context '{}' with confidence {:.3}",
+                best_context, attention_result.attention_scores[best_context_idx][0]
+            ),
+        })
+    }
+
+    /// Get attention metrics
+    pub async fn get_metrics(&self) -> AttentionMetrics {
+        self.metrics.read().await.clone()
+    }
+
+    /// Clear attention cache
+    pub async fn clear_cache(&self) {
+        self.attention_cache.write().await.clear();
     }
 }
 

@@ -16,7 +16,7 @@ impl RuntimeCompiler {
 
     pub async fn compile_and_test(
         &self,
-        state: &CodeState,
+        _state: &CodeState,
     ) -> Result<CompiledCode, CognitiveError> {
         // In production: actual compilation and testing
         // For now: return mock result based on committee evaluations

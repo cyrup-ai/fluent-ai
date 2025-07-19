@@ -13,9 +13,7 @@ use tracing::{error, info, warn};
 use walkdir::WalkDir;
 
 use crate::cognitive::evolution::{CodeEvolution, CognitiveCodeEvolution};
-use crate::cognitive::types::{
-    CognitiveError, OptimizationOutcome, OptimizationSpec
-};
+use crate::cognitive::types::{CognitiveError, OptimizationOutcome, OptimizationSpec};
 
 /// Orchestrator managing infinite optimization iterations
 pub struct InfiniteOrchestrator {
@@ -133,7 +131,7 @@ impl InfiniteOrchestrator {
     pub async fn run_infinite(&self) -> Result<(), CognitiveError> {
         let (max_iter, _, gaps) = self.scan_output_dir()?;
         let mut current_iter = max_iter + 1;
-        let mut join_set = JoinSet::new();
+        let mut join_set: JoinSet<Result<OptimizationOutcome, CognitiveError>> = JoinSet::new();
         let mut outcomes: Vec<OptimizationOutcome> = vec![];
 
         if !gaps.is_empty() {
@@ -149,7 +147,7 @@ impl InfiniteOrchestrator {
         loop {
             // Adaptive agent count based on recent success
             let agents_per_wave =
-                if outcomes.len() > 10 && outcomes.iter().rev().take(5).all(|o| !o.applied) {
+                if outcomes.len() > 10 && outcomes.iter().rev().take(5).all(|o| !o.applied()) {
                     3 // Scale down if no recent progress
                 } else {
                     5 // Default for infinite mode
@@ -213,7 +211,7 @@ impl InfiniteOrchestrator {
 
             // Log progress periodically
             if current_iter % 10 == 0 {
-                let successful = outcomes.iter().filter(|o| o.applied).count();
+                let successful = outcomes.iter().filter(|o| o.applied()).count();
                 info!(
                     "Progress: {} iterations, {} successful optimizations",
                     current_iter, successful
@@ -266,8 +264,12 @@ fn markdown_to_spec(md: &str) -> Result<OptimizationSpec, CognitiveError> {
 
     Ok(OptimizationSpec {
         objective: "Improve code performance and quality".to_string(),
+        improvement_threshold: 0.1, // 10% improvement threshold
         constraints: vec!["Memory efficient".to_string(), "Thread safe".to_string()],
-        success_criteria: vec!["Performance improvement".to_string(), "Quality score > 0.8".to_string()],
+        success_criteria: vec![
+            "Performance improvement".to_string(),
+            "Quality score > 0.8".to_string(),
+        ],
         optimization_type: OptimizationType::Performance,
         timeout_ms: Some(30000),
         max_iterations: Some(10),
@@ -279,7 +281,7 @@ fn markdown_to_spec(md: &str) -> Result<OptimizationSpec, CognitiveError> {
             format: "Rust source code".to_string(),
             restrictions: Restrictions {
                 max_memory_usage: Some(1024 * 1024 * 100), // 100MB
-                max_processing_time: Some(30000), // 30 seconds
+                max_processing_time: Some(30000),          // 30 seconds
                 allowed_operations: vec!["optimization".to_string(), "refactoring".to_string()],
                 forbidden_operations: vec!["unsafe".to_string(), "system_calls".to_string()],
                 security_level: SecurityLevel::Internal,
@@ -295,7 +297,10 @@ fn markdown_to_spec(md: &str) -> Result<OptimizationSpec, CognitiveError> {
             crossover_rate: 0.7,
             elite_retention: 0.2,
             diversity_maintenance: 0.3,
-            allowed_mutations: vec![MutationType::AttentionWeightAdjustment, MutationType::RoutingStrategyModification],
+            allowed_mutations: vec![
+                MutationType::AttentionWeightAdjustment,
+                MutationType::RoutingStrategyModification,
+            ],
             build_on_previous: true,
             new_axis_per_iteration: true,
             max_cumulative_latency_increase: max_latency_increase,

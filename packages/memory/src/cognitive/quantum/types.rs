@@ -69,10 +69,13 @@ pub enum QueryIntent {
 pub struct EnhancedQuery {
     pub original: String,
     pub intent: QueryIntent,
+    pub context: Vec<String>,
     pub context_embedding: Vec<f32>,
+    pub timestamp: Option<std::time::Instant>,
     pub temporal_context: Option<TemporalContext>,
     pub cognitive_hints: Vec<String>,
     pub expected_complexity: f64,
+    pub priority: u32,
 }
 
 /// Temporal context for queries

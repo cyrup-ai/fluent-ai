@@ -9,12 +9,11 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-// TODO: Add sweetmcp_memory dependency and uncomment
 // Re-export key types from sweetmcp-memory
-// pub use sweetmcp_memory::{
-//     MemoryNode, MemoryMetadata, MemoryType, MemoryRelationship,
-//     MemoryManager as MemoryManagerTrait,
-// };
+pub use sweetmcp_memory::{
+    MemoryNode, MemoryMetadata, MemoryType, MemoryRelationship,
+    MemoryManager as MemoryManagerTrait,
+};
 
 // Placeholder types until sweetmcp_memory is added
 #[derive(Debug, Clone)]

@@ -5,8 +5,8 @@
 //! model instance and handles prompt generation, response parsing, and error recovery.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use arrayvec::ArrayVec;
@@ -19,14 +19,12 @@ pub use super::committee_types::{
     CommitteeError, CommitteeEvaluation, CommitteeResult, EvaluationPrompt, HealthStatus,
     MAX_COMMITTEE_SIZE, Model, ModelMetrics, ModelType, QualityTier,
 };
-use crate::cognitive::types::OptimizationSpec;
-use crate::llm::{CompletionResponse, LLMProvider};
-
 // Import additional types for zero allocation patterns
-pub use super::committee_evaluators_extension::{
-    EvaluationSessionMetrics, EvaluationTask,
-    EvaluatorPoolMetrics,
+pub use crate::cognitive::committee::committee_evaluators_extension::{
+    EvaluationSessionMetrics, EvaluationTask, EvaluatorPoolMetrics,
 };
+use crate::cognitive::types::OptimizationSpec;
+use crate::llm::LLMProvider;
 
 /// Individual LLM evaluator managing a single model instance
 #[derive(Debug)]
@@ -154,7 +152,9 @@ impl LLMEvaluator {
             }
             Err(_) => {
                 self.update_error_metrics().await;
-                Err(CommitteeError::EvaluationTimeout { timeout_ms: timeout.as_millis() as u64 })
+                Err(CommitteeError::EvaluationTimeout {
+                    timeout_ms: timeout.as_millis() as u64,
+                })
             }
         }
     }
@@ -186,13 +186,14 @@ impl LLMEvaluator {
         model_type: &ModelType,
     ) -> Result<Arc<dyn LLMProvider>, Box<dyn std::error::Error + Send + Sync>> {
         match model_type {
-            ModelType::Gpt35Turbo | ModelType::Gpt4O => {
+            ModelType::Gpt35Turbo | ModelType::Gpt4O | ModelType::Gpt4Turbo => {
                 // Create OpenAI provider
                 let provider = crate::llm::openai::OpenAIProvider::new(
                     std::env::var("OPENAI_API_KEY")
                         .map_err(|_| "OPENAI_API_KEY environment variable not set")?,
                     None,
-                ).map_err(|e| e.to_string())?;
+                )
+                .map_err(|e| e.to_string())?;
                 Ok(Arc::new(provider))
             }
             ModelType::Claude3Opus | ModelType::Claude3Sonnet | ModelType::Claude3Haiku => {
@@ -201,8 +202,16 @@ impl LLMEvaluator {
                     std::env::var("ANTHROPIC_API_KEY")
                         .map_err(|_| "ANTHROPIC_API_KEY environment variable not set")?,
                     None,
-                ).map_err(|e| e.to_string())?;
+                )
+                .map_err(|e| e.to_string())?;
                 Ok(Arc::new(provider))
+            }
+            ModelType::GeminiPro
+            | ModelType::Mixtral8x7B
+            | ModelType::Llama270B
+            | ModelType::Llama3 => {
+                // These models are not yet implemented
+                Err(format!("Model type {:?} is not yet implemented", model_type).into())
             }
         }
     }
@@ -222,17 +231,17 @@ impl LLMEvaluator {
             .await
             .map_err(|e| CommitteeError::ProviderError {
                 model_type: self.model.model_type.clone(),
-                source: e,
+                source: Box::new(e),
             })
     }
 
     /// Parse LLM response into structured evaluation
     async fn parse_evaluation_response(
         &self,
-        response: CompletionResponse,
+        response: String,
         evaluation_time: Duration,
     ) -> CommitteeResult<CommitteeEvaluation> {
-        let content = &response.text;
+        let content = &response;
 
         // Parse structured response using regex or simple parsing
         let (
@@ -241,7 +250,7 @@ impl LLMEvaluator {
             implementation_quality,
             risk_assessment,
             reasoning,
-            improvements,
+            _improvements,
         ) = self.extract_evaluation_components(content)?;
 
         // Calculate confidence based on model quality tier and response coherence
@@ -250,15 +259,15 @@ impl LLMEvaluator {
         Ok(CommitteeEvaluation {
             model: self.model.model_type.clone(),
             score: objective_alignment, // Use objective_alignment as overall score
-            reasoning,
+            reasoning: reasoning.into_bytes().into(), // Convert String to SmallVec<u8, 512>
             confidence,
-            processing_time_ms: evaluation_time,
+            processing_time_ms: evaluation_time.as_millis() as u64,
             timestamp: chrono::Utc::now(),
             objective_alignment,
             implementation_quality,
             risk_assessment,
             makes_progress,
-            evaluation_time,
+            evaluation_time: evaluation_time.as_micros() as u64,
         })
     }
 
@@ -361,10 +370,14 @@ impl LLMEvaluator {
 
     /// Calculate confidence based on response quality and model characteristics
     fn calculate_response_confidence(&self, content: &str, reasoning: &str) -> f64 {
-        let mut confidence = match self.model.model_type.quality_tier() {
-            QualityTier::Standard => 0.7,
+        let mut confidence: f64 = match self.model.model_type.quality_tier() {
+            QualityTier::Draft => 0.6,
+            QualityTier::Good => 0.7,
             QualityTier::High => 0.8,
             QualityTier::Premium => 0.9,
+            QualityTier::Basic => 0.65,
+            QualityTier::Standard => 0.75,
+            QualityTier::Experimental => 0.55,
         };
 
         // Adjust based on response length and detail
@@ -564,7 +577,7 @@ impl EvaluationSession {
         let remaining_timeout = self.timeout.saturating_sub(self.start_time.elapsed());
 
         // Pre-allocate futures array for zero allocation
-        let mut evaluation_futures = ArrayVec::new();
+        let mut evaluation_futures: ArrayVec<_, MAX_COMMITTEE_SIZE> = ArrayVec::new();
 
         for evaluator in &self.evaluators {
             let spec = optimization_spec.clone();

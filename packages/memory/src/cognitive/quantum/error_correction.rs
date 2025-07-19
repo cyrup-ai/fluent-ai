@@ -312,7 +312,7 @@ impl QuantumErrorCorrection {
 
         // Simplified syndrome extraction
         // In a real implementation, this would perform stabilizer measurements
-        for (i, measurement_circuit) in self
+        for (_i, measurement_circuit) in self
             .syndrome_detection
             .measurement_circuits
             .iter()
