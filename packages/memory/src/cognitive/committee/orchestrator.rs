@@ -1,16 +1,13 @@
 // src/cognitive/committee/orchestrator.rs
 //! Orchestrates the evaluation committee to achieve consensus.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use futures::stream::{FuturesUnordered, StreamExt};
-use sha2::{Digest, Sha256};
 use tokio::sync::{RwLock, Semaphore, mpsc};
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 use crate::cognitive::committee::agent::LLMEvaluationAgent;
-use crate::cognitive::common::models::ModelType;
 use crate::cognitive::common::types::*;
 use crate::cognitive::mcts::CodeState;
 use crate::cognitive::types::{CognitiveError, ImpactFactors};
@@ -155,7 +152,12 @@ impl EvaluationCommittee {
         let mut tasks = FuturesUnordered::new();
 
         for agent in &self.agents {
-            let permit = semaphore.clone().acquire_owned().await.unwrap();
+            let permit = semaphore.clone()
+                .acquire_owned()
+                .await
+                .map_err(|e| CognitiveError::OptimizationError(
+                    format!("Failed to acquire semaphore permit for agent evaluation: {}", e)
+                ))?;
             let task = tokio::spawn({
                 let agent = agent.clone();
                 let state = state.clone();

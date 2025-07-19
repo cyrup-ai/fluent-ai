@@ -6,10 +6,11 @@
 //! Performance targets: 2-8x improvement via SIMD, 10-50x for large embeddings via memory mapping.
 
 use std::alloc::{GlobalAlloc, Layout};
+#[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 use std::mem::{align_of, size_of};
 use std::ptr::NonNull;
-use std::simd::{SimdFloat, f32x16};
+use std::simd::prelude::*;
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
@@ -27,7 +28,7 @@ use wide::f32x8 as WideF32x8;
 
 use crate::ZeroOneOrMany;
 use crate::memory::{
-    EmbeddingService, ImportanceContext, InMemoryEmbeddingCache, MemoryError, MemoryManager,
+    MemoryError, MemoryManagerTrait as MemoryManager,
     MemoryNode, MemoryRelationship, MemoryType,
 };
 
@@ -258,6 +259,7 @@ pub fn simd_cosine_similarity(a: &[f32], b: &[f32]) -> Result<f32, MemoryError> 
 }
 
 /// AVX-512 optimized cosine similarity (16 f32 operations per iteration)
+#[cfg(target_feature = "avx512f")]
 #[target_feature(enable = "avx512f")]
 unsafe fn simd_cosine_similarity_avx512(a: &[f32], b: &[f32]) -> Result<f32, MemoryError> {
     let len = a.len();
@@ -298,6 +300,7 @@ unsafe fn simd_cosine_similarity_avx512(a: &[f32], b: &[f32]) -> Result<f32, Mem
 }
 
 /// AVX2 optimized cosine similarity (8 f32 operations per iteration)
+#[cfg(target_feature = "avx2")]
 #[target_feature(enable = "avx2")]
 unsafe fn simd_cosine_similarity_avx2(a: &[f32], b: &[f32]) -> Result<f32, MemoryError> {
     let len = a.len();
@@ -420,6 +423,7 @@ pub fn simd_euclidean_distance(a: &[f32], b: &[f32]) -> Result<f32, MemoryError>
 }
 
 /// AVX-512 optimized euclidean distance
+#[cfg(target_feature = "avx512f")]
 #[target_feature(enable = "avx512f")]
 unsafe fn simd_euclidean_distance_avx512(a: &[f32], b: &[f32]) -> Result<f32, MemoryError> {
     let len = a.len();
@@ -447,6 +451,7 @@ unsafe fn simd_euclidean_distance_avx512(a: &[f32], b: &[f32]) -> Result<f32, Me
 }
 
 /// AVX2 optimized euclidean distance
+#[cfg(target_feature = "avx2")]
 #[target_feature(enable = "avx2")]
 unsafe fn simd_euclidean_distance_avx2(a: &[f32], b: &[f32]) -> Result<f32, MemoryError> {
     let len = a.len();

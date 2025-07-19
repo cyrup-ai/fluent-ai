@@ -9,8 +9,10 @@ default = ["hashbrown-json"]
 hashbrown-json = []
 audio = []
 image = ["dep:image"]
+cylo = ["dep:cylo"]
 
 [dependencies]
+cylo = { path = "../cylo", optional = true }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 serde_path_to_error = "0.1"

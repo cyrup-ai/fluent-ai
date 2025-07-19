@@ -18,7 +18,10 @@ impl DataImporter {
     }
 
     /// Import data from JSON file
-    pub async fn import_json<T: for<'de> Deserialize<'de>>(&self, path: &Path) -> Result<Vec<T>> {
+    pub async fn import_json<T>(&self, path: &Path) -> Result<Vec<T>>
+    where
+        T: for<'de> Deserialize<'de> + Send + 'static,
+    {
         let mut file = File::open(path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
@@ -42,12 +45,10 @@ impl DataImporter {
         }
         
         // Read file contents asynchronously
-        let mut file = File::open(path).await
-            .map_err(|e| MigrationError::IoError(e.to_string()))?;
+        let mut file = File::open(path).await?;
         
         let mut contents = String::new();
-        file.read_to_string(&mut contents).await
-            .map_err(|e| MigrationError::IoError(e.to_string()))?;
+        file.read_to_string(&mut contents).await?;
         
         // Parse CSV with proper error handling
         let mut reader = ReaderBuilder::new()
@@ -107,8 +108,8 @@ impl DataImporter {
         validator: F,
     ) -> Result<Vec<T>>
     where
-        T: for<'de> Deserialize<'de>,
-        F: Fn(&T) -> Result<()>,
+        T: for<'de> Deserialize<'de> + Send + 'static + std::fmt::Debug,
+        F: Fn(&T) -> Result<()> + Send + 'static,
     {
         let data = match format {
             ImportFormat::Json => self.import_json(path).await?,

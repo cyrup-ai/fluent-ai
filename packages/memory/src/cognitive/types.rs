@@ -16,6 +16,19 @@ pub struct CognitiveState {
     pub meta_awareness: f32,
 }
 
+impl Default for CognitiveState {
+    fn default() -> Self {
+        Self {
+            activation_pattern: Vec::new(),
+            attention_weights: Vec::new(),
+            temporal_context: TemporalContext::default(),
+            uncertainty: 0.5,
+            confidence: 0.5,
+            meta_awareness: 0.5,
+        }
+    }
+}
+
 /// Temporal context and dependencies
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TemporalContext {
@@ -80,7 +93,6 @@ pub struct CognitiveMemoryNode {
     pub evolution_metadata: Option<EvolutionMetadata>,
     pub attention_weights: Vec<f32>,
     pub semantic_relationships: Vec<String>,
-    pub base: crate::memory::MemoryNode,
 }
 
 impl CognitiveMemoryNode {
@@ -89,6 +101,19 @@ impl CognitiveMemoryNode {
         self.quantum_signature.is_some()
             || self.evolution_metadata.is_some()
             || !self.attention_weights.is_empty()
+    }
+}
+
+impl From<crate::memory::MemoryNode> for CognitiveMemoryNode {
+    fn from(memory_node: crate::memory::MemoryNode) -> Self {
+        Self {
+            base_memory: memory_node,
+            cognitive_state: CognitiveState::default(),
+            quantum_signature: None,
+            evolution_metadata: None,
+            attention_weights: Vec::new(),
+            semantic_relationships: Vec::new(),
+        }
     }
 }
 
@@ -209,7 +234,7 @@ pub struct RoutingDecision {
     pub reasoning: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum RoutingStrategy {
     Quantum,
     Attention,
@@ -388,6 +413,12 @@ impl From<crate::cognitive::quantum::router::QuantumRouterError> for CognitiveEr
                 CognitiveError::ContextProcessingError(e.to_string())
             }
         }
+    }
+}
+
+impl From<serde_json::Error> for CognitiveError {
+    fn from(error: serde_json::Error) -> Self {
+        CognitiveError::ParseError(error.to_string())
     }
 }
 

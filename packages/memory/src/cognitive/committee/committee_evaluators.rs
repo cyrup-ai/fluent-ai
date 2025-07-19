@@ -440,8 +440,8 @@ pub struct EvaluatorPool {
     evaluators: HashMap<ModelType, ArrayVec<Arc<LLMEvaluator>, MAX_COMMITTEE_SIZE>>,
     /// Atomic round-robin indices for lock-free load balancing
     round_robin_indices: HashMap<ModelType, AtomicUsize>,
-    /// Lock-free task queue for evaluator distribution
-    task_queue: SegQueue<EvaluationTask>,
+    /// Lock-free task queue for evaluator distribution (TODO: Implement distributed task system)
+    _task_queue: SegQueue<EvaluationTask>,
     /// Pool metrics with atomic counters
     metrics: EvaluatorPoolMetrics,
 }
@@ -453,7 +453,7 @@ impl EvaluatorPool {
         Self {
             evaluators: HashMap::new(),
             round_robin_indices: HashMap::new(),
-            task_queue: SegQueue::new(),
+            _task_queue: SegQueue::new(),
             metrics: EvaluatorPoolMetrics::new(),
         }
     }
@@ -529,8 +529,6 @@ impl EvaluatorPool {
 /// Zero-allocation session for coordinating multiple evaluations
 #[derive(Debug)]
 pub struct EvaluationSession {
-    /// Session identifier (shared to avoid allocation)
-    session_id: Arc<str>,
     /// Active evaluators in this session (stack-allocated)
     evaluators: ArrayVec<Arc<LLMEvaluator>, MAX_COMMITTEE_SIZE>,
     /// Session start time
@@ -555,11 +553,7 @@ impl EvaluationSession {
             });
         }
 
-        // Generate session ID with minimal allocation
-        let session_id = Arc::from(format!("eval_{}", Uuid::new_v4().as_simple()));
-
         Ok(Self {
-            session_id,
             evaluators,
             start_time: Instant::now(),
             timeout,

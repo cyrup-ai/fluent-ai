@@ -76,6 +76,7 @@ pub trait Metric: Send + Sync {
 /// Counter metric wrapper
 pub struct CounterMetric {
     counter: Counter,
+    #[allow(dead_code)]
     registry: Registry,
 }
 
@@ -87,10 +88,23 @@ impl CounterMetric {
                 "Warning: Failed to create counter metric '{}': {}. Using fallback counter.",
                 name, e
             );
-            Counter::new("fallback_counter", "Fallback counter metric").unwrap_or_else(|_| {
-                // If even the fallback fails, create a minimal counter
-                Counter::new("minimal_counter", "Minimal counter")
-                    .expect("Failed to create minimal counter")
+            Counter::new("fallback_counter", "Fallback counter metric").unwrap_or_else(|e| {
+                // If even the fallback fails, create a minimal counter with timestamp suffix
+                eprintln!("Warning: Fallback counter creation failed: {}. Using timestamped minimal counter.", e);
+                let timestamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                Counter::new(&format!("minimal_counter_{}", timestamp), "Minimal counter")
+                    .unwrap_or_else(|e| {
+                        eprintln!("Critical: All counter creation attempts failed: {}. Creating no-op counter.", e);
+                        // Return a counter that will work but may not record properly
+                        Counter::new("emergency_counter", "Emergency fallback counter")
+                            .unwrap_or_else(|_| {
+                                // This should virtually never fail, but if it does, we panic with context
+                                panic!("Critical system failure: Unable to create any counter metric. This indicates a severe prometheus/metrics system issue.")
+                            })
+                    })
             })
         });
 
@@ -119,6 +133,7 @@ impl Metric for CounterMetric {
 /// Gauge metric wrapper
 pub struct GaugeMetric {
     gauge: Gauge,
+    #[allow(dead_code)]
     registry: Registry,
 }
 
@@ -130,10 +145,23 @@ impl GaugeMetric {
                 "Warning: Failed to create gauge metric '{}': {}. Using fallback gauge.",
                 name, e
             );
-            Gauge::new("fallback_gauge", "Fallback gauge metric").unwrap_or_else(|_| {
-                // If even the fallback fails, create a minimal gauge
-                Gauge::new("minimal_gauge", "Minimal gauge")
-                    .expect("Failed to create minimal gauge")
+            Gauge::new("fallback_gauge", "Fallback gauge metric").unwrap_or_else(|e| {
+                // If even the fallback fails, create a minimal gauge with timestamp suffix
+                eprintln!("Warning: Fallback gauge creation failed: {}. Using timestamped minimal gauge.", e);
+                let timestamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                Gauge::new(&format!("minimal_gauge_{}", timestamp), "Minimal gauge")
+                    .unwrap_or_else(|e| {
+                        eprintln!("Critical: All gauge creation attempts failed: {}. Creating emergency gauge.", e);
+                        // Return a gauge that will work but may not record properly
+                        Gauge::new("emergency_gauge", "Emergency fallback gauge")
+                            .unwrap_or_else(|_| {
+                                // This should virtually never fail, but if it does, we panic with context
+                                panic!("Critical system failure: Unable to create any gauge metric. This indicates a severe prometheus/metrics system issue.")
+                            })
+                    })
             })
         });
 
@@ -162,6 +190,7 @@ impl Metric for GaugeMetric {
 /// Histogram metric wrapper
 pub struct HistogramMetric {
     histogram: Histogram,
+    #[allow(dead_code)]
     registry: Registry,
 }
 
@@ -177,10 +206,23 @@ impl HistogramMetric {
                 "fallback_histogram",
                 "Fallback histogram metric",
             ))
-            .unwrap_or_else(|_| {
-                // If even the fallback fails, create a minimal histogram
-                Histogram::with_opts(HistogramOpts::new("minimal_histogram", "Minimal histogram"))
-                    .expect("Failed to create minimal histogram")
+            .unwrap_or_else(|e| {
+                // If even the fallback fails, create a minimal histogram with timestamp suffix
+                eprintln!("Warning: Fallback histogram creation failed: {}. Using timestamped minimal histogram.", e);
+                let timestamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                Histogram::with_opts(HistogramOpts::new(&format!("minimal_histogram_{}", timestamp), "Minimal histogram"))
+                    .unwrap_or_else(|e| {
+                        eprintln!("Critical: All histogram creation attempts failed: {}. Creating emergency histogram.", e);
+                        // Return a histogram that will work but may not record properly
+                        Histogram::with_opts(HistogramOpts::new("emergency_histogram", "Emergency fallback histogram"))
+                            .unwrap_or_else(|_| {
+                                // This should virtually never fail, but if it does, we panic with context
+                                panic!("Critical system failure: Unable to create any histogram metric. This indicates a severe prometheus/metrics system issue.")
+                            })
+                    })
             })
         });
 

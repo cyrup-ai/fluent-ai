@@ -474,13 +474,14 @@ impl WriteColor for TermString {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Color, ColorChoice, ColorSpec};
+    use crate::{ColorChoice, ColorSpec};
+    use std::io::Write;
 
     #[test]
     fn test_modular_structure_integration() {
         // Test that all components work together
-        let mut stdout = StandardStream::stdout(ColorChoice::Never);
-        let mut buffer = BufferWriter::stdout(ColorChoice::Always).buffer();
+        let stdout = StandardStream::stdout(ColorChoice::Never);
+        let buffer = BufferWriter::stdout(ColorChoice::Always).buffer();
 
         // Should be able to use all writers
         assert!(!stdout.supports_color()); // Never choice
@@ -524,7 +525,7 @@ mod tests {
 
         // All operations should be no-ops
         vec.set_color(&ColorSpec::new()).unwrap();
-        vec.set_hyperlink(&crate::HyperlinkSpec::new()).unwrap();
+        vec.set_hyperlink(&crate::HyperlinkSpec::close()).unwrap();
         vec.reset().unwrap();
 
         vec.write_all(b"data").unwrap();

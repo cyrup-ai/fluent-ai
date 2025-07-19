@@ -107,7 +107,14 @@ impl SuperpositionState {
 
     /// Entangle this superposition with another memory
     pub fn entangle(&mut self, memory_id: String) {
-        self.entangled_memories.push(memory_id);
+        use crate::cognitive::types::EntanglementType;
+        
+        // Create a basic EntanglementLink
+        let link = crate::cognitive::quantum::entanglement::EntanglementLink::new(
+            memory_id,
+            EntanglementType::Bell,
+        );
+        self.entangled_memories.push(link);
     }
 
     /// Normalize the superposition to maintain quantum constraint

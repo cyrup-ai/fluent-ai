@@ -460,7 +460,7 @@ mod tests {
         assert!(buffer.is_empty());
         assert_eq!(buffer.len(), 0);
 
-        buffer.write_all(b"test").unwrap();
+        buffer.write_all(b"test").expect("Failed to write to buffer in test");
         assert!(!buffer.is_empty());
         assert_eq!(buffer.len(), 4);
 
@@ -472,7 +472,7 @@ mod tests {
     #[test]
     fn test_buffer_data_access() {
         let mut buffer = Buffer::ansi();
-        buffer.write_all(b"hello world").unwrap();
+        buffer.write_all(b"hello world").expect("Failed to write to buffer in test");
 
         assert_eq!(buffer.as_slice(), b"hello world");
 
@@ -482,10 +482,7 @@ mod tests {
 
     #[test]
     fn test_buffer_writer_creation() {
-        let stdout_writer = BufferWriter::stdout(ColorChoice::Auto);
         let stderr_writer = BufferWriter::stderr(ColorChoice::Never);
-
-        let stdout_buffer = stdout_writer.buffer();
         let stderr_buffer = stderr_writer.buffer();
 
         // Test that buffers are created with appropriate color settings

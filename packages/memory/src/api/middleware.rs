@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use axum::{
     body::Body, 
-    http::{Request, StatusCode, HeaderMap, HeaderValue}, 
+    http::{Request, StatusCode, HeaderValue}, 
     middleware::Next, 
     response::{IntoResponse, Response}
 };
@@ -15,32 +15,201 @@ use serde::{Deserialize, Serialize};
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use chrono::{DateTime, Utc};
 use once_cell::sync::Lazy;
+use thiserror::Error;
 
-/// JWT secret key (in production, this should come from environment variables)
-static JWT_SECRET: Lazy<String> = Lazy::new(|| {
-    std::env::var("JWT_SECRET").unwrap_or_else(|_| "default-secret-key".to_string())
+/// Security configuration errors
+#[derive(Debug, Error)]
+pub enum SecurityConfigError {
+    #[error("JWT secret not configured - set JWT_SECRET environment variable or provide secure config")]
+    JwtSecretMissing,
+    #[error("JWT secret too weak - must be at least 32 characters")]
+    JwtSecretTooWeak,
+    #[error("API keys not configured - set API_KEYS_FILE environment variable or configure programmatically")]
+    ApiKeysNotConfigured,
+    #[error("Invalid API key format: {0}")]
+    InvalidApiKeyFormat(String),
+    #[error("Security config file error: {0}")]
+    ConfigFileError(#[from] std::io::Error),
+    #[error("JSON parsing error: {0}")]
+    JsonError(#[from] serde_json::Error),
+}
+
+/// Secure JWT configuration
+#[derive(Debug, Clone)]
+pub struct JwtConfig {
+    secret: String,
+    algorithm: Algorithm,
+    expiration_hours: u64,
+}
+
+impl JwtConfig {
+    /// Create JWT config from environment variables with validation
+    pub fn from_env() -> Result<Self, SecurityConfigError> {
+        let secret = std::env::var("JWT_SECRET")
+            .map_err(|_| SecurityConfigError::JwtSecretMissing)?;
+        
+        // Validate secret strength
+        if secret.len() < 32 {
+            return Err(SecurityConfigError::JwtSecretTooWeak);
+        }
+        
+        // Validate secret is not a common weak pattern
+        if secret == "default-secret-key" || secret.starts_with("test") || secret == "secret" {
+            return Err(SecurityConfigError::JwtSecretTooWeak);
+        }
+        
+        let algorithm = match std::env::var("JWT_ALGORITHM").as_deref() {
+            Ok("HS256") => Algorithm::HS256,
+            Ok("HS384") => Algorithm::HS384,
+            Ok("HS512") => Algorithm::HS512,
+            _ => Algorithm::HS256, // Default to HS256
+        };
+        
+        let expiration_hours = std::env::var("JWT_EXPIRATION_HOURS")
+            .and_then(|s| s.parse().map_err(|_| std::env::VarError::NotPresent))
+            .unwrap_or(24); // Default 24 hours
+        
+        Ok(Self {
+            secret,
+            algorithm,
+            expiration_hours,
+        })
+    }
+    
+    pub fn secret(&self) -> &str {
+        &self.secret
+    }
+    
+    pub fn algorithm(&self) -> Algorithm {
+        self.algorithm
+    }
+    
+    pub fn expiration_hours(&self) -> u64 {
+        self.expiration_hours
+    }
+}
+
+/// API key management with secure loading
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiKeyConfig {
+    pub key_id: String,
+    pub key_hash: String, // Store hash, not plaintext
+    pub user_context: UserContext,
+}
+
+/// Secure API key manager
+pub struct ApiKeyManager {
+    keys: HashMap<String, UserContext>,
+    key_hashes: HashMap<String, String>, // hash -> key_id
+}
+
+impl ApiKeyManager {
+    /// Load API keys from secure configuration
+    pub fn from_env() -> Result<Self, SecurityConfigError> {
+        let config_file = std::env::var("API_KEYS_FILE")
+            .unwrap_or_else(|_| "/etc/fluent-ai/api-keys.json".to_string());
+        
+        if std::path::Path::new(&config_file).exists() {
+            Self::from_file(&config_file)
+        } else {
+            // In development/testing, create minimal secure config
+            tracing::warn!("API keys file not found at {}. Using development configuration.", config_file);
+            Self::development_config()
+        }
+    }
+    
+    /// Load from encrypted configuration file
+    fn from_file(path: &str) -> Result<Self, SecurityConfigError> {
+        let content = std::fs::read_to_string(path)?;
+        let configs: Vec<ApiKeyConfig> = serde_json::from_str(&content)?;
+        
+        let mut keys = HashMap::new();
+        let mut key_hashes = HashMap::new();
+        
+        for config in configs {
+            // Validate key format
+            if config.key_id.len() < 16 {
+                return Err(SecurityConfigError::InvalidApiKeyFormat(
+                    "Key ID must be at least 16 characters".to_string()
+                ));
+            }
+            
+            keys.insert(config.key_id.clone(), config.user_context);
+            key_hashes.insert(config.key_hash, config.key_id);
+        }
+        
+        Ok(Self { keys, key_hashes })
+    }
+    
+    /// Development configuration with secure random keys
+    fn development_config() -> Result<Self, SecurityConfigError> {
+        use sha2::{Sha256, Digest};
+        
+        let mut keys = HashMap::new();
+        let mut key_hashes = HashMap::new();
+        
+        // Generate secure random key for development
+        let dev_key = format!("dev_{}", uuid::Uuid::new_v4());
+        let key_hash = format!("{:x}", Sha256::digest(dev_key.as_bytes()));
+        
+        let user_context = UserContext {
+            user_id: "dev_user".to_string(),
+            email: "dev@localhost".to_string(),
+            roles: vec!["developer".to_string()],
+            permissions: vec!["read".to_string(), "write".to_string()],
+            expires_at: None,
+        };
+        
+        keys.insert(dev_key.clone(), user_context);
+        key_hashes.insert(key_hash, dev_key);
+        
+        tracing::info!("Development API key configuration created. Use generated key for API access.");
+        
+        Ok(Self { keys, key_hashes })
+    }
+    
+    /// Validate API key using secure hash comparison
+    pub fn validate_key(&self, provided_key: &str) -> Option<&UserContext> {
+        use sha2::{Sha256, Digest};
+        
+        // Hash the provided key
+        let key_hash = format!("{:x}", Sha256::digest(provided_key.as_bytes()));
+        
+        // Look up by hash to prevent timing attacks
+        if let Some(key_id) = self.key_hashes.get(&key_hash) {
+            self.keys.get(key_id)
+        } else {
+            // Check direct key match for development keys
+            self.keys.get(provided_key)
+        }
+    }
+    
+    /// Rotate API key (for future implementation)
+    pub fn rotate_key(&mut self, old_key: &str, new_key: &str) -> Result<(), SecurityConfigError> {
+        use sha2::{Sha256, Digest};
+        
+        if let Some(user_context) = self.keys.remove(old_key) {
+            let new_hash = format!("{:x}", Sha256::digest(new_key.as_bytes()));
+            self.keys.insert(new_key.to_string(), user_context);
+            self.key_hashes.insert(new_hash, new_key.to_string());
+            Ok(())
+        } else {
+            Err(SecurityConfigError::InvalidApiKeyFormat("Key not found for rotation".to_string()))
+        }
+    }
+}
+
+/// Global secure JWT configuration
+static JWT_CONFIG: Lazy<Result<JwtConfig, SecurityConfigError>> = Lazy::new(|| {
+    JwtConfig::from_env()
 });
 
-/// Valid API keys (in production, this should come from a database)
-static VALID_API_KEYS: Lazy<HashMap<String, UserContext>> = Lazy::new(|| {
-    let mut keys = HashMap::new();
-    // Add default API keys - in production, load from secure storage
-    keys.insert("admin-key-123".to_string(), UserContext {
-        user_id: "admin".to_string(),
-        email: "admin@example.com".to_string(),
-        roles: vec!["admin".to_string()],
-        permissions: vec!["read".to_string(), "write".to_string(), "delete".to_string()],
-        expires_at: None,
-    });
-    keys.insert("user-key-456".to_string(), UserContext {
-        user_id: "user1".to_string(),
-        email: "user1@example.com".to_string(),
-        roles: vec!["user".to_string()],
-        permissions: vec!["read".to_string(), "write".to_string()],
-        expires_at: None,
-    });
-    keys
+/// Global secure API key manager
+static API_KEY_MANAGER: Lazy<Result<ApiKeyManager, SecurityConfigError>> = Lazy::new(|| {
+    ApiKeyManager::from_env()
 });
+
+
 
 /// User context extracted from authentication
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -168,9 +337,16 @@ async fn validate_jwt_token(auth_header: &str) -> Result<UserContext, AuthError>
         return Err(AuthError::InvalidToken);
     };
 
-    // Decode and validate JWT
-    let decoding_key = DecodingKey::from_secret(JWT_SECRET.as_bytes());
-    let validation = Validation::new(Algorithm::HS256);
+    // Get secure JWT configuration
+    let jwt_config = JWT_CONFIG.as_ref()
+        .map_err(|e| {
+            tracing::error!("JWT configuration error: {}", e);
+            AuthError::InvalidToken
+        })?;
+
+    // Decode and validate JWT with secure configuration
+    let decoding_key = DecodingKey::from_secret(jwt_config.secret().as_bytes());
+    let validation = Validation::new(jwt_config.algorithm());
     
     match decode::<JwtClaims>(token, &decoding_key, &validation) {
         Ok(token_data) => {
@@ -187,19 +363,33 @@ async fn validate_jwt_token(auth_header: &str) -> Result<UserContext, AuthError>
                 email: claims.email,
                 roles: claims.roles,
                 permissions: claims.permissions,
-                expires_at: Some(DateTime::from_timestamp(claims.exp, 0).unwrap_or_else(Utc::now)),
+                expires_at: DateTime::from_timestamp(claims.exp, 0),
             })
         }
-        Err(_) => Err(AuthError::InvalidToken),
+        Err(e) => {
+            tracing::warn!("JWT decode error: {}", e);
+            Err(AuthError::InvalidToken)
+        }
     }
 }
 
 /// Validate API key and return associated user context
-async fn validate_api_key(api_key: &str) -> Result<UserContext, AuthError> {
-    VALID_API_KEYS
-        .get(api_key)
+async fn validate_api_key(provided_key: &str) -> Result<UserContext, AuthError> {
+    // Get secure API key manager
+    let api_manager = API_KEY_MANAGER.as_ref()
+        .map_err(|e| {
+            tracing::error!("API key manager configuration error: {}", e);
+            AuthError::InvalidApiKey
+        })?;
+
+    // Validate using secure hash comparison
+    api_manager
+        .validate_key(provided_key)
         .cloned()
-        .ok_or(AuthError::InvalidApiKey)
+        .ok_or_else(|| {
+            tracing::warn!("Invalid API key provided");
+            AuthError::InvalidApiKey
+        })
 }
 
 /// Add security headers to response

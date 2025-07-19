@@ -493,12 +493,61 @@ impl ProviderClient for AI21Client {
     }
 }
 
-/// Default implementation for AI21Client
+/// Secure credential management for AI21 API keys
+impl AI21Client {
+    /// Retrieve API key from secure sources (environment variables, config, etc.)
+    fn retrieve_secure_api_key() -> Result<String> {
+        // Try environment variables first (most secure for production)
+        if let Ok(api_key) = std::env::var("AI21_API_KEY") {
+            if !api_key.is_empty() && api_key != "placeholder-api-key-update-before-use" {
+                return Ok(api_key);
+            }
+        }
+        
+        // Also check alternative environment variable names
+        if let Ok(api_key) = std::env::var("AI21_API_TOKEN") {
+            if !api_key.is_empty() && api_key != "placeholder-api-key-update-before-use" {
+                return Ok(api_key);
+            }
+        }
+        
+        if let Ok(api_key) = std::env::var("AI21_LABS_API_KEY") {
+            if !api_key.is_empty() && api_key != "placeholder-api-key-update-before-use" {
+                return Ok(api_key);
+            }
+        }
+        
+        // Return descriptive error for missing credentials
+        Err(AI21Error::Configuration {
+            field: "api_key".to_string(),
+            message: "No valid AI21 API key found in environment variables".to_string(),
+            suggestion: "Set AI21_API_KEY environment variable with your AI21 Labs API key".to_string(),
+        })
+    }
+    
+    /// Create client with secure credential retrieval
+    pub fn new_secure() -> Result<Self> {
+        let api_key = Self::retrieve_secure_api_key()?;
+        Self::new(api_key)
+    }
+}
+
+/// Default implementation that fails fast if credentials are missing
+/// This prevents accidental use of placeholder credentials in production
 impl Default for AI21Client {
     fn default() -> Self {
-        // Create with placeholder API key - will need to be updated
-        Self::new("placeholder-api-key-update-before-use".to_string())
-            .unwrap_or_else(|_| panic!("Failed to create default AI21Client"))
+        Self::new_secure()
+            .map_err(|e| {
+                tracing::error!("Failed to create AI21 client with secure credentials: {}", e);
+                e
+            })
+            .unwrap_or_else(|_| {
+                // Fail fast in production - never use placeholder credentials
+                panic!(
+                    "AI21 client requires valid API key. Set AI21_API_KEY environment variable. \
+                    This error prevents accidental use of placeholder credentials in production."
+                )
+            })
     }
 }
 

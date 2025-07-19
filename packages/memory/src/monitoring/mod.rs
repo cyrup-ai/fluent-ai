@@ -561,6 +561,7 @@ impl Monitor {
 
     /// Create emergency Counter as absolute fallback
     #[inline(always)]
+    #[allow(dead_code)]
     fn create_emergency_counter() -> Counter {
         use std::sync::OnceLock;
         static EMERGENCY_COUNTER: OnceLock<Counter> = OnceLock::new();
@@ -585,6 +586,7 @@ impl Monitor {
     }
 
     /// Create emergency Gauge as absolute fallback
+    #[allow(dead_code)]
     #[inline(always)]
     fn create_emergency_gauge() -> Gauge {
         use std::sync::OnceLock;
@@ -610,6 +612,8 @@ impl Monitor {
     }
 
     /// Create emergency Histogram as absolute fallback
+    #[allow(dead_code)]
+    #[allow(dead_code)]
     #[inline(always)]
     fn create_emergency_histogram() -> Histogram {
         use std::sync::OnceLock;
@@ -638,6 +642,8 @@ impl Monitor {
     }
 
     /// Create emergency HistogramVec as absolute fallback
+    #[allow(dead_code)]
+    #[allow(dead_code)]
     #[inline(always)]
     fn create_emergency_histogram_vec() -> HistogramVec {
         use std::sync::OnceLock;

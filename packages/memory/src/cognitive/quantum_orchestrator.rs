@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, mpsc};
 use tokio::time::{self, Duration};
 use tracing::{info, warn};
+use num_complex::Complex64;
 
 use crate::cognitive::state::CognitiveStateManager;
 use crate::cognitive::types::{
@@ -18,8 +19,8 @@ use crate::cognitive::{
     evolution::CognitiveCodeEvolution,
     mcts::CodeState,
     performance::PerformanceAnalyzer,
-    quantum::{QuantumConfig, QuantumMetrics, QuantumRouter},
-    quantum_mcts::{QuantumMCTS, QuantumMCTSNode, QuantumNodeState, QuantumTreeStatistics},
+    quantum::{QuantumConfig, QuantumRouter},
+    quantum_mcts::{QuantumMCTS, QuantumNodeState, QuantumTreeStatistics},
     types::{CognitiveError, OptimizationOutcome, OptimizationSpec},
 };
 
@@ -70,12 +71,15 @@ pub struct QuantumOrchestrator {
     /// Quantum MCTS config
     mcts_config: QuantumConfig, // Temporarily using QuantumConfig instead of QuantumMCTSConfig
     /// Performance analyzer
+    #[allow(dead_code)]
     performance_analyzer: Arc<PerformanceAnalyzer>,
     /// Event channel
+    #[allow(dead_code)]
     event_tx: mpsc::Sender<CommitteeEvent>,
     /// Recursive states
     recursive_states: Arc<RwLock<Vec<RecursiveState>>>,
     /// Quantum router
+    #[allow(dead_code)]
     quantum_router: Arc<QuantumRouter>,
     /// Evolution engine
     evolution_engine: Arc<CognitiveCodeEvolution>,
@@ -177,7 +181,7 @@ impl QuantumOrchestrator {
     pub async fn run_recursive_improvement(
         &self,
         initial_state: CodeState,
-        spec: Arc<OptimizationSpec>,
+        _spec: Arc<OptimizationSpec>,
         user_objective: String,
     ) -> Result<OptimizationOutcome, CognitiveError> {
         info!("Starting quantum orchestration for recursive improvement");
@@ -192,33 +196,21 @@ impl QuantumOrchestrator {
             // Create quantum MCTS for this depth
             let mut quantum_mcts = QuantumMCTS::new(
                 current_state.clone(),
-                self.performance_analyzer.clone(),
-                spec.clone(),
                 user_objective.clone(),
-                self.event_tx.clone(),
                 self.mcts_config.clone(),
             )?;
 
             // Run recursive improvement
-            quantum_mcts
-                .recursive_improve(self.config.max_iterations_per_depth)
-                .await?;
+            let _improved_state = quantum_mcts.recursive_improve(self.config.max_iterations_per_depth as usize)?;
 
             // Get best modification
-            let best_modification =
-                quantum_mcts
-                    .best_quantum_modification()
-                    .await
-                    .ok_or_else(|| {
-                        CognitiveError::InvalidState("No quantum modification found".to_string())
-                    })?;
+            let best_modification = quantum_mcts.best_quantum_modification()?;
 
             // Calculate improvement
-            let improvement =
-                self.calculate_improvement(&current_state, &best_modification.classical_state)?;
+            let improvement = self.calculate_improvement(&current_state, &best_modification)?;
 
             // Get quantum statistics
-            let stats = quantum_mcts.get_quantum_statistics().await;
+            let stats = quantum_mcts.get_quantum_statistics();
 
             // Record recursive state
             let recursive_state = RecursiveState {
@@ -237,9 +229,18 @@ impl QuantumOrchestrator {
                 break;
             }
 
+            // Create quantum state from best modification
+            let quantum_state = QuantumNodeState {
+                classical_state: best_modification,
+                superposition_coefficients: vec![Complex64::new(1.0, 0.0)],
+                entangled_nodes: Vec::new(),
+                decoherence: stats.avg_decoherence,
+                measurement_history: Vec::new(),
+            };
+
             // Apply quantum evolution
             let evolved_state = self
-                .apply_quantum_evolution(&best_modification, &stats)
+                .apply_quantum_evolution(&quantum_state, &stats)
                 .await?;
 
             current_state = evolved_state.classical_state;

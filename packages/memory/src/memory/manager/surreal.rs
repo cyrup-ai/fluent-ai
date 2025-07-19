@@ -11,7 +11,7 @@ use surrealdb::engine::any::Any;
 
 // Remove imports that conflict with local definitions
 use crate::memory::primitives::types::MemoryTypeEnum;
-use crate::memory::primitives::{MemoryNode, MemoryRelationship, MemoryType};
+use crate::memory::primitives::{MemoryNode, MemoryRelationship};
 use crate::schema::memory_schema::{MemoryMetadataSchema, MemoryNodeSchema};
 use crate::schema::relationship_schema::RelationshipSchema;
 use crate::utils::error::Error;
@@ -328,6 +328,15 @@ impl SurrealDBMemoryManager {
             updated_at: schema.metadata.last_accessed_at,
             embedding,
             metadata,
+        }
+    }
+
+    /// Health check method to verify database connectivity
+    pub async fn health_check(&self) -> Result<()> {
+        // Perform a simple query to check if the database is responsive
+        match self.db.query("SELECT 1 as health").await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(Error::Database(Box::new(e))),
         }
     }
 }

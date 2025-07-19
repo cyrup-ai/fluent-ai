@@ -9,11 +9,11 @@ use std::time::Duration;
 
 use arc_swap::ArcSwap;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
-use circuit_breaker::{CircuitBreaker, CircuitBreakerConfig, ExponentialBackoff};
+use circuit_breaker::CircuitBreaker;
 // Ultra-high-performance imports for zero-allocation domain initialization
 use crossbeam_queue::SegQueue;
 use crossbeam_utils::CachePadded;
-use memory::{CognitiveSettings, Memory, MemoryConfig, MemoryError};
+use memory::{Memory, MemoryConfig, MemoryError};
 use once_cell::sync::Lazy;
 
 /// Domain initialization error types with semantic error handling
@@ -540,8 +540,8 @@ pub use capabilities::{Capability, ModelCapabilities, ModelPerformance, UseCase}
 pub use cyrup_sugars::hash_map_fn;
 pub use cyrup_sugars::{ByteSize, OneOrMany, ZeroOneOrMany};
 
-// Re-export model types
-pub use model::{Model, ModelInfo, ModelInfoData, Models};
+// Re-export model types (avoiding duplicates)
+pub use model::{Model, ModelInfo};
 pub use model_info_provider::{ModelInfoError, ModelInfoProvider, DefaultModelInfoProvider};
 
 // Define our own async task types
@@ -671,7 +671,6 @@ pub mod mcp;
 pub mod mcp_tool;
 pub mod mcp_tool_traits;
 pub mod secure_mcp_tool;
-pub mod architecture_syntax_test;
 pub mod memory;
 pub mod memory_ops;
 pub mod memory_tool;
@@ -775,8 +774,13 @@ pub use text_processing::TextProcessingError;
 // Re-export embedding types
 pub use embedding::{Embedding, EmbeddingData, EmbeddingResponse};
 
-// Re-export similarity types
-pub use similarity::{Similarity, SimilarityMetric, SimilarityResult};
+// Re-export similarity types from fluent-ai's embedding module
+pub use fluent_ai::embedding::similarity::{
+    SimilarityMetric, SimilarityResult, BatchSimilarityComputer, compute_similarity,
+    cosine_similarity, euclidean_distance, manhattan_distance, dot_product_similarity,
+    jaccard_similarity, pearson_correlation, find_most_similar, find_top_k_similar,
+    find_similar_above_threshold
+};
 
 // Re-export embedding configuration types
 pub use embedding_config::{EmbeddingConfig, IntoEmbeddingConfig};

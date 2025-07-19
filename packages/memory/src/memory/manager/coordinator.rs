@@ -9,7 +9,7 @@ use tokio::sync::{Mutex, RwLock, oneshot};
 
 use crate::memory::{
     MemoryMetadata, MemoryNode, MemoryRelationship, MemoryType, filter::MemoryFilter,
-    repository::MemoryRepository, storage::MemoryStorage,
+    repository::MemoryRepository, storage::MemoryStorage, primitives::types::MemoryTypeEnum,
 };
 use crate::utils::{Error, Result};
 use crate::vector::VectorStore;
@@ -40,10 +40,10 @@ where
     }
 
     /// Add a new memory
-    pub async fn add_memory<T: MemoryType>(
+    pub async fn add_memory(
         &self,
         content: String,
-        memory_type: T,
+        memory_type: MemoryTypeEnum,
         metadata: MemoryMetadata,
     ) -> Result<MemoryNode> {
         // Create memory node
@@ -123,7 +123,7 @@ where
         self.storage.delete(id.to_string()).await?;
 
         // Remove from repository
-        self.repository.write().await.remove(id);
+        self.repository.write().await.delete(id);
 
         Ok(())
     }
@@ -162,7 +162,8 @@ where
 
     /// Get memories by filter
     pub async fn get_memories(&self, filter: MemoryFilter) -> Result<Vec<MemoryNode>> {
-        self.repository.read().await.query(&filter)
+        let memories = self.repository.read().await.filter(&filter);
+        Ok(memories.into_iter().map(|arc_memory| (*arc_memory).clone()).collect())
     }
 
     /// Add a relationship between memories

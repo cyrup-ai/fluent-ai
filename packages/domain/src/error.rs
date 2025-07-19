@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use atomic_counter::{AtomicCounter, RelaxedCounter};
-use circuit_breaker::{CircuitBreaker, CircuitBreakerBuilder};
+use circuit_breaker::CircuitBreaker;
 use const_str::const_str;
 
 /// Maximum length for error messages to ensure zero allocation

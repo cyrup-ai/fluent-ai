@@ -1,0 +1,25 @@
+# Minimal nextest configuration for fluent-ai workspace
+[profile.default]
+# Run tests in parallel using all available cores
+parallelism = "num-cores"
+
+# Retry flaky tests up to 3 times
+retries = 3
+
+# Fail the entire test run if any test takes longer than 5 minutes
+timeout = "5m"
+
+# Configure test output
+[profile.default.output]
+# Show output from failing tests immediately
+immediate-output = true
+
+# Configure test environment
+[profile.default.env]
+# Set RUST_BACKTRACE for better error reporting
+RUST_BACKTRACE = "1"
+
+# Configure test retries
+[profile.default.retry]
+# Only retry tests that fail with certain exit codes
+backoff = "immediate"

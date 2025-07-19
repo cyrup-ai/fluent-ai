@@ -178,12 +178,12 @@ impl DataExporter {
         
         // Validate inputs and pre-flight checks
         if data.is_empty() {
-            return Err(MigrationError::InvalidInput("No data to export".into()));
+            return Err(MigrationError::ValidationFailed("No data to export".into()));
         }
         
         // Create file with proper error handling
         let file = File::create(path)
-            .map_err(|e| MigrationError::IoError(format!("Failed to create file {}: {}", path.display(), e)))?;
+            .map_err(|e| MigrationError::DatabaseError(format!("Failed to create file {}: {}", path.display(), e)))?;
         
         // Use optimized buffered writer with large buffer for minimal syscalls
         let buf_writer = BufWriter::with_capacity(config.buffer_size, file);
@@ -223,14 +223,14 @@ impl DataExporter {
             // Periodic flush for large datasets to prevent memory buildup
             if batch_count % 10 == 0 {
                 if let Err(e) = csv_writer.flush() {
-                    return Err(MigrationError::IoError(format!("Failed to flush CSV writer: {}", e)));
+                    return Err(MigrationError::IoError(e));
                 }
             }
         }
         
         // Final flush and finalization
         csv_writer.flush()
-            .map_err(|e| MigrationError::IoError(format!("Failed to flush final CSV data: {}", e)))?;
+            .map_err(|e| MigrationError::IoError(e))?;
         
         // Get final metrics
         let final_records = records_processed.load(Ordering::Relaxed);
@@ -253,6 +253,7 @@ impl DataExporter {
     }
     
     /// High-performance streaming CSV export for large datasets
+    #[allow(dead_code)]
     fn export_csv_streaming<T, I>(
         &self,
         data_iter: I,
@@ -274,7 +275,7 @@ impl DataExporter {
         
         // Create file with proper error handling
         let file = File::create(path)
-            .map_err(|e| MigrationError::IoError(format!("Failed to create file {}: {}", path.display(), e)))?;
+            .map_err(|e| MigrationError::DatabaseError(format!("Failed to create file {}: {}", path.display(), e)))?;
         
         // Use large buffer for streaming to minimize syscalls
         let buf_writer = BufWriter::with_capacity(config.buffer_size * 2, file);
@@ -288,7 +289,6 @@ impl DataExporter {
             .from_writer(buf_writer);
         
         // Process streaming data with periodic progress reporting
-        let mut batch_counter = 0;
         let progress_interval = estimated_count.map(|c| (c / 100).max(1000)).unwrap_or(10000);
         
         for record in data_iter {
@@ -299,7 +299,7 @@ impl DataExporter {
                     // Periodic progress reporting and flushing
                     if current_count % progress_interval as u64 == 0 {
                         if let Err(e) = csv_writer.flush() {
-                            return Err(MigrationError::IoError(format!("Failed to flush during streaming: {}", e)));
+                            return Err(MigrationError::DatabaseError(format!("Failed to flush during streaming: {}", e)));
                         }
                         
                         tracing::info!(
@@ -317,13 +317,11 @@ impl DataExporter {
                     continue;
                 }
             }
-            
-            batch_counter += 1;
         }
         
         // Final flush
         csv_writer.flush()
-            .map_err(|e| MigrationError::IoError(format!("Failed to flush final streaming data: {}", e)))?;
+            .map_err(|e| MigrationError::DatabaseError(format!("Failed to flush final streaming data: {}", e)))?;
         
         let final_records = records_processed.load(Ordering::Relaxed);
         let duration = start_time.elapsed();

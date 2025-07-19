@@ -4,6 +4,8 @@ use std::fmt;
 
 use thiserror::Error;
 
+pub use crate::cognitive::types::QueryIntent;
+
 /// Result type for cognitive operations
 pub type CognitiveResult<T> = Result<T, CognitiveError>;
 
@@ -51,17 +53,6 @@ pub enum CognitiveError {
 
     #[error("Unknown error: {0}")]
     Unknown(String),
-}
-
-/// Query intent for routing decisions
-#[derive(Debug, Clone, PartialEq)]
-pub enum QueryIntent {
-    Retrieval,
-    Association,
-    Prediction,
-    Reasoning,
-    Exploration,
-    Creation,
 }
 
 /// Enhanced query with cognitive context

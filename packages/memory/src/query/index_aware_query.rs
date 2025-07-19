@@ -173,8 +173,10 @@ pub struct IndexOptimizer {
 #[derive(Debug, Clone)]
 struct QueryInfo {
     fields: Vec<String>,
+    #[allow(dead_code)]
     query_type: QueryType,
     execution_time_ms: f64,
+    #[allow(dead_code)]
     result_count: usize,
 }
 

@@ -6,7 +6,8 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
-use crate::cognitive::types::{EnhancedQuery, RoutingDecision, RoutingStrategy};
+use crate::cognitive::types::{RoutingDecision, RoutingStrategy};
+use crate::cognitive::types::EnhancedQuery;
 
 /// Attention mechanism for relevance scoring and focus management
 #[derive(Debug, Clone)]
@@ -394,7 +395,7 @@ impl AttentionRouter {
         &self,
         query: &EnhancedQuery,
         contexts: &[String],
-    ) -> crate::cognitive::quantum::types::CognitiveResult<RoutingDecision> {
+    ) -> Result<RoutingDecision, Box<dyn std::error::Error + Send + Sync>> {
         // Convert contexts to attention vectors
         let context_vectors: Vec<Vec<f32>> = contexts
             .iter()
@@ -441,7 +442,8 @@ impl AttentionRouter {
 
         let best_context = contexts
             .get(best_context_idx)
-            .unwrap_or(&"default_context".to_string());
+            .cloned()
+            .unwrap_or_else(|| "default_context".to_string());
 
         Ok(RoutingDecision {
             strategy: RoutingStrategy::Attention,

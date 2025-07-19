@@ -16,9 +16,10 @@ use std::time::Duration;
 // Import Cylo types for secure execution
 use cylo::{
     ExecutionRequest, ExecutionResult, Cylo, CyloInstance, CyloResult,
-    ExecutionBackend, BackendConfig, HealthStatus, ResourceLimits, create_backend,
-    detect_platform, get_recommended_backend
+    ExecutionBackend, BackendConfig, HealthStatus, create_backend,
+    get_recommended_backend, PlatformInfo,
 };
+use crate::chat::ResourceLimits;
 
 /// Security level for execution isolation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

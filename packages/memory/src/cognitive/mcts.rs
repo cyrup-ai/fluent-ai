@@ -7,8 +7,7 @@ use std::sync::Arc;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
-use tokio::task::JoinSet;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 use crate::cognitive::committee::{CommitteeEvent, EvaluationCommittee};
 use crate::cognitive::common::types::CommitteeConfig;
@@ -23,6 +22,18 @@ pub struct CodeState {
     pub latency: f64,
     pub memory: f64,
     pub relevance: f64,
+}
+
+impl Default for CodeState {
+    fn default() -> Self {
+        Self {
+            code: String::new(),
+            code_content: String::new(),
+            latency: 0.0,
+            memory: 0.0,
+            relevance: 0.0,
+        }
+    }
 }
 
 /// MCTS node representing a state in the search tree
@@ -46,7 +57,6 @@ pub struct MCTS {
     committee: Arc<EvaluationCommittee>,
     spec: Arc<OptimizationSpec>,
     user_objective: String,
-    max_parallel: usize,
     exploration_constant: f64,
 }
 
@@ -85,7 +95,6 @@ impl MCTS {
             committee,
             spec,
             user_objective,
-            max_parallel: num_cpus::get().min(8),
             exploration_constant: 1.41, // sqrt(2) for UCT
         })
     }
@@ -221,31 +230,7 @@ impl MCTS {
 
     /// Run MCTS for specified iterations
     pub async fn run(&mut self, iterations: u64) -> Result<(), CognitiveError> {
-        let mut join_set: JoinSet<Result<(String, f64), CognitiveError>> = JoinSet::new();
-        let mut completed_iterations = 0;
-
-        while completed_iterations < iterations {
-            // Limit parallel tasks
-            if join_set.len() >= self.max_parallel {
-                if let Some(result) = join_set.join_next().await {
-                    match result {
-                        Ok(Ok((node_id, reward))) => {
-                            self.backpropagate(node_id, reward);
-                            completed_iterations += 1;
-
-                            if completed_iterations % 100 == 0 {
-                                info!(
-                                    "MCTS progress: {}/{} iterations",
-                                    completed_iterations, iterations
-                                );
-                            }
-                        }
-                        Ok(Err(e)) => error!("Simulation failed: {}", e),
-                        Err(e) => error!("Task panicked: {}", e),
-                    }
-                }
-            }
-
+        for iteration in 0..iterations {
             // Selection
             let selected = self.select();
 
@@ -255,25 +240,17 @@ impl MCTS {
                 None => selected, // No expansion possible, simulate current node
             };
 
-            // Clone necessary data for async simulation
-            let node = self.tree[&node_to_simulate].clone();
-            let performance_analyzer = Arc::clone(&self.performance_analyzer);
+            // Simulation - use the dedicated simulate method
+            let reward = self.simulate(&node_to_simulate).await?;
+            
+            // Backpropagate the result
+            self.backpropagate(node_to_simulate, reward);
 
-            // Spawn simulation task
-            join_set.spawn(async move {
-                let reward = performance_analyzer.estimate_reward(&node.state).await?;
-                Ok((node_to_simulate, reward))
-            });
-        }
-
-        // Wait for remaining tasks
-        while let Some(result) = join_set.join_next().await {
-            match result {
-                Ok(Ok((node_id, reward))) => {
-                    self.backpropagate(node_id, reward);
-                }
-                Ok(Err(e)) => error!("Final simulation failed: {}", e),
-                Err(e) => error!("Final task panicked: {}", e),
+            if (iteration + 1) % 100 == 0 {
+                info!(
+                    "MCTS progress: {}/{} iterations",
+                    iteration + 1, iterations
+                );
             }
         }
 

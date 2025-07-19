@@ -29,8 +29,8 @@ pub struct APIServer<M>
 where
     M: MemoryManager + 'static,
 {
-    /// Memory manager
-    memory_manager: Arc<M>,
+    /// Memory manager (TODO: Use in routes implementation)
+    _memory_manager: Arc<M>,
     /// API configuration
     config: APIConfig,
     /// Router
@@ -49,7 +49,7 @@ where
         let router = Router::new();
 
         Self {
-            memory_manager,
+            _memory_manager: memory_manager,
             config,
             router,
         }

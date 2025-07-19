@@ -107,6 +107,7 @@ enum TransactionAction {
     Begin,
     Commit,
     Rollback,
+    #[allow(dead_code)]
     Abort(String),
 }
 
@@ -238,6 +239,43 @@ impl TransactionManager {
         Ok(())
     }
 
+    /// Abort a transaction due to a critical error or timeout
+    pub async fn abort_transaction(&self, id: String, reason: String) -> Result<()> {
+        let transaction = self.active_transactions.write().await.remove(&id).ok_or(
+            TransactionError::InvalidState("Transaction not found".to_string()),
+        )?;
+
+        let mut tx = transaction.lock().await;
+
+        // Check state - abort can happen from any active state
+        if matches!(tx.state, TransactionState::Committed | TransactionState::Aborted) {
+            return Err(TransactionError::InvalidState(format!(
+                "Cannot abort transaction in state {:?}",
+                tx.state
+            )));
+        }
+
+        // Change state
+        tx.state = TransactionState::Aborting;
+
+        // Force release all locks (more aggressive than rollback)
+        for lock in &tx.locks {
+            self.lock_manager.release_lock(&lock.resource, id.clone()).await.ok();
+        }
+        tx.locks.clear();
+
+        // Mark as aborted
+        tx.state = TransactionState::Aborted;
+
+        let id_for_log = id.clone();
+
+        // Log abort with reason
+        self.log_action(id_for_log, TransactionAction::Abort(reason))
+            .await;
+
+        Ok(())
+    }
+
     /// Acquire a lock for a transaction
     pub async fn acquire_lock(
         &self,
@@ -263,6 +301,36 @@ impl TransactionManager {
     }
 
     /// Log a transaction action
+    /// Get transaction history for debugging and monitoring
+    pub async fn get_transaction_history(&self) -> Vec<String> {
+        let log = self.transaction_log.lock().await;
+        log.iter()
+            .map(|entry| {
+                format!(
+                    "[{}] Transaction {} - {:?}",
+                    entry.timestamp.format("%Y-%m-%d %H:%M:%S%.3f"),
+                    entry.transaction_id,
+                    entry.action
+                )
+            })
+            .collect()
+    }
+
+    /// Get transaction logs for a specific transaction ID
+    pub async fn get_transaction_logs(&self, target_id: &str) -> Vec<String> {
+        let log = self.transaction_log.lock().await;
+        log.iter()
+            .filter(|entry| entry.transaction_id == target_id)
+            .map(|entry| {
+                format!(
+                    "[{}] {:?}",
+                    entry.timestamp.format("%Y-%m-%d %H:%M:%S%.3f"),
+                    entry.action
+                )
+            })
+            .collect()
+    }
+
     async fn log_action(&self, transaction_id: String, action: TransactionAction) {
         let entry = TransactionLogEntry {
             transaction_id,

@@ -8,6 +8,7 @@ use fluent_ai::prelude::*;
 use fluent_ai_provider::Models;
 use futures::StreamExt;
 // use cyrup_sugars::*;
+// use cyrup_sugars::*;
 
 // Mock provider types - these should be replaced with actual provider implementations
 pub struct Mistral;

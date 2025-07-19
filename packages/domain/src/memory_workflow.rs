@@ -16,8 +16,7 @@ pub enum PromptError {
 use super::memory_ops;
 use super::memory_ops::Op;
 use crate::memory::{
-    ImportanceContext, MemoryError, MemoryManager, MemoryNode, MemoryRecord, MemoryType,
-    get_cached_timestamp,
+    MemoryError, MemoryManagerTrait as MemoryManager, MemoryNode, MemoryType,
 };
 
 // WorkflowBuilder moved to fluent_ai/src/builders/memory_workflow.rs

@@ -309,7 +309,7 @@ mod tests {
 
         // All color operations should be no-ops
         no_color_writer.set_color(&ColorSpec::new()).unwrap();
-        no_color_writer.set_hyperlink(&HyperlinkSpec::new()).unwrap();
+        no_color_writer.set_hyperlink(&HyperlinkSpec::close()).unwrap();
         no_color_writer.reset().unwrap();
 
         // Writing should work normally

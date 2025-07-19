@@ -282,4 +282,27 @@ impl StateIndex {
     }
 }
 
+impl Default for CognitiveState {
+    fn default() -> Self {
+        let semantic_context = SemanticContext {
+            primary_concepts: vec!["default".to_string()],
+            secondary_concepts: vec![],
+            domain_tags: vec![],
+            abstraction_level: AbstractionLevel::Intermediate,
+        };
+        Self::new(semantic_context)
+    }
+}
+
+impl Default for SemanticContext {
+    fn default() -> Self {
+        Self {
+            primary_concepts: vec!["default".to_string()],
+            secondary_concepts: vec![],
+            domain_tags: vec![],
+            abstraction_level: AbstractionLevel::Intermediate,
+        }
+    }
+}
+
 // Tests moved to tests/cognitive/state_tests.rs for better organization

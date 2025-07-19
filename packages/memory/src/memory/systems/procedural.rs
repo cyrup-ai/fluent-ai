@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Object, Value};
 
 use crate::graph::graph_db::{GraphError, Result};
-use crate::memory::primitives::types::{BaseMemory, MemoryContent, MemoryType, MemoryTypeEnum};
+use crate::memory::primitives::types::{BaseMemory, MemoryContent, MemoryTypeEnum};
 
 /// Step status enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

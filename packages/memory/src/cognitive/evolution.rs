@@ -22,7 +22,7 @@ use crate::cognitive::types::{
 };
 
 /// Innovation discovered during the cognitive evolution process
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Innovation {
     /// Unique identifier for the innovation
     pub id: String,
@@ -39,7 +39,7 @@ pub struct Innovation {
 }
 
 /// Types of innovations that can be discovered
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InnovationType {
     /// Performance optimization innovation
     PerformanceOptimization,
@@ -295,13 +295,10 @@ impl CodeEvolution for CognitiveCodeEvolution {
                                 factors.confidence
                             );
                         }
-                        CommitteeEvent::SteeringDecision {
-                            feedback,
-                            continue_rounds,
-                        } => {
+                        CommitteeEvent::SteeringDecision(decision) => {
                             info!(
-                                "Committee steering: {} (continue: {})",
-                                feedback, continue_rounds
+                                "Committee steering: strategy={:?}, confidence={}", 
+                                decision.strategy, decision.confidence
                             );
                         }
                         _ => {} // Log other events at debug level
@@ -310,7 +307,10 @@ impl CodeEvolution for CognitiveCodeEvolution {
             });
 
             // Create committee
-            let committee = match EvaluationCommittee::new(event_tx.clone(), 4).await {
+            // Create committee config
+            let committee_config = crate::cognitive::common::types::CommitteeConfig::default();
+            
+            let committee = match EvaluationCommittee::new(committee_config, event_tx.clone()).await {
                 Ok(c) => Arc::new(c),
                 Err(e) => {
                     error!("Failed to create committee: {}", e);
@@ -554,6 +554,14 @@ impl EvolutionEngine {
         let mutations = self.generate_mutations();
         let fitness_score = self.calculate_current_fitness();
 
+        // Queue mutations for asynchronous processing
+        for mutation in &mutations {
+            if let Err(_) = self.mutation_queue.push(mutation.clone()) {
+                // Queue is full, skip this mutation
+                tracing::warn!("Mutation queue full, skipping mutation: {}", mutation.description);
+            }
+        }
+
         // Apply mutations if we have a state manager
         if let Some(state_manager) = &self.state_manager {
             for mutation in &mutations {
@@ -696,6 +704,25 @@ impl EvolutionEngine {
     /// Calculate predicted improvement from mutations
     fn calculate_predicted_improvement(&self, mutations: &[MutationEvent]) -> f64 {
         mutations.iter().map(|m| m.impact_score as f64).sum::<f64>() / mutations.len() as f64
+    }
+
+    /// Process queued mutations asynchronously
+    pub async fn process_queued_mutations(&self) -> Result<usize, CognitiveError> {
+        let mut processed_count = 0;
+
+        if let Some(state_manager) = &self.state_manager {
+            // Process all mutations in the queue
+            while let Some(mutation) = self.mutation_queue.pop() {
+                if let Err(e) = self.apply_mutation(state_manager, &mutation).await {
+                    tracing::error!("Failed to apply queued mutation: {}", e);
+                } else {
+                    processed_count += 1;
+                    tracing::debug!("Applied queued mutation: {}", mutation.description);
+                }
+            }
+        }
+
+        Ok(processed_count)
     }
 
     /// Get current generation

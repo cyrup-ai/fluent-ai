@@ -214,3 +214,93 @@ pub enum LogLevel {
     /// Error level
     Error,
 }
+
+impl Default for MemoryConfig {
+    fn default() -> Self {
+        Self {
+            database: DatabaseConfig::default(),
+            vector_store: VectorStoreConfig::default(),
+            llm: LLMConfig::default(),
+            api: None,
+            cache: CacheConfig::default(),
+            logging: LoggingConfig::default(),
+        }
+    }
+}
+
+impl Default for DatabaseConfig {
+    fn default() -> Self {
+        Self {
+            db_type: DatabaseType::SurrealDB,
+            connection_string: "memory".to_string(),
+            namespace: "fluent_ai".to_string(),
+            database: "memory".to_string(),
+            username: None,
+            password: None,
+            pool_size: Some(10),
+            options: None,
+        }
+    }
+}
+
+impl Default for VectorStoreConfig {
+    fn default() -> Self {
+        Self {
+            store_type: VectorStoreType::SurrealDB,
+            embedding_model: EmbeddingModelConfig::default(),
+            dimension: 1536,
+            connection_string: None,
+            api_key: None,
+            options: None,
+        }
+    }
+}
+
+impl Default for EmbeddingModelConfig {
+    fn default() -> Self {
+        Self {
+            model_type: EmbeddingModelType::OpenAI,
+            model_name: "text-embedding-3-small".to_string(),
+            api_key: None,
+            api_base: None,
+            options: None,
+        }
+    }
+}
+
+impl Default for LLMConfig {
+    fn default() -> Self {
+        Self {
+            provider: LLMProvider::OpenAI,
+            model_name: "gpt-4".to_string(),
+            api_key: None,
+            api_base: None,
+            temperature: Some(0.7),
+            max_tokens: Some(2048),
+            options: None,
+        }
+    }
+}
+
+impl Default for CacheConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            cache_type: CacheType::Memory,
+            size: Some(10000),
+            ttl: Some(3600),
+            options: None,
+        }
+    }
+}
+
+impl Default for LoggingConfig {
+    fn default() -> Self {
+        Self {
+            level: LogLevel::Info,
+            file: None,
+            console: true,
+            options: None,
+        }
+    }
+}

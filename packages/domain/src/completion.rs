@@ -306,7 +306,6 @@ impl ToolDefinition {
 }
 
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
 
 /// Standard response format for completion operations
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -349,7 +349,7 @@ impl QuantumErrorCorrection {
 
             Ok(ErrorSyndrome {
                 syndrome_bits: syndrome.to_vec(),
-                error_location: error_locations,
+                error_location: error_locations.clone(),
                 error_type: ErrorType::BitFlip, // Simplified
                 correction_operation: self.generate_correction_gates(&error_locations),
             })

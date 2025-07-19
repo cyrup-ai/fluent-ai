@@ -20,6 +20,7 @@ pub mod common;
 
 // Core cognitive modules from existing implementation
 pub mod attention;
+pub mod llm;
 pub mod manager;
 pub mod state;
 
@@ -39,6 +40,7 @@ pub use evolution::{
     CodeEvolution, CognitiveCodeEvolution, EvolutionEngine, EvolutionResult, Innovation,
     InnovationType, PerformanceMetrics,
 };
+pub use llm::{ProductionLLMProvider, ProviderConfig, ModelConfig, PerformanceConfig};
 pub use manager::CognitiveMemoryManager;
 pub use mcts::{CodeState, MCTS};
 pub use orchestrator::InfiniteOrchestrator;

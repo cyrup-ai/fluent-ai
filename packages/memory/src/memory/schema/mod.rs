@@ -1,8 +1,6 @@
 // src/schema/memory_schema.rs
 //! Defines the schema for memory nodes.
 
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
 use crate::memory::primitives::MemoryType;

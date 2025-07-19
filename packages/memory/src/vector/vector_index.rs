@@ -244,11 +244,11 @@ mod tests {
         let id1 = uuid::Uuid::new_v4().to_string();
         let id2 = uuid::Uuid::new_v4().to_string();
 
-        index.add(id1.clone(), vec![1.0, 0.0, 0.0]).unwrap();
-        index.add(id2.clone(), vec![0.0, 1.0, 0.0]).unwrap();
+        index.add(id1.clone(), vec![1.0, 0.0, 0.0]).expect("Failed to add vector to index in test");
+        index.add(id2.clone(), vec![0.0, 1.0, 0.0]).expect("Failed to add vector to index in test");
 
         // Search
-        let results = index.search(&[1.0, 0.0, 0.0], 2).unwrap();
+        let results = index.search(&[1.0, 0.0, 0.0], 2).expect("Failed to search index in test");
 
         assert_eq!(results.len(), 2);
         assert_eq!(results[0].0, id1); // Should match exactly

@@ -27,40 +27,36 @@ gix = "0.73.0"
 memmap2 = "0.9.5"
 ignore = "0.4.23"
 
-[dev-dependencies]
-serde = { version = "1.0.219", features = ["derive"] }
-tokio = { version = "1.46.1", features = ["full", "rt-multi-thread", "macros"] }
-fluent_ai_provider = { path = "../provider" }
+# Ultra-high-performance dependencies for zero-allocation operations  
+arrayvec = "0.7.6"
+smallvec = "2.0.0-alpha.11"
+crossbeam-deque = "0.8.6"
+crossbeam-skiplist = "0.1.3"
+crossbeam-utils = "0.8.21"
 crossbeam-queue = "0.3.12"
-tracing-subscriber = "0.3.19"
+wide = "0.7.33"
+jemallocator = "0.5.4"
+ropey = "2.0.0-alpha.3"
+circuit_breaker = "0.1.1"
+atomic-counter = "1.0.1"
+arc-swap = "1.7.1"
+once_cell = "1.21.3"
+regex = "1.11"
+parking_lot = "0.12.4"
 
-# Ultra-high-performance dependencies for zero-allocation operations
-arrayvec = "0.7.6"                  # Fixed-size arrays without heap allocation
-smallvec = "2.0.0-alpha.11"         # Small vectors that avoid heap allocation
-crossbeam-deque = "0.8.6"           # Lock-free work-stealing deque
-crossbeam-skiplist = "0.1.3"        # Lock-free skip list
-crossbeam-utils = "0.8.21"          # Lock-free utilities and atomic operations
-rkyv = "0.8.10"                     # Zero-copy serialization
-wide = "0.7.33"                     # SIMD vector operations
-# packed_simd removed due to Rust 1.78+ compatibility issues - using wide crate instead
-jemalloc-sys = "0.5.4"  # Custom allocator for vector operations
-lz4 = "1.28.1"                      # Fast compression
-jemallocator = "0.5.4"              # High-performance allocator backed by jemalloc
-quanta = "0.12.6"                   # High-speed timing library
-ropey = "2.0.0-alpha.3"             # Rope data structure for string building
-circuit_breaker = "0.1.1"           # Circuit breaker pattern for error recovery
-atomic-counter = "1.0.1"            # Atomic counters for statistics
-memmap2 = "0.9.7"                   # Memory-mapped file operations
-arc-swap = "1.7.1"                  # Lock-free atomic operations on Arc
-weak-table = "0.3.2"                # Weak reference tables
-parking_lot = "0.12.4"              # High-performance synchronization primitives
-const-str = "0.6.3"                 # Compile-time string operations
-fnv = "1.0.7"                       # Fowler–Noll–Vo hash function
-hdrhistogram = "7.5.4"              # High dynamic range histogram
-# config-rs = "0.14"                # Configuration management - temporarily disabled
-once_cell = "1.21.3"                # Lazy static initialization
-html-escape = "0.2.13"              # HTML escaping for code highlighting
-dashmap = "6.0.1"                   # Concurrent hash map for caching
+[dev-dependencies]
+fluent_ai_provider = { path = "../provider" }
+tracing-subscriber = "0.3.19"
+rkyv = "0.8.10"
+jemalloc-sys = "0.5.4"
+lz4 = "1.28.1"
+quanta = "0.12.6"
+weak-table = "0.3.2"
+const-str = "0.6.3"
+fnv = "1.0.7"
+hdrhistogram = "7.5.4"
+html-escape = "0.2.13"
+dashmap = "6.0.1"
 
 [lib]
 name = "fluent_ai_domain"

@@ -15,10 +15,16 @@ use crossbeam_queue::SegQueue;
 use crossbeam_utils::CachePadded;
 // Re-export core types from fluent_ai_memory
 pub use fluent_ai_memory::{
+    Error as MemoryError, MemoryConfig, MemoryManager as MemoryManagerTrait,
+    MemoryMetadata, MemoryNode, SurrealDBMemoryManager, MemoryType,
+    memory::{MemoryRelationship, SurrealMemoryQuery, MemoryTypeEnum},
+};
+
+// Conditional re-exports for cognitive features
+#[cfg(feature = "cognitive")]
+pub use fluent_ai_memory::{
     CognitiveMemoryManager, CognitiveMemoryNode, CognitiveSettings, CognitiveState,
-    Error as MemoryError, EvolutionMetadata, MemoryConfig, MemoryManager as MemoryManagerTrait,
-    MemoryMetadata, MemoryNode, MemoryRelationship, MemoryType, QuantumSignature,
-    SurrealDBMemoryManager,
+    EvolutionMetadata, QuantumSignature,
 };
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
@@ -259,10 +265,16 @@ impl Memory {
     pub async fn new(config: MemoryConfig) -> Result<Self, MemoryError> {
         let cognitive_settings = CognitiveSettings {
             enabled: true,
-            llm_provider: "openai".to_string(),
+            enable_quantum_routing: true,
+            enable_evolution: true,
+            enable_attention_mechanism: true,
+            max_cognitive_load: 0.8,
+            quantum_coherence_threshold: 0.95,
+            evolution_mutation_rate: 0.1,
+            attention_decay_rate: 0.05,
+            meta_awareness_level: 0.7,
             attention_heads: 8,
-            evolution_rate: 0.1,
-            quantum_coherence_time: Duration::from_secs(300),
+            quantum_coherence_time: 300.0,
         };
 
         let manager = CognitiveMemoryManager::new(
@@ -272,7 +284,7 @@ impl Memory {
             cognitive_settings,
         )
         .await
-        .map_err(|e| MemoryError::StorageError(e.to_string()))?;
+        .map_err(|e| MemoryError::Database(e.to_string()))?;
 
         Ok(Self {
             manager: Arc::new(manager),
@@ -475,7 +487,7 @@ impl Memory {
     /// Zero allocation with lock-free concurrent deletion
     #[inline]
     pub async fn delete_memory(&self, id: &str) -> Result<(), MemoryError> {
-        self.manager.delete_memory(id).await
+        self.manager.delete_memory(id).await.map(|_| ())
     }
 
     /// Create relationship between memories with zero-allocation processing
@@ -570,41 +582,25 @@ impl Memory {
         // NOTE: This is a temporary fix - the real solution is to fix the architecture
         //       so that McpTool::new() doesn't try to create Memory instances synchronously
         
-        // Try to create a minimal manager using available tokio runtime
-        let manager = if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            // We have a tokio runtime available, create a minimal stub
-            Arc::new(
-                tokio::task::block_in_place(|| {
-                    handle.block_on(async {
-                        CognitiveMemoryManager::new(
-                            "memory://stub",
-                            "stub",
-                            "stub",
-                            CognitiveSettings {
-                                enabled: false,
-                                llm_provider: "stub".to_string(),
-                                attention_heads: 1,
-                                evolution_rate: 0.0,
-                                quantum_coherence_time: Duration::from_secs(0),
-                            },
-                        )
-                        .await
-                        .map_err(|e| MemoryError::StorageError(format!("Memory stub initialization failed: {}", e)))?
-                    })
-                })
-            )
-        } else {
-            // No tokio runtime available - return error instead of panicking
-            return Err(MemoryError::StorageError(
-                "Cannot create Memory::new_stub() without tokio runtime. \
-                 This is an architectural issue - McpTool::new() should not create \
-                 async-initialized Memory instances synchronously. \
-                 Use MemoryTool::new(Arc<Memory>) with a pre-initialized Memory instance instead.".to_string()
-            ));
-        };
-
-        Ok(Self { manager, config })
+        // REMOVED: Blocking code violates async-only constraint
+        // Previous implementation used tokio::task::block_in_place and handle.block_on
+        // which are not allowed per production standards.
+        
+        // Return clear error indicating the architectural issue that needs to be fixed
+        Err(MemoryError::StorageError(
+            "Memory::new_stub() is deprecated due to architectural constraints. \
+             This function attempted to create async-initialized components synchronously, \
+             which violates the no-blocking code requirement. \
+             \
+             SOLUTION: Use dependency injection with pre-initialized Memory instances: \
+             1. Create Memory instance asynchronously in your application startup \
+             2. Pass Arc<Memory> to components that need it \
+             3. Use Memory::new_async() for proper async initialization \
+             \
+             This architectural change ensures zero-blocking, production-ready code.".to_string()
+        ))
     }
+}
 
 /// Legacy compatibility wrapper implementing MemoryManager trait
 impl MemoryManagerTrait for Memory {
@@ -612,7 +608,7 @@ impl MemoryManagerTrait for Memory {
         self.manager.create_memory(memory)
     }
 
-    fn get_memory(&self, id: &str) -> MemoryQuery {
+    fn get_memory(&self, id: &str) -> SurrealMemoryQuery {
         self.manager.get_memory(id)
     }
 
@@ -636,7 +632,7 @@ impl MemoryManagerTrait for Memory {
         self.manager.delete_relationship(id)
     }
 
-    fn query_by_type(&self, memory_type: MemoryType) -> MemoryStream {
+    fn query_by_type(&self, memory_type: MemoryTypeEnum) -> MemoryStream {
         self.manager.query_by_type(memory_type)
     }
 

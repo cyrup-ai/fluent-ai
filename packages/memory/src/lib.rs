@@ -26,8 +26,9 @@ pub use api::APIServer;
 pub use cognitive::{
     CognitiveMemoryManager, CognitiveMemoryNode, CognitiveSettings, CognitiveState,
     EvolutionMetadata, QuantumSignature,
+    llm::{ProductionLLMProvider, ProviderConfig, ModelConfig, PerformanceConfig},
 };
-pub use memory::MemoryManager;
+pub use memory::manager::MemoryManager;
 pub use memory::MemoryMetadata;
 pub use memory::MemoryNode;
 pub use memory::SurrealDBMemoryManager;

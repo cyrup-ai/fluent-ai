@@ -68,6 +68,8 @@ pub enum TransactionState {
     Committed,
     /// Transaction is being rolled back
     RollingBack,
+    /// Transaction is being aborted
+    Aborting,
     /// Transaction is aborted
     Aborted,
 }

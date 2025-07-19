@@ -322,6 +322,17 @@ impl MemoryType for BaseMemory {
         use crate::graph::entity::BaseEntity;
         let mut entity = BaseEntity::new(&self.id, &format!("memory_{}", self.metadata.category));
 
+        /// Helper function to safely serialize values to JSON, with fallback handling
+        fn serialize_field<T: Serialize>(value: &T, field_name: &str) -> serde_json::Value {
+            match serde_json::to_value(value) {
+                Ok(json_value) => json_value,
+                Err(e) => {
+                    tracing::warn!("Failed to serialize field '{}': {}. Using null.", field_name, e);
+                    serde_json::Value::Null
+                }
+            }
+        }
+
         // Add basic fields as attributes
         entity.attributes.insert(
             "name".to_string(),
@@ -333,17 +344,17 @@ impl MemoryType for BaseMemory {
         );
         entity.attributes.insert(
             "updated_at".to_string(),
-            json_to_surreal_value(serde_json::to_value(self.updated_at).unwrap()),
+            json_to_surreal_value(serialize_field(&self.updated_at, "updated_at")),
         );
 
         // Add metadata fields as attributes
         entity.attributes.insert(
             "user_id".to_string(),
-            json_to_surreal_value(serde_json::to_value(&self.metadata.user_id).unwrap()),
+            json_to_surreal_value(serialize_field(&self.metadata.user_id, "user_id")),
         );
         entity.attributes.insert(
             "agent_id".to_string(),
-            json_to_surreal_value(serde_json::to_value(&self.metadata.agent_id).unwrap()),
+            json_to_surreal_value(serialize_field(&self.metadata.agent_id, "agent_id")),
         );
         entity.attributes.insert(
             "context".to_string(),
@@ -351,11 +362,11 @@ impl MemoryType for BaseMemory {
         );
         entity.attributes.insert(
             "keywords".to_string(),
-            json_to_surreal_value(serde_json::to_value(&self.metadata.keywords).unwrap()),
+            json_to_surreal_value(serialize_field(&self.metadata.keywords, "keywords")),
         );
         entity.attributes.insert(
             "tags".to_string(),
-            json_to_surreal_value(serde_json::to_value(&self.metadata.tags).unwrap()),
+            json_to_surreal_value(serialize_field(&self.metadata.tags, "tags")),
         );
         entity.attributes.insert(
             "category".to_string(),
@@ -367,19 +378,19 @@ impl MemoryType for BaseMemory {
         );
         entity.attributes.insert(
             "source".to_string(),
-            json_to_surreal_value(serde_json::to_value(&self.metadata.source).unwrap()),
+            json_to_surreal_value(serialize_field(&self.metadata.source, "source")),
         );
         entity.attributes.insert(
             "created_at".to_string(),
-            json_to_surreal_value(serde_json::to_value(self.metadata.created_at).unwrap()),
+            json_to_surreal_value(serialize_field(&self.metadata.created_at, "created_at")),
         );
         entity.attributes.insert(
             "last_accessed_at".to_string(),
-            json_to_surreal_value(serde_json::to_value(&self.metadata.last_accessed_at).unwrap()),
+            json_to_surreal_value(serialize_field(&self.metadata.last_accessed_at, "last_accessed_at")),
         );
         entity.attributes.insert(
             "embedding".to_string(),
-            json_to_surreal_value(serde_json::to_value(&self.metadata.embedding).unwrap()),
+            json_to_surreal_value(serialize_field(&self.metadata.embedding, "embedding")),
         );
         entity.attributes.insert(
             "custom".to_string(),

@@ -180,6 +180,9 @@ pub enum ChatError {
     /// Memory system error
     #[error("Memory error: {0}")]
     Memory(#[from] MemoryError),
+    /// Memory tool error
+    #[error("Memory tool error: {0}")]
+    MemoryTool(#[from] MemoryToolError),
     /// Context processing error
     #[error("Context processing error: {0}")]
     Context(String),
@@ -660,7 +663,7 @@ impl AgentRoleImpl {
         let user_memory = memory_tool
             .memorize(user_message.to_string(), MemoryType::Episodic)
             .await
-            .map_err(|e| ChatError::Memory(e.into()))?;
+            .map_err(ChatError::MemoryTool)?;
 
         if memorized_nodes.try_push(user_memory).is_err() {
             return Err(ChatError::System(
@@ -675,7 +678,7 @@ impl AgentRoleImpl {
         let assistant_memory = memory_tool
             .memorize(assistant_response.to_string(), MemoryType::Episodic)
             .await
-            .map_err(|e| ChatError::Memory(e.into()))?;
+            .map_err(ChatError::MemoryTool)?;
 
         if memorized_nodes.try_push(assistant_memory).is_err() {
             return Err(ChatError::System(

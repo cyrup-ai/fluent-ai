@@ -60,29 +60,45 @@ pub(crate) mod executor {
         });
     }
 
+    /// Enqueue a future for execution in the current tokio runtime
+    /// 
+    /// # Arguments
+    /// * `f` - Future to execute
+    /// 
+    /// # Panics
+    /// Panics if no tokio runtime is available. This enforces async-only execution
+    /// per production code constraints.
+    /// 
+    /// # Architecture
+    /// This function no longer provides blocking fallbacks. All callers must
+    /// ensure they're operating within a proper async runtime context.
+    /// This guarantees zero-blocking, production-ready execution.
     pub fn enqueue<F>(f: F)
     where
         F: std::future::Future<Output = ()> + Send + 'static,
     {
-        // Use tokio's spawn instead of blocking execution
-        if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            // We have a tokio runtime, use it
-            handle.spawn(f);
-        } else {
-            // Fallback: Use thread pool with futures executor in non-blocking way
-            global().pool.execute(move || {
-                // Create a minimal single-threaded executor to avoid blocking
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .unwrap_or_else(|_| {
-                        // If tokio runtime creation fails, use futures executor as last resort
-                        futures_executor::block_on(f);
-                        return;
-                    });
-                
-                rt.block_on(f);
-            });
+        // PRODUCTION CONSTRAINT: No blocking code allowed
+        // Previous implementation used futures_executor::block_on and rt.block_on
+        // which violate the strict async-only requirement.
+        
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => {
+                // We have a tokio runtime available - use it
+                handle.spawn(f);
+            }
+            Err(_) => {
+                // ARCHITECTURAL REQUIREMENT: Fail fast instead of blocking
+                panic!(
+                    "enqueue() called without tokio runtime context. \
+                     This violates async-only execution constraints. \
+                     \
+                     SOLUTION: Ensure all code paths that call enqueue() are within \
+                     a proper tokio runtime context. Use tokio::main or explicitly \
+                     create a runtime before calling functions that use enqueue(). \
+                     \
+                     This constraint ensures zero-blocking, production-ready code."
+                );
+            }
         }
     }
 

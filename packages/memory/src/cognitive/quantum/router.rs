@@ -9,16 +9,21 @@ use tokio::sync::RwLock;
 
 use crate::cognitive::quantum::{
     BasisType, Complex64, EntanglementGraph, QuantumConfig, QuantumErrorCorrection, QuantumMetrics,
-    SuperpositionState, types::*,
+    SuperpositionState, types::{EnhancedQuery, RoutingDecision, RoutingStrategy},
 };
 use crate::cognitive::state::CognitiveStateManager;
+use crate::cognitive::types::{CognitiveResult, QueryIntent};
 
 /// Production quantum router with full superposition state management
 pub struct QuantumRouter {
     superposition_states: RwLock<HashMap<String, SuperpositionState>>,
+    #[allow(dead_code)]
     entanglement_graph: RwLock<EntanglementGraph>,
+    #[allow(dead_code)]
     coherence_tracker: RwLock<CoherenceTracker>,
+    #[allow(dead_code)]
     quantum_memory: RwLock<QuantumMemory>,
+    #[allow(dead_code)]
     state_manager: Arc<CognitiveStateManager>,
     config: QuantumConfig,
     metrics: RwLock<QuantumMetrics>,
@@ -242,27 +247,26 @@ impl QuantumRouter {
         &self,
         query: &EnhancedQuery,
     ) -> Result<SuperpositionState, QuantumRouterError> {
-        let mut state = SuperpositionState::new()
-            .map_err(|e| QuantumRouterError::SuperpositionError(e.to_string()))?;
+        let mut state = SuperpositionState::new(std::time::Duration::from_secs_f64(self.config.default_coherence_time.as_secs_f64()));
 
         // Add context as basis states
-        for (i, context) in query.context.iter().enumerate() {
+        for (i, _context) in query.context.iter().enumerate() {
             let amplitude = 1.0 / (query.context.len() as f64).sqrt();
-            state
-                .add_basis_state(i, amplitude.into())
-                .map_err(|e| QuantumRouterError::SuperpositionError(e.to_string()))?;
+            state.add_basis_state(
+                format!("basis_{}", i), 
+                Complex64::new(amplitude, 0.0)
+            );
         }
 
         // Apply initial phase based on query priority
         let phase = (query.priority as f64) / 100.0 * std::f64::consts::PI / 2.0;
-        state
-            .apply_phase(phase.into())
-            .map_err(|e| QuantumRouterError::SuperpositionError(e.to_string()))?;
+        state.apply_phase(phase);
 
         Ok(state)
     }
 
     /// Generate quantum contexts from query
+    #[allow(dead_code)]
     async fn generate_quantum_contexts(
         &self,
         query: &EnhancedQuery,
@@ -308,23 +312,14 @@ impl QuantumRouter {
         // Apply quantum gates based on query complexity
         let rotation_angle = query.priority as f64 * std::f64::consts::PI / 200.0; // Normalized priority to [0, π/2]
 
-        superposition
-            .rotate_x(rotation_angle)
-            .map_err(|e| QuantumRouterError::SuperpositionError(e.to_string()))?;
-
-        superposition
-            .rotate_z(rotation_angle * 0.5)
-            .map_err(|e| QuantumRouterError::SuperpositionError(e.to_string()))?;
+        superposition.rotate_x(rotation_angle);
+        superposition.rotate_z(rotation_angle * 0.5);
 
         // Apply decoherence based on coherence time
-        let elapsed = Instant::now()
-            .duration_since(query.timestamp.unwrap_or_else(|| Instant::now()))
-            .as_secs_f64();
+        let elapsed_duration = Instant::now()
+            .duration_since(query.timestamp.unwrap_or_else(|| Instant::now()));
 
-        let coherence_factor = (-elapsed / self.config.coherence_time.as_secs_f64()).exp();
-        superposition
-            .apply_decoherence(1.0 - coherence_factor)
-            .map_err(|e| QuantumRouterError::SuperpositionError(e.to_string()))?;
+        superposition.apply_decoherence(elapsed_duration);
 
         Ok(superposition)
     }
@@ -333,28 +328,23 @@ impl QuantumRouter {
     pub async fn apply_entanglement_effects(
         &self,
         superposition: &mut SuperpositionState,
-        query: &EnhancedQuery,
+        _query: &EnhancedQuery,
     ) -> Result<(), QuantumRouterError> {
         // Get read lock on states
         let states = self.superposition_states.read().await;
 
-        // Create a temporary vector to store entangled states
-        let mut entangled_states = Vec::with_capacity(states.len());
-
-        // Collect states to entangle with
-        for other_state in states.values() {
-            entangled_states.push(other_state.clone());
+        // Collect state IDs to entangle with  
+        let mut state_ids = Vec::with_capacity(states.len());
+        for (state_id, _state) in states.iter() {
+            state_ids.push(state_id.clone());
         }
 
         // Release the read lock before potentially blocking operations
         drop(states);
 
-        // Apply entanglement
-        for other_state in &entangled_states {
-            if let Err(e) = superposition.entangle(other_state) {
-                tracing::warn!("Failed to entangle states: {}", e);
-                // Non-fatal error, continue with other states
-            }
+        // Apply entanglement using memory IDs
+        for state_id in &state_ids {
+            superposition.entangle(state_id.clone());
         }
 
         // Store the entangled state with write lock
@@ -384,14 +374,18 @@ impl QuantumRouter {
         let basis = self.select_measurement_basis(query);
 
         // Perform measurement
-        let (outcome, probability) = superposition
-            .measure(basis)
+        let (outcome, amplitude) = superposition
+            .measure()
             .map_err(|e| QuantumRouterError::MeasurementError(e.to_string()))?;
+        let probability = amplitude.magnitude().powi(2);
 
         // Update metrics
         let mut metrics = self.metrics.write().await;
-        metrics.measurements = metrics.measurements.wrapping_add(1);
-        metrics.measurement_entropy = (-probability * probability.ln()).max(0.0);
+        metrics.total_routing_requests = metrics.total_routing_requests.wrapping_add(1);
+        metrics.successful_routes = metrics.successful_routes.wrapping_add(1);
+        // Store measurement entropy in fidelity measurements for now
+        let entropy = (-probability * probability.ln()).max(0.0);
+        metrics.fidelity_measurements.push(entropy);
 
         Ok(QuantumMeasurement {
             context: format!("outcome_{}", outcome),
@@ -412,6 +406,7 @@ impl QuantumRouter {
     }
 
     /// Probabilistic outcome selection
+    #[allow(dead_code)]
     fn probabilistic_selection(&self, probabilities: &[f64]) -> usize {
         let random: f64 = rand::random();
         let mut cumulative = 0.0;
@@ -434,6 +429,9 @@ impl QuantumRouter {
     ) -> CognitiveResult<RoutingDecision> {
         let strategy = self.determine_strategy(&measurement.context);
 
+        // Clone context to avoid move
+        let context_clone = measurement.context.clone();
+        
         Ok(RoutingDecision {
             strategy,
             target_context: measurement.context,
@@ -441,7 +439,7 @@ impl QuantumRouter {
             alternatives: vec![],
             reasoning: format!(
                 "Quantum measurement yielded '{}' with probability {:.3}",
-                measurement.context, measurement.probability
+                context_clone, measurement.probability
             ),
         })
     }
@@ -483,11 +481,11 @@ impl QuantumRouter {
 }
 
 /// Quantum measurement result
-struct QuantumMeasurement {
-    context: String,
-    probability: f64,
-    basis: BasisType,
-    fidelity: f64,
+pub struct QuantumMeasurement {
+    pub context: String,
+    pub probability: f64,
+    pub basis: BasisType,
+    pub fidelity: f64,
 }
 
 impl CoherenceTracker {
@@ -585,10 +583,13 @@ mod tests {
         let query = EnhancedQuery {
             original: "test query".to_string(),
             intent: QueryIntent::Retrieval,
+            context: vec!["test".to_string()],
             context_embedding: vec![0.1, 0.2, 0.3],
+            timestamp: Some(std::time::Instant::now()),
             temporal_context: None,
             cognitive_hints: vec![],
             expected_complexity: 0.5,
+            priority: 1,
         };
 
         let decision = router.route_query(&query).await.unwrap();
@@ -606,10 +607,13 @@ mod tests {
         let query = EnhancedQuery {
             original: "test".to_string(),
             intent: QueryIntent::Association,
+            context: vec!["test".to_string()],
             context_embedding: vec![],
+            timestamp: Some(std::time::Instant::now()),
             temporal_context: None,
             cognitive_hints: vec![],
             expected_complexity: 0.3,
+            priority: 1,
         };
 
         let superposition = router.create_superposition(&query).await.unwrap();

@@ -451,7 +451,7 @@ mod tests {
 
         // These should all succeed but do nothing
         sink.set_color(&ColorSpec::new()).unwrap();
-        sink.set_hyperlink(&HyperlinkSpec::new()).unwrap();
+        sink.set_hyperlink(&HyperlinkSpec::close()).unwrap();
         sink.reset().unwrap();
     }
 }

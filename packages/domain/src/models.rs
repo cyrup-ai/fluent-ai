@@ -258,8 +258,8 @@ mod tests {
     fn test_models_serialization() {
         // Test that models can be serialized and deserialized
         let model = Models::Gpt41;
-        let serialized = serde_json::to_string(&model).unwrap();
-        let deserialized: Models = serde_json::from_str(&serialized).unwrap();
+        let serialized = serde_json::to_string(&model).expect("Failed to serialize model in test");
+        let deserialized: Models = serde_json::from_str(&serialized).expect("Failed to deserialize model in test");
         assert_eq!(model, deserialized);
     }
 }

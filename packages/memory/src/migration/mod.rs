@@ -30,6 +30,9 @@ pub enum MigrationError {
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 
+    #[error("File not found: {0}")]
+    FileNotFound(String),
+
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
 

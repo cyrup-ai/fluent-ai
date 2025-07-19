@@ -2,7 +2,6 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::MemoryType;
 use crate::memory::{filter::MemoryFilter, primitives::types::MemoryTypeEnum};
 
 /// Memory query builder

@@ -27,6 +27,7 @@ mod committee_serialization {
     use super::*;
 
     /// Serialize ArrayVec<CommitteeEvaluation, MAX_COMMITTEE_SIZE> as a sequence
+    #[allow(dead_code)] // Used by serde(with = "") attribute
     #[inline(always)]
     pub fn serialize_committee_evaluations<S>(
         evaluations: &ArrayVec<CommitteeEvaluation, MAX_COMMITTEE_SIZE>,
@@ -40,6 +41,7 @@ mod committee_serialization {
     }
 
     /// Deserialize ArrayVec<CommitteeEvaluation, MAX_COMMITTEE_SIZE> from a sequence
+    #[allow(dead_code)] // Used by serde(with = "") attribute
     #[inline(always)]
     pub fn deserialize_committee_evaluations<'de, D>(
         deserializer: D,
@@ -79,6 +81,7 @@ mod committee_serialization {
     }
 
     /// Serialize Instant as DateTime<Utc> timestamp
+    #[allow(dead_code)] // Used by serde(with = "") attribute
     #[inline(always)]
     pub fn serialize_instant<S>(instant: &Instant, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -91,6 +94,7 @@ mod committee_serialization {
     }
 
     /// Deserialize Instant from DateTime<Utc> timestamp
+    #[allow(dead_code)] // Used by serde(with = "") attribute
     #[inline(always)]
     pub fn deserialize_instant<'de, D>(deserializer: D) -> Result<Instant, D::Error>
     where

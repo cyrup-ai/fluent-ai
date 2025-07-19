@@ -214,6 +214,10 @@ pub enum WriterInnerLock<W> {
 }
 
 impl<W: io::Write> WriterInner<W> {
+    // Common methods for WriterInner<W> would go here
+}
+
+impl WriterInner<IoStandardStream> {
     /// Create a new writer inner with the specified color choice
     ///
     /// # Arguments
@@ -225,7 +229,7 @@ impl<W: io::Write> WriterInner<W> {
     pub fn create(
         sty: StandardStreamType,
         choice: ColorChoice,
-    ) -> WriterInner<IoStandardStream> {
+    ) -> Self {
         let stream = IoStandardStream::new(sty);
         if choice.should_attempt_color() {
             WriterInner::Ansi(Ansi::new(stream))
@@ -751,7 +755,7 @@ mod tests {
 
     #[test]
     fn test_standard_stream_creation() {
-        let stdout_stream = StandardStream::stdout(ColorChoice::Auto);
+        let _stdout_stream = StandardStream::stdout(ColorChoice::Auto);
         let stderr_stream = StandardStream::stderr(ColorChoice::Never);
 
         // Basic functionality test
@@ -760,13 +764,13 @@ mod tests {
 
     #[test]
     fn test_buffered_stream_creation() {
-        let stdout_buffered =
+        let _stdout_buffered =
             BufferedStandardStream::stdout(ColorChoice::Always);
-        let stderr_buffered =
+        let _stderr_buffered =
             BufferedStandardStream::stderr(ColorChoice::Auto);
 
         // Buffered streams should support the same operations
-        assert!(stdout_buffered.supports_color());
+        assert!(_stdout_buffered.supports_color());
     }
 
     #[test]

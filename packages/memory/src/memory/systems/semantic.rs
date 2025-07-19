@@ -12,7 +12,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::memory::primitives::types::{BaseMemory, MemoryContent, MemoryType, MemoryTypeEnum};
+use crate::memory::primitives::types::{BaseMemory, MemoryContent, MemoryTypeEnum};
 use crate::utils::Result;
 use crate::utils::error::Error;
 

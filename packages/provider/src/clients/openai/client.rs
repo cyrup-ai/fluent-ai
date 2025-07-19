@@ -698,12 +698,63 @@ impl ProviderClient for OpenAIClient {
     }
 }
 
-/// Default implementation for OpenAI client
+/// Secure credential management for OpenAI API keys
+impl OpenAIClient {
+    /// Retrieve API key from secure sources (environment variables, config, etc.)
+    fn retrieve_secure_api_key() -> Result<String> {
+        // Try environment variables first (most secure for production)
+        if let Ok(api_key) = std::env::var("OPENAI_API_KEY") {
+            if !api_key.is_empty() && api_key != "placeholder-api-key-update-before-use" {
+                return Ok(api_key);
+            }
+        }
+        
+        // Also check legacy environment variable name
+        if let Ok(api_key) = std::env::var("OPENAI_API_TOKEN") {
+            if !api_key.is_empty() && api_key != "placeholder-api-key-update-before-use" {
+                return Ok(api_key);
+            }
+        }
+        
+        // Return descriptive error for missing credentials
+        Err(OpenAIError::configuration_error(
+            "api_key",
+            "No valid OpenAI API key found in environment variables",
+            "Missing or empty OPENAI_API_KEY environment variable",
+            "Set OPENAI_API_KEY environment variable with your OpenAI API key",
+            EndpointType::ChatCompletions,
+        ))
+    }
+    
+    /// Create client with secure credential retrieval
+    pub fn new_secure() -> Result<Self> {
+        let api_key = Self::retrieve_secure_api_key()?;
+        Self::new(api_key)
+    }
+    
+    /// Create client with secure credentials and organization
+    pub fn new_secure_with_organization(organization_id: Option<String>) -> Result<Self> {
+        let api_key = Self::retrieve_secure_api_key()?;
+        Self::new_with_organization(api_key, organization_id)
+    }
+}
+
+/// Default implementation that fails fast if credentials are missing
+/// This prevents accidental use of placeholder credentials in production
 impl Default for OpenAIClient {
     fn default() -> Self {
-        // Create with placeholder API key - will need to be updated
-        Self::new("placeholder-api-key-update-before-use".to_string())
-            .unwrap_or_else(|_| panic!("Failed to create default OpenAI client"))
+        Self::new_secure()
+            .map_err(|e| {
+                tracing::error!("Failed to create OpenAI client with secure credentials: {}", e);
+                e
+            })
+            .unwrap_or_else(|_| {
+                // Fail fast in production - never use placeholder credentials
+                panic!(
+                    "OpenAI client requires valid API key. Set OPENAI_API_KEY environment variable. \
+                    This error prevents accidental use of placeholder credentials in production."
+                )
+            })
     }
 }
 

@@ -457,11 +457,15 @@ impl LinuxRamdisk {
             }
         }
 
-        let mp_cstr = CString::new(mount_point.to_str().unwrap_or("")).unwrap();
-        let source = CString::new("none").unwrap();
-        let fstype = CString::new("tmpfs").unwrap();
+        let mp_cstr = CString::new(mount_point.to_str().unwrap_or(""))
+            .map_err(|e| StorageError::InvalidPath(format!("Mount point path contains null byte: {}", e)))?;
+        let source = CString::new("none")
+            .map_err(|e| StorageError::InvalidPath(format!("Source string contains null byte: {}", e)))?;
+        let fstype = CString::new("tmpfs")
+            .map_err(|e| StorageError::InvalidPath(format!("Filesystem type contains null byte: {}", e)))?;
         let size = format!("size={}G", config.size_gb);
-        let data = CString::new(size.as_str()).unwrap();
+        let data = CString::new(size.as_str())
+            .map_err(|e| StorageError::InvalidPath(format!("Size parameter contains null byte: {}", e)))?;
 
         info!(
             "Mounting tmpfs with size {} at {}",

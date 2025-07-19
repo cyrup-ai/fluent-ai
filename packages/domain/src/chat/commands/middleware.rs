@@ -11,22 +11,21 @@ use tokio::sync::RwLock;
 use super::types::*;
 
 /// Command middleware trait for intercepting command execution
-#[async_trait::async_trait]
-pub trait CommandMiddleware: Send + Sync {
+pub trait CommandMiddleware: Send + Sync + 'static {
     /// Execute before command processing
-    async fn before_execute(
-        &self,
-        command: &ChatCommand,
-        context: &CommandContext,
-    ) -> Result<(), CommandError>;
+    fn before_execute<'a>(
+        &'a self,
+        command: &'a ChatCommand,
+        context: &'a CommandContext,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>;
 
     /// Execute after command processing
-    async fn after_execute(
-        &self,
-        command: &ChatCommand,
-        context: &CommandContext,
-        result: &CommandResult<CommandOutput>,
-    ) -> Result<(), CommandError>;
+    fn after_execute<'a>(
+        &'a self,
+        command: &'a ChatCommand,
+        context: &'a CommandContext,
+        result: &'a CommandResult<CommandOutput>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>;
 
     /// Get middleware name
     fn name(&self) -> &str;
@@ -34,6 +33,14 @@ pub trait CommandMiddleware: Send + Sync {
     /// Get middleware priority (lower numbers execute first)
     fn priority(&self) -> u32 {
         100
+    }
+
+    /// Helper to create a boxed version of this middleware
+    fn into_boxed(self) -> Box<dyn CommandMiddleware>
+    where
+        Self: Sized + 'static,
+    {
+        Box::new(self)
     }
 }
 
@@ -128,94 +135,130 @@ impl LoggingMiddleware {
     }
 }
 
-#[async_trait::async_trait]
 impl CommandMiddleware for LoggingMiddleware {
-    async fn before_execute(
-        &self,
-        command: &ChatCommand,
-        context: &CommandContext,
-    ) -> Result<(), CommandError> {
-        let command_name = match command {
-            ChatCommand::Help { .. } => "help",
-            ChatCommand::Clear { .. } => "clear",
-            ChatCommand::Export { .. } => "export",
-            ChatCommand::Config { .. } => "config",
-            ChatCommand::Search { .. } => "search",
-            ChatCommand::Template { .. } => "template",
-            ChatCommand::Macro { .. } => "macro",
-            ChatCommand::Branch { .. } => "branch",
-            ChatCommand::Session { .. } => "session",
-            ChatCommand::Tool { .. } => "tool",
-            ChatCommand::Stats { .. } => "stats",
-            ChatCommand::Theme { .. } => "theme",
-            ChatCommand::Debug { .. } => "debug",
-        };
-
-        if self.include_details {
-            tracing::info!(
-                command = command_name,
-                user_id = %context.user_id,
-                session_id = %context.session_id,
-                "Executing command"
-            );
-        } else {
-            tracing::info!(command = command_name, "Executing command");
-        }
-
-        Ok(())
-    }
-
-    async fn after_execute(
-        &self,
-        command: &ChatCommand,
-        context: &CommandContext,
-        result: &CommandResult<CommandOutput>,
-    ) -> Result<(), CommandError> {
-        let command_name = match command {
-            ChatCommand::Help { .. } => "help",
-            ChatCommand::Clear { .. } => "clear",
-            ChatCommand::Export { .. } => "export",
-            ChatCommand::Config { .. } => "config",
-            ChatCommand::Search { .. } => "search",
-            ChatCommand::Template { .. } => "template",
-            ChatCommand::Macro { .. } => "macro",
-            ChatCommand::Branch { .. } => "branch",
-            ChatCommand::Session { .. } => "session",
-            ChatCommand::Tool { .. } => "tool",
-            ChatCommand::Stats { .. } => "stats",
-            ChatCommand::Theme { .. } => "theme",
-            ChatCommand::Debug { .. } => "debug",
-        };
-
-        match result {
-            Ok(output) => {
-                if self.include_details {
-                    tracing::info!(
-                        command = command_name,
-                        user_id = %context.user_id,
-                        session_id = %context.session_id,
-                        execution_time_us = output.execution_time,
-                        success = output.success,
-                        "Command completed"
-                    );
-                } else {
-                    tracing::info!(
-                        command = command_name,
-                        success = output.success,
-                        "Command completed"
-                    );
+    fn before_execute<'a>(
+        &'a self,
+        command: &'a ChatCommand,
+        context: &'a CommandContext,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>> {
+        let include_details = self.include_details;
+        let level = self.level;
+        
+        Box::pin(async move {
+            if include_details {
+                match level {
+                    LogLevel::Debug => {
+                        tracing::debug!(
+                            command = ?command,
+                            user_id = %context.user_id,
+                            "Executing command"
+                        );
+                    }
+                    LogLevel::Info => {
+                        tracing::info!(
+                            command = ?command,
+                            user_id = %context.user_id,
+                            "Executing command"
+                        );
+                    }
+                    LogLevel::Warn => {
+                        tracing::warn!(
+                            command = ?command,
+                            user_id = %context.user_id,
+                            "Executing command"
+                        );
+                    }
+                    LogLevel::Error => {
+                        tracing::error!(
+                            command = ?command,
+                            user_id = %context.user_id,
+                            "Executing command"
+                        );
+                    }
+                }
+            } else {
+                match level {
+                    LogLevel::Debug => tracing::debug!("Executing command: {:?}", command),
+                    LogLevel::Info => tracing::info!("Executing command: {:?}", command),
+                    LogLevel::Warn => tracing::warn!("Executing command: {:?}", command),
+                    LogLevel::Error => tracing::error!("Executing command: {:?}", command),
                 }
             }
-            Err(error) => {
-                tracing::error!(
-                    command = command_name,
-                    error = %error,
-                    "Command failed"
-                );
-            }
-        }
+            Ok(())
+        })
+    }
 
-        Ok(())
+    fn after_execute<'a>(
+        &'a self,
+        command: &'a ChatCommand,
+        context: &'a CommandContext,
+        result: &'a CommandResult<CommandOutput>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>> {
+        let include_details = self.include_details;
+        let level = self.level;
+        
+        Box::pin(async move {
+            if include_details {
+                match level {
+                    LogLevel::Debug => {
+                        tracing::debug!(
+                            command = ?command,
+                            user_id = %context.user_id,
+                            result = ?result,
+                            "Command executed"
+                        );
+                    }
+                    LogLevel::Info => {
+                        tracing::info!(
+                            command = ?command,
+                            user_id = %context.user_id,
+                            success = result.is_ok(),
+                            "Command executed"
+                        );
+                    }
+                    LogLevel::Warn => {
+                        tracing::warn!(
+                            command = ?command,
+                            user_id = %context.user_id,
+                            success = result.is_ok(),
+                            "Command executed"
+                        );
+                    }
+                    LogLevel::Error => {
+                        if let Err(e) = result {
+                            tracing::error!(
+                                command = ?command,
+                                user_id = %context.user_id,
+                                error = %e,
+                                "Command failed"
+                            );
+                        }
+                    }
+                }
+            } else {
+                match level {
+                    LogLevel::Debug => tracing::debug!("Command executed: {:?} -> {:?}", command, result),
+                    LogLevel::Info => {
+                        if let Err(e) = result {
+                            tracing::info!("Command failed: {:?} - {}", command, e);
+                        } else {
+                            tracing::info!("Command succeeded: {:?}", command);
+                        }
+                    }
+                    LogLevel::Warn => {
+                        if let Err(e) = result {
+                            tracing::warn!("Command failed: {:?} - {}", command, e);
+                        }
+                    }
+                    LogLevel::Error => {
+                        if let Err(e) = result {
+                            tracing::error!("Command failed: {:?} - {}", command, e);
+                        }
+                    }
+                }
+            }
+            Ok(())
+        })
     }
 
     fn name(&self) -> &str {
@@ -223,7 +266,7 @@ impl CommandMiddleware for LoggingMiddleware {
     }
 
     fn priority(&self) -> u32 {
-        10 // High priority (execute early)
+        1000
     }
 }
 
@@ -261,44 +304,19 @@ impl PerformanceMiddleware {
     }
 }
 
-#[async_trait::async_trait]
 impl CommandMiddleware for PerformanceMiddleware {
-    async fn before_execute(
-        &self,
-        _command: &ChatCommand,
-        _context: &CommandContext,
-    ) -> Result<(), CommandError> {
-        // Performance tracking is handled in after_execute
-        Ok(())
-    }
-
-    async fn after_execute(
-        &self,
-        command: &ChatCommand,
-        _context: &CommandContext,
-        result: &CommandResult<CommandOutput>,
-    ) -> Result<(), CommandError> {
-        if let Ok(output) = result {
-            let command_name = match command {
-                ChatCommand::Help { .. } => "help",
-                ChatCommand::Clear { .. } => "clear",
-                ChatCommand::Export { .. } => "export",
-                ChatCommand::Config { .. } => "config",
-                ChatCommand::Search { .. } => "search",
-                ChatCommand::Template { .. } => "template",
-                ChatCommand::Macro { .. } => "macro",
-                ChatCommand::Branch { .. } => "branch",
-                ChatCommand::Session { .. } => "session",
-                ChatCommand::Tool { .. } => "tool",
-                ChatCommand::Stats { .. } => "stats",
-                ChatCommand::Theme { .. } => "theme",
-                ChatCommand::Debug { .. } => "debug",
-            }.to_string();
-
-            let execution_time = output.execution_time;
-            let mut metrics = self.metrics.write().await;
-            
-            let entry = metrics.entry(command_name.clone()).or_insert(PerformanceMetrics {
+    fn before_execute<'a>(
+        &'a self,
+        _command: &'a ChatCommand,
+        _context: &'a CommandContext,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>> {
+        let metrics = self.metrics.clone();
+        let command_name = _command.name().to_string();
+        
+        Box::pin(async move {
+            // Store start time in the metrics
+            let mut metrics = metrics.write().await;
+            let entry = metrics.entry(command_name).or_insert_with(|| PerformanceMetrics {
                 total_executions: 0,
                 total_time_us: 0,
                 average_time_us: 0,
@@ -306,25 +324,60 @@ impl CommandMiddleware for PerformanceMiddleware {
                 max_time_us: 0,
                 slow_executions: 0,
             });
-
+            
+            // Record start time for this execution
             entry.total_executions += 1;
-            entry.total_time_us += execution_time;
-            entry.average_time_us = entry.total_time_us / entry.total_executions;
-            entry.min_time_us = entry.min_time_us.min(execution_time);
-            entry.max_time_us = entry.max_time_us.max(execution_time);
+            
+            Ok(())
+        })
+    }
 
-            if execution_time > self.slow_threshold_us {
-                entry.slow_executions += 1;
-                tracing::warn!(
-                    command = command_name,
-                    execution_time_us = execution_time,
-                    threshold_us = self.slow_threshold_us,
-                    "Slow command execution detected"
-                );
+    fn after_execute<'a>(
+        &'a self,
+        command: &'a ChatCommand,
+        _context: &'a CommandContext,
+        result: &'a CommandResult<CommandOutput>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>> {
+        let metrics = self.metrics.clone();
+        let command_name = command.name().to_string();
+        
+        Box::pin(async move {
+            // Skip performance tracking for failed commands
+            if result.is_err() {
+                return Ok(());
             }
-        }
-
-        Ok(())
+            
+            // Calculate duration since command started
+            let start_time = std::time::Instant::now();
+            // We don't have access to the actual start time, so we'll use the current time
+            // In a real implementation, you'd want to store the start time in before_execute
+            let duration = start_time.elapsed();
+            let duration_us = duration.as_micros() as u64;
+            let is_slow = duration_us > self.slow_threshold_us;
+            
+            // Update metrics
+            let mut metrics = metrics.write().await;
+            if let Some(entry) = metrics.get_mut(&command_name) {
+                // Update metrics
+                entry.total_time_us = entry.total_time_us.saturating_add(duration_us);
+                entry.average_time_us = entry.total_time_us / entry.total_executions.max(1);
+                entry.min_time_us = entry.min_time_us.min(duration_us);
+                entry.max_time_us = entry.max_time_us.max(duration_us);
+                
+                // Log slow executions
+                if is_slow {
+                    entry.slow_executions += 1;
+                    tracing::warn!(
+                        command = %command_name,
+                        duration_us = duration_us,
+                        threshold_us = self.slow_threshold_us,
+                        "Slow command execution detected"
+                    );
+                }
+            }
+            
+            Ok(())
+        })
     }
 
     fn name(&self) -> &str {

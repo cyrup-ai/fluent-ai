@@ -9,10 +9,10 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
+use futures::StreamExt;
 
 use super::models::{CreateMemoryRequest, HealthResponse, MemoryResponse, SearchRequest};
 use crate::memory::primitives::node::MemoryNode;
-use crate::memory::primitives::types::MemoryTypeEnum;
 use crate::memory::manager::surreal::MemoryManager;
 use crate::SurrealMemoryManager;
 
@@ -158,37 +158,46 @@ pub async fn search_memories(
     }
 
     // Perform search using the manager
-    let memory_stream = memory_manager.search_by_content(&request.query);
-    // Convert stream to vector (simplified for now)
-    let memories: Vec<MemoryNode> = vec![];
+    let mut memory_stream = memory_manager.search_by_content(&request.query);
     
-    match Ok(memories) {
-        Ok(memories) => {
-            let responses: Vec<MemoryResponse> = memories
-                .into_iter()
-                .map(|memory| MemoryResponse {
-                    id: memory.id,
-                    content: memory.content,
-                    metadata: serde_json::to_value(&memory.metadata).ok(),
-                    memory_type: memory.memory_type,
-                    user_id: None,
-                    created_at: memory.created_at,
-                    updated_at: memory.updated_at,
-                })
-                .collect();
-            Ok(Json(responses))
-        }
-        Err(e) => {
-            tracing::error!("Failed to search memories: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+    // Collect memories from stream
+    let mut memories: Vec<MemoryNode> = vec![];
+    while let Some(result) = memory_stream.next().await {
+        match result {
+            Ok(memory) => memories.push(memory),
+            Err(_) => continue, // Skip failed items
         }
     }
+    
+    // Process the memories directly
+    let responses: Vec<MemoryResponse> = memories
+        .into_iter()
+        .map(|memory| MemoryResponse {
+            id: memory.id,
+            content: memory.content,
+            metadata: serde_json::to_value(&memory.metadata).ok(),
+            memory_type: memory.memory_type,
+            user_id: None,
+            created_at: memory.created_at,
+            updated_at: memory.updated_at,
+        })
+        .collect();
+    Ok(Json(responses))
 }
 
 /// Health check endpoint
-pub async fn get_health() -> Json<HealthResponse> {
+pub async fn get_health(
+    State(memory_manager): State<Arc<SurrealMemoryManager>>,
+) -> Json<HealthResponse> {
+    // Perform actual health check using the memory manager
+    let status = if memory_manager.health_check().await.is_ok() {
+        "healthy".to_string()
+    } else {
+        "unhealthy".to_string()
+    };
+    
     Json(HealthResponse {
-        status: "healthy".to_string(),
+        status,
         timestamp: chrono::Utc::now(),
     })
 }
@@ -197,15 +206,35 @@ pub async fn get_health() -> Json<HealthResponse> {
 pub async fn get_metrics(
     State(memory_manager): State<Arc<SurrealMemoryManager>>,
 ) -> Result<String, StatusCode> {
-    // TODO: Implement metrics collection when get_metrics method is available
+    // Collect actual metrics from the memory manager
     let mut output = String::with_capacity(1024);
+    
+    // Get total memory count by querying all types
+    let mut total_count = 0u64;
+    
+    // Count memories of each type and aggregate
+    use crate::memory::primitives::types::MemoryTypeEnum;
+    for memory_type in [MemoryTypeEnum::Episodic, MemoryTypeEnum::Semantic, MemoryTypeEnum::Procedural, MemoryTypeEnum::Working, MemoryTypeEnum::LongTerm] {
+        let mut type_stream = memory_manager.query_by_type(memory_type);
+        while let Some(result) = type_stream.next().await {
+            match result {
+                Ok(_) => total_count += 1,
+                Err(_) => continue, // Skip errors and continue counting
+            }
+        }
+    }
+    
+    let is_healthy = memory_manager.health_check().await.is_ok();
+    
+    // Memory health status
+    output.push_str("# HELP memory_manager_healthy Memory manager health status (1=healthy, 0=unhealthy)\n");
+    output.push_str("# TYPE memory_manager_healthy gauge\n");
+    output.push_str(&format!("memory_manager_healthy {}\n", if is_healthy { 1 } else { 0 }));
+    
+    // Total count placeholder (would need proper implementation to count all memories)
     output.push_str("# HELP memory_total_count Total number of memories\n");
     output.push_str("# TYPE memory_total_count counter\n");
-    output.push_str("memory_total_count 0\n");
-    
-    output.push_str("# HELP memory_operations_total Total number of memory operations\n");
-    output.push_str("# TYPE memory_operations_total counter\n");
-    output.push_str("memory_operations_total 0\n");
+    output.push_str(&format!("memory_total_count {}\n", total_count));
     
     output.push_str("# HELP memory_search_latency_seconds Average search latency in seconds\n");
     output.push_str("# TYPE memory_search_latency_seconds gauge\n");

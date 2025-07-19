@@ -12,7 +12,7 @@ use crossbeam_utils::CachePadded;
 use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
 use smallvec::{SmallVec, smallvec};
-use tracing::{debug, info, warn};
+use tracing::info;
 
 use crate::cognitive::mcts::CodeState;
 use crate::cognitive::quantum::QuantumConfig;
@@ -516,7 +516,11 @@ impl QuantumMCTS {
             }
         }
 
-        self.metrics.inc_entanglements();
+        // Record the number of entanglements created
+        for _ in 0..entanglement_count {
+            self.metrics.inc_entanglements();
+        }
+        
         Ok(())
     }
 
@@ -701,23 +705,9 @@ impl QuantumMCTS {
     }
 
     /// Recursively improve the quantum state through MCTS iterations
-    pub async fn recursive_improve(&mut self, max_iterations: usize) -> Result<CodeState, CognitiveError> {
-        for _ in 0..max_iterations {
-            // Select promising node
-            let selected_node = self.select_node()?;
-            
-            // Expand with new actions
-            let expanded_nodes = self.expand_node(&selected_node)?;
-            
-            // Simulate outcomes for each expanded node
-            for node in expanded_nodes {
-                let simulation_result = self.simulate(&node).await?;
-                self.backpropagate(&node, simulation_result)?;
-            }
-        }
-        
-        // Return the best state found
-        self.best_quantum_modification()
+    pub fn recursive_improve(&mut self, max_iterations: usize) -> Result<CodeState, CognitiveError> {
+        // Use the existing run method which implements the same logic
+        self.run(max_iterations)
     }
 
     /// Get the best quantum modification found during search
@@ -729,7 +719,7 @@ impl QuantumMCTS {
         // Iterate through the tree to find the best node
         for entry in self.tree.iter() {
             let node = entry.value();
-            let score = self.quantum_ucb(&node.id).unwrap_or(0.0);
+            let score = self.quantum_ucb(node, 1000.0); // Use a reasonable parent visit count
             if score > best_score {
                 best_score = score;
                 best_state = node.quantum_state.classical_state.clone();

@@ -1,7 +1,7 @@
 // src/cognitive/committee/agent.rs
 //! Defines the LLM-based evaluation agent for the committee.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::cognitive::common::models::{Model, ModelType};
 use crate::cognitive::common::types::{AgentEvaluation, EvaluationPhase, EvaluationRubric};
@@ -9,7 +9,7 @@ use crate::cognitive::mcts::CodeState;
 use crate::cognitive::types::CognitiveError;
 
 /// LLM-based evaluation agent
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct LLMEvaluationAgent {
     id: String,
     model: Model,

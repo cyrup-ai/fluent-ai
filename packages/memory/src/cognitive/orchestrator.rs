@@ -72,6 +72,19 @@ impl InfiniteOrchestrator {
         markdown_to_spec(&contents)
     }
 
+    /// Reload specification from file (useful for runtime config changes)
+    pub fn reload_spec(&mut self) -> Result<(), CognitiveError> {
+        let new_spec = Self::parse_spec(&self.spec_file)?;
+        self.spec = Arc::new(new_spec);
+        tracing::info!("Reloaded specification from {:?}", self.spec_file);
+        Ok(())
+    }
+    
+    /// Get the current spec file path for debugging/logging
+    pub fn spec_file_path(&self) -> &Path {
+        &self.spec_file
+    }
+
     fn scan_output_dir(&self) -> Result<(u64, Vec<(PathBuf, u64)>, Vec<String>), CognitiveError> {
         let mut files = vec![];
         let mut max_iter = 0;
@@ -139,12 +152,54 @@ impl InfiniteOrchestrator {
         }
 
         // Track current best state
-        let mut best_code = self.initial_code.clone();
+        let best_code = self.initial_code.clone();
         let mut best_latency = self.initial_latency;
         let mut best_memory = self.initial_memory;
         let mut best_relevance = self.initial_relevance;
 
         loop {
+            // Create iteration plan for this round
+            let best_outcome = outcomes.iter()
+                .filter(|o| o.applied())
+                .max_by(|a, b| {
+                    let a_score = match a {
+                        OptimizationOutcome::Success { performance_gain, quality_score, .. } => 
+                            *performance_gain as f64 + *quality_score as f64,
+                        OptimizationOutcome::PartialSuccess { performance_gain, quality_score, .. } => 
+                            (*performance_gain as f64 + *quality_score as f64) * 0.5,
+                        _ => 0.0,
+                    };
+                    let b_score = match b {
+                        OptimizationOutcome::Success { performance_gain, quality_score, .. } => 
+                            *performance_gain as f64 + *quality_score as f64,
+                        OptimizationOutcome::PartialSuccess { performance_gain, quality_score, .. } => 
+                            (*performance_gain as f64 + *quality_score as f64) * 0.5,
+                        _ => 0.0,
+                    };
+                    a_score.partial_cmp(&b_score).unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .cloned();
+            
+            let iteration_plan = IterationPlan::new(current_iter, best_outcome);
+            
+            // Log iteration plan details for monitoring
+            if let Some(performance_gain) = iteration_plan.get_performance_gain() {
+                tracing::debug!("Iteration {} planned with performance gain: {:.2}%", 
+                    iteration_plan.iteration(), performance_gain);
+            }
+            
+            if let Some(quality_score) = iteration_plan.get_quality_score() {
+                tracing::debug!("Iteration {} quality score: {:.2}", 
+                    iteration_plan.iteration(), quality_score);
+            }
+            
+            if let Some(improvements) = iteration_plan.get_improvements() {
+                if !improvements.is_empty() {
+                    tracing::debug!("Iteration {} improvements: {:?}", 
+                        iteration_plan.iteration(), improvements);
+                }
+            }
+            
             // Adaptive agent count based on recent success
             let agents_per_wave =
                 if outcomes.len() > 10 && outcomes.iter().rev().take(5).all(|o| !o.applied()) {
@@ -157,27 +212,37 @@ impl InfiniteOrchestrator {
             while join_set.len() >= agents_per_wave {
                 if let Some(res) = join_set.join_next().await {
                     match res {
-                        Ok(Ok(mut outcome)) => {
-                            outcome.iteration = current_iter;
-
+                        Ok(Ok(outcome)) => {
                             // Update best state if improved
-                            if outcome.applied {
-                                let new_latency =
-                                    best_latency * (1.0 - outcome.latency_improvement / 100.0);
-                                let new_memory =
-                                    best_memory * (1.0 - outcome.memory_improvement / 100.0);
-                                let new_relevance =
-                                    best_relevance * (1.0 + outcome.relevance_improvement / 100.0);
+                            if outcome.applied() {
+                                match &outcome {
+                                    OptimizationOutcome::Success { performance_gain, quality_score, .. } => {
+                                        // Use performance_gain and quality_score to update metrics
+                                        let improvement_factor = (*performance_gain as f64).max(0.0) / 100.0;
+                                        let quality_factor = (*quality_score as f64).max(0.0) / 100.0;
+                                        
+                                        best_latency = best_latency * (1.0 - improvement_factor * 0.1);
+                                        best_memory = best_memory * (1.0 - improvement_factor * 0.1);
+                                        best_relevance = best_relevance * (1.0 + quality_factor * 0.1);
 
-                                best_latency = new_latency;
-                                best_memory = new_memory;
-                                best_relevance = new_relevance;
-
-                                // In a real system, we'd also update best_code here
-                                info!(
-                                    "New best state: latency={:.2}, memory={:.2}, relevance={:.2}",
-                                    best_latency, best_memory, best_relevance
-                                );
+                                        info!(
+                                            "New best state: latency={:.2}, memory={:.2}, relevance={:.2}",
+                                            best_latency, best_memory, best_relevance
+                                        );
+                                    }
+                                    OptimizationOutcome::PartialSuccess { performance_gain, quality_score, .. } => {
+                                        // Partial improvements are smaller
+                                        let improvement_factor = (*performance_gain as f64).max(0.0) / 200.0;
+                                        let quality_factor = (*quality_score as f64).max(0.0) / 200.0;
+                                        
+                                        best_latency = best_latency * (1.0 - improvement_factor * 0.05);
+                                        best_memory = best_memory * (1.0 - improvement_factor * 0.05);
+                                        best_relevance = best_relevance * (1.0 + quality_factor * 0.05);
+                                    }
+                                    OptimizationOutcome::Failure { .. } => {
+                                        // No improvements for failures
+                                    }
+                                }
                             }
 
                             outcomes.push(outcome.clone());
@@ -185,11 +250,11 @@ impl InfiniteOrchestrator {
                             // Save outcome
                             let output_path = self
                                 .output_dir
-                                .join(format!("iteration_{}.json", outcome.iteration));
+                                .join(format!("iteration_{}.json", current_iter));
                             fs::write(&output_path, serde_json::to_string_pretty(&outcome)?)
                                 .map_err(|e| CognitiveError::OrchestrationError(e.to_string()))?;
 
-                            info!("Saved outcome for iteration {}", outcome.iteration);
+                            info!("Saved outcome for iteration {}", current_iter);
                         }
                         Ok(Err(e)) => error!("Evolution task failed: {}", e),
                         Err(e) => error!("Evolution task panicked: {}", e),
@@ -336,4 +401,45 @@ fn extract_number(line: &str) -> Option<f64> {
 struct IterationPlan {
     iteration: u64,
     base_state: Option<OptimizationOutcome>,
+}
+
+impl IterationPlan {
+    /// Create a new iteration plan
+    fn new(iteration: u64, base_state: Option<OptimizationOutcome>) -> Self {
+        Self { iteration, base_state }
+    }
+    
+    /// Get the iteration number
+    fn iteration(&self) -> u64 {
+        self.iteration
+    }
+    
+    /// Get performance gain for this iteration
+    fn get_performance_gain(&self) -> Option<f32> {
+        self.base_state.as_ref().and_then(|state| match state {
+            OptimizationOutcome::Success { performance_gain, .. } => Some(*performance_gain),
+            OptimizationOutcome::PartialSuccess { performance_gain, .. } => Some(*performance_gain),
+            OptimizationOutcome::Failure { .. } => None,
+        })
+    }
+    
+    /// Get quality score for this iteration
+    #[allow(dead_code)]
+    fn get_quality_score(&self) -> Option<f32> {
+        self.base_state.as_ref().and_then(|state| match state {
+            OptimizationOutcome::Success { quality_score, .. } => Some(*quality_score),
+            OptimizationOutcome::PartialSuccess { quality_score, .. } => Some(*quality_score),
+            OptimizationOutcome::Failure { .. } => None,
+        })
+    }
+    
+    /// Get improvement summary for this iteration
+    #[allow(dead_code)]
+    fn get_improvements(&self) -> Option<&Vec<String>> {
+        self.base_state.as_ref().and_then(|state| match state {
+            OptimizationOutcome::Success { improvements, .. } => Some(improvements),
+            OptimizationOutcome::PartialSuccess { improvements, .. } => Some(improvements),
+            OptimizationOutcome::Failure { .. } => None,
+        })
+    }
 }

@@ -7,7 +7,6 @@ use chrono::{DateTime, Utc};
 
 use crate::memory::filter::MemoryFilter;
 use crate::memory::primitives::{MemoryNode, MemoryRelationship, MemoryTypeEnum};
-use crate::utils::Result;
 
 /// In-memory repository for fast memory access and indexing
 pub struct MemoryRepository {
@@ -157,7 +156,7 @@ impl MemoryRepository {
                     .metadata
                     .importance
                     .partial_cmp(&b.metadata.importance)
-                    .unwrap(),
+                    .unwrap_or(std::cmp::Ordering::Equal), // Handle NaN cases gracefully
                 _ => std::cmp::Ordering::Equal,
             });
         }

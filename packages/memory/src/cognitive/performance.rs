@@ -172,7 +172,11 @@ impl PerformanceAnalyzer {
         metrics
             .evaluations
             .iter()
-            .max_by(|a, b| a.objective_score.partial_cmp(&b.objective_score).unwrap())
+            .max_by(|a, b| {
+                a.objective_score
+                    .partial_cmp(&b.objective_score)
+                    .unwrap_or(std::cmp::Ordering::Equal) // Handle NaN cases gracefully
+            })
             .map(|eval| eval.state.clone())
     }
 }
