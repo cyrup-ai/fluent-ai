@@ -143,7 +143,7 @@ impl CognitiveMemoryManager {
             Some(self.generate_quantum_signature(&cognitive_memory).await?);
 
         // Initialize evolution metadata
-        cognitive_memory.evolution_metadata = Some(EvolutionMetadata::new(&cognitive_memory.base));
+        cognitive_memory.evolution_metadata = Some(EvolutionMetadata::new());
 
         // Generate attention weights
         cognitive_memory.attention_weights = Some(
@@ -210,14 +210,13 @@ impl CognitiveMemoryManager {
         let mut memories = Vec::new();
         // Convert stream to vector (assuming MemoryStream has a method to collect results)
         // This is a placeholder - the actual implementation would depend on MemoryStream's API
-        memories.push(MemoryNode::new("placeholder".to_string(), "content".to_string(), crate::memory::primitives::types::MemoryTypeEnum::Episodic));
+        memories.push(MemoryNode::new("content".to_string(), crate::memory::primitives::types::MemoryTypeEnum::Episodic));
 
         // Score with attention mechanism
         let mut attention = self.cognitive_mesh.attention_mechanism.write().await;
 
         let memory_embeddings: Vec<_> = memories
             .iter()
-            .filter_map(|m| m.as_ref().ok())
             .map(|m| {
                 (m.id.clone(), vec![0.1; 512]) // Placeholder embedding
             })
@@ -236,7 +235,6 @@ impl CognitiveMemoryManager {
 
         Ok(memories
             .into_iter()
-            .filter_map(|m| m.ok())
             .filter(|m| top_ids.contains(&m.id))
             .collect())
     }

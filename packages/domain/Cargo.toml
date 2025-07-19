@@ -13,7 +13,7 @@ tokio = { version = "1.46.1", features = ["full"] }
 tokio-stream = "0.1.17"
 futures = "0.3.31"
 hashbrown = { version = "0.15.4", features = ["serde"] }
-glob = "0.3.2"
+glob = "0.3.1"
 fluent_ai_http3 = { path = "../http3" }
 # fluent_ai_provider = { path = "../provider" }
 base64 = "0.22.1"
@@ -21,6 +21,11 @@ cylo = { path = "../cylo" }
 tracing = "0.1.41"
 termcolor = { path = "../termcolor" }
 fluent_ai_memory = { path = "../memory", features = ["full-cognitive"] }
+jwalk = "0.8.1"
+rayon = "1.10.0"
+gix = "0.73.0"
+memmap2 = "0.9.5"
+ignore = "0.4.23"
 
 [dev-dependencies]
 serde = { version = "1.0.219", features = ["derive"] }

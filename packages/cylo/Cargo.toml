@@ -1,7 +1,7 @@
 [package]
 name = "cylo"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "Secure multi-language code execution service"
 authors = ["CYRUP AI"]
 repository = "https://github.com/cyrup-ai/fluent-ai"
@@ -23,7 +23,7 @@ termcolor = { path = "../termcolor" }
 # fluent_ai_domain = { path = "../domain" } # Removed to avoid circular dependency
 
 # Regular dependencies
-nix = { version = "0.29.0", features = ["user"] }
+nix = { version = "0.30.1", features = ["user"] }
 num_cpus = "1.16.0"
 
 # Additional dependencies

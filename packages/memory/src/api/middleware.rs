@@ -158,3 +158,79 @@ pub async fn auth_middleware(mut request: Request<Body>, next: Next) -> impl Int
         }
     }
 }
+
+/// Validate JWT token and extract user context
+async fn validate_jwt_token(auth_header: &str) -> Result<UserContext, AuthError> {
+    // Extract token from "Bearer <token>" format
+    let token = if auth_header.starts_with("Bearer ") {
+        &auth_header[7..]
+    } else {
+        return Err(AuthError::InvalidToken);
+    };
+
+    // Decode and validate JWT
+    let decoding_key = DecodingKey::from_secret(JWT_SECRET.as_bytes());
+    let validation = Validation::new(Algorithm::HS256);
+    
+    match decode::<JwtClaims>(token, &decoding_key, &validation) {
+        Ok(token_data) => {
+            let claims = token_data.claims;
+            
+            // Check if token is expired
+            let now = Utc::now().timestamp();
+            if claims.exp < now {
+                return Err(AuthError::ExpiredToken);
+            }
+            
+            Ok(UserContext {
+                user_id: claims.sub,
+                email: claims.email,
+                roles: claims.roles,
+                permissions: claims.permissions,
+                expires_at: Some(DateTime::from_timestamp(claims.exp, 0).unwrap_or_else(Utc::now)),
+            })
+        }
+        Err(_) => Err(AuthError::InvalidToken),
+    }
+}
+
+/// Validate API key and return associated user context
+async fn validate_api_key(api_key: &str) -> Result<UserContext, AuthError> {
+    VALID_API_KEYS
+        .get(api_key)
+        .cloned()
+        .ok_or(AuthError::InvalidApiKey)
+}
+
+/// Add security headers to response
+fn add_security_headers(mut response: Response) -> Response {
+    let headers = response.headers_mut();
+    
+    // Add security headers
+    headers.insert(
+        "X-Content-Type-Options",
+        HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        "X-Frame-Options",
+        HeaderValue::from_static("DENY"),
+    );
+    headers.insert(
+        "X-XSS-Protection",
+        HeaderValue::from_static("1; mode=block"),
+    );
+    headers.insert(
+        "Strict-Transport-Security",
+        HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+    );
+    headers.insert(
+        "Referrer-Policy",
+        HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    headers.insert(
+        "Content-Security-Policy",
+        HeaderValue::from_static("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"),
+    );
+    
+    response
+}

@@ -27,12 +27,60 @@ impl DataImporter {
         Ok(data)
     }
 
-    /// Import data from CSV file
-    pub async fn import_csv<T: for<'de> Deserialize<'de>>(&self, _path: &Path) -> Result<Vec<T>> {
-        // Simplified CSV import - would use csv crate in production
-        Err(MigrationError::UnsupportedFormat(
-            "CSV import not yet implemented".to_string(),
-        ))
+    /// Import data from CSV file with production-ready implementation
+    pub async fn import_csv<T>(&self, path: &Path) -> Result<Vec<T>>
+    where
+        T: for<'de> Deserialize<'de> + Send + 'static,
+    {
+        use csv::ReaderBuilder;
+        use tokio::fs::File;
+        use tokio::io::AsyncReadExt;
+        
+        // Validate file exists and is readable
+        if !path.exists() {
+            return Err(MigrationError::FileNotFound(path.to_string_lossy().to_string()));
+        }
+        
+        // Read file contents asynchronously
+        let mut file = File::open(path).await
+            .map_err(|e| MigrationError::IoError(e.to_string()))?;
+        
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).await
+            .map_err(|e| MigrationError::IoError(e.to_string()))?;
+        
+        // Parse CSV with proper error handling
+        let mut reader = ReaderBuilder::new()
+            .has_headers(true)
+            .flexible(true)
+            .trim(csv::Trim::All)
+            .from_reader(contents.as_bytes());
+        
+        let mut records = Vec::new();
+        let mut line_number = 1; // Start from 1 for header
+        
+        for result in reader.deserialize() {
+            line_number += 1;
+            match result {
+                Ok(record) => records.push(record),
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to parse CSV record at line {}: {}", 
+                        line_number, e
+                    );
+                    // Continue processing other records instead of failing completely
+                    continue;
+                }
+            }
+        }
+        
+        tracing::info!(
+            "Successfully imported {} records from CSV file: {}", 
+            records.len(), 
+            path.display()
+        );
+        
+        Ok(records)
     }
 
     /// Import data from binary file

@@ -74,8 +74,8 @@ impl SuperpositionState {
             let cos_half = (angle / 2.0).cos();
             let sin_half = (angle / 2.0).sin();
             let new_amplitude = Complex64::new(
-                amplitude.re * cos_half - amplitude.im * sin_half,
-                amplitude.re * sin_half + amplitude.im * cos_half,
+                amplitude.real * cos_half - amplitude.imaginary * sin_half,
+                amplitude.real * sin_half + amplitude.imaginary * cos_half,
             );
             *amplitude = new_amplitude;
         }

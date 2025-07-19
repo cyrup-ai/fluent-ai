@@ -723,14 +723,16 @@ impl QuantumMCTS {
     /// Get the best quantum modification found during search
     pub fn best_quantum_modification(&self) -> Result<CodeState, CognitiveError> {
         // Find the node with the highest quantum UCB score
-        let mut best_state = self.current_state.clone();
+        let mut best_state = CodeState::default();
         let mut best_score = 0.0;
         
-        for node in &self.tree_nodes {
-            let score = self.quantum_ucb(&node.id)?;
+        // Iterate through the tree to find the best node
+        for entry in self.tree.iter() {
+            let node = entry.value();
+            let score = self.quantum_ucb(&node.id).unwrap_or(0.0);
             if score > best_score {
                 best_score = score;
-                best_state = node.state.clone();
+                best_state = node.quantum_state.classical_state.clone();
             }
         }
         
