@@ -77,11 +77,13 @@ impl CommandRegistry {
         }
 
         // Update category index
-        self.categories
-            .entry(info.category.clone())
-            .or_insert_with(Vec::new)
-            .value()
-            .push(info.name.clone());
+        if let Some(existing) = self.categories.get(&info.category) {
+            let mut category_list = existing.value().clone();
+            category_list.push(info.name.clone());
+            self.categories.insert(info.category.clone(), category_list);
+        } else {
+            self.categories.insert(info.category.clone(), vec![info.name.clone()]);
+        }
 
         Ok(())
     }
@@ -109,10 +111,14 @@ impl CommandRegistry {
         }
 
         // Update category index
-        if let Some(mut category_commands) = self.categories.get_mut(&info.category) {
-            category_commands
-                .value_mut()
-                .retain(|cmd| cmd != &command_name);
+        if let Some(existing) = self.categories.get(&info.category) {
+            let mut category_list = existing.value().clone();
+            category_list.retain(|cmd| cmd != &command_name);
+            if category_list.is_empty() {
+                self.categories.remove(&info.category);
+            } else {
+                self.categories.insert(info.category.clone(), category_list);
+            }
         }
 
         Ok(())

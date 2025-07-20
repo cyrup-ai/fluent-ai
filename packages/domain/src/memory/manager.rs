@@ -7,34 +7,33 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::time::Duration;
+
+// Removed unused import: std::time::Duration
 
 // Ultra-high-performance zero-allocation imports
-use arrayvec::ArrayVec;
+// Removed unused import: arrayvec::ArrayVec
 use crossbeam_queue::SegQueue;
 use crossbeam_utils::CachePadded;
-
-use super::primitives::MemoryNode;
-use super::types_legacy::MemoryType;
-use super::MemoryError;
 // Conditional re-exports for cognitive features
-#[cfg(feature = "cognitive")]
-pub use fluent_ai_memory::{
-    CognitiveMemoryManager, CognitiveMemoryNode, CognitiveSettings, CognitiveState,
-    EvolutionMetadata, QuantumSignature,
-};
+// Removed unexpected cfg condition "cognitive" - feature does not exist
 // Re-export core types from fluent_ai_memory (avoiding conflicts)
 pub use fluent_ai_memory::{
-    MemoryConfig, MemoryManager as MemoryManagerTrait, MemoryMetadata,
+    MemoryConfig,
+    MemoryManager as MemoryManagerTrait,
+    MemoryMetadata,
     SurrealDBMemoryManager,
-    memory::{SurrealMemoryQuery},
+    // Removed unused import: SurrealMemoryQuery
 };
 use once_cell::sync::Lazy;
-use parking_lot::Mutex;
-use smallvec::SmallVec;
 
-use crate::ZeroOneOrMany;
-use crate::{AsyncTask, spawn_async};
+// Removed unused import: super::types_legacy::MemoryType
+use super::MemoryError;
+use super::primitives::MemoryNode;
+// Removed unused import: parking_lot::Mutex
+// Removed unused import: smallvec::SmallVec
+
+// Removed unused import: crate::ZeroOneOrMany
+// Removed unused imports: AsyncTask, spawn_async
 
 /// Memory stub that provides safe fallback for synchronous contexts
 ///
@@ -56,9 +55,14 @@ impl MemoryStub {
     pub fn new() -> Self {
         let config = MemoryConfig {
             database: fluent_ai_memory::utils::config::DatabaseConfig {
+                db_type: fluent_ai_memory::utils::config::DatabaseType::SurrealDB,
                 connection_string: "memory://stub".to_string(),
                 namespace: "stub".to_string(),
                 database: "stub".to_string(),
+                username: None,
+                password: None,
+                pool_size: None,
+                options: None,
             },
             ..Default::default()
         };
@@ -112,7 +116,10 @@ const TIMESTAMP_CACHE_REFRESH_INTERVAL_MICROS: u64 = 1000;
 #[inline(always)]
 pub fn initialize_memory_node_pool(initial_size: usize, embedding_dim: usize) {
     for _ in 0..initial_size {
-        let node = Box::new(MemoryNode::new(super::primitives::MemoryTypeEnum::Episodic, super::primitives::MemoryContent::text("")));
+        let node = Box::new(MemoryNode::new(
+            super::primitives::MemoryTypeEnum::Episodic,
+            super::primitives::MemoryContent::text(""),
+        ));
         MEMORY_NODE_POOL.push(node);
     }
     POOL_STATS.store(initial_size, Ordering::Relaxed);
@@ -131,7 +138,10 @@ pub fn get_pooled_memory_node() -> Box<MemoryNode> {
         POOL_STATS.fetch_sub(1, Ordering::Relaxed);
         node
     } else {
-        Box::new(MemoryNode::new(super::primitives::MemoryTypeEnum::Episodic, super::primitives::MemoryContent::text("")))
+        Box::new(MemoryNode::new(
+            super::primitives::MemoryTypeEnum::Episodic,
+            super::primitives::MemoryContent::text(""),
+        ))
     }
 }
 
@@ -271,14 +281,19 @@ impl Memory {
     ///
     /// # Returns
     /// Future that completes when the memory is stored
-    pub fn store_memory(&self, memory_node: &MemoryNode) -> Pin<Box<dyn Future<Output = Result<(), MemoryError>> + Send>> {
+    pub fn store_memory(
+        &self,
+        memory_node: &MemoryNode,
+    ) -> Pin<Box<dyn Future<Output = Result<(), MemoryError>> + Send>> {
         let memory = self.memory.clone();
         let memory_node = memory_node.clone();
-        
+
         Box::pin(async move {
             use fluent_ai_memory::MemoryManager;
             let pending = memory.create_memory(memory_node);
-            pending.await.map_err(|e| MemoryError::StorageError(e.to_string()))
+            pending
+                .await
+                .map_err(|e| MemoryError::StorageError(e.to_string()))
         })
     }
 }

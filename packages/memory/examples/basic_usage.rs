@@ -8,7 +8,7 @@
 //! - Searching memories by content and vector similarity
 
 use fluent_ai_memory::memory::{
-    MemoryManager, SurrealDBMemoryManager, MemoryNode, MemoryTypeEnum, MemoryRelationship,
+    MemoryManager, MemoryNode, MemoryRelationship, MemoryTypeEnum, SurrealDBMemoryManager,
 };
 use futures::StreamExt;
 use surrealdb::{

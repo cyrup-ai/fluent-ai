@@ -4,8 +4,8 @@
 //! circuit breaker patterns, and lock-free error aggregation for blazing-fast performance.
 
 use std::fmt;
-use std::marker::PhantomData;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+// Removed unused import: std::marker::PhantomData
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use atomic_counter::{AtomicCounter, RelaxedCounter};

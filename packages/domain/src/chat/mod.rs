@@ -28,13 +28,13 @@ pub mod realtime;
 pub mod search;
 pub mod templates;
 
-// Re-export all public types for convenience
-pub use commands::*;
-pub use config::*;
-pub use export::*;
-pub use formatting::*;
-pub use integrations::*;
-pub use macros::*;
-pub use realtime::*;
-pub use search::*;
-pub use templates::*;
+// Re-export specific types to avoid ambiguous glob re-exports
+pub use commands::{ChatCommand, CommandExecutor, CommandRegistry};
+pub use config::{ChatConfig, PersonalityConfig};
+pub use export::{ExportData, ExportFormat};
+pub use formatting::{FormatStyle, MessageFormatter};
+pub use integrations::{IntegrationConfig, IntegrationManager};
+pub use macros::{MacroAction, MacroSystem};
+pub use realtime::RealTimeSystem;
+pub use search::{ChatSearchIndex, SearchQuery};
+pub use templates::{ChatTemplate, TemplateManager};

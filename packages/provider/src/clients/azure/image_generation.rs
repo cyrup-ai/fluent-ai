@@ -6,6 +6,7 @@
 
 #![allow(clippy::type_complexity)]
 
+use fluent_ai_domain::model::ImageGenerationModel;
 use serde_json::json;
 
 use super::client::Client;
@@ -15,7 +16,6 @@ use crate::{
     providers::openai::ImageGenerationResponse,
     runtime::{self, AsyncTask},
 };
-use fluent_ai_domain::model::ImageGenerationModel;
 
 // ───────────────────────────── error handling ───────────────────────
 

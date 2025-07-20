@@ -6,6 +6,7 @@
 
 #![allow(clippy::type_complexity)]
 
+use fluent_ai_domain::model::TranscriptionModel;
 use reqwest::multipart::Part;
 
 use super::client::Client;
@@ -14,7 +15,6 @@ use crate::{
     runtime::{self as rt, AsyncTask},
     transcription::{self, TranscriptionError},
 };
-use fluent_ai_domain::model::TranscriptionModel;
 
 // ───────────────────────────── error handling ───────────────────────
 

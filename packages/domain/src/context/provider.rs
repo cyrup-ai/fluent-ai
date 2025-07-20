@@ -15,22 +15,22 @@ use std::time::{Duration, SystemTime};
 // High-performance dependencies
 use arrayvec::ArrayVec;
 // Memory system integration
+use fluent_ai_memory::MemoryManager;
 use fluent_ai_memory::memory::manager::surreal::SurrealDBMemoryManager;
+use fluent_ai_memory::memory::primitives::MemoryNode;
 use fluent_ai_memory::memory::primitives::metadata::MemoryMetadata;
 use fluent_ai_memory::memory::primitives::types::MemoryTypeEnum;
-use fluent_ai_memory::memory::primitives::MemoryNode;
 use fluent_ai_memory::utils::error::Error as MemoryError;
 use fluent_ai_memory::vector::embedding_model::EmbeddingModel;
 // Additional imports for async operations
 use futures::StreamExt;
 use glob::Pattern;
-
 use jwalk::WalkDir;
 use memmap2::MmapOptions;
 use rayon::prelude::*;
 use smallvec::SmallVec;
-use tokio_stream::Stream;
 
+// Removed unused import: tokio_stream::Stream
 use crate::{Document, ZeroOneOrMany};
 
 /// Marker types for Context
@@ -134,7 +134,7 @@ impl MemoryIntegration {
             .map_err(|e| ContextError::EmbeddingError(e.to_string()))?;
 
         // Create memory metadata with correct fields
-        let mut metadata = MemoryMetadata {
+        let _metadata = MemoryMetadata {
             user_id: None,
             agent_id: None,
             context: "file_context".to_string(),
@@ -152,17 +152,16 @@ impl MemoryIntegration {
         };
 
         // Create memory node
-        let memory_node = MemoryNode {
-            id: uuid::Uuid::new_v4().to_string(),
-            content: content.to_string(),
-            embedding: Some(embedding),
-            memory_type,
-            metadata,
-        };
+        let memory_node = MemoryNode::new(content.to_string(), memory_type)
+            .with_embedding(embedding)
+            .with_custom_metadata(
+                "provider".to_string(),
+                serde_json::json!("context_provider"),
+            );
 
         // Store in memory system
         self.memory_manager
-            .store_memory(&memory_node)
+            .create_memory(memory_node.clone())
             .await
             .map_err(ContextError::from)?;
 
@@ -194,11 +193,17 @@ impl MemoryIntegration {
             .map_err(|e| ContextError::EmbeddingError(e.to_string()))?;
 
         // Search in memory system
-        let results = self
+        let mut stream = self
             .memory_manager
-            .search_by_embedding(&query_embedding, Some(10))
-            .await
-            .map_err(ContextError::from)?;
+            .search_by_vector(query_embedding, 10);
+        
+        let mut results = Vec::new();
+        while let Some(node_result) = stream.next().await {
+            match node_result {
+                Ok(node) => results.push(node),
+                Err(e) => return Err(ContextError::from(e)),
+            }
+        }
 
         Ok(results)
     }
@@ -265,7 +270,7 @@ impl FileContext {
                 .map_err(|e| ContextError::MemoryMappingFailed(e.to_string()))?
         };
 
-        String::from_utf8_lossy(&mmap).to_string().into()
+        Ok(String::from_utf8_lossy(&mmap).to_string())
     }
 
     /// Standard file loading for small files
@@ -282,7 +287,7 @@ impl FileContext {
         // Store in memory if integration is available
         if let Some(integration) = &self.memory_integration {
             integration
-                .store_document(&path_str, &content, MemoryTypeEnum::Document)
+                .store_document(&path_str, &content, MemoryTypeEnum::Semantic)
                 .await?;
         }
 
@@ -328,7 +333,7 @@ impl FilesContext {
     /// Convert to documents with parallel processing
     pub async fn into_documents(self) -> Result<ZeroOneOrMany<Document>, ContextError> {
         let pattern_str = String::from_utf8_lossy(&self.pattern);
-        let pattern = Pattern::new(&pattern_str)?;
+        let _pattern = Pattern::new(&pattern_str)?;
 
         // Use glob to find matching files
         let paths: Vec<PathBuf> = glob::glob(&pattern_str)
@@ -366,7 +371,7 @@ impl FilesContext {
                     (
                         path.to_string_lossy().to_string(),
                         doc.data.clone(),
-                        MemoryTypeEnum::Document,
+                        MemoryTypeEnum::Semantic,
                     )
                 })
                 .collect();
@@ -462,7 +467,7 @@ impl DirectoryContext {
                     (
                         path.to_string_lossy().to_string(),
                         doc.data.clone(),
-                        MemoryTypeEnum::Document,
+                        MemoryTypeEnum::Semantic,
                     )
                 })
                 .collect();
@@ -543,7 +548,7 @@ impl GithubContext {
                     (
                         path.to_string_lossy().to_string(),
                         doc.data.clone(),
-                        MemoryTypeEnum::Document,
+                        MemoryTypeEnum::Semantic,
                     )
                 })
                 .collect();

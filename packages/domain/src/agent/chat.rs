@@ -9,9 +9,9 @@ use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
 
 use crate::agent::role::AgentRoleImpl;
-use crate::memory::{Memory, MemoryError, MemoryNode};
-use crate::memory::primitives::{MemoryTypeEnum, MemoryContent};
 use crate::memory::primitives::node::MemoryNodeBuilder;
+use crate::memory::primitives::{MemoryContent, MemoryTypeEnum};
+use crate::memory::{Memory, MemoryError, MemoryNode};
 use crate::memory::{MemoryTool, MemoryToolError};
 
 /// Maximum number of relevant memories for context injection
@@ -111,11 +111,11 @@ impl AgentRoleImpl {
     /// Zero allocation with lock-free memory queries and quantum routing
     pub async fn inject_memory_context(
         &self,
-        message: &str,
-        memory: &Arc<Memory>,
+        _message: &str,
+        _memory: &Arc<Memory>,
     ) -> Result<ContextInjectionResult, ChatError> {
         // Query relevant memories with zero-allocation buffer
-        let mut relevant_memories = ArrayVec::<MemoryNode, MAX_RELEVANT_MEMORIES>::new();
+        let relevant_memories = ArrayVec::<MemoryNode, MAX_RELEVANT_MEMORIES>::new();
 
         // TODO: Implement actual memory querying logic
         // For now, return empty context
@@ -199,7 +199,7 @@ impl AgentRoleImpl {
         // Create memory node for assistant response
         let assistant_memory = MemoryNode::new(
             MemoryTypeEnum::Episodic,
-            MemoryContent::text(assistant_response)
+            MemoryContent::text(assistant_response),
         );
 
         // Store assistant memory with zero-allocation error handling
@@ -218,7 +218,10 @@ impl AgentRoleImpl {
         // Create contextual memory node linking the conversation
         let context_memory = MemoryNode::new(
             MemoryTypeEnum::Contextual,
-            MemoryContent::text(format!("Conversation: {} -> {}", user_message, assistant_response))
+            MemoryContent::text(format!(
+                "Conversation: {} -> {}",
+                user_message, assistant_response
+            )),
         );
 
         // Store context memory with zero-allocation error handling

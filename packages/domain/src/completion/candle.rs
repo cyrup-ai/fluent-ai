@@ -12,7 +12,6 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use arrayvec::ArrayVec;
-
 use smallvec::SmallVec;
 use thiserror::Error;
 use tokio_stream::Stream;
@@ -419,21 +418,18 @@ impl CompletionCoreResponseBuilder {
 /// Core trait for zero-allocation completion clients
 pub trait CompletionCoreClient: Send + Sync + 'static {
     /// Generate completion with zero allocation
-    #[inline(always)]
     fn complete<'a>(
         &'a self,
         request: CompletionCoreRequest<'_>,
     ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<CompletionCoreResponse>> + Send + 'a>>;
 
     /// Generate streaming completion
-    #[inline(always)]
     fn complete_stream<'a>(
         &'a self,
         request: CompletionCoreRequest<'_>,
     ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<StreamingCoreResponse>> + Send + 'a>>;
 
     /// Get the model name/identifier for this client
-    #[inline(always)]
     fn model_name(&self) -> &'static str;
 }
 
@@ -463,10 +459,9 @@ impl StreamingCoreResponse {
 /// Extension trait for additional completion client functionality
 pub trait CompletionCoreClientExt: CompletionCoreClient {
     /// Perform multiple completions in parallel
-    #[inline(always)]
     fn complete_batch<'a>(
         &'a self,
-        requests: Vec<CompletionCoreRequest<'_>>,
+        requests: Vec<CompletionCoreRequest<'a>>,
     ) -> Pin<Box<dyn Future<Output = Vec<CompletionCoreResult<CompletionCoreResponse>>> + Send + 'a>>
     {
         Box::pin(async move {
@@ -479,10 +474,9 @@ pub trait CompletionCoreClientExt: CompletionCoreClient {
     }
 
     /// Get completion with timeout
-    #[inline(always)]
     fn complete_with_timeout<'a>(
         &'a self,
-        request: CompletionCoreRequest<'_>,
+        request: CompletionCoreRequest<'a>,
         timeout: std::time::Duration,
     ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<CompletionCoreResponse>> + Send + 'a>>
     {

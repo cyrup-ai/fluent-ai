@@ -1,39 +1,38 @@
 use std::sync::Arc;
-use std::time::Duration;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use std::hint::black_box;
-use fluent_ai_memory::cache::{Cache, CachePolicy, MemoryCache};
-use fluent_ai_memory::core::Memory;
-use fluent_ai_memory::storage::{graph::GraphDB, vector::VectorStore};
-use rand::prelude::*;
-use rand::{thread_rng, Rng};
+use fluent_ai_memory::{SurrealMemoryManager, MemoryNode, MemoryConfig, memory::MemoryTypeEnum};
+use rand::{Rng, rng};
 use tokio::runtime::Runtime;
 
-fn setup_benchmark_environment() -> (Arc<GraphDB>, Arc<VectorStore>, Runtime) {
+fn setup_benchmark_environment() -> (Arc<SurrealMemoryManager>, Runtime) {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graph_db =
-        Arc::new(runtime.block_on(async { GraphDB::new("benchmark_graph.db").await.unwrap() }));
-    let vector_store = Arc::new(
-        runtime.block_on(async { VectorStore::new("benchmark_vector.db").await.unwrap() }),
+    let config = MemoryConfig::default();
+    let memory_manager = Arc::new(
+        runtime.block_on(async { 
+            fluent_ai_memory::initialize(&config).await.unwrap()
+        })
     );
-    (graph_db, vector_store, runtime)
+    (memory_manager, runtime)
 }
 
-fn create_test_memory(id: &str) -> Memory {
-    Memory::new_with_id(id, "Test content", None, None)
+fn create_test_memory(id: &str) -> MemoryNode {
+    MemoryNode::new(
+        "Test content".to_string(),
+        MemoryTypeEnum::Semantic,
+    )
 }
 
 fn create_memory_vector(size: usize) -> Vec<f32> {
-    let mut rng = thread_rng();
-    (0..size).map(|_| rng.r#gen::<f32>()).collect()
+    let mut rng = rng();
+    (0..size).map(|_| rng.random::<f32>()).collect()
 }
 
 fn bench_memory_creation(c: &mut Criterion) {
     c.bench_function("memory_creation", |b| {
         b.iter(|| {
             let memory = create_test_memory("test_id");
-            black_box(memory);
+            std::hint::black_box(memory);
         });
     });
 }
@@ -43,202 +42,83 @@ fn bench_memory_serialization(c: &mut Criterion) {
     c.bench_function("memory_serialization", |b| {
         b.iter(|| {
             let serialized = serde_json::to_string(&memory).unwrap();
-            black_box(serialized);
+            std::hint::black_box(serialized);
         });
     });
 }
 
 fn bench_memory_storage(c: &mut Criterion) {
-    let (graph_db, vector_store, runtime) = setup_benchmark_environment();
+    let (memory_manager, runtime) = setup_benchmark_environment();
     let memory = create_test_memory("test_id");
-    let vector = create_memory_vector(128);
 
     c.bench_function("memory_storage", |b| {
         b.iter(|| {
             runtime.block_on(async {
-                graph_db.store_entity(&memory).await.unwrap();
-                vector_store
-                    .store_vector(memory.id(), &vector)
-                    .await
-                    .unwrap();
+                memory_manager.store(&memory).await.unwrap();
             });
         });
     });
 }
 
-fn bench_vector_search(c: &mut Criterion) {
-    let (_, vector_store, runtime) = setup_benchmark_environment();
-    let query_vector = create_memory_vector(128);
+fn bench_memory_retrieval(c: &mut Criterion) {
+    let (memory_manager, runtime) = setup_benchmark_environment();
+    let memory = create_test_memory("test_id");
+    
+    // Store the memory first
+    runtime.block_on(async {
+        memory_manager.store(&memory).await.unwrap();
+    });
 
-    c.bench_function("vector_search", |b| {
+    c.bench_function("memory_retrieval", |b| {
         b.iter(|| {
             runtime.block_on(async {
-                let results = vector_store
-                    .search_vectors(&query_vector, 10)
-                    .await
-                    .unwrap();
-                black_box(results);
+                let result = memory_manager.get("test_id").await.unwrap();
+                std::hint::black_box(result);
             });
         });
     });
 }
 
-fn bench_memory_cache(c: &mut Criterion) {
-    let mut group = c.benchmark_group("memory_cache");
-    group.measurement_time(Duration::from_secs(15));
-    group.sample_size(10);
-
-    let policies = [CachePolicy::FIFO, CachePolicy::LRU, CachePolicy::LFU];
-    let memories: Vec<Memory> = (0..1000)
-        .map(|i| create_test_memory(&format!("mem_{}", i)))
-        .collect();
-
-    for &policy in &policies {
-        let mut cache = MemoryCache::new(100, policy);
-        for i in 0..500 {
-            cache.put(memories[i].clone());
+fn bench_memory_search(c: &mut Criterion) {
+    let (memory_manager, runtime) = setup_benchmark_environment();
+    
+    // Store some test memories
+    runtime.block_on(async {
+        for i in 0..100 {
+            let memory = create_test_memory(&format!("test_id_{}", i));
+            memory_manager.store(&memory).await.unwrap();
         }
+    });
 
-        // Benchmark cache hits
-        group.bench_with_input(
-            BenchmarkId::new("cache_hit", format!("{:?}", policy)),
-            &policy,
-            |b, _| {
-                b.iter(|| {
-                    let mut rng = thread_rng();
-                    let idx = black_box(rng.gen_range(0..500));
-                    let id = black_box(&memories[idx].id());
-                    cache.get(id)
-                });
-            },
-        );
-
-        // Benchmark cache misses
-        group.bench_with_input(
-            BenchmarkId::new("cache_miss", format!("{:?}", policy)),
-            &policy,
-            |b, _| {
-                b.iter(|| {
-                    let mut rng = thread_rng();
-                    let idx = black_box(500 + rng.gen_range(0..500));
-                    let id = black_box(&memories[idx].id());
-                    cache.get(id)
-                });
-            },
-        );
-
-        // Benchmark cache updates
-        group.bench_with_input(
-            BenchmarkId::new("cache_update", format!("{:?}", policy)),
-            &policy,
-            |b, _| {
-                b.iter(|| {
-                    let mut rng = thread_rng();
-                    let idx = black_box(rng.gen_range(0..1000));
-                    let memory = black_box(memories[idx].clone());
-                    cache.put(memory)
-                });
-            },
-        );
-    }
-
-    group.finish();
+    c.bench_function("memory_search", |b| {
+        b.iter(|| {
+            runtime.block_on(async {
+                let results = memory_manager.search("Test", 10).await.unwrap();
+                std::hint::black_box(results);
+            });
+        });
+    });
 }
 
-// Benchmark memory operations under concurrent load
-fn bench_concurrent_operations(c: &mut Criterion) {
-    let (graph_db, vector_store, runtime) = setup_benchmark_environment();
-
-    let mut group = c.benchmark_group("concurrent_operations");
-    group.measurement_time(Duration::from_secs(20));
-    group.sample_size(20);
-
-    // Concurrent memory creation and storage
-    let concurrency_levels = [1, 4, 8, 16, 32];
-
-    for &concurrency in &concurrency_levels {
-        group.bench_with_input(
-            BenchmarkId::new("concurrent_store", concurrency),
-            &concurrency,
-            |b, &concurrency| {
-                b.iter(|| {
-                    runtime.block_on(async {
-                        let mut handles = Vec::new();
-                        for i in 0..concurrency {
-                            let graph_db = graph_db.clone();
-                            let vector_store = vector_store.clone();
-                            let handle = tokio::spawn(async move {
-                                let id = format!("concurrent_{}_{}", concurrency, i);
-                                let memory = create_test_memory(&id);
-                                let vector = create_memory_vector(128);
-                                graph_db.store_entity(&memory).await.unwrap();
-                                vector_store.store_vector(&id, &vector).await.unwrap();
-                            });
-                            handles.push(handle);
-                        }
-                        for handle in handles {
-                            handle.await.unwrap();
-                        }
-                    });
+fn bench_batch_operations(c: &mut Criterion) {
+    let (memory_manager, runtime) = setup_benchmark_environment();
+    
+    let mut group = c.benchmark_group("batch_operations");
+    for size in [10, 100, 1000].iter() {
+        group.bench_with_input(BenchmarkId::new("batch_store", size), size, |b, &size| {
+            b.iter(|| {
+                runtime.block_on(async {
+                    let memories: Vec<MemoryNode> = (0..size)
+                        .map(|i| create_test_memory(&format!("batch_test_{}", i)))
+                        .collect();
+                    
+                    for memory in memories {
+                        memory_manager.store(&memory).await.unwrap();
+                    }
                 });
-            },
-        );
-
-        // Concurrent retrieval
-        group.bench_with_input(
-            BenchmarkId::new("concurrent_retrieve", concurrency),
-            &concurrency,
-            |b, &concurrency| {
-                b.iter(|| {
-                    runtime.block_on(async {
-                        let mut handles = Vec::new();
-                        for i in 0..concurrency {
-                            let graph_db = graph_db.clone();
-                            let vector_store = vector_store.clone();
-                            let handle = tokio::spawn(async move {
-                                let id = format!("concurrent_{}_{}", concurrency, i);
-                                let entity = graph_db.get_entity(&id).await.unwrap();
-                                let vector = vector_store.get_vector(&id).await.unwrap();
-                                (entity, vector)
-                            });
-                            handles.push(handle);
-                        }
-                        for handle in handles {
-                            handle.await.unwrap();
-                        }
-                    });
-                });
-            },
-        );
-
-        // Concurrent vector search
-        group.bench_with_input(
-            BenchmarkId::new("concurrent_search", concurrency),
-            &concurrency,
-            |b, &concurrency| {
-                b.iter(|| {
-                    runtime.block_on(async {
-                        let mut handles = Vec::new();
-                        for _ in 0..concurrency {
-                            let vector_store = vector_store.clone();
-                            let query_vector = create_memory_vector(128);
-                            let handle = tokio::spawn(async move {
-                                vector_store
-                                    .search_vectors(&query_vector, 10)
-                                    .await
-                                    .unwrap()
-                            });
-                            handles.push(handle);
-                        }
-                        for handle in handles {
-                            handle.await.unwrap();
-                        }
-                    });
-                });
-            },
-        );
+            });
+        });
     }
-
     group.finish();
 }
 
@@ -247,8 +127,8 @@ criterion_group!(
     bench_memory_creation,
     bench_memory_serialization,
     bench_memory_storage,
-    bench_vector_search,
-    bench_memory_cache,
-    bench_concurrent_operations,
+    bench_memory_retrieval,
+    bench_memory_search,
+    bench_batch_operations
 );
 criterion_main!(benches);

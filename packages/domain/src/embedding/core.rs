@@ -5,10 +5,10 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::AsyncTask;
 use crate::ZeroOneOrMany;
 use crate::chunk::EmbeddingChunk;
 use crate::usage::Usage;
-use crate::{AsyncTask, spawn_async};
 
 /// Core trait for embedding models
 pub trait EmbeddingModel: Send + Sync + Clone {

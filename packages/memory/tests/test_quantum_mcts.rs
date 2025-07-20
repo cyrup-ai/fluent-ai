@@ -9,9 +9,10 @@ use fluent_ai_memory::cognitive::{
     committee::CommitteeEvent,
     mcts::CodeState,
     performance::PerformanceAnalyzer,
-    quantum_mcts::{QuantumMCTS, QuantumMCTSConfig},
+    quantum_mcts::QuantumMCTS,
+    quantum::QuantumConfig,
     quantum_orchestrator::{QuantumOrchestrationConfig, QuantumOrchestrator},
-    types::{ContentCategory, ContentType, OptimizationSpec, Restrictions, SecurityLevel},
+    types::{ContentCategory, ContentType, EvolutionRules, OptimizationSpec, OptimizationType, Restrictions, SecurityLevel},
 };
 use tokio::sync::mpsc;
 
@@ -58,11 +59,19 @@ fn process_data(items: Vec<i32>) -> Vec<i32> {
             },
         },
         baseline_metrics: initial_state.clone(),
-        user_objective: "Optimize for performance while maintaining accuracy".to_string(),
+        objective: "Optimize for performance while maintaining accuracy".to_string(),
+        improvement_threshold: 0.1,
+        constraints: vec!["memory_safe".to_string()],
+        success_criteria: vec!["performance_improved".to_string()],
+        optimization_type: OptimizationType::Performance,
+        timeout_ms: Some(5000),
+        max_iterations: Some(100),
+        target_quality: 0.8,
+        evolution_rules: EvolutionRules::default(),
     });
 
     let performance_analyzer = Arc::new(PerformanceAnalyzer::new());
-    let config = QuantumMCTSConfig::default();
+    let config = QuantumConfig::default();
 
     // Create quantum MCTS
     let mut quantum_mcts = QuantumMCTS::new(
@@ -132,7 +141,15 @@ async fn fetch_data(urls: Vec<String>) -> Vec<Result<String, Error>> {
             },
         },
         baseline_metrics: initial_state.clone(),
-        user_objective: "Parallelize async operations for better performance".to_string(),
+        objective: "Parallelize async operations for better performance".to_string(),
+        improvement_threshold: 0.15,
+        constraints: vec!["async_safe".to_string()],
+        success_criteria: vec!["async_performance_improved".to_string()],
+        optimization_type: OptimizationType::Performance,
+        timeout_ms: Some(7000),
+        max_iterations: Some(150),
+        target_quality: 0.85,
+        evolution_rules: EvolutionRules::default(),
     });
 
     let performance_analyzer = Arc::new(PerformanceAnalyzer::new());
@@ -144,7 +161,7 @@ async fn fetch_data(urls: Vec<String>) -> Vec<Result<String, Error>> {
         convergence_epsilon: 0.01,
         max_iterations_per_depth: 30,
     };
-    let mcts_config = QuantumMCTSConfig::default();
+    let mcts_config = QuantumConfig::default();
 
     // Create orchestrator
     let orchestrator = QuantumOrchestrator::new(
@@ -212,13 +229,21 @@ async fn test_quantum_convergence() {
             },
         },
         baseline_metrics: initial_state.clone(),
-        user_objective: "Already optimal code".to_string(),
+        objective: "Already optimal code".to_string(),
+        improvement_threshold: 0.05,
+        constraints: vec!["minimal_change".to_string()],
+        success_criteria: vec!["no_regression".to_string()],
+        optimization_type: OptimizationType::Quality,
+        timeout_ms: Some(3000),
+        max_iterations: Some(50),
+        target_quality: 0.95,
+        evolution_rules: EvolutionRules::default(),
     });
 
     let performance_analyzer = Arc::new(PerformanceAnalyzer::new());
-    let config = QuantumMCTSConfig {
-        recursive_iterations: 2,
-        amplitude_threshold: 0.1,
+    let config = QuantumConfig {
+        max_superposition_states: 2,
+        decoherence_threshold: 0.1,
         ..Default::default()
     };
 
@@ -257,7 +282,8 @@ fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
 }
 "#
         .to_string(),
-        code_content: "matrix multiplication function with cache optimization potential".to_string(),
+        code_content: "matrix multiplication function with cache optimization potential"
+            .to_string(),
         latency: 500.0,
         memory: 200.0,
         relevance: 90.0,
@@ -272,7 +298,10 @@ fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
             restrictions: Restrictions {
                 max_memory_usage: Some(4096),
                 max_processing_time: Some(5000),
-                allowed_operations: vec!["matrix_optimization".to_string(), "cache_blocking".to_string()],
+                allowed_operations: vec![
+                    "matrix_optimization".to_string(),
+                    "cache_blocking".to_string(),
+                ],
                 forbidden_operations: vec![],
                 security_level: SecurityLevel::Restricted,
                 compiler: "rustc".to_string(),
@@ -282,13 +311,21 @@ fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
             },
         },
         baseline_metrics: initial_state.clone(),
-        user_objective: "Optimize matrix multiplication with cache efficiency".to_string(),
+        objective: "Optimize matrix multiplication with cache efficiency".to_string(),
+        improvement_threshold: 0.2,
+        constraints: vec!["cache_friendly".to_string(), "vectorizable".to_string()],
+        success_criteria: vec!["cache_efficiency_improved".to_string(), "performance_boost".to_string()],
+        optimization_type: OptimizationType::Efficiency,
+        timeout_ms: Some(10000),
+        max_iterations: Some(200),
+        target_quality: 0.9,
+        evolution_rules: EvolutionRules::default(),
     });
 
     let performance_analyzer = Arc::new(PerformanceAnalyzer::new());
-    let config = QuantumMCTSConfig {
-        entanglement_strength: 0.9,
-        quantum_exploration: 3.0,
+    let config = QuantumConfig {
+        entanglement_probability: 0.9,
+        exploration_constant: 3.0,
         ..Default::default()
     };
 

@@ -11,9 +11,7 @@ use once_cell::sync::Lazy;
 
 use crate::model::error::{ModelError, Result};
 use crate::model::info::ModelInfo;
-use crate::model::traits::{
-    AnyChatCompletionCapable, AnyEmbeddingCapable, AnyModel, AnyTextGenerationCapable, Model,
-};
+use crate::model::traits::Model;
 
 /// A type-erased model reference
 struct ModelHandle {
@@ -41,8 +39,6 @@ impl ModelHandle {
     fn info(&self) -> &'static ModelInfo {
         self.info
     }
-
-
 }
 
 /// The global model registry
@@ -237,13 +233,12 @@ impl ModelRegistry {
             None => return Ok(None),
         };
 
-        // Try to downcast to the requested type
-        match handle.as_any().downcast_ref::<T>() {
-            Some(model) => Ok(Some(Arc::new(model.clone()))),
-            None => Err(ModelError::InvalidConfiguration(
-                "model cannot be converted to the requested trait object".into(),
-            )),
-        }
+        // The issue is that we're trying to work with ?Sized types
+        // For now, let's simplify and require T to be Sized
+        // This method should be redesigned to work properly with trait objects
+        Err(ModelError::InvalidConfiguration(
+            "get_boxed method currently not implemented for ?Sized types".into(),
+        ))
     }
 
     /// Get a model as a boxed trait object
@@ -272,13 +267,12 @@ impl ModelRegistry {
             None => return Ok(None),
         };
 
-        // Try to downcast to the requested type
-        match handle.as_any().downcast_ref::<T>() {
-            Some(model) => Ok(Some(Box::new(model.clone()))),
-            None => Err(ModelError::InvalidConfiguration(
-                "model cannot be converted to the requested trait object".into(),
-            )),
-        }
+        // The issue is that we're trying to work with ?Sized types
+        // For now, let's simplify and require T to be Sized
+        // This method should be redesigned to work properly with trait objects
+        Err(ModelError::InvalidConfiguration(
+            "get_boxed method currently not implemented for ?Sized types".into(),
+        ))
     }
 
     /// Get a model as a specific trait object, returning an error if not found

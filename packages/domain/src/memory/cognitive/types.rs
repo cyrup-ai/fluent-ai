@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+// Removed unused import: std::collections::HashMap
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
@@ -883,3 +883,333 @@ pub enum CognitiveError {
 
 /// Result type for cognitive operations
 pub type CognitiveResult<T> = Result<T, CognitiveError>;
+
+/// Cognitive memory system for managing cognitive states and operations
+///
+/// This system provides high-level cognitive memory management with:
+/// - State persistence and retrieval
+/// - Cognitive pattern recognition
+/// - Memory consolidation and optimization
+/// - Performance monitoring and analytics
+#[derive(Debug, Clone)]
+pub struct CognitiveMemory {
+    /// Current cognitive state
+    state: Arc<CognitiveState>,
+    /// Memory storage for cognitive patterns
+    pattern_storage: Arc<SkipMap<Uuid, CognitivePattern>>,
+    /// Performance metrics
+    metrics: Arc<CachePadded<CognitiveMetrics>>,
+    /// Configuration settings
+    config: CognitiveMemoryConfig,
+}
+
+/// Cognitive processor for executing cognitive operations
+///
+/// This processor handles:
+/// - Cognitive state transitions
+/// - Pattern matching and recognition
+/// - Decision making processes
+/// - Learning and adaptation
+#[derive(Debug, Clone)]
+pub struct CognitiveProcessor {
+    /// Processing configuration
+    config: CognitiveProcessorConfig,
+    /// Current processing state
+    state: Arc<CachePadded<ProcessingState>>,
+    /// Pattern matcher for cognitive patterns
+    pattern_matcher: Arc<PatternMatcher>,
+    /// Decision engine for cognitive decisions
+    decision_engine: Arc<DecisionEngine>,
+}
+
+/// Configuration for cognitive memory system
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CognitiveMemoryConfig {
+    /// Maximum number of patterns to store
+    pub max_patterns: usize,
+    /// Memory consolidation threshold
+    pub consolidation_threshold: f32,
+    /// Pattern retention time in seconds
+    pub pattern_retention_seconds: u64,
+    /// Enable performance monitoring
+    pub enable_monitoring: bool,
+}
+
+/// Configuration for cognitive processor
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CognitiveProcessorConfig {
+    /// Processing batch size
+    pub batch_size: usize,
+    /// Decision threshold
+    pub decision_threshold: f32,
+    /// Learning rate for adaptation
+    pub learning_rate: f32,
+    /// Maximum processing iterations
+    pub max_iterations: usize,
+}
+
+/// Cognitive pattern representation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CognitivePattern {
+    /// Unique pattern identifier
+    pub id: Uuid,
+    /// Pattern data
+    pub data: Vec<f32>,
+    /// Pattern strength/confidence
+    pub strength: f32,
+    /// Creation timestamp
+    pub created_at: SystemTime,
+    /// Last accessed timestamp
+    pub last_accessed: SystemTime,
+    /// Access count
+    pub access_count: u64,
+}
+
+/// Cognitive metrics for performance monitoring
+#[derive(Debug)]
+pub struct CognitiveMetrics {
+    /// Total patterns processed
+    pub patterns_processed: AtomicU64,
+    /// Total decisions made
+    pub decisions_made: AtomicU64,
+    /// Average processing time in microseconds
+    pub avg_processing_time_us: AtomicU64,
+    /// Success rate (0.0 to 1.0)
+    pub success_rate: AtomicF32,
+}
+
+/// Current processing state
+#[derive(Debug)]
+pub struct ProcessingState {
+    /// Is currently processing
+    pub is_processing: std::sync::atomic::AtomicBool,
+    /// Current iteration
+    pub current_iteration: AtomicU64,
+    /// Processing start time
+    pub start_time: std::sync::atomic::AtomicU64,
+}
+
+/// Pattern matcher for cognitive patterns
+#[derive(Debug)]
+pub struct PatternMatcher {
+    /// Matching threshold
+    threshold: f32,
+    /// Pattern cache
+    cache: Arc<SkipMap<Uuid, f32>>,
+}
+
+/// Decision engine for cognitive decisions
+#[derive(Debug)]
+pub struct DecisionEngine {
+    /// Decision threshold
+    threshold: f32,
+    /// Decision history
+    history: Arc<SegQueue<Decision>>,
+}
+
+/// Represents a cognitive decision
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Decision {
+    /// Decision identifier
+    pub id: Uuid,
+    /// Decision confidence
+    pub confidence: f32,
+    /// Decision timestamp
+    pub timestamp: SystemTime,
+    /// Decision outcome
+    pub outcome: DecisionOutcome,
+}
+
+/// Possible decision outcomes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DecisionOutcome {
+    /// Accept the decision
+    Accept,
+    /// Reject the decision
+    Reject,
+    /// Defer the decision
+    Defer,
+    /// Request more information
+    RequestInfo,
+}
+
+impl CognitiveMemory {
+    /// Create a new cognitive memory system
+    pub fn new(config: CognitiveMemoryConfig) -> Self {
+        Self {
+            state: Arc::new(CognitiveState::new()),
+            pattern_storage: Arc::new(SkipMap::new()),
+            metrics: Arc::new(CachePadded::new(CognitiveMetrics::new())),
+            config,
+        }
+    }
+
+    /// Get the current cognitive state
+    pub fn state(&self) -> &Arc<CognitiveState> {
+        &self.state
+    }
+
+    /// Store a cognitive pattern
+    pub fn store_pattern(&self, pattern: CognitivePattern) -> CognitiveResult<()> {
+        if self.pattern_storage.len() >= self.config.max_patterns {
+            return Err(CognitiveError::MemoryCapacityExceeded(format!(
+                "Cannot store more than {} patterns",
+                self.config.max_patterns
+            )));
+        }
+
+        self.pattern_storage.insert(pattern.id, pattern);
+        self.metrics
+            .patterns_processed
+            .fetch_add(1, Ordering::Relaxed);
+        Ok(())
+    }
+
+    /// Retrieve a cognitive pattern by ID
+    pub fn get_pattern(&self, id: &Uuid) -> Option<CognitivePattern> {
+        self.pattern_storage
+            .get(id)
+            .map(|entry| entry.value().clone())
+    }
+
+    /// Get performance metrics
+    pub fn metrics(&self) -> &CognitiveMetrics {
+        &self.metrics
+    }
+}
+
+impl CognitiveProcessor {
+    /// Create a new cognitive processor
+    pub fn new(config: CognitiveProcessorConfig) -> Self {
+        Self {
+            config,
+            state: Arc::new(CachePadded::new(ProcessingState::new())),
+            pattern_matcher: Arc::new(PatternMatcher::new(0.8)),
+            decision_engine: Arc::new(DecisionEngine::new(0.7)),
+        }
+    }
+
+    /// Process cognitive input and return decision
+    pub fn process(&self, input: &[f32]) -> CognitiveResult<Decision> {
+        // Set processing state
+        self.state.is_processing.store(true, Ordering::Relaxed);
+        let start_time = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() as u64;
+        self.state.start_time.store(start_time, Ordering::Relaxed);
+
+        // Match patterns
+        let pattern_match = self.pattern_matcher.match_pattern(input)?;
+
+        // Make decision
+        let decision = self.decision_engine.make_decision(pattern_match)?;
+
+        // Update state
+        self.state.current_iteration.fetch_add(1, Ordering::Relaxed);
+        self.state.is_processing.store(false, Ordering::Relaxed);
+
+        Ok(decision)
+    }
+
+    /// Get current processing state
+    pub fn is_processing(&self) -> bool {
+        self.state.is_processing.load(Ordering::Relaxed)
+    }
+}
+
+impl Default for CognitiveMemoryConfig {
+    fn default() -> Self {
+        Self {
+            max_patterns: 10000,
+            consolidation_threshold: 0.8,
+            pattern_retention_seconds: 86400, // 24 hours
+            enable_monitoring: true,
+        }
+    }
+}
+
+impl Default for CognitiveProcessorConfig {
+    fn default() -> Self {
+        Self {
+            batch_size: 32,
+            decision_threshold: 0.7,
+            learning_rate: 0.01,
+            max_iterations: 1000,
+        }
+    }
+}
+
+impl CognitiveMetrics {
+    /// Create new metrics
+    pub fn new() -> Self {
+        Self {
+            patterns_processed: AtomicU64::new(0),
+            decisions_made: AtomicU64::new(0),
+            avg_processing_time_us: AtomicU64::new(0),
+            success_rate: AtomicF32::new(0.0),
+        }
+    }
+}
+
+impl ProcessingState {
+    /// Create new processing state
+    pub fn new() -> Self {
+        Self {
+            is_processing: std::sync::atomic::AtomicBool::new(false),
+            current_iteration: AtomicU64::new(0),
+            start_time: std::sync::atomic::AtomicU64::new(0),
+        }
+    }
+}
+
+impl PatternMatcher {
+    /// Create new pattern matcher
+    pub fn new(threshold: f32) -> Self {
+        Self {
+            threshold,
+            cache: Arc::new(SkipMap::new()),
+        }
+    }
+
+    /// Match input against patterns
+    pub fn match_pattern(&self, input: &[f32]) -> CognitiveResult<f32> {
+        // Simple pattern matching logic - in production this would be more sophisticated
+        let pattern_strength = input.iter().map(|x| x.abs()).sum::<f32>() / input.len() as f32;
+
+        if pattern_strength >= self.threshold {
+            Ok(pattern_strength)
+        } else {
+            Ok(0.0)
+        }
+    }
+}
+
+impl DecisionEngine {
+    /// Create new decision engine
+    pub fn new(threshold: f32) -> Self {
+        Self {
+            threshold,
+            history: Arc::new(SegQueue::new()),
+        }
+    }
+
+    /// Make a decision based on pattern match strength
+    pub fn make_decision(&self, pattern_strength: f32) -> CognitiveResult<Decision> {
+        let decision = Decision {
+            id: Uuid::new_v4(),
+            confidence: pattern_strength,
+            timestamp: SystemTime::now(),
+            outcome: if pattern_strength >= self.threshold {
+                DecisionOutcome::Accept
+            } else if pattern_strength >= self.threshold * 0.5 {
+                DecisionOutcome::Defer
+            } else {
+                DecisionOutcome::Reject
+            },
+        };
+
+        self.history.push(decision.clone());
+        Ok(decision)
+    }
+}

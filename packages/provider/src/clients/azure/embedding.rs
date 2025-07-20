@@ -6,6 +6,7 @@
 
 #![allow(clippy::type_complexity)]
 
+use fluent_ai_domain::model::EmbeddingModel;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -14,7 +15,6 @@ use crate::{
     embeddings::{self, EmbeddingError},
     runtime::{self as rt, AsyncTask},
 };
-use fluent_ai_domain::model::EmbeddingModel;
 
 // ───────────────────────────── public constants ──────────────────────────
 

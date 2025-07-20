@@ -16,9 +16,9 @@ use crossbeam_skiplist::SkipMap;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, broadcast, mpsc};
 use tokio::time::{interval, sleep};
-// Removed unused import: uuid::Uuid
 
-use crate::message::Message;
+// Removed unused import: uuid::Uuid
+use crate::message::{Message, MessageType};
 
 /// Real-time event types with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,12 +87,16 @@ pub enum RealTimeEvent {
 }
 
 /// Connection status enumeration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ConnectionStatus {
     /// Connected and active
     Connected,
+    /// Connecting
+    Connecting,
     /// Disconnected
     Disconnected,
+    /// Connection error
+    Error,
     /// Reconnecting
     Reconnecting,
     /// Connection failed
@@ -201,17 +205,17 @@ impl TypingState {
 /// Typing indicator manager with atomic operations
 pub struct TypingIndicator {
     /// Active typing states
-    typing_states: SkipMap<Arc<str>, Arc<TypingState>>,
+    typing_states: Arc<SkipMap<Arc<str>, Arc<TypingState>>>,
     /// Typing expiry duration in seconds
-    expiry_duration: AtomicU64,
+    expiry_duration: Arc<AtomicU64>,
     /// Cleanup interval in seconds
-    cleanup_interval: AtomicU64,
+    cleanup_interval: Arc<AtomicU64>,
     /// Event broadcaster
     event_broadcaster: broadcast::Sender<RealTimeEvent>,
     /// Active users counter
-    active_users: ConsistentCounter,
+    active_users: Arc<ConsistentCounter>,
     /// Total typing events counter
-    typing_events: ConsistentCounter,
+    typing_events: Arc<ConsistentCounter>,
     /// Cleanup task handle
     cleanup_task: ArcSwap<Option<tokio::task::JoinHandle<()>>>,
 }
@@ -222,12 +226,12 @@ impl TypingIndicator {
         let (event_broadcaster, _) = broadcast::channel(1000);
 
         Self {
-            typing_states: SkipMap::new(),
-            expiry_duration: AtomicU64::new(expiry_duration),
-            cleanup_interval: AtomicU64::new(cleanup_interval),
+            typing_states: Arc::new(SkipMap::new()),
+            expiry_duration: Arc::new(AtomicU64::new(expiry_duration)),
+            cleanup_interval: Arc::new(AtomicU64::new(cleanup_interval)),
             event_broadcaster,
-            active_users: ConsistentCounter::new(0),
-            typing_events: ConsistentCounter::new(0),
+            active_users: Arc::new(ConsistentCounter::new(0)),
+            typing_events: Arc::new(ConsistentCounter::new(0)),
             cleanup_task: ArcSwap::new(Arc::new(None)),
         }
     }
@@ -354,7 +358,14 @@ impl TypingIndicator {
                 // Remove expired states
                 for key in expired_keys {
                     typing_states.remove(&key);
-                    active_users.dec();
+                    // Decrement counter - ConsistentCounter doesn't have dec(), so we work around it
+                    let current = active_users.get();
+                    if current > 0 {
+                        active_users.reset();
+                        for _ in 0..(current - 1) {
+                            active_users.inc();
+                        }
+                    }
                 }
             }
         });
@@ -424,15 +435,15 @@ pub enum MessagePriority {
 /// Live update system with message streaming and backpressure handling
 pub struct LiveUpdateSystem {
     /// Message queue for streaming
-    message_queue: SegQueue<LiveUpdateMessage>,
+    message_queue: Arc<SegQueue<LiveUpdateMessage>>,
     /// Event broadcaster for live updates
     event_broadcaster: broadcast::Sender<RealTimeEvent>,
     /// Subscriber channels
     subscribers: Arc<RwLock<HashMap<Arc<str>, mpsc::UnboundedSender<LiveUpdateMessage>>>>,
     /// Message counter
-    message_counter: ConsistentCounter,
+    message_counter: Arc<AtomicUsize>,
     /// Subscriber counter
-    subscriber_counter: ConsistentCounter,
+    subscriber_counter: Arc<ConsistentCounter>,
     /// Queue size limit
     queue_size_limit: AtomicUsize,
     /// Backpressure threshold
@@ -467,11 +478,11 @@ impl LiveUpdateSystem {
         ))));
 
         Self {
-            message_queue: SegQueue::new(),
+            message_queue: Arc::new(SegQueue::new()),
             event_broadcaster,
             subscribers: Arc::new(RwLock::new(HashMap::new())),
-            message_counter: ConsistentCounter::new(0),
-            subscriber_counter: ConsistentCounter::new(0),
+            message_counter: Arc::new(AtomicUsize::new(0)),
+            subscriber_counter: Arc::new(ConsistentCounter::new(0)),
             queue_size_limit: AtomicUsize::new(queue_size_limit),
             backpressure_threshold: AtomicUsize::new(backpressure_threshold),
             rate_limiter,
@@ -488,7 +499,7 @@ impl LiveUpdateSystem {
 
     /// Send live update message
     pub async fn send_message(&self, message: LiveUpdateMessage) -> Result<(), RealTimeError> {
-        let current_queue_size = self.message_counter.get();
+        let current_queue_size = self.message_counter.load(Ordering::Relaxed);
         let queue_limit = self.queue_size_limit.load(Ordering::Relaxed);
 
         // Check for backpressure
@@ -505,11 +516,16 @@ impl LiveUpdateSystem {
 
         // Add message to queue
         self.message_queue.push(message.clone());
-        self.message_counter.inc();
+        self.message_counter.fetch_add(1, Ordering::Relaxed);
 
         // Broadcast real-time event
         let event = RealTimeEvent::MessageReceived {
-            message: Message::user(message.user_id.clone(), message.content.clone()),
+            message: Message::new(
+                message.user_id.len() as u64, // Use user_id length as ID for now
+                MessageType::AgentChat,
+                message.content.as_bytes(),
+            )
+            .unwrap_or_else(|_| Message::new(0, MessageType::AgentChat, b"").unwrap()),
             session_id: message.session_id.clone(),
             timestamp: message.timestamp,
         };
@@ -550,7 +566,14 @@ impl LiveUpdateSystem {
     pub async fn unsubscribe(&self, subscriber_id: &Arc<str>) -> Result<(), RealTimeError> {
         let mut subscribers = self.subscribers.write().await;
         if subscribers.remove(subscriber_id).is_some() {
-            self.subscriber_counter.dec();
+            // Decrement counter - ConsistentCounter doesn't have dec(), so we work around it
+            let current = self.subscriber_counter.get();
+            if current > 0 {
+                self.subscriber_counter.reset();
+                for _ in 0..(current - 1) {
+                    self.subscriber_counter.inc();
+                }
+            }
 
             // Update statistics
             let mut stats = self.stats.write().await;
@@ -562,7 +585,7 @@ impl LiveUpdateSystem {
 
     /// Start message processing task
     pub async fn start_processing(&self) {
-        let message_queue = self.message_queue.clone();
+        let message_queue = Arc::clone(&self.message_queue);
         let subscribers = self.subscribers.clone();
         let message_counter = self.message_counter.clone();
         let rate_limiter = self.rate_limiter.clone();
@@ -578,7 +601,7 @@ impl LiveUpdateSystem {
 
                 // Process messages
                 if let Some(message) = message_queue.pop() {
-                    message_counter.dec();
+                    message_counter.fetch_sub(1, Ordering::Relaxed);
 
                     let subscribers_guard = subscribers.read().await;
                     let mut failed_subscribers = Vec::new();
@@ -605,7 +628,7 @@ impl LiveUpdateSystem {
 
                     // Update queue size statistics
                     let mut stats_guard = stats.write().await;
-                    stats_guard.queue_size = message_counter.get();
+                    stats_guard.queue_size = message_counter.load(Ordering::Relaxed);
                 }
 
                 // Small delay to prevent busy waiting
@@ -751,19 +774,19 @@ pub struct ConnectionStatistics {
 /// Connection manager with heartbeat and health monitoring
 pub struct ConnectionManager {
     /// Active connections
-    connections: SkipMap<Arc<str>, Arc<ConnectionState>>,
+    connections: Arc<SkipMap<Arc<str>, Arc<ConnectionState>>>,
     /// Event broadcaster
     event_broadcaster: broadcast::Sender<RealTimeEvent>,
     /// Heartbeat timeout in seconds
-    heartbeat_timeout: AtomicU64,
+    heartbeat_timeout: Arc<AtomicU64>,
     /// Health check interval in seconds
-    health_check_interval: AtomicU64,
+    health_check_interval: Arc<AtomicU64>,
     /// Connection counter
-    connection_counter: ConsistentCounter,
+    connection_counter: Arc<ConsistentCounter>,
     /// Heartbeat counter
-    heartbeat_counter: ConsistentCounter,
+    heartbeat_counter: Arc<ConsistentCounter>,
     /// Failed connection counter
-    failed_connection_counter: ConsistentCounter,
+    failed_connection_counter: Arc<ConsistentCounter>,
     /// Health check task handle
     health_check_task: ArcSwap<Option<tokio::task::JoinHandle<()>>>,
 }
@@ -774,13 +797,13 @@ impl ConnectionManager {
         let (event_broadcaster, _) = broadcast::channel(1000);
 
         Self {
-            connections: SkipMap::new(),
+            connections: Arc::new(SkipMap::new()),
             event_broadcaster,
-            heartbeat_timeout: AtomicU64::new(heartbeat_timeout),
-            health_check_interval: AtomicU64::new(health_check_interval),
-            connection_counter: ConsistentCounter::new(0),
-            heartbeat_counter: ConsistentCounter::new(0),
-            failed_connection_counter: ConsistentCounter::new(0),
+            heartbeat_timeout: Arc::new(AtomicU64::new(heartbeat_timeout)),
+            health_check_interval: Arc::new(AtomicU64::new(health_check_interval)),
+            connection_counter: Arc::new(ConsistentCounter::new(0)),
+            heartbeat_counter: Arc::new(ConsistentCounter::new(0)),
+            failed_connection_counter: Arc::new(ConsistentCounter::new(0)),
             health_check_task: ArcSwap::new(Arc::new(None)),
         }
     }
@@ -821,7 +844,14 @@ impl ConnectionManager {
         let connection_key = Arc::from(format!("{}:{}", user_id, session_id));
 
         if self.connections.remove(&connection_key).is_some() {
-            self.connection_counter.dec();
+            // Decrement counter - ConsistentCounter doesn't have dec(), so we work around it
+            let current = self.connection_counter.get();
+            if current > 0 {
+                self.connection_counter.reset();
+                for _ in 0..(current - 1) {
+                    self.connection_counter.inc();
+                }
+            }
 
             // Broadcast user left event
             let event = RealTimeEvent::UserLeft {
@@ -1257,5 +1287,510 @@ impl RealTimeSystemBuilder {
 impl Default for RealTimeSystemBuilder {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Real-time chat configuration for managing real-time features
+///
+/// This configuration controls real-time chat behavior including:
+/// - Connection management and heartbeat settings
+/// - Message streaming and delivery options
+/// - Typing indicators and presence management
+/// - Performance tuning and optimization settings
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RealtimeConfig {
+    /// Enable real-time features
+    pub enabled: bool,
+    /// WebSocket connection timeout in seconds
+    pub connection_timeout_seconds: u64,
+    /// Heartbeat interval in seconds
+    pub heartbeat_interval_seconds: u64,
+    /// Maximum concurrent connections
+    pub max_connections: usize,
+    /// Message buffer size per connection
+    pub message_buffer_size: usize,
+    /// Enable typing indicators
+    pub enable_typing_indicators: bool,
+    /// Typing indicator timeout in seconds
+    pub typing_timeout_seconds: u64,
+    /// Enable presence tracking
+    pub enable_presence_tracking: bool,
+    /// Presence update interval in seconds
+    pub presence_update_interval_seconds: u64,
+    /// Enable message streaming
+    pub enable_message_streaming: bool,
+    /// Stream chunk size in bytes
+    pub stream_chunk_size: usize,
+    /// Enable compression for messages
+    pub enable_compression: bool,
+    /// Compression threshold in bytes
+    pub compression_threshold: usize,
+    /// Enable rate limiting
+    pub enable_rate_limiting: bool,
+    /// Rate limit: messages per second per connection
+    pub rate_limit_messages_per_second: u32,
+    /// Enable connection pooling
+    pub enable_connection_pooling: bool,
+    /// Connection pool size
+    pub connection_pool_size: usize,
+    /// Auto-reconnect on connection loss
+    pub auto_reconnect: bool,
+    /// Reconnection delay in milliseconds
+    pub reconnect_delay_ms: u64,
+    /// Maximum reconnection attempts
+    pub max_reconnect_attempts: u32,
+}
+
+/// Real-time chat system for managing live chat interactions
+///
+/// This system provides comprehensive real-time chat capabilities with:
+/// - WebSocket connection management
+/// - Live message streaming and delivery
+/// - Typing indicators and presence tracking
+/// - Event broadcasting and subscription
+/// - Performance monitoring and optimization
+#[derive(Debug)]
+pub struct RealtimeChat {
+    /// Configuration settings
+    config: RealtimeConfig,
+    /// Real-time system core
+    rt_system: RealTimeSystem,
+    /// Active connections
+    connections: Arc<SkipMap<Arc<str>, RealtimeConnection>>,
+    /// Message broadcast channel
+    message_broadcaster: broadcast::Sender<RealtimeMessage>,
+    /// Event handlers
+    event_handlers: Arc<RwLock<HashMap<RealtimeEventType, Vec<Arc<dyn RealtimeEventHandler>>>>>,
+    /// Performance metrics
+    metrics: Arc<RealtimeChatMetrics>,
+    /// Connection manager task handle
+    connection_task: Option<tokio::task::JoinHandle<()>>,
+}
+
+/// Real-time connection representation
+#[derive(Debug, Clone)]
+pub struct RealtimeConnection {
+    /// Connection ID
+    pub connection_id: Arc<str>,
+    /// User ID associated with connection
+    pub user_id: Arc<str>,
+    /// Session ID
+    pub session_id: Arc<str>,
+    /// Connection timestamp
+    pub connected_at: u64,
+    /// Last activity timestamp
+    pub last_activity: AtomicU64,
+    /// Connection status
+    pub status: Arc<ArcSwap<ConnectionStatus>>,
+    /// Message sender channel
+    pub message_sender: mpsc::UnboundedSender<RealtimeMessage>,
+    /// Typing status
+    pub is_typing: AtomicBool,
+    /// Presence status
+    pub presence: Arc<ArcSwap<PresenceStatus>>,
+}
+
+/// Real-time message for live communication
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RealtimeMessage {
+    /// Message ID
+    pub id: Arc<str>,
+    /// Message type
+    pub message_type: RealtimeMessageType,
+    /// Message content
+    pub content: Arc<str>,
+    /// Sender user ID
+    pub sender_id: Arc<str>,
+    /// Target user ID (for direct messages)
+    pub target_id: Option<Arc<str>>,
+    /// Session ID
+    pub session_id: Arc<str>,
+    /// Message timestamp
+    pub timestamp: u64,
+    /// Message metadata
+    pub metadata: HashMap<Arc<str>, serde_json::Value>,
+}
+
+/// Real-time message types
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum RealtimeMessageType {
+    /// Regular chat message
+    Chat,
+    /// System message
+    System,
+    /// Typing indicator
+    Typing,
+    /// Presence update
+    Presence,
+    /// Connection status
+    Connection,
+    /// Error message
+    Error,
+}
+
+// Duplicate ConnectionStatus removed - already defined above
+
+/// Presence status
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum PresenceStatus {
+    /// Online and available
+    Online,
+    /// Away from keyboard
+    Away,
+    /// Do not disturb
+    DoNotDisturb,
+    /// Offline
+    Offline,
+    /// Invisible
+    Invisible,
+}
+
+/// Real-time event types
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub enum RealtimeEventType {
+    /// Connection established
+    ConnectionEstablished,
+    /// Connection lost
+    ConnectionLost,
+    /// Message received
+    MessageReceived,
+    /// Message sent
+    MessageSent,
+    /// Typing started
+    TypingStarted,
+    /// Typing stopped
+    TypingStopped,
+    /// Presence changed
+    PresenceChanged,
+    /// Error occurred
+    Error,
+}
+
+/// Real-time event handler trait
+pub trait RealtimeEventHandler: Send + Sync + std::fmt::Debug {
+    /// Handle real-time event
+    fn handle_event(
+        &self,
+        event: &RealTimeEvent,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>>
+                + Send
+                + '_,
+        >,
+    >;
+}
+
+/// Real-time chat metrics
+#[derive(Debug, Default)]
+pub struct RealtimeChatMetrics {
+    /// Total connections established
+    pub total_connections: ConsistentCounter,
+    /// Active connections
+    pub active_connections: AtomicUsize,
+    /// Total messages sent
+    pub total_messages: ConsistentCounter,
+    /// Messages per second
+    pub messages_per_second: AtomicU64,
+    /// Average response time in microseconds
+    pub avg_response_time_us: AtomicU64,
+    /// Connection errors
+    pub connection_errors: ConsistentCounter,
+    /// Message delivery failures
+    pub delivery_failures: ConsistentCounter,
+}
+
+impl Default for RealtimeConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            connection_timeout_seconds: 30,
+            heartbeat_interval_seconds: 30,
+            max_connections: 1000,
+            message_buffer_size: 1000,
+            enable_typing_indicators: true,
+            typing_timeout_seconds: 5,
+            enable_presence_tracking: true,
+            presence_update_interval_seconds: 60,
+            enable_message_streaming: true,
+            stream_chunk_size: 8192,
+            enable_compression: true,
+            compression_threshold: 1024,
+            enable_rate_limiting: true,
+            rate_limit_messages_per_second: 10,
+            enable_connection_pooling: true,
+            connection_pool_size: 100,
+            auto_reconnect: true,
+            reconnect_delay_ms: 1000,
+            max_reconnect_attempts: 5,
+        }
+    }
+}
+
+impl RealtimeChat {
+    /// Create a new real-time chat system
+    pub fn new(config: RealtimeConfig) -> Self {
+        let rt_system = RealTimeSystemBuilder::new()
+            .typing_expiry(config.typing_timeout_seconds)
+            .heartbeat_timeout(config.heartbeat_interval_seconds)
+            .queue_size_limit(config.message_buffer_size)
+            .build();
+
+        let (message_broadcaster, _) = broadcast::channel(config.message_buffer_size);
+
+        Self {
+            config,
+            rt_system,
+            connections: Arc::new(SkipMap::new()),
+            message_broadcaster,
+            event_handlers: Arc::new(RwLock::new(HashMap::new())),
+            metrics: Arc::new(RealtimeChatMetrics::default()),
+            connection_task: None,
+        }
+    }
+
+    /// Start the real-time chat system
+    pub async fn start(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        if !self.config.enabled {
+            return Ok(());
+        }
+
+        // Start connection management task
+        let connections = self.connections.clone();
+        let config = self.config.clone();
+        let metrics = self.metrics.clone();
+
+        let task = tokio::spawn(async move {
+            let mut interval = interval(Duration::from_secs(config.heartbeat_interval_seconds));
+
+            loop {
+                interval.tick().await;
+
+                // Clean up inactive connections
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+
+                let mut inactive_connections = Vec::new();
+
+                for entry in connections.iter() {
+                    let conn = entry.value();
+                    let last_activity = conn.last_activity.load(Ordering::Relaxed);
+
+                    if now - last_activity > config.connection_timeout_seconds {
+                        inactive_connections.push(conn.connection_id.clone());
+                    }
+                }
+
+                // Remove inactive connections
+                for conn_id in inactive_connections {
+                    connections.remove(&conn_id);
+                    // Decrement counter - AtomicUsize decrementation
+                    let current = metrics.active_connections.load(std::sync::atomic::Ordering::Relaxed);
+                    if current > 0 {
+                        metrics.active_connections.store(current - 1, std::sync::atomic::Ordering::Relaxed);
+                    }
+                }
+            }
+        });
+
+        self.connection_task = Some(task);
+        Ok(())
+    }
+
+    /// Stop the real-time chat system
+    pub async fn stop(&mut self) {
+        if let Some(task) = self.connection_task.take() {
+            task.abort();
+        }
+
+        // Close all connections
+        self.connections.clear();
+        // Reset counter to 0
+        self.metrics.active_connections.store(0, Ordering::Relaxed);
+    }
+
+    /// Add a new connection
+    pub async fn add_connection(
+        &self,
+        user_id: Arc<str>,
+        session_id: Arc<str>,
+    ) -> Result<Arc<str>, Box<dyn std::error::Error + Send + Sync>> {
+        if self.connections.len() >= self.config.max_connections {
+            return Err("Maximum connections exceeded".into());
+        }
+
+        let connection_id: Arc<str> = Arc::from(uuid::Uuid::new_v4().to_string());
+        let (message_sender, _message_receiver) = mpsc::unbounded_channel();
+
+        let connection = RealtimeConnection {
+            connection_id: connection_id.clone(),
+            user_id,
+            session_id,
+            connected_at: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+            last_activity: AtomicU64::new(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
+            ),
+            status: Arc::new(ArcSwap::new(Arc::new(ConnectionStatus::Connected))),
+            message_sender,
+            is_typing: AtomicBool::new(false),
+            presence: Arc::new(ArcSwap::new(Arc::new(PresenceStatus::Online))),
+        };
+
+        self.connections.insert(connection_id.clone(), connection);
+        self.metrics.total_connections.inc();
+        self.metrics.active_connections.fetch_add(1, Ordering::Relaxed);
+
+        Ok(connection_id)
+    }
+
+    /// Remove a connection
+    pub async fn remove_connection(
+        &self,
+        connection_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        if self.connections.remove(connection_id).is_some() {
+            // Decrement AtomicUsize counter
+            self.metrics.active_connections.fetch_sub(1, Ordering::Relaxed);
+            Ok(())
+        } else {
+            Err("Connection not found".into())
+        }
+    }
+
+    /// Send a message to a specific connection
+    pub async fn send_message(
+        &self,
+        connection_id: &str,
+        message: RealtimeMessage,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        if let Some(connection) = self.connections.get(connection_id) {
+            connection
+                .value()
+                .message_sender
+                .send(message)
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+
+            self.metrics.total_messages.inc();
+            Ok(())
+        } else {
+            self.metrics.delivery_failures.inc();
+            Err("Connection not found".into())
+        }
+    }
+
+    /// Broadcast a message to all connections
+    pub async fn broadcast_message(
+        &self,
+        message: RealtimeMessage,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        self.message_broadcaster
+            .send(message)
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
+
+        self.metrics.total_messages.inc();
+        Ok(())
+    }
+
+    /// Set typing status for a connection
+    pub async fn set_typing(
+        &self,
+        connection_id: &str,
+        is_typing: bool,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        if let Some(connection) = self.connections.get(connection_id) {
+            connection
+                .value()
+                .is_typing
+                .store(is_typing, Ordering::Relaxed);
+
+            // Update last activity
+            connection.value().last_activity.store(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
+                Ordering::Relaxed,
+            );
+
+            Ok(())
+        } else {
+            Err("Connection not found".into())
+        }
+    }
+
+    /// Set presence status for a connection
+    pub async fn set_presence(
+        &self,
+        connection_id: &str,
+        presence: PresenceStatus,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        if let Some(connection) = self.connections.get(connection_id) {
+            connection.value().presence.store(Arc::new(presence));
+
+            // Update last activity
+            connection.value().last_activity.store(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
+                Ordering::Relaxed,
+            );
+
+            Ok(())
+        } else {
+            Err("Connection not found".into())
+        }
+    }
+
+    /// Get connection information
+    pub async fn get_connection(&self, connection_id: &str) -> Option<RealtimeConnection> {
+        self.connections
+            .get(connection_id)
+            .map(|entry| entry.value().clone())
+    }
+
+    /// Get all active connections
+    pub async fn get_active_connections(&self) -> Vec<RealtimeConnection> {
+        self.connections
+            .iter()
+            .map(|entry| entry.value().clone())
+            .collect()
+    }
+
+    /// Register an event handler
+    pub async fn register_event_handler(
+        &self,
+        event_type: RealtimeEventType,
+        handler: Arc<dyn RealtimeEventHandler>,
+    ) {
+        let mut handlers = self.event_handlers.write().await;
+        handlers
+            .entry(event_type)
+            .or_insert_with(Vec::new)
+            .push(handler);
+    }
+
+    /// Get real-time chat metrics
+    pub fn metrics(&self) -> &RealtimeChatMetrics {
+        &self.metrics
+    }
+
+    /// Get configuration
+    pub fn config(&self) -> &RealtimeConfig {
+        &self.config
+    }
+}
+
+impl Default for RealtimeChat {
+    fn default() -> Self {
+        Self::new(RealtimeConfig::default())
     }
 }

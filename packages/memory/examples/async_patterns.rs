@@ -4,7 +4,7 @@
 //! that can be awaited, following the pattern of no async_trait or Box<dyn Future>
 
 use fluent_ai_memory::memory::{
-    MemoryManager, SurrealDBMemoryManager, MemoryNode, MemoryTypeEnum, MemoryRelationship,
+    MemoryManager, MemoryNode, MemoryRelationship, MemoryTypeEnum, SurrealDBMemoryManager,
 };
 use futures::StreamExt;
 use surrealdb::{
@@ -171,11 +171,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "=".repeat(40));
 
     // Create a relationship
-    let rel = MemoryRelationship::new(
-        mem1.id.clone(),
-        mem2.id.clone(),
-        "relates_to".to_string(),
-    );
+    let rel = MemoryRelationship::new(mem1.id.clone(), mem2.id.clone(), "relates_to".to_string());
 
     let created_rel = memory_manager.create_relationship(rel).await?;
     println!("✅ Created relationship: {}", created_rel.id);

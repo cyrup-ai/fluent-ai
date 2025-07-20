@@ -1,581 +1,37 @@
+    Blocking waiting for file lock on build directory
     Checking fluent_ai_domain v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/domain)
    Compiling fluent_ai_provider v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/provider)
-    Checking fluent_ai_memory v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/memory)
 warning: fluent_ai_provider@0.1.0: Build script simplified to unblock compilation
-error[E0782]: expected a type, found a trait
-  --> packages/memory/benches/memory_benchmarks.rs:23:9
-   |
-23 |         MemoryType::Text,
-   |         ^^^^^^^^^^
-   |
-help: you can add the `dyn` keyword if you want a trait object
-   |
-23 |         <dyn MemoryType>::Text,
-   |         ++++           +
-
-error[E0432]: unresolved import `fluent_ai_memory::MemoryTypeEnum`
-  --> packages/memory/benches/python_comparison_bench.rs:10:36
-   |
-10 | use fluent_ai_memory::{MemoryNode, MemoryTypeEnum};
-   |                                    ^^^^^^^^^^^^^^
-   |                                    |
-   |                                    no `MemoryTypeEnum` in the root
-   |                                    help: a similar name exists in the module: `MemoryType`
-   |
-   = help: consider importing this enum instead:
-           fluent_ai_memory::memory::MemoryTypeEnum
-
-error[E0432]: unresolved import `fluent_ai_memory::cognitive::quantum_mcts::QuantumMCTSConfig`
-  --> packages/memory/tests/test_quantum_mcts.rs:12:33
-   |
-12 |     quantum_mcts::{QuantumMCTS, QuantumMCTSConfig},
-   |                                 ^^^^^^^^^^^^^^^^^
-   |                                 |
-   |                                 no `QuantumMCTSConfig` in `cognitive::quantum_mcts`
-   |                                 help: a similar name exists in the module: `QuantumConfig`
-
-error[E0432]: unresolved import `fluent_ai_memory::MemoryTypeEnum`
- --> packages/memory/benches/python_vs_rust.rs:6:36
-  |
-6 | use fluent_ai_memory::{MemoryNode, MemoryTypeEnum};
-  |                                    ^^^^^^^^^^^^^^
-  |                                    |
-  |                                    no `MemoryTypeEnum` in the root
-  |                                    help: a similar name exists in the module: `MemoryType`
-  |
-  = help: consider importing this enum instead:
-          fluent_ai_memory::memory::MemoryTypeEnum
-
-error[E0061]: this function takes 2 arguments but 3 arguments were supplied
-  --> packages/memory/benches/memory_benchmarks.rs:20:5
-   |
-20 |     MemoryNode::new(
-   |     ^^^^^^^^^^^^^^^
-21 |         id.to_string(),
-22 |         "Test content".to_string(),
-   |         -------------------------- expected `MemoryTypeEnum`, found `String`
-23 |         MemoryType::Text,
-   |         ---------------- unexpected argument #3
-   |
-note: associated function defined here
-  --> /Volumes/samsung_t9/fluent-ai/packages/memory/src/memory/primitives/node.rs:33:12
-   |
-33 |     pub fn new(content: String, memory_type: MemoryTypeEnum) -> Self {
-   |            ^^^
-help: remove the extra argument
-   |
-22 -         "Test content".to_string(),
-22 +         /* MemoryTypeEnum */,
-   |
-
-error[E0432]: unresolved import `fluent_ai_memory::MemoryTypeEnum`
-  --> packages/memory/tests/quantum_system_test.rs:55:49
-   |
-55 |     use fluent_ai_memory::{CognitiveMemoryNode, MemoryTypeEnum};
-   |                                                 ^^^^^^^^^^^^^^
-   |                                                 |
-   |                                                 no `MemoryTypeEnum` in the root
-   |                                                 help: a similar name exists in the module: `MemoryType`
-   |
-   = help: consider importing this enum instead:
-           fluent_ai_memory::memory::MemoryTypeEnum
-
-error[E0432]: unresolved import `fluent_ai_memory::MemoryTypeEnum`
-   --> packages/memory/tests/quantum_system_test.rs:119:40
-    |
-119 |     use fluent_ai_memory::{MemoryNode, MemoryTypeEnum};
-    |                                        ^^^^^^^^^^^^^^
-    |                                        |
-    |                                        no `MemoryTypeEnum` in the root
-    |                                        help: a similar name exists in the module: `MemoryType`
-    |
-    = help: consider importing this enum instead:
-            fluent_ai_memory::memory::MemoryTypeEnum
-
-warning: unused import: `committee::CommitteeEvent`
- --> packages/memory/tests/test_quantum_mcts.rs:9:5
-  |
-9 |     committee::CommitteeEvent,
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-  |
-  = note: `#[warn(unused_imports)]` on by default
-
-error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
-   --> packages/memory/tests/test_quantum_mcts.rs:317:5
-    |
-317 |     impl PerformanceAnalyzer {
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
-    |
-    = note: define and implement a trait or new type instead
-
-error[E0599]: `MemoryStream` is not an iterator
-   --> packages/memory/tests/cognitive_integration_tests.rs:113:10
-    |
-111 |       let results: Vec<_> = manager
-    |  ___________________________-
-112 | |         .search_by_content("programming languages")
-113 | |         .collect()
-    | |         -^^^^^^^ `MemoryStream` is not an iterator
-    | |_________|
-    |
-    |
-   ::: /Volumes/samsung_t9/fluent-ai/packages/memory/src/memory/manager/surreal.rs:193:1
-    |
-193 |   pub struct MemoryStream {
-    |   ----------------------- doesn't satisfy `MemoryStream: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `MemoryStream: Iterator`
-            which is required by `&mut MemoryStream: Iterator`
-    = help: items from traits can only be used if the trait is in scope
-help: trait `StreamExt` which provides `collect` is implemented but not in scope; perhaps you want to import it
-    |
-5   + use futures_util::stream::stream::StreamExt;
-    |
-
-error[E0599]: no method named `store` found for struct `Arc<SurrealDBMemoryManager>` in the current scope
-  --> packages/memory/benches/memory_benchmarks.rs:58:32
-   |
-58 |                 memory_manager.store(&memory).await.unwrap();
-   |                                ^^^^^ method not found in `Arc<SurrealDBMemoryManager>`
-
-error[E0599]: no method named `store` found for struct `Arc<SurrealDBMemoryManager>` in the current scope
-  --> packages/memory/benches/memory_benchmarks.rs:70:24
-   |
-70 |         memory_manager.store(&memory).await.unwrap();
-   |                        ^^^^^ method not found in `Arc<SurrealDBMemoryManager>`
-
-For more information about this error, try `rustc --explain E0432`.
-error[E0308]: mismatched types
-   --> packages/memory/tests/cognitive_integration_tests.rs:214:31
-    |
-214 |             response_latency: Duration::from_millis(100 - generation),
-    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `f64`, found `Duration`
-
-error[E0063]: missing fields `accuracy`, `latency`, `memory_usage` and 1 other field in initializer of `fluent_ai_memory::cognitive::PerformanceMetrics`
-   --> packages/memory/tests/cognitive_integration_tests.rs:212:23
-    |
-212 |         let metrics = PerformanceMetrics {
-    |                       ^^^^^^^^^^^^^^^^^^ missing `accuracy`, `latency`, `memory_usage` and 1 other field
-
-error[E0560]: struct `CognitiveAttentionWeights` has no field named `temporal_weight`
-   --> packages/memory/tests/cognitive_integration_tests.rs:248:13
-    |
-248 |             temporal_weight: 0.05,
-    |             ^^^^^^^^^^^^^^^ `CognitiveAttentionWeights` does not have this field
-    |
-    = note: available fields are: `contextual_weight`
-
-error[E0560]: struct `CognitiveAttentionWeights` has no field named `confidence_weight`
-   --> packages/memory/tests/cognitive_integration_tests.rs:249:13
-    |
-249 |             confidence_weight: 0.05,
-    |             ^^^^^^^^^^^^^^^^^ `CognitiveAttentionWeights` does not have this field
-    |
-    = note: available fields are: `contextual_weight`
-
-error: could not compile `fluent_ai_memory` (bench "python_vs_rust") due to 1 previous error
-warning: build failed, waiting for other jobs to finish...
-error[E0308]: mismatched types
-  --> packages/memory/tests/test_quantum_mcts.rs:60:27
-   |
-60 |         baseline_metrics: initial_state.clone(),
-   |                           ^^^^^^^^^^^^^^^^^^^^^ expected `BaselineMetrics`, found `CodeState`
-
-error[E0560]: struct `OptimizationSpec` has no field named `user_objective`
-  --> packages/memory/tests/test_quantum_mcts.rs:61:9
-   |
-61 |         user_objective: "Optimize for performance while maintaining accuracy".to_string(),
-   |         ^^^^^^^^^^^^^^ `OptimizationSpec` does not have this field
-   |
-   = note: available fields are: `objective`, `improvement_threshold`, `constraints`, `success_criteria`, `optimization_type` ... and 4 others
-
-error[E0061]: this function takes 3 arguments but 0 arguments were supplied
-  --> packages/memory/tests/test_quantum_mcts.rs:64:41
-   |
-64 |     let performance_analyzer = Arc::new(PerformanceAnalyzer::new());
-   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^-- three arguments of type `Arc<OptimizationSpec>`, `Arc<EvaluationCommittee>`, and `std::string::String` are missing
-   |
-note: associated function defined here
-  --> /Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/performance.rs:49:18
-   |
-49 |     pub async fn new(
-   |                  ^^^
-help: provide the arguments
-   |
-64 |     let performance_analyzer = Arc::new(PerformanceAnalyzer::new(/* Arc<OptimizationSpec> */, /* Arc<EvaluationCommittee> */, /* std::string::String */));
-   |                                                                  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-error[E0599]: no function or associated item named `new` found for struct `CognitiveMemoryNode` in the current scope
-  --> packages/memory/tests/quantum_system_test.rs:57:37
-   |
-57 |     let node = CognitiveMemoryNode::new("Test content".to_string(), MemoryTypeEnum::Semantic);
-   |                                     ^^^ function or associated item not found in `CognitiveMemoryNode`
-
-error[E0599]: `MemoryStream` is not an iterator
-   --> packages/memory/tests/cognitive_integration_tests.rs:331:14
-    |
-329 |           let _results: Vec<_> = traditional_manager
-    |  ________________________________-
-330 | |             .search_by_content("test query")
-331 | |             .collect()
-    | |             -^^^^^^^ `MemoryStream` is not an iterator
-    | |_____________|
-    |
-    |
-   ::: /Volumes/samsung_t9/fluent-ai/packages/memory/src/memory/manager/surreal.rs:193:1
-    |
-193 |   pub struct MemoryStream {
-    |   ----------------------- doesn't satisfy `MemoryStream: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `MemoryStream: Iterator`
-            which is required by `&mut MemoryStream: Iterator`
-    = help: items from traits can only be used if the trait is in scope
-help: trait `StreamExt` which provides `collect` is implemented but not in scope; perhaps you want to import it
-    |
-5   + use futures_util::stream::stream::StreamExt;
-    |
-
-error[E0599]: no method named `get` found for struct `Arc<SurrealDBMemoryManager>` in the current scope
-  --> packages/memory/benches/memory_benchmarks.rs:76:45
-   |
-76 |                 let result = memory_manager.get("test_id").await.unwrap();
-   |                                             ^^^ method not found in `Arc<SurrealDBMemoryManager>`
-
-error[E0061]: this function takes 0 arguments but 1 argument was supplied
-   --> packages/memory/tests/quantum_system_test.rs:122:20
-    |
-122 |     let metadata = EvolutionMetadata::new(&memory);
-    |                    ^^^^^^^^^^^^^^^^^^^^^^ ------- unexpected argument of type `&MemoryNode`
-    |
-note: associated function defined here
-   --> /Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/types.rs:313:12
-    |
-313 |     pub fn new() -> Self {
-    |            ^^^
-help: remove the extra argument
-    |
-122 -     let metadata = EvolutionMetadata::new(&memory);
-122 +     let metadata = EvolutionMetadata::new();
-    |
-
-error[E0609]: no field `mutation_count` on type `EvolutionMetadata`
-   --> packages/memory/tests/quantum_system_test.rs:126:25
-    |
-126 |     assert_eq!(metadata.mutation_count, 0);
-    |                         ^^^^^^^^^^^^^^ unknown field
-    |
-    = note: available fields are: `generation`, `fitness_score`, `mutation_history`, `specialization_domains`, `adaptation_rate`
-
-error[E0560]: struct `CognitiveAttentionWeights` has no field named `temporal_weight`
-   --> packages/memory/tests/quantum_system_test.rs:144:13
-    |
-144 |             temporal_weight: 0.1,
-    |             ^^^^^^^^^^^^^^^ `CognitiveAttentionWeights` does not have this field
-    |
-    = note: available fields are: `contextual_weight`
-
-error[E0560]: struct `CognitiveAttentionWeights` has no field named `confidence_weight`
-   --> packages/memory/tests/quantum_system_test.rs:145:13
-    |
-145 |             confidence_weight: 0.1,
-    |             ^^^^^^^^^^^^^^^^^ `CognitiveAttentionWeights` does not have this field
-    |
-    = note: available fields are: `contextual_weight`
-
-error: could not compile `fluent_ai_memory` (bench "python_comparison_bench") due to 1 previous error
-error[E0599]: `MemoryStream` is not an iterator
-   --> packages/memory/tests/cognitive_integration_tests.rs:341:14
-    |
-339 |           let _results: Vec<_> = cognitive_manager
-    |  ________________________________-
-340 | |             .search_by_content("test query")
-341 | |             .collect()
-    | |             -^^^^^^^ `MemoryStream` is not an iterator
-    | |_____________|
-    |
-    |
-   ::: /Volumes/samsung_t9/fluent-ai/packages/memory/src/memory/manager/surreal.rs:193:1
-    |
-193 |   pub struct MemoryStream {
-    |   ----------------------- doesn't satisfy `MemoryStream: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `MemoryStream: Iterator`
-            which is required by `&mut MemoryStream: Iterator`
-    = help: items from traits can only be used if the trait is in scope
-help: trait `StreamExt` which provides `collect` is implemented but not in scope; perhaps you want to import it
-    |
-5   + use futures_util::stream::stream::StreamExt;
-    |
-
-error[E0599]: no method named `is_some` found for enum `Result` in the current scope
-  --> packages/memory/tests/test_quantum_mcts.rs:80:31
-   |
-80 |     assert!(best_modification.is_some());
-   |                               ^^^^^^^
-   |
-help: there is a method `is_ok` with a similar name
-   |
-80 -     assert!(best_modification.is_some());
-80 +     assert!(best_modification.is_ok());
-   |
-
-error[E0599]: no method named `store` found for struct `Arc<SurrealDBMemoryManager>` in the current scope
-  --> packages/memory/benches/memory_benchmarks.rs:90:28
-   |
-90 |             memory_manager.store(&memory).await.unwrap();
-   |                            ^^^^^ method not found in `Arc<SurrealDBMemoryManager>`
-
-error[E0308]: mismatched types
-   --> packages/memory/tests/test_quantum_mcts.rs:134:27
-    |
-134 |         baseline_metrics: initial_state.clone(),
-    |                           ^^^^^^^^^^^^^^^^^^^^^ expected `BaselineMetrics`, found `CodeState`
-
-error[E0560]: struct `OptimizationSpec` has no field named `user_objective`
-   --> packages/memory/tests/test_quantum_mcts.rs:135:9
-    |
-135 |         user_objective: "Parallelize async operations for better performance".to_string(),
-    |         ^^^^^^^^^^^^^^ `OptimizationSpec` does not have this field
-    |
-    = note: available fields are: `objective`, `improvement_threshold`, `constraints`, `success_criteria`, `optimization_type` ... and 4 others
-
-error[E0061]: this function takes 3 arguments but 0 arguments were supplied
-   --> packages/memory/tests/test_quantum_mcts.rs:138:41
-    |
-138 |     let performance_analyzer = Arc::new(PerformanceAnalyzer::new());
-    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^-- three arguments of type `Arc<OptimizationSpec>`, `Arc<EvaluationCommittee>`, and `std::string::String` are missing
-    |
-note: associated function defined here
-   --> /Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/performance.rs:49:18
-    |
-49  |     pub async fn new(
-    |                  ^^^
-help: provide the arguments
-    |
-138 |     let performance_analyzer = Arc::new(PerformanceAnalyzer::new(/* Arc<OptimizationSpec> */, /* Arc<EvaluationCommittee> */, /* std::string::String */));
-    |                                                                  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-error[E0308]: mismatched types
-   --> packages/memory/tests/test_quantum_mcts.rs:153:9
-    |
-150 |     let orchestrator = QuantumOrchestrator::new(
-    |                        ------------------------ arguments to this function are incorrect
-...
-153 |         performance_analyzer,
-    |         ^^^^^^^^^^^^^^^^^^^^ expected `Arc<PerformanceAnalyzer>`, found `Arc<impl Future<Output = ...>>`
-    |
-    = note: expected struct `Arc<fluent_ai_memory::cognitive::performance::PerformanceAnalyzer>`
-               found struct `Arc<impl std::future::Future<Output = fluent_ai_memory::cognitive::performance::PerformanceAnalyzer>>`
-note: associated function defined here
-   --> /Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/quantum_orchestrator.rs:89:18
-    |
-89  |     pub async fn new(
-    |                  ^^^
-
-error[E0609]: no field `improvement_percentage` on type `OptimizationOutcome`
-   --> packages/memory/tests/test_quantum_mcts.rs:166:21
-    |
-166 |     assert!(outcome.improvement_percentage > 0.0);
-    |                     ^^^^^^^^^^^^^^^^^^^^^^ unknown field
-
-error[E0609]: no field `optimized_code` on type `OptimizationOutcome`
-   --> packages/memory/tests/test_quantum_mcts.rs:167:22
-    |
-167 |     assert!(!outcome.optimized_code.is_empty());
-    |                      ^^^^^^^^^^^^^^ unknown field
-
-error[E0609]: no field `applied_techniques` on type `OptimizationOutcome`
-   --> packages/memory/tests/test_quantum_mcts.rs:170:14
-    |
-170 |             .applied_techniques
-    |              ^^^^^^^^^^^^^^^^^^ unknown field
-
-error[E0308]: mismatched types
-   --> packages/memory/tests/test_quantum_mcts.rs:214:27
-    |
-214 |         baseline_metrics: initial_state.clone(),
-    |                           ^^^^^^^^^^^^^^^^^^^^^ expected `BaselineMetrics`, found `CodeState`
-
-error[E0560]: struct `OptimizationSpec` has no field named `user_objective`
-   --> packages/memory/tests/test_quantum_mcts.rs:215:9
-    |
-215 |         user_objective: "Already optimal code".to_string(),
-    |         ^^^^^^^^^^^^^^ `OptimizationSpec` does not have this field
-    |
-    = note: available fields are: `objective`, `improvement_threshold`, `constraints`, `success_criteria`, `optimization_type` ... and 4 others
-
-error[E0061]: this function takes 3 arguments but 0 arguments were supplied
-   --> packages/memory/tests/test_quantum_mcts.rs:218:41
-    |
-218 |     let performance_analyzer = Arc::new(PerformanceAnalyzer::new());
-    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^-- three arguments of type `Arc<OptimizationSpec>`, `Arc<EvaluationCommittee>`, and `std::string::String` are missing
-    |
-note: associated function defined here
-   --> /Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/performance.rs:49:18
-    |
-49  |     pub async fn new(
-    |                  ^^^
-help: provide the arguments
-    |
-218 |     let performance_analyzer = Arc::new(PerformanceAnalyzer::new(/* Arc<OptimizationSpec> */, /* Arc<EvaluationCommittee> */, /* std::string::String */));
-    |                                                                  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-error[E0277]: `Result<fluent_ai_memory::cognitive::CodeState, fluent_ai_memory::cognitive::CognitiveError>` is not a future
-   --> packages/memory/tests/test_quantum_mcts.rs:230:40
-    |
-230 |     quantum_mcts.recursive_improve(20).await.unwrap();
-    |                                        ^^^^^ `Result<fluent_ai_memory::cognitive::CodeState, fluent_ai_memory::cognitive::CognitiveError>` is not a future
-    |
-    = help: the trait `std::future::Future` is not implemented for `Result<fluent_ai_memory::cognitive::CodeState, fluent_ai_memory::cognitive::CognitiveError>`
-    = note: Result<fluent_ai_memory::cognitive::CodeState, fluent_ai_memory::cognitive::CognitiveError> must be a future or must implement `IntoFuture` to be awaited
-    = note: required for `Result<fluent_ai_memory::cognitive::CodeState, fluent_ai_memory::cognitive::CognitiveError>` to implement `IntoFuture`
-help: remove the `.await`
-    |
-230 -     quantum_mcts.recursive_improve(20).await.unwrap();
-230 +     quantum_mcts.recursive_improve(20).unwrap();
-    |
-
-Some errors have detailed explanations: E0061, E0432, E0560, E0599, E0609.
-For more information about an error, try `rustc --explain E0061`.
-error[E0599]: no method named `search` found for struct `Arc<SurrealDBMemoryManager>` in the current scope
-  --> packages/memory/benches/memory_benchmarks.rs:97:46
-   |
-97 |                 let results = memory_manager.search("Test", 10).await.unwrap();
-   |                                              ^^^^^^ method not found in `Arc<SurrealDBMemoryManager>`
-
-error[E0308]: mismatched types
-   --> packages/memory/tests/test_quantum_mcts.rs:288:27
-    |
-288 |         baseline_metrics: initial_state.clone(),
-    |                           ^^^^^^^^^^^^^^^^^^^^^ expected `BaselineMetrics`, found `CodeState`
-
-error[E0560]: struct `OptimizationSpec` has no field named `user_objective`
-   --> packages/memory/tests/test_quantum_mcts.rs:289:9
-    |
-289 |         user_objective: "Optimize matrix multiplication with cache efficiency".to_string(),
-    |         ^^^^^^^^^^^^^^ `OptimizationSpec` does not have this field
-    |
-    = note: available fields are: `objective`, `improvement_threshold`, `constraints`, `success_criteria`, `optimization_type` ... and 4 others
-
-error[E0061]: this function takes 3 arguments but 0 arguments were supplied
-   --> packages/memory/tests/test_quantum_mcts.rs:292:41
-    |
-292 |     let performance_analyzer = Arc::new(PerformanceAnalyzer::new());
-    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^-- three arguments of type `Arc<OptimizationSpec>`, `Arc<EvaluationCommittee>`, and `std::string::String` are missing
-    |
-note: associated function defined here
-   --> /Volumes/samsung_t9/fluent-ai/packages/memory/src/cognitive/performance.rs:49:18
-    |
-49  |     pub async fn new(
-    |                  ^^^
-help: provide the arguments
-    |
-292 |     let performance_analyzer = Arc::new(PerformanceAnalyzer::new(/* Arc<OptimizationSpec> */, /* Arc<EvaluationCommittee> */, /* std::string::String */));
-    |                                                                  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-Some errors have detailed explanations: E0063, E0308, E0560, E0599.
-For more information about an error, try `rustc --explain E0063`.
-error[E0277]: `Result<fluent_ai_memory::cognitive::CodeState, fluent_ai_memory::cognitive::CognitiveError>` is not a future
-   --> packages/memory/tests/test_quantum_mcts.rs:304:41
-    |
-304 |     quantum_mcts.recursive_improve(100).await.unwrap();
-    |                                         ^^^^^ `Result<fluent_ai_memory::cognitive::CodeState, fluent_ai_memory::cognitive::CognitiveError>` is not a future
-    |
-    = help: the trait `std::future::Future` is not implemented for `Result<fluent_ai_memory::cognitive::CodeState, fluent_ai_memory::cognitive::CognitiveError>`
-    = note: Result<fluent_ai_memory::cognitive::CodeState, fluent_ai_memory::cognitive::CognitiveError> must be a future or must implement `IntoFuture` to be awaited
-    = note: required for `Result<fluent_ai_memory::cognitive::CodeState, fluent_ai_memory::cognitive::CognitiveError>` to implement `IntoFuture`
-help: remove the `.await`
-    |
-304 -     quantum_mcts.recursive_improve(100).await.unwrap();
-304 +     quantum_mcts.recursive_improve(100).unwrap();
-    |
-
-error: cannot construct `fluent_ai_memory::cognitive::performance::PerformanceAnalyzer` with struct literal syntax due to private fields
-   --> packages/memory/tests/test_quantum_mcts.rs:319:13
-    |
-319 |             Self {
-    |             ^^^^
-    |
-    = note: private fields `spec`, `metrics_history`, `committee` and `user_objective` that were not provided
-
-error: could not compile `fluent_ai_memory` (test "quantum_system_test") due to 7 previous errors
-error: could not compile `fluent_ai_memory` (test "cognitive_integration_tests") due to 7 previous errors
-Some errors have detailed explanations: E0061, E0116, E0277, E0308, E0432, E0560, E0599, E0609.
-warning: `fluent_ai_memory` (test "test_quantum_mcts") generated 1 warning
-error: could not compile `fluent_ai_memory` (test "test_quantum_mcts") due to 22 previous errors; 1 warning emitted
-error[E0599]: no method named `store` found for struct `Arc<SurrealDBMemoryManager>` in the current scope
-   --> packages/memory/benches/memory_benchmarks.rs:117:40
-    |
-117 |                         memory_manager.store(&memory).await.unwrap();
-    |                                        ^^^^^ method not found in `Arc<SurrealDBMemoryManager>`
-
-Some errors have detailed explanations: E0061, E0599, E0782.
-error: could not compile `fluent_ai_memory` (bench "memory_benchmarks") due to 8 previous errors
-error[E0277]: `?` couldn't convert the error to `memory::primitives::types::MemoryError`
-   --> packages/domain/src/memory/manager.rs:260:74
-    |
-260 |         let memory = Arc::new(fluent_ai_memory::initialize(&config).await?);
-    |                               -------------------------------------------^ the trait `From<fluent_ai_memory::Error>` is not implemented for `memory::primitives::types::MemoryError`
-    |                               |
-    |                               this can't be annotated with `?` because it has type `Result<_, fluent_ai_memory::Error>`
-    |
-note: `memory::primitives::types::MemoryError` needs to implement `From<fluent_ai_memory::Error>`
-   --> packages/domain/src/memory/primitives/types.rs:565:1
-    |
-565 | pub enum MemoryError {
-    | ^^^^^^^^^^^^^^^^^^^^
-    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-
-error[E0308]: `if` and `else` have incompatible types
-   --> packages/domain/src/lib.rs:139:13
-    |
-134 | /         if let Some(cached) = config_ref.as_ref() {
-135 | |             Arc::clone(cached)
-    | |             ------------------ expected because of this
-136 | |         } else {
-137 | |             let global_config = CONFIG_CACHE.load();
-138 | |             *config_ref = Some(Arc::clone(&global_config));
-139 | |             global_config
-    | |             ^^^^^^^^^^^^^ expected `Arc<MemoryConfig>`, found `Guard<Arc<MemoryConfig>>`
-140 | |         }
-    | |_________- `if` and `else` have incompatible types
-    |
-    = note: expected struct `Arc<_>`
-               found struct `Guard<Arc<_>>`
-
-error[E0599]: no method named `unwrap_or` found for struct `std::time::Duration` in the current scope
+error[E0599]: no method named `unwrap_or_else` found for struct `std::time::Duration` in the current scope
    --> packages/domain/src/chat/export.rs:234:26
     |
 231 | /                     message
 232 | |                         .timestamp
 233 | |                         .elapsed()
-234 | |                         .unwrap_or(std::time::Duration::from_secs(0))
-    | |                         -^^^^^^^^^ method not found in `std::time::Duration`
+234 | |                         .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+    | |                         -^^^^^^^^^^^^^^ method not found in `std::time::Duration`
     | |_________________________|
     |
 
-error[E0599]: no method named `unwrap_or` found for struct `std::time::Duration` in the current scope
+error[E0599]: no method named `unwrap_or_else` found for struct `std::time::Duration` in the current scope
    --> packages/domain/src/chat/export.rs:259:26
     |
 256 | /                     message
 257 | |                         .timestamp
 258 | |                         .elapsed()
-259 | |                         .unwrap_or(std::time::Duration::from_secs(0))
-    | |                         -^^^^^^^^^ method not found in `std::time::Duration`
+259 | |                         .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+    | |                         -^^^^^^^^^^^^^^ method not found in `std::time::Duration`
     | |_________________________|
     |
 
-error[E0599]: no method named `unwrap_or` found for struct `std::time::Duration` in the current scope
+error[E0599]: no method named `unwrap_or_else` found for struct `std::time::Duration` in the current scope
    --> packages/domain/src/chat/export.rs:289:26
     |
 286 | /                     message
 287 | |                         .timestamp
 288 | |                         .elapsed()
-289 | |                         .unwrap_or(std::time::Duration::from_secs(0))
-    | |                         -^^^^^^^^^ method not found in `std::time::Duration`
+289 | |                         .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+    | |                         -^^^^^^^^^^^^^^ method not found in `std::time::Duration`
     | |_________________________|
     |
 
@@ -733,86 +189,6 @@ help: call `Into::into` on this expression to convert `usize` into `AtomicUsize`
 1304 |             active_executions: self.stats.active_executions.load(std::sync::atomic::Ordering::Relaxed).into(),
      |                                                                                                       +++++++
 
-error[E0308]: mismatched types
-   --> packages/memory/src/cognitive/performance.rs:226:23
-    |
-226 |                 size: "single function".to_string(),
-    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `String`
-
-error[E0308]: mismatched types
-   --> packages/memory/src/cognitive/performance.rs:227:24
-    |
-227 |                 style: "idiomatic".to_string(),
-    |                        ^^^^^^^^^^^^^^^^^^^^^^^ expected `Vec<String>`, found `String`
-    |
-    = note: expected struct `Vec<std::string::String>`
-               found struct `std::string::String`
-
-error[E0063]: missing fields `memory_limit`, `quality_threshold`, `resource_constraints` and 1 other field in initializer of `Constraints`
-   --> packages/memory/src/cognitive/performance.rs:225:26
-    |
-225 |             constraints: crate::cognitive::types::Constraints {
-    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `memory_limit`, `quality_threshold`, `resource_constraints` and 1 other field
-
-error[E0308]: mismatched types
-   --> packages/memory/src/cognitive/performance.rs:225:26
-    |
-225 |               constraints: crate::cognitive::types::Constraints {
-    |  __________________________^
-226 | |                 size: "single function".to_string(),
-227 | |                 style: "idiomatic".to_string(),
-228 | |                 schemas: vec![],
-229 | |             },
-    | |_____________^ expected `Vec<String>`, found `Constraints`
-    |
-    = note: expected struct `Vec<std::string::String>`
-               found struct `Constraints`
-
-error[E0063]: missing fields `allowed_mutations`, `crossover_rate`, `diversity_maintenance` and 3 other fields in initializer of `cognitive::types::EvolutionRules`
-   --> packages/memory/src/cognitive/performance.rs:230:30
-    |
-230 |             evolution_rules: crate::cognitive::types::EvolutionRules {
-    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `allowed_mutations`, `crossover_rate`, `diversity_maintenance` and 3 other fields
-
-error[E0063]: missing fields `accuracy`, `error_rate`, `quality_score` and 3 other fields in initializer of `cognitive::types::BaselineMetrics`
-   --> packages/memory/src/cognitive/performance.rs:237:31
-    |
-237 |             baseline_metrics: crate::cognitive::types::BaselineMetrics {
-    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `accuracy`, `error_rate`, `quality_score` and 3 other fields
-
-error[E0063]: missing fields `improvement_threshold`, `max_iterations`, `objective` and 4 other fields in initializer of `cognitive::types::OptimizationSpec`
-   --> packages/memory/src/cognitive/performance.rs:204:29
-    |
-204 |         let spec = Arc::new(OptimizationSpec {
-    |                             ^^^^^^^^^^^^^^^^ missing `improvement_threshold`, `max_iterations`, `objective` and 4 other fields
-
-error[E0308]: arguments to this function are incorrect
-   --> packages/memory/src/cognitive/performance.rs:245:34
-    |
-245 |         let committee = Arc::new(EvaluationCommittee::new(tx, 2).await.unwrap());
-    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^ --  - unexpected argument #2 of type `{integer}`
-    |                                                           |
-    |                                                           argument #1 of type `common::types::CommitteeConfig` is missing
-    |
-note: associated function defined here
-   --> packages/memory/src/cognitive/committee/orchestrator.rs:25:18
-    |
-25  |     pub async fn new(
-    |                  ^^^
-26  |         config: CommitteeConfig,
-    |         -----------------------
-help: did you mean
-    |
-245 -         let committee = Arc::new(EvaluationCommittee::new(tx, 2).await.unwrap());
-245 +         let committee = Arc::new(EvaluationCommittee::new(/* common::types::CommitteeConfig */, tx).await.unwrap());
-    |
-
-error[E0063]: missing field `code_content` in initializer of `mcts::CodeState`
-   --> packages/memory/src/cognitive/performance.rs:251:21
-    |
-251 |         let state = CodeState {
-    |                     ^^^^^^^^^ missing `code_content`
-
 error[E0277]: `RealTimeSystem` doesn't implement `std::fmt::Debug`
     --> packages/domain/src/chat/realtime.rs:1357:5
      |
@@ -919,12 +295,6 @@ note: required by a bound in `next_element`
 1731 |     where
 1732 |         T: Deserialize<'de>,
      |            ^^^^^^^^^^^^^^^^ required by this bound in `SeqAccess::next_element`
-
-error[E0063]: missing field `attention_weights` in initializer of `attention::AttentionConfig`
-   --> packages/memory/src/cognitive/attention.rs:818:22
-    |
-818 |         let config = AttentionConfig {
-    |                      ^^^^^^^^^^^^^^^ missing `attention_weights`
 
 error[E0277]: the trait bound `CompiledTemplate: validation::_::_serde::Deserialize<'_>` is not satisfied
     --> packages/domain/src/chat/templates.rs:164:15
@@ -1042,18 +412,6 @@ help: consider borrowing here
     |
 694 |             "with" => self.parse_with_block(&parts),
     |                                             +
-
-error[E0063]: missing field `code_content` in initializer of `mcts::CodeState`
-   --> packages/memory/src/cognitive/quantum_mcts.rs:753:29
-    |
-753 |         let initial_state = CodeState {
-    |                             ^^^^^^^^^ missing `code_content`
-
-error[E0063]: missing fields `decoherence_threshold`, `default_coherence_time`, `error_correction_enabled` and 5 other fields in initializer of `hardware::QuantumConfig`
-   --> packages/memory/src/cognitive/quantum_mcts.rs:760:22
-    |
-760 |         let config = QuantumConfig {
-    |                      ^^^^^^^^^^^^^ missing `decoherence_threshold`, `default_coherence_time`, `error_correction_enabled` and 5 other fields
 
 error[E0308]: mismatched types
    --> packages/domain/src/chat/templates.rs:774:41
@@ -1399,24 +757,6 @@ help: consider removing the borrow
 57 +         self.add(rhs)
    |
 
-error[E0277]: the trait bound `primitives::types::MemoryTypeEnum: primitives::types::MemoryType` is not satisfied
-  --> packages/memory/src/memory/tests/schema.rs:11:47
-   |
-11 |     let memory = Memory::new(content.clone(), memory_type);
-   |                  -----------                  ^^^^^^^^^^^ the trait `primitives::types::MemoryType` is not implemented for `primitives::types::MemoryTypeEnum`
-   |                  |
-   |                  required by a bound introduced by this call
-   |
-   = help: the trait `primitives::types::MemoryType` is implemented for `BaseMemory`
-note: required by a bound in `memory::schema::Memory::<T>::new`
-  --> packages/memory/src/memory/schema/mod.rs:23:9
-   |
-23 | impl<T: MemoryType> Memory<T> {
-   |         ^^^^^^^^^^ required by this bound in `Memory::<T>::new`
-24 |     /// Creates a new memory node.
-25 |     pub fn new(content: String, memory_type: T) -> Self {
-   |            --- required by a bound in this associated function
-
 error[E0658]: use of unstable library feature `thread_id_value`
    --> packages/domain/src/error.rs:279:52
     |
@@ -1426,19 +766,6 @@ error[E0658]: use of unstable library feature `thread_id_value`
     = note: see issue #67939 <https://github.com/rust-lang/rust/issues/67939> for more information
     = help: add `#![feature(thread_id_value)]` to the crate attributes to enable
     = note: this compiler was built on 2025-07-06; consider upgrading it if it is out of date
-
-error[E0277]: the trait bound `primitives::types::MemoryTypeEnum: primitives::types::MemoryType` is not satisfied
-  --> packages/memory/src/memory/tests/schema.rs:11:18
-   |
-11 |     let memory = Memory::new(content.clone(), memory_type);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `primitives::types::MemoryType` is not implemented for `primitives::types::MemoryTypeEnum`
-   |
-   = help: the trait `primitives::types::MemoryType` is implemented for `BaseMemory`
-note: required by a bound in `memory::schema::Memory`
-  --> packages/memory/src/memory/schema/mod.rs:11:22
-   |
-11 | pub struct Memory<T: MemoryType> {
-   |                      ^^^^^^^^^^ required by this bound in `Memory`
 
 error[E0015]: cannot call non-const associated function `atomic_counter::RelaxedCounter::new` in constants
    --> packages/domain/src/error.rs:599:20
@@ -1674,228 +1001,6 @@ error[E0308]: mismatched types
     |
     = note: expected struct `async_task::AsyncStream<CompletionChunk>`
                found struct `Pin<Box<UnboundedReceiverStream<CompletionChunk>>>`
-
-error[E0599]: no method named `is_empty` found for enum `serde_json::Value` in the current scope
-  --> packages/memory/src/memory/tests/schema.rs:17:29
-   |
-17 |     assert!(memory.metadata.is_empty());
-   |                             ^^^^^^^^ method not found in `serde_json::Value`
-   |
-   = help: items from traits can only be used if the trait is implemented and in scope
-note: `vector_index::VectorIndex` defines an item `is_empty`, perhaps you need to implement it
-  --> packages/memory/src/vector/vector_index.rs:49:1
-   |
-49 | pub trait VectorIndex: Send + Sync {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0277]: the trait bound `primitives::types::MemoryTypeEnum: primitives::types::MemoryType` is not satisfied
-  --> packages/memory/src/memory/tests/schema.rs:25:54
-   |
-25 |     let mut memory = Memory::new("Test".to_string(), MemoryTypeEnum::Semantic);
-   |                      -----------                     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `primitives::types::MemoryType` is not implemented for `primitives::types::MemoryTypeEnum`
-   |                      |
-   |                      required by a bound introduced by this call
-   |
-   = help: the trait `primitives::types::MemoryType` is implemented for `BaseMemory`
-note: required by a bound in `memory::schema::Memory::<T>::new`
-  --> packages/memory/src/memory/schema/mod.rs:23:9
-   |
-23 | impl<T: MemoryType> Memory<T> {
-   |         ^^^^^^^^^^ required by this bound in `Memory::<T>::new`
-24 |     /// Creates a new memory node.
-25 |     pub fn new(content: String, memory_type: T) -> Self {
-   |            --- required by a bound in this associated function
-
-error[E0277]: the trait bound `primitives::types::MemoryTypeEnum: primitives::types::MemoryType` is not satisfied
-  --> packages/memory/src/memory/tests/schema.rs:25:22
-   |
-25 |     let mut memory = Memory::new("Test".to_string(), MemoryTypeEnum::Semantic);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `primitives::types::MemoryType` is not implemented for `primitives::types::MemoryTypeEnum`
-   |
-   = help: the trait `primitives::types::MemoryType` is implemented for `BaseMemory`
-note: required by a bound in `memory::schema::Memory`
-  --> packages/memory/src/memory/schema/mod.rs:11:22
-   |
-11 | pub struct Memory<T: MemoryType> {
-   |                      ^^^^^^^^^^ required by this bound in `Memory`
-
-error[E0599]: the method `touch` exists for struct `memory::schema::Memory<primitives::types::MemoryTypeEnum>`, but its trait bounds were not satisfied
-  --> packages/memory/src/memory/tests/schema.rs:28:12
-   |
-28 |     memory.touch();
-   |            ^^^^^ method cannot be called due to unsatisfied trait bounds
-   |
-  ::: packages/memory/src/memory/primitives/types.rs:49:1
-   |
-49 | pub enum MemoryTypeEnum {
-   | ----------------------- doesn't satisfy `_: MemoryType`
-   |
-  ::: packages/memory/src/memory/schema/mod.rs:11:1
-   |
-11 | pub struct Memory<T: MemoryType> {
-   | -------------------------------- method `touch` not found for this struct
-   |
-note: trait bound `primitives::types::MemoryTypeEnum: primitives::types::MemoryType` was not satisfied
-  --> packages/memory/src/memory/schema/mod.rs:23:9
-   |
-23 | impl<T: MemoryType> Memory<T> {
-   |         ^^^^^^^^^^  ---------
-   |         |
-   |         unsatisfied trait bound introduced here
-note: the trait `primitives::types::MemoryType` must be implemented
-  --> packages/memory/src/memory/primitives/types.rs:89:1
-   |
-89 | pub trait MemoryType: Debug + Send + Sync {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0277]: the trait bound `primitives::types::MemoryTypeEnum: primitives::types::MemoryType` is not satisfied
-  --> packages/memory/src/memory/tests/schema.rs:34:54
-   |
-34 |     let mut memory = Memory::new("Test".to_string(), MemoryTypeEnum::Semantic);
-   |                      -----------                     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `primitives::types::MemoryType` is not implemented for `primitives::types::MemoryTypeEnum`
-   |                      |
-   |                      required by a bound introduced by this call
-   |
-   = help: the trait `primitives::types::MemoryType` is implemented for `BaseMemory`
-note: required by a bound in `memory::schema::Memory::<T>::new`
-  --> packages/memory/src/memory/schema/mod.rs:23:9
-   |
-23 | impl<T: MemoryType> Memory<T> {
-   |         ^^^^^^^^^^ required by this bound in `Memory::<T>::new`
-24 |     /// Creates a new memory node.
-25 |     pub fn new(content: String, memory_type: T) -> Self {
-   |            --- required by a bound in this associated function
-
-error[E0277]: the trait bound `primitives::types::MemoryTypeEnum: primitives::types::MemoryType` is not satisfied
-  --> packages/memory/src/memory/tests/schema.rs:34:22
-   |
-34 |     let mut memory = Memory::new("Test".to_string(), MemoryTypeEnum::Semantic);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `primitives::types::MemoryType` is not implemented for `primitives::types::MemoryTypeEnum`
-   |
-   = help: the trait `primitives::types::MemoryType` is implemented for `BaseMemory`
-note: required by a bound in `memory::schema::Memory`
-  --> packages/memory/src/memory/schema/mod.rs:11:22
-   |
-11 | pub struct Memory<T: MemoryType> {
-   |                      ^^^^^^^^^^ required by this bound in `Memory`
-
-error[E0599]: the method `set_embedding` exists for struct `memory::schema::Memory<primitives::types::MemoryTypeEnum>`, but its trait bounds were not satisfied
-  --> packages/memory/src/memory/tests/schema.rs:36:12
-   |
-36 |     memory.set_embedding(embedding.clone());
-   |            ^^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
-   |
-  ::: packages/memory/src/memory/primitives/types.rs:49:1
-   |
-49 | pub enum MemoryTypeEnum {
-   | ----------------------- doesn't satisfy `_: MemoryType`
-   |
-  ::: packages/memory/src/memory/schema/mod.rs:11:1
-   |
-11 | pub struct Memory<T: MemoryType> {
-   | -------------------------------- method `set_embedding` not found for this struct
-   |
-note: trait bound `primitives::types::MemoryTypeEnum: primitives::types::MemoryType` was not satisfied
-  --> packages/memory/src/memory/schema/mod.rs:23:9
-   |
-23 | impl<T: MemoryType> Memory<T> {
-   |         ^^^^^^^^^^  ---------
-   |         |
-   |         unsatisfied trait bound introduced here
-note: the trait `primitives::types::MemoryType` must be implemented
-  --> packages/memory/src/memory/primitives/types.rs:89:1
-   |
-89 | pub trait MemoryType: Debug + Send + Sync {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0277]: the trait bound `primitives::types::MemoryTypeEnum: primitives::types::MemoryType` is not satisfied
-  --> packages/memory/src/memory/tests/schema.rs:43:54
-   |
-43 |     let mut memory = Memory::new("Test".to_string(), MemoryTypeEnum::Semantic);
-   |                      -----------                     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `primitives::types::MemoryType` is not implemented for `primitives::types::MemoryTypeEnum`
-   |                      |
-   |                      required by a bound introduced by this call
-   |
-   = help: the trait `primitives::types::MemoryType` is implemented for `BaseMemory`
-note: required by a bound in `memory::schema::Memory::<T>::new`
-  --> packages/memory/src/memory/schema/mod.rs:23:9
-   |
-23 | impl<T: MemoryType> Memory<T> {
-   |         ^^^^^^^^^^ required by this bound in `Memory::<T>::new`
-24 |     /// Creates a new memory node.
-25 |     pub fn new(content: String, memory_type: T) -> Self {
-   |            --- required by a bound in this associated function
-
-error[E0277]: the trait bound `primitives::types::MemoryTypeEnum: primitives::types::MemoryType` is not satisfied
-  --> packages/memory/src/memory/tests/schema.rs:43:22
-   |
-43 |     let mut memory = Memory::new("Test".to_string(), MemoryTypeEnum::Semantic);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `primitives::types::MemoryType` is not implemented for `primitives::types::MemoryTypeEnum`
-   |
-   = help: the trait `primitives::types::MemoryType` is implemented for `BaseMemory`
-note: required by a bound in `memory::schema::Memory`
-  --> packages/memory/src/memory/schema/mod.rs:11:22
-   |
-11 | pub struct Memory<T: MemoryType> {
-   |                      ^^^^^^^^^^ required by this bound in `Memory`
-
-error[E0599]: the method `add_metadata` exists for struct `memory::schema::Memory<primitives::types::MemoryTypeEnum>`, but its trait bounds were not satisfied
-  --> packages/memory/src/memory/tests/schema.rs:47:12
-   |
-47 |     memory.add_metadata(key.clone(), value.clone());
-   |            ^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
-   |
-  ::: packages/memory/src/memory/primitives/types.rs:49:1
-   |
-49 | pub enum MemoryTypeEnum {
-   | ----------------------- doesn't satisfy `_: MemoryType`
-   |
-  ::: packages/memory/src/memory/schema/mod.rs:11:1
-   |
-11 | pub struct Memory<T: MemoryType> {
-   | -------------------------------- method `add_metadata` not found for this struct
-   |
-note: trait bound `primitives::types::MemoryTypeEnum: primitives::types::MemoryType` was not satisfied
-  --> packages/memory/src/memory/schema/mod.rs:23:9
-   |
-23 | impl<T: MemoryType> Memory<T> {
-   |         ^^^^^^^^^^  ---------
-   |         |
-   |         unsatisfied trait bound introduced here
-note: the trait `primitives::types::MemoryType` must be implemented
-  --> packages/memory/src/memory/primitives/types.rs:89:1
-   |
-89 | pub trait MemoryType: Debug + Send + Sync {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0599]: the method `remove_metadata` exists for struct `memory::schema::Memory<primitives::types::MemoryTypeEnum>`, but its trait bounds were not satisfied
-  --> packages/memory/src/memory/tests/schema.rs:55:12
-   |
-55 |     memory.remove_metadata(&key);
-   |            ^^^^^^^^^^^^^^^ method cannot be called due to unsatisfied trait bounds
-   |
-  ::: packages/memory/src/memory/primitives/types.rs:49:1
-   |
-49 | pub enum MemoryTypeEnum {
-   | ----------------------- doesn't satisfy `_: MemoryType`
-   |
-  ::: packages/memory/src/memory/schema/mod.rs:11:1
-   |
-11 | pub struct Memory<T: MemoryType> {
-   | -------------------------------- method `remove_metadata` not found for this struct
-   |
-note: trait bound `primitives::types::MemoryTypeEnum: primitives::types::MemoryType` was not satisfied
-  --> packages/memory/src/memory/schema/mod.rs:23:9
-   |
-23 | impl<T: MemoryType> Memory<T> {
-   |         ^^^^^^^^^^  ---------
-   |         |
-   |         unsatisfied trait bound introduced here
-note: the trait `primitives::types::MemoryType` must be implemented
-  --> packages/memory/src/memory/primitives/types.rs:89:1
-   |
-89 | pub trait MemoryType: Debug + Send + Sync {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
     --> packages/domain/src/memory/cognitive/types.rs:19:24
@@ -2232,7 +1337,7 @@ note: required by a bound in `next_element`
 1731 |     where
 1732 |         T: Deserialize<'de>,
      |            ^^^^^^^^^^^^^^^^ required by this bound in `SeqAccess::next_element`
-     = note: the full name for the type has been written to '/Volumes/samsung_t9/fluent-ai/target/debug/deps/fluent_ai_domain-9fdf17205760d6c7.long-type-7227327428047072519.txt'
+     = note: the full name for the type has been written to '/Volumes/samsung_t9/fluent-ai/target/debug/deps/fluent_ai_domain-9fdf17205760d6c7.long-type-285625859660559102.txt'
      = note: consider using `--verbose` to print the full type name to the console
 
 error[E0277]: the trait bound `CachePadded<AtomicF32>: validation::_::_serde::Deserialize<'_>` is not satisfied
@@ -2474,7 +1579,7 @@ note: required by a bound in `next_value`
 1870 |     where
 1871 |         V: Deserialize<'de>,
      |            ^^^^^^^^^^^^^^^^ required by this bound in `MapAccess::next_value`
-     = note: the full name for the type has been written to '/Volumes/samsung_t9/fluent-ai/target/debug/deps/fluent_ai_domain-9fdf17205760d6c7.long-type-8564411108320723470.txt'
+     = note: the full name for the type has been written to '/Volumes/samsung_t9/fluent-ai/target/debug/deps/fluent_ai_domain-9fdf17205760d6c7.long-type-600987107167201896.txt'
      = note: consider using `--verbose` to print the full type name to the console
 
 error[E0277]: the trait bound `CachePadded<AtomicF32>: validation::_::_serde::Deserialize<'_>` is not satisfied
@@ -2719,7 +1824,7 @@ note: required by a bound in `validation::_::_serde::__private::de::missing_fiel
 24 | where
 25 |     V: Deserialize<'de>,
    |        ^^^^^^^^^^^^^^^^ required by this bound in `missing_field`
-   = note: the full name for the type has been written to '/Volumes/samsung_t9/fluent-ai/target/debug/deps/fluent_ai_domain-9fdf17205760d6c7.long-type-11917526963769293905.txt'
+   = note: the full name for the type has been written to '/Volumes/samsung_t9/fluent-ai/target/debug/deps/fluent_ai_domain-9fdf17205760d6c7.long-type-11451465429701269842.txt'
    = note: consider using `--verbose` to print the full type name to the console
    = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -3112,9 +2217,9 @@ error[E0599]: no variant or associated item named `StorageError` found for enum 
 296 |                 .map_err(|e| MemoryError::StorageError(e.to_string()))
     |                                           ^^^^^^^^^^^^ variant or associated item not found in `memory::primitives::types::MemoryError`
     |
-   ::: packages/domain/src/memory/primitives/types.rs:565:1
+   ::: packages/domain/src/memory/primitives/types.rs:568:1
     |
-565 | pub enum MemoryError {
+568 | pub enum MemoryError {
     | -------------------- variant or associated item `StorageError` not found for this enum
     |
 note: if you're trying to build a new `memory::primitives::types::MemoryError` consider using one of the following associated functions:
@@ -3122,18 +2227,18 @@ note: if you're trying to build a new `memory::primitives::types::MemoryError` c
       memory::primitives::types::MemoryError::invalid_type
       memory::primitives::types::MemoryError::invalid_content
       memory::primitives::types::MemoryError::validation
-   --> packages/domain/src/memory/primitives/types.rs:583:5
+   --> packages/domain/src/memory/primitives/types.rs:586:5
     |
-583 |     pub fn not_found(msg: impl Into<String>) -> Self {
+586 |     pub fn not_found(msg: impl Into<String>) -> Self {
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
-589 |     pub fn invalid_type(msg: impl Into<String>) -> Self {
+592 |     pub fn invalid_type(msg: impl Into<String>) -> Self {
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
-595 |     pub fn invalid_content(msg: impl Into<String>) -> Self {
+598 |     pub fn invalid_content(msg: impl Into<String>) -> Self {
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
-601 |     pub fn validation(msg: impl Into<String>) -> Self {
+604 |     pub fn validation(msg: impl Into<String>) -> Self {
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0560]: struct `McpToolData` has no field named `input_schema`
@@ -3316,57 +2421,57 @@ error[E0308]: mismatched types
                 found tuple `(_, _)`
 
 error: binding modifiers may only be written when the default binding mode is `move`
-   --> packages/domain/src/lib.rs:529:32
+   --> packages/domain/src/lib.rs:530:32
     |
-529 |             ZeroOneOrMany::One(ref item) => Some(item),
+530 |             ZeroOneOrMany::One(ref item) => Some(item),
     |                                ^^^ binding modifier not allowed under `ref` default binding mode
     |
     = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-   --> packages/domain/src/lib.rs:529:13
+   --> packages/domain/src/lib.rs:530:13
     |
-529 |             ZeroOneOrMany::One(ref item) => Some(item),
+530 |             ZeroOneOrMany::One(ref item) => Some(item),
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
 help: remove the unnecessary binding modifier
     |
-529 -             ZeroOneOrMany::One(ref item) => Some(item),
-529 +             ZeroOneOrMany::One(item) => Some(item),
+530 -             ZeroOneOrMany::One(ref item) => Some(item),
+530 +             ZeroOneOrMany::One(item) => Some(item),
     |
 
 error: binding modifiers may only be written when the default binding mode is `move`
-   --> packages/domain/src/lib.rs:537:32
+   --> packages/domain/src/lib.rs:538:32
     |
-537 |             ZeroOneOrMany::One(ref item) => vec![item],
+538 |             ZeroOneOrMany::One(ref item) => vec![item],
     |                                ^^^ binding modifier not allowed under `ref` default binding mode
-    |
-    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: matching on a reference type with a non-reference pattern changes the default binding mode
-   --> packages/domain/src/lib.rs:537:13
-    |
-537 |             ZeroOneOrMany::One(ref item) => vec![item],
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
-help: remove the unnecessary binding modifier
-    |
-537 -             ZeroOneOrMany::One(ref item) => vec![item],
-537 +             ZeroOneOrMany::One(item) => vec![item],
-    |
-
-error: binding modifiers may only be written when the default binding mode is `move`
-   --> packages/domain/src/lib.rs:538:33
-    |
-538 |             ZeroOneOrMany::Many(ref items) => items.iter().collect(),
-    |                                 ^^^ binding modifier not allowed under `ref` default binding mode
     |
     = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
    --> packages/domain/src/lib.rs:538:13
     |
-538 |             ZeroOneOrMany::Many(ref items) => items.iter().collect(),
+538 |             ZeroOneOrMany::One(ref item) => vec![item],
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
+help: remove the unnecessary binding modifier
+    |
+538 -             ZeroOneOrMany::One(ref item) => vec![item],
+538 +             ZeroOneOrMany::One(item) => vec![item],
+    |
+
+error: binding modifiers may only be written when the default binding mode is `move`
+   --> packages/domain/src/lib.rs:539:33
+    |
+539 |             ZeroOneOrMany::Many(ref items) => items.iter().collect(),
+    |                                 ^^^ binding modifier not allowed under `ref` default binding mode
+    |
+    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+   --> packages/domain/src/lib.rs:539:13
+    |
+539 |             ZeroOneOrMany::Many(ref items) => items.iter().collect(),
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
 help: remove the unnecessary binding modifier
     |
-538 -             ZeroOneOrMany::Many(ref items) => items.iter().collect(),
-538 +             ZeroOneOrMany::Many(items) => items.iter().collect(),
+539 -             ZeroOneOrMany::Many(ref items) => items.iter().collect(),
+539 +             ZeroOneOrMany::Many(items) => items.iter().collect(),
     |
 
 warning: unused variable: `message`
@@ -3440,8 +2545,6 @@ warning: variable does not need to be mutable
      |
      = note: `#[warn(unused_mut)]` on by default
 
-Some errors have detailed explanations: E0063, E0277, E0308, E0599.
-error: could not compile `fluent_ai_memory` (lib test) due to 25 previous errors
 warning: unused variable: `embedding_dim`
    --> packages/domain/src/memory/manager.rs:117:57
     |
@@ -3463,4 +2566,4 @@ warning: unused variable: `handle`
 Some errors have detailed explanations: E0015, E0277, E0282, E0308, E0382, E0560, E0599, E0609, E0615...
 For more information about an error, try `rustc --explain E0015`.
 warning: `fluent_ai_domain` (lib) generated 11 warnings
-error: could not compile `fluent_ai_domain` (lib) due to 132 previous errors; 11 warnings emitted
+error: could not compile `fluent_ai_domain` (lib) due to 130 previous errors; 11 warnings emitted

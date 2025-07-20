@@ -5,7 +5,7 @@
 use std::time::Duration;
 
 use fluent_ai_memory::cognitive::state::{
-    AbstractionLevel, Association, AssociationType, CognitiveState, CognitiveStateManager,
+    AbstractionLevel, AssociationType, CognitiveState, CognitiveStateManager,
     EmotionalValence, SemanticContext,
 };
 use uuid::Uuid;
@@ -110,6 +110,7 @@ fn test_cognitive_state_activation() {
     state.activate(0.3);
 
     // Should be clamped to 1.0 since initial was already 1.0
+    assert_eq!(initial_activation, 1.0);
     assert_eq!(state.activation_level, 1.0);
 
     // Test with lower initial activation

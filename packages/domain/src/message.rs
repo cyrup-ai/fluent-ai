@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+// Removed unused import: std::collections::HashMap
 use std::time::Instant;
 
 use arrayvec::ArrayVec;
@@ -7,6 +7,40 @@ use serde_json::Value;
 use smallvec::SmallVec;
 
 use crate::ZeroOneOrMany;
+
+/// Custom serialization module for Instant
+mod instant_serde {
+    use std::time::{Instant, SystemTime, UNIX_EPOCH, Duration};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use once_cell::sync::Lazy;
+
+    static START_TIME: Lazy<(Instant, SystemTime)> = Lazy::new(|| {
+        (Instant::now(), SystemTime::now())
+    });
+
+    pub fn serialize<S>(instant: &Instant, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let elapsed = instant.duration_since(START_TIME.0);
+        let system_time = START_TIME.1 + elapsed;
+        let timestamp = system_time.duration_since(UNIX_EPOCH)
+            .unwrap_or(Duration::from_secs(0))
+            .as_secs();
+        timestamp.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Instant, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let timestamp_secs = u64::deserialize(deserializer)?;
+        let system_time = UNIX_EPOCH + Duration::from_secs(timestamp_secs);
+        let elapsed_since_start = system_time.duration_since(START_TIME.1)
+            .unwrap_or(Duration::from_secs(0));
+        Ok(START_TIME.0 + elapsed_since_start)
+    }
+}
 
 /// Error type for message operations
 #[derive(Debug, thiserror::Error)]
@@ -78,6 +112,17 @@ pub enum MessageRole {
     Tool,
 }
 
+impl std::fmt::Display for MessageRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MessageRole::User => write!(f, "User"),
+            MessageRole::Assistant => write!(f, "Assistant"),
+            MessageRole::System => write!(f, "System"),
+            MessageRole::Tool => write!(f, "Tool"),
+        }
+    }
+}
+
 // Core message types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LegacyMessage {
@@ -85,6 +130,12 @@ pub struct LegacyMessage {
     pub content: String,
     pub name: Option<String>,
     pub chunk: Option<MessageChunk>,
+    #[serde(default = "default_timestamp")]
+    pub timestamp: std::time::SystemTime,
+}
+
+fn default_timestamp() -> std::time::SystemTime {
+    std::time::SystemTime::now()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -225,16 +276,17 @@ impl SearchChatMessage {
     }
 }
 
-/// Type alias for chat messages 
+/// Type alias for chat messages
 pub type ChatMessage = Message<256>;
 
 /// Zero-allocation message with const generics for stack allocation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message<const N: usize = 256> {
     pub id: u64,
     pub message_type: MessageType,
     pub content: ArrayVec<u8, N>,
     pub metadata: SmallVec<u8, 32>,
+    #[serde(with = "instant_serde")]
     pub timestamp: Instant,
     pub priority: MessagePriority,
     pub retry_count: u8,
@@ -273,7 +325,7 @@ impl<const N: usize> Message<N> {
 }
 
 /// Message type enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MessageType {
     AgentChat,
     SystemCommand,
@@ -285,7 +337,7 @@ pub enum MessageType {
 }
 
 /// Message priority for QoS
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum MessagePriority {
     High,
     Normal,

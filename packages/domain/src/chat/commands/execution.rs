@@ -303,8 +303,8 @@ impl CommandExecutor {
         &self,
         action: TemplateAction,
         name: Option<Arc<str>>,
-        content: Option<Arc<str>>,
-        variables: HashMap<Arc<str>, Arc<str>>,
+        _content: Option<Arc<str>>,
+        _variables: HashMap<Arc<str>, Arc<str>>,
     ) -> CommandResult<CommandOutput> {
         let message = match action {
             TemplateAction::Create => {
@@ -674,11 +674,14 @@ impl CommandExecutor {
     pub fn parse_and_execute(&self, input: &str) -> AsyncTask<CommandResult<CommandOutput>> {
         let parser = self.parser.clone();
         let executor = self.clone();
+        let input_owned = input.to_string(); // Clone input to avoid lifetime issues
 
         spawn_async(async move {
-            let command = parser.parse(input).map_err(|e| CommandError::ParseError {
-                detail: Arc::from(e.to_string()),
-            })?;
+            let command = parser
+                .parse(&input_owned)
+                .map_err(|e| CommandError::ParseError {
+                    detail: Arc::from(e.to_string()),
+                })?;
             executor.execute(command).await
         })
     }

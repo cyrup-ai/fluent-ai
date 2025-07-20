@@ -52,7 +52,7 @@ async fn test_quantum_router_basic() {
 
 #[test]
 fn test_cognitive_memory_node_creation() {
-    use fluent_ai_memory::{CognitiveMemoryNode, MemoryTypeEnum};
+    use fluent_ai_memory::{CognitiveMemoryNode, memory::MemoryTypeEnum};
 
     let node = CognitiveMemoryNode::new("Test content".to_string(), MemoryTypeEnum::Semantic);
 
@@ -116,7 +116,7 @@ async fn test_cognitive_state_manager() {
 #[test]
 fn test_evolution_metadata() {
     use fluent_ai_memory::cognitive::evolution::EvolutionMetadata;
-    use fluent_ai_memory::{MemoryNode, MemoryTypeEnum};
+    use fluent_ai_memory::{MemoryNode, memory::MemoryTypeEnum};
 
     let memory = MemoryNode::new("test".to_string(), MemoryTypeEnum::Semantic);
     let metadata = EvolutionMetadata::new(&memory);
@@ -128,13 +128,21 @@ fn test_evolution_metadata() {
 
 #[tokio::test]
 async fn test_attention_mechanism() {
-    use fluent_ai_memory::cognitive::attention::{AttentionConfig, AttentionMechanism};
+    use fluent_ai_memory::cognitive::attention::{
+        AttentionConfig, AttentionMechanism, CognitiveAttentionWeights,
+    };
 
     let config = AttentionConfig {
         num_heads: 2,
         hidden_dim: 8,
         dropout_rate: 0.0,
         use_causal_mask: false,
+        attention_weights: CognitiveAttentionWeights {
+            semantic_weight: 0.5,
+            lexical_weight: 0.3,
+            structural_weight: 0.2,
+            contextual_weight: 0.2,
+        },
     };
 
     let mut attention = AttentionMechanism::new(config);

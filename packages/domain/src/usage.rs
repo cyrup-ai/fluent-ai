@@ -56,7 +56,7 @@ impl std::ops::Add for Usage {
 
     #[inline]
     fn add(self, rhs: Self) -> Self::Output {
-        self.add(&rhs)
+        (&self).add(&rhs)
     }
 }
 

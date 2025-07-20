@@ -75,6 +75,250 @@ pub enum FormatError {
 /// Result type for formatting operations
 pub type FormatResult<T> = Result<T, FormatError>;
 
+/// Formatting options for message rendering and display
+///
+/// This configuration controls how messages are formatted, rendered, and displayed
+/// with comprehensive customization options for different output contexts.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FormatOptions {
+    /// Enable markdown parsing and rendering
+    pub enable_markdown: bool,
+    /// Enable syntax highlighting for code blocks
+    pub enable_syntax_highlighting: bool,
+    /// Enable inline formatting (bold, italic, etc.)
+    pub enable_inline_formatting: bool,
+    /// Enable link detection and formatting
+    pub enable_link_detection: bool,
+    /// Enable emoji rendering
+    pub enable_emoji: bool,
+    /// Maximum line length for text wrapping (0 = no wrapping)
+    pub max_line_length: usize,
+    /// Indentation size for nested content
+    pub indent_size: usize,
+    /// Theme for syntax highlighting
+    pub syntax_theme: SyntaxTheme,
+    /// Color scheme for formatting
+    pub color_scheme: ColorScheme,
+    /// Output format target
+    pub output_format: OutputFormat,
+    /// Include metadata in formatted output
+    pub include_metadata: bool,
+    /// Enable performance optimizations
+    pub enable_optimizations: bool,
+    /// Custom CSS classes for HTML output
+    pub custom_css_classes: HashMap<Arc<str>, Arc<str>>,
+    /// Custom formatting rules
+    pub custom_rules: Vec<CustomFormatRule>,
+}
+
+/// Syntax highlighting themes
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum SyntaxTheme {
+    /// Light theme with dark text
+    Light,
+    /// Dark theme with light text
+    Dark,
+    /// High contrast theme
+    HighContrast,
+    /// Solarized light theme
+    SolarizedLight,
+    /// Solarized dark theme
+    SolarizedDark,
+    /// GitHub theme
+    GitHub,
+    /// VS Code theme
+    VSCode,
+    /// Custom theme
+    Custom,
+}
+
+/// Color schemes for text formatting
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ColorScheme {
+    /// Primary text color
+    pub primary_text: Arc<str>,
+    /// Secondary text color
+    pub secondary_text: Arc<str>,
+    /// Background color
+    pub background: Arc<str>,
+    /// Accent color
+    pub accent: Arc<str>,
+    /// Error color
+    pub error: Arc<str>,
+    /// Warning color
+    pub warning: Arc<str>,
+    /// Success color
+    pub success: Arc<str>,
+    /// Link color
+    pub link: Arc<str>,
+}
+
+/// Output format targets
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum OutputFormat {
+    /// Plain text output
+    PlainText,
+    /// HTML output
+    Html,
+    /// Markdown output
+    Markdown,
+    /// ANSI colored terminal output
+    AnsiTerminal,
+    /// Rich text format
+    RichText,
+    /// LaTeX output
+    LaTeX,
+}
+
+/// Custom formatting rules
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomFormatRule {
+    /// Rule name/identifier
+    pub name: Arc<str>,
+    /// Pattern to match (regex)
+    pub pattern: Arc<str>,
+    /// Replacement template
+    pub replacement: Arc<str>,
+    /// Rule priority (higher = applied first)
+    pub priority: u32,
+    /// Whether rule is enabled
+    pub enabled: bool,
+}
+
+impl Default for FormatOptions {
+    fn default() -> Self {
+        Self {
+            enable_markdown: true,
+            enable_syntax_highlighting: true,
+            enable_inline_formatting: true,
+            enable_link_detection: true,
+            enable_emoji: true,
+            max_line_length: 80,
+            indent_size: 2,
+            syntax_theme: SyntaxTheme::GitHub,
+            color_scheme: ColorScheme::default(),
+            output_format: OutputFormat::Html,
+            include_metadata: false,
+            enable_optimizations: true,
+            custom_css_classes: HashMap::new(),
+            custom_rules: Vec::new(),
+        }
+    }
+}
+
+impl Default for ColorScheme {
+    fn default() -> Self {
+        Self {
+            primary_text: Arc::from("#333333"),
+            secondary_text: Arc::from("#666666"),
+            background: Arc::from("#ffffff"),
+            accent: Arc::from("#0066cc"),
+            error: Arc::from("#cc0000"),
+            warning: Arc::from("#ff9900"),
+            success: Arc::from("#00cc00"),
+            link: Arc::from("#0066cc"),
+        }
+    }
+}
+
+impl FormatOptions {
+    /// Create new format options with default values
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create format options optimized for terminal output
+    pub fn terminal() -> Self {
+        Self {
+            output_format: OutputFormat::AnsiTerminal,
+            max_line_length: 120,
+            enable_optimizations: true,
+            ..Default::default()
+        }
+    }
+
+    /// Create format options optimized for HTML output
+    pub fn html() -> Self {
+        Self {
+            output_format: OutputFormat::Html,
+            enable_markdown: true,
+            enable_syntax_highlighting: true,
+            include_metadata: true,
+            ..Default::default()
+        }
+    }
+
+    /// Create format options for plain text output
+    pub fn plain_text() -> Self {
+        Self {
+            output_format: OutputFormat::PlainText,
+            enable_markdown: false,
+            enable_syntax_highlighting: false,
+            enable_inline_formatting: false,
+            enable_emoji: false,
+            ..Default::default()
+        }
+    }
+
+    /// Set maximum line length
+    pub fn with_max_line_length(mut self, length: usize) -> Self {
+        self.max_line_length = length;
+        self
+    }
+
+    /// Set syntax theme
+    pub fn with_syntax_theme(mut self, theme: SyntaxTheme) -> Self {
+        self.syntax_theme = theme;
+        self
+    }
+
+    /// Set color scheme
+    pub fn with_color_scheme(mut self, scheme: ColorScheme) -> Self {
+        self.color_scheme = scheme;
+        self
+    }
+
+    /// Enable or disable markdown
+    pub fn with_markdown(mut self, enable: bool) -> Self {
+        self.enable_markdown = enable;
+        self
+    }
+
+    /// Enable or disable syntax highlighting
+    pub fn with_syntax_highlighting(mut self, enable: bool) -> Self {
+        self.enable_syntax_highlighting = enable;
+        self
+    }
+
+    /// Add custom formatting rule
+    pub fn with_custom_rule(mut self, rule: CustomFormatRule) -> Self {
+        self.custom_rules.push(rule);
+        self
+    }
+
+    /// Validate the format options
+    pub fn validate(&self) -> Result<(), String> {
+        if self.indent_size > 16 {
+            return Err("Indent size cannot exceed 16 spaces".to_string());
+        }
+
+        if self.max_line_length > 0 && self.max_line_length < 20 {
+            return Err(
+                "Max line length must be at least 20 characters or 0 (disabled)".to_string(),
+            );
+        }
+
+        // Validate custom rules
+        for rule in &self.custom_rules {
+            if rule.pattern.is_empty() {
+                return Err(format!("Custom rule '{}' has empty pattern", rule.name));
+            }
+        }
+
+        Ok(())
+    }
+}
+
 /// SIMD-optimized markdown parser
 pub struct MarkdownParser {
     /// Cache for parsed content
@@ -102,7 +346,7 @@ impl MarkdownParser {
 
         // Parse markdown using SIMD-optimized patterns
         let html = self.parse_markdown_simd(&content_arc)?;
-        let html_arc = Arc::from(html);
+        let html_arc: Arc<str> = Arc::from(html);
 
         // Cache the result
         self.cache.insert(content_arc, html_arc.clone());

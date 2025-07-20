@@ -111,9 +111,9 @@ impl<'a> CompletionRequestBuilder<'a> {
     pub fn new() -> Self {
         Self {
             system_prompt: Cow::Borrowed(""),
-            chat_history: ZeroOneOrMany::Zero,
-            documents: ZeroOneOrMany::Zero,
-            tools: ZeroOneOrMany::Zero,
+            chat_history: ZeroOneOrMany::None,
+            documents: ZeroOneOrMany::None,
+            tools: ZeroOneOrMany::None,
             temperature: 1.0,
             max_tokens: None,
             chunk_size: None,

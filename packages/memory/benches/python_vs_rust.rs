@@ -3,7 +3,7 @@ use std::path::Path;
 use std::process::Command;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use fluent_ai_memory::{MemoryNode, MemoryTypeEnum};
+use fluent_ai_memory::{MemoryNode, memory::MemoryTypeEnum};
 use rand::Rng;
 use rand::distr::Alphanumeric;
 

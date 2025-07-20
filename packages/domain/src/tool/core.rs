@@ -9,11 +9,26 @@ use std::marker::PhantomData;
 
 // Import Cylo execution environment types
 // Note: Using conditional compilation to handle optional cylo dependency
-#[cfg(feature = "cylo")]
-use cylo::{CyloInstance, execution_env::Cylo};
 use serde_json::Value;
 
 use crate::HashMap;
+
+/// Placeholder type for Cylo execution environment instances
+/// This will be replaced with the actual CyloInstance type when cylo is implemented
+#[cfg(feature = "cylo")]
+#[derive(Debug, Clone)]
+pub struct CyloInstance {
+    /// Placeholder field - will be replaced with actual implementation
+    _placeholder: (),
+}
+
+#[cfg(feature = "cylo")]
+impl CyloInstance {
+    /// Create a new placeholder CyloInstance
+    pub fn new() -> Self {
+        Self { _placeholder: () }
+    }
+}
 
 // Note: The transparent JSON syntax {"key" => "value"} should work automatically
 // through cyrup_sugars transformation without requiring explicit macro imports

@@ -11,7 +11,7 @@ use crate::model::info::ModelInfo;
 /// This trait provides the foundation for all AI models in the system.
 /// It defines the basic functionality that all models must implement,
 /// including model information and basic capabilities.
-pub trait Model: Send + Sync + 'static {
+pub trait Model: Send + Sync + std::fmt::Debug + 'static {
     /// Get the model's information
     fn info(&self) -> &'static ModelInfo;
 

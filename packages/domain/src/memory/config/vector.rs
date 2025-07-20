@@ -358,9 +358,8 @@ impl SimdConfig {
     /// Create optimized SIMD configuration
     #[inline]
     pub fn optimized() -> Self {
-        let instruction_set = if cfg!(feature = "simd-auto-detect") {
-            SimdInstructionSet::detect_best_available()
-        } else {
+        let instruction_set = {
+            // Removed unexpected cfg condition "simd-auto-detect" - feature does not exist
             SimdInstructionSet::None
         };
 

@@ -303,7 +303,7 @@ pub struct ResourceUsage {
 }
 
 /// Command information for registry
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandInfo {
     /// Command name
     pub name: Arc<str>,
@@ -322,7 +322,7 @@ pub struct CommandInfo {
 }
 
 /// Parameter information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ParameterInfo {
     /// Parameter name
     pub name: Arc<str>,
@@ -337,7 +337,7 @@ pub struct ParameterInfo {
 }
 
 /// Parameter types
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ParameterType {
     String,
     Integer,
@@ -453,5 +453,155 @@ impl CommandOutput {
     pub fn with_resource_usage(mut self, usage: ResourceUsage) -> Self {
         self.resource_usage = usage;
         self
+    }
+}
+
+/// Command handler trait for processing chat commands
+///
+/// This trait defines the interface for handling different types of chat commands
+/// with async execution and comprehensive error handling.
+pub trait CommandHandler: Send + Sync {
+    /// Handle a chat command and return the result
+    fn handle(
+        &self,
+        command: ChatCommand,
+        context: &CommandContext,
+    ) -> impl std::future::Future<Output = CommandResult<CommandOutput>> + Send;
+
+    /// Get the command types this handler supports
+    fn supported_commands(&self) -> Vec<&'static str>;
+
+    /// Get handler metadata
+    fn metadata(&self) -> CommandHandlerMetadata;
+
+    /// Validate command before execution
+    fn validate(&self, command: &ChatCommand, context: &CommandContext) -> CommandResult<()> {
+        // Default implementation - can be overridden
+        Ok(())
+    }
+
+    /// Check if handler can handle the given command
+    fn can_handle(&self, command: &ChatCommand) -> bool {
+        // Default implementation based on supported commands
+        let command_name = match command {
+            ChatCommand::Help { .. } => "help",
+            ChatCommand::Clear { .. } => "clear",
+            ChatCommand::Export { .. } => "export",
+            ChatCommand::Config { .. } => "config",
+            ChatCommand::Template { .. } => "template",
+            ChatCommand::Macro { .. } => "macro",
+            ChatCommand::Search { .. } => "search",
+            ChatCommand::Branch { .. } => "branch",
+            ChatCommand::Session { .. } => "session",
+            ChatCommand::Tool { .. } => "tool",
+            ChatCommand::Stats { .. } => "stats",
+            ChatCommand::Theme { .. } => "theme",
+            ChatCommand::Debug { .. } => "debug",
+        };
+
+        self.supported_commands().contains(&command_name)
+    }
+}
+
+/// Metadata for command handlers
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandHandlerMetadata {
+    /// Handler name
+    pub name: Arc<str>,
+    /// Handler description
+    pub description: Arc<str>,
+    /// Handler version
+    pub version: Arc<str>,
+    /// Handler author
+    pub author: Option<Arc<str>>,
+    /// Handler priority (higher = more priority)
+    pub priority: u32,
+    /// Whether handler is enabled
+    pub enabled: bool,
+}
+
+/// Default command handler implementation
+#[derive(Debug, Clone)]
+pub struct DefaultCommandHandler {
+    /// Handler metadata
+    metadata: CommandHandlerMetadata,
+}
+
+impl DefaultCommandHandler {
+    /// Create a new default command handler
+    pub fn new() -> Self {
+        Self {
+            metadata: CommandHandlerMetadata {
+                name: Arc::from("default"),
+                description: Arc::from("Default command handler for basic chat commands"),
+                version: Arc::from("1.0.0"),
+                author: Some(Arc::from("fluent-ai")),
+                priority: 100,
+                enabled: true,
+            },
+        }
+    }
+}
+
+impl Default for DefaultCommandHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl CommandHandler for DefaultCommandHandler {
+    async fn handle(
+        &self,
+        command: ChatCommand,
+        _context: &CommandContext,
+    ) -> CommandResult<CommandOutput> {
+        match command {
+            ChatCommand::Help { command, extended: _ } => {
+                let message = if let Some(cmd) = command {
+                    format!("Help for command: {}", cmd)
+                } else {
+                    "Available commands: help, clear, export, config, template, macro, search, model, system, plugin".to_string()
+                };
+                Ok(CommandOutput::success(message))
+            }
+            ChatCommand::Clear { confirm, keep_last } => {
+                if !confirm {
+                    return Ok(CommandOutput::error("Use --confirm to clear chat history"));
+                }
+                let message = if let Some(keep) = keep_last {
+                    format!("Chat history cleared, keeping last {} messages", keep)
+                } else {
+                    "Chat history cleared".to_string()
+                };
+                Ok(CommandOutput::success(message))
+            }
+            ChatCommand::Config {
+                key,
+                value,
+                show,
+                reset,
+            } => {
+                if show {
+                    Ok(CommandOutput::success("Configuration displayed"))
+                } else if reset {
+                    Ok(CommandOutput::success("Configuration reset to defaults"))
+                } else if let (Some(k), Some(v)) = (key, value) {
+                    Ok(CommandOutput::success(format!("Set {} = {}", k, v)))
+                } else {
+                    Ok(CommandOutput::error("Invalid config command"))
+                }
+            }
+            _ => Ok(CommandOutput::error(
+                "Command not implemented in default handler",
+            )),
+        }
+    }
+
+    fn supported_commands(&self) -> Vec<&'static str> {
+        vec!["help", "clear", "config"]
+    }
+
+    fn metadata(&self) -> CommandHandlerMetadata {
+        self.metadata.clone()
     }
 }

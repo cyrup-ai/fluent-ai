@@ -18,8 +18,8 @@ use std::time::{Duration, Instant};
 
 use arc_swap::{ArcSwap, Guard};
 use arrayvec::{ArrayString, ArrayVec};
-use fluent_ai_domain::model::ModelInfo;
 use fluent_ai_domain::AsyncTask;
+use fluent_ai_domain::model::ModelInfo;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 use smallvec::{SmallVec, smallvec};
 

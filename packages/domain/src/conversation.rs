@@ -5,7 +5,7 @@
 use std::fmt;
 
 use crate::ZeroOneOrMany;
-use crate::{AsyncTask, spawn_async};
+// Removed unused imports: AsyncTask, spawn_async
 
 /// Core conversation trait for managing message history
 pub trait Conversation: Send + Sync + fmt::Debug + Clone {

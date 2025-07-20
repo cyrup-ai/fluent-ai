@@ -2,7 +2,7 @@
 //! Example of using the cognitive optimization system
 
 #[cfg(feature = "cognitive")]
-use fluent_ai_memory::cognitive::{orchestrator::InfiniteOrchestrator, types::OptimizationSpec};
+use fluent_ai_memory::cognitive::orchestrator::InfiniteOrchestrator;
 
 #[cfg(feature = "cognitive")]
 #[tokio::main]

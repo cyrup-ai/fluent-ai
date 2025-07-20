@@ -6,24 +6,263 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use arc_swap::ArcSwap;
-use atomic_counter::{AtomicCounter, ConsistentCounter};
 use crossbeam_queue::SegQueue;
-use serde::{Deserialize, Serialize};
-use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use tokio::sync::{RwLock, broadcast};
 use uuid::Uuid;
 
+/// Duration serialization helper
+mod duration_secs {
+    use super::*;
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u64(duration.as_secs())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let secs = u64::deserialize(deserializer)?;
+        Ok(Duration::from_secs(secs))
+    }
+}
+
+/// Model configuration for chat interactions
+///
+/// This configuration defines model-specific settings including provider selection,
+/// model parameters, performance tuning, and behavior customization.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelConfig {
+    /// Model provider (e.g., "openai", "anthropic", "mistral", "gemini")
+    pub provider: Arc<str>,
+    /// Model name/identifier
+    pub model_name: Arc<str>,
+    /// Model version or variant
+    pub model_version: Option<Arc<str>>,
+    /// Temperature for response randomness (0.0 to 2.0)
+    pub temperature: f32,
+    /// Maximum tokens in response
+    pub max_tokens: Option<u32>,
+    /// Top-p nucleus sampling parameter
+    pub top_p: Option<f32>,
+    /// Top-k sampling parameter
+    pub top_k: Option<u32>,
+    /// Frequency penalty (-2.0 to 2.0)
+    pub frequency_penalty: Option<f32>,
+    /// Presence penalty (-2.0 to 2.0)
+    pub presence_penalty: Option<f32>,
+    /// Stop sequences
+    pub stop_sequences: Vec<Arc<str>>,
+    /// System prompt/instructions
+    pub system_prompt: Option<Arc<str>>,
+    /// Enable function calling
+    pub enable_functions: bool,
+    /// Function calling mode ("auto", "none", "required")
+    pub function_mode: Arc<str>,
+    /// Model-specific parameters
+    pub custom_parameters: HashMap<Arc<str>, serde_json::Value>,
+    /// Request timeout in milliseconds
+    pub timeout_ms: u64,
+    /// Retry configuration
+    pub retry_config: ModelRetryConfig,
+    /// Performance settings
+    pub performance: ModelPerformanceConfig,
+}
+
+/// Model retry configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelRetryConfig {
+    /// Maximum number of retries
+    pub max_retries: u32,
+    /// Base delay between retries in milliseconds
+    pub base_delay_ms: u64,
+    /// Maximum delay between retries in milliseconds
+    pub max_delay_ms: u64,
+    /// Exponential backoff multiplier
+    pub backoff_multiplier: f32,
+    /// Enable jitter to avoid thundering herd
+    pub enable_jitter: bool,
+}
+
+/// Model performance configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelPerformanceConfig {
+    /// Enable response caching
+    pub enable_caching: bool,
+    /// Cache TTL in seconds
+    pub cache_ttl_seconds: u64,
+    /// Enable request batching
+    pub enable_batching: bool,
+    /// Maximum batch size
+    pub max_batch_size: u32,
+    /// Batch timeout in milliseconds
+    pub batch_timeout_ms: u64,
+    /// Enable streaming responses
+    pub enable_streaming: bool,
+    /// Connection pool size
+    pub connection_pool_size: u32,
+    /// Keep-alive timeout in seconds
+    pub keep_alive_timeout_seconds: u64,
+}
+
+impl Default for ModelConfig {
+    fn default() -> Self {
+        Self {
+            provider: Arc::from("openai"),
+            model_name: Arc::from("gpt-4"),
+            model_version: None,
+            temperature: 0.7,
+            max_tokens: Some(2048),
+            top_p: Some(1.0),
+            top_k: None,
+            frequency_penalty: Some(0.0),
+            presence_penalty: Some(0.0),
+            stop_sequences: Vec::new(),
+            system_prompt: None,
+            enable_functions: true,
+            function_mode: Arc::from("auto"),
+            custom_parameters: HashMap::new(),
+            timeout_ms: 30000, // 30 seconds
+            retry_config: ModelRetryConfig::default(),
+            performance: ModelPerformanceConfig::default(),
+        }
+    }
+}
+
+impl Default for ModelRetryConfig {
+    fn default() -> Self {
+        Self {
+            max_retries: 3,
+            base_delay_ms: 1000, // 1 second
+            max_delay_ms: 30000, // 30 seconds
+            backoff_multiplier: 2.0,
+            enable_jitter: true,
+        }
+    }
+}
+
+impl Default for ModelPerformanceConfig {
+    fn default() -> Self {
+        Self {
+            enable_caching: true,
+            cache_ttl_seconds: 3600, // 1 hour
+            enable_batching: false,
+            max_batch_size: 10,
+            batch_timeout_ms: 100,
+            enable_streaming: true,
+            connection_pool_size: 10,
+            keep_alive_timeout_seconds: 60,
+        }
+    }
+}
+
+impl ModelConfig {
+    /// Create a new model configuration
+    pub fn new(provider: impl Into<Arc<str>>, model_name: impl Into<Arc<str>>) -> Self {
+        Self {
+            provider: provider.into(),
+            model_name: model_name.into(),
+            ..Default::default()
+        }
+    }
+
+    /// Create configuration for OpenAI models
+    pub fn openai(model_name: impl Into<Arc<str>>) -> Self {
+        Self::new("openai", model_name)
+    }
+
+    /// Create configuration for Anthropic models
+    pub fn anthropic(model_name: impl Into<Arc<str>>) -> Self {
+        Self::new("anthropic", model_name)
+    }
+
+    /// Create configuration for Mistral models
+    pub fn mistral(model_name: impl Into<Arc<str>>) -> Self {
+        Self::new("mistral", model_name)
+    }
+
+    /// Create configuration for Gemini models
+    pub fn gemini(model_name: impl Into<Arc<str>>) -> Self {
+        Self::new("gemini", model_name)
+    }
+
+    /// Set temperature
+    pub fn with_temperature(mut self, temperature: f32) -> Self {
+        self.temperature = temperature.clamp(0.0, 2.0);
+        self
+    }
+
+    /// Set max tokens
+    pub fn with_max_tokens(mut self, max_tokens: u32) -> Self {
+        self.max_tokens = Some(max_tokens);
+        self
+    }
+
+    /// Set system prompt
+    pub fn with_system_prompt(mut self, prompt: impl Into<Arc<str>>) -> Self {
+        self.system_prompt = Some(prompt.into());
+        self
+    }
+
+    /// Enable or disable function calling
+    pub fn with_functions(mut self, enable: bool) -> Self {
+        self.enable_functions = enable;
+        self
+    }
+
+    /// Validate the model configuration
+    pub fn validate(&self) -> Result<(), String> {
+        if self.provider.is_empty() {
+            return Err("Provider cannot be empty".to_string());
+        }
+
+        if self.model_name.is_empty() {
+            return Err("Model name cannot be empty".to_string());
+        }
+
+        if self.temperature < 0.0 || self.temperature > 2.0 {
+            return Err("Temperature must be between 0.0 and 2.0".to_string());
+        }
+
+        if let Some(top_p) = self.top_p {
+            if top_p < 0.0 || top_p > 1.0 {
+                return Err("Top-p must be between 0.0 and 1.0".to_string());
+            }
+        }
+
+        if let Some(freq_penalty) = self.frequency_penalty {
+            if freq_penalty < -2.0 || freq_penalty > 2.0 {
+                return Err("Frequency penalty must be between -2.0 and 2.0".to_string());
+            }
+        }
+
+        if let Some(pres_penalty) = self.presence_penalty {
+            if pres_penalty < -2.0 || pres_penalty > 2.0 {
+                return Err("Presence penalty must be between -2.0 and 2.0".to_string());
+            }
+        }
+
+        Ok(())
+    }
+}
+
 /// Core chat configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Archive, RkyvDeserialize, RkyvSerialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, bincode::Encode, bincode::Decode)]
 pub struct ChatConfig {
     /// Maximum message length
     pub max_message_length: usize,
     /// Enable message history
     pub enable_history: bool,
-    /// History retention period
+    /// History retention period in seconds (for rkyv compatibility)
+    #[serde(with = "duration_secs")]
     pub history_retention: Duration,
     /// Enable streaming responses
     pub enable_streaming: bool,
@@ -38,7 +277,7 @@ pub struct ChatConfig {
 }
 
 /// Personality configuration for AI behavior
-#[derive(Debug, Clone, Serialize, Deserialize, Archive, RkyvDeserialize, RkyvSerialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bincode::Encode, bincode::Decode)]
 pub struct PersonalityConfig {
     /// Personality type identifier
     pub personality_type: Arc<str>,
@@ -58,10 +297,14 @@ pub struct PersonalityConfig {
     pub empathy: f64,
     /// Expertise level
     pub expertise_level: Arc<str>,
+    /// Verbosity level
+    pub verbosity: Arc<str>,
+    /// Personality traits
+    pub traits: Vec<Arc<str>>,
 }
 
 /// Behavior configuration for chat system
-#[derive(Debug, Clone, Serialize, Deserialize, Archive, RkyvDeserialize, RkyvSerialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bincode::Encode, bincode::Decode)]
 pub struct BehaviorConfig {
     /// Enable auto-responses
     pub auto_response: bool,
@@ -71,10 +314,20 @@ pub struct BehaviorConfig {
     pub enable_filtering: bool,
     /// Maximum concurrent conversations
     pub max_concurrent_chats: usize,
+    /// Proactivity level (0.0-1.0)
+    pub proactivity: f64,
+    /// Question frequency (0.0-1.0)
+    pub question_frequency: f64,
+    /// Conversation flow style
+    pub conversation_flow: Arc<str>,
+    /// Follow-up behavior style
+    pub follow_up_behavior: Arc<str>,
+    /// Error handling approach
+    pub error_handling: Arc<str>,
 }
 
 /// User interface configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Archive, RkyvDeserialize, RkyvSerialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bincode::Encode, bincode::Decode)]
 pub struct UIConfig {
     /// Theme settings
     pub theme: Arc<str>,
@@ -84,10 +337,18 @@ pub struct UIConfig {
     pub dark_mode: bool,
     /// Animation settings
     pub enable_animations: bool,
+    /// Layout style
+    pub layout: Arc<str>,
+    /// Color scheme
+    pub color_scheme: Arc<str>,
+    /// Display density
+    pub display_density: Arc<str>,
+    /// Animation settings
+    pub animations: Arc<str>,
 }
 
 /// Integration configuration for external services
-#[derive(Debug, Clone, Serialize, Deserialize, Archive, RkyvDeserialize, RkyvSerialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bincode::Encode, bincode::Decode)]
 pub struct IntegrationConfig {
     /// Enabled integrations
     pub enabled_integrations: Vec<Arc<str>>,
@@ -95,6 +356,12 @@ pub struct IntegrationConfig {
     pub credentials: HashMap<Arc<str>, Arc<str>>,
     /// Webhook configuration
     pub webhooks: Vec<Arc<str>>,
+    /// External services configuration
+    pub external_services: Vec<Arc<str>>,
+    /// API configurations
+    pub api_configurations: Vec<Arc<str>>,
+    /// Authentication methods
+    pub authentication: Vec<Arc<str>>,
 }
 
 impl Default for PersonalityConfig {
@@ -109,6 +376,8 @@ impl Default for PersonalityConfig {
             humor: 0.3,
             empathy: 0.7,
             expertise_level: Arc::from("intermediate"),
+            verbosity: Arc::from("balanced"),
+            traits: Vec::new(),
         }
     }
 }
@@ -120,6 +389,11 @@ impl Default for BehaviorConfig {
             response_delay: Duration::from_millis(500),
             enable_filtering: true,
             max_concurrent_chats: 10,
+            proactivity: 0.5,
+            question_frequency: 0.3,
+            conversation_flow: Arc::from("natural"),
+            follow_up_behavior: Arc::from("contextual"),
+            error_handling: Arc::from("graceful"),
         }
     }
 }
@@ -131,6 +405,10 @@ impl Default for UIConfig {
             font_size: 14,
             dark_mode: false,
             enable_animations: true,
+            layout: Arc::from("standard"),
+            color_scheme: Arc::from("adaptive"),
+            display_density: Arc::from("comfortable"),
+            animations: Arc::from("smooth"),
         }
     }
 }
@@ -141,6 +419,9 @@ impl Default for IntegrationConfig {
             enabled_integrations: Vec::new(),
             credentials: HashMap::new(),
             webhooks: Vec::new(),
+            external_services: Vec::new(),
+            api_configurations: Vec::new(),
+            authentication: Vec::new(),
         }
     }
 }
@@ -253,11 +534,11 @@ pub struct ConfigurationManager {
     /// Persistence settings
     persistence: Arc<RwLock<ConfigurationPersistence>>,
     /// Configuration change counter
-    change_counter: ConsistentCounter,
+    change_counter: Arc<AtomicUsize>,
     /// Last persistence timestamp
     last_persistence: parking_lot::Mutex<Instant>,
     /// Configuration version counter
-    version_counter: ConsistentCounter,
+    version_counter: Arc<AtomicUsize>,
     /// Configuration locks for atomic operations
     configuration_locks: Arc<RwLock<HashMap<Arc<str>, Arc<parking_lot::RwLock<()>>>>>,
 }
@@ -531,9 +812,9 @@ impl ConfigurationManager {
             change_notifier,
             validation_rules: Arc::new(RwLock::new(HashMap::new())),
             persistence: Arc::new(RwLock::new(ConfigurationPersistence::default())),
-            change_counter: ConsistentCounter::new(0),
+            change_counter: Arc::new(AtomicUsize::new(0)),
             last_persistence: parking_lot::Mutex::new(Instant::now()),
-            version_counter: ConsistentCounter::new(1),
+            version_counter: Arc::new(AtomicUsize::new(1)),
             configuration_locks: Arc::new(RwLock::new(HashMap::new())),
         };
 
@@ -587,8 +868,8 @@ impl ConfigurationManager {
 
         // Queue change event
         self.change_events.push(change_event.clone());
-        self.change_counter.inc();
-        self.version_counter.inc();
+        self.change_counter.fetch_add(1, Ordering::Relaxed);
+        self.version_counter.fetch_add(1, Ordering::Relaxed);
 
         // Notify subscribers
         let _ = self.change_notifier.send(change_event);
@@ -661,8 +942,8 @@ impl ConfigurationManager {
 
         // Queue change event
         self.change_events.push(change_event.clone());
-        self.change_counter.inc();
-        self.version_counter.inc();
+        self.change_counter.fetch_add(1, Ordering::Relaxed);
+        self.version_counter.fetch_add(1, Ordering::Relaxed);
 
         // Notify subscribers
         let _ = self.change_notifier.send(change_event);
@@ -735,7 +1016,9 @@ impl ConfigurationManager {
             "yaml" => serde_yaml::to_string(&*config)?,
             "toml" => toml::to_string(&*config)?,
             "binary" => {
-                let bytes = rkyv::to_bytes::<ChatConfig>(&*config)?;
+                // Use bincode for simpler binary serialization
+                let bytes = bincode::encode_to_vec(&*config, bincode::config::standard())
+                    .map_err(|e| format!("Binary serialization failed: {}", e))?;
                 {
                     use base64::Engine;
                     base64::engine::general_purpose::STANDARD.encode(&bytes)
@@ -783,8 +1066,9 @@ impl ConfigurationManager {
             "binary" => {
                 use base64::Engine;
                 let bytes = base64::engine::general_purpose::STANDARD.decode(&content)?;
-                let archived = rkyv::from_bytes::<ChatConfig, rkyv::rancor::Error>(&bytes)?;
-                archived
+                let (config, _) = bincode::decode_from_slice(&bytes, bincode::config::standard())
+                    .map_err(|e| format!("Binary deserialization failed: {}", e))?;
+                config
             }
             _ => return Err("Unsupported format".into()),
         };
@@ -807,8 +1091,8 @@ impl ConfigurationManager {
     /// Get configuration statistics
     pub fn get_statistics(&self) -> ConfigurationStatistics {
         ConfigurationStatistics {
-            total_changes: self.change_counter.get(),
-            current_version: self.version_counter.get(),
+            total_changes: self.change_counter.load(Ordering::Relaxed),
+            current_version: self.version_counter.load(Ordering::Relaxed),
             last_modified: Duration::from_secs(
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
@@ -930,13 +1214,13 @@ impl PersonalityConfigBuilder {
     }
 
     /// Set humor level
-    pub fn humor(mut self, humor: f32) -> Self {
+    pub fn humor(mut self, humor: f64) -> Self {
         self.config.humor = humor.clamp(0.0, 1.0);
         self
     }
 
     /// Set empathy level
-    pub fn empathy(mut self, empathy: f32) -> Self {
+    pub fn empathy(mut self, empathy: f64) -> Self {
         self.config.empathy = empathy.clamp(0.0, 1.0);
         self
     }

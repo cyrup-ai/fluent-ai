@@ -6,7 +6,7 @@ use std::time::SystemTime;
 use serde_json::Value;
 
 use crate::ZeroOneOrMany;
-use crate::async_task::{AsyncTask, spawn_async};
+use crate::async_task::AsyncTask;
 
 pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 
@@ -92,13 +92,13 @@ impl MemoryType {
     #[inline]
     pub const fn base_importance(&self) -> f32 {
         match self {
-            MemoryType::ShortTerm => 0.3, // Temporary, less important
-            MemoryType::LongTerm => 0.8,  // Persistent, more important
-            MemoryType::Semantic => 0.9,  // Knowledge, very important
-            MemoryType::Episodic => 0.6,  // Experiences, moderately important
+            MemoryType::ShortTerm => 0.3,    // Temporary, less important
+            MemoryType::LongTerm => 0.8,     // Persistent, more important
+            MemoryType::Semantic => 0.9,     // Knowledge, very important
+            MemoryType::Episodic => 0.6,     // Experiences, moderately important
             MemoryType::Conversation => 0.5, // Conversations, moderately important
-            MemoryType::Context => 0.7, // Context, important
-            MemoryType::Document => 0.8, // Documents, important
+            MemoryType::Context => 0.7,      // Context, important
+            MemoryType::Document => 0.8,     // Documents, important
         }
     }
 }

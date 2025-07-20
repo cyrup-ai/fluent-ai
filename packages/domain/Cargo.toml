@@ -3,6 +3,10 @@ name = "fluent_ai_domain"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+cylo = []
+
 [dependencies]
 serde = { version = "1.0.219", features = ["derive"] }
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["all"] }
@@ -30,8 +34,8 @@ ahash = "0.8.11"
 chrono = { version = "0.4.39", features = ["serde"] }
 
 # Ultra-high-performance dependencies for zero-allocation operations  
-arrayvec = "0.7.6"
-smallvec = "2.0.0-alpha.11"
+arrayvec = { version = "0.7.6", features = ["serde"] }
+smallvec = { version = "2.0.0-alpha.11", features = ["serde"] }
 crossbeam-deque = "0.8.6"
 crossbeam-skiplist = "0.1.3"
 crossbeam-utils = "0.8.21"
@@ -56,6 +60,9 @@ bytes = "1.7.0"
 serde_yaml = "0.9.34"
 toml = "0.8.19"
 rkyv = "0.8.10"
+bincode = "2.0.1"
+reqwest = { version = "0.12.22", features = ["json"] }
+md5 = "0.8.0"
 
 [dev-dependencies]
 fluent_ai_provider = { path = "../provider" }

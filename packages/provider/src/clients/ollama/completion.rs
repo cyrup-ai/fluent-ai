@@ -281,9 +281,20 @@ impl completion::CompletionModel for CompletionModel {
         }
 
         task
+    }
+}
+
 // Embedding Model
 // EmbeddingModel is now imported from fluent_ai_domain::model
 // Removed duplicated EmbeddingModel struct - use canonical domain type
+
+/// Ollama embedding model implementation
+#[derive(Debug, Clone)]
+pub struct OllamaEmbeddingModel {
+    client: Client,
+    model: String,
+    ndims: usize,
+}
 
 impl EmbeddingModel {
     pub fn new(client: Client, model: &str, ndims: usize) -> Self {

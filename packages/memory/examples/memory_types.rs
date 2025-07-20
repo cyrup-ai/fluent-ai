@@ -6,7 +6,7 @@
 //! - Procedural memories (how-to knowledge)
 
 use fluent_ai_memory::memory::{
-    MemoryManager, SurrealDBMemoryManager, MemoryNode, MemoryTypeEnum, MemoryRelationship,
+    MemoryManager, MemoryNode, MemoryRelationship, MemoryTypeEnum, SurrealDBMemoryManager,
 };
 use futures::StreamExt;
 use surrealdb::{
@@ -224,7 +224,11 @@ fn create_semantic_memory(
     tags: Vec<&str>,
     related: Vec<&str>,
 ) -> MemoryNode {
-    let mut memory = MemoryNode::with_id(id.to_string(), content.to_string(), MemoryTypeEnum::Semantic);
+    let mut memory = MemoryNode::with_id(
+        id.to_string(),
+        content.to_string(),
+        MemoryTypeEnum::Semantic,
+    );
     memory.metadata.tags = tags.into_iter().map(String::from).collect();
     memory.metadata.category = "knowledge".to_string();
     memory.metadata.importance = 0.8;
@@ -257,7 +261,11 @@ fn create_episodic_memory(
     user_id: Option<String>,
     tags: Vec<&str>,
 ) -> MemoryNode {
-    let mut memory = MemoryNode::with_id(id.to_string(), content.to_string(), MemoryTypeEnum::Episodic);
+    let mut memory = MemoryNode::with_id(
+        id.to_string(),
+        content.to_string(),
+        MemoryTypeEnum::Episodic,
+    );
     memory.metadata.tags = tags.into_iter().map(String::from).collect();
     memory.metadata.category = "experience".to_string();
     memory.metadata.importance = 0.7;

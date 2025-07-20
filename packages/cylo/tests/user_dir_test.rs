@@ -27,9 +27,9 @@ mod tests {
         use std::fs;
         use std::path::Path;
 
-        use nix::sched::unshare;
-        use nix::sched::CloneFlags;
         use libc::mount;
+        use nix::sched::CloneFlags;
+        use nix::sched::unshare;
 
         // Check if we're running in a container environment
         let in_container = Path::new("/.dockerenv").exists()

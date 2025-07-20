@@ -1,7 +1,10 @@
 pub mod database;
 pub mod llm;
+pub mod memory;
 pub mod vector;
 
-pub use database::*;
-pub use llm::*;
-pub use vector::*;
+// Re-export specific types to avoid ambiguous glob re-exports
+pub use database::DatabaseConfig;
+pub use llm::LLMConfig;
+pub use memory::MemoryConfig;
+pub use vector::VectorStoreConfig;

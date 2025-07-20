@@ -5,7 +5,11 @@ use std::time::SystemTime;
 
 use crossbeam_skiplist::SkipMap;
 use crossbeam_utils::CachePadded;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize, Deserializer, Serialize, Serializer,
+    de::{MapAccess, Visitor},
+    ser::SerializeStruct,
+};
 use uuid::Uuid;
 
 use super::types::{
@@ -20,23 +24,22 @@ use super::types::{
 /// - CachePadded metadata structure to prevent false sharing
 /// - AtomicU64 for concurrent access statistics and version tracking
 /// - Lock-free relationship tracking with crossbeam-skiplist
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct MemoryNode {
     /// Base memory with core data
-    base_memory: BaseMemory,
+    pub base_memory: BaseMemory,
 
     /// SIMD-aligned embedding vector for AVX2/NEON optimization
-    #[serde(skip_serializing_if = "Option::is_none")]
-    embedding: Option<AlignedEmbedding>,
+    pub embedding: Option<AlignedEmbedding>,
 
     /// Cache-padded metadata to prevent false sharing
-    metadata: Arc<CachePadded<MemoryNodeMetadata>>,
+    pub metadata: Arc<CachePadded<MemoryNodeMetadata>>,
 
     /// Lock-free relationship tracking with skip-list
-    relationships: Arc<SkipMap<Uuid, MemoryRelationshipEntry>>,
+    pub relationships: Arc<SkipMap<Uuid, MemoryRelationshipEntry>>,
 
     /// Atomic access statistics for concurrent monitoring
-    stats: Arc<CachePadded<MemoryNodeStats>>,
+    pub stats: Arc<CachePadded<MemoryNodeStats>>,
 }
 
 /// SIMD-aligned embedding vector for optimal performance
@@ -496,6 +499,82 @@ impl MemoryNode {
     #[inline]
     pub fn builder() -> MemoryNodeBuilder {
         MemoryNodeBuilder::new()
+    }
+}
+
+impl Serialize for MemoryNode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("MemoryNode", 2)?;
+        state.serialize_field("base_memory", &self.base_memory)?;
+        state.serialize_field("embedding", &self.embedding)?;
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for MemoryNode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(field_identifier, rename_all = "snake_case")]
+        enum Field {
+            BaseMemory,
+            Embedding,
+        }
+
+        struct MemoryNodeVisitor;
+
+        impl<'de> Visitor<'de> for MemoryNodeVisitor {
+            type Value = MemoryNode;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("struct MemoryNode")
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<MemoryNode, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut base_memory = None;
+                let mut embedding = None;
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::BaseMemory => {
+                            if base_memory.is_some() {
+                                return Err(serde::de::Error::duplicate_field("base_memory"));
+                            }
+                            base_memory = Some(map.next_value()?);
+                        }
+                        Field::Embedding => {
+                            if embedding.is_some() {
+                                return Err(serde::de::Error::duplicate_field("embedding"));
+                            }
+                            embedding = Some(map.next_value()?);
+                        }
+                    }
+                }
+
+                let base_memory =
+                    base_memory.ok_or_else(|| serde::de::Error::missing_field("base_memory"))?;
+                let embedding = embedding.unwrap_or(None);
+
+                Ok(MemoryNode {
+                    base_memory,
+                    embedding,
+                    metadata: Arc::new(CachePadded::new(MemoryNodeMetadata::new())),
+                    relationships: Arc::new(SkipMap::new()),
+                    stats: Arc::new(CachePadded::new(MemoryNodeStats::new())),
+                })
+            }
+        }
+
+        const FIELDS: &'static [&'static str] = &["base_memory", "embedding"];
+        deserializer.deserialize_struct("MemoryNode", FIELDS, MemoryNodeVisitor)
     }
 }
 

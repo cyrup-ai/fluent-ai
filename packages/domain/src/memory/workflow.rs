@@ -9,8 +9,9 @@ pub trait OpTrait {
     type Output;
     fn execute(&self, input: Self::Input) -> Self::Output;
 }
-use crate::memory::primitives::{MemoryError, MemoryNode, MemoryType};
 use fluent_ai_memory::MemoryManager;
+
+use crate::memory::primitives::MemoryError;
 
 /// Memory workflow operation implementation
 pub struct MemoryWorkflowOp<M, P> {

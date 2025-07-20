@@ -1,5 +1,6 @@
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
+use fluent_ai_domain::model::TranscriptionModel;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -7,7 +8,6 @@ use super::Client;
 use super::completion::ApiResponse;
 use crate::transcription;
 use crate::transcription::TranscriptionError;
-use fluent_ai_domain::model::TranscriptionModel;
 
 pub const WHISPER_LARGE_V3: &str = "openai/whisper-large-v3";
 pub const WHISPER_LARGE_V3_TURBO: &str = "openai/whisper-large-v3-turbo";
@@ -33,6 +33,12 @@ impl TryFrom<TranscriptionResponse>
 
 // TranscriptionModel is now imported from fluent_ai_domain::model
 // Removed duplicated TranscriptionModel struct - use canonical domain type
+
+/// HuggingFace transcription model implementation
+#[derive(Debug, Clone)]
+pub struct HuggingFaceTranscriptionModel {
+    client: Client,
+    model: String,
 }
 
 impl TranscriptionModel {

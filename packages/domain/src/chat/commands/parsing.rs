@@ -293,10 +293,8 @@ impl CommandParser {
         let args = &parts[1..];
 
         // Resolve aliases
-        let resolved_name = self
-            .aliases
-            .get(command_name)
-            .unwrap_or(&Arc::from(command_name));
+        let default_name = Arc::from(command_name);
+        let resolved_name = self.aliases.get(command_name).unwrap_or(&default_name);
 
         // Parse based on command type
         match resolved_name.as_ref() {

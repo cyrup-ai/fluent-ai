@@ -1,9 +1,9 @@
+use fluent_ai_domain::model::EmbeddingModel;
 use serde::Deserialize;
 use serde_json::json;
 
 use super::client::{ApiResponse, Client, Usage};
 use crate::embeddings::{self, EmbeddingError};
-use fluent_ai_domain::model::EmbeddingModel;
 
 // ================================================================
 // Mistral Embedding API

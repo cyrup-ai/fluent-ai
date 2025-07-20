@@ -5,31 +5,30 @@
 //!
 //! Performance targets: 2-8x improvement via SIMD, 10-50x for large embeddings via memory mapping.
 
-use std::alloc::{GlobalAlloc, Layout};
+// Removed unused imports: GlobalAlloc, Layout
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
-use std::mem::{align_of, size_of};
-use std::ptr::NonNull;
 
-use std::sync::Arc;
+// Removed unused imports: align_of, size_of
+// Removed unused import: std::ptr::NonNull
 
-use arc_swap::ArcSwap;
-use arrayvec::ArrayVec;
-use atomic_counter::{AtomicCounter, RelaxedCounter};
-use crossbeam_queue::ArrayQueue;
-use futures::stream::StreamExt;
-use jemalloc_sys as jemalloc;
-use memmap2::{Mmap, MmapOptions};
+// Removed unused import: std::sync::Arc
+
+// Removed unused import: arc_swap::ArcSwap
+// Removed unused import: arrayvec::ArrayVec
+use atomic_counter::RelaxedCounter;
+// Removed unused import: crossbeam_queue::ArrayQueue
+// Removed unused import: futures::stream::StreamExt
+// Removed unused import: jemalloc_sys as jemalloc
+// Removed unused imports: Mmap, MmapOptions
 use once_cell::sync::Lazy;
-use smallvec::SmallVec;
+// Removed unused import: smallvec::SmallVec
 // SIMD and performance dependencies
 // use packed_simd::f32x8; // Replaced with wide for Rust 1.78+ compatibility
-use wide::f32x8 as WideF32x8;
+// Removed unused import: wide::f32x8 as WideF32x8
 
-use super::{
-    MemoryError, MemoryNode, MemoryRelationship, MemoryType,
-};
-use crate::ZeroOneOrMany;
+// Removed unused imports: MemoryError, MemoryNode, MemoryRelationship, MemoryType
+// Removed unused import: crate::ZeroOneOrMany
 
 /// Standard embedding dimension for text embeddings (optimized for SIMD)
 pub const EMBEDDING_DIMENSION: usize = 768;
@@ -46,9 +45,9 @@ pub const MAX_STACK_EMBEDDING_SIZE: usize = 512;
 pub const VECTOR_POOL_SIZE: usize = 1024;
 
 /// Performance statistics with atomic counters
-static SIMD_OPERATIONS_COUNT: RelaxedCounter = RelaxedCounter::new(0);
-static CACHE_HITS: RelaxedCounter = RelaxedCounter::new(0);
-static CACHE_MISSES: RelaxedCounter = RelaxedCounter::new(0);
+static SIMD_OPERATIONS_COUNT: Lazy<RelaxedCounter> = Lazy::new(|| RelaxedCounter::new(0));
+static CACHE_HITS: Lazy<RelaxedCounter> = Lazy::new(|| RelaxedCounter::new(0));
+static CACHE_MISSES: Lazy<RelaxedCounter> = Lazy::new(|| RelaxedCounter::new(0));
 
 /// CPU feature detection for runtime SIMD selection
 #[derive(Debug, Clone, Copy)]

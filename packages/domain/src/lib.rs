@@ -12,12 +12,9 @@ use atomic_counter::{AtomicCounter, RelaxedCounter};
 // Ultra-high-performance imports for zero-allocation domain initialization
 use crossbeam_queue::SegQueue;
 use crossbeam_utils::CachePadded;
-
-// Removed unused imports: CacheConfig, LoggingConfig
-use fluent_ai_memory::{
-    MemoryConfig, SurrealDBMemoryManager, initialize,
-};
 use fluent_ai_memory::utils::error::Error as MemoryError;
+// Removed unused imports: CacheConfig, LoggingConfig
+use fluent_ai_memory::{MemoryConfig, SurrealDBMemoryManager, initialize};
 use once_cell::sync::Lazy;
 
 /// Domain initialization error types with semantic error handling
@@ -54,8 +51,7 @@ static CONNECTION_POOL: Lazy<SegQueue<Arc<SurrealDBMemoryManager>>> = Lazy::new(
 pub type CircuitBreaker = crate::error::SimpleCircuitBreaker;
 
 /// Circuit breaker for error recovery with exponential backoff
-static CIRCUIT_BREAKER: Lazy<CircuitBreaker> =
-    Lazy::new(|| CircuitBreaker::new(5, 30000)); // 30 seconds in milliseconds
+static CIRCUIT_BREAKER: Lazy<CircuitBreaker> = Lazy::new(|| CircuitBreaker::new(5, 30000)); // 30 seconds in milliseconds
 
 /// Global initialization statistics for monitoring
 static INIT_STATS: Lazy<CachePadded<RelaxedCounter>> =
@@ -69,7 +65,7 @@ static POOL_STATS: Lazy<CachePadded<AtomicUsize>> =
 static CIRCUIT_BREAKER_RESET_COUNT: AtomicUsize = AtomicUsize::new(0);
 static CIRCUIT_BREAKER_LAST_RESET: AtomicU64 = AtomicU64::new(0);
 
-/// Thread-local storage for configuration caching
+// Thread-local storage for configuration caching (doc comment removed - rustdoc doesn't generate docs for macro invocations)
 thread_local! {
     static LOCAL_CONFIG: std::cell::RefCell<Option<Arc<MemoryConfig>>> = std::cell::RefCell::new(None);
 }
@@ -78,7 +74,7 @@ thread_local! {
 #[inline(always)]
 fn create_default_config() -> MemoryConfig {
     use fluent_ai_memory::utils::config::*;
-    
+
     MemoryConfig {
         database: DatabaseConfig {
             db_type: DatabaseType::SurrealDB,
@@ -139,8 +135,9 @@ fn get_cached_config() -> Arc<MemoryConfig> {
             Arc::clone(cached)
         } else {
             let global_config = CONFIG_CACHE.load();
-            *config_ref = Some(Arc::clone(&global_config));
-            global_config
+            let config_arc = Arc::clone(&global_config);
+            *config_ref = Some(config_arc.clone());
+            config_arc
         }
     })
 }
@@ -175,7 +172,9 @@ fn return_memory_to_pool(memory: Arc<SurrealDBMemoryManager>) {
 
 /// Execute operation with circuit breaker protection and exponential backoff
 #[inline(always)]
-async fn execute_with_circuit_breaker<F, T, E>(operation: F) -> std::result::Result<T, DomainInitError>
+async fn execute_with_circuit_breaker<F, T, E>(
+    operation: F,
+) -> std::result::Result<T, DomainInitError>
 where
     F: Fn() -> std::result::Result<T, E> + Send,
     E: std::fmt::Display,
@@ -235,7 +234,8 @@ where
 /// # Performance
 /// Zero allocation initialization with lock-free connection pooling
 #[inline]
-pub async fn initialize_domain() -> std::result::Result<Arc<SurrealDBMemoryManager>, DomainInitError> {
+pub async fn initialize_domain() -> std::result::Result<Arc<SurrealDBMemoryManager>, DomainInitError>
+{
     // Get configuration from thread-local cache for zero-allocation access
     let memory_config = get_cached_config();
 
@@ -453,9 +453,9 @@ pub fn reset_circuit_breaker() {
 
     // Force circuit breaker back to closed state by executing a successful test operation
     // This is the only way to reset the circuit breaker state in the circuit-breaker crate
-    let _ = CIRCUIT_BREAKER.call(|| -> Result<(), &'static str> {
+    let _ = CIRCUIT_BREAKER.call(|| {
         // Simple successful operation that will force the circuit breaker to closed state
-        Ok(())
+        Ok::<(), &'static str>(())
     });
 
     // Clear connection pool to force fresh connections
@@ -513,6 +513,33 @@ pub mod validation;
 #[doc(hidden)]
 pub use cyrup_sugars::hash_map_fn;
 pub use cyrup_sugars::{ByteSize, OneOrMany, ZeroOneOrMany};
+
+/// Extension trait to add missing methods to ZeroOneOrMany
+pub trait ZeroOneOrManyExt<T> {
+    /// Extract a single item if there's exactly one, otherwise return None
+    fn as_single(&self) -> Option<&T>;
+    
+    /// Convert to a Vec for iteration
+    fn to_vec(&self) -> Vec<&T>;
+}
+
+impl<T> ZeroOneOrManyExt<T> for ZeroOneOrMany<T> {
+    fn as_single(&self) -> Option<&T> {
+        match self {
+            ZeroOneOrMany::None => None,
+            ZeroOneOrMany::One(ref item) => Some(item),
+            ZeroOneOrMany::Many(_) => None, // Multiple items, can't return single
+        }
+    }
+    
+    fn to_vec(&self) -> Vec<&T> {
+        match self {
+            ZeroOneOrMany::None => Vec::new(),
+            ZeroOneOrMany::One(ref item) => vec![item],
+            ZeroOneOrMany::Many(ref items) => items.iter().collect(),
+        }
+    }
+}
 // Re-export commonly used types for convenience
 pub use model::{Capability, Model, ModelCapabilities, ModelInfo, ModelPerformance, UseCase};
 pub use validation::{
@@ -538,7 +565,10 @@ pub enum ChannelError {
 }
 
 /// Channel creation for async communication
-pub fn channel<T: Send + 'static>() -> (ChannelSender<T>, AsyncTask<std::result::Result<T, ChannelError>>) {
+pub fn channel<T: Send + 'static>() -> (
+    ChannelSender<T>,
+    AsyncTask<std::result::Result<T, ChannelError>>,
+) {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let task = spawn_async(async move { rx.recv().await.ok_or(ChannelError::ChannelClosed) });
     (ChannelSender { tx }, task)
@@ -652,8 +682,13 @@ pub mod usage;
 // Re-export all types for convenience
 // Handle conflicting types by using specific imports to avoid ambiguity
 
-// Agent module exports (consolidated)
-pub use agent::*;
+// Agent module exports (consolidated) - specify types to avoid core conflict
+pub use agent::{
+    Agent, AgentBuilder, AgentError, AgentResult, MAX_AGENT_TOOLS,
+    ChatError, ContextInjectionResult, MemoryEnhancedChatResponse,
+    AgentRoleImpl, Stdio, AgentRoleAgent, AgentConversation, AgentConversationMessage, AgentWithHistory
+};
+pub use agent::core as agent_core;
 pub use audio::ContentFormat as AudioContentFormat;
 // Builder types moved to fluent-ai/src/builders/agent_role.rs
 
@@ -661,18 +696,17 @@ pub use audio::ContentFormat as AudioContentFormat;
 pub use audio::{Audio, AudioMediaType};
 // Completion module exports - consolidated from completion.rs and candle_completion.rs
 pub use completion::{CompletionBackend, CompletionModel, CompletionRequest, CompletionResponse};
+// Document types from context module
+pub use context::document::{ContentFormat, Document, DocumentLoader, DocumentMediaType};
 // Context module exports - consolidated from document.rs, chunk.rs, context.rs, and loader.rs
 pub use context::*;
-// Document types from context module
-pub use context::document::{ContentFormat, Document, DocumentMediaType, DocumentLoader};
 // Conversation module exports - specify types to avoid conflict with message
 pub use conversation::Conversation as ConversationTrait;
 // Conversation module exports - specify types to avoid conflict with message
 pub use conversation::ConversationImpl;
-// Embedding module exports (consolidated)
-pub use embedding::*;
-// Re-export embedding types
-pub use embedding::{Embedding, EmbeddingData, EmbeddingResponse};
+// Embedding module exports (consolidated) - specify types to avoid core conflict  
+pub use embedding::{Embedding, EmbeddingData, EmbeddingModel, EmbeddingResponse, EmbeddingModelTrait};
+pub use embedding::core as embedding_core;
 // Re-export similarity types from fluent-ai's embedding module
 // Temporarily commented out to avoid circular dependency
 // pub use fluent_ai::embedding::similarity::{
@@ -681,7 +715,6 @@ pub use embedding::{Embedding, EmbeddingData, EmbeddingResponse};
 //     jaccard_similarity, pearson_correlation, find_most_similar, find_top_k_similar,
 //     find_similar_above_threshold
 // };
-
 pub use image::ContentFormat as ImageContentFormat;
 // Image module exports - specify ContentFormat to avoid conflict with audio
 pub use image::{Image, ImageDetail, ImageMediaType};
@@ -689,81 +722,37 @@ pub use image::{Image, ImageDetail, ImageMediaType};
 pub use library::*;
 // Memory module exports (consolidated with new high-performance types)
 pub use memory::{
-    AlignedActivationPattern,
-    AlignedCoherenceFingerprint,
-    AtomicAttentionWeights,
+    // Core memory types
     BaseMemory,
-    CausalLink,
-    CognitiveError,
-    CognitiveMemoryEntry,
-    CognitiveResult,
-
     // Cognitive computing types
-    CognitiveState,
-    CompatibilityError,
+    CognitiveMemory,
+    CognitiveProcessor,
 
-    CompatibilityLayer,
     // Compatibility types
+    CompatibilityError,
+    CompatibilityLayer,
     CompatibilityMode,
-    CpuArchitecture,
-    CpuFeatures,
+
     // Configuration types
     DatabaseConfig,
-    DatabaseType,
-    DistanceMetric,
-    EntanglementBond,
-    EntanglementType,
-    ImportanceContext,
-    IndexType,
     LLMConfig,
-    LLMProvider,
-
-    LegacyMemoryMetadata,
-    LegacyMemoryNode,
-    LegacyMemoryRelationship,
-    LegacyMemoryType,
-    // Legacy types (backward compatibility)
-    Memory,
     MemoryContent,
     MemoryNode,
-    MemoryNodeBuilder,
-    // SIMD operations and tools
-    MemoryOperation,
-    MemoryRelationship,
     MemoryResult,
-
-    MemorySystemBuilder,
-    MemorySystemConfig,
+    // Tool types
     MemoryTool,
     MemoryToolError,
     MemoryToolResult,
-    // New high-performance domain types
     MemoryType,
     MemoryTypeEnum,
-    ModelConfig,
-    Op,
-    QuantumSignature,
-    RateLimitConfig,
 
-    RelationshipType,
-    SimdInstructionSet,
-    StreamingConfig,
-    TemporalContext,
     VectorStoreConfig,
-    VectorStoreError,
-    VectorStoreIndex,
-    VectorStoreIndexDyn,
-    VectorStoreType,
-    WorkingMemoryItem,
-    calculate_importance,
-
-    next_memory_id,
 };
 pub use message::Conversation as MessageConversation;
 // Message module exports - specify Conversation to avoid conflict with conversation
 pub use message::{
-    AssistantContent, Content, ContentContainer, Message, ChatMessage, SearchChatMessage,
-    MessageChunk, MessageError, MessageRole, MimeType, Text, ToolCall, ToolFunction, ToolResult,
+    AssistantContent, ChatMessage, Content, ContentContainer, Message, MessageChunk, MessageError,
+    MessageRole, MimeType, SearchChatMessage, Text, ToolCall, ToolFunction, ToolResult,
     ToolResultContent, UserContent,
 };
 // Model module exports

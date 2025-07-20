@@ -1,20 +1,20 @@
 use std::fmt;
 use std::marker::PhantomData;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+// Removed unused import: std::sync::Arc
+use std::time::Duration;
 
 // Additional dependencies for the implementation
-use futures::stream::Stream;
+// Removed unused import: futures::stream::Stream
 use serde::de::DeserializeOwned;
 use serde_json::Value;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
+// Removed unused import: tokio_stream::wrappers::UnboundedReceiverStream
 use crate::agent::Agent;
-use crate::completion::{CompletionModel, CompletionParams, CompletionRequest, ToolDefinition};
+use crate::completion::{CompletionModel, CompletionParams, CompletionRequest};
 use crate::context::chunk::{CompletionChunk, FinishReason};
-use crate::model::Model;
+// Removed unused import: crate::model::Model
 use crate::prompt::Prompt;
-use crate::{AsyncTask, ZeroOneOrMany, spawn_async};
+use crate::{AsyncTask, SearchChatMessage, ZeroOneOrMany, spawn_async};
 
 /// Extraction error types for production-ready error handling
 #[derive(Debug, thiserror::Error)]
@@ -110,11 +110,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
         // Create completion request with optimized settings
         let completion_request = CompletionRequest {
             system_prompt: system_prompt.clone(),
-            chat_history: ZeroOneOrMany::One(crate::Message {
-                role: "user".to_string(),
-                content: text.to_string(),
-                timestamp: Instant::now(),
-            }),
+            chat_history: ZeroOneOrMany::One(SearchChatMessage::new("user", text)),
             documents: ZeroOneOrMany::None,
             tools: ZeroOneOrMany::None,
             temperature: self.agent.temperature,
@@ -163,15 +159,20 @@ Please extract structured data from the following text and return it as JSON:
 
 {}",
             completion_request.system_prompt,
-            completion_request
-                .chat_history
-                .as_single()
-                .map(|msg| &msg.content)
-                .unwrap_or("")
+            match &completion_request.chat_history {
+                crate::ZeroOneOrMany::One(msg) => std::str::from_utf8(&msg.content).unwrap_or(""),
+                crate::ZeroOneOrMany::Many(msgs) => {
+                    msgs.first()
+                        .and_then(|msg| std::str::from_utf8(&msg.content).ok())
+                        .unwrap_or("")
+                }
+                crate::ZeroOneOrMany::None => ""
+            }
         ));
 
         // Get completion stream
-        let stream = completion_model.prompt(prompt);
+        let params = CompletionParams::default();
+        let stream = completion_model.prompt(prompt, &params);
 
         // Collect the stream into a complete response
         let mut complete_response = String::new();
@@ -181,9 +182,8 @@ Please extract structured data from the following text and return it as JSON:
         use futures::StreamExt;
 
         while let Some(chunk) = stream_pin.next().await {
-            match chunk.content {
-                Some(content) => complete_response.push_str(&content),
-                None => continue,
+            if let Some(text) = chunk.text_content() {
+                complete_response.push_str(text);
             }
         }
 
@@ -257,8 +257,12 @@ impl AgentCompletionModel {
 }
 
 impl CompletionModel for AgentCompletionModel {
-    fn prompt(&self, prompt: Prompt, params: &CompletionParams) -> crate::async_task::AsyncStream<CompletionChunk> {
-        use futures::stream::Stream;
+    fn prompt(
+        &self,
+        prompt: Prompt,
+        params: &CompletionParams,
+    ) -> crate::async_task::AsyncStream<CompletionChunk> {
+        // Removed unused import: futures::stream::Stream
         use tokio::sync::mpsc;
 
         let (tx, rx) = mpsc::unbounded_channel();

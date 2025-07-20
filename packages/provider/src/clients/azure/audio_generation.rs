@@ -7,6 +7,7 @@
 #![allow(clippy::type_complexity)]
 
 use bytes::Bytes;
+use fluent_ai_domain::model::AudioGenerationModel;
 use serde_json::json;
 
 use super::client::Client;
@@ -17,7 +18,6 @@ use crate::{
     client::AudioGenerationClient,
     runtime::{self, AsyncTask},
 };
-use fluent_ai_domain::model::AudioGenerationModel;
 
 // ───────────────────────────── provider model ────────────────────────────
 // AudioGenerationModel is now imported from fluent_ai_domain::model

@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use base64::{Engine, prelude::BASE64_STANDARD};
+use fluent_ai_domain::model::TranscriptionModel;
 use mime_guess;
 use serde_json::{Map, Value};
 
@@ -8,14 +9,12 @@ pub use super::completion::{
     GEMINI_1_5_FLASH, GEMINI_1_5_PRO, GEMINI_1_5_PRO_8B, GEMINI_2_0_FLASH,
 };
 use super::{Client, completion::gemini_api_types::GenerateContentResponse};
+use crate::transcription::{self, TranscriptionError};
 use crate::{
     OneOrMany,
     clients::gemini::completion::gemini_api_types::{
         Blob, Content, GenerateContentRequest, GenerationConfig, Part, Role,
     },
-};
-use fluent_ai_domain::model::TranscriptionModel;
-    transcription::{self, TranscriptionError},
 };
 
 const TRANSCRIPTION_PREAMBLE: &str =
@@ -23,6 +22,12 @@ const TRANSCRIPTION_PREAMBLE: &str =
 
 // TranscriptionModel is now imported from fluent_ai_domain::model
 // Removed duplicated TranscriptionModel struct - use canonical domain type
+
+/// Gemini transcription model implementation
+#[derive(Debug, Clone)]
+pub struct GeminiTranscriptionModel {
+    client: Client,
+    model: String,
 }
 
 impl TranscriptionModel {

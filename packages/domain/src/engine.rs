@@ -5,13 +5,13 @@
 //! completion and streaming operations.
 
 use std::sync::Arc;
-use std::sync::RwLock;
-use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+// Removed unused import: std::time::Duration
+use tokio::sync::RwLock;
 
-use crate::completion::{CompactCompletionResponse, CompletionResponse};
+use crate::completion::CompletionResponse;
 use crate::{AsyncTask, spawn_async};
 
 /// Engine-specific error types with zero-allocation string sharing
@@ -271,11 +271,11 @@ impl Engine {
 
     /// Process completion request with production-ready error handling
     #[inline]
-    async fn process_completion_internal(
+    async fn process_completion_internal<'a>(
         &self,
         request: &CompletionRequest,
-        config: &EngineConfig,
-    ) -> EngineResult<CompletionResponse> {
+        config: &'a EngineConfig,
+    ) -> EngineResult<CompletionResponse<'a>> {
         let start_time = std::time::Instant::now();
 
         // Validate input
@@ -292,16 +292,19 @@ impl Engine {
         );
 
         let response_time = start_time.elapsed().as_millis();
-        let tokens_used = request.prompt.len() as u32; // Simplified token count
+        let _tokens_used = request.prompt.len() as u32; // Simplified token count
 
         // Create a standard completion response
-        let response = CompletionResponse::new(&response_content, config.model_name.as_ref())
-            .with_provider(config.provider.as_ref())
-            .with_finish_reason("stop")
-            .with_response_time(response_time);
+        let response = CompletionResponse::builder()
+            .text(response_content)
+            .model(config.model_name.as_ref())
+            .provider(config.provider.as_ref())
+            .finish_reason("stop".to_string())
+            .response_time_ms(response_time as u64)
+            .build();
 
-        // Convert to compact form for the engine's internal use
-        Ok(response.into_compact().into_standard())
+        // Return the completion response
+        Ok(response)
     }
 }
 

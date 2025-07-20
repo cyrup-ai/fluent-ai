@@ -164,7 +164,9 @@ impl AgentRoleImpl {
     /// Zero cost abstraction with direct memory access
     #[inline]
     pub fn get_memory_tool(&self) -> Option<&dyn std::any::Any> {
-        self.memory.as_ref().map(|m| m.as_ref() as &dyn std::any::Any)
+        self.memory
+            .as_ref()
+            .map(|m| m.as_ref() as &dyn std::any::Any)
     }
 
     /// Set memory tool for agent role

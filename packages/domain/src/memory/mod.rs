@@ -44,50 +44,47 @@ mod types_legacy;
 use std::future::Future;
 use std::pin::Pin;
 
-pub use cognitive::*;
-pub use compatibility::*;
-pub use config::*;
+// Re-export specific types to avoid ambiguous glob re-exports
+pub use cognitive::{CognitiveMemory, CognitiveProcessor};
+pub use compatibility::{CompatibilityError, CompatibilityLayer, CompatibilityMode};
+pub use config::database::{DatabaseType, PoolConfig};
+pub use config::llm::{
+    CacheConfig, LLMProvider, ModelConfig, RateLimitConfig, RetryConfig, StreamingConfig,
+    TokenTrackingConfig,
+};
+pub use config::vector::{
+    DistanceMetric, EmbeddingConfig, EmbeddingModelType, IndexConfig, IndexType, PerformanceConfig,
+    SimdConfig, VectorStoreType,
+};
+pub use config::{DatabaseConfig, LLMConfig, MemoryConfig, VectorStoreConfig};
 // Conditional re-exports for cognitive features
-#[cfg(feature = "cognitive")]
-pub use fluent_ai_memory::{
-    CognitiveMemoryManager, CognitiveMemoryNode, CognitiveSettings,
-    EvolutionMetadata as LegacyEvolutionMetadata, QuantumSignature as LegacyQuantumSignature,
-};
+// Removed unexpected cfg condition "cognitive" - feature does not exist
 // Re-export fluent_ai_memory types for convenience
-#[cfg(feature = "fluent-ai-memory")]
-pub use fluent_ai_memory::{
-    MemoryConfig, MemoryManager as MemoryManagerTrait, MemoryMetadata as ExternalMemoryMetadata,
-    SurrealDBMemoryManager,
-    memory::{
-        MemoryQuery, MemoryStream, PendingDeletion, PendingMemory, PendingRelationship,
-        RelationshipStream, SurrealMemoryQuery,
-    },
-};
+// Removed unexpected cfg condition "fluent-ai-memory" - feature does not exist
 // Re-export core legacy types for backward compatibility
 pub use manager::Memory;
 pub use ops::{
     CpuArchitecture, CpuFeatures, EMBEDDING_DIMENSION, Op, SIMD_WIDTH, SMALL_EMBEDDING_DIMENSION,
 };
 pub use primitives::*;
-pub use tool::{MemoryOperation, MemoryResult, MemoryTool, MemoryToolError, MemoryToolResult};
 // Re-export commonly used primitives types
-pub use primitives::{MemoryTypeEnum, MemoryContent};
+pub use primitives::{MemoryContent, MemoryTypeEnum};
+pub use tool::{MemoryOperation, MemoryResult, MemoryTool, MemoryToolError, MemoryToolResult};
 // Legacy type aliases for backward compatibility
 pub use types_legacy::{
     Error as LegacyMemoryError, ImportanceContext, MemoryMetadata as LegacyMemoryMetadata,
     MemoryNode as LegacyMemoryNode, MemoryRelationship as LegacyMemoryRelationship,
-    MemoryType as LegacyMemoryType, VectorStoreIndex, VectorStoreIndexDyn,
-    calculate_importance, next_memory_id,
+    MemoryType as LegacyMemoryType, VectorStoreIndex, VectorStoreIndexDyn, calculate_importance,
+    next_memory_id,
 };
 
 pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 
-/// Fallback trait definition for when fluent-ai-memory feature is not enabled
-#[cfg(not(feature = "fluent-ai-memory"))]
+/// Fallback trait definition (removed unexpected cfg condition "fluent-ai-memory")
 pub trait MemoryManagerTrait: Send + Sync {
     type Error;
     type MemoryNode;
-    
+
     fn store_memory(&self, memory: Self::MemoryNode) -> Result<(), Self::Error>;
 }
 

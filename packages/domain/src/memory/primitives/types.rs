@@ -4,9 +4,16 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use bytes::Bytes;
-use crossbeam_utils::CachePadded;
-use serde::{Deserialize, Serialize};
+// Removed unused import: crossbeam_utils::CachePadded
+use serde::{
+    Deserialize, Deserializer, Serialize, Serializer,
+    de::{MapAccess, Visitor},
+    ser::SerializeStruct,
+};
 use uuid::Uuid;
+
+// Import for error conversion
+use fluent_ai_memory::utils::error::Error as FluentMemoryError;
 
 /// Zero-allocation memory type enumeration with blazing-fast operations
 ///
@@ -303,7 +310,7 @@ impl Default for MemoryContent {
 ///
 /// UUID-based ID system with inline generation, Arc<str> for zero-copy content sharing
 /// Optimized metadata HashMap with crossbeam concurrent access
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct BaseMemory {
     /// UUID-based unique identifier with inline generation
     pub id: Uuid,
@@ -387,8 +394,118 @@ impl std::hash::Hash for BaseMemory {
     }
 }
 
+impl Serialize for BaseMemory {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("BaseMemory", 5)?;
+        state.serialize_field("id", &self.id)?;
+        state.serialize_field("memory_type", &self.memory_type)?;
+        state.serialize_field("content", &self.content)?;
+        state.serialize_field("created_at", &self.created_at)?;
+        state.serialize_field("updated_at", &self.updated_at)?;
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for BaseMemory {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(field_identifier, rename_all = "snake_case")]
+        enum Field {
+            Id,
+            MemoryType,
+            Content,
+            CreatedAt,
+            UpdatedAt,
+        }
+
+        struct BaseMemoryVisitor;
+
+        impl<'de> Visitor<'de> for BaseMemoryVisitor {
+            type Value = BaseMemory;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("struct BaseMemory")
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<BaseMemory, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut id = None;
+                let mut memory_type = None;
+                let mut content = None;
+                let mut created_at = None;
+                let mut updated_at = None;
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Id => {
+                            if id.is_some() {
+                                return Err(serde::de::Error::duplicate_field("id"));
+                            }
+                            id = Some(map.next_value()?);
+                        }
+                        Field::MemoryType => {
+                            if memory_type.is_some() {
+                                return Err(serde::de::Error::duplicate_field("memory_type"));
+                            }
+                            memory_type = Some(map.next_value()?);
+                        }
+                        Field::Content => {
+                            if content.is_some() {
+                                return Err(serde::de::Error::duplicate_field("content"));
+                            }
+                            content = Some(map.next_value()?);
+                        }
+                        Field::CreatedAt => {
+                            if created_at.is_some() {
+                                return Err(serde::de::Error::duplicate_field("created_at"));
+                            }
+                            created_at = Some(map.next_value()?);
+                        }
+                        Field::UpdatedAt => {
+                            if updated_at.is_some() {
+                                return Err(serde::de::Error::duplicate_field("updated_at"));
+                            }
+                            updated_at = Some(map.next_value()?);
+                        }
+                    }
+                }
+
+                let id = id.ok_or_else(|| serde::de::Error::missing_field("id"))?;
+                let memory_type =
+                    memory_type.ok_or_else(|| serde::de::Error::missing_field("memory_type"))?;
+                let content = content.ok_or_else(|| serde::de::Error::missing_field("content"))?;
+                let created_at =
+                    created_at.ok_or_else(|| serde::de::Error::missing_field("created_at"))?;
+                let updated_at =
+                    updated_at.ok_or_else(|| serde::de::Error::missing_field("updated_at"))?;
+
+                Ok(BaseMemory {
+                    id,
+                    memory_type,
+                    content,
+                    created_at,
+                    updated_at,
+                    metadata: Arc::new(parking_lot::RwLock::new(HashMap::new())),
+                })
+            }
+        }
+
+        const FIELDS: &'static [&'static str] =
+            &["id", "memory_type", "content", "created_at", "updated_at"];
+        deserializer.deserialize_struct("BaseMemory", FIELDS, BaseMemoryVisitor)
+    }
+}
+
 /// Memory relationship with atomic counters and zero allocation
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MemoryRelationship {
     /// Unique relationship identifier
     pub id: Uuid,
@@ -480,5 +597,41 @@ impl MemoryError {
     #[inline]
     pub fn invalid_content(msg: impl Into<String>) -> Self {
         Self::InvalidContent(msg.into())
+    }
+
+    /// Create validation error
+    #[inline]
+    pub fn validation(msg: impl Into<String>) -> Self {
+        Self::Validation(msg.into())
+    }
+}
+
+/// Convert from fluent_ai_memory::Error to MemoryError
+impl From<FluentMemoryError> for MemoryError {
+    fn from(err: FluentMemoryError) -> Self {
+        match err {
+            FluentMemoryError::NotFound(msg) => Self::NotFound(msg),
+            FluentMemoryError::InvalidInput(msg) => Self::InvalidContent(msg),
+            FluentMemoryError::ValidationError(msg) => Self::Validation(msg),
+            FluentMemoryError::ConversionError(msg) => Self::InvalidContent(msg),
+            FluentMemoryError::Config(msg) => Self::Validation(msg),
+            FluentMemoryError::Serialization(e) => Self::Serialization(e.to_string()),
+            FluentMemoryError::SerializationError(msg) => Self::Serialization(msg),
+            FluentMemoryError::BinarySerialization(msg) => Self::Serialization(msg),
+            FluentMemoryError::Database(e) => Self::OperationFailed(format!("Database error: {}", e)),
+            FluentMemoryError::DatabaseError(msg) => Self::OperationFailed(msg),
+            FluentMemoryError::VectorStore(msg) => Self::OperationFailed(format!("Vector store: {}", msg)),
+            FluentMemoryError::IndexError(msg) => Self::OperationFailed(format!("Index error: {}", msg)),
+            FluentMemoryError::Embedding(msg) => Self::OperationFailed(format!("Embedding: {}", msg)),
+            FluentMemoryError::LLM(msg) => Self::OperationFailed(format!("LLM: {}", msg)),
+            FluentMemoryError::Api(msg) => Self::OperationFailed(format!("API: {}", msg)),
+            FluentMemoryError::Migration(msg) => Self::OperationFailed(format!("Migration: {}", msg)),
+            FluentMemoryError::HttpRequest(msg) => Self::OperationFailed(format!("HTTP: {}", msg)),
+            FluentMemoryError::Io(e) => Self::OperationFailed(format!("I/O: {}", e)),
+            FluentMemoryError::Internal(msg) => Self::OperationFailed(format!("Internal: {}", msg)),
+            FluentMemoryError::NotImplemented(msg) => Self::OperationFailed(format!("Not implemented: {}", msg)),
+            FluentMemoryError::AlreadyExists(msg) => Self::OperationFailed(format!("Already exists: {}", msg)),
+            FluentMemoryError::Other(msg) => Self::OperationFailed(format!("Other: {}", msg)),
+        }
     }
 }

@@ -1,13 +1,13 @@
 //! Model information types and utilities
 
-use std::borrow::Cow;
-use std::fmt;
+// Removed unused import: std::borrow::Cow
+// Removed unused import: std::fmt
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroU32;
 
 use serde::{Deserialize, Serialize};
-use smallvec::SmallVec;
 
+// Removed unused import: smallvec::SmallVec
 use crate::model::error::{ModelError, Result};
 
 /// Core metadata and capabilities for an AI model

@@ -3,26 +3,23 @@
 //! This module provides the MemoryTool with blazing-fast performance, zero allocation,
 //! and lock-free concurrent access to the cognitive memory system.
 
-use std::future::Future;
-use std::pin::Pin;
+// Removed unused import: std::future::Future
+// Removed unused import: std::pin::Pin
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::AtomicUsize;
 
 // Ultra-high-performance zero-allocation imports
-use arrayvec::ArrayVec;
+// Removed unused import: arrayvec::ArrayVec
 use crossbeam_queue::SegQueue;
 use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
+// Removed unused import: serde_json::Value
 use super::{Memory, MemoryError, MemoryNode, MemoryType};
-use crate::async_task::{AsyncStream, AsyncTask, spawn_async};
-
-use crate::error::{
-    ErrorCategory, ErrorRecoverability, ErrorSeverity, ZeroAllocError, ZeroAllocResult,
-};
-use crate::tool::{McpTool, McpToolData, ToolTrait as Tool};
+// Removed unused imports: AsyncStream, AsyncTask, spawn_async
+use crate::error::ZeroAllocError;
+use crate::tool::McpToolData;
 
 /// Maximum number of memory nodes in result collections
 const MAX_MEMORY_TOOL_RESULTS: usize = 1000;
@@ -114,8 +111,9 @@ impl MemoryTool {
     pub fn new(memory: Arc<Memory>) -> Self {
         let data = McpToolData {
             name: "memory".to_string(),
-            description: "Memory management tool for storing and retrieving information".to_string(),
-            input_schema: serde_json::json!({
+            description: "Memory management tool for storing and retrieving information"
+                .to_string(),
+            parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
                     "operation": {

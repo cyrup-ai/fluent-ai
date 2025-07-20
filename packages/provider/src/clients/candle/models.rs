@@ -164,6 +164,10 @@ impl Default for CandleModel {
 /// Candle model information wrapper
 // CandleModelInfo is now imported from fluent_ai_domain::model
 // Removed duplicated CandleModelInfo struct - use canonical domain type
+#[derive(Debug, Clone)]
+pub struct CandleModelInfo {
+    /// Model path
+    pub model_path: String,
     /// Tokenizer path
     pub tokenizer_path: Option<String>,
     /// Device to use for inference

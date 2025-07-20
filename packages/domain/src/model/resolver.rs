@@ -1,24 +1,22 @@
 //! Model resolution and lookup utilities
 
-use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+// Removed unused import: std::borrow::Cow
+use std::collections::HashMap;
 use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::sync::Arc;
+use std::hash::Hash;
 
+// Removed unused import: std::sync::Arc
 use ahash::RandomState;
 use dashmap::DashMap;
-use once_cell::sync::Lazy;
-
+// Removed unused import: once_cell::sync::Lazy
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use strsim::jaro_winkler;
-
-use crate::model::registry::RegisteredModel;
 
 use crate::model::error::{ModelError, Result};
 use crate::model::info::ModelInfo;
 use crate::model::registry::ModelRegistry;
+// Removed unused import: strsim::jaro_winkler
+use crate::model::registry::RegisteredModel;
 use crate::model::traits::Model;
 
 /// A pattern that can be used to match model names
@@ -230,8 +228,8 @@ impl ModelResolver {
     /// Resolve a model by name and optional provider
     pub fn resolve<'a, M: Model + 'static>(
         &'a self,
-        model_name: &str,
-        provider: Option<&str>,
+        model_name: &'a str,
+        provider: Option<&'a str>,
     ) -> Result<ModelResolution<'a>> {
         self.resolve_with_registry::<M>(&self.registry, model_name, provider)
     }
@@ -240,8 +238,8 @@ impl ModelResolver {
     pub fn resolve_with_registry<'a, M: Model + 'static>(
         &'a self,
         registry: &'a ModelRegistry,
-        model_name: &str,
-        provider: Option<&str>,
+        model_name: &'a str,
+        provider: Option<&'a str>,
     ) -> Result<ModelResolution<'a>> {
         // Check for exact match first (provider:model)
         if let Some(provider) = provider {
@@ -270,11 +268,12 @@ impl ModelResolver {
         }
 
         // Check for aliases
-        if let Some((provider, model)) = self.aliases.get(model_name) {
-            if let Ok(Some(model)) = registry.get::<M>(provider, model) {
+        if let Some(alias_entry) = self.aliases.get(model_name) {
+            let (provider, model_name_alias) = alias_entry;
+            if let Ok(Some(model)) = registry.get::<M>(provider, model_name_alias) {
                 return Ok(ModelResolution::new(
                     provider,
-                    model,
+                    model_name_alias,
                     Some(model.info()),
                     None,
                     0.8,

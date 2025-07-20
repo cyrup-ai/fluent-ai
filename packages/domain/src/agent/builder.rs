@@ -5,10 +5,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use arrayvec::ArrayVec;
 use crossbeam_utils::CachePadded;
+use fluent_ai_memory::MemoryConfig;
 
 use super::core::{Agent, AgentError, AgentResult, MAX_AGENT_TOOLS};
 use crate::memory::Memory;
-use fluent_ai_memory::MemoryConfig;
 use crate::model::Model;
 use crate::tool::McpToolData;
 

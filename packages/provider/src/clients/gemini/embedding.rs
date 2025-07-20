@@ -3,16 +3,29 @@
 //! From [Gemini API Reference](https://ai.google.dev/api/embeddings)
 // ================================================================
 
+use fluent_ai_domain::model::EmbeddingModel;
 use serde_json::json;
 
 use super::{ApiResponse, Client};
 use crate::embeddings::{self, EmbeddingError};
-use fluent_ai_domain::model::EmbeddingModel;
 
 /// `embedding-001` embedding model
 pub const EMBEDDING_001: &str = "embedding-001";
 /// `text-embedding-004` embedding model
 pub const EMBEDDING_004: &str = "text-embedding-004";
+
+/// Gemini embedding model implementation
+#[derive(Debug, Clone)]
+pub struct GeminiEmbeddingModel {
+    client: Client,
+    model: String,
+    ndims: usize,
+}
+
+impl GeminiEmbeddingModel {
+    /// Create a new Gemini embedding model
+    pub fn new(client: Client, model: &str, ndims: usize) -> Self {
+        Self {
             client,
             model: model.to_string(),
             ndims,

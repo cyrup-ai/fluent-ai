@@ -4,10 +4,8 @@
 
 use std::time::Duration;
 
-use fluent_ai_memory::{
-    CognitiveMemoryManager, CognitiveSettings, MemoryManager, MemoryNode,
-};
 use fluent_ai_memory::memory::MemoryTypeEnum;
+use fluent_ai_memory::{CognitiveMemoryManager, CognitiveSettings, MemoryManager, MemoryNode};
 
 /// Test backward compatibility with existing memory APIs
 #[tokio::test]
@@ -59,7 +57,7 @@ async fn test_cognitive_enhancement() {
 
     assert!(!cognitive_memory.is_enhanced());
     assert_eq!(
-        cognitive_memory.base.content,
+        cognitive_memory.base_memory.content,
         "Rust is a systems programming language"
     );
 }
@@ -234,13 +232,21 @@ async fn test_evolution_engine() {
 /// Test attention mechanism for memory retrieval
 #[tokio::test]
 async fn test_attention_mechanism() {
-    use fluent_ai_memory::cognitive::attention::{AttentionConfig, AttentionMechanism};
+    use fluent_ai_memory::cognitive::attention::{
+        AttentionConfig, AttentionMechanism, CognitiveAttentionWeights,
+    };
 
     let config = AttentionConfig {
         num_heads: 4,
         hidden_dim: 256,
         dropout_rate: 0.1,
         use_causal_mask: false,
+        attention_weights: CognitiveAttentionWeights {
+            semantic_weight: 0.4,
+            lexical_weight: 0.3,
+            structural_weight: 0.2,
+            contextual_weight: 0.1,
+        },
     };
 
     let mut attention = AttentionMechanism::new(config);
@@ -305,7 +311,10 @@ async fn bench_cognitive_vs_traditional_search() {
 
     // Add test data
     for i in 0..100 {
-        let memory = MemoryNode::new(format!("Test memory content {}", i), MemoryTypeEnum::Semantic);
+        let memory = MemoryNode::new(
+            format!("Test memory content {}", i),
+            MemoryTypeEnum::Semantic,
+        );
         cognitive_manager
             .create_memory(memory.clone())
             .await

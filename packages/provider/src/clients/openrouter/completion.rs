@@ -111,6 +111,12 @@ pub struct Choice {
 
 // CompletionModel is now imported from fluent_ai_domain::model
 // Removed duplicated CompletionModel struct - use canonical domain type
+
+/// OpenRouter completion model implementation
+#[derive(Debug, Clone)]
+pub struct OpenRouterCompletionModel {
+    client: Client,
+    model: String,
 }
 
 impl CompletionModel {
