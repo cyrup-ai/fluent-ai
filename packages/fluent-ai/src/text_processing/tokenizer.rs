@@ -13,10 +13,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use arrayvec::ArrayVec;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use crossbeam_queue::ArrayQueue;
+use fluent_ai_domain::memory::ops::{CpuArchitecture, CpuFeatures, SIMD_WIDTH};
 use smallvec::SmallVec;
 
 use super::types::*;
-use crate::memory_ops::{CPU_FEATURES, CpuArchitecture, CpuFeatures, SIMD_WIDTH};
 
 /// SIMD-optimized tokenizer with zero allocation
 pub struct SIMDTokenizer {

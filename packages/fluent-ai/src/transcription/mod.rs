@@ -12,7 +12,7 @@ use thiserror::Error;
 
 use crate::{
     json_util,
-    runtime::{self, channel::bounded, AsyncTask},
+    runtime::{self, AsyncTask, channel::bounded},
 };
 
 // ---------------------------------------------------------------------------
@@ -32,10 +32,10 @@ pub enum TranscriptionError {
 
     #[error("response parse: {0}")]
     Response(String),
-    
+
     #[error("file not found: {0}")]
     FileNotFound(String),
-    
+
     #[error("invalid filename: {0}")]
     InvalidFilename(String),
 
@@ -124,15 +124,23 @@ impl<M: TranscriptionModel> TranscriptionRequestBuilder<M> {
             Ok(data) => data,
             Err(e) => return Err(TranscriptionError::FileNotFound(e.to_string())),
         };
-        
+
         let filename = match p.file_name() {
             Some(name) => match name.to_str() {
                 Some(str_name) => str_name.to_owned(),
-                None => return Err(TranscriptionError::InvalidFilename("Non-UTF8 filename".to_string())),
+                None => {
+                    return Err(TranscriptionError::InvalidFilename(
+                        "Non-UTF8 filename".to_string(),
+                    ));
+                }
             },
-            None => return Err(TranscriptionError::InvalidFilename("Not a file".to_string())),
+            None => {
+                return Err(TranscriptionError::InvalidFilename(
+                    "Not a file".to_string(),
+                ));
+            }
         };
-        
+
         Ok(self.data(bytes).filename(filename))
     }
 

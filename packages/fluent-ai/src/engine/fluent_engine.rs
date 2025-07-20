@@ -1,11 +1,13 @@
+use std::sync::Arc;
+
+use fluent_ai_domain::agent_role::AgentRole;
+use fluent_ai_provider::Models;
+use serde_json::Value;
+
+use crate::ZeroOneOrMany;
 use crate::async_task::{AsyncTask, spawn_async};
 use crate::domain::completion::{CompletionBackend, CompletionRequest};
 use crate::engine::{Agent, CompletionResponse, Engine, ExtractionConfig};
-use fluent_ai_domain::agent_role::AgentRole;
-use crate::ZeroOneOrMany;
-use fluent_ai_provider::Models;
-use serde_json::Value;
-use std::sync::Arc;
 
 /// A concrete engine implementation that integrates with the existing fluent-ai domain system
 pub struct FluentEngine {
@@ -90,8 +92,12 @@ impl Engine for FluentEngine {
     fn name(&self) -> &str {
         "fluent-engine"
     }
-    
-    fn complete(&self, request: &crate::domain::completion::CompletionRequest) -> crate::runtime::AsyncTask<Result<CompletionResponse, crate::completion::CompletionError>> {
+
+    fn complete(
+        &self,
+        request: &crate::domain::completion::CompletionRequest,
+    ) -> crate::runtime::AsyncTask<Result<CompletionResponse, crate::completion::CompletionError>>
+    {
         let backend = self.backend.clone();
         let request = request.clone();
         spawn_async(async move {

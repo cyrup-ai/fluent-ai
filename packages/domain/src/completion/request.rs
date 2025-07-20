@@ -9,10 +9,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
+use super::types::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE, ToolDefinition};
 use crate::validation::{ValidationError, ValidationResult};
-use crate::{ZeroOneOrMany, Message, Document};
-
-use super::types::{ToolDefinition, TEMPERATURE_RANGE, MAX_TOKENS, MAX_CHUNK_SIZE};
+use crate::{Document, Message, ZeroOneOrMany};
 
 /// A request for text completion
 #[derive(Debug, Clone, Serialize, Deserialize)]

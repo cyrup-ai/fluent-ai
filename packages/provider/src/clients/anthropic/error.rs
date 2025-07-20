@@ -3,8 +3,9 @@
 //! Provides comprehensive error handling with static dispatch and minimal allocations.
 
 // BadTraitImpl trait removed - not needed for provider error handling
-use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use serde::{Deserialize, Serialize};
 
 /// Zero-allocation error type for Anthropic API operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,7 +47,11 @@ impl fmt::Display for AnthropicError {
             }
             AnthropicError::RateLimited { retry_after } => {
                 if let Some(seconds) = retry_after {
-                    write!(f, "Anthropic rate limit exceeded, retry after {} seconds", seconds)
+                    write!(
+                        f,
+                        "Anthropic rate limit exceeded, retry after {} seconds",
+                        seconds
+                    )
                 } else {
                     write!(f, "Anthropic rate limit exceeded")
                 }
@@ -118,16 +123,14 @@ pub type AnthropicResult<T> = Result<T, AnthropicError>;
 pub fn handle_http_error(status: u16, body: &str) -> AnthropicError {
     match status {
         401 => AnthropicError::AuthenticationFailed(
-            "Invalid API key or authentication failed".to_string()
+            "Invalid API key or authentication failed".to_string(),
         ),
         429 => {
             // Try to parse retry-after header from body
             let retry_after = parse_retry_after(body);
             AnthropicError::RateLimited { retry_after }
         }
-        404 => AnthropicError::ModelNotFound(
-            "Model not found or not accessible".to_string()
-        ),
+        404 => AnthropicError::ModelNotFound("Model not found or not accessible".to_string()),
         400 => AnthropicError::InvalidRequest(body.to_string()),
         500..=599 => AnthropicError::ServerError {
             status,
@@ -159,15 +162,11 @@ pub fn handle_http3_error(error: fluent_ai_http3::HttpError) -> AnthropicError {
         fluent_ai_http3::HttpError::Connection(_) => {
             AnthropicError::NetworkError("Connection failed".to_string())
         }
-        fluent_ai_http3::HttpError::Http(status, msg) => {
-            AnthropicError::ServerError {
-                status: status as u16,
-                message: msg,
-            }
-        }
-        _ => {
-            AnthropicError::NetworkError(error.to_string())
-        }
+        fluent_ai_http3::HttpError::Http(status, msg) => AnthropicError::ServerError {
+            status: status as u16,
+            message: msg,
+        },
+        _ => AnthropicError::NetworkError(error.to_string()),
     }
 }
 

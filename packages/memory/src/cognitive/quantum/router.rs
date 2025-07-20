@@ -9,7 +9,8 @@ use tokio::sync::RwLock;
 
 use crate::cognitive::quantum::{
     BasisType, Complex64, EntanglementGraph, QuantumConfig, QuantumErrorCorrection, QuantumMetrics,
-    SuperpositionState, types::{EnhancedQuery, RoutingDecision, RoutingStrategy},
+    SuperpositionState,
+    types::{EnhancedQuery, RoutingDecision, RoutingStrategy},
 };
 use crate::cognitive::state::CognitiveStateManager;
 use crate::cognitive::types::{CognitiveResult, QueryIntent};
@@ -209,8 +210,15 @@ impl QuantumRouter {
         let measurement = self.measure_state(&superposition, query).await?;
 
         // Generate routing decision
-        let decision = self.generate_decision(measurement, query).await
-            .map_err(|e| QuantumRouterError::SuperpositionError(format!("Decision generation failed: {:?}", e)))?;
+        let decision = self
+            .generate_decision(measurement, query)
+            .await
+            .map_err(|e| {
+                QuantumRouterError::SuperpositionError(format!(
+                    "Decision generation failed: {:?}",
+                    e
+                ))
+            })?;
 
         // Update metrics
         self.update_metrics(Duration::from_secs(0), true, &decision)
@@ -247,15 +255,14 @@ impl QuantumRouter {
         &self,
         query: &EnhancedQuery,
     ) -> Result<SuperpositionState, QuantumRouterError> {
-        let mut state = SuperpositionState::new(std::time::Duration::from_secs_f64(self.config.default_coherence_time.as_secs_f64()));
+        let mut state = SuperpositionState::new(std::time::Duration::from_secs_f64(
+            self.config.default_coherence_time.as_secs_f64(),
+        ));
 
         // Add context as basis states
         for (i, _context) in query.context.iter().enumerate() {
             let amplitude = 1.0 / (query.context.len() as f64).sqrt();
-            state.add_basis_state(
-                format!("basis_{}", i), 
-                Complex64::new(amplitude, 0.0)
-            );
+            state.add_basis_state(format!("basis_{}", i), Complex64::new(amplitude, 0.0));
         }
 
         // Apply initial phase based on query priority
@@ -316,8 +323,8 @@ impl QuantumRouter {
         superposition.rotate_z(rotation_angle * 0.5);
 
         // Apply decoherence based on coherence time
-        let elapsed_duration = Instant::now()
-            .duration_since(query.timestamp.unwrap_or_else(|| Instant::now()));
+        let elapsed_duration =
+            Instant::now().duration_since(query.timestamp.unwrap_or_else(|| Instant::now()));
 
         superposition.apply_decoherence(elapsed_duration);
 
@@ -333,7 +340,7 @@ impl QuantumRouter {
         // Get read lock on states
         let states = self.superposition_states.read().await;
 
-        // Collect state IDs to entangle with  
+        // Collect state IDs to entangle with
         let mut state_ids = Vec::with_capacity(states.len());
         for (state_id, _state) in states.iter() {
             state_ids.push(state_id.clone());
@@ -431,7 +438,7 @@ impl QuantumRouter {
 
         // Clone context to avoid move
         let context_clone = measurement.context.clone();
-        
+
         Ok(RoutingDecision {
             strategy,
             target_context: measurement.context,

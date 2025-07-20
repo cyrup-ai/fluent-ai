@@ -4,17 +4,16 @@
 // Ollama streaming implementation using HTTP3 client with zero-allocation design
 // ============================================================================
 
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
 
+use super::completion::{CompletionResponse, ProviderMessage};
 use crate::{
     completion::CompletionError,
     runtime::{self, AsyncStream},
     streaming::{RawStreamingChoice, StreamingCompletionResponse},
 };
-
-use super::completion::{CompletionResponse, ProviderMessage};
 
 // ============================================================================
 // Streaming Response
@@ -31,7 +30,7 @@ pub struct OllamaStreamingResponse {
 }
 
 /// Send a streaming request to Ollama using HTTP3 client and return an AsyncStream
-/// 
+///
 /// This function uses zero-allocation patterns and blazing-fast HTTP/3 streaming
 /// with no unsafe code, no unchecked operations, and no locking.
 #[inline(always)]
@@ -46,8 +45,9 @@ pub fn send_ollama_streaming_request(
             runtime::async_stream::<Result<RawStreamingChoice, CompletionError>>(512);
 
         // Create HTTP3 client with streaming configuration optimized for Ollama
-        let client = HttpClient::with_config(HttpConfig::streaming_optimized())
-            .map_err(|e| CompletionError::RequestError(format!("Failed to create HTTP3 client: {}", e)))?;
+        let client = HttpClient::with_config(HttpConfig::streaming_optimized()).map_err(|e| {
+            CompletionError::RequestError(format!("Failed to create HTTP3 client: {}", e))
+        })?;
 
         // Spawn the streaming task with zero-allocation patterns
         runtime::spawn_async(async move {
@@ -62,7 +62,7 @@ pub fn send_ollama_streaming_request(
 
             // Process JSON lines stream (Ollama uses JSON lines, not SSE)
             let mut json_stream = stream_response.json_lines::<serde_json::Value>();
-            
+
             while let Some(chunk) = json_stream.next().await {
                 match chunk {
                     Ok(value) => {
@@ -107,7 +107,7 @@ pub fn send_ollama_streaming_request(
 }
 
 /// Process an Ollama JSON chunk into a RawStreamingChoice
-/// 
+///
 /// This function handles the zero-allocation parsing of Ollama's JSON response format
 /// and converts it to the standard streaming choice format.
 #[inline(always)]
@@ -157,7 +157,7 @@ fn process_ollama_chunk(chunk: &serde_json::Value) -> Result<RawStreamingChoice,
 }
 
 /// Extract usage information from Ollama's response
-/// 
+///
 /// This function processes the usage statistics from Ollama's JSON response
 /// with zero-allocation patterns where possible.
 #[inline(always)]
@@ -198,7 +198,7 @@ fn extract_usage_info(chunk: &serde_json::Value) -> Option<crate::streaming::Usa
             prompt_tokens: prompt_eval_count as u32,
             completion_tokens: eval_count as u32,
             total_tokens: (prompt_eval_count + eval_count) as u32,
-            prompt_eval_duration_ms: (prompt_eval_duration / 1_000_000) as u32, // Convert nanoseconds to milliseconds
+            prompt_eval_duration_ms: (prompt_eval_duration / 1_000_000) as u32, /* Convert nanoseconds to milliseconds */
             eval_duration_ms: (eval_duration / 1_000_000) as u32,
             total_duration_ms: (total_duration / 1_000_000) as u32,
             load_duration_ms: (load_duration / 1_000_000) as u32,

@@ -3,8 +3,9 @@
 //! Provides EXACT API syntax for vector store queries and memory operations.
 
 use fluent_ai_domain::{
+    AsyncTask,
     memory::{VectorStoreIndex, VectorStoreIndexDyn, ZeroOneOrMany},
-    AsyncTask, spawn_async
+    spawn_async,
 };
 use serde_json::Value;
 

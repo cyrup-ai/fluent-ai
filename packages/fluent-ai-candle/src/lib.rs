@@ -16,35 +16,34 @@ pub mod model;
 pub mod tokenizer;
 
 // Re-export core types for ergonomic usage
-pub use client::{CandleCompletionClient, CandleClientConfig, CandleClientBuilder};
+pub use client::{CandleClientBuilder, CandleClientConfig, CandleCompletionClient};
 pub use error::{CandleError, CandleResult};
-pub use generator::{CandleGenerator, GenerationConfig};
-pub use model::{CandleModel};
-pub use tokenizer::{CandleTokenizer, TokenizerConfig};
-
 // Re-export fluent_ai_core completion types
 pub use fluent_ai_core::completion::{
-    CompletionClient, CompletionClientExt, CompletionRequest, CompletionResponse,
-    StreamingResponse, FinishReason, ResponseChunk,
+    CompletionClient, CompletionClientExt, CompletionRequest, CompletionResponse, FinishReason,
+    ResponseChunk, StreamingResponse,
 };
+pub use generator::{CandleGenerator, GenerationConfig};
+pub use model::CandleModel;
+pub use tokenizer::{CandleTokenizer, TokenizerConfig};
 
 /// Performance constants for candle integration
 pub mod constants {
     /// Maximum model file size for memory mapping (2GB)
     pub const MAX_MODEL_FILE_SIZE: usize = 2 * 1024 * 1024 * 1024;
-    
+
     /// Default token buffer size for generation
     pub const DEFAULT_TOKEN_BUFFER_SIZE: usize = 2048;
-    
+
     /// Default KV cache size
     pub const DEFAULT_KV_CACHE_SIZE: usize = 1024;
-    
+
     /// Maximum vocabulary size
     pub const MAX_VOCAB_SIZE: usize = 100_000;
-    
+
     /// Cache line size for memory alignment
     pub const CACHE_LINE_SIZE: usize = 64;
-    
+
     /// Default batch size for parallel processing
     pub const DEFAULT_BATCH_SIZE: usize = 8;
 }
@@ -52,7 +51,7 @@ pub mod constants {
 /// Device utilities for optimal device selection
 pub mod device {
     use candle_core::Device;
-    
+
     /// Automatically select the best available device
     #[inline(always)]
     pub fn auto_device() -> candle_core::Result<Device> {
@@ -63,7 +62,7 @@ pub mod device {
                 return Ok(device);
             }
         }
-        
+
         // Try Metal if available
         #[cfg(feature = "metal")]
         {
@@ -71,11 +70,11 @@ pub mod device {
                 return Ok(device);
             }
         }
-        
+
         // Fallback to CPU
         Ok(Device::Cpu)
     }
-    
+
     /// Get device information string
     #[inline(always)]
     pub fn device_info(device: &Device) -> &'static str {
@@ -88,7 +87,7 @@ pub mod device {
             _ => "Unknown",
         }
     }
-    
+
     /// Check if device supports fast matrix operations
     #[inline(always)]
     pub fn supports_fast_matmul(device: &Device) -> bool {
@@ -106,28 +105,28 @@ pub mod device {
 /// Memory utilities for efficient memory management
 pub mod memory {
     use std::sync::atomic::{AtomicUsize, Ordering};
-    
+
     /// Global memory usage tracker
     static MEMORY_USAGE: AtomicUsize = AtomicUsize::new(0);
-    
+
     /// Track memory allocation
     #[inline(always)]
     pub fn track_allocation(size: usize) {
         MEMORY_USAGE.fetch_add(size, Ordering::Relaxed);
     }
-    
+
     /// Track memory deallocation
     #[inline(always)]
     pub fn track_deallocation(size: usize) {
         MEMORY_USAGE.fetch_sub(size, Ordering::Relaxed);
     }
-    
+
     /// Get current memory usage
     #[inline(always)]
     pub fn current_usage() -> usize {
         MEMORY_USAGE.load(Ordering::Relaxed)
     }
-    
+
     /// Reset memory tracking
     #[inline(always)]
     pub fn reset_tracking() {
@@ -138,13 +137,13 @@ pub mod memory {
 /// Performance utilities for optimization
 pub mod perf {
     use std::time::Instant;
-    
+
     /// Performance timer for benchmarking
     pub struct PerfTimer {
         start: Instant,
         name: &'static str,
     }
-    
+
     impl PerfTimer {
         /// Start a new performance timer
         #[inline(always)]
@@ -154,27 +153,27 @@ pub mod perf {
                 name,
             }
         }
-        
+
         /// Get elapsed time in microseconds
         #[inline(always)]
         pub fn elapsed_micros(&self) -> u64 {
             self.start.elapsed().as_micros() as u64
         }
-        
+
         /// Get elapsed time in nanoseconds
         #[inline(always)]
         pub fn elapsed_nanos(&self) -> u64 {
             self.start.elapsed().as_nanos() as u64
         }
     }
-    
+
     impl Drop for PerfTimer {
         fn drop(&mut self) {
             let elapsed = self.elapsed_micros();
             tracing::debug!("{} took {} μs", self.name, elapsed);
         }
     }
-    
+
     /// Macro for easy performance timing
     #[macro_export]
     macro_rules! perf_timer {
@@ -186,25 +185,26 @@ pub mod perf {
 
 /// Utilities for working with candle tensors
 pub mod tensor_utils {
-    use candle_core::{Tensor, Result as CandleResult};
     use arrayvec::ArrayVec;
-    
+    use candle_core::{Result as CandleResult, Tensor};
+
     /// Convert tensor to token IDs with zero allocation
     #[inline(always)]
     pub fn tensor_to_tokens(tensor: &Tensor, buffer: &mut ArrayVec<u32, 2048>) -> CandleResult<()> {
         let data = tensor.to_vec1::<u32>()?;
         buffer.clear();
-        buffer.try_extend_from_slice(&data)
+        buffer
+            .try_extend_from_slice(&data)
             .map_err(|_| candle_core::Error::Msg("Token buffer overflow".into()))?;
         Ok(())
     }
-    
+
     /// Convert tokens to tensor efficiently
     #[inline(always)]
     pub fn tokens_to_tensor(tokens: &[u32], device: &candle_core::Device) -> CandleResult<Tensor> {
         Tensor::new(tokens, device)?.unsqueeze(0)
     }
-    
+
     /// Apply softmax with temperature scaling (optimized)
     #[inline(always)]
     pub fn softmax_with_temperature(logits: &Tensor, temperature: f32) -> CandleResult<Tensor> {
@@ -215,7 +215,7 @@ pub mod tensor_utils {
             scaled.softmax(candle_core::D::Minus1)
         }
     }
-    
+
     /// Sample from probability distribution using top-k and top-p
     #[inline(always)]
     pub fn sample_token(
@@ -226,26 +226,26 @@ pub mod tensor_utils {
     ) -> CandleResult<u32> {
         let mut probs = probs.to_vec1::<f32>()?;
         let vocab_size = probs.len();
-        
+
         // Apply top-k filtering
         if let Some(k) = top_k {
             if k < vocab_size {
                 // Find the k-th largest probability
                 let mut indices: Vec<usize> = (0..vocab_size).collect();
                 indices.sort_by(|&a, &b| probs[b].partial_cmp(&probs[a]).unwrap());
-                
+
                 // Zero out probabilities below top-k
                 for &idx in &indices[k..] {
                     probs[idx] = 0.0;
                 }
             }
         }
-        
+
         // Apply top-p (nucleus) filtering
         if let Some(p) = top_p {
             let mut indices: Vec<usize> = (0..vocab_size).collect();
             indices.sort_by(|&a, &b| probs[b].partial_cmp(&probs[a]).unwrap());
-            
+
             let mut cumulative_prob = 0.0;
             for (i, &idx) in indices.iter().enumerate() {
                 cumulative_prob += probs[idx];
@@ -258,7 +258,7 @@ pub mod tensor_utils {
                 }
             }
         }
-        
+
         // Renormalize probabilities
         let sum: f32 = probs.iter().sum();
         if sum > 0.0 {
@@ -266,18 +266,18 @@ pub mod tensor_utils {
                 *prob /= sum;
             }
         }
-        
+
         // Sample from the distribution
         let random_value: f32 = rng.gen();
         let mut cumulative = 0.0;
-        
+
         for (i, &prob) in probs.iter().enumerate() {
             cumulative += prob;
             if random_value <= cumulative {
                 return Ok(i as u32);
             }
         }
-        
+
         // Fallback to last token
         Ok((vocab_size - 1) as u32)
     }
@@ -296,39 +296,39 @@ pub const BUILD_INFO: &str = concat!(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_constants() {
         assert!(constants::MAX_MODEL_FILE_SIZE > 0);
         assert!(constants::DEFAULT_TOKEN_BUFFER_SIZE > 0);
         assert!(constants::MAX_VOCAB_SIZE > 0);
     }
-    
+
     #[test]
     fn test_memory_tracking() {
         memory::reset_tracking();
         assert_eq!(memory::current_usage(), 0);
-        
+
         memory::track_allocation(1024);
         assert_eq!(memory::current_usage(), 1024);
-        
+
         memory::track_deallocation(512);
         assert_eq!(memory::current_usage(), 512);
-        
+
         memory::reset_tracking();
         assert_eq!(memory::current_usage(), 0);
     }
-    
+
     #[test]
     fn test_device_auto_selection() {
         let device = device::auto_device();
         assert!(device.is_ok());
-        
+
         let device = device.unwrap();
         let info = device::device_info(&device);
         assert!(!info.is_empty());
     }
-    
+
     #[test]
     fn test_version_info() {
         assert!(!VERSION.is_empty());

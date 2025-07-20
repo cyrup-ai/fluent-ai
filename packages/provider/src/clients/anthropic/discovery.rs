@@ -5,15 +5,14 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tracing::{debug, error, info, instrument, warn};
 
+use super::super::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
+use super::client::AnthropicClient;
 use crate::model::{
     error::ModelError,
     info::{ModelCapability, ModelInfo, ModelInfoBuilder},
     registry::{ModelRegistry, RegisteredModel},
     traits::Model,
 };
-
-use super::client::AnthropicClient;
-use super::super::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
 
 /// Anthropic model discovery implementation
 #[derive(Debug, Clone)]
@@ -34,15 +33,12 @@ impl AnthropicDiscovery {
             // Claude 4 models (newest and most powerful)
             "claude-opus-4-20250514",
             "claude-sonnet-4-20250514",
-            
             // Claude 3.7 models
             "claude-3-7-sonnet-20250219",
-            
-            // Claude 3.5 models 
-            "claude-3-5-sonnet-20241022",    // v2 (latest)
-            "claude-3-5-sonnet-20240620",    // v1 (original)
+            // Claude 3.5 models
+            "claude-3-5-sonnet-20241022", // v2 (latest)
+            "claude-3-5-sonnet-20240620", // v1 (original)
             "claude-3-5-haiku-20241022",
-            
             // Claude 3 models
             "claude-3-opus-20240229",
             "claude-3-sonnet-20240229",
@@ -60,12 +56,15 @@ impl AnthropicDiscovery {
     fn get_model_info(&self, model_name: &'static str) -> Option<ModelInfo> {
         // Determine model capabilities based on model name patterns
         let mut capabilities = vec![ModelCapability::TextGeneration];
-        
+
         // All Claude 3+ models support function calling
-        if model_name.contains("claude-3") || model_name.contains("claude-opus-4") || model_name.contains("claude-sonnet-4") {
+        if model_name.contains("claude-3")
+            || model_name.contains("claude-opus-4")
+            || model_name.contains("claude-sonnet-4")
+        {
             capabilities.push(ModelCapability::FunctionCalling);
         }
-        
+
         // Determine context length and other model-specific properties
         let (context_length, max_output_tokens) = if model_name.contains("opus") {
             (200_000, 8_192) // Opus models have larger context
@@ -114,10 +113,7 @@ impl ProviderModelDiscovery for AnthropicDiscovery {
 
                 // Register the model
                 if let Err(e) = registry.register("anthropic", model) {
-                    error!(
-                        "Failed to register Anthropic model {}: {}",
-                        model_name, e
-                    );
+                    error!("Failed to register Anthropic model {}: {}", model_name, e);
                     return Err(DiscoveryError::RegistrationFailed(e.to_string()));
                 }
 
@@ -160,48 +156,58 @@ mod tests {
     async fn test_anthropic_discovery() {
         // Create a discovery instance with a dummy API key for testing
         let discovery = AnthropicDiscovery::new("test-api-key".to_string()).unwrap();
-        
+
         // Test provider name
         assert_eq!(discovery.provider_name(), "anthropic");
-        
+
         // Test supported models
         let supported_models = discovery.supported_models();
         assert!(!supported_models.is_empty());
         assert!(supported_models.contains(&&"claude-3-5-sonnet-20241022"));
-        
+
         // Test model info retrieval
-        let model_info = discovery.get_model_info("claude-3-5-sonnet-20241022").unwrap();
+        let model_info = discovery
+            .get_model_info("claude-3-5-sonnet-20241022")
+            .unwrap();
         assert_eq!(model_info.name(), "claude-3-5-sonnet-20241022");
         assert_eq!(model_info.provider(), "anthropic");
         assert!(model_info.has_capability(ModelCapability::TextGeneration));
         assert!(model_info.has_capability(ModelCapability::FunctionCalling));
-        
+
         // Test model registration (in-memory only for tests)
         let result = discovery.discover_and_register().await;
-        assert!(result.is_ok(), "Failed to discover and register models: {:?}", result.err());
-        
+        assert!(
+            result.is_ok(),
+            "Failed to discover and register models: {:?}",
+            result.err()
+        );
+
         // Verify models were registered
         let registry = ModelRegistry::global();
         for model_name in supported_models {
             assert!(
-                registry.get_model::<AnthropicModel>("anthropic", model_name).is_ok(),
+                registry
+                    .get_model::<AnthropicModel>("anthropic", model_name)
+                    .is_ok(),
                 "Model {} was not registered",
                 model_name
             );
         }
     }
-    
+
     #[test]
     fn test_get_model_info() {
         let discovery = AnthropicDiscovery::new("test-api-key".to_string()).unwrap();
-        
+
         // Test with supported model
-        let model_info = discovery.get_model_info("claude-3-5-sonnet-20241022").unwrap();
+        let model_info = discovery
+            .get_model_info("claude-3-5-sonnet-20241022")
+            .unwrap();
         assert_eq!(model_info.name(), "claude-3-5-sonnet-20241022");
         assert_eq!(model_info.provider(), "anthropic");
         assert!(model_info.has_capability(ModelCapability::TextGeneration));
         assert!(model_info.has_capability(ModelCapability::FunctionCalling));
-        
+
         // Test with unsupported model
         assert!(discovery.get_model_info("unsupported-model").is_none());
     }

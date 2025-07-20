@@ -27,18 +27,18 @@
 use core::marker::PhantomData;
 use std::collections::HashMap;
 
-use crate::{
-    completion::Document,
-    runtime::{AsyncStream, AsyncTask},
-    domain::tool::ToolSet,
-    domain::mcp_tool::Tool,
-    vector_store::VectorStoreIndexDyn,
-};
-use fluent_ai_provider::Model;
 use fluent_ai_domain::completion::CompletionModel;
+use fluent_ai_provider::Model;
 
 #[cfg(feature = "mcp")]
 use crate::tool::McpTool;
+use crate::{
+    completion::Document,
+    domain::mcp_tool::Tool,
+    domain::tool::ToolSet,
+    runtime::{AsyncStream, AsyncTask},
+    vector_store::VectorStoreIndexDyn,
+};
 
 // ============================================================================
 // Error types for builder operations
@@ -76,20 +76,23 @@ impl ModelAdapter {
             model_info,
         }
     }
-    
-    pub fn stream_completion(&self, prompt: &str) -> crate::domain::AsyncTask<Result<crate::domain::AsyncStream<String>, String>> {
+
+    pub fn stream_completion(
+        &self,
+        prompt: &str,
+    ) -> crate::domain::AsyncTask<Result<crate::domain::AsyncStream<String>, String>> {
         let model_name = self.model_variant.name();
         let prompt = prompt.to_string();
-        
+
         crate::domain::spawn_async(async move {
             // Create a simple streaming response for now
             let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-            
+
             // Simulate streaming response
             tokio::spawn(async move {
                 let response = format!("Response from {} for prompt: {}", model_name, prompt);
                 let chunks: Vec<&str> = response.split_whitespace().collect();
-                
+
                 for chunk in chunks {
                     if tx.send(chunk.to_string()).is_err() {
                         break;
@@ -97,17 +100,20 @@ impl ModelAdapter {
                     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
                 }
             });
-            
+
             Ok(crate::domain::async_task::AsyncStream::new(rx))
         })
     }
 }
 
 impl CompletionModel for ModelAdapter {
-    fn complete(&self, prompt: &str) -> crate::domain::AsyncTask<Result<String, crate::completion::CompletionError>> {
+    fn complete(
+        &self,
+        prompt: &str,
+    ) -> crate::domain::AsyncTask<Result<String, crate::completion::CompletionError>> {
         let model_name = self.model_variant.name();
         let prompt = prompt.to_string();
-        
+
         crate::domain::spawn_async(async move {
             Ok(format!("Completion from {} for: {}", model_name, prompt))
         })
@@ -117,9 +123,9 @@ impl CompletionModel for ModelAdapter {
 // ============================================================================
 // Typestate markers for compile-time validation
 // ============================================================================
-pub struct MissingSys;     // Missing system prompt
-pub struct MissingCtx;     // Missing context
-pub struct Ready;          // Ready to build
+pub struct MissingSys; // Missing system prompt
+pub struct MissingCtx; // Missing context
+pub struct Ready; // Ready to build
 
 // ============================================================================
 // Provider selection with const generics
@@ -153,10 +159,13 @@ impl<M: Model> ModelSelector<M> {
     }
 
     /// Select model and transition to AgentBuilder
-    pub fn model(self, model_name: &'static str) -> Result<AgentBuilder<M, MissingSys, MissingCtx>, AgentBuilderError> {
+    pub fn model(
+        self,
+        model_name: &'static str,
+    ) -> Result<AgentBuilder<M, MissingSys, MissingCtx>, AgentBuilderError> {
         // Create model instance from provider Models enum
         use fluent_ai_provider::Models;
-        
+
         let model_variant = match model_name {
             "o4-mini" | "gpt-4o-mini" => Models::Gpt4OMini,
             "gpt-4o" => Models::Gpt4O,
@@ -167,7 +176,7 @@ impl<M: Model> ModelSelector<M> {
             "gemini-2.5-flash" => Models::Gemini25Flash,
             _ => return Err(AgentBuilderError::UnsupportedModel(model_name.to_string())),
         };
-        
+
         Ok(AgentBuilder::new_with_model(model_name, model_variant))
     }
 }
@@ -180,7 +189,7 @@ pub struct AgentBuilder<M: Model, S, C> {
     model: Option<M>,
     model_name: Option<&'static str>,
     system_prompt: Option<String>,
-    
+
     // Context and tools - pre-allocated for zero-alloc hot-path
     static_context: Vec<Document>,
     static_tools_by_id: Vec<String>,
@@ -209,13 +218,13 @@ impl<M: Model> AgentBuilder<M, MissingSys, MissingCtx> {
     fn new(model_name: &'static str) -> Self {
         Self::new_with_model(model_name, fluent_ai_provider::Models::Gpt4OMini)
     }
-    
+
     fn new_with_model(model_name: &'static str, model_variant: fluent_ai_provider::Models) -> Self {
         Self {
             model: Some(ModelAdapter::new(model_variant)),
             model_name: Some(model_name),
             system_prompt: None,
-            static_context: Vec::with_capacity(4),  // Pre-allocate for hot-path
+            static_context: Vec::with_capacity(4), // Pre-allocate for hot-path
             static_tools_by_id: Vec::with_capacity(4),
             dynamic_context: Vec::new(),
             dynamic_tools: Vec::new(),
@@ -350,12 +359,14 @@ impl<M: Model> AgentBuilder<M, (), Ready> {
     /// Build the agent directly
     pub fn build(self) -> Result<super::agent::Agent<M>, AgentBuilderError> {
         let model = self.model.ok_or(AgentBuilderError::MissingModel)?;
-        let system_prompt = self.system_prompt.ok_or(AgentBuilderError::MissingSystemPrompt)?;
-        
+        let system_prompt = self
+            .system_prompt
+            .ok_or(AgentBuilderError::MissingSystemPrompt)?;
+
         if self.static_context.is_empty() && self.dynamic_context.is_empty() {
             return Err(AgentBuilderError::MissingContext);
         }
-        
+
         Ok(super::agent::Agent::new(
             model,
             system_prompt,
@@ -378,7 +389,8 @@ impl<M: Model> AgentBuilder<M, (), Ready> {
 // ============================================================================
 pub struct CompletionBuilder<M: Model> {
     agent_builder: AgentBuilder<M, (), Ready>,
-    chunk_handler: Option<Box<dyn Fn(Result<String, String>) -> Result<String, String> + Send + Sync>>,
+    chunk_handler:
+        Option<Box<dyn Fn(Result<String, String>) -> Result<String, String> + Send + Sync>>,
 }
 
 impl<M: Model> CompletionBuilder<M> {
@@ -399,42 +411,46 @@ impl<M: Model> CompletionBuilder<M> {
     }
 
     /// Start chat with streaming response processing
-    pub fn chat(self, message: impl Into<String>) -> AsyncTask<Result<AsyncStream<String>, AgentBuilderError>> {
+    pub fn chat(
+        self,
+        message: impl Into<String>,
+    ) -> AsyncTask<Result<AsyncStream<String>, AgentBuilderError>> {
         let message_text = message.into();
         let chunk_handler = self.chunk_handler;
-        
+
         crate::domain::spawn_async(async move {
             let agent = match self.agent_builder.build() {
                 Ok(agent) => agent,
                 Err(e) => return Err(e),
             };
-            
+
             // Create completion request using the built agent
             let request = crate::domain::completion::CompletionRequest::new(&message_text)
                 .with_system_prompt(agent.preamble())
                 .with_temperature(agent.temperature().unwrap_or(0.7))
                 .with_max_tokens(agent.max_tokens());
-            
+
             // Get the model and create streaming response
             let model = agent.model();
             let stream_result = model.stream_completion(&message_text).await;
-            
+
             match stream_result {
                 Ok(stream) => {
                     // Apply chunk handler if present
                     if let Some(handler) = chunk_handler {
-                        let processed_stream = stream.map(move |chunk| {
-                            match chunk {
-                                Ok(content) => handler(Ok(content)),
-                                Err(e) => handler(Err(format!("Stream error: {:?}", e))),
-                            }
+                        let processed_stream = stream.map(move |chunk| match chunk {
+                            Ok(content) => handler(Ok(content)),
+                            Err(e) => handler(Err(format!("Stream error: {:?}", e))),
                         });
                         Ok(processed_stream)
                     } else {
                         Ok(stream.map(|chunk| chunk.unwrap_or_default()))
                     }
-                },
-                Err(e) => Err(AgentBuilderError::StreamingError(format!("Failed to create stream: {:?}", e))),
+                }
+                Err(e) => Err(AgentBuilderError::StreamingError(format!(
+                    "Failed to create stream: {:?}",
+                    e
+                ))),
             }
         })
     }
@@ -452,10 +468,13 @@ pub trait ToolDefault: Tool {
 // ============================================================================
 impl<M: Model> ModelSelector<M> {
     /// Fixed model selector that creates proper AgentBuilder
-    pub fn model(self, model_name: &'static str) -> Result<AgentBuilder<M, MissingSys, MissingCtx>, AgentBuilderError> {
+    pub fn model(
+        self,
+        model_name: &'static str,
+    ) -> Result<AgentBuilder<M, MissingSys, MissingCtx>, AgentBuilderError> {
         // Create model instance from provider Models enum
         use fluent_ai_provider::Models;
-        
+
         let model_variant = match model_name {
             "o4-mini" | "gpt-4o-mini" => Models::Gpt4OMini,
             "gpt-4o" => Models::Gpt4O,
@@ -466,7 +485,7 @@ impl<M: Model> ModelSelector<M> {
             "gemini-2.5-flash" => Models::Gemini25Flash,
             _ => return Err(AgentBuilderError::UnsupportedModel(model_name.to_string())),
         };
-        
+
         Ok(AgentBuilder::new_with_model(model_name, model_variant))
     }
 }

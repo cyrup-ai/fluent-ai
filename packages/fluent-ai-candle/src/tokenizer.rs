@@ -1,11 +1,13 @@
 //! Zero-allocation tokenization with pre-allocated buffers and SIMD optimization
 
-use crate::error::{CandleError, CandleResult};
-use arrayvec::ArrayVec;
-use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use arrayvec::ArrayVec;
+use smallvec::SmallVec;
 use tokenizers::Tokenizer;
+
+use crate::error::{CandleError, CandleResult};
 
 /// Maximum token buffer size
 const MAX_TOKEN_BUFFER: usize = 2048;
@@ -90,10 +92,10 @@ impl CandleTokenizer {
     #[inline(always)]
     pub fn new(tokenizer: Tokenizer, config: TokenizerConfig) -> CandleResult<Self> {
         let vocab_size = tokenizer.get_vocab_size(false) as u32;
-        
+
         // Extract special tokens
         let mut special_tokens = HashMap::new();
-        
+
         // Add common special tokens
         if let Some(token) = tokenizer.token_to_id("<pad>") {
             special_tokens.insert("<pad>".to_string(), token);
@@ -107,7 +109,7 @@ impl CandleTokenizer {
         if let Some(token) = tokenizer.token_to_id("<unk>") {
             special_tokens.insert("<unk>".to_string(), token);
         }
-        
+
         Ok(Self {
             tokenizer: Arc::new(tokenizer),
             token_buffer: parking_lot::Mutex::new(ArrayVec::new()),
@@ -117,58 +119,69 @@ impl CandleTokenizer {
             vocab_size,
         })
     }
-    
+
     /// Load tokenizer from file
     #[inline(always)]
-    pub fn from_file<P: AsRef<std::path::Path>>(path: P, config: TokenizerConfig) -> CandleResult<Self> {
+    pub fn from_file<P: AsRef<std::path::Path>>(
+        path: P,
+        config: TokenizerConfig,
+    ) -> CandleResult<Self> {
         let tokenizer = Tokenizer::from_file(path)
             .map_err(|_| CandleError::tokenizer("Failed to load tokenizer from file"))?;
-        
+
         Self::new(tokenizer, config)
     }
-    
+
     /// Load tokenizer from HuggingFace Hub
     #[inline(always)]
     pub async fn from_hub(repo_id: &str, config: TokenizerConfig) -> CandleResult<Self> {
         let api = hf_hub::api::tokio::Api::new()
             .map_err(|e| CandleError::HuggingFaceHub(format!("HF Hub API error: {}", e)))?;
-        
+
         let repo = api.model(repo_id.to_string());
-        let tokenizer_path = repo.get("tokenizer.json").await
-            .map_err(|e| CandleError::HuggingFaceHub(format!("Failed to download tokenizer: {}", e)))?;
-        
+        let tokenizer_path = repo.get("tokenizer.json").await.map_err(|e| {
+            CandleError::HuggingFaceHub(format!("Failed to download tokenizer: {}", e))
+        })?;
+
         Self::from_file(tokenizer_path, config)
     }
-    
+
     /// Encode text to token IDs with zero allocation
     #[inline(always)]
-    pub fn encode(&self, text: &str, add_special_tokens: bool) -> CandleResult<ArrayVec<u32, MAX_TOKEN_BUFFER>> {
-        let encoding = self.tokenizer
+    pub fn encode(
+        &self,
+        text: &str,
+        add_special_tokens: bool,
+    ) -> CandleResult<ArrayVec<u32, MAX_TOKEN_BUFFER>> {
+        let encoding = self
+            .tokenizer
             .encode(text, add_special_tokens)
             .map_err(|_| CandleError::tokenizer("Failed to encode text"))?;
-        
+
         let token_ids = encoding.get_ids();
-        
+
         // Apply configuration
         let mut final_tokens = ArrayVec::new();
-        
+
         // Add BOS token if configured
         if self.config.add_bos_token && add_special_tokens {
             if let Some(bos_id) = self.config.bos_token_id {
-                final_tokens.try_push(bos_id)
+                final_tokens
+                    .try_push(bos_id)
                     .map_err(|_| CandleError::tokenizer("Token buffer overflow"))?;
             }
         }
-        
+
         // Add main tokens
         for &token_id in token_ids {
             if final_tokens.len() >= MAX_TOKEN_BUFFER {
                 break; // Prevent overflow
             }
-            final_tokens.try_push(token_id)
+            final_tokens
+                .try_push(token_id)
                 .map_err(|_| CandleError::tokenizer("Token buffer overflow"))?;
         }
-        
+
         // Add EOS token if configured
         if self.config.add_eos_token && add_special_tokens {
             if let Some(eos_id) = self.config.eos_token_id {
@@ -177,103 +190,112 @@ impl CandleTokenizer {
                 }
             }
         }
-        
+
         // Apply truncation if necessary
         if final_tokens.len() > self.config.max_length as usize {
             final_tokens.truncate(self.config.max_length as usize);
         }
-        
+
         Ok(final_tokens)
     }
-    
+
     /// Decode token IDs to text with zero allocation
     #[inline(always)]
     pub fn decode(&self, token_ids: &[u32], skip_special_tokens: bool) -> CandleResult<String> {
-        let text = self.tokenizer
+        let text = self
+            .tokenizer
             .decode(token_ids, skip_special_tokens)
             .map_err(|_| CandleError::tokenizer("Failed to decode tokens"))?;
-        
+
         Ok(text)
     }
-    
+
     /// Encode multiple texts in batch
     #[inline(always)]
-    pub fn encode_batch(&self, texts: &[&str], add_special_tokens: bool) -> CandleResult<Vec<ArrayVec<u32, MAX_TOKEN_BUFFER>>> {
+    pub fn encode_batch(
+        &self,
+        texts: &[&str],
+        add_special_tokens: bool,
+    ) -> CandleResult<Vec<ArrayVec<u32, MAX_TOKEN_BUFFER>>> {
         let mut results = Vec::with_capacity(texts.len());
-        
+
         for text in texts {
             results.push(self.encode(text, add_special_tokens)?);
         }
-        
+
         Ok(results)
     }
-    
+
     /// Decode multiple token sequences in batch
     #[inline(always)]
-    pub fn decode_batch(&self, token_sequences: &[&[u32]], skip_special_tokens: bool) -> CandleResult<Vec<String>> {
+    pub fn decode_batch(
+        &self,
+        token_sequences: &[&[u32]],
+        skip_special_tokens: bool,
+    ) -> CandleResult<Vec<String>> {
         let mut results = Vec::with_capacity(token_sequences.len());
-        
+
         for tokens in token_sequences {
             results.push(self.decode(tokens, skip_special_tokens)?);
         }
-        
+
         Ok(results)
     }
-    
+
     /// Get token ID for a specific token
     #[inline(always)]
     pub fn token_to_id(&self, token: &str) -> Option<u32> {
         self.tokenizer.token_to_id(token)
     }
-    
+
     /// Get token string for a specific ID
     #[inline(always)]
     pub fn id_to_token(&self, id: u32) -> Option<String> {
         self.tokenizer.id_to_token(id)
     }
-    
+
     /// Get vocabulary size
     #[inline(always)]
     pub fn vocab_size(&self) -> u32 {
         self.vocab_size
     }
-    
+
     /// Get special token ID
     #[inline(always)]
     pub fn special_token_id(&self, token: &str) -> Option<u32> {
         self.special_tokens.get(token).copied()
     }
-    
+
     /// Get BOS token ID
     #[inline(always)]
     pub fn bos_token_id(&self) -> Option<u32> {
         self.config.bos_token_id
     }
-    
+
     /// Get EOS token ID
     #[inline(always)]
     pub fn eos_token_id(&self) -> Option<u32> {
         self.config.eos_token_id
     }
-    
+
     /// Get PAD token ID
     #[inline(always)]
     pub fn pad_token_id(&self) -> Option<u32> {
         self.config.pad_token_id
     }
-    
+
     /// Get UNK token ID
     #[inline(always)]
     pub fn unk_token_id(&self) -> Option<u32> {
         self.config.unk_token_id
     }
-    
+
     /// Check if token is special
     #[inline(always)]
     pub fn is_special_token(&self, token_id: u32) -> bool {
         self.special_tokens.values().any(|&id| id == token_id)
     }
-    
+
     /// Estimate token count for text (fast approximation)
     #[inline(always)]
     pub fn estimate_token_count(&self, text: &str) -> u32 {
@@ -281,12 +303,12 @@ impl CandleTokenizer {
         // This is much faster than actual tokenization for length estimation
         (text.len() / 4).max(1) as u32
     }
-    
+
     /// Truncate text to fit within token limit (approximate)
     #[inline(always)]
     pub fn truncate_text(&self, text: &str, max_tokens: u32) -> &str {
         let max_chars = (max_tokens * 4) as usize; // 4 chars per token approximation
-        
+
         if text.len() <= max_chars {
             text
         } else {
@@ -298,13 +320,13 @@ impl CandleTokenizer {
             &text[..truncate_at]
         }
     }
-    
+
     /// Get tokenizer configuration
     #[inline(always)]
     pub fn config(&self) -> &TokenizerConfig {
         &self.config
     }
-    
+
     /// Update tokenizer configuration
     #[inline(always)]
     pub fn update_config(&mut self, config: TokenizerConfig) {
@@ -333,9 +355,10 @@ impl TokenWithMetadata {
     #[inline(always)]
     pub fn new(id: u32, text: &str, start: u32, end: u32, is_special: bool) -> CandleResult<Self> {
         let mut text_bytes = SmallVec::new();
-        text_bytes.try_extend_from_slice(text.as_bytes())
+        text_bytes
+            .try_extend_from_slice(text.as_bytes())
             .map_err(|_| CandleError::tokenizer("Token text too long"))?;
-        
+
         Ok(Self {
             id,
             text: text_bytes,
@@ -344,7 +367,7 @@ impl TokenWithMetadata {
             is_special,
         })
     }
-    
+
     /// Get token text as string
     #[inline(always)]
     pub fn text_str(&self) -> CandleResult<&str> {
@@ -377,31 +400,32 @@ impl TokenizationResult {
             token_count: 0,
         }
     }
-    
+
     /// Add a token to the result
     #[inline(always)]
     pub fn add_token(&mut self, token: TokenWithMetadata) -> CandleResult<()> {
-        self.token_ids.try_push(token.id)
+        self.token_ids
+            .try_push(token.id)
             .map_err(|_| CandleError::tokenizer("Token buffer overflow"))?;
-        
+
         self.tokens.push(token);
         self.token_count += 1;
-        
+
         Ok(())
     }
-    
+
     /// Get token IDs as slice
     #[inline(always)]
     pub fn token_ids(&self) -> &[u32] {
         &self.token_ids
     }
-    
+
     /// Get tokens with metadata
     #[inline(always)]
     pub fn tokens(&self) -> &[TokenWithMetadata] {
         &self.tokens
     }
-    
+
     /// Get token count
     #[inline(always)]
     pub fn token_count(&self) -> u32 {

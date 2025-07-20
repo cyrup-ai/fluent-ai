@@ -2,12 +2,13 @@
 //!
 //! All MCP client construction logic and builder patterns.
 
-use fluent_ai_domain::mcp::McpClient;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use std::time::Duration;
+
+use fluent_ai_domain::mcp::McpClient;
 use tokio::sync::RwLock;
-use std::collections::HashMap;
 
 /// Zero-allocation MCP client builder with blazing-fast construction
 pub struct McpClientBuilder {

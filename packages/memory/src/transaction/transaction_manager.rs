@@ -248,7 +248,10 @@ impl TransactionManager {
         let mut tx = transaction.lock().await;
 
         // Check state - abort can happen from any active state
-        if matches!(tx.state, TransactionState::Committed | TransactionState::Aborted) {
+        if matches!(
+            tx.state,
+            TransactionState::Committed | TransactionState::Aborted
+        ) {
             return Err(TransactionError::InvalidState(format!(
                 "Cannot abort transaction in state {:?}",
                 tx.state
@@ -260,7 +263,10 @@ impl TransactionManager {
 
         // Force release all locks (more aggressive than rollback)
         for lock in &tx.locks {
-            self.lock_manager.release_lock(&lock.resource, id.clone()).await.ok();
+            self.lock_manager
+                .release_lock(&lock.resource, id.clone())
+                .await
+                .ok();
         }
         tx.locks.clear();
 

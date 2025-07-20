@@ -10,19 +10,19 @@
 //! - Real-time alerting system with configurable thresholds
 //! - Metric export for Prometheus/OpenTelemetry integration
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicU32, AtomicUsize, Ordering};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::collections::VecDeque;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use arrayvec::ArrayString;
-use smallvec::SmallVec;
 use crossbeam_utils::CachePadded;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{broadcast, watch, RwLock};
-use tokio::time::interval;
+use smallvec::SmallVec;
 use thiserror::Error;
+use tokio::sync::{RwLock, broadcast, watch};
+use tokio::time::interval;
 
 /// Maximum number of providers to track
 const MAX_PROVIDERS: usize = 32;
@@ -100,13 +100,14 @@ impl LatencyHistogram {
     /// Record a latency measurement
     pub fn record(&self, latency_us: u64) {
         // Find appropriate bucket using binary search
-        let bucket_index = self.bucket_boundaries
+        let bucket_index = self
+            .bucket_boundaries
             .binary_search(&latency_us)
             .unwrap_or_else(|i| i.min(HISTOGRAM_BUCKETS - 1));
 
         // Update bucket count
         self.bucket_counts[bucket_index].fetch_add(1, Ordering::Relaxed);
-        
+
         // Update summary statistics
         self.total_count.fetch_add(1, Ordering::Relaxed);
         self.total_sum.fetch_add(latency_us, Ordering::Relaxed);
@@ -163,11 +164,15 @@ impl LatencyHistogram {
     pub fn get_stats(&self) -> LatencyStats {
         let total = self.total_count.load(Ordering::Relaxed);
         let sum = self.total_sum.load(Ordering::Relaxed);
-        
+
         LatencyStats {
             count: total,
             mean: if total > 0 { sum / total } else { 0 },
-            min: if total > 0 { self.min_value.load(Ordering::Relaxed) } else { 0 },
+            min: if total > 0 {
+                self.min_value.load(Ordering::Relaxed)
+            } else {
+                0
+            },
             max: self.max_value.load(Ordering::Relaxed),
             p50: self.percentile(0.5),
             p90: self.percentile(0.9),
@@ -245,10 +250,10 @@ impl ThroughputWindow {
         };
 
         let mut measurements = self.measurements.write().await;
-        
+
         // Add new measurement
         measurements.push_back(measurement);
-        
+
         // Remove old measurements outside the window
         let cutoff_time = timestamp.saturating_sub(self.window_size as u64);
         while let Some(front) = measurements.front() {
@@ -263,12 +268,13 @@ impl ThroughputWindow {
         if measurements.len() >= 2 {
             let total_requests: u64 = measurements.iter().map(|m| m.request_count).sum();
             let total_bytes: u64 = measurements.iter().map(|m| m.byte_count).sum();
-            let time_span = measurements.back().unwrap().timestamp - measurements.front().unwrap().timestamp;
-            
+            let time_span =
+                measurements.back().unwrap().timestamp - measurements.front().unwrap().timestamp;
+
             if time_span > 0 {
                 let throughput = total_requests / time_span;
                 let bandwidth = total_bytes / time_span;
-                
+
                 self.current_throughput.store(throughput, Ordering::Relaxed);
                 self.current_bandwidth.store(bandwidth, Ordering::Relaxed);
             }
@@ -419,7 +425,7 @@ impl ResourceMetrics {
     /// Update memory usage and track peak
     pub fn update_memory_usage(&self, bytes: u64) {
         self.memory_usage_bytes.store(bytes, Ordering::Relaxed);
-        
+
         // Update peak memory with compare-and-swap loop
         let mut current_peak = self.peak_memory_bytes.load(Ordering::Relaxed);
         while bytes > current_peak {
@@ -437,14 +443,18 @@ impl ResourceMetrics {
 
     /// Record network I/O
     pub fn record_network_io(&self, bytes_sent: u64, bytes_received: u64) {
-        self.network_bytes_sent.fetch_add(bytes_sent, Ordering::Relaxed);
-        self.network_bytes_received.fetch_add(bytes_received, Ordering::Relaxed);
+        self.network_bytes_sent
+            .fetch_add(bytes_sent, Ordering::Relaxed);
+        self.network_bytes_received
+            .fetch_add(bytes_received, Ordering::Relaxed);
     }
 
     /// Record disk I/O
     pub fn record_disk_io(&self, bytes_read: u64, bytes_written: u64) {
-        self.disk_bytes_read.fetch_add(bytes_read, Ordering::Relaxed);
-        self.disk_bytes_written.fetch_add(bytes_written, Ordering::Relaxed);
+        self.disk_bytes_read
+            .fetch_add(bytes_read, Ordering::Relaxed);
+        self.disk_bytes_written
+            .fetch_add(bytes_written, Ordering::Relaxed);
     }
 
     /// Get resource statistics
@@ -516,16 +526,16 @@ pub struct AlertConfig {
 pub enum PerformanceMonitorError {
     #[error("Invalid metric name: {name}")]
     InvalidMetricName { name: String },
-    
+
     #[error("Provider not found: {provider}")]
     ProviderNotFound { provider: String },
-    
+
     #[error("Alert configuration error: {error}")]
     AlertConfigError { error: String },
-    
+
     #[error("Metric collection failed: {error}")]
     MetricCollectionFailed { error: String },
-    
+
     #[error("Export failed: {error}")]
     ExportFailed { error: String },
 }
@@ -566,19 +576,23 @@ impl ProviderMetrics {
     pub async fn record_metric(&self, metric: &PerformanceMetric) {
         // Update latency histogram
         self.latency_histogram.record(metric.latency_us);
-        
+
         // Update throughput window
-        self.throughput_window.record(1, metric.request_size_bytes + metric.response_size_bytes).await;
-        
+        self.throughput_window
+            .record(1, metric.request_size_bytes + metric.response_size_bytes)
+            .await;
+
         // Update counters
         self.request_count.fetch_add(1, Ordering::Relaxed);
         if metric.error_occurred {
             self.error_count.fetch_add(1, Ordering::Relaxed);
         }
-        self.total_processing_time.fetch_add(metric.latency_us, Ordering::Relaxed);
-        
+        self.total_processing_time
+            .fetch_add(metric.latency_us, Ordering::Relaxed);
+
         // Update last activity
-        self.last_activity.store(metric.timestamp, Ordering::Relaxed);
+        self.last_activity
+            .store(metric.timestamp, Ordering::Relaxed);
     }
 
     /// Get error rate
@@ -680,18 +694,20 @@ impl AnomalyDetector {
             .map(|d| d.as_secs())
             .unwrap_or(0);
 
-        self.baselines.entry(key.clone())
+        self.baselines
+            .entry(key.clone())
             .and_modify(|baseline| {
                 // Update running statistics
                 let new_count = baseline.sample_count + 1;
                 let new_mean = baseline.mean + (value - baseline.mean) / new_count as f64;
                 let new_variance = if new_count > 1 {
-                    ((new_count - 1) as f64 * baseline.std_deviation.powi(2) + 
-                     (value - baseline.mean) * (value - new_mean)) / new_count as f64
+                    ((new_count - 1) as f64 * baseline.std_deviation.powi(2)
+                        + (value - baseline.mean) * (value - new_mean))
+                        / new_count as f64
                 } else {
                     0.0
                 };
-                
+
                 baseline.mean = new_mean;
                 baseline.std_deviation = new_variance.sqrt();
                 baseline.sample_count = new_count;
@@ -709,18 +725,20 @@ impl AnomalyDetector {
     /// Check if value is anomalous
     pub fn is_anomaly(&self, metric_name: &str, value: f64) -> Option<f64> {
         let key = ArrayString::from(metric_name).unwrap_or_default();
-        
+
         if let Some(baseline) = self.baselines.get(&key) {
-            if baseline.sample_count >= self.min_baseline_samples as u64 && baseline.std_deviation > 0.0 {
+            if baseline.sample_count >= self.min_baseline_samples as u64
+                && baseline.std_deviation > 0.0
+            {
                 let z_score = (value - baseline.mean).abs() / baseline.std_deviation;
                 let threshold = 2.0 + (1.0 - self.sensitivity) * 2.0; // Range: 2.0 - 4.0 sigma
-                
+
                 if z_score > threshold {
                     return Some(z_score);
                 }
             }
         }
-        
+
         None
     }
 }
@@ -777,63 +795,82 @@ impl PerformanceMonitor {
     }
 
     /// Record performance metric
-    pub async fn record_metric(&self, metric: PerformanceMetric) -> Result<(), PerformanceMonitorError> {
+    pub async fn record_metric(
+        &self,
+        metric: PerformanceMetric,
+    ) -> Result<(), PerformanceMonitorError> {
         // Get or create provider metrics
-        let provider_metrics = self.provider_metrics.entry(metric.provider.clone())
+        let provider_metrics = self
+            .provider_metrics
+            .entry(metric.provider.clone())
             .or_insert_with(|| Arc::new(ProviderMetrics::new(metric.provider.clone())));
-        
+
         // Record metric in provider-specific metrics
         provider_metrics.record_metric(&metric).await;
-        
+
         // Update cache metrics if applicable
         if metric.cache_hit {
             self.cache_metrics.record_hit();
         } else {
             self.cache_metrics.record_miss();
         }
-        
+
         // Check for anomalies
         let latency_ms = metric.latency_us as f64 / 1000.0;
         if let Some(z_score) = self.anomaly_detector.is_anomaly("latency", latency_ms) {
             // Generate anomaly alert
             self.generate_anomaly_alert(&metric, z_score).await;
         }
-        
+
         // Update baseline
         self.anomaly_detector.update_baseline("latency", latency_ms);
-        
+
         Ok(())
     }
 
     /// Generate anomaly alert
     async fn generate_anomaly_alert(&self, metric: &PerformanceMetric, z_score: f64) {
-        let alert_id = ArrayString::from(&format!("anomaly_{}", 
-            SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)))
-            .unwrap_or_default();
-        
+        let alert_id = ArrayString::from(&format!(
+            "anomaly_{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_millis())
+                .unwrap_or(0)
+        ))
+        .unwrap_or_default();
+
         let alert = PerformanceAlert {
             id: alert_id.clone(),
             timestamp: metric.timestamp,
-            severity: if z_score > 4.0 { AlertSeverity::Critical } 
-                     else if z_score > 3.0 { AlertSeverity::Error }
-                     else { AlertSeverity::Warning },
+            severity: if z_score > 4.0 {
+                AlertSeverity::Critical
+            } else if z_score > 3.0 {
+                AlertSeverity::Error
+            } else {
+                AlertSeverity::Warning
+            },
             metric_name: ArrayString::from("latency_anomaly").unwrap_or_default(),
             provider: Some(metric.provider.clone()),
             threshold_value: z_score,
             actual_value: metric.latency_us as f64 / 1000.0,
-            message: ArrayString::from(&format!("Latency anomaly detected: {}ms (z-score: {:.2})", 
-                metric.latency_us / 1000, z_score)).unwrap_or_default(),
+            message: ArrayString::from(&format!(
+                "Latency anomaly detected: {}ms (z-score: {:.2})",
+                metric.latency_us / 1000,
+                z_score
+            ))
+            .unwrap_or_default(),
             resolved: false,
             resolution_timestamp: None,
         };
-        
+
         self.active_alerts.insert(alert_id, alert.clone());
         let _ = self.alert_sender.send(alert);
     }
 
     /// Add alert configuration
     pub fn add_alert_config(&self, config: AlertConfig) {
-        self.alert_configs.insert(config.metric_name.clone(), config);
+        self.alert_configs
+            .insert(config.metric_name.clone(), config);
     }
 
     /// Evaluate alerts based on current metrics
@@ -853,20 +890,30 @@ impl PerformanceMonitor {
         let current_value = match config.metric_name.as_str() {
             "error_rate" => self.get_global_error_rate(),
             "cache_hit_ratio" => self.cache_metrics.hit_ratio(),
-            "memory_usage" => self.resource_metrics.memory_usage_bytes.load(Ordering::Relaxed) as f64,
+            "memory_usage" => self
+                .resource_metrics
+                .memory_usage_bytes
+                .load(Ordering::Relaxed) as f64,
             _ => return, // Unknown metric
         };
 
         let threshold_exceeded = match config.severity {
-            AlertSeverity::Critical | AlertSeverity::Error => current_value > config.threshold_value,
+            AlertSeverity::Critical | AlertSeverity::Error => {
+                current_value > config.threshold_value
+            }
             AlertSeverity::Warning | AlertSeverity::Info => current_value > config.threshold_value,
         };
 
         if threshold_exceeded {
-            let alert_id = ArrayString::from(&format!("{}_{}", 
-                config.metric_name, 
-                SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)))
-                .unwrap_or_default();
+            let alert_id = ArrayString::from(&format!(
+                "{}_{}",
+                config.metric_name,
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map(|d| d.as_millis())
+                    .unwrap_or(0)
+            ))
+            .unwrap_or_default();
 
             if !self.active_alerts.contains_key(&alert_id) {
                 let alert = PerformanceAlert {
@@ -880,9 +927,11 @@ impl PerformanceMonitor {
                     provider: config.provider_specific.clone(),
                     threshold_value: config.threshold_value,
                     actual_value: current_value,
-                    message: ArrayString::from(&format!("{} exceeded threshold: {:.2} > {:.2}", 
-                        config.metric_name, current_value, config.threshold_value))
-                        .unwrap_or_default(),
+                    message: ArrayString::from(&format!(
+                        "{} exceeded threshold: {:.2} > {:.2}",
+                        config.metric_name, current_value, config.threshold_value
+                    ))
+                    .unwrap_or_default(),
                     resolved: false,
                     resolution_timestamp: None,
                 };
@@ -953,7 +1002,7 @@ impl PerformanceMonitor {
     pub fn get_provider_metrics(&self, provider: &str) -> Option<(LatencyStats, f64, u64)> {
         let key = ArrayString::from(provider).ok()?;
         let metrics = self.provider_metrics.get(&key)?;
-        
+
         Some((
             metrics.latency_histogram.get_stats(),
             metrics.error_rate(),
@@ -982,13 +1031,13 @@ impl PerformanceMonitor {
 
         // Metrics collection task
         handles.push(self.start_metrics_collection_task());
-        
+
         // Alert evaluation task
         handles.push(self.start_alert_evaluation_task());
-        
+
         // Resource monitoring task
         handles.push(self.start_resource_monitoring_task());
-        
+
         // Cleanup task
         handles.push(self.start_cleanup_task());
 
@@ -1006,12 +1055,12 @@ impl PerformanceMonitor {
 
             loop {
                 interval.tick().await;
-                
+
                 let global_metrics = monitor.get_global_metrics();
-                
+
                 // Update watch channel
                 let _ = performance_watch.send(global_metrics.clone());
-                
+
                 // Broadcast to subscribers
                 let _ = metrics_sender.send(global_metrics);
             }
@@ -1041,10 +1090,10 @@ impl PerformanceMonitor {
 
             loop {
                 interval.tick().await;
-                
+
                 // Update resource metrics (simplified - would use system calls)
                 // This would integrate with system monitoring APIs
-                
+
                 // Example: Update memory usage
                 // resource_metrics.update_memory_usage(get_current_memory_usage());
             }
@@ -1061,7 +1110,7 @@ impl PerformanceMonitor {
 
             loop {
                 interval.tick().await;
-                
+
                 // Clean up old resolved alerts
                 let cutoff_time = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
@@ -1069,7 +1118,8 @@ impl PerformanceMonitor {
                     .unwrap_or(0);
 
                 active_alerts.retain(|_, alert| {
-                    !alert.resolved || alert.resolution_timestamp.unwrap_or(alert.timestamp) > cutoff_time
+                    !alert.resolved
+                        || alert.resolution_timestamp.unwrap_or(alert.timestamp) > cutoff_time
                 });
 
                 // Maintain alert history size
@@ -1087,22 +1137,40 @@ impl PerformanceMonitor {
         let mut output = String::with_capacity(4096);
 
         // Global metrics
-        output.push_str(&format!("# HELP embedding_requests_total Total number of embedding requests\n"));
+        output.push_str(&format!(
+            "# HELP embedding_requests_total Total number of embedding requests\n"
+        ));
         output.push_str(&format!("# TYPE embedding_requests_total counter\n"));
-        output.push_str(&format!("embedding_requests_total {}\n", global_metrics.total_requests));
+        output.push_str(&format!(
+            "embedding_requests_total {}\n",
+            global_metrics.total_requests
+        ));
 
-        output.push_str(&format!("# HELP embedding_errors_total Total number of embedding errors\n"));
+        output.push_str(&format!(
+            "# HELP embedding_errors_total Total number of embedding errors\n"
+        ));
         output.push_str(&format!("# TYPE embedding_errors_total counter\n"));
-        output.push_str(&format!("embedding_errors_total {}\n", global_metrics.total_errors));
+        output.push_str(&format!(
+            "embedding_errors_total {}\n",
+            global_metrics.total_errors
+        ));
 
         output.push_str(&format!("# HELP embedding_error_rate Current error rate\n"));
         output.push_str(&format!("# TYPE embedding_error_rate gauge\n"));
-        output.push_str(&format!("embedding_error_rate {:.6}\n", global_metrics.global_error_rate));
+        output.push_str(&format!(
+            "embedding_error_rate {:.6}\n",
+            global_metrics.global_error_rate
+        ));
 
         // Cache metrics
-        output.push_str(&format!("# HELP embedding_cache_hit_ratio Cache hit ratio\n"));
+        output.push_str(&format!(
+            "# HELP embedding_cache_hit_ratio Cache hit ratio\n"
+        ));
         output.push_str(&format!("# TYPE embedding_cache_hit_ratio gauge\n"));
-        output.push_str(&format!("embedding_cache_hit_ratio {:.6}\n", global_metrics.cache_stats.hit_ratio));
+        output.push_str(&format!(
+            "embedding_cache_hit_ratio {:.6}\n",
+            global_metrics.cache_stats.hit_ratio
+        ));
 
         // Per-provider metrics
         for provider_entry in self.provider_metrics.iter() {
@@ -1110,14 +1178,25 @@ impl PerformanceMonitor {
             let metrics = provider_entry.value();
             let latency_stats = metrics.latency_histogram.get_stats();
 
-            output.push_str(&format!("# HELP embedding_latency_seconds Embedding latency percentiles\n"));
+            output.push_str(&format!(
+                "# HELP embedding_latency_seconds Embedding latency percentiles\n"
+            ));
             output.push_str(&format!("# TYPE embedding_latency_seconds histogram\n"));
-            output.push_str(&format!("embedding_latency_seconds{{provider=\"{}\",quantile=\"0.5\"}} {:.6}\n", 
-                provider_id, latency_stats.p50 as f64 / 1_000_000.0));
-            output.push_str(&format!("embedding_latency_seconds{{provider=\"{}\",quantile=\"0.9\"}} {:.6}\n", 
-                provider_id, latency_stats.p90 as f64 / 1_000_000.0));
-            output.push_str(&format!("embedding_latency_seconds{{provider=\"{}\",quantile=\"0.99\"}} {:.6}\n", 
-                provider_id, latency_stats.p99 as f64 / 1_000_000.0));
+            output.push_str(&format!(
+                "embedding_latency_seconds{{provider=\"{}\",quantile=\"0.5\"}} {:.6}\n",
+                provider_id,
+                latency_stats.p50 as f64 / 1_000_000.0
+            ));
+            output.push_str(&format!(
+                "embedding_latency_seconds{{provider=\"{}\",quantile=\"0.9\"}} {:.6}\n",
+                provider_id,
+                latency_stats.p90 as f64 / 1_000_000.0
+            ));
+            output.push_str(&format!(
+                "embedding_latency_seconds{{provider=\"{}\",quantile=\"0.99\"}} {:.6}\n",
+                provider_id,
+                latency_stats.p99 as f64 / 1_000_000.0
+            ));
         }
 
         output

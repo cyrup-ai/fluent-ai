@@ -11,7 +11,7 @@ use std::future::Future;
 use futures::stream::{self, StreamExt, TryStreamExt};
 use futures::{join, try_join};
 
-use super::{Op, Map, Then};
+use super::{Map, Op, Then};
 
 // ================================================================
 // 0. Core trait – any `Op` that yields a `Result` automatically
@@ -102,8 +102,8 @@ pub trait TryOp: Send + Sync {
     }
 }
 
-/* blanket-impl: plug any `Op<Output = Result<_, _>>` directly into the
- * `TryOp` ecosystem. */
+// blanket-impl: plug any `Op<Output = Result<_, _>>` directly into the
+// `TryOp` ecosystem.
 impl<O, T, E> TryOp for O
 where
     O: Op<Output = Result<T, E>>,

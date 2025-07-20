@@ -10,11 +10,13 @@
 
 #![allow(clippy::type_complexity)]
 
-use crate::runtime::{AsyncStream, AsyncTask};
+use std::sync::Arc;
+
 use futures_util::FutureExt; // for `.map()` on AsyncTask
 use serde_json::Value;
-use std::sync::Arc;
 use thiserror::Error;
+
+use crate::runtime::{AsyncStream, AsyncTask};
 
 // ---------------------------------------------------------------------------
 // Error

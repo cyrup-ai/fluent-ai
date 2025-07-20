@@ -3,5 +3,3 @@ imports_granularity = "Preserve"
 normalize_comments = true
 tab_spaces = 4
 unstable_features = true
-allow_git_deps = true
-git_branch_deps = true

@@ -11,7 +11,7 @@ pub mod circuit_breaker;
 
 // Re-export core types
 pub use circuit_breaker::{
-    CircuitBreaker, CircuitBreakerRegistry, CircuitBreakerConfig, CircuitBreakerError,
-    CircuitState, FailureType, ErrorCategory, CircuitStateChange, CircuitMetricsSnapshot,
-    AdaptiveThresholdCalculator, ErrorEntry, RegistryStats
+    AdaptiveThresholdCalculator, CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError,
+    CircuitBreakerRegistry, CircuitMetricsSnapshot, CircuitState, CircuitStateChange,
+    ErrorCategory, ErrorEntry, FailureType, RegistryStats,
 };

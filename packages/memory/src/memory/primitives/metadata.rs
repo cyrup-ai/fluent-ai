@@ -153,14 +153,14 @@ impl MemoryMetadata {
 
     /// Check if metadata is essentially empty
     pub fn is_empty(&self) -> bool {
-        self.context.is_empty() &&
-        self.keywords.is_empty() &&
-        self.tags.is_empty() &&
-        self.category.is_empty() &&
-        self.user_id.is_none() &&
-        self.agent_id.is_none() &&
-        self.source.is_none() &&
-        matches!(self.custom, serde_json::Value::Null)
+        self.context.is_empty()
+            && self.keywords.is_empty()
+            && self.tags.is_empty()
+            && self.category.is_empty()
+            && self.user_id.is_none()
+            && self.agent_id.is_none()
+            && self.source.is_none()
+            && matches!(self.custom, serde_json::Value::Null)
     }
 }
 

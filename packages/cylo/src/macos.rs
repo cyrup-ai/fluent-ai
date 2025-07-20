@@ -1,9 +1,10 @@
 use std::{fs, path::Path, process::Command};
 
-use crate::{sandbox::safe_path_to_string,
+use crate::{
     config::{FileSystem, RamdiskConfig},
     error::StorageError,
     platform::RamdiskPlatform,
+    sandbox::safe_path_to_string,
 };
 
 /// Implements ramdisk functionality for macOS systems using hdiutil and diskutil
@@ -101,7 +102,8 @@ impl RamdiskPlatform for MacosRamdisk {
 
     /// Checks if a mount point is currently in use
     fn is_mounted(&self, mount_point: &Path) -> Result<bool, StorageError> {
-        let mount_point_str = safe_path_to_string(mount_point).map_err(|e| StorageError::PathInvalid(e.to_string()))?;
+        let mount_point_str = safe_path_to_string(mount_point)
+            .map_err(|e| StorageError::PathInvalid(e.to_string()))?;
         let volumes = self.get_mounted_volumes()?;
         Ok(volumes.iter().any(|v| v.contains(&mount_point_str)))
     }
@@ -139,7 +141,8 @@ impl RamdiskPlatform for MacosRamdisk {
             return Ok(());
         }
 
-        let mount_point_str = safe_path_to_string(mount_point).map_err(|e| StorageError::PathInvalid(e.to_string()))?;
+        let mount_point_str = safe_path_to_string(mount_point)
+            .map_err(|e| StorageError::PathInvalid(e.to_string()))?;
         let device = self.get_device_for_mount(&mount_point_str)?;
 
         // First unmount

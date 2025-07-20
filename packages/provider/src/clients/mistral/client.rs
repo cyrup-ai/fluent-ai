@@ -9,12 +9,16 @@
 //!     .prompt("Hello world")
 //! ```
 
-use crate::completion_provider::{CompletionProvider, CompletionError};
-use crate::client::{CompletionClient, ProviderClient};
-use super::completion::MistralCompletionBuilder;
-use fluent_ai_http3::{HttpClient, HttpConfig};
 use fluent_ai_domain::AsyncTask;
-use super::completion::{MISTRAL_LARGE, MISTRAL_SMALL, CODESTRAL, PIXTRAL_LARGE, MISTRAL_SABA, MINISTRAL_3B, MINISTRAL_8B, PIXTRAL_SMALL, MISTRAL_NEMO, CODESTRAL_MAMBA};
+use fluent_ai_http3::{HttpClient, HttpConfig};
+
+use super::completion::MistralCompletionBuilder;
+use super::completion::{
+    CODESTRAL, CODESTRAL_MAMBA, MINISTRAL_3B, MINISTRAL_8B, MISTRAL_LARGE, MISTRAL_NEMO,
+    MISTRAL_SABA, MISTRAL_SMALL, PIXTRAL_LARGE, PIXTRAL_SMALL,
+};
+use crate::client::{CompletionClient, ProviderClient};
+use crate::completion_provider::{CompletionError, CompletionProvider};
 
 /// Mistral client providing clean completion builder factory methods
 #[derive(Clone)]
@@ -28,15 +32,18 @@ impl MistralClient {
         if api_key.is_empty() {
             return Err(CompletionError::AuthError);
         }
-        
+
         Ok(Self { api_key })
     }
-    
+
     /// Create completion builder for specific model with ModelInfo defaults loaded
-    pub fn completion_model(&self, model_name: &'static str) -> Result<MistralCompletionBuilder, CompletionError> {
+    pub fn completion_model(
+        &self,
+        model_name: &'static str,
+    ) -> Result<MistralCompletionBuilder, CompletionError> {
         MistralCompletionBuilder::new(self.api_key.clone(), model_name)
     }
-    
+
     /// Get API key
     pub fn api_key(&self) -> &str {
         &self.api_key
@@ -51,12 +58,12 @@ impl MistralProvider {
     pub fn new() -> Self {
         Self
     }
-    
+
     /// Get provider name
     pub const fn name() -> &'static str {
         "mistral"
     }
-    
+
     /// Get available models (compile-time constant)
     pub const fn models() -> &'static [&'static str] {
         &[
@@ -107,7 +114,7 @@ impl CompletionClient for MistralClient {
                 Box::leak(model.to_string().into_boxed_str())
             }
         };
-        
+
         MistralCompletionBuilder::new(self.api_key.clone(), static_model)
     }
 }
@@ -121,22 +128,22 @@ impl ProviderClient for MistralClient {
     }
 
     /// Test connection with blazing-fast async task
-    #[inline]  
+    #[inline]
     fn test_connection(&self) -> AsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
         let api_key = self.api_key.clone();
-        
+
         AsyncTask::spawn(async move {
             // Zero-allocation validation: check API key format and non-empty
             if api_key.is_empty() {
                 return Err("Mistral API key is empty".into());
             }
-            
+
             // Mistral API keys typically don't have a standard prefix like OpenAI's "sk-"
             // Just do basic length validation
             if api_key.len() < 20 {
                 return Err("Mistral API key too short".into());
             }
-            
+
             Ok(())
         })
     }
@@ -145,29 +152,30 @@ impl ProviderClient for MistralClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_client_creation() {
         let client = MistralClient::new("test-key".to_string());
         assert!(client.is_ok());
-        
+
         let client = client.expect("Failed to create mistral client in test");
         assert_eq!(client.api_key(), "test-key");
     }
-    
+
     #[test]
     fn test_client_creation_empty_key() {
         let client = MistralClient::new("".to_string());
         assert!(matches!(client, Err(CompletionError::AuthError)));
     }
-    
+
     #[test]
     fn test_completion_model_factory() {
-        let client = MistralClient::new("test-key".to_string()).expect("Failed to create mistral client in test");
+        let client = MistralClient::new("test-key".to_string())
+            .expect("Failed to create mistral client in test");
         let builder = client.completion_model(MISTRAL_LARGE);
         assert!(builder.is_ok());
     }
-    
+
     #[test]
     fn test_provider() {
         let provider = MistralProvider::new();

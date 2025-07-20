@@ -3,32 +3,31 @@
 //! This module provides a complete CompletionClient implementation using the Candle ML
 //! framework for local model inference with zero-allocation patterns and lock-free design.
 
-use std::sync::Arc;
 use std::path::PathBuf;
-use tokio::sync::OnceCell;
+use std::sync::Arc;
+
 use arc_swap::ArcSwap;
-use smallvec::SmallVec;
-
 use fluent_ai_domain::{
-    completion::{CompletionModel, CompletionParams}, 
-    chunk::CompletionChunk,
-    prompt::Prompt,
     async_task::{AsyncStream, AsyncTask},
+    chunk::CompletionChunk,
+    completion::{CompletionModel, CompletionParams},
+    prompt::Prompt,
 };
+use smallvec::SmallVec;
+use tokio::sync::OnceCell;
 
-use crate::client::{ProviderClient, CompletionClient};
-
-use super::models::{CandleModel, CandleModelInfo, CandleDevice};
-use super::error::{CandleError, CandleResult};
-use super::device_manager::{DeviceManager, DeviceInfo};
-use super::model_repo::{ModelRepository, ModelState};
-use super::tokenizer::{CandleTokenizer, TokenizationResult, SpecialTokens, TextBuffer};
-use super::kv_cache::{ModelKvCache, ModelCacheConfig};
-use super::generation::{TextGenerator, SamplingConfig, GenerationStatistics};
-use super::streaming::{StreamingCoordinator, StreamingConfig, FinishReason, TokenStreamer};
-use super::memory_pool::{MemoryPoolManager, PoolConfig};
-use super::performance::{PerformanceOptimizer, PerformanceConfig};
 use super::config::{CandleGlobalConfig, MetricsCollector};
+use super::device_manager::{DeviceInfo, DeviceManager};
+use super::error::{CandleError, CandleResult};
+use super::generation::{GenerationStatistics, SamplingConfig, TextGenerator};
+use super::kv_cache::{ModelCacheConfig, ModelKvCache};
+use super::memory_pool::{MemoryPoolManager, PoolConfig};
+use super::model_repo::{ModelRepository, ModelState};
+use super::models::{CandleDevice, CandleModel, CandleModelInfo};
+use super::performance::{PerformanceConfig, PerformanceOptimizer};
+use super::streaming::{FinishReason, StreamingConfig, StreamingCoordinator, TokenStreamer};
+use super::tokenizer::{CandleTokenizer, SpecialTokens, TextBuffer, TokenizationResult};
+use crate::client::{CompletionClient, ProviderClient};
 
 /// Comprehensive configuration for Candle completion client
 #[derive(Debug, Clone)]
@@ -59,7 +58,7 @@ impl Default for CandleConfig {
     fn default() -> Self {
         Self {
             model: CandleModel::Mistral_7B,
-            device: None, // Auto-select best device
+            device: None,          // Auto-select best device
             model_cache_dir: None, // Use default cache directory
             sampling_config: SamplingConfig::balanced(),
             streaming_config: StreamingConfig::default(),
@@ -77,7 +76,7 @@ impl CandleConfig {
     pub fn for_model(model: CandleModel) -> Self {
         let mut config = Self::default();
         config.model = model;
-        
+
         // Adjust settings based on model characteristics
         match model {
             CandleModel::Llama2_13B => {
@@ -96,14 +95,14 @@ impl CandleConfig {
                 // Use default configuration
             }
         }
-        
+
         config
     }
-    
+
     /// Validate configuration parameters
     pub fn validate(&self) -> CandleResult<()> {
         self.sampling_config.validate()?;
-        
+
         if self.max_sequence_length == 0 {
             return Err(CandleError::config(
                 "Maximum sequence length must be positive",
@@ -111,7 +110,7 @@ impl CandleConfig {
                 "> 0",
             ));
         }
-        
+
         if self.max_sequence_length > 32768 {
             return Err(CandleError::config(
                 "Maximum sequence length too large",
@@ -119,13 +118,13 @@ impl CandleConfig {
                 "<= 32768",
             ));
         }
-        
+
         Ok(())
     }
 }
 
 /// Production-ready Candle completion client with integrated ML pipeline
-/// 
+///
 /// This client implements the CompletionModel trait and provides local ML inference
 /// using the Candle framework with zero-allocation, lock-free design.
 #[derive(Debug)]
@@ -200,10 +199,13 @@ impl CandleCompletionClient {
     pub fn new(config: CandleConfig) -> CandleResult<Self> {
         // Validate configuration
         config.validate()?;
-        
+
         let model_info = CandleModelInfo {
             model: config.model,
-            model_path: config.model_cache_dir.as_ref().map(|p| p.to_string_lossy().into_owned()),
+            model_path: config
+                .model_cache_dir
+                .as_ref()
+                .map(|p| p.to_string_lossy().into_owned()),
             tokenizer_path: None, // Will be determined from model repository
             device: config.device.unwrap_or_default(),
         };
@@ -228,92 +230,93 @@ impl CandleCompletionClient {
         let config = CandleConfig::for_model(model);
         Self::new(config)
     }
-    
+
     /// Initialize all components (lazy initialization)
     async fn initialize_components(&self) -> CandleResult<&CandleComponents> {
-        self.components.get_or_try_init(|| async {
-            // Initialize device manager
-            let device_manager = DeviceManager::new()?;
-            device_manager.initialize().await?;
-            
-            // Select optimal device
-            let selected_device = if let Some(preferred) = self.config.device {
-                preferred
-            } else if self.config.enable_device_fallback {
-                device_manager.fallback_device()?
-            } else {
-                device_manager.current_device()?
-            };
-            
-            // Initialize model repository
-            let cache_dir = self.config.model_cache_dir
-                .clone()
-                .unwrap_or_else(|| PathBuf::from("./candle_models"));
-            let model_repository = ModelRepository::new(&cache_dir)?;
-            model_repository.initialize_hf_client().await?;
-            
-            // Initialize tokenizer
-            let tokenizer = CandleTokenizer::new(self.config.model);
-            
-            // Load model and tokenizer
-            let _loaded_model = model_repository.load_model(self.config.model).await?;
-            
-            // Note: In a real implementation, we would extract the tokenizer path from the model
-            // For now, we'll use a placeholder initialization
-            // tokenizer.load_from_file(tokenizer_path).await?;
-            
-            // Initialize KV cache
-            let cache_config = ModelCacheConfig::for_model(self.config.model);
-            let kv_cache = ModelKvCache::new(cache_config)?;
-            
-            // Initialize text generator
-            let text_generator = TextGenerator::new(
-                self.config.model, 
-                self.config.sampling_config.clone()
-            )?;
-            
-            // Initialize streaming coordinator
-            let streaming_coordinator = StreamingCoordinator::new(
-                self.config.streaming_config.clone()
-            );
-            
-            // Initialize memory pool manager with optimized configuration
-            let memory_pool_manager = MemoryPoolManager::for_candle();
-            
-            // Initialize performance optimizer with device-optimized configuration
-            let mut perf_config = PerformanceConfig::default();
-            perf_config.enable_simd = true;
-            perf_config.enable_parallel = true;
-            perf_config.enable_prefetch = true;
-            perf_config.enable_profiling = self.config.enable_metrics;
-            let performance_optimizer = PerformanceOptimizer::new(perf_config);
-            
-            // Initialize global configuration with model-specific optimizations
-            let global_config = CandleGlobalConfig::for_model(self.config.model)?;
-            
-            // Initialize metrics collector
-            let metrics_collector = MetricsCollector::new(self.config.enable_metrics);
-            
-            // Update client state
-            let mut new_state = (**self.state.load()).clone();
-            new_state.current_device = selected_device;
-            new_state.model_loaded = true;
-            new_state.tokenizer_ready = true;
-            self.state.store(Arc::new(new_state));
-            
-            Ok(CandleComponents {
-                device_manager,
-                model_repository,
-                tokenizer,
-                kv_cache,
-                text_generator,
-                streaming_coordinator,
-                memory_pool_manager,
-                performance_optimizer,
-                global_config,
-                metrics_collector,
+        self.components
+            .get_or_try_init(|| async {
+                // Initialize device manager
+                let device_manager = DeviceManager::new()?;
+                device_manager.initialize().await?;
+
+                // Select optimal device
+                let selected_device = if let Some(preferred) = self.config.device {
+                    preferred
+                } else if self.config.enable_device_fallback {
+                    device_manager.fallback_device()?
+                } else {
+                    device_manager.current_device()?
+                };
+
+                // Initialize model repository
+                let cache_dir = self
+                    .config
+                    .model_cache_dir
+                    .clone()
+                    .unwrap_or_else(|| PathBuf::from("./candle_models"));
+                let model_repository = ModelRepository::new(&cache_dir)?;
+                model_repository.initialize_hf_client().await?;
+
+                // Initialize tokenizer
+                let tokenizer = CandleTokenizer::new(self.config.model);
+
+                // Load model and tokenizer
+                let _loaded_model = model_repository.load_model(self.config.model).await?;
+
+                // Note: In a real implementation, we would extract the tokenizer path from the model
+                // For now, we'll use a placeholder initialization
+                // tokenizer.load_from_file(tokenizer_path).await?;
+
+                // Initialize KV cache
+                let cache_config = ModelCacheConfig::for_model(self.config.model);
+                let kv_cache = ModelKvCache::new(cache_config)?;
+
+                // Initialize text generator
+                let text_generator =
+                    TextGenerator::new(self.config.model, self.config.sampling_config.clone())?;
+
+                // Initialize streaming coordinator
+                let streaming_coordinator =
+                    StreamingCoordinator::new(self.config.streaming_config.clone());
+
+                // Initialize memory pool manager with optimized configuration
+                let memory_pool_manager = MemoryPoolManager::for_candle();
+
+                // Initialize performance optimizer with device-optimized configuration
+                let mut perf_config = PerformanceConfig::default();
+                perf_config.enable_simd = true;
+                perf_config.enable_parallel = true;
+                perf_config.enable_prefetch = true;
+                perf_config.enable_profiling = self.config.enable_metrics;
+                let performance_optimizer = PerformanceOptimizer::new(perf_config);
+
+                // Initialize global configuration with model-specific optimizations
+                let global_config = CandleGlobalConfig::for_model(self.config.model)?;
+
+                // Initialize metrics collector
+                let metrics_collector = MetricsCollector::new(self.config.enable_metrics);
+
+                // Update client state
+                let mut new_state = (**self.state.load()).clone();
+                new_state.current_device = selected_device;
+                new_state.model_loaded = true;
+                new_state.tokenizer_ready = true;
+                self.state.store(Arc::new(new_state));
+
+                Ok(CandleComponents {
+                    device_manager,
+                    model_repository,
+                    tokenizer,
+                    kv_cache,
+                    text_generator,
+                    streaming_coordinator,
+                    memory_pool_manager,
+                    performance_optimizer,
+                    global_config,
+                    metrics_collector,
+                })
             })
-        }).await
+            .await
     }
 
     /// Get the model information
@@ -325,24 +328,24 @@ impl CandleCompletionClient {
     pub fn config(&self) -> &CandleConfig {
         &self.config
     }
-    
+
     /// Get global configuration (if initialized)
     pub async fn global_config(&self) -> CandleResult<&CandleGlobalConfig> {
         let components = self.initialize_components().await?;
         Ok(&components.global_config)
     }
-    
+
     /// Get metrics collector (if initialized)
     pub async fn metrics_collector(&self) -> CandleResult<&MetricsCollector> {
         let components = self.initialize_components().await?;
         Ok(&components.metrics_collector)
     }
-    
+
     /// Get current client state
     pub fn state(&self) -> CandleClientState {
         (**self.state.load()).clone()
     }
-    
+
     /// Check if client is ready for inference
     pub async fn is_ready(&self) -> bool {
         if let Ok(components) = self.initialize_components().await {
@@ -352,12 +355,12 @@ impl CandleCompletionClient {
             false
         }
     }
-    
+
     /// Get comprehensive statistics
     pub async fn statistics(&self) -> CandleResult<CandleStatistics> {
         let components = self.initialize_components().await?;
         let state = self.state();
-        
+
         Ok(CandleStatistics {
             sequences_processed: state.sequences_processed,
             tokens_generated: state.tokens_generated,
@@ -371,9 +374,9 @@ impl CandleCompletionClient {
             realtime_metrics: components.metrics_collector.current_metrics(),
         })
     }
-    
+
     /// Run forward pass through the Candle model
-    /// 
+    ///
     /// This is the core inference method that runs the loaded Candle model
     /// with proper tensor operations, attention mechanisms, and KV cache integration.
     async fn run_model_forward_pass(
@@ -383,7 +386,7 @@ impl CandleCompletionClient {
         components: &CandleComponents,
     ) -> CandleResult<(super::generation::LogitsBuffer, Vec<f32>)> {
         use super::error::{InferenceErrorCode, InferenceStage};
-        
+
         if input_ids.is_empty() {
             return Err(CandleError::inference(
                 "Empty input token sequence",
@@ -391,15 +394,20 @@ impl CandleCompletionClient {
                 InferenceErrorCode::InvalidInput,
             ));
         }
-        
+
         // Get the model state from repository
-        let model_state = components.model_repository.get_model_state(self.config.model).await
-            .map_err(|e| CandleError::inference(
-                &format!("Failed to get model state: {}", e),
-                InferenceStage::ModelLoading,
-                InferenceErrorCode::ModelLoadFailed,
-            ))?;
-        
+        let model_state = components
+            .model_repository
+            .get_model_state(self.config.model)
+            .await
+            .map_err(|e| {
+                CandleError::inference(
+                    &format!("Failed to get model state: {}", e),
+                    InferenceStage::ModelLoading,
+                    InferenceErrorCode::ModelLoadFailed,
+                )
+            })?;
+
         // Convert token IDs to input embeddings
         // Note: In a real Candle implementation, this would involve:
         // 1. Creating Candle tensors from input_ids
@@ -407,13 +415,13 @@ impl CandleCompletionClient {
         // 3. Applying positional encodings
         // 4. Running through transformer layers with attention
         // 5. Applying layer normalization and final linear projection
-        
+
         // For now, we'll create a realistic simulation that demonstrates the interface
         // while showing where actual Candle tensor operations would go
-        
+
         let sequence_length = input_ids.len();
         let vocab_size = self.get_vocab_size_for_model();
-        
+
         if sequence_length > self.config.max_sequence_length as usize {
             return Err(CandleError::inference(
                 "Input sequence exceeds maximum length",
@@ -421,31 +429,36 @@ impl CandleCompletionClient {
                 InferenceErrorCode::SequenceTooLong,
             ));
         }
-        
+
         // Simulate forward pass with realistic computational patterns
         // In a real implementation, this would be actual Candle tensor operations:
-        
+
         // 1. Token embedding lookup - use memory pool for efficient allocation
         let embedding_dim = self.get_embedding_dim_for_model();
         let hidden_states_size = sequence_length * embedding_dim;
-        
-        let mut hidden_states_pooled = components.memory_pool_manager
+
+        let mut hidden_states_pooled = components
+            .memory_pool_manager
             .acquire_tensor(hidden_states_size)
-            .map_err(|e| CandleError::inference(
-                &format!("Failed to acquire tensor from pool: {}", e),
-                InferenceStage::ForwardPass,
-                InferenceErrorCode::MemoryAllocationFailed,
-            ))?;
-        
+            .map_err(|e| {
+                CandleError::inference(
+                    &format!("Failed to acquire tensor from pool: {}", e),
+                    InferenceStage::ForwardPass,
+                    InferenceErrorCode::MemoryAllocationFailed,
+                )
+            })?;
+
         // Clear and resize the pooled tensor
         hidden_states_pooled.data_mut().clear();
-        hidden_states_pooled.data_mut().resize(hidden_states_size, 0.0f32);
+        hidden_states_pooled
+            .data_mut()
+            .resize(hidden_states_size, 0.0f32);
         let hidden_states = hidden_states_pooled.data_mut();
-        
+
         // 2. Positional encoding
         for (pos, token_id) in input_ids.iter().enumerate() {
             let base_offset = pos * embedding_dim;
-            
+
             // Simulate embedding lookup (would be actual tensor indexing in Candle)
             for i in 0..embedding_dim {
                 let embedding_value = self.simulate_embedding_lookup(*token_id, i);
@@ -453,69 +466,69 @@ impl CandleCompletionClient {
                 hidden_states[base_offset + i] = embedding_value + positional_encoding;
             }
         }
-        
+
         // 3. Transformer layers with attention and KV cache
         let num_layers = self.get_num_layers_for_model();
         let mut layer_outputs = hidden_states;
         let mut new_key_values = Vec::new();
-        
+
         for layer_idx in 0..num_layers {
             // Multi-head self-attention with KV cache
-            let (attention_output, layer_kv) = self.simulate_attention_layer(
-                &layer_outputs,
-                layer_idx,
-                past_key_values,
-                components,
-            ).await?;
-            
+            let (attention_output, layer_kv) = self
+                .simulate_attention_layer(&layer_outputs, layer_idx, past_key_values, components)
+                .await?;
+
             // Feed-forward network
             let ff_output = self.simulate_feedforward_layer(&attention_output, layer_idx)?;
-            
+
             // Residual connection and layer norm
             for i in 0..layer_outputs.len() {
                 layer_outputs[i] = self.simulate_layer_norm(layer_outputs[i] + ff_output[i]);
             }
-            
+
             new_key_values.extend(layer_kv);
         }
-        
+
         // 4. Final layer normalization and linear projection to vocabulary
         // Use memory pool for logits allocation to avoid repeated allocations
-        let mut logits_pooled = components.memory_pool_manager
+        let mut logits_pooled = components
+            .memory_pool_manager
             .acquire_tensor(vocab_size)
-            .map_err(|e| CandleError::inference(
-                &format!("Failed to acquire logits tensor from pool: {}", e),
-                InferenceStage::ForwardPass,
-                InferenceErrorCode::MemoryAllocationFailed,
-            ))?;
-        
+            .map_err(|e| {
+                CandleError::inference(
+                    &format!("Failed to acquire logits tensor from pool: {}", e),
+                    InferenceStage::ForwardPass,
+                    InferenceErrorCode::MemoryAllocationFailed,
+                )
+            })?;
+
         // Clear and resize the pooled logits tensor
         logits_pooled.data_mut().clear();
         logits_pooled.data_mut().resize(vocab_size, 0.0f32);
         let logits_slice = logits_pooled.data_mut();
-        
+
         // Take the last token's hidden state for next token prediction
         let last_token_hidden = &layer_outputs[(sequence_length - 1) * embedding_dim..];
-        
+
         // Project to vocabulary space (would be matrix multiplication in Candle)
         for vocab_idx in 0..vocab_size {
             let logit_value = self.simulate_vocab_projection(last_token_hidden, vocab_idx);
             logits_slice[vocab_idx] = logit_value;
         }
-        
+
         // Convert to LogitsBuffer for compatibility with text generator
         let mut logits = super::generation::LogitsBuffer::with_capacity(vocab_size);
         logits.extend_from_slice(logits_slice);
-        
+
         // Apply final scaling and normalization
         let max_logit = logits.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
         for logit in &mut logits {
             *logit = (*logit - max_logit).min(20.0).max(-20.0); // Clamp for numerical stability
         }
-        
+
         Ok((logits, new_key_values))
     }
-    
+
     /// Get vocabulary size for the current model
     fn get_vocab_size_for_model(&self) -> usize {
         match self.config.model {
@@ -526,7 +539,7 @@ impl CandleCompletionClient {
             CandleModel::Gemma_2B | CandleModel::Gemma_7B => 256000,
         }
     }
-    
+
     /// Get embedding dimension for the current model
     fn get_embedding_dim_for_model(&self) -> usize {
         match self.config.model {
@@ -537,34 +550,44 @@ impl CandleCompletionClient {
             CandleModel::Gemma_7B => 3072,
         }
     }
-    
+
     /// Get number of layers for the current model
     fn get_num_layers_for_model(&self) -> usize {
         match self.config.model {
-            CandleModel::Llama2_7B | CandleModel::Mistral_7B | CandleModel::CodeLlama_7B | CandleModel::Phi3_Mini => 32,
+            CandleModel::Llama2_7B
+            | CandleModel::Mistral_7B
+            | CandleModel::CodeLlama_7B
+            | CandleModel::Phi3_Mini => 32,
             CandleModel::Llama2_13B => 40,
             CandleModel::Gemma_2B => 18,
             CandleModel::Gemma_7B => 28,
         }
     }
-    
+
     /// Simulate embedding lookup (placeholder for actual Candle tensor operations)
     fn simulate_embedding_lookup(&self, token_id: u32, dim_idx: usize) -> f32 {
         // Deterministic simulation based on token ID and dimension
-        let hash_input = (token_id as u64).wrapping_mul(31).wrapping_add(dim_idx as u64);
+        let hash_input = (token_id as u64)
+            .wrapping_mul(31)
+            .wrapping_add(dim_idx as u64);
         let normalized = (hash_input % 10000) as f32 / 10000.0;
         (normalized - 0.5) * 0.02 // Small random values typical of embeddings
     }
-    
+
     /// Simulate positional encoding
-    fn simulate_positional_encoding(&self, position: usize, dim_idx: usize, embedding_dim: usize) -> f32 {
+    fn simulate_positional_encoding(
+        &self,
+        position: usize,
+        dim_idx: usize,
+        embedding_dim: usize,
+    ) -> f32 {
         if dim_idx % 2 == 0 {
             (position as f32 / 10000.0_f32.powf(dim_idx as f32 / embedding_dim as f32)).sin()
         } else {
             (position as f32 / 10000.0_f32.powf((dim_idx - 1) as f32 / embedding_dim as f32)).cos()
         }
     }
-    
+
     /// Simulate attention layer computation
     async fn simulate_attention_layer(
         &self,
@@ -576,83 +599,90 @@ impl CandleCompletionClient {
         // Simulate multi-head attention computation
         let sequence_length = hidden_states.len() / self.get_embedding_dim_for_model();
         let embedding_dim = self.get_embedding_dim_for_model();
-        
+
         // Create attention output (simplified simulation)
         let mut attention_output = vec![0.0f32; hidden_states.len()];
-        
+
         for seq_idx in 0..sequence_length {
             for dim_idx in 0..embedding_dim {
                 let input_idx = seq_idx * embedding_dim + dim_idx;
-                
+
                 // Simulate attention computation with some mixing
                 let mut attended_value = hidden_states[input_idx];
-                
+
                 // Mix with other positions (simplified attention)
                 for other_seq in 0..sequence_length {
                     let other_idx = other_seq * embedding_dim + dim_idx;
-                    let attention_weight = self.simulate_attention_weight(seq_idx, other_seq, layer_idx);
+                    let attention_weight =
+                        self.simulate_attention_weight(seq_idx, other_seq, layer_idx);
                     attended_value += hidden_states[other_idx] * attention_weight;
                 }
-                
+
                 attention_output[input_idx] = attended_value * 0.1; // Scale down
             }
         }
-        
+
         // Simulate KV cache update
         let kv_cache_size = sequence_length * embedding_dim * 2; // Keys + Values
         let new_kv = vec![0.01f32; kv_cache_size]; // Placeholder KV cache data
-        
+
         Ok((attention_output, new_kv))
     }
-    
+
     /// Simulate attention weight computation
     fn simulate_attention_weight(&self, from_pos: usize, to_pos: usize, layer_idx: usize) -> f32 {
         if to_pos > from_pos {
             return 0.0; // Causal masking
         }
-        
+
         let distance = from_pos - to_pos;
         let layer_factor = (layer_idx + 1) as f32 * 0.1;
-        
+
         // Simulate attention decay with distance
         (-(distance as f32) * 0.1 - layer_factor).exp() * 0.01
     }
-    
+
     /// Simulate feed-forward layer
-    fn simulate_feedforward_layer(&self, hidden_states: &[f32], layer_idx: usize) -> CandleResult<Vec<f32>> {
+    fn simulate_feedforward_layer(
+        &self,
+        hidden_states: &[f32],
+        layer_idx: usize,
+    ) -> CandleResult<Vec<f32>> {
         let mut output = vec![0.0f32; hidden_states.len()];
         let layer_scale = (layer_idx + 1) as f32 * 0.01;
-        
+
         for (i, &input_val) in hidden_states.iter().enumerate() {
             // Simulate feed-forward transformation
             let intermediate = (input_val * 4.0 + layer_scale).max(0.0); // ReLU-like
             output[i] = intermediate * 0.25; // Project back down
         }
-        
+
         Ok(output)
     }
-    
+
     /// Simulate layer normalization
     fn simulate_layer_norm(&self, input: f32) -> f32 {
         // Simplified layer normalization
         (input * 0.9).tanh()
     }
-    
+
     /// Simulate vocabulary projection
     fn simulate_vocab_projection(&self, hidden_state: &[f32], vocab_idx: usize) -> f32 {
         let mut logit = 0.0f32;
-        
+
         for (dim_idx, &hidden_val) in hidden_state.iter().enumerate() {
             let weight = self.simulate_vocab_weight(vocab_idx, dim_idx);
             logit += hidden_val * weight;
         }
-        
+
         logit
     }
-    
+
     /// Simulate vocabulary projection weights
     fn simulate_vocab_weight(&self, vocab_idx: usize, dim_idx: usize) -> f32 {
-        let hash_input = (vocab_idx as u64).wrapping_mul(37).wrapping_add(dim_idx as u64);
+        let hash_input = (vocab_idx as u64)
+            .wrapping_mul(37)
+            .wrapping_add(dim_idx as u64);
         let normalized = (hash_input % 10000) as f32 / 10000.0;
         (normalized - 0.5) * 0.01
     }
@@ -704,7 +734,7 @@ impl CompletionModel for CandleCompletionClient {
                     return;
                 }
             };
-            
+
             // Extract prompt text
             let prompt_text = match prompt {
                 Prompt::Text(text) => text,
@@ -716,13 +746,13 @@ impl CompletionModel for CandleCompletionClient {
                         .join("\n")
                 }
             };
-            
+
             // Update session state
             let mut current_state = (**self.state.load()).clone();
             current_state.session_id += 1;
             current_state.sequences_processed += 1;
             self.state.store(Arc::new(current_state));
-            
+
             // Start streaming session
             if let Err(e) = components.streaming_coordinator.start_streaming() {
                 let error_chunk = CompletionChunk {
@@ -733,7 +763,7 @@ impl CompletionModel for CandleCompletionClient {
                 yield error_chunk;
                 return;
             }
-            
+
             // Tokenize input prompt
             let tokenization_result = match components.tokenizer.encode(&prompt_text) {
                 Ok(result) => result,
@@ -748,10 +778,10 @@ impl CompletionModel for CandleCompletionClient {
                     return;
                 }
             };
-            
+
             let input_tokens = tokenization_result.tokens();
             let max_new_tokens = params.max_tokens.unwrap_or(self.config.max_sequence_length as usize);
-            
+
             // Check sequence length limits
             if input_tokens.len() + max_new_tokens > self.config.max_sequence_length as usize {
                 let error_chunk = CompletionChunk {
@@ -763,11 +793,11 @@ impl CompletionModel for CandleCompletionClient {
                 let _ = components.streaming_coordinator.end_streaming(FinishReason::MaxLength);
                 return;
             }
-            
+
             // Create context buffer for generation
             let mut context_tokens = SmallVec::<[u32; 512]>::new();
             context_tokens.extend_from_slice(input_tokens);
-            
+
             // Setup text generator with current parameters
             let mut sampling_config = self.config.sampling_config.clone();
             if let Some(temp) = params.temperature {
@@ -776,12 +806,12 @@ impl CompletionModel for CandleCompletionClient {
             if let Some(top_p) = params.top_p {
                 sampling_config.top_p = top_p as f32;
             }
-            
+
             // Real Candle model inference pipeline
             let mut cumulative_text = String::new();
             let mut token_count = 0;
             let special_tokens = components.tokenizer.special_tokens();
-            
+
             // Load the actual Candle model for inference
             let model_state = match components.model_repository.get_model_state(self.config.model).await {
                 Ok(state) => state,
@@ -796,12 +826,12 @@ impl CompletionModel for CandleCompletionClient {
                     return;
                 }
             };
-            
+
             // Initialize model state for inference
             // Note: This assumes the model is already loaded and ready for inference
             let mut current_tokens = context_tokens.clone();
             let mut past_key_values = Vec::new(); // For KV cache state
-            
+
             // Real inference loop with Candle model
             while token_count < max_new_tokens {
                 // Prepare input for model inference
@@ -814,7 +844,7 @@ impl CompletionModel for CandleCompletionClient {
                     single_token.push(*current_tokens.last().unwrap());
                     single_token
                 };
-                
+
                 // Run forward pass through Candle model
                 // Note: In a real implementation, this would use actual Candle tensors and model operations
                 let logits = match self.run_model_forward_pass(&input_ids, &past_key_values, &components).await {
@@ -830,7 +860,7 @@ impl CompletionModel for CandleCompletionClient {
                         return;
                     }
                 };
-                
+
                 // Sample next token using the text generator
                 let next_token = match components.text_generator.sample_token(&logits, &current_tokens) {
                     Ok(token) => token,
@@ -845,7 +875,7 @@ impl CompletionModel for CandleCompletionClient {
                         return;
                     }
                 };
-                
+
                 // Check for stop tokens
                 if components.text_generator.should_stop(next_token, &special_tokens) {
                     let finish_reason = if next_token == special_tokens.eos_token_id.unwrap_or(0) {
@@ -853,11 +883,11 @@ impl CompletionModel for CandleCompletionClient {
                     } else {
                         FinishReason::Completed
                     };
-                    
+
                     let _ = components.streaming_coordinator.end_streaming(finish_reason);
                     break;
                 }
-                
+
                 // Decode token to text
                 let mut text_buffer = TextBuffer::new();
                 if let Err(e) = components.tokenizer.decode_stream(next_token, &mut text_buffer) {
@@ -870,7 +900,7 @@ impl CompletionModel for CandleCompletionClient {
                     let _ = components.streaming_coordinator.end_streaming(FinishReason::Error);
                     return;
                 }
-                
+
                 let token_text = match std::str::from_utf8(&text_buffer) {
                     Ok(text) => text,
                     Err(_) => {
@@ -878,12 +908,12 @@ impl CompletionModel for CandleCompletionClient {
                         continue;
                     }
                 };
-                
+
                 // Update context for next iteration
                 current_tokens.push(next_token);
                 cumulative_text.push_str(token_text);
                 token_count += 1;
-                
+
                 // Create streaming chunk
                 let chunk_result = components.streaming_coordinator.send_chunk(
                     super::streaming::StreamingChunk::new(
@@ -892,11 +922,11 @@ impl CompletionModel for CandleCompletionClient {
                         token_count as u32,
                     )
                 );
-                
+
                 if chunk_result.is_err() {
                     break;
                 }
-                
+
                 // Yield completion chunk
                 let completion_chunk = CompletionChunk {
                     text: token_text.into(),
@@ -904,25 +934,25 @@ impl CompletionModel for CandleCompletionClient {
                     usage: None,
                 };
                 yield completion_chunk;
-                
+
                 // Yield control to allow other tasks to run
                 tokio::task::yield_now().await;
             }
-            
+
             // Update token count in state
             let mut final_state = (**self.state.load()).clone();
             final_state.tokens_generated += token_count as u64;
             self.state.store(Arc::new(final_state));
-            
+
             // End streaming session
             let finish_reason = if token_count >= max_new_tokens {
                 FinishReason::MaxLength
             } else {
                 FinishReason::Completed
             };
-            
+
             let _ = components.streaming_coordinator.end_streaming(finish_reason);
-            
+
             // Yield final chunk with usage information
             let final_chunk = CompletionChunk {
                 text: "".into(),
@@ -949,22 +979,19 @@ pub enum CandleClientError {
     /// Model loading error
     #[error("Failed to load model: {0}")]
     ModelLoadError(String),
-    
+
     /// Tokenizer loading error
     #[error("Failed to load tokenizer: {0}")]
     TokenizerLoadError(String),
-    
+
     /// Device initialization error
     #[error("Failed to initialize device {device}: {error}")]
-    DeviceError {
-        device: CandleDevice,
-        error: String,
-    },
-    
+    DeviceError { device: CandleDevice, error: String },
+
     /// Inference error
     #[error("Inference failed: {0}")]
     InferenceError(String),
-    
+
     /// Configuration error
     #[error("Invalid configuration: {0}")]
     ConfigError(String),
@@ -981,7 +1008,7 @@ impl ProviderClient for CandleCompletionClient {
     fn provider_name(&self) -> &'static str {
         "candle"
     }
-    
+
     fn test_connection(&self) -> AsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
         let client = self.clone();
         AsyncTask::spawn(async move {
@@ -994,11 +1021,12 @@ impl ProviderClient for CandleCompletionClient {
                         Ok(())
                     } else {
                         Err(Box::new(CandleClientError::ConfigError(
-                            "Model or tokenizer not ready".to_string()
-                        )) as Box<dyn std::error::Error + Send + Sync>)
+                            "Model or tokenizer not ready".to_string(),
+                        ))
+                            as Box<dyn std::error::Error + Send + Sync>)
                     }
                 }
-                Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+                Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>),
             }
         })
     }
@@ -1007,7 +1035,7 @@ impl ProviderClient for CandleCompletionClient {
 /// CompletionClient trait implementation for client factory pattern
 impl CompletionClient for CandleCompletionClient {
     type Model = CandleCompletionModel;
-    
+
     fn completion_model(&self, model: &str) -> Self::Model {
         // Parse model string to CandleModel enum
         let candle_model = match model {
@@ -1020,11 +1048,14 @@ impl CompletionClient for CandleCompletionClient {
             "gemma-7b" => CandleModel::Gemma_7B,
             _ => {
                 // Default to Mistral-7B for unknown models
-                eprintln!("Warning: Unknown model '{}', defaulting to Mistral-7B", model);
+                eprintln!(
+                    "Warning: Unknown model '{}', defaulting to Mistral-7B",
+                    model
+                );
                 CandleModel::Mistral_7B
             }
         };
-        
+
         CandleCompletionModel::new(self.clone(), candle_model)
     }
 }
@@ -1041,22 +1072,19 @@ pub struct CandleCompletionModel {
 impl CandleCompletionModel {
     /// Create new completion model wrapper
     pub fn new(client: CandleCompletionClient, model: CandleModel) -> Self {
-        Self {
-            client,
-            model,
-        }
+        Self { client, model }
     }
-    
+
     /// Get the underlying client
     pub fn client(&self) -> &CandleCompletionClient {
         &self.client
     }
-    
+
     /// Get the model type
     pub fn model(&self) -> CandleModel {
         self.model
     }
-    
+
     /// Create a new client with this model
     pub async fn with_model_config(&self) -> CandleResult<CandleCompletionClient> {
         CandleCompletionClient::with_model(self.model)

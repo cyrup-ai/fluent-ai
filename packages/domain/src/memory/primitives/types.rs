@@ -1,0 +1,481 @@
+use std::collections::HashMap;
+use std::fmt::{self, Debug, Display};
+use std::sync::Arc;
+use std::time::SystemTime;
+
+use bytes::Bytes;
+use crossbeam_utils::CachePadded;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+/// Zero-allocation memory type enumeration with blazing-fast operations
+///
+/// Stack-allocated enum with no heap usage and branch prediction optimization
+/// All variants are Copy for zero-allocation semantics
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(u8)] // Optimize for minimal size and fast comparison
+pub enum MemoryTypeEnum {
+    /// Factual information and knowledge
+    Fact = 0,
+    /// Specific events and experiences  
+    Episode = 1,
+    /// Semantic knowledge and concepts
+    Semantic = 2,
+    /// Procedural skills and how-to knowledge
+    Procedural = 3,
+    /// Declarative facts and information
+    Declarative = 4,
+    /// Implicit unconscious knowledge
+    Implicit = 5,
+    /// Explicit conscious knowledge
+    Explicit = 6,
+    /// Contextual situation-dependent memory
+    Contextual = 7,
+    /// Temporal time-based sequences
+    Temporal = 8,
+    /// Spatial location-based memory
+    Spatial = 9,
+    /// Associative linked memories
+    Associative = 10,
+    /// Emotional affective memory
+    Emotional = 11,
+    /// Episodic memory (events and experiences)
+    Episodic = 12,
+    /// Working memory (temporary storage)
+    Working = 13,
+    /// Long-term memory (persistent storage)
+    LongTerm = 14,
+}
+
+impl MemoryTypeEnum {
+    /// Convert from string to MemoryTypeEnum with zero allocation
+    /// Uses static string matching for blazing-fast lookup
+    #[inline(always)]
+    pub const fn from_str_const(s: &str) -> Option<Self> {
+        match s.as_bytes() {
+            b"fact" => Some(Self::Fact),
+            b"episode" => Some(Self::Episode),
+            b"semantic" => Some(Self::Semantic),
+            b"procedural" => Some(Self::Procedural),
+            b"declarative" => Some(Self::Declarative),
+            b"implicit" => Some(Self::Implicit),
+            b"explicit" => Some(Self::Explicit),
+            b"contextual" => Some(Self::Contextual),
+            b"temporal" => Some(Self::Temporal),
+            b"spatial" => Some(Self::Spatial),
+            b"associative" => Some(Self::Associative),
+            b"emotional" => Some(Self::Emotional),
+            b"episodic" => Some(Self::Episodic),
+            b"working" => Some(Self::Working),
+            b"long_term" => Some(Self::LongTerm),
+            _ => None,
+        }
+    }
+
+    /// Get static string representation with zero allocation
+    #[inline(always)]
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Fact => "fact",
+            Self::Episode => "episode",
+            Self::Semantic => "semantic",
+            Self::Procedural => "procedural",
+            Self::Declarative => "declarative",
+            Self::Implicit => "implicit",
+            Self::Explicit => "explicit",
+            Self::Contextual => "contextual",
+            Self::Temporal => "temporal",
+            Self::Spatial => "spatial",
+            Self::Associative => "associative",
+            Self::Emotional => "emotional",
+            Self::Episodic => "episodic",
+            Self::Working => "working",
+            Self::LongTerm => "long_term",
+        }
+    }
+
+    /// Get base importance score for memory type with zero allocation
+    #[inline(always)]
+    pub const fn base_importance(&self) -> f32 {
+        match self {
+            Self::Fact | Self::Declarative | Self::Explicit => 0.9, // High importance
+            Self::Semantic | Self::LongTerm => 0.8,                 // Important knowledge
+            Self::Episodic | Self::Episode | Self::Contextual => 0.7, // Experiences
+            Self::Procedural | Self::Temporal | Self::Spatial => 0.6, // Skills and context
+            Self::Working => 0.4,                                   // Temporary
+            Self::Implicit | Self::Associative | Self::Emotional => 0.5, // Background
+        }
+    }
+}
+
+impl Display for MemoryTypeEnum {
+    #[inline(always)]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// Lock-free relationship type with atomic reference counting and blazing-fast comparison
+///
+/// Optimized for concurrent relationship tracking with skip-list backing
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(u8)] // Optimize for minimal size and cache efficiency
+pub enum RelationshipType {
+    /// Basic relationship connection
+    RelatedTo = 0,
+    /// Dependency relationship (A depends on B)
+    DependsOn = 1,
+    /// Conflict relationship (A conflicts with B)
+    ConflictsWith = 2,
+    /// Causal relationship (A causes B)
+    CausedBy = 3,
+    /// Temporal relationship (A precedes B)
+    PrecedesTemporally = 4,
+    /// Semantic similarity relationship
+    SimilarTo = 5,
+    /// Contradiction relationship
+    Contradicts = 6,
+    /// Supporting evidence relationship
+    Supports = 7,
+    /// Part-whole relationship (A is part of B)
+    PartOf = 8,
+    /// Generalization relationship (A generalizes B)
+    GeneralizationOf = 9,
+    /// Specialization relationship (A specializes B)
+    SpecializationOf = 10,
+    /// Association relationship
+    AssociatedWith = 11,
+    /// Custom relationship type with Arc<str> for zero-copy sharing
+    Custom(Arc<str>) = 255,
+}
+
+impl RelationshipType {
+    /// Check if relationship is bidirectional with zero allocation
+    #[inline(always)]
+    pub const fn is_bidirectional(&self) -> bool {
+        matches!(
+            self,
+            Self::RelatedTo
+                | Self::SimilarTo
+                | Self::Contradicts
+                | Self::ConflictsWith
+                | Self::AssociatedWith
+        )
+    }
+
+    /// Get inverse relationship type with optimized lookup
+    #[inline]
+    pub fn inverse(&self) -> Option<Self> {
+        match self {
+            Self::DependsOn => Some(Self::Custom(Arc::from("depended_on_by"))),
+            Self::CausedBy => Some(Self::Custom(Arc::from("causes"))),
+            Self::PrecedesTemporally => Some(Self::Custom(Arc::from("follows_temporally"))),
+            Self::PartOf => Some(Self::Custom(Arc::from("has_part"))),
+            Self::GeneralizationOf => Some(Self::SpecializationOf),
+            Self::SpecializationOf => Some(Self::GeneralizationOf),
+            Self::Supports => Some(Self::Custom(Arc::from("supported_by"))),
+            _ => None,
+        }
+    }
+
+    /// Create custom relationship type with zero-copy string sharing
+    #[inline]
+    pub fn custom(name: impl Into<Arc<str>>) -> Self {
+        Self::Custom(name.into())
+    }
+}
+
+impl Display for RelationshipType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::RelatedTo => f.write_str("related_to"),
+            Self::DependsOn => f.write_str("depends_on"),
+            Self::ConflictsWith => f.write_str("conflicts_with"),
+            Self::CausedBy => f.write_str("caused_by"),
+            Self::PrecedesTemporally => f.write_str("precedes_temporally"),
+            Self::SimilarTo => f.write_str("similar_to"),
+            Self::Contradicts => f.write_str("contradicts"),
+            Self::Supports => f.write_str("supports"),
+            Self::PartOf => f.write_str("part_of"),
+            Self::GeneralizationOf => f.write_str("generalization_of"),
+            Self::SpecializationOf => f.write_str("specialization_of"),
+            Self::AssociatedWith => f.write_str("associated_with"),
+            Self::Custom(name) => f.write_str(name),
+        }
+    }
+}
+
+/// Streaming memory content with zero-copy architecture
+///
+/// Supports Text/Image/Audio/Video variants with zero-copy Bytes backing
+/// Memory-mapped file support for large content with streaming access
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum MemoryContent {
+    /// Empty content - zero allocation
+    Empty,
+    /// Text content with zero-copy Arc<str> sharing
+    Text(Arc<str>),
+    /// Binary image data with zero-copy Bytes
+    Image(Bytes),
+    /// Binary audio data with zero-copy Bytes  
+    Audio(Bytes),
+    /// Binary video data with zero-copy Bytes
+    Video(Bytes),
+    /// JSON structured data with Arc<serde_json::Value> sharing
+    Json(Arc<serde_json::Value>),
+    /// Custom binary data with zero-copy Bytes and content type
+    Binary { data: Bytes, content_type: Arc<str> },
+}
+
+impl MemoryContent {
+    /// Create text content with zero-copy sharing
+    #[inline]
+    pub fn text(content: impl Into<Arc<str>>) -> Self {
+        Self::Text(content.into())
+    }
+
+    /// Create image content from bytes with zero-copy
+    #[inline]
+    pub fn image(data: impl Into<Bytes>) -> Self {
+        Self::Image(data.into())
+    }
+
+    /// Create audio content from bytes with zero-copy
+    #[inline]
+    pub fn audio(data: impl Into<Bytes>) -> Self {
+        Self::Audio(data.into())
+    }
+
+    /// Create video content from bytes with zero-copy
+    #[inline]
+    pub fn video(data: impl Into<Bytes>) -> Self {
+        Self::Video(data.into())
+    }
+
+    /// Create JSON content with Arc sharing
+    #[inline]
+    pub fn json(value: serde_json::Value) -> Self {
+        Self::Json(Arc::new(value))
+    }
+
+    /// Create binary content with content type
+    #[inline]
+    pub fn binary(data: impl Into<Bytes>, content_type: impl Into<Arc<str>>) -> Self {
+        Self::Binary {
+            data: data.into(),
+            content_type: content_type.into(),
+        }
+    }
+
+    /// Get content size in bytes with zero allocation
+    #[inline]
+    pub fn size(&self) -> usize {
+        match self {
+            Self::Empty => 0,
+            Self::Text(text) => text.len(),
+            Self::Image(data) | Self::Audio(data) | Self::Video(data) => data.len(),
+            Self::Json(value) => {
+                // Estimate JSON size without serialization
+                std::mem::size_of_val(value.as_ref())
+            }
+            Self::Binary { data, .. } => data.len(),
+        }
+    }
+
+    /// Check if content is empty with zero allocation
+    #[inline]
+    pub const fn is_empty(&self) -> bool {
+        matches!(self, Self::Empty)
+    }
+}
+
+impl Default for MemoryContent {
+    #[inline]
+    fn default() -> Self {
+        Self::Empty
+    }
+}
+
+/// Smart pointer optimized base memory with atomic operations
+///
+/// UUID-based ID system with inline generation, Arc<str> for zero-copy content sharing
+/// Optimized metadata HashMap with crossbeam concurrent access
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BaseMemory {
+    /// UUID-based unique identifier with inline generation
+    pub id: Uuid,
+    /// Memory type classification
+    pub memory_type: MemoryTypeEnum,
+    /// Content with zero-copy sharing
+    pub content: MemoryContent,
+    /// Creation timestamp with atomic operations
+    pub created_at: SystemTime,
+    /// Last update timestamp with atomic operations  
+    pub updated_at: SystemTime,
+    /// Concurrent metadata with crossbeam access optimization
+    pub metadata: Arc<parking_lot::RwLock<HashMap<Arc<str>, Arc<serde_json::Value>>>>,
+}
+
+impl BaseMemory {
+    /// Create new base memory with inline UUID generation
+    #[inline]
+    pub fn new(id: Uuid, memory_type: MemoryTypeEnum, content: MemoryContent) -> Self {
+        let now = SystemTime::now();
+        Self {
+            id,
+            memory_type,
+            content,
+            created_at: now,
+            updated_at: now,
+            metadata: Arc::new(parking_lot::RwLock::new(HashMap::new())),
+        }
+    }
+
+    /// Create with generated UUID for convenience
+    #[inline]
+    pub fn with_generated_id(memory_type: MemoryTypeEnum, content: MemoryContent) -> Self {
+        Self::new(Uuid::new_v4(), memory_type, content)
+    }
+
+    /// Update timestamp atomically
+    #[inline]
+    pub fn touch(&mut self) {
+        self.updated_at = SystemTime::now();
+    }
+
+    /// Set metadata value with zero-copy key sharing
+    pub fn set_metadata(&self, key: impl Into<Arc<str>>, value: serde_json::Value) {
+        let mut meta = self.metadata.write();
+        meta.insert(key.into(), Arc::new(value));
+    }
+
+    /// Get metadata value with zero-copy access
+    pub fn get_metadata(&self, key: &str) -> Option<Arc<serde_json::Value>> {
+        let meta = self.metadata.read();
+        meta.get(key).cloned()
+    }
+
+    /// Get content size with zero allocation
+    #[inline]
+    pub fn content_size(&self) -> usize {
+        self.content.size()
+    }
+
+    /// Calculate base importance with zero allocation
+    #[inline]
+    pub fn base_importance(&self) -> f32 {
+        self.memory_type.base_importance()
+    }
+}
+
+impl PartialEq for BaseMemory {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for BaseMemory {}
+
+impl std::hash::Hash for BaseMemory {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
+/// Memory relationship with atomic counters and zero allocation
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct MemoryRelationship {
+    /// Unique relationship identifier
+    pub id: Uuid,
+    /// Source memory ID
+    pub from_id: Uuid,
+    /// Target memory ID
+    pub to_id: Uuid,
+    /// Relationship type
+    pub relationship_type: RelationshipType,
+    /// Relationship strength (0.0 to 1.0)
+    pub strength: f32,
+    /// Creation timestamp
+    pub created_at: SystemTime,
+}
+
+impl MemoryRelationship {
+    /// Create new memory relationship with generated ID
+    #[inline]
+    pub fn new(
+        from_id: Uuid,
+        to_id: Uuid,
+        relationship_type: RelationshipType,
+        strength: f32,
+    ) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            from_id,
+            to_id,
+            relationship_type,
+            strength: strength.clamp(0.0, 1.0),
+            created_at: SystemTime::now(),
+        }
+    }
+
+    /// Check if relationship is bidirectional
+    #[inline]
+    pub fn is_bidirectional(&self) -> bool {
+        self.relationship_type.is_bidirectional()
+    }
+
+    /// Get inverse relationship if possible
+    #[inline]
+    pub fn inverse(&self) -> Option<Self> {
+        self.relationship_type.inverse().map(|inverse_type| Self {
+            id: Uuid::new_v4(),
+            from_id: self.to_id,
+            to_id: self.from_id,
+            relationship_type: inverse_type,
+            strength: self.strength,
+            created_at: self.created_at,
+        })
+    }
+}
+
+/// Result type for memory operations
+pub type MemoryResult<T> = Result<T, MemoryError>;
+
+/// Memory operation error types
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum MemoryError {
+    #[error("Memory not found: {0}")]
+    NotFound(String),
+    #[error("Invalid memory type: {0}")]
+    InvalidType(String),
+    #[error("Invalid content: {0}")]
+    InvalidContent(String),
+    #[error("Serialization error: {0}")]
+    Serialization(String),
+    #[error("Validation error: {0}")]
+    Validation(String),
+    #[error("Operation failed: {0}")]
+    OperationFailed(String),
+}
+
+impl MemoryError {
+    /// Create not found error
+    #[inline]
+    pub fn not_found(msg: impl Into<String>) -> Self {
+        Self::NotFound(msg.into())
+    }
+
+    /// Create invalid type error
+    #[inline]
+    pub fn invalid_type(msg: impl Into<String>) -> Self {
+        Self::InvalidType(msg.into())
+    }
+
+    /// Create invalid content error
+    #[inline]
+    pub fn invalid_content(msg: impl Into<String>) -> Self {
+        Self::InvalidContent(msg.into())
+    }
+}

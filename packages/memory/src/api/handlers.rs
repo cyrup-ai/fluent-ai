@@ -12,9 +12,9 @@ use axum::{
 use futures::StreamExt;
 
 use super::models::{CreateMemoryRequest, HealthResponse, MemoryResponse, SearchRequest};
-use crate::memory::primitives::node::MemoryNode;
-use crate::memory::manager::surreal::MemoryManager;
 use crate::SurrealMemoryManager;
+use crate::memory::manager::surreal::MemoryManager;
+use crate::memory::primitives::node::MemoryNode;
 
 /// Create a new memory
 pub async fn create_memory(
@@ -27,11 +27,8 @@ pub async fn create_memory(
     }
 
     // Create memory node from request
-    let memory_node = MemoryNode::new(
-        request.content,
-        request.memory_type,
-    );
-    
+    let memory_node = MemoryNode::new(request.content, request.memory_type);
+
     // Create memory using the manager
     let pending_memory = memory_manager.create_memory(memory_node);
     match pending_memory.await {
@@ -99,12 +96,8 @@ pub async fn update_memory(
 
     // Update memory using the manager
     // Create updated memory node
-    let updated_memory = MemoryNode::with_id(
-        id.clone(),
-        request.content,
-        request.memory_type,
-    );
-    
+    let updated_memory = MemoryNode::with_id(id.clone(), request.content, request.memory_type);
+
     let pending_memory = memory_manager.update_memory(updated_memory);
     match pending_memory.await {
         Ok(memory) => {
@@ -159,7 +152,7 @@ pub async fn search_memories(
 
     // Perform search using the manager
     let mut memory_stream = memory_manager.search_by_content(&request.query);
-    
+
     // Collect memories from stream
     let mut memories: Vec<MemoryNode> = vec![];
     while let Some(result) = memory_stream.next().await {
@@ -168,7 +161,7 @@ pub async fn search_memories(
             Err(_) => continue, // Skip failed items
         }
     }
-    
+
     // Process the memories directly
     let responses: Vec<MemoryResponse> = memories
         .into_iter()
@@ -195,7 +188,7 @@ pub async fn get_health(
     } else {
         "unhealthy".to_string()
     };
-    
+
     Json(HealthResponse {
         status,
         timestamp: chrono::Utc::now(),
@@ -208,13 +201,19 @@ pub async fn get_metrics(
 ) -> Result<String, StatusCode> {
     // Collect actual metrics from the memory manager
     let mut output = String::with_capacity(1024);
-    
+
     // Get total memory count by querying all types
     let mut total_count = 0u64;
-    
+
     // Count memories of each type and aggregate
     use crate::memory::primitives::types::MemoryTypeEnum;
-    for memory_type in [MemoryTypeEnum::Episodic, MemoryTypeEnum::Semantic, MemoryTypeEnum::Procedural, MemoryTypeEnum::Working, MemoryTypeEnum::LongTerm] {
+    for memory_type in [
+        MemoryTypeEnum::Episodic,
+        MemoryTypeEnum::Semantic,
+        MemoryTypeEnum::Procedural,
+        MemoryTypeEnum::Working,
+        MemoryTypeEnum::LongTerm,
+    ] {
         let mut type_stream = memory_manager.query_by_type(memory_type);
         while let Some(result) = type_stream.next().await {
             match result {
@@ -223,26 +222,31 @@ pub async fn get_metrics(
             }
         }
     }
-    
+
     let is_healthy = memory_manager.health_check().await.is_ok();
-    
+
     // Memory health status
-    output.push_str("# HELP memory_manager_healthy Memory manager health status (1=healthy, 0=unhealthy)\n");
+    output.push_str(
+        "# HELP memory_manager_healthy Memory manager health status (1=healthy, 0=unhealthy)\n",
+    );
     output.push_str("# TYPE memory_manager_healthy gauge\n");
-    output.push_str(&format!("memory_manager_healthy {}\n", if is_healthy { 1 } else { 0 }));
-    
+    output.push_str(&format!(
+        "memory_manager_healthy {}\n",
+        if is_healthy { 1 } else { 0 }
+    ));
+
     // Total count placeholder (would need proper implementation to count all memories)
     output.push_str("# HELP memory_total_count Total number of memories\n");
     output.push_str("# TYPE memory_total_count counter\n");
     output.push_str(&format!("memory_total_count {}\n", total_count));
-    
+
     output.push_str("# HELP memory_search_latency_seconds Average search latency in seconds\n");
     output.push_str("# TYPE memory_search_latency_seconds gauge\n");
     output.push_str("memory_search_latency_seconds 0.0\n");
-    
+
     output.push_str("# HELP memory_storage_size_bytes Total storage size in bytes\n");
     output.push_str("# TYPE memory_storage_size_bytes gauge\n");
     output.push_str("memory_storage_size_bytes 0\n");
-    
+
     Ok(output)
 }

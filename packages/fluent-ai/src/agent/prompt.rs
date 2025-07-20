@@ -14,13 +14,12 @@
 
 use std::future::IntoFuture;
 
+use super::Agent;
 use crate::{
     completion::{CompletionModel, Message, PromptError},
-    runtime as rt,      // re‑export of the zero‑alloc runtime
-    runtime::AsyncTask, // one‑shot task handle
+    runtime as rt,      //  re‑export of the zero‑alloc runtime
+    runtime::AsyncTask, //  one‑shot task handle
 };
-
-use super::Agent;
 
 // ---------------------------------------------------------------------------
 // Prompt trait for type conversions

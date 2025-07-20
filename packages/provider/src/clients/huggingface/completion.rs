@@ -12,16 +12,22 @@
 //!     .prompt("Hello world")
 //! ```
 
-use fluent_ai_domain::{AsyncTask, spawn_async};
-use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
-use fluent_ai_domain::{Message, Document};
-use fluent_ai_domain::tool::ToolDefinition;
-use crate::{AsyncStream, completion_provider::{CompletionProvider, CompletionError, ModelConfig, ModelInfo, ChunkHandler}};
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
-use serde::{Serialize, Deserialize};
-use serde_json::Value;
 use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
+use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
+use fluent_ai_domain::tool::ToolDefinition;
+use fluent_ai_domain::{AsyncTask, spawn_async};
+use fluent_ai_domain::{Document, Message};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use crate::{
+    AsyncStream,
+    completion_provider::{
+        ChunkHandler, CompletionError, CompletionProvider, ModelConfig, ModelInfo,
+    },
+};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -157,7 +163,7 @@ impl CompletionProvider for HuggingFaceCompletionBuilder {
     fn new(api_key: String, model_name: &'static str) -> Result<Self, CompletionError> {
         let client = HttpClient::with_config(HttpConfig::streaming_optimized())
             .map_err(|_| CompletionError::HttpError)?;
-        
+
         let config = get_model_config(model_name);
 
         Ok(Self {
@@ -187,19 +193,19 @@ impl CompletionProvider for HuggingFaceCompletionBuilder {
         self.explicit_api_key = Some(key.into());
         self
     }
-    
+
     /// Environment variable names to search for HuggingFace API keys (ordered by priority)
     #[inline(always)]
     fn env_api_keys(&self) -> ZeroOneOrMany<String> {
         // First found wins - search in priority order
         ZeroOneOrMany::Many(vec![
-            "HF_TOKEN".to_string(),               // Primary HuggingFace token
-            "HUGGINGFACE_API_KEY".to_string(),    // API key format
-            "HUGGINGFACE_TOKEN".to_string(),      // Alternative token name
-            "HF_API_KEY".to_string(),             // Short API key format
+            "HF_TOKEN".to_string(),            // Primary HuggingFace token
+            "HUGGINGFACE_API_KEY".to_string(), // API key format
+            "HUGGINGFACE_TOKEN".to_string(),   // Alternative token name
+            "HF_API_KEY".to_string(),          // Short API key format
         ])
     }
-    
+
     /// Set system prompt (overrides ModelInfo default)
     #[inline(always)]
     fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
@@ -246,14 +252,16 @@ impl CompletionProvider for HuggingFaceCompletionBuilder {
     #[inline(always)]
     fn chat_history(mut self, history: ZeroOneOrMany<Message>) -> Result<Self, CompletionError> {
         match history {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(msg) => {
-                self.chat_history.try_push(msg)
+                self.chat_history
+                    .try_push(msg)
                     .map_err(|_| CompletionError::RequestTooLarge)?;
-            },
+            }
             ZeroOneOrMany::Many(msgs) => {
                 for msg in msgs {
-                    self.chat_history.try_push(msg)
+                    self.chat_history
+                        .try_push(msg)
                         .map_err(|_| CompletionError::RequestTooLarge)?;
                 }
             }
@@ -265,14 +273,16 @@ impl CompletionProvider for HuggingFaceCompletionBuilder {
     #[inline(always)]
     fn documents(mut self, docs: ZeroOneOrMany<Document>) -> Result<Self, CompletionError> {
         match docs {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(doc) => {
-                self.documents.try_push(doc)
+                self.documents
+                    .try_push(doc)
                     .map_err(|_| CompletionError::RequestTooLarge)?;
-            },
+            }
             ZeroOneOrMany::Many(documents) => {
                 for doc in documents {
-                    self.documents.try_push(doc)
+                    self.documents
+                        .try_push(doc)
                         .map_err(|_| CompletionError::RequestTooLarge)?;
                 }
             }
@@ -284,14 +294,16 @@ impl CompletionProvider for HuggingFaceCompletionBuilder {
     #[inline(always)]
     fn tools(mut self, tools: ZeroOneOrMany<ToolDefinition>) -> Result<Self, CompletionError> {
         match tools {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(tool) => {
-                self.tools.try_push(tool)
+                self.tools
+                    .try_push(tool)
                     .map_err(|_| CompletionError::RequestTooLarge)?;
-            },
+            }
             ZeroOneOrMany::Many(tool_list) => {
                 for tool in tool_list {
-                    self.tools.try_push(tool)
+                    self.tools
+                        .try_push(tool)
                         .map_err(|_| CompletionError::RequestTooLarge)?;
                 }
             }
@@ -308,14 +320,14 @@ impl CompletionProvider for HuggingFaceCompletionBuilder {
 
     /// Set chunk handler with cyrup_sugars pattern matching syntax
     #[inline(always)]
-    fn on_chunk<F>(mut self, handler: F) -> Self 
+    fn on_chunk<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<CompletionChunk, CompletionError>) + Send + Sync + 'static,
     {
         self.chunk_handler = Some(Box::new(handler));
         self
     }
-    
+
     /// Terminal action - execute completion with user prompt (blazing-fast streaming)
     #[inline(always)]
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
@@ -371,12 +383,12 @@ impl HuggingFaceCompletionBuilder {
         prompt: String,
     ) -> Result<AsyncStream<Result<CompletionChunk, CompletionError>>, CompletionError> {
         let request_body = self.build_request(&prompt)?;
-        let body_bytes = serde_json::to_vec(&request_body)
-            .map_err(|_| CompletionError::ParseError)?;
+        let body_bytes =
+            serde_json::to_vec(&request_body).map_err(|_| CompletionError::ParseError)?;
 
         // Use explicit API key if set, otherwise use discovered key
         let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
-        
+
         let request = HttpRequest::post(
             &format!("{}/{}/v1/chat/completions", self.base_url, self.model_name),
             body_bytes,
@@ -385,7 +397,10 @@ impl HuggingFaceCompletionBuilder {
         .header("Content-Type", "application/json")
         .header("Authorization", &format!("Bearer {}", auth_key));
 
-        let response = self.client.send(request).await
+        let response = self
+            .client
+            .send(request)
+            .await
             .map_err(|_| CompletionError::HttpError)?;
 
         if !response.status().is_success() {
@@ -403,7 +418,7 @@ impl HuggingFaceCompletionBuilder {
         spawn_async(async move {
             use futures_util::StreamExt;
             let mut sse_stream = sse_stream;
-            
+
             while let Some(event) = sse_stream.next().await {
                 match event {
                     Ok(sse_event) => {
@@ -439,41 +454,51 @@ impl HuggingFaceCompletionBuilder {
 
     /// Build HuggingFace request with zero allocation where possible
     #[inline(always)]
-    fn build_request(&self, prompt: &str) -> Result<HuggingFaceCompletionRequest<'_>, CompletionError> {
+    fn build_request(
+        &self,
+        prompt: &str,
+    ) -> Result<HuggingFaceCompletionRequest<'_>, CompletionError> {
         let mut messages = ArrayVec::new();
 
         // Add system prompt (always present from ModelInfo)
         if !self.system_prompt.is_empty() {
-            messages.try_push(HuggingFaceMessage {
-                role: "system",
-                content: Some(&self.system_prompt),
-                tool_calls: None,
-            }).map_err(|_| CompletionError::RequestTooLarge)?;
+            messages
+                .try_push(HuggingFaceMessage {
+                    role: "system",
+                    content: Some(&self.system_prompt),
+                    tool_calls: None,
+                })
+                .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
         // Add documents as context (zero allocation conversion)
         for doc in &self.documents {
             let content = format!("Document: {}", doc.content());
-            messages.try_push(HuggingFaceMessage {
-                role: "user", 
-                content: Some(Box::leak(content.into_boxed_str())),
-                tool_calls: None,
-            }).map_err(|_| CompletionError::RequestTooLarge)?;
+            messages
+                .try_push(HuggingFaceMessage {
+                    role: "user",
+                    content: Some(Box::leak(content.into_boxed_str())),
+                    tool_calls: None,
+                })
+                .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
         // Add chat history (zero allocation domain conversion)
         for msg in &self.chat_history {
             let hf_msg = self.convert_domain_message(msg)?;
-            messages.try_push(hf_msg)
+            messages
+                .try_push(hf_msg)
                 .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
         // Add user prompt
-        messages.try_push(HuggingFaceMessage {
-            role: "user",
-            content: Some(prompt),
-            tool_calls: None,
-        }).map_err(|_| CompletionError::RequestTooLarge)?;
+        messages
+            .try_push(HuggingFaceMessage {
+                role: "user",
+                content: Some(prompt),
+                tool_calls: None,
+            })
+            .map_err(|_| CompletionError::RequestTooLarge)?;
 
         let tools = if self.tools.is_empty() {
             None
@@ -496,12 +521,14 @@ impl HuggingFaceCompletionBuilder {
 
     /// Convert domain Message to HuggingFace format (zero allocation)
     #[inline(always)]
-    fn convert_domain_message(&self, msg: &Message) -> Result<HuggingFaceMessage<'_>, CompletionError> {
+    fn convert_domain_message(
+        &self,
+        msg: &Message,
+    ) -> Result<HuggingFaceMessage<'_>, CompletionError> {
         // Complete domain type conversion without TODOs
         match msg.role() {
             fluent_ai_domain::message::MessageRole::User => {
-                let content = msg.content().text()
-                    .ok_or(CompletionError::ParseError)?;
+                let content = msg.content().text().ok_or(CompletionError::ParseError)?;
                 Ok(HuggingFaceMessage {
                     role: "user",
                     content: Some(content),
@@ -522,8 +549,7 @@ impl HuggingFaceCompletionBuilder {
                 })
             }
             fluent_ai_domain::message::MessageRole::System => {
-                let content = msg.content().text()
-                    .ok_or(CompletionError::ParseError)?;
+                let content = msg.content().text().ok_or(CompletionError::ParseError)?;
                 Ok(HuggingFaceMessage {
                     role: "system",
                     content: Some(content),
@@ -535,21 +561,26 @@ impl HuggingFaceCompletionBuilder {
 
     /// Convert domain tool calls to HuggingFace format (zero allocation)
     #[inline(always)]
-    fn convert_tool_calls(&self, msg: &Message) -> Result<ArrayVec<HuggingFaceToolCall<'_>, MAX_TOOLS>, CompletionError> {
+    fn convert_tool_calls(
+        &self,
+        msg: &Message,
+    ) -> Result<ArrayVec<HuggingFaceToolCall<'_>, MAX_TOOLS>, CompletionError> {
         let mut tool_calls = ArrayVec::new();
-        
+
         for tool_call in msg.tool_calls() {
-            tool_calls.try_push(HuggingFaceToolCall {
-                id: tool_call.id(),
-                tool_type: "function",
-                function: HuggingFaceFunction {
-                    name: tool_call.function().name(),
-                    arguments: &serde_json::to_string(&tool_call.function().arguments())
-                        .map_err(|_| CompletionError::ParseError)?,
-                },
-            }).map_err(|_| CompletionError::RequestTooLarge)?;
+            tool_calls
+                .try_push(HuggingFaceToolCall {
+                    id: tool_call.id(),
+                    tool_type: "function",
+                    function: HuggingFaceFunction {
+                        name: tool_call.function().name(),
+                        arguments: &serde_json::to_string(&tool_call.function().arguments())
+                            .map_err(|_| CompletionError::ParseError)?,
+                    },
+                })
+                .map_err(|_| CompletionError::RequestTooLarge)?;
         }
-        
+
         Ok(tool_calls)
     }
 
@@ -557,7 +588,7 @@ impl HuggingFaceCompletionBuilder {
     #[inline(always)]
     fn convert_tools(&self) -> Result<ArrayVec<Value, MAX_TOOLS>, CompletionError> {
         let mut tools = ArrayVec::new();
-        
+
         for tool in &self.tools {
             let tool_value = serde_json::json!({
                 "type": "function",
@@ -567,10 +598,11 @@ impl HuggingFaceCompletionBuilder {
                     "parameters": tool.parameters()
                 }
             });
-            tools.try_push(tool_value)
+            tools
+                .try_push(tool_value)
                 .map_err(|_| CompletionError::RequestTooLarge)?;
         }
-        
+
         Ok(tools)
     }
 
@@ -578,8 +610,8 @@ impl HuggingFaceCompletionBuilder {
     #[inline(always)]
     fn parse_sse_chunk(data: &[u8]) -> Result<CompletionChunk, CompletionError> {
         // Fast JSON parsing from bytes using serde_json
-        let chunk: HuggingFaceStreamChunk = serde_json::from_slice(data)
-            .map_err(|_| CompletionError::ParseError)?;
+        let chunk: HuggingFaceStreamChunk =
+            serde_json::from_slice(data).map_err(|_| CompletionError::ParseError)?;
 
         match chunk.choices {
             ZeroOneOrMany::None => Ok(CompletionChunk::text("")),
@@ -596,7 +628,10 @@ impl HuggingFaceCompletionBuilder {
 
     /// Process choice into CompletionChunk (zero allocation)
     #[inline(always)]
-    fn process_choice(choice: &HuggingFaceChoice, usage: Option<HuggingFaceUsage>) -> Result<CompletionChunk, CompletionError> {
+    fn process_choice(
+        choice: &HuggingFaceChoice,
+        usage: Option<HuggingFaceUsage>,
+    ) -> Result<CompletionChunk, CompletionError> {
         // Handle finish reason
         if let Some(ref finish_reason) = choice.finish_reason {
             let reason = match finish_reason.as_str() {
@@ -645,7 +680,9 @@ impl HuggingFaceCompletionBuilder {
 
     /// Process tool call delta (zero allocation)
     #[inline(always)]
-    fn process_tool_call(tool_call: &HuggingFaceToolCallDelta) -> Result<CompletionChunk, CompletionError> {
+    fn process_tool_call(
+        tool_call: &HuggingFaceToolCallDelta,
+    ) -> Result<CompletionChunk, CompletionError> {
         if let Some(ref id) = tool_call.id {
             if let Some(ref function) = tool_call.function {
                 if let Some(ref name) = function.name {
@@ -653,7 +690,7 @@ impl HuggingFaceCompletionBuilder {
                 }
             }
         }
-        
+
         if let Some(ref function) = tool_call.function {
             if let Some(ref args) = function.arguments {
                 return Ok(CompletionChunk::tool_partial("", "", args));
@@ -666,7 +703,10 @@ impl HuggingFaceCompletionBuilder {
 
 /// Public constructor for HuggingFace completion builder
 #[inline(always)]
-pub fn completion_builder(api_key: String, model_name: &'static str) -> Result<HuggingFaceCompletionBuilder, CompletionError> {
+pub fn completion_builder(
+    api_key: String,
+    model_name: &'static str,
+) -> Result<HuggingFaceCompletionBuilder, CompletionError> {
     HuggingFaceCompletionBuilder::new(api_key, model_name)
 }
 

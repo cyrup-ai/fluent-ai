@@ -3,15 +3,16 @@
 //! Provides blazing-fast caching with zero-allocation patterns and production-ready
 //! cache management with LRU eviction and TTL support.
 
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
+
 use crossbeam_utils::CachePadded;
+use fluent_ai_domain::chat::commands::types::*;
 use tokio::sync::RwLock;
 
-use fluent_ai_domain::chat::commands::types::*;
 use super::command::CommandMiddleware;
 
 /// Cache entry with TTL support
@@ -64,7 +65,7 @@ impl CacheKey {
     /// Create cache key from command
     fn from_command(command: &ChatCommand) -> Self {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        
+
         let (command_type, params) = match command {
             ChatCommand::Help(cmd) => ("help", format!("{:?}", cmd)),
             ChatCommand::Clear(cmd) => ("clear", format!("{:?}", cmd)),
@@ -77,9 +78,9 @@ impl CacheKey {
             ChatCommand::Debug(cmd) => ("debug", format!("{:?}", cmd)),
             ChatCommand::Custom(cmd) => ("custom", format!("{:?}", cmd)),
         };
-        
+
         params.hash(&mut hasher);
-        
+
         Self {
             command_type: command_type.to_string(),
             params_hash: hasher.finish(),
@@ -118,7 +119,7 @@ impl CommandCache {
     pub async fn get(&self, command: &ChatCommand) -> Option<CommandOutput> {
         let key = CacheKey::from_command(command);
         let mut cache = self.cache.write().await;
-        
+
         if let Some(entry) = cache.get_mut(&key) {
             if entry.is_expired() {
                 cache.remove(&key);
@@ -139,22 +140,23 @@ impl CommandCache {
     pub async fn put(&self, command: &ChatCommand, output: CommandOutput) {
         let key = CacheKey::from_command(command);
         let entry = CacheEntry::new(output, self.default_ttl);
-        
+
         let mut cache = self.cache.write().await;
-        
+
         // Evict expired entries
         cache.retain(|_, entry| !entry.is_expired());
-        
+
         // Evict LRU entries if at capacity
         if cache.len() >= self.max_size {
-            if let Some(lru_key) = cache.iter()
+            if let Some(lru_key) = cache
+                .iter()
                 .min_by_key(|(_, entry)| entry.access_count)
                 .map(|(key, _)| key.clone())
             {
                 cache.remove(&lru_key);
             }
         }
-        
+
         cache.insert(key, entry);
     }
 
@@ -163,11 +165,11 @@ impl CommandCache {
         let hits = self.hits.load(Ordering::Relaxed);
         let misses = self.misses.load(Ordering::Relaxed);
         let total = hits + misses;
-        
+
         if total == 0 {
             return 0.0;
         }
-        
+
         (hits as f64 / total as f64) * 100.0
     }
 
@@ -218,7 +220,8 @@ impl CommandMiddleware for CachingMiddleware {
         &'a self,
         command: &'a ChatCommand,
         context: &'a CommandContext,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>> {
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>
+    {
         Box::pin(async move {
             // Check cache for existing result
             if let Some(cached_output) = self.cache.get(command).await {
@@ -235,7 +238,8 @@ impl CommandMiddleware for CachingMiddleware {
         command: &'a ChatCommand,
         _context: &'a CommandContext,
         result: &'a CommandResult<CommandOutput>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>> {
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>
+    {
         Box::pin(async move {
             // Cache successful results
             if let Ok(output) = result {

@@ -8,7 +8,7 @@ pub use builder::*;
 pub trait ProviderClient: Send + Sync {
     /// Get the provider name
     fn provider_name(&self) -> &'static str;
-    
+
     /// Create client from environment variables
     fn from_env() -> Result<Self, Box<dyn std::error::Error + Send + Sync>>
     where
@@ -18,18 +18,18 @@ pub trait ProviderClient: Send + Sync {
 #[cfg(feature = "audio")]
 pub mod audio;
 #[cfg(feature = "audio")]
-pub use audio::{*, AsAudioGeneration};
+pub use audio::{AsAudioGeneration, *};
 
 pub mod completion;
-pub use completion::{*, AsCompletion};
+pub use completion::{AsCompletion, *};
 
 pub mod embeddings;
-pub use embeddings::{*, AsEmbeddings};
+pub use embeddings::{AsEmbeddings, *};
 
 #[cfg(feature = "image")]
 pub mod images;
 #[cfg(feature = "image")]
-pub use images::{*, AsImageGeneration};
+pub use images::{AsImageGeneration, *};
 
 pub mod transcription;
-pub use transcription::{*, AsTranscription};
+pub use transcription::{AsTranscription, *};

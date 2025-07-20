@@ -1,7 +1,10 @@
 use std::collections::HashMap;
+use std::time::Instant;
 
+use arrayvec::ArrayVec;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use smallvec::SmallVec;
 
 use crate::ZeroOneOrMany;
 
@@ -77,7 +80,7 @@ pub enum MessageRole {
 
 // Core message types
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Message {
+pub struct LegacyMessage {
     pub role: MessageRole,
     pub content: String,
     pub name: Option<String>,
@@ -86,138 +89,31 @@ pub struct Message {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageChunk {
-    pub index: usize,
-    pub total: Option<usize>,
     pub content: String,
 }
 
-/// Extension trait for UserContent collections
-pub trait UserContentExt {
-    /// Extract text content from user content, concatenating multiple items
-    fn as_text(&self) -> String;
+// Trait for message content
+pub trait Content {}
+
+// Conversation container
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Conversation {
+    pub messages: Vec<LegacyMessage>,
 }
 
-impl UserContentExt for ZeroOneOrMany<UserContent> {
-    fn as_text(&self) -> String {
-        self.iter()
-            .map(|c| c.as_text())
-            .collect::<Vec<_>>()
-            .join(" ")
-    }
-}
-
-/// Extension trait for AssistantContent collections
-pub trait AssistantContentExt {
-    /// Extract text content from assistant content, concatenating multiple items
-    fn as_text(&self) -> String;
-}
-
-impl AssistantContentExt for ZeroOneOrMany<AssistantContent> {
-    fn as_text(&self) -> String {
-        self.iter()
-            .map(|c| c.as_text())
-            .collect::<Vec<_>>()
-            .join(" ")
-    }
-}
-
-impl UserContent {
-    /// Extract text representation of user content
-    pub fn as_text(&self) -> String {
-        match self {
-            UserContent::Text(text) => text.content.clone(),
-            UserContent::Image { .. } => "[Image]".to_string(),
-        }
-    }
-}
-
-impl AssistantContent {
-    /// Extract text representation of assistant content
-    pub fn as_text(&self) -> String {
-        match self {
-            AssistantContent::Text(text) => text.content.clone(),
-            AssistantContent::ToolCall(call) => {
-                format!(
-                    "Tool: {} ({})",
-                    call.function.name, call.function.parameters
-                )
-            }
-        }
+impl Conversation {
+    pub fn new() -> Self {
+        Self { messages: vec![] }
     }
 
-    /// Create text content
-    pub fn text(content: impl Into<String>) -> Self {
-        Self::Text(Text {
-            content: content.into(),
-        })
+    pub fn add_message(&mut self, message: LegacyMessage) {
+        self.messages.push(message);
     }
-}
 
-/// Conversation trait for message conversations
-pub trait Conversation {
-    /// Convert the conversation to a text representation
-    fn as_text(&self) -> String;
-}
-
-/// Content trait for message content types
-pub trait Content: Serialize {
-    /// Convert content to JSON string representation
-    fn to_content_string(&self) -> Result<String, serde_json::Error> {
-        serde_json::to_string(self)
-    }
-}
-
-/// Conversation wrapper around HashMap
-#[derive(Debug, Clone)]
-pub struct ConversationMap(HashMap<MessageRole, Message>);
-
-impl std::ops::Deref for ConversationMap {
-    type Target = HashMap<MessageRole, Message>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl From<HashMap<MessageRole, Message>> for ConversationMap {
-    fn from(map: HashMap<MessageRole, Message>) -> Self {
-        ConversationMap(map)
-    }
-}
-
-impl Conversation for ConversationMap {
-    fn as_text(&self) -> String {
+    pub fn to_string(&self) -> String {
         let mut text = String::new();
-        for (role, message) in self.0.iter() {
-            match role {
-                MessageRole::User => {
-                    text.push_str("User: ");
-                    text.push_str(&message.content);
-                }
-                MessageRole::Assistant => {
-                    text.push_str("Assistant: ");
-                    text.push_str(&message.content);
-                }
-                MessageRole::System => {
-                    text.push_str("System: ");
-                    text.push_str(&message.content);
-                }
-                MessageRole::Tool => {
-                    text.push_str("Tool: ");
-                    text.push_str(&message.content);
-                }
-            }
-            text.push('\n');
-        }
-        text
-    }
-}
-
-impl Conversation for HashMap<MessageRole, Message> {
-    fn as_text(&self) -> String {
-        let mut text = String::new();
-        for (role, message) in self.iter() {
-            match role {
+        for message in &self.messages {
+            match message.role {
                 MessageRole::User => {
                     text.push_str("User: ");
                     text.push_str(&message.content);
@@ -253,9 +149,9 @@ pub struct ToolResult {
 }
 
 // Direct factory methods - no new(), no build()
-impl Message {
+impl LegacyMessage {
     pub fn user(content: impl Into<String>) -> Self {
-        Message {
+        LegacyMessage {
             role: MessageRole::User,
             content: content.into(),
             name: None,
@@ -264,7 +160,7 @@ impl Message {
     }
 
     pub fn assistant(content: impl Into<String>) -> Self {
-        Message {
+        LegacyMessage {
             role: MessageRole::Assistant,
             content: content.into(),
             name: None,
@@ -273,7 +169,7 @@ impl Message {
     }
 
     pub fn system(content: impl Into<String>) -> Self {
-        Message {
+        LegacyMessage {
             role: MessageRole::System,
             content: content.into(),
             name: None,
@@ -282,7 +178,7 @@ impl Message {
     }
 
     pub fn tool(content: impl Into<String>) -> Self {
-        Message {
+        LegacyMessage {
             role: MessageRole::Tool,
             content: content.into(),
             name: None,
@@ -301,3 +197,69 @@ pub trait ContentContainer: Content {
 
 // Implementation for ZeroOneOrMany
 impl<T: Content + Clone> Content for ZeroOneOrMany<T> {}
+
+// High-performance, zero-allocation message types
+
+/// Zero-allocation message with const generics for stack allocation
+#[derive(Debug, Clone)]
+pub struct Message<const N: usize = 256> {
+    pub id: u64,
+    pub message_type: MessageType,
+    pub content: ArrayVec<u8, N>,
+    pub metadata: SmallVec<u8, 32>,
+    pub timestamp: Instant,
+    pub priority: MessagePriority,
+    pub retry_count: u8,
+}
+
+impl<const N: usize> Default for Message<N> {
+    #[inline(always)]
+    fn default() -> Self {
+        Self {
+            id: 0,
+            message_type: MessageType::AgentChat,
+            content: ArrayVec::new(),
+            metadata: SmallVec::new(),
+            timestamp: Instant::now(),
+            priority: MessagePriority::Normal,
+            retry_count: 0,
+        }
+    }
+}
+
+impl<const N: usize> Message<N> {
+    /// Create new message with zero allocation
+    #[inline(always)]
+    pub fn new(id: u64, message_type: MessageType, content: &[u8]) -> Result<Self, &'static str> {
+        if content.len() > N {
+            return Err("Content exceeds message capacity");
+        }
+        let mut msg = Self {
+            id,
+            message_type,
+            ..Default::default()
+        };
+        msg.content.try_extend_from_slice(content).unwrap();
+        Ok(msg)
+    }
+}
+
+/// Message type enumeration
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MessageType {
+    AgentChat,
+    SystemCommand,
+    ToolRequest,
+    ToolResponse,
+    HealthCheck,
+    ControlSignal,
+    MetricsUpdate,
+}
+
+/// Message priority for QoS
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum MessagePriority {
+    High,
+    Normal,
+    Low,
+}

@@ -9,10 +9,12 @@
 //!
 //! Uses arrayvec::ArrayString for zero allocation error context preservation.
 
-use crate::completion_provider::CompletionError;
+use std::fmt;
+
 use arrayvec::ArrayString;
 use fluent_ai_http3::HttpError;
-use std::fmt;
+
+use crate::completion_provider::CompletionError;
 
 /// Result type for Bedrock operations
 pub type Result<T> = std::result::Result<T, BedrockError>;
@@ -23,101 +25,101 @@ pub enum BedrockError {
     /// HTTP transport layer errors
     #[error("HTTP request failed: {0}")]
     Http(#[from] HttpError),
-    
+
     /// AWS authentication and authorization errors
     #[error("AWS authentication failed: {message}")]
-    Auth { 
+    Auth {
         message: ArrayString<256>,
         error_code: Option<ArrayString<32>>,
     },
-    
+
     /// AWS SigV4 signing errors
     #[error("AWS signature generation failed: {message}")]
-    Signature { 
+    Signature {
         message: ArrayString<256>,
         component: ArrayString<32>, // canonical_request, string_to_sign, signature
     },
-    
+
     /// Model not found or access denied
     #[error("Model not accessible: {model} in region {region}")]
-    ModelAccess { 
+    ModelAccess {
         model: ArrayString<64>,
         region: ArrayString<32>,
         reason: ModelAccessReason,
     },
-    
+
     /// AWS region not supported for Bedrock
     #[error("Region not supported: {region}")]
-    RegionNotSupported { 
+    RegionNotSupported {
         region: ArrayString<32>,
         supported_regions: &'static [&'static str],
     },
-    
+
     /// AWS throttling and rate limiting
     #[error("Request throttled: {reason}, retry after {retry_after}s")]
-    Throttled { 
+    Throttled {
         reason: ThrottleReason,
         retry_after: u64,
         request_id: Option<ArrayString<64>>,
     },
-    
+
     /// AWS quota and billing errors  
     #[error("Quota exceeded: {quota_type}, limit: {limit}")]
-    QuotaExceeded { 
+    QuotaExceeded {
         quota_type: QuotaType,
         limit: u64,
         current_usage: Option<u64>,
         reset_time: Option<u64>, // Unix timestamp
     },
-    
+
     /// Model input validation errors
     #[error("Model input validation failed: {field} - {message}")]
-    InputValidation { 
+    InputValidation {
         field: ArrayString<32>,
         message: ArrayString<128>,
         model: ArrayString<64>,
     },
-    
+
     /// AWS service errors (500-level)
     #[error("AWS service error: {service} - {message}")]
-    Service { 
+    Service {
         service: ArrayString<32>,
         message: ArrayString<256>,
         error_code: Option<ArrayString<32>>,
         request_id: Option<ArrayString<64>>,
     },
-    
+
     /// Configuration and setup errors
     #[error("Configuration error: {component} - {message}")]
-    Config { 
+    Config {
         component: ArrayString<32>,
         message: ArrayString<256>,
     },
-    
+
     /// JSON serialization/deserialization errors
     #[error("JSON processing failed: {operation} - {context}")]
-    Json { 
+    Json {
         operation: JsonOperation,
         context: ArrayString<128>,
     },
-    
+
     /// AWS credentials errors
     #[error("AWS credentials error: {message}")]
-    Credentials { 
+    Credentials {
         message: ArrayString<256>,
         source: CredentialsSource,
     },
-    
+
     /// Network timeout and connectivity
     #[error("Network timeout: {operation} after {timeout_ms}ms")]
-    Timeout { 
+    Timeout {
         operation: ArrayString<32>,
         timeout_ms: u64,
     },
-    
+
     /// Circuit breaker open state
     #[error("Circuit breaker open for {service}, failure rate: {failure_rate}%")]
-    CircuitBreakerOpen { 
+    CircuitBreakerOpen {
         service: ArrayString<32>,
         failure_rate: f32,
         last_failure: ArrayString<128>,
@@ -264,59 +266,59 @@ impl BedrockError {
     pub fn auth_error(message: &str) -> Self {
         let mut msg = ArrayString::new();
         let _ = msg.try_push_str(message);
-        Self::Auth { 
+        Self::Auth {
             message: msg,
             error_code: None,
         }
     }
-    
+
     /// Create signature error with zero allocation
     pub fn signature_error(message: &str, component: &str) -> Self {
         let mut msg = ArrayString::new();
         let mut comp = ArrayString::new();
         let _ = msg.try_push_str(message);
         let _ = comp.try_push_str(component);
-        Self::Signature { 
+        Self::Signature {
             message: msg,
             component: comp,
         }
     }
-    
+
     /// Create model access error with zero allocation
     pub fn model_access_error(model: &str, region: &str, reason: ModelAccessReason) -> Self {
         let mut mod_name = ArrayString::new();
         let mut reg_name = ArrayString::new();
         let _ = mod_name.try_push_str(model);
         let _ = reg_name.try_push_str(region);
-        Self::ModelAccess { 
+        Self::ModelAccess {
             model: mod_name,
             region: reg_name,
             reason,
         }
     }
-    
+
     /// Create configuration error with zero allocation
     pub fn config_error(component: &str, message: &str) -> Self {
         let mut comp = ArrayString::new();
         let mut msg = ArrayString::new();
         let _ = comp.try_push_str(component);
         let _ = msg.try_push_str(message);
-        Self::Config { 
+        Self::Config {
             component: comp,
             message: msg,
         }
     }
-    
+
     /// Create credentials error with zero allocation
     pub fn credentials_error(message: &str, source: CredentialsSource) -> Self {
         let mut msg = ArrayString::new();
         let _ = msg.try_push_str(message);
-        Self::Credentials { 
+        Self::Credentials {
             message: msg,
             source,
         }
     }
-    
+
     /// Check if error is retryable
     pub fn is_retryable(&self) -> bool {
         match self {
@@ -327,11 +329,11 @@ impl BedrockError {
             Self::Http(http_err) => {
                 // Retryable HTTP status codes
                 matches!(http_err, HttpError::StatusCode(code) if *code >= 500)
-            },
+            }
             _ => false,
         }
     }
-    
+
     /// Get retry delay in seconds
     pub fn retry_delay(&self) -> Option<u64> {
         match self {
@@ -341,12 +343,18 @@ impl BedrockError {
             _ => None,
         }
     }
-    
+
     /// Extract AWS request ID if available
     pub fn request_id(&self) -> Option<&str> {
         match self {
-            Self::Throttled { request_id: Some(id), .. } => Some(id.as_str()),
-            Self::Service { request_id: Some(id), .. } => Some(id.as_str()),
+            Self::Throttled {
+                request_id: Some(id),
+                ..
+            } => Some(id.as_str()),
+            Self::Service {
+                request_id: Some(id),
+                ..
+            } => Some(id.as_str()),
             _ => None,
         }
     }
@@ -415,10 +423,10 @@ impl From<serde_json::Error> for BedrockError {
         } else {
             JsonOperation::Validate
         };
-        
+
         let mut context = ArrayString::new();
         let _ = context.try_push_str(&format!("line {}, column {}", err.line(), err.column()));
-        
+
         Self::Json { operation, context }
     }
 }
@@ -426,20 +434,20 @@ impl From<serde_json::Error> for BedrockError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_error_creation() {
         let error = BedrockError::auth_error("Invalid API key");
         assert!(matches!(error, BedrockError::Auth { .. }));
-        
+
         let error = BedrockError::model_access_error(
-            "claude-3-5-sonnet", 
-            "us-east-1", 
-            ModelAccessReason::NotFound
+            "claude-3-5-sonnet",
+            "us-east-1",
+            ModelAccessReason::NotFound,
         );
         assert!(matches!(error, BedrockError::ModelAccess { .. }));
     }
-    
+
     #[test]
     fn test_retryable_errors() {
         let throttled = BedrockError::Throttled {
@@ -449,12 +457,12 @@ mod tests {
         };
         assert!(throttled.is_retryable());
         assert_eq!(throttled.retry_delay(), Some(60));
-        
+
         let auth_error = BedrockError::auth_error("Invalid token");
         assert!(!auth_error.is_retryable());
         assert_eq!(auth_error.retry_delay(), None);
     }
-    
+
     #[test]
     fn test_status_code_conversion() {
         let error = BedrockError::from(429u16);

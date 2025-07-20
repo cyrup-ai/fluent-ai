@@ -125,9 +125,10 @@ impl EvaluationCommittee {
             .await
             .ok();
 
-        Err(CognitiveError::ConsensusFailed(
-            format!("Action {} failed after {} rounds", action, self.config.rounds)
-        ))
+        Err(CognitiveError::ConsensusFailed(format!(
+            "Action {} failed after {} rounds",
+            action, self.config.rounds
+        )))
     }
 
     fn determine_phase(&self, round: usize) -> EvaluationPhase {
@@ -152,12 +153,12 @@ impl EvaluationCommittee {
         let mut tasks = FuturesUnordered::new();
 
         for agent in &self.agents {
-            let permit = semaphore.clone()
-                .acquire_owned()
-                .await
-                .map_err(|e| CognitiveError::OptimizationError(
-                    format!("Failed to acquire semaphore permit for agent evaluation: {}", e)
-                ))?;
+            let permit = semaphore.clone().acquire_owned().await.map_err(|e| {
+                CognitiveError::OptimizationError(format!(
+                    "Failed to acquire semaphore permit for agent evaluation: {}",
+                    e
+                ))
+            })?;
             let task = tokio::spawn({
                 let agent = agent.clone();
                 let state = state.clone();
@@ -313,8 +314,8 @@ impl EvaluationCommittee {
             overall_score,
             improvement_suggestions,
             dissenting_opinions,
-            latency_factor: 1.0, // Default neutral factor
-            memory_factor: 1.0, // Default neutral factor
+            latency_factor: 1.0,   // Default neutral factor
+            memory_factor: 1.0,    // Default neutral factor
             relevance_factor: 1.0, // Default neutral factor
         }
     }

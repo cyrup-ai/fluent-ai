@@ -38,49 +38,48 @@ impl DataImporter {
         use csv::ReaderBuilder;
         use tokio::fs::File;
         use tokio::io::AsyncReadExt;
-        
+
         // Validate file exists and is readable
         if !path.exists() {
-            return Err(MigrationError::FileNotFound(path.to_string_lossy().to_string()));
+            return Err(MigrationError::FileNotFound(
+                path.to_string_lossy().to_string(),
+            ));
         }
-        
+
         // Read file contents asynchronously
         let mut file = File::open(path).await?;
-        
+
         let mut contents = String::new();
         file.read_to_string(&mut contents).await?;
-        
+
         // Parse CSV with proper error handling
         let mut reader = ReaderBuilder::new()
             .has_headers(true)
             .flexible(true)
             .trim(csv::Trim::All)
             .from_reader(contents.as_bytes());
-        
+
         let mut records = Vec::new();
         let mut line_number = 1; // Start from 1 for header
-        
+
         for result in reader.deserialize() {
             line_number += 1;
             match result {
                 Ok(record) => records.push(record),
                 Err(e) => {
-                    tracing::warn!(
-                        "Failed to parse CSV record at line {}: {}", 
-                        line_number, e
-                    );
+                    tracing::warn!("Failed to parse CSV record at line {}: {}", line_number, e);
                     // Continue processing other records instead of failing completely
                     continue;
                 }
             }
         }
-        
+
         tracing::info!(
-            "Successfully imported {} records from CSV file: {}", 
-            records.len(), 
+            "Successfully imported {} records from CSV file: {}",
+            records.len(),
             path.display()
         );
-        
+
         Ok(records)
     }
 

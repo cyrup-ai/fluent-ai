@@ -1,12 +1,14 @@
-use super::completion::CompletionModel;
-use crate::completion::{CompletionError, CompletionRequest};
-use crate::json_util::merge_inplace;
-use crate::clients::openai::{send_compatible_streaming_request, StreamingCompletionResponse};
-use crate::{json_util, streaming};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 use std::convert::Infallible;
 use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
+
+use super::completion::CompletionModel;
+use crate::clients::openai::{StreamingCompletionResponse, send_compatible_streaming_request};
+use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, CompletionRequest};
+use crate::json_util::merge_inplace;
+use crate::{json_util, streaming};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase", tag = "type")]

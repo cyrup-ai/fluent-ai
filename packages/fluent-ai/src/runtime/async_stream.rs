@@ -12,13 +12,14 @@ use core::{
     pin::Pin,
     task::{Context, Poll},
 };
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
+
 use crossbeam_queue::ArrayQueue;
 use futures_core::Stream;
 use futures_util::task::AtomicWaker;
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
-};
 
 pub struct AsyncStream<T, const CAP: usize> {
     inner: Arc<Inner<T, CAP>>,

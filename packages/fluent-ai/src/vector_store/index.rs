@@ -3,10 +3,12 @@
 //! Implements various indexing approaches including LSH, k-means clustering,
 //! and hierarchical indices for approximate nearest neighbor search.
 
-use crate::embedding::similarity::{cosine_similarity, euclidean_distance, SimilarityMetric};
-use crate::vector_store::in_memory::VectorEntry;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
+
+use crate::embedding::similarity::{SimilarityMetric, cosine_similarity, euclidean_distance};
+use crate::vector_store::in_memory::VectorEntry;
 
 /// Index strategy configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,13 +76,13 @@ impl Default for IndexConfig {
 pub trait VectorIndex: Send + Sync {
     /// Build index from vector entries
     fn build(&mut self, entries: &[VectorEntry]) -> Result<(), String>;
-    
+
     /// Update index with new entry
     fn update(&mut self, entry: &VectorEntry) -> Result<(), String>;
-    
+
     /// Remove entry from index
     fn remove(&mut self, id: &str) -> Result<(), String>;
-    
+
     /// Search for similar vectors
     fn search(
         &self,
@@ -89,10 +91,10 @@ pub trait VectorIndex: Send + Sync {
         similarity_metric: SimilarityMetric,
         threshold: f32,
     ) -> Vec<(String, f32)>;
-    
+
     /// Get index statistics
     fn stats(&self) -> IndexStats;
-    
+
     /// Check if index needs rebuilding
     fn needs_rebuild(&self) -> bool;
 }
@@ -134,15 +136,15 @@ impl VectorIndex for LinearIndex {
     fn build(&mut self, entries: &[VectorEntry]) -> Result<(), String> {
         self.entries = entries.to_vec();
         self.id_to_index.clear();
-        
+
         for (index, entry) in self.entries.iter().enumerate() {
             self.id_to_index.insert(entry.id.clone(), index);
         }
-        
+
         self.updates_count = 0;
         Ok(())
     }
-    
+
     fn update(&mut self, entry: &VectorEntry) -> Result<(), String> {
         if let Some(&index) = self.id_to_index.get(&entry.id) {
             // Update existing entry
@@ -153,29 +155,29 @@ impl VectorIndex for LinearIndex {
             self.entries.push(entry.clone());
             self.id_to_index.insert(entry.id.clone(), index);
         }
-        
+
         self.updates_count += 1;
         Ok(())
     }
-    
+
     fn remove(&mut self, id: &str) -> Result<(), String> {
         if let Some(index) = self.id_to_index.remove(id) {
             self.entries.remove(index);
-            
+
             // Update indices for subsequent entries
             for (_entry_id, entry_index) in self.id_to_index.iter_mut() {
                 if *entry_index > index {
                     *entry_index -= 1;
                 }
             }
-            
+
             self.updates_count += 1;
             Ok(())
         } else {
             Err(format!("Entry with id '{}' not found", id))
         }
     }
-    
+
     fn search(
         &self,
         query_vector: &[f32],
@@ -184,7 +186,7 @@ impl VectorIndex for LinearIndex {
         threshold: f32,
     ) -> Vec<(String, f32)> {
         let mut results = Vec::with_capacity(self.entries.len().min(top_k * 2));
-        
+
         for entry in &self.entries {
             let similarity = match similarity_metric {
                 SimilarityMetric::Cosine => cosine_similarity(query_vector, &entry.vector),
@@ -195,40 +197,40 @@ impl VectorIndex for LinearIndex {
                     } else {
                         1.0 / (1.0 + distance)
                     }
-                },
-                SimilarityMetric::DotProduct => {
-                    query_vector.iter()
-                        .zip(entry.vector.iter())
-                        .map(|(&a, &b)| a * b)
-                        .sum::<f32>()
-                },
+                }
+                SimilarityMetric::DotProduct => query_vector
+                    .iter()
+                    .zip(entry.vector.iter())
+                    .map(|(&a, &b)| a * b)
+                    .sum::<f32>(),
                 _ => cosine_similarity(query_vector, &entry.vector),
             };
-            
+
             if similarity >= threshold {
                 results.push((entry.id.clone(), similarity));
             }
         }
-        
+
         // Sort by similarity (descending)
         results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         results.truncate(top_k);
         results
     }
-    
+
     fn stats(&self) -> IndexStats {
         let memory_usage = self.entries.len() * std::mem::size_of::<VectorEntry>()
-            + self.id_to_index.len() * (std::mem::size_of::<String>() + std::mem::size_of::<usize>());
-        
+            + self.id_to_index.len()
+                * (std::mem::size_of::<String>() + std::mem::size_of::<usize>());
+
         IndexStats {
             vector_count: self.entries.len(),
             memory_usage_bytes: memory_usage,
             updates_since_rebuild: self.updates_count,
             avg_search_time_us: 100.0, // Placeholder
-            efficiency_score: 1.0, // Linear search is always exact
+            efficiency_score: 1.0,     // Linear search is always exact
         }
     }
-    
+
     fn needs_rebuild(&self) -> bool {
         false // Linear index doesn't need rebuilding
     }
@@ -259,10 +261,15 @@ struct LSHConfig {
 }
 
 impl LSHIndex {
-    pub fn new(num_hashes: usize, num_tables: usize, projection_dim: usize, vector_dim: usize) -> Self {
+    pub fn new(
+        num_hashes: usize,
+        num_tables: usize,
+        projection_dim: usize,
+        vector_dim: usize,
+    ) -> Self {
         let mut projections = Vec::with_capacity(num_tables);
         let mut hash_tables = Vec::with_capacity(num_tables);
-        
+
         // Initialize random projections and hash tables
         for _ in 0..num_tables {
             let mut table_projections = Vec::with_capacity(num_hashes);
@@ -276,7 +283,7 @@ impl LSHIndex {
             projections.push(table_projections);
             hash_tables.push(HashMap::new());
         }
-        
+
         Self {
             hash_tables,
             projections,
@@ -290,22 +297,23 @@ impl LSHIndex {
             updates_count: 0,
         }
     }
-    
+
     /// Compute LSH hash for a vector
     fn compute_hash(&self, vector: &[f32], table_idx: usize) -> Vec<u32> {
         let projections = &self.projections[table_idx];
         let mut hash = Vec::with_capacity(self.config.num_hashes);
-        
+
         for projection in projections {
-            let dot_product: f32 = vector.iter()
+            let dot_product: f32 = vector
+                .iter()
                 .zip(projection.iter())
                 .map(|(&v, &p)| v * p)
                 .sum();
-            
+
             // Convert to hash bucket (binary hash)
             hash.push(if dot_product >= 0.0 { 1 } else { 0 });
         }
-        
+
         hash
     }
 }
@@ -317,48 +325,52 @@ impl VectorIndex for LSHIndex {
             table.clear();
         }
         self.entries.clear();
-        
+
         // Add all entries
         for entry in entries {
             self.update(entry)?;
         }
-        
+
         self.updates_count = 0;
         Ok(())
     }
-    
+
     fn update(&mut self, entry: &VectorEntry) -> Result<(), String> {
         if entry.vector.len() != self.config.vector_dim {
             return Err(format!(
                 "Vector dimension mismatch: expected {}, got {}",
-                self.config.vector_dim, entry.vector.len()
+                self.config.vector_dim,
+                entry.vector.len()
             ));
         }
-        
+
         // Store entry
         self.entries.insert(entry.id.clone(), entry.clone());
-        
+
         // Hash and insert into all tables - compute all hashes first to avoid borrowing conflicts
         let hashes: Vec<Vec<u32>> = (0..self.hash_tables.len())
             .map(|table_idx| self.compute_hash(&entry.vector, table_idx))
             .collect();
-        
+
         for (table_idx, table) in self.hash_tables.iter_mut().enumerate() {
             let hash = hashes[table_idx].clone();
-            table.entry(hash).or_insert_with(Vec::new).push(entry.id.clone());
+            table
+                .entry(hash)
+                .or_insert_with(Vec::new)
+                .push(entry.id.clone());
         }
-        
+
         self.updates_count += 1;
         Ok(())
     }
-    
+
     fn remove(&mut self, id: &str) -> Result<(), String> {
         if let Some(entry) = self.entries.remove(id) {
             // Compute all hashes first to avoid borrowing conflicts
             let hashes: Vec<Vec<u32>> = (0..self.hash_tables.len())
                 .map(|table_idx| self.compute_hash(&entry.vector, table_idx))
                 .collect();
-            
+
             // Remove from all hash tables
             for (table_idx, table) in self.hash_tables.iter_mut().enumerate() {
                 let hash = hashes[table_idx].clone();
@@ -369,14 +381,14 @@ impl VectorIndex for LSHIndex {
                     }
                 }
             }
-            
+
             self.updates_count += 1;
             Ok(())
         } else {
             Err(format!("Entry with id '{}' not found", id))
         }
     }
-    
+
     fn search(
         &self,
         query_vector: &[f32],
@@ -385,7 +397,7 @@ impl VectorIndex for LSHIndex {
         threshold: f32,
     ) -> Vec<(String, f32)> {
         let mut candidate_ids = std::collections::HashSet::new();
-        
+
         // Collect candidates from all hash tables
         for (table_idx, table) in self.hash_tables.iter().enumerate() {
             let hash = self.compute_hash(query_vector, table_idx);
@@ -395,10 +407,10 @@ impl VectorIndex for LSHIndex {
                 }
             }
         }
-        
+
         // Compute exact similarities for candidates
         let mut results = Vec::with_capacity(candidate_ids.len());
-        
+
         for id in candidate_ids {
             if let Some(entry) = self.entries.get(&id) {
                 let similarity = match similarity_metric {
@@ -410,44 +422,51 @@ impl VectorIndex for LSHIndex {
                         } else {
                             1.0 / (1.0 + distance)
                         }
-                    },
-                    SimilarityMetric::DotProduct => {
-                        query_vector.iter()
-                            .zip(entry.vector.iter())
-                            .map(|(&a, &b)| a * b)
-                            .sum::<f32>()
-                    },
+                    }
+                    SimilarityMetric::DotProduct => query_vector
+                        .iter()
+                        .zip(entry.vector.iter())
+                        .map(|(&a, &b)| a * b)
+                        .sum::<f32>(),
                     _ => cosine_similarity(query_vector, &entry.vector),
                 };
-                
+
                 if similarity >= threshold {
                     results.push((id, similarity));
                 }
             }
         }
-        
+
         // Sort and return top K
         results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         results.truncate(top_k);
         results
     }
-    
+
     fn stats(&self) -> IndexStats {
         let memory_usage = self.entries.len() * std::mem::size_of::<VectorEntry>()
-            + self.hash_tables.iter().map(|table| {
-                table.len() * (std::mem::size_of::<Vec<u32>>() + std::mem::size_of::<Vec<String>>())
-            }).sum::<usize>()
-            + self.projections.len() * self.config.num_hashes * self.config.vector_dim * std::mem::size_of::<f32>();
-        
+            + self
+                .hash_tables
+                .iter()
+                .map(|table| {
+                    table.len()
+                        * (std::mem::size_of::<Vec<u32>>() + std::mem::size_of::<Vec<String>>())
+                })
+                .sum::<usize>()
+            + self.projections.len()
+                * self.config.num_hashes
+                * self.config.vector_dim
+                * std::mem::size_of::<f32>();
+
         IndexStats {
             vector_count: self.entries.len(),
             memory_usage_bytes: memory_usage,
             updates_since_rebuild: self.updates_count,
             avg_search_time_us: 50.0, // Approximate search is faster
-            efficiency_score: 0.85, // LSH provides approximate results
+            efficiency_score: 0.85,   // LSH provides approximate results
         }
     }
-    
+
     fn needs_rebuild(&self) -> bool {
         self.updates_count > 1000 // Rebuild after many updates
     }
@@ -465,20 +484,27 @@ impl IndexFactory {
     ) -> Result<Box<dyn VectorIndex>, String> {
         match strategy {
             IndexStrategy::Linear => Ok(Box::new(LinearIndex::new())),
-            IndexStrategy::LSH { num_hashes, num_tables, projection_dim } => {
-                Ok(Box::new(LSHIndex::new(*num_hashes, *num_tables, *projection_dim, vector_dim)))
-            },
+            IndexStrategy::LSH {
+                num_hashes,
+                num_tables,
+                projection_dim,
+            } => Ok(Box::new(LSHIndex::new(
+                *num_hashes,
+                *num_tables,
+                *projection_dim,
+                vector_dim,
+            ))),
             IndexStrategy::KMeans { .. } => {
                 // K-means index implementation would go here
                 Err("K-means index not implemented yet".to_string())
-            },
+            }
             IndexStrategy::Hierarchical { .. } => {
                 // Hierarchical index implementation would go here
                 Err("Hierarchical index not implemented yet".to_string())
-            },
+            }
         }
     }
-    
+
     /// Recommend optimal index strategy based on dataset characteristics
     #[inline(always)]
     pub fn recommend_strategy(
@@ -494,7 +520,7 @@ impl IndexFactory {
             let num_hashes = (vector_dim as f32).log2().ceil() as usize;
             let num_tables = 10;
             let projection_dim = vector_dim.min(64);
-            
+
             IndexStrategy::LSH {
                 num_hashes,
                 num_tables,

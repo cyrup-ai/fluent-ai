@@ -633,49 +633,28 @@ impl From<AI21Error> for CompletionError {
     fn from(err: AI21Error) -> Self {
         match err {
             AI21Error::Authentication { message, .. } => {
-                CompletionError::Authentication { 
-                    message: message.to_string(),
-                    retry_possible: false,
-                }
+                CompletionError::ProviderUnavailable(message.to_string())
             }
-            AI21Error::ModelNotSupported { model, available_models, .. } => {
-                CompletionError::ModelNotFound { 
-                    model: model.to_string(),
-                    available_models: available_models.split(", ").map(|s| s.to_string()).collect(),
-                }
+            AI21Error::ModelNotSupported { model, .. } => {
+                CompletionError::ModelLoadingFailed(format!("Model not supported: {}", model))
             }
-            AI21Error::RateLimit { retry_after_seconds, .. } => {
-                CompletionError::RateLimit { 
-                    retry_after_ms: Some(retry_after_seconds * 1000),
-                    message: "Rate limit exceeded".to_string(),
-                }
+            AI21Error::RateLimit { .. } => {
+                CompletionError::RateLimitExceeded
             }
             AI21Error::RequestValidation { field, reason, .. } => {
-                CompletionError::InvalidRequest { 
-                    message: format!("Validation failed for {}: {}", field, reason),
-                }
+                CompletionError::InvalidRequest(format!("Validation failed for {}: {}", field, reason))
             }
-            AI21Error::Timeout { duration_ms, .. } => {
-                CompletionError::Timeout { 
-                    duration_ms,
-                    message: "Request timed out".to_string(),
-                }
+            AI21Error::Timeout { .. } => {
+                CompletionError::Timeout
             }
             AI21Error::QuotaExceeded { .. } => {
-                CompletionError::RateLimit { 
-                    retry_after_ms: None,
-                    message: "Quota exceeded".to_string(),
-                }
+                CompletionError::RateLimitExceeded
             }
             AI21Error::ModelCapacity { .. } => {
-                CompletionError::ServiceUnavailable { 
-                    message: "Model capacity exceeded".to_string(),
-                }
+                CompletionError::ProviderUnavailable("Model capacity exceeded".to_string())
             }
             _ => {
-                CompletionError::Unknown { 
-                    message: err.to_string(),
-                }
+                CompletionError::Internal(err.to_string())
             }
         }
     }

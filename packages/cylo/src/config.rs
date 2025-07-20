@@ -1,6 +1,8 @@
-use crate::error::StorageError;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+
+use crate::error::StorageError;
 
 #[cfg(target_os = "macos")]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

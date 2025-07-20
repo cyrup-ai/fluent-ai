@@ -1,15 +1,16 @@
+use std::{convert::Infallible, str::FromStr};
+
 use async_stream::stream;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::{convert::Infallible, str::FromStr};
+use serde_json::{Value, json};
 
 use super::client::{Client, Usage};
 use crate::streaming::{RawStreamingChoice, StreamingCompletionResponse};
 use crate::{
+    OneOrMany,
+    clients::mistral::client::ApiResponse,
     completion::{self, CompletionError, CompletionRequest},
     json_util, message,
-    clients::mistral::client::ApiResponse,
-    OneOrMany,
 };
 
 pub const CODESTRAL: &str = "codestral-latest";
@@ -19,7 +20,7 @@ pub const MISTRAL_SABA: &str = "mistral-saba-latest";
 pub const MINISTRAL_3B: &str = "ministral-3b-latest";
 pub const MINISTRAL_8B: &str = "ministral-8b-latest";
 
-//Free models
+// Free models
 pub const MISTRAL_SMALL: &str = "mistral-small-latest";
 pub const PIXTRAL_SMALL: &str = "pixtral-12b-2409";
 pub const MISTRAL_NEMO: &str = "open-mistral-nemo";
@@ -394,13 +395,22 @@ impl completion::CompletionModel for CompletionModel {
     ) -> Result<completion::CompletionResponse<CompletionResponse>, CompletionError> {
         let request = self.create_completion_request(completion_request)?;
 
-        let request_body = serde_json::to_vec(&request)
-            .map_err(|e| CompletionError::ProviderError(format!("Failed to serialize request: {}", e)))?;
+        let request_body = serde_json::to_vec(&request).map_err(|e| {
+            CompletionError::ProviderError(format!("Failed to serialize request: {}", e))
+        })?;
 
-        let http_request = self.client.post("v1/chat/completions", request_body)
-            .map_err(|e| CompletionError::ProviderError(format!("Failed to create request: {}", e)))?;
+        let http_request = self
+            .client
+            .post("v1/chat/completions", request_body)
+            .map_err(|e| {
+                CompletionError::ProviderError(format!("Failed to create request: {}", e))
+            })?;
 
-        let response = self.client.http_client.send(http_request).await
+        let response = self
+            .client
+            .http_client
+            .send(http_request)
+            .await
             .map_err(|e| CompletionError::ProviderError(format!("Request failed: {}", e)))?;
 
         if response.status().is_success() {
@@ -457,7 +467,7 @@ mod tests {
 
     #[test]
     fn test_response_deserialization() {
-        //https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post
+        // https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post
         let json_data = r#"
         {
             "id": "cmpl-e5cc70bb28c444948073e77776eb30ef",
@@ -493,7 +503,8 @@ mod tests {
             ]
         }
         "#;
-        let completion_response = serde_json::from_str::<CompletionResponse>(json_data).expect("Failed to parse completion response in test");
+        let completion_response = serde_json::from_str::<CompletionResponse>(json_data)
+            .expect("Failed to parse completion response in test");
         assert_eq!(completion_response.model, MISTRAL_SMALL);
 
         let CompletionResponse {
@@ -526,6 +537,10 @@ mod tests {
 // New CompletionProvider Implementation
 // =================================================================
 
+use arrayvec::ArrayVec;
+use cyrup_sugars::ZeroOneOrMany;
+use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage as DomainUsage};
+use fluent_ai_domain::tool::ToolDefinition;
 /// Zero-allocation Mistral completion with CompletionProvider trait and fluent_ai_http3
 ///
 /// Blazing-fast streaming completions with elegant ergonomics following the same pattern as OpenAI:
@@ -539,17 +554,18 @@ mod tests {
 ///     })
 ///     .prompt("Hello world")
 /// ```
-
 use fluent_ai_domain::{AsyncTask, spawn_async};
-use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage as DomainUsage};
-use fluent_ai_domain::{Message as DomainMessage, Document};
-use fluent_ai_domain::tool::ToolDefinition;
-use crate::{AsyncStream, completion_provider::{CompletionProvider, CompletionError as ProviderError, ModelConfig, ModelInfo, ChunkHandler}};
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
-use serde::{Serialize, Deserialize};
+use fluent_ai_domain::{Document, Message as DomainMessage};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use arrayvec::ArrayVec;
-use cyrup_sugars::ZeroOneOrMany;
+
+use crate::{
+    AsyncStream,
+    completion_provider::{
+        ChunkHandler, CompletionError as ProviderError, CompletionProvider, ModelConfig, ModelInfo,
+    },
+};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -679,7 +695,7 @@ impl CompletionProvider for MistralCompletionBuilder {
     fn new(api_key: String, model_name: &'static str) -> Result<Self, ProviderError> {
         let client = HttpClient::with_config(HttpConfig::streaming_optimized())
             .map_err(|_| ProviderError::HttpError)?;
-        
+
         // For now, use a default config - this should be replaced with actual model config lookup
         let config = &ModelConfig {
             max_tokens: 2048,
@@ -723,17 +739,17 @@ impl CompletionProvider for MistralCompletionBuilder {
         self.explicit_api_key = Some(key.into());
         self
     }
-    
+
     /// Environment variable names to search for Mistral API keys (ordered by priority)
     #[inline(always)]
     fn env_api_keys(&self) -> ZeroOneOrMany<String> {
         // First found wins - search in priority order
         ZeroOneOrMany::Many(vec![
-            "MISTRAL_API_KEY".to_string(),      // Primary Mistral key
-            "MISTRALAI_API_KEY".to_string(),    // Alternative MistralAI key
+            "MISTRAL_API_KEY".to_string(),   // Primary Mistral key
+            "MISTRALAI_API_KEY".to_string(), // Alternative MistralAI key
         ])
     }
-    
+
     /// Set system prompt (overrides ModelInfo default)
     #[inline(always)]
     fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
@@ -778,16 +794,21 @@ impl CompletionProvider for MistralCompletionBuilder {
 
     /// Add chat history (ZeroOneOrMany with bounded capacity)
     #[inline(always)]
-    fn chat_history(mut self, history: ZeroOneOrMany<DomainMessage>) -> Result<Self, ProviderError> {
+    fn chat_history(
+        mut self,
+        history: ZeroOneOrMany<DomainMessage>,
+    ) -> Result<Self, ProviderError> {
         match history {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(msg) => {
-                self.chat_history.try_push(msg)
+                self.chat_history
+                    .try_push(msg)
                     .map_err(|_| ProviderError::RequestTooLarge)?;
-            },
+            }
             ZeroOneOrMany::Many(msgs) => {
                 for msg in msgs {
-                    self.chat_history.try_push(msg)
+                    self.chat_history
+                        .try_push(msg)
                         .map_err(|_| ProviderError::RequestTooLarge)?;
                 }
             }
@@ -799,14 +820,16 @@ impl CompletionProvider for MistralCompletionBuilder {
     #[inline(always)]
     fn documents(mut self, docs: ZeroOneOrMany<Document>) -> Result<Self, ProviderError> {
         match docs {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(doc) => {
-                self.documents.try_push(doc)
+                self.documents
+                    .try_push(doc)
                     .map_err(|_| ProviderError::RequestTooLarge)?;
-            },
+            }
             ZeroOneOrMany::Many(documents) => {
                 for doc in documents {
-                    self.documents.try_push(doc)
+                    self.documents
+                        .try_push(doc)
                         .map_err(|_| ProviderError::RequestTooLarge)?;
                 }
             }
@@ -818,14 +841,16 @@ impl CompletionProvider for MistralCompletionBuilder {
     #[inline(always)]
     fn tools(mut self, tools: ZeroOneOrMany<ToolDefinition>) -> Result<Self, ProviderError> {
         match tools {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(tool) => {
-                self.tools.try_push(tool)
+                self.tools
+                    .try_push(tool)
                     .map_err(|_| ProviderError::RequestTooLarge)?;
-            },
+            }
             ZeroOneOrMany::Many(tool_list) => {
                 for tool in tool_list {
-                    self.tools.try_push(tool)
+                    self.tools
+                        .try_push(tool)
                         .map_err(|_| ProviderError::RequestTooLarge)?;
                 }
             }
@@ -842,14 +867,14 @@ impl CompletionProvider for MistralCompletionBuilder {
 
     /// Set chunk handler with cyrup_sugars pattern matching syntax
     #[inline(always)]
-    fn on_chunk<F>(mut self, handler: F) -> Self 
+    fn on_chunk<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<CompletionChunk, ProviderError>) + Send + Sync + 'static,
     {
         self.chunk_handler = Some(Box::new(handler));
         self
     }
-    
+
     /// Terminal action - execute completion with user prompt (blazing-fast streaming)
     #[inline(always)]
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
@@ -905,21 +930,21 @@ impl MistralCompletionBuilder {
         prompt: String,
     ) -> Result<AsyncStream<Result<CompletionChunk, ProviderError>>, ProviderError> {
         let request_body = self.build_request(&prompt)?;
-        let body_bytes = serde_json::to_vec(&request_body)
-            .map_err(|_| ProviderError::ParseError)?;
+        let body_bytes =
+            serde_json::to_vec(&request_body).map_err(|_| ProviderError::ParseError)?;
 
         // Use explicit API key if set, otherwise use discovered key
         let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
-        
-        let request = HttpRequest::post(
-            &format!("{}/chat/completions", self.base_url),
-            body_bytes,
-        )
-        .map_err(|_| ProviderError::HttpError)?
-        .header("Content-Type", "application/json")
-        .header("Authorization", &format!("Bearer {}", auth_key));
 
-        let response = self.client.send(request).await
+        let request = HttpRequest::post(&format!("{}/chat/completions", self.base_url), body_bytes)
+            .map_err(|_| ProviderError::HttpError)?
+            .header("Content-Type", "application/json")
+            .header("Authorization", &format!("Bearer {}", auth_key));
+
+        let response = self
+            .client
+            .send(request)
+            .await
             .map_err(|_| ProviderError::HttpError)?;
 
         if !response.status().is_success() {
@@ -937,7 +962,7 @@ impl MistralCompletionBuilder {
         spawn_async(async move {
             use futures_util::StreamExt;
             let mut sse_stream = sse_stream;
-            
+
             while let Some(event) = sse_stream.next().await {
                 match event {
                     Ok(sse_event) => {
@@ -978,36 +1003,43 @@ impl MistralCompletionBuilder {
 
         // Add system prompt (always present from ModelInfo)
         if !self.system_prompt.is_empty() {
-            messages.try_push(MistralMessage {
-                role: "system",
-                content: Some(&self.system_prompt),
-                tool_calls: None,
-            }).map_err(|_| ProviderError::RequestTooLarge)?;
+            messages
+                .try_push(MistralMessage {
+                    role: "system",
+                    content: Some(&self.system_prompt),
+                    tool_calls: None,
+                })
+                .map_err(|_| ProviderError::RequestTooLarge)?;
         }
 
         // Add documents as context (zero allocation conversion)
         for doc in &self.documents {
             let content = format!("Document: {}", doc.content());
-            messages.try_push(MistralMessage {
-                role: "user", 
-                content: Some(Box::leak(content.into_boxed_str())),
-                tool_calls: None,
-            }).map_err(|_| ProviderError::RequestTooLarge)?;
+            messages
+                .try_push(MistralMessage {
+                    role: "user",
+                    content: Some(Box::leak(content.into_boxed_str())),
+                    tool_calls: None,
+                })
+                .map_err(|_| ProviderError::RequestTooLarge)?;
         }
 
         // Add chat history (zero allocation domain conversion)
         for msg in &self.chat_history {
             let mistral_msg = self.convert_domain_message(msg)?;
-            messages.try_push(mistral_msg)
+            messages
+                .try_push(mistral_msg)
                 .map_err(|_| ProviderError::RequestTooLarge)?;
         }
 
         // Add user prompt
-        messages.try_push(MistralMessage {
-            role: "user",
-            content: Some(prompt),
-            tool_calls: None,
-        }).map_err(|_| ProviderError::RequestTooLarge)?;
+        messages
+            .try_push(MistralMessage {
+                role: "user",
+                content: Some(prompt),
+                tool_calls: None,
+            })
+            .map_err(|_| ProviderError::RequestTooLarge)?;
 
         let tools = if self.tools.is_empty() {
             None
@@ -1030,12 +1062,14 @@ impl MistralCompletionBuilder {
 
     /// Convert domain Message to Mistral format (zero allocation)
     #[inline(always)]
-    fn convert_domain_message(&self, msg: &DomainMessage) -> Result<MistralMessage<'_>, ProviderError> {
+    fn convert_domain_message(
+        &self,
+        msg: &DomainMessage,
+    ) -> Result<MistralMessage<'_>, ProviderError> {
         // Complete domain type conversion without TODOs
         match msg.role() {
             fluent_ai_domain::message::MessageRole::User => {
-                let content = msg.content().text()
-                    .ok_or(ProviderError::ParseError)?;
+                let content = msg.content().text().ok_or(ProviderError::ParseError)?;
                 Ok(MistralMessage {
                     role: "user",
                     content: Some(content),
@@ -1056,8 +1090,7 @@ impl MistralCompletionBuilder {
                 })
             }
             fluent_ai_domain::message::MessageRole::System => {
-                let content = msg.content().text()
-                    .ok_or(ProviderError::ParseError)?;
+                let content = msg.content().text().ok_or(ProviderError::ParseError)?;
                 Ok(MistralMessage {
                     role: "system",
                     content: Some(content),
@@ -1069,21 +1102,26 @@ impl MistralCompletionBuilder {
 
     /// Convert domain tool calls to Mistral format (zero allocation)
     #[inline(always)]
-    fn convert_tool_calls(&self, msg: &DomainMessage) -> Result<ArrayVec<MistralToolCall<'_>, MAX_TOOLS>, ProviderError> {
+    fn convert_tool_calls(
+        &self,
+        msg: &DomainMessage,
+    ) -> Result<ArrayVec<MistralToolCall<'_>, MAX_TOOLS>, ProviderError> {
         let mut tool_calls = ArrayVec::new();
-        
+
         for tool_call in msg.tool_calls() {
-            tool_calls.try_push(MistralToolCall {
-                id: tool_call.id(),
-                tool_type: "function",
-                function: MistralFunction {
-                    name: tool_call.function().name(),
-                    arguments: &serde_json::to_string(&tool_call.function().arguments())
-                        .map_err(|_| ProviderError::ParseError)?,
-                },
-            }).map_err(|_| ProviderError::RequestTooLarge)?;
+            tool_calls
+                .try_push(MistralToolCall {
+                    id: tool_call.id(),
+                    tool_type: "function",
+                    function: MistralFunction {
+                        name: tool_call.function().name(),
+                        arguments: &serde_json::to_string(&tool_call.function().arguments())
+                            .map_err(|_| ProviderError::ParseError)?,
+                    },
+                })
+                .map_err(|_| ProviderError::RequestTooLarge)?;
         }
-        
+
         Ok(tool_calls)
     }
 
@@ -1091,7 +1129,7 @@ impl MistralCompletionBuilder {
     #[inline(always)]
     fn convert_tools(&self) -> Result<ArrayVec<Value, MAX_TOOLS>, ProviderError> {
         let mut tools = ArrayVec::new();
-        
+
         for tool in &self.tools {
             let tool_value = serde_json::json!({
                 "type": "function",
@@ -1101,10 +1139,11 @@ impl MistralCompletionBuilder {
                     "parameters": tool.parameters()
                 }
             });
-            tools.try_push(tool_value)
+            tools
+                .try_push(tool_value)
                 .map_err(|_| ProviderError::RequestTooLarge)?;
         }
-        
+
         Ok(tools)
     }
 
@@ -1112,8 +1151,8 @@ impl MistralCompletionBuilder {
     #[inline(always)]
     fn parse_sse_chunk(data: &[u8]) -> Result<CompletionChunk, ProviderError> {
         // Fast JSON parsing from bytes using serde_json
-        let chunk: MistralStreamChunk = serde_json::from_slice(data)
-            .map_err(|_| ProviderError::ParseError)?;
+        let chunk: MistralStreamChunk =
+            serde_json::from_slice(data).map_err(|_| ProviderError::ParseError)?;
 
         match chunk.choices {
             ZeroOneOrMany::None => Ok(CompletionChunk::text("")),
@@ -1130,7 +1169,10 @@ impl MistralCompletionBuilder {
 
     /// Process choice into CompletionChunk (zero allocation)
     #[inline(always)]
-    fn process_choice(choice: &MistralChoice, usage: Option<MistralUsage>) -> Result<CompletionChunk, ProviderError> {
+    fn process_choice(
+        choice: &MistralChoice,
+        usage: Option<MistralUsage>,
+    ) -> Result<CompletionChunk, ProviderError> {
         // Handle finish reason
         if let Some(ref finish_reason) = choice.finish_reason {
             let reason = match finish_reason.as_str() {
@@ -1179,7 +1221,9 @@ impl MistralCompletionBuilder {
 
     /// Process tool call delta (zero allocation)
     #[inline(always)]
-    fn process_tool_call(tool_call: &MistralToolCallDelta) -> Result<CompletionChunk, ProviderError> {
+    fn process_tool_call(
+        tool_call: &MistralToolCallDelta,
+    ) -> Result<CompletionChunk, ProviderError> {
         if let Some(ref id) = tool_call.id {
             if let Some(ref function) = tool_call.function {
                 if let Some(ref name) = function.name {
@@ -1187,7 +1231,7 @@ impl MistralCompletionBuilder {
                 }
             }
         }
-        
+
         if let Some(ref function) = tool_call.function {
             if let Some(ref args) = function.arguments {
                 return Ok(CompletionChunk::tool_partial("", "", args));
@@ -1200,7 +1244,10 @@ impl MistralCompletionBuilder {
 
 /// Public constructor for Mistral completion builder
 #[inline(always)]
-pub fn mistral_completion_builder(api_key: String, model_name: &'static str) -> Result<MistralCompletionBuilder, ProviderError> {
+pub fn mistral_completion_builder(
+    api_key: String,
+    model_name: &'static str,
+) -> Result<MistralCompletionBuilder, ProviderError> {
     MistralCompletionBuilder::new(api_key, model_name)
 }
 
@@ -1223,19 +1270,17 @@ pub const fn available_mistral_models() -> &'static [&'static str] {
 
 #[cfg(test)]
 mod new_completion_tests {
-    use super::*;
     use cyrup_sugars::ZeroOneOrMany;
+
+    use super::*;
 
     #[test]
     fn test_new_mistral_completion_builder_creation() {
-        let builder = MistralCompletionBuilder::new(
-            "test-key".to_string(),
-            MISTRAL_LARGE,
-        );
-        
+        let builder = MistralCompletionBuilder::new("test-key".to_string(), MISTRAL_LARGE);
+
         assert!(builder.is_ok());
         let builder = builder.expect("Failed to create mistral completion builder in test");
-        
+
         // Test env_api_keys method
         let env_keys = builder.env_api_keys();
         match env_keys {
@@ -1247,22 +1292,23 @@ mod new_completion_tests {
             _ => panic!("Expected Many environment keys"),
         }
     }
-    
+
     #[test]
     fn test_new_mistral_completion_builder_api_key_override() {
-        let builder = MistralCompletionBuilder::new(
-            "original-key".to_string(),
-            MISTRAL_LARGE,
-        ).expect("Failed to create mistral completion builder in test");
-        
+        let builder = MistralCompletionBuilder::new("original-key".to_string(), MISTRAL_LARGE)
+            .expect("Failed to create mistral completion builder in test");
+
         // Test that explicit_api_key is None initially
         assert!(builder.explicit_api_key.is_none());
-        
+
         // Test api_key method
         let builder_with_override = builder.api_key("override-key");
-        assert_eq!(builder_with_override.explicit_api_key, Some("override-key".to_string()));
+        assert_eq!(
+            builder_with_override.explicit_api_key,
+            Some("override-key".to_string())
+        );
     }
-    
+
     #[test]
     fn test_available_mistral_models() {
         let models = available_mistral_models();
@@ -1271,14 +1317,11 @@ mod new_completion_tests {
         assert!(models.contains(&MISTRAL_SMALL));
         assert!(models.contains(&CODESTRAL));
     }
-    
+
     #[test]
     fn test_mistral_completion_builder_constructor() {
-        let builder = mistral_completion_builder(
-            "test-key".to_string(),
-            MISTRAL_LARGE,
-        );
-        
+        let builder = mistral_completion_builder("test-key".to_string(), MISTRAL_LARGE);
+
         assert!(builder.is_ok());
     }
 }

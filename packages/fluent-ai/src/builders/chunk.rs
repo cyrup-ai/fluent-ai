@@ -2,13 +2,14 @@
 //!
 //! Provides EXACT API syntax for chunk construction and streaming operations.
 
-use fluent_ai_domain::{
-    chunk::{DocumentChunk, ChatMessageChunk, LegacyCompletionChunk, FinishReason, Usage},
-    message::MessageRole
-};
-use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
+
+use fluent_ai_domain::{
+    chunk::{ChatMessageChunk, DocumentChunk, FinishReason, LegacyCompletionChunk, Usage},
+    message::MessageRole,
+};
+use serde_json::Value;
 
 /// Zero-allocation document chunk builder with blazing-fast construction
 pub struct DocumentChunkBuilder {

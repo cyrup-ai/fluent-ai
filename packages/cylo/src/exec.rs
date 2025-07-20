@@ -4,6 +4,7 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
+
 use tempfile::Builder as TempFileBuilder;
 use tracing::{error, info, warn};
 
@@ -12,7 +13,8 @@ use crate::error::{ExecError, Result};
 use crate::metadata::MetadataManager;
 use crate::ramdisk::get_watched_dir;
 use crate::sandbox::{
-    create_go_environment, create_node_environment, create_python_venv, create_rust_environment, safe_path_to_string
+    create_go_environment, create_node_environment, create_python_venv, create_rust_environment,
+    safe_path_to_string,
 };
 
 /// Helper function to check if any of the commands exist in path
@@ -275,7 +277,7 @@ pub fn exec_python(code: &str, config: &RamdiskConfig) -> Result<()> {
         None => {
             return Err(ExecError::CommandFailed(
                 "No Python interpreter found for execution".into(),
-            ))
+            ));
         }
     };
 
@@ -410,7 +412,7 @@ pub fn exec_bash(code: &str, config: &RamdiskConfig) -> Result<()> {
         None => {
             return Err(ExecError::CommandFailed(
                 "No Bash interpreter found for execution".into(),
-            ))
+            ));
         }
     };
 
@@ -426,14 +428,8 @@ pub fn exec_bash(code: &str, config: &RamdiskConfig) -> Result<()> {
     let mut safe_env = std::collections::HashMap::new();
     safe_env.insert("PATH".to_string(), "/usr/bin:/bin".to_string());
     let watched_dir_str = safe_path_to_string(&watched_dir)?;
-    safe_env.insert(
-        "HOME".to_string(),
-        watched_dir_str.clone(),
-    );
-    safe_env.insert(
-        "TEMP".to_string(),
-        watched_dir_str.clone(),
-    );
+    safe_env.insert("HOME".to_string(), watched_dir_str.clone());
+    safe_env.insert("TEMP".to_string(), watched_dir_str.clone());
     safe_env.insert("TMP".to_string(), watched_dir_str);
 
     // Apply the safe environment

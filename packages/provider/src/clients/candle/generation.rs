@@ -4,14 +4,15 @@
 //! atomic statistics tracking, and memory-efficient token processing.
 
 use std::collections::VecDeque;
-use smallvec::SmallVec;
+
 use arrayvec::ArrayVec;
 use crossbeam_utils::atomic::AtomicCell;
 use rand::prelude::*;
 use rand_pcg::Pcg64Mcg;
+use smallvec::SmallVec;
 
-use super::models::CandleModel;
 use super::error::{CandleError, CandleResult};
+use super::models::CandleModel;
 use super::tokenizer::SpecialTokens;
 
 /// Maximum vocabulary size for efficient processing
@@ -111,7 +112,7 @@ impl SamplingConfig {
             deterministic: false,
         }
     }
-    
+
     /// Create a focused configuration for deterministic, coherent text
     pub fn focused(temperature: f32, top_k: u32) -> Self {
         Self {
@@ -127,7 +128,7 @@ impl SamplingConfig {
             deterministic: temperature < 0.1,
         }
     }
-    
+
     /// Create a creative configuration for diverse, exploratory text
     pub fn creative(temperature: f32, top_p: f32) -> Self {
         Self {
@@ -143,7 +144,7 @@ impl SamplingConfig {
             deterministic: false,
         }
     }
-    
+
     /// Create a deterministic configuration with fixed seed
     pub fn deterministic(seed: u64) -> Self {
         Self {
@@ -159,7 +160,7 @@ impl SamplingConfig {
             deterministic: true,
         }
     }
-    
+
     /// Validate configuration parameters
     pub fn validate(&self) -> CandleResult<()> {
         if self.temperature < 0.0 {
@@ -169,7 +170,7 @@ impl SamplingConfig {
                 ">= 0.0",
             ));
         }
-        
+
         if self.top_k == 0 {
             return Err(CandleError::config(
                 "Top-k must be positive",
@@ -177,7 +178,7 @@ impl SamplingConfig {
                 "> 0",
             ));
         }
-        
+
         if self.top_p <= 0.0 || self.top_p > 1.0 {
             return Err(CandleError::config(
                 "Top-p must be in range (0.0, 1.0]",
@@ -185,7 +186,7 @@ impl SamplingConfig {
                 "0.0 < top_p <= 1.0",
             ));
         }
-        
+
         if self.repetition_penalty <= 0.0 {
             return Err(CandleError::config(
                 "Repetition penalty must be positive",
@@ -193,7 +194,7 @@ impl SamplingConfig {
                 "> 0.0",
             ));
         }
-        
+
         if self.min_prob_threshold < 0.0 || self.min_prob_threshold >= 1.0 {
             return Err(CandleError::config(
                 "Minimum probability threshold must be in range [0.0, 1.0)",
@@ -201,10 +202,10 @@ impl SamplingConfig {
                 "0.0 <= threshold < 1.0",
             ));
         }
-        
+
         Ok(())
     }
-    
+
     /// Check if configuration is deterministic
     pub fn is_deterministic(&self) -> bool {
         self.deterministic || self.temperature < 1e-6
@@ -234,15 +235,15 @@ impl TokenHistory {
             max_length,
         }
     }
-    
+
     /// Add a new token to history
     fn add_token(&mut self, token_id: u32) {
         // Add to frequency map
         *self.frequency_map.entry(token_id).or_insert(0) += 1;
-        
+
         // Add to presence set
         self.presence_set.insert(token_id);
-        
+
         // Add to token sequence
         if self.tokens.len() >= self.max_length {
             if let Some(old_token) = self.tokens.pop_front() {
@@ -256,30 +257,25 @@ impl TokenHistory {
                 }
             }
         }
-        
+
         self.tokens.push_back(token_id);
     }
-    
+
     /// Get frequency of a token
     fn get_frequency(&self, token_id: u32) -> u32 {
         self.frequency_map.get(&token_id).copied().unwrap_or(0)
     }
-    
+
     /// Check if token is present in history
     fn contains(&self, token_id: u32) -> bool {
         self.presence_set.contains(&token_id)
     }
-    
+
     /// Get recent tokens for context
     fn recent_tokens(&self, count: usize) -> Vec<u32> {
-        self.tokens
-            .iter()
-            .rev()
-            .take(count)
-            .copied()
-            .collect()
+        self.tokens.iter().rev().take(count).copied().collect()
     }
-    
+
     /// Clear all history
     fn clear(&mut self) {
         self.tokens.clear();
@@ -309,7 +305,7 @@ impl TextGenerator {
     /// Create a new text generator
     pub fn new(model: CandleModel, config: SamplingConfig) -> CandleResult<Self> {
         config.validate()?;
-        
+
         let seed = config.seed.unwrap_or_else(|| {
             use std::time::{SystemTime, UNIX_EPOCH};
             SystemTime::now()
@@ -317,10 +313,10 @@ impl TextGenerator {
                 .unwrap_or_default()
                 .as_nanos() as u64
         });
-        
+
         let rng = Pcg64Mcg::seed_from_u64(seed);
         let token_history = TokenHistory::new(1024); // Keep track of last 1024 tokens
-        
+
         Ok(Self {
             model,
             config,
@@ -330,9 +326,13 @@ impl TextGenerator {
             prob_cache: ArrayVec::new(),
         })
     }
-    
+
     /// Sample the next token from logits using configured sampling strategy
-    pub fn sample_token(&mut self, logits: &LogitsBuffer, context_tokens: &[u32]) -> CandleResult<u32> {
+    pub fn sample_token(
+        &mut self,
+        logits: &LogitsBuffer,
+        context_tokens: &[u32],
+    ) -> CandleResult<u32> {
         if logits.is_empty() {
             return Err(CandleError::generation(
                 "Empty logits buffer",
@@ -340,56 +340,66 @@ impl TextGenerator {
                 "non-empty logits",
             ));
         }
-        
+
         // Update statistics
-        self.stats.total_sampling_calls.store(
-            self.stats.total_sampling_calls.load() + 1
-        );
-        
+        self.stats
+            .total_sampling_calls
+            .store(self.stats.total_sampling_calls.load() + 1);
+
         // Apply penalties to logits
         let mut adjusted_logits = self.apply_penalties(logits, context_tokens)?;
-        
+
         // Apply temperature scaling
         if self.config.temperature > 0.0 && !self.config.is_deterministic() {
             for logit in &mut adjusted_logits {
                 *logit /= self.config.temperature;
             }
         }
-        
+
         // Convert logits to probabilities
         self.prob_cache.clear();
-        let max_logit = adjusted_logits.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
-        
+        let max_logit = adjusted_logits
+            .iter()
+            .fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+
         let mut sum_exp = 0.0f32;
         for (token_id, &logit) in adjusted_logits.iter().enumerate() {
             let exp_logit = (logit - max_logit).exp();
             sum_exp += exp_logit;
-            
-            if self.prob_cache.try_push(TokenProb::new(
-                token_id as u32,
-                logit - max_logit,
-                exp_logit,
-            )).is_err() {
+
+            if self
+                .prob_cache
+                .try_push(TokenProb::new(
+                    token_id as u32,
+                    logit - max_logit,
+                    exp_logit,
+                ))
+                .is_err()
+            {
                 break; // Cache full, use what we have
             }
         }
-        
+
         // Normalize probabilities
         for prob in &mut self.prob_cache {
             prob.prob /= sum_exp;
         }
-        
+
         // Sort by probability for top-k/top-p sampling
-        self.prob_cache.sort_by(|a, b| b.prob.partial_cmp(&a.prob).unwrap_or(std::cmp::Ordering::Equal));
-        
+        self.prob_cache.sort_by(|a, b| {
+            b.prob
+                .partial_cmp(&a.prob)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
         // Apply top-k filtering
         let k_limit = (self.config.top_k as usize).min(self.prob_cache.len());
         self.prob_cache.truncate(k_limit);
-        
+
         // Apply top-p (nucleus) filtering
         let mut cumulative_prob = 0.0f32;
         let mut p_cutoff = self.prob_cache.len();
-        
+
         for (i, prob) in self.prob_cache.iter().enumerate() {
             cumulative_prob += prob.prob;
             if cumulative_prob >= self.config.top_p {
@@ -397,12 +407,13 @@ impl TextGenerator {
                 break;
             }
         }
-        
+
         self.prob_cache.truncate(p_cutoff);
-        
+
         // Filter by minimum probability threshold
-        self.prob_cache.retain(|prob| prob.prob >= self.config.min_prob_threshold);
-        
+        self.prob_cache
+            .retain(|prob| prob.prob >= self.config.min_prob_threshold);
+
         if self.prob_cache.is_empty() {
             return Err(CandleError::generation(
                 "No valid tokens after filtering",
@@ -410,7 +421,7 @@ impl TextGenerator {
                 "valid sampling candidates",
             ));
         }
-        
+
         // Sample token
         let selected_token = if self.config.is_deterministic() {
             // Deterministic: select highest probability token
@@ -419,19 +430,19 @@ impl TextGenerator {
             // Stochastic: sample according to probability distribution
             self.sample_from_distribution()?
         };
-        
+
         // Update token history
         self.token_history.add_token(selected_token);
-        
+
         // Update statistics
-        self.stats.total_tokens_generated.store(
-            self.stats.total_tokens_generated.load() + 1
-        );
-        
+        self.stats
+            .total_tokens_generated
+            .store(self.stats.total_tokens_generated.load() + 1);
+
         let candidates = self.prob_cache.len() as u32;
         let avg_candidates = self.stats.avg_sampling_candidates.load();
         let total_calls = self.stats.total_sampling_calls.load();
-        
+
         // Update rolling average of sampling candidates
         let new_avg = if total_calls > 1 {
             (avg_candidates * (total_calls - 1) as f32 + candidates as f32) / total_calls as f32
@@ -439,14 +450,18 @@ impl TextGenerator {
             candidates as f32
         };
         self.stats.avg_sampling_candidates.store(new_avg);
-        
+
         Ok(selected_token)
     }
-    
+
     /// Apply repetition and other penalties to logits
-    fn apply_penalties(&self, logits: &LogitsBuffer, context_tokens: &[u32]) -> CandleResult<LogitsBuffer> {
+    fn apply_penalties(
+        &self,
+        logits: &LogitsBuffer,
+        context_tokens: &[u32],
+    ) -> CandleResult<LogitsBuffer> {
         let mut adjusted_logits = logits.clone();
-        
+
         // Apply repetition penalty
         if self.config.repetition_penalty != 1.0 && !context_tokens.is_empty() {
             let recent_tokens = if context_tokens.len() > 64 {
@@ -454,7 +469,7 @@ impl TextGenerator {
             } else {
                 context_tokens
             };
-            
+
             for &token_id in recent_tokens {
                 if let Some(logit) = adjusted_logits.get_mut(token_id as usize) {
                     if *logit > 0.0 {
@@ -465,7 +480,7 @@ impl TextGenerator {
                 }
             }
         }
-        
+
         // Apply frequency penalty
         if self.config.frequency_penalty != 0.0 {
             for (token_id, logit) in adjusted_logits.iter_mut().enumerate() {
@@ -475,7 +490,7 @@ impl TextGenerator {
                 }
             }
         }
-        
+
         // Apply presence penalty
         if self.config.presence_penalty != 0.0 {
             for (token_id, logit) in adjusted_logits.iter_mut().enumerate() {
@@ -484,15 +499,15 @@ impl TextGenerator {
                 }
             }
         }
-        
+
         Ok(adjusted_logits)
     }
-    
+
     /// Sample token from probability distribution
     fn sample_from_distribution(&mut self) -> CandleResult<u32> {
         // Renormalize probabilities after filtering
         let total_prob: f32 = self.prob_cache.iter().map(|p| p.prob).sum();
-        
+
         if total_prob <= 0.0 {
             return Err(CandleError::generation(
                 "Invalid probability distribution",
@@ -500,20 +515,20 @@ impl TextGenerator {
                 "positive probabilities",
             ));
         }
-        
-        let mut target = self.rng.gen::<f32>() * total_prob;
-        
+
+        let mut target = self.rng.r#gen::<f32>() * total_prob;
+
         for prob in &self.prob_cache {
             target -= prob.prob;
             if target <= 0.0 {
                 return Ok(prob.token_id);
             }
         }
-        
+
         // Fallback: return last token (should not happen with valid probabilities)
         Ok(self.prob_cache.last().unwrap().token_id)
     }
-    
+
     /// Check if generation should stop
     pub fn should_stop(&self, token_id: u32, special_tokens: &SpecialTokens) -> bool {
         // Check for EOS token
@@ -522,21 +537,21 @@ impl TextGenerator {
                 return true;
             }
         }
-        
+
         // Check for other stop tokens
-        special_tokens.is_special_token(token_id) && 
-        special_tokens.token_name(token_id) == Some("<EOS>")
+        special_tokens.is_special_token(token_id)
+            && special_tokens.token_name(token_id) == Some("<EOS>")
     }
-    
+
     /// Get current sampling configuration
     pub fn config(&self) -> &SamplingConfig {
         &self.config
     }
-    
+
     /// Update sampling configuration
     pub fn update_config(&mut self, new_config: SamplingConfig) -> CandleResult<()> {
         new_config.validate()?;
-        
+
         // Update RNG seed if changed
         if new_config.seed != self.config.seed {
             let seed = new_config.seed.unwrap_or_else(|| {
@@ -548,18 +563,18 @@ impl TextGenerator {
             });
             self.rng = Pcg64Mcg::seed_from_u64(seed);
         }
-        
+
         self.config = new_config;
         Ok(())
     }
-    
+
     /// Reset token history and statistics
     pub fn reset(&mut self) {
         self.token_history.clear();
         self.stats = GenerationStatistics::default();
         self.prob_cache.clear();
     }
-    
+
     /// Get generation statistics
     pub fn statistics(&self) -> GenerationStatistics {
         GenerationStatistics {
@@ -604,14 +619,10 @@ impl GenerationStatistics {
     pub fn tokens_per_call(&self) -> f32 {
         let tokens = self.total_tokens_generated.load() as f32;
         let calls = self.total_sampling_calls.load() as f32;
-        
-        if calls > 0.0 {
-            tokens / calls
-        } else {
-            0.0
-        }
+
+        if calls > 0.0 { tokens / calls } else { 0.0 }
     }
-    
+
     /// Get effective sampling diversity (lower values = more focused)
     pub fn sampling_diversity(&self) -> f32 {
         let avg_candidates = self.avg_sampling_candidates.load();
@@ -622,19 +633,19 @@ impl GenerationStatistics {
             CandleModel::Phi3_Mini => 32064.0,
             CandleModel::Gemma_2B | CandleModel::Gemma_7B => 256000.0,
         };
-        
+
         if vocab_size > 0.0 {
             avg_candidates / vocab_size
         } else {
             0.0
         }
     }
-    
+
     /// Check if generation is running efficiently
     pub fn is_efficient(&self) -> bool {
         let tokens_per_call = self.tokens_per_call();
         let diversity = self.sampling_diversity();
-        
+
         // Efficient if close to 1 token per call and reasonable diversity
         tokens_per_call >= 0.9 && diversity > 0.001 && diversity < 0.5
     }
@@ -650,11 +661,11 @@ mod tests {
         assert!(config.validate().is_ok());
         assert_eq!(config.temperature, 0.7);
         assert_eq!(config.top_k, 40);
-        
+
         let focused = SamplingConfig::focused(0.1, 10);
         assert!(focused.validate().is_ok());
         assert!(focused.is_deterministic());
-        
+
         let creative = SamplingConfig::creative(1.2, 0.85);
         assert!(creative.validate().is_ok());
         assert!(!creative.is_deterministic());
@@ -665,23 +676,23 @@ mod tests {
         let config = SamplingConfig::balanced();
         let generator = TextGenerator::new(CandleModel::Mistral_7B, config);
         assert!(generator.is_ok());
-        
-        let gen = generator.unwrap();
-        assert_eq!(gen.model, CandleModel::Mistral_7B);
+
+        let generator_instance = generator.unwrap();
+        assert_eq!(generator_instance.model, CandleModel::Mistral_7B);
     }
 
     #[test]
     fn test_token_history() {
         let mut history = TokenHistory::new(5);
-        
+
         for i in 0..10 {
             history.add_token(i);
         }
-        
+
         // Should only keep last 5 tokens
         assert_eq!(history.tokens.len(), 5);
         assert_eq!(history.recent_tokens(3), vec![9, 8, 7]);
-        
+
         // Frequency should be tracked correctly
         assert_eq!(history.get_frequency(9), 1);
         assert_eq!(history.get_frequency(0), 0); // Evicted
@@ -691,7 +702,7 @@ mod tests {
     fn test_logits_buffer() {
         let mut logits = LogitsBuffer::new();
         logits.extend_from_slice(&[1.0, 2.0, 3.0, 0.5]);
-        
+
         assert_eq!(logits.len(), 4);
         assert_eq!(logits[2], 3.0);
     }
@@ -703,9 +714,9 @@ mod tests {
             TokenProb::new(1, 2.0, 0.5),
             TokenProb::new(2, 0.5, 0.1),
         ];
-        
+
         probs.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        
+
         // Should be sorted by probability in descending order
         assert_eq!(probs[0].token_id, 1); // Highest prob (0.5)
         assert_eq!(probs[1].token_id, 0); // Medium prob (0.2)

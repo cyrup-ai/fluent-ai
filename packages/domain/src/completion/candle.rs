@@ -35,24 +35,24 @@ pub const MAX_TOKEN_BUFFER: usize = 2048;
 #[repr(C, align(64))]
 pub struct CacheAligned<T>(pub T);
 
-/// Zero-allocation completion errors with atomic error tracking
+/// Completion errors with comprehensive error tracking
 #[derive(Debug, Clone, Error, PartialEq)]
 pub enum CompletionCoreError {
     /// Invalid request parameters
     #[error("Invalid request: {0}")]
-    InvalidRequest(&'static str),
+    InvalidRequest(String),
     /// Model loading failed
     #[error("Model loading failed: {0}")]
-    ModelLoadingFailed(&'static str),
+    ModelLoadingFailed(String),
     /// Generation failed
     #[error("Generation failed: {0}")]
-    GenerationFailed(&'static str),
+    GenerationFailed(String),
     /// Context length exceeded
     #[error("Context length exceeded: current {current}, max {max}")]
     ContextLengthExceeded { current: u32, max: u32 },
     /// Provider unavailable
     #[error("Provider unavailable: {0}")]
-    ProviderUnavailable(&'static str),
+    ProviderUnavailable(String),
     /// Rate limit exceeded
     #[error("Rate limit exceeded")]
     RateLimitExceeded,
@@ -61,7 +61,7 @@ pub enum CompletionCoreError {
     Timeout,
     /// Internal error
     #[error("Internal error: {0}")]
-    Internal(&'static str),
+    Internal(String),
 }
 
 /// Result type for completion operations
@@ -219,11 +219,15 @@ impl<'a> CompletionCoreRequestBuilder<'a> {
     #[inline(always)]
     pub fn build(self) -> CompletionCoreResult<CompletionCoreRequest<'a>> {
         if self.prompt.is_empty() {
-            return Err(CompletionCoreError::InvalidRequest("prompt cannot be empty"));
+            return Err(CompletionCoreError::InvalidRequest(
+                "prompt cannot be empty",
+            ));
         }
 
         if self.max_tokens == 0 {
-            return Err(CompletionCoreError::InvalidRequest("max_tokens must be > 0"));
+            return Err(CompletionCoreError::InvalidRequest(
+                "max_tokens must be > 0",
+            ));
         }
 
         Ok(CompletionCoreRequest {
@@ -396,7 +400,9 @@ impl CompletionCoreResponseBuilder {
     #[inline(always)]
     pub fn build(self) -> CompletionCoreResult<CompletionCoreResponse> {
         if self.text.is_empty() {
-            return Err(CompletionCoreError::Internal("response text cannot be empty"));
+            return Err(CompletionCoreError::Internal(
+                "response text cannot be empty",
+            ));
         }
 
         Ok(CompletionCoreResponse {

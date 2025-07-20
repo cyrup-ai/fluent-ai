@@ -1,13 +1,14 @@
-use crossbeam_deque::{Injector, Steal, Stealer, Worker};
-use crossbeam_queue::ArrayQueue;
 use std::{
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
     thread,
     time::Duration,
 };
+
+use crossbeam_deque::{Injector, Steal, Stealer, Worker};
+use crossbeam_queue::ArrayQueue;
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
@@ -39,7 +40,8 @@ impl ThreadPool {
 
             if let Err(e) = thread::Builder::new()
                 .name(format!("rig-worker-{id}"))
-                .spawn(move || worker_loop(local, inj, stealers)) {
+                .spawn(move || worker_loop(local, inj, stealers))
+            {
                 eprintln!("Failed to spawn worker thread {}: {}", id, e);
                 // Continue with fewer workers rather than panicking
             }

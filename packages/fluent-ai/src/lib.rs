@@ -15,12 +15,11 @@
 //! The cyrup-agent crate will be deleted after this conversion is complete.
 
 pub mod async_task;
-pub use async_task::{AsyncTask, AsyncStream, spawn_async, NotResult};
-
+pub use async_task::{AsyncStream, AsyncTask, NotResult, spawn_async};
+pub use cyrup_sugars::r#async::{AsyncResult, AsyncResultChunk, FutureExt, StreamExt};
+pub use cyrup_sugars::builders::*;
 // Re-export cyrup_sugars crate items (explicit imports to avoid conflicts)
 pub use cyrup_sugars::{ByteSize, ByteSizeExt, OneOrMany, ZeroOneOrMany};
-pub use cyrup_sugars::builders::*;
-pub use cyrup_sugars::r#async::{AsyncResult, AsyncResultChunk, FutureExt, StreamExt};
 
 // mapmacro is included via sugars module
 
@@ -36,6 +35,10 @@ pub mod memory;
 pub mod middleware;
 pub mod streaming;
 pub mod workflow;
+
+// Message processing and text processing modules (moved from domain)
+pub mod message_processing;
+pub mod text_processing;
 
 // Re-export domain and provider types
 pub use fluent_ai_domain as domain;
@@ -56,8 +59,6 @@ pub mod builders;
 pub mod client;
 pub mod embedding;
 pub mod extractor;
-pub mod http;
-pub mod providers;
 pub mod runtime;
 pub mod tools;
 pub mod transcription;
@@ -77,17 +78,11 @@ pub mod message {
 
 // Re-export builders for easy access
 pub use crate::builders::{
-    AgentRoleBuilder, McpServerBuilder, Stdio,
-    AgentRoleBuilderWithHandler, AgentRoleBuilderWithChunkHandler,
-    AudioBuilder, AudioBuilderWithHandler,
-    ConversationBuilder,
-    ImageBuilder, ImageBuilderWithHandler,
-    McpClientBuilder, McpToolBuilder, McpToolImpl,
-    ModelInfoBuilder,
-    PromptBuilder,
-    SecureMcpToolBuilder,
-    VectorQueryBuilder, VectorStoreIndexExt,
-    WorkflowBuilder
+    AgentRoleBuilder, AgentRoleBuilderWithChunkHandler, AgentRoleBuilderWithHandler, AudioBuilder,
+    AudioBuilderWithHandler, ConversationBuilder, ImageBuilder, ImageBuilderWithHandler,
+    McpClientBuilder, McpServerBuilder, McpToolBuilder, McpToolImpl, ModelInfoBuilder,
+    PromptBuilder, SecureMcpToolBuilder, Stdio, VectorQueryBuilder, VectorStoreIndexExt,
+    WorkflowBuilder,
 };
 
 // Re-export embeddings module for compatibility
@@ -97,16 +92,17 @@ pub mod embeddings {
 
 // Re-export OneOrMany as one_or_many module for compatibility
 pub mod one_or_many {
-    pub use crate::OneOrMany;
-    pub use crate::ZeroOneOrMany;
-    
-    use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
     use std::convert::Infallible;
     use std::fmt;
     use std::marker::PhantomData;
     use std::str::FromStr;
+
     use serde::Deserialize;
-    
+    use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
+
+    pub use crate::OneOrMany;
+    pub use crate::ZeroOneOrMany;
+
     /// Serde deserializer for OneOrMany<T> that accepts either a single string or array
     pub fn string_or_one_or_many<'de, T, D>(deserializer: D) -> Result<OneOrMany<T>, D::Error>
     where
@@ -129,9 +125,9 @@ pub mod one_or_many {
             where
                 E: de::Error,
             {
-                Ok(OneOrMany::from(T::from_str(value).map_err(|_| {
-                    E::custom("Failed to parse string")
-                })?))
+                Ok(OneOrMany::from(
+                    T::from_str(value).map_err(|_| E::custom("Failed to parse string"))?,
+                ))
             }
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
@@ -142,7 +138,8 @@ pub mod one_or_many {
                 while let Some(item) = seq.next_element()? {
                     items.push(item);
                 }
-                OneOrMany::try_from(items).map_err(|_| de::Error::custom("Cannot create OneOrMany with empty vector"))
+                OneOrMany::try_from(items)
+                    .map_err(|_| de::Error::custom("Cannot create OneOrMany with empty vector"))
             }
         }
 
@@ -152,23 +149,23 @@ pub mod one_or_many {
 
 // Re-export commonly used sugars items
 // Re-export context marker types
+// Re-export builder implementations
+pub use builders::*;
 pub use domain::context::{Directory, File, Files, Github};
 // Re-export new Tool API
 pub use domain::tool::ExecToText;
 // Re-export domain types
 pub use domain::{
+    Audio, CompletionRequest, Document, Embedding, Image, Message, MessageChunk, MessageRole,
     audio::{AudioMediaType, ContentFormat as AudioContentFormat},
     image::{ContentFormat as ImageContentFormat, ImageDetail, ImageMediaType},
-    Audio, CompletionRequest, Document, Embedding, Image, Message, MessageChunk, MessageRole,
 };
 // Re-export traits from domain
 pub use domain::{CompletionBackend, CompletionModel};
 pub use domain::{Context, Library, NamedTool, Perplexity, Stdio, ToolV2 as Tool};
+pub use engine::{CompletionResponse, Engine, EngineRegistry, ExtractionConfig, Usage};
 // Re-export engine types
 pub use engine::{get_default_engine, get_engine, register_engine, registry, set_default_engine};
-pub use engine::{
-    CompletionResponse, Engine, EngineRegistry, ExtractionConfig, Usage,
-};
 // Memory and workflow modules are already defined above as pub mod
 
 // Macros with #[macro_export] are already available at crate root
@@ -179,8 +176,6 @@ pub use engine::{
 pub use fluent::{Ai, FluentAi};
 // Re-export from fluent_ai_provider crate
 pub use fluent_ai_provider::{Model, ModelInfoData, Models, Provider, Providers};
-// Re-export builder implementations
-pub use builders::*;
 // Note: cyrup_sugars is already re-exported at the top of the file
 
 #[cfg(test)]

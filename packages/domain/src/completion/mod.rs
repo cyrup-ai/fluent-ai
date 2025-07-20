@@ -10,18 +10,19 @@
 //! - `candle.rs` - Zero-allocation, lock-free completion system
 //! - `types.rs` - Shared types and constants
 
+pub mod candle;
 pub mod core;
 pub mod request;
 pub mod response;
-pub mod candle;
 pub mod types;
 
 // Re-export commonly used types for convenience
-pub use core::{CompletionModel, CompletionBackend};
-pub use request::{CompletionRequest, CompletionRequestBuilder, CompletionRequestError};
-pub use response::{CompletionResponse, CompletionResponseBuilder, CompactCompletionResponse};
+pub use core::{CompletionBackend, CompletionModel};
+
 pub use candle::{
-    CompletionCoreClient, CompletionCoreRequest, CompletionCoreResponse, 
-    CompletionCoreError, CompletionCoreResult, StreamingCoreResponse
+    CompletionCoreClient, CompletionCoreError, CompletionCoreRequest, CompletionCoreResponse,
+    CompletionCoreResult, StreamingCoreResponse,
 };
-pub use types::{CompletionParams, ToolDefinition, ModelParams};
+pub use request::{CompletionRequest, CompletionRequestBuilder, CompletionRequestError};
+pub use response::{CompactCompletionResponse, CompletionResponse, CompletionResponseBuilder};
+pub use types::{CompletionParams, ModelParams, ToolDefinition};

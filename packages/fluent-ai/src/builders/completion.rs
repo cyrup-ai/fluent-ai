@@ -2,9 +2,9 @@
 //!
 //! All completion request construction logic and builder patterns.
 
-use fluent_ai_domain::{AsyncTask, spawn_async, ZeroOneOrMany, Models};
 use fluent_ai_domain::completion::{CompletionRequest, ToolDefinition};
-use fluent_ai_domain::{Message, Document};
+use fluent_ai_domain::{AsyncTask, Models, ZeroOneOrMany, spawn_async};
+use fluent_ai_domain::{Document, Message};
 use serde_json::Value;
 
 pub struct CompletionRequestBuilder {
@@ -30,7 +30,8 @@ pub struct CompletionRequestBuilderWithHandler {
     chunk_size: Option<usize>,
     additional_params: Option<Value>,
     error_handler: Box<dyn Fn(String) + Send + Sync>,
-    result_handler: Option<Box<dyn FnOnce(CompletionRequest) -> CompletionRequest + Send + 'static>>,
+    result_handler:
+        Option<Box<dyn FnOnce(CompletionRequest) -> CompletionRequest + Send + 'static>>,
     chunk_handler: Option<Box<dyn FnMut(CompletionRequest) -> CompletionRequest + Send + 'static>>,
 }
 
@@ -49,7 +50,7 @@ impl CompletionRequestBuilder {
             additional_params: None,
         }
     }
-    
+
     // New method instead of duplicating impl block
     pub fn model(mut self, model: Models) -> Self {
         self.model = Some(model);
@@ -73,7 +74,7 @@ impl CompletionRequestBuilder {
             ZeroOneOrMany::Many(mut messages) => {
                 messages.push(message);
                 ZeroOneOrMany::many(messages)
-            },
+            }
         };
         self
     }
@@ -86,7 +87,7 @@ impl CompletionRequestBuilder {
             ZeroOneOrMany::Many(mut messages) => {
                 messages.push(message);
                 ZeroOneOrMany::many(messages)
-            },
+            }
         };
         self
     }
@@ -99,7 +100,7 @@ impl CompletionRequestBuilder {
             ZeroOneOrMany::Many(mut messages) => {
                 messages.push(message);
                 ZeroOneOrMany::many(messages)
-            },
+            }
         };
         self
     }
@@ -112,7 +113,7 @@ impl CompletionRequestBuilder {
             ZeroOneOrMany::Many(mut messages) => {
                 messages.push(message);
                 ZeroOneOrMany::many(messages)
-            },
+            }
         };
         self
     }
@@ -129,7 +130,7 @@ impl CompletionRequestBuilder {
             ZeroOneOrMany::Many(mut documents) => {
                 documents.push(document);
                 ZeroOneOrMany::many(documents)
-            },
+            }
         };
         self
     }
@@ -156,7 +157,7 @@ impl CompletionRequestBuilder {
             ZeroOneOrMany::Many(mut tools) => {
                 tools.push(tool);
                 ZeroOneOrMany::many(tools)
-            },
+            }
         };
         self
     }

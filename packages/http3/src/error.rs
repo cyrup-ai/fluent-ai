@@ -58,10 +58,47 @@ pub enum HttpError {
         message: String,
     },
 
+    /// Invalid URL error
+    #[error("Invalid URL '{url}': {message}")]
+    InvalidUrl {
+        /// The invalid URL
+        url: String,
+        /// Error message describing the URL issue
+        message: String,
+    },
+
+    /// Invalid response error
+    #[error("Invalid response: {message}")]
+    InvalidResponse {
+        /// Error message describing the response issue
+        message: String,
+    },
+
     /// TLS error
     #[error("TLS error: {message}")]
     TlsError {
         /// Error message describing the TLS/SSL issue
+        message: String,
+    },
+
+    /// Download interrupted error
+    #[error("Download interrupted: {message}")]
+    DownloadInterrupted {
+        /// Error message describing the download interruption
+        message: String,
+    },
+
+    /// Invalid content length error
+    #[error("Invalid content length: {message}")]
+    InvalidContentLength {
+        /// Error message describing the content length issue
+        message: String,
+    },
+
+    /// Chunk processing error
+    #[error("Chunk processing error: {message}")]
+    ChunkProcessingError {
+        /// Error message describing the chunk processing issue
         message: String,
     },
 
@@ -327,7 +364,14 @@ impl HttpError {
             HttpError::SerializationError { message } => message,
             HttpError::DeserializationError { message } => message,
             HttpError::UrlParseError { message } => message,
+            HttpError::InvalidUrl { message, .. } => message,
+            HttpError::InvalidResponse { message } => message,
             HttpError::TlsError { message } => message,
+            HttpError::DownloadInterrupted { message } => message,
+            HttpError::InvalidContentLength { message } => message,
+            HttpError::ChunkProcessingError { message } => message,
+            HttpError::InvalidContentLength { message } => message,
+            HttpError::ChunkProcessingError { message } => message,
             HttpError::ConnectionError { message } => message,
             HttpError::StreamError { message } => message,
             HttpError::CacheError { message } => message,

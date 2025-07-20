@@ -226,10 +226,7 @@ impl WriterInner<IoStandardStream> {
     ///
     /// # Returns
     /// * Configured writer inner ready for output
-    pub fn create(
-        sty: StandardStreamType,
-        choice: ColorChoice,
-    ) -> Self {
+    pub fn create(sty: StandardStreamType, choice: ColorChoice) -> Self {
         let stream = IoStandardStream::new(sty);
         if choice.should_attempt_color() {
             WriterInner::Ansi(Ansi::new(stream))

@@ -79,7 +79,7 @@ impl InfiniteOrchestrator {
         tracing::info!("Reloaded specification from {:?}", self.spec_file);
         Ok(())
     }
-    
+
     /// Get the current spec file path for debugging/logging
     pub fn spec_file_path(&self) -> &Path {
         &self.spec_file
@@ -159,47 +159,71 @@ impl InfiniteOrchestrator {
 
         loop {
             // Create iteration plan for this round
-            let best_outcome = outcomes.iter()
+            let best_outcome = outcomes
+                .iter()
                 .filter(|o| o.applied())
                 .max_by(|a, b| {
                     let a_score = match a {
-                        OptimizationOutcome::Success { performance_gain, quality_score, .. } => 
-                            *performance_gain as f64 + *quality_score as f64,
-                        OptimizationOutcome::PartialSuccess { performance_gain, quality_score, .. } => 
-                            (*performance_gain as f64 + *quality_score as f64) * 0.5,
+                        OptimizationOutcome::Success {
+                            performance_gain,
+                            quality_score,
+                            ..
+                        } => *performance_gain as f64 + *quality_score as f64,
+                        OptimizationOutcome::PartialSuccess {
+                            performance_gain,
+                            quality_score,
+                            ..
+                        } => (*performance_gain as f64 + *quality_score as f64) * 0.5,
                         _ => 0.0,
                     };
                     let b_score = match b {
-                        OptimizationOutcome::Success { performance_gain, quality_score, .. } => 
-                            *performance_gain as f64 + *quality_score as f64,
-                        OptimizationOutcome::PartialSuccess { performance_gain, quality_score, .. } => 
-                            (*performance_gain as f64 + *quality_score as f64) * 0.5,
+                        OptimizationOutcome::Success {
+                            performance_gain,
+                            quality_score,
+                            ..
+                        } => *performance_gain as f64 + *quality_score as f64,
+                        OptimizationOutcome::PartialSuccess {
+                            performance_gain,
+                            quality_score,
+                            ..
+                        } => (*performance_gain as f64 + *quality_score as f64) * 0.5,
                         _ => 0.0,
                     };
-                    a_score.partial_cmp(&b_score).unwrap_or(std::cmp::Ordering::Equal)
+                    a_score
+                        .partial_cmp(&b_score)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 })
                 .cloned();
-            
+
             let iteration_plan = IterationPlan::new(current_iter, best_outcome);
-            
+
             // Log iteration plan details for monitoring
             if let Some(performance_gain) = iteration_plan.get_performance_gain() {
-                tracing::debug!("Iteration {} planned with performance gain: {:.2}%", 
-                    iteration_plan.iteration(), performance_gain);
+                tracing::debug!(
+                    "Iteration {} planned with performance gain: {:.2}%",
+                    iteration_plan.iteration(),
+                    performance_gain
+                );
             }
-            
+
             if let Some(quality_score) = iteration_plan.get_quality_score() {
-                tracing::debug!("Iteration {} quality score: {:.2}", 
-                    iteration_plan.iteration(), quality_score);
+                tracing::debug!(
+                    "Iteration {} quality score: {:.2}",
+                    iteration_plan.iteration(),
+                    quality_score
+                );
             }
-            
+
             if let Some(improvements) = iteration_plan.get_improvements() {
                 if !improvements.is_empty() {
-                    tracing::debug!("Iteration {} improvements: {:?}", 
-                        iteration_plan.iteration(), improvements);
+                    tracing::debug!(
+                        "Iteration {} improvements: {:?}",
+                        iteration_plan.iteration(),
+                        improvements
+                    );
                 }
             }
-            
+
             // Adaptive agent count based on recent success
             let agents_per_wave =
                 if outcomes.len() > 10 && outcomes.iter().rev().take(5).all(|o| !o.applied()) {
@@ -216,28 +240,46 @@ impl InfiniteOrchestrator {
                             // Update best state if improved
                             if outcome.applied() {
                                 match &outcome {
-                                    OptimizationOutcome::Success { performance_gain, quality_score, .. } => {
+                                    OptimizationOutcome::Success {
+                                        performance_gain,
+                                        quality_score,
+                                        ..
+                                    } => {
                                         // Use performance_gain and quality_score to update metrics
-                                        let improvement_factor = (*performance_gain as f64).max(0.0) / 100.0;
-                                        let quality_factor = (*quality_score as f64).max(0.0) / 100.0;
-                                        
-                                        best_latency = best_latency * (1.0 - improvement_factor * 0.1);
-                                        best_memory = best_memory * (1.0 - improvement_factor * 0.1);
-                                        best_relevance = best_relevance * (1.0 + quality_factor * 0.1);
+                                        let improvement_factor =
+                                            (*performance_gain as f64).max(0.0) / 100.0;
+                                        let quality_factor =
+                                            (*quality_score as f64).max(0.0) / 100.0;
+
+                                        best_latency =
+                                            best_latency * (1.0 - improvement_factor * 0.1);
+                                        best_memory =
+                                            best_memory * (1.0 - improvement_factor * 0.1);
+                                        best_relevance =
+                                            best_relevance * (1.0 + quality_factor * 0.1);
 
                                         info!(
                                             "New best state: latency={:.2}, memory={:.2}, relevance={:.2}",
                                             best_latency, best_memory, best_relevance
                                         );
                                     }
-                                    OptimizationOutcome::PartialSuccess { performance_gain, quality_score, .. } => {
+                                    OptimizationOutcome::PartialSuccess {
+                                        performance_gain,
+                                        quality_score,
+                                        ..
+                                    } => {
                                         // Partial improvements are smaller
-                                        let improvement_factor = (*performance_gain as f64).max(0.0) / 200.0;
-                                        let quality_factor = (*quality_score as f64).max(0.0) / 200.0;
-                                        
-                                        best_latency = best_latency * (1.0 - improvement_factor * 0.05);
-                                        best_memory = best_memory * (1.0 - improvement_factor * 0.05);
-                                        best_relevance = best_relevance * (1.0 + quality_factor * 0.05);
+                                        let improvement_factor =
+                                            (*performance_gain as f64).max(0.0) / 200.0;
+                                        let quality_factor =
+                                            (*quality_score as f64).max(0.0) / 200.0;
+
+                                        best_latency =
+                                            best_latency * (1.0 - improvement_factor * 0.05);
+                                        best_memory =
+                                            best_memory * (1.0 - improvement_factor * 0.05);
+                                        best_relevance =
+                                            best_relevance * (1.0 + quality_factor * 0.05);
                                     }
                                     OptimizationOutcome::Failure { .. } => {
                                         // No improvements for failures
@@ -406,23 +448,30 @@ struct IterationPlan {
 impl IterationPlan {
     /// Create a new iteration plan
     fn new(iteration: u64, base_state: Option<OptimizationOutcome>) -> Self {
-        Self { iteration, base_state }
+        Self {
+            iteration,
+            base_state,
+        }
     }
-    
+
     /// Get the iteration number
     fn iteration(&self) -> u64 {
         self.iteration
     }
-    
+
     /// Get performance gain for this iteration
     fn get_performance_gain(&self) -> Option<f32> {
         self.base_state.as_ref().and_then(|state| match state {
-            OptimizationOutcome::Success { performance_gain, .. } => Some(*performance_gain),
-            OptimizationOutcome::PartialSuccess { performance_gain, .. } => Some(*performance_gain),
+            OptimizationOutcome::Success {
+                performance_gain, ..
+            } => Some(*performance_gain),
+            OptimizationOutcome::PartialSuccess {
+                performance_gain, ..
+            } => Some(*performance_gain),
             OptimizationOutcome::Failure { .. } => None,
         })
     }
-    
+
     /// Get quality score for this iteration
     #[allow(dead_code)]
     fn get_quality_score(&self) -> Option<f32> {
@@ -432,7 +481,7 @@ impl IterationPlan {
             OptimizationOutcome::Failure { .. } => None,
         })
     }
-    
+
     /// Get improvement summary for this iteration
     #[allow(dead_code)]
     fn get_improvements(&self) -> Option<&Vec<String>> {

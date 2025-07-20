@@ -134,8 +134,8 @@ impl Default for QuantumConfig {
             real_time_optimization: true,
             hardware_backend: QuantumHardwareBackend::default_simulator(),
             simulation_parameters: SimulationParameters::default(),
-            exploration_constant: 1.414, // sqrt(2) for UCB1
-            decoherence_rate: 0.01, // 1% decoherence rate
+            exploration_constant: 1.414,   // sqrt(2) for UCB1
+            decoherence_rate: 0.01,        // 1% decoherence rate
             entanglement_probability: 0.3, // 30% entanglement probability
         }
     }

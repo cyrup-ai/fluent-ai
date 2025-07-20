@@ -3,17 +3,18 @@
 //! Provides blazing-fast real-time streaming for OpenAI chat completions, function calls,
 //! and tool use with comprehensive SSE parsing and no unsafe operations.
 
-use crate::AsyncStream;
-use crate::domain::chunk::CompletionChunk;
-use super::{OpenAIError, OpenAIResult, OpenAIMessage};
-use super::tools::{
-    OpenAIToolCall as ToolsOpenAIToolCall, 
-    OpenAIFunctionCall as ToolsOpenAIFunctionCall
-};
-use crate::ZeroOneOrMany;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::SystemTime;
+
+use serde::{Deserialize, Serialize};
+
+use super::tools::{
+    OpenAIFunctionCall as ToolsOpenAIFunctionCall, OpenAIToolCall as ToolsOpenAIToolCall,
+};
+use super::{OpenAIError, OpenAIMessage, OpenAIResult};
+use crate::AsyncStream;
+use crate::ZeroOneOrMany;
+use crate::domain::chunk::CompletionChunk;
 
 /// OpenAI streaming completion chunk
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -239,9 +240,9 @@ impl SSEParser {
                 match field {
                     "event" => self.event_type = Some(value.to_string()),
                     "data" => self.data_lines.push(value.to_string()),
-                    "id" => {}, // Could store ID if needed
-                    "retry" => {}, // Could store retry if needed
-                    _ => {}, // Ignore unknown fields
+                    "id" => {}    // Could store ID if needed
+                    "retry" => {} // Could store retry if needed
+                    _ => {}       // Ignore unknown fields
                 }
             }
         }
@@ -282,7 +283,10 @@ impl StreamAccumulator {
 
     /// Process streaming chunk and update accumulator
     #[inline(always)]
-    pub fn process_chunk(&mut self, chunk: &OpenAIStreamChunk) -> OpenAIResult<Option<CompletionChunk>> {
+    pub fn process_chunk(
+        &mut self,
+        chunk: &OpenAIStreamChunk,
+    ) -> OpenAIResult<Option<CompletionChunk>> {
         self.model = chunk.model.clone();
         self.id = chunk.id.clone();
 
@@ -314,7 +318,7 @@ impl StreamAccumulator {
                 completion_tokens: u.completion_tokens,
                 total_tokens: u.total_tokens,
             });
-            
+
             let reason = match finish_reason.as_str() {
                 "stop" => Some(crate::domain::chunk::FinishReason::Stop),
                 "length" => Some(crate::domain::chunk::FinishReason::Length),
@@ -322,7 +326,7 @@ impl StreamAccumulator {
                 "tool_calls" => Some(crate::domain::chunk::FinishReason::ToolCalls),
                 _ => Some(crate::domain::chunk::FinishReason::Stop),
             };
-            
+
             CompletionChunk::Complete {
                 text: self.content.clone(),
                 finish_reason: reason,
@@ -370,7 +374,10 @@ impl StreamAccumulator {
 
     /// Process tool call deltas
     #[inline(always)]
-    fn process_tool_call_deltas(&mut self, deltas: &ZeroOneOrMany<ToolCallDelta>) -> OpenAIResult<()> {
+    fn process_tool_call_deltas(
+        &mut self,
+        deltas: &ZeroOneOrMany<ToolCallDelta>,
+    ) -> OpenAIResult<()> {
         match deltas {
             ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(delta) => {
@@ -388,12 +395,15 @@ impl StreamAccumulator {
     /// Process single tool call delta
     #[inline(always)]
     fn process_single_tool_call_delta(&mut self, delta: &ToolCallDelta) -> OpenAIResult<()> {
-        let partial_call = self.tool_calls.entry(delta.index).or_insert_with(|| PartialToolCall {
-            id: None,
-            call_type: None,
-            function_name: None,
-            function_arguments: String::with_capacity(512),
-        });
+        let partial_call = self
+            .tool_calls
+            .entry(delta.index)
+            .or_insert_with(|| PartialToolCall {
+                id: None,
+                call_type: None,
+                function_name: None,
+                function_arguments: String::with_capacity(512),
+            });
 
         // Update ID if present
         if let Some(id) = &delta.id {
@@ -421,10 +431,12 @@ impl StreamAccumulator {
     /// Process function call delta
     #[inline(always)]
     fn process_function_call_delta(&mut self, delta: &FunctionCallDelta) {
-        let function_call = self.function_call.get_or_insert_with(|| PartialFunctionCall {
-            name: None,
-            arguments: String::with_capacity(512),
-        });
+        let function_call = self
+            .function_call
+            .get_or_insert_with(|| PartialFunctionCall {
+                name: None,
+                arguments: String::with_capacity(512),
+            });
 
         if let Some(name) = &delta.name {
             function_call.name = Some(name.clone());
@@ -440,7 +452,9 @@ impl StreamAccumulator {
         let mut completed_calls = Vec::new();
 
         for (_, partial) in &self.tool_calls {
-            if let (Some(id), Some(call_type), Some(name)) = (&partial.id, &partial.call_type, &partial.function_name) {
+            if let (Some(id), Some(call_type), Some(name)) =
+                (&partial.id, &partial.call_type, &partial.function_name)
+            {
                 completed_calls.push(ToolsOpenAIToolCall {
                     id: id.clone(),
                     call_type: call_type.clone(),
@@ -478,29 +492,32 @@ impl StreamAccumulator {
                     },
                 };
                 Some(vec![messages_call])
-            },
+            }
             ZeroOneOrMany::Many(calls) => {
                 // Convert vector of tools::OpenAIToolCall to messages::OpenAIToolCall
-                let messages_calls: Vec<_> = calls.into_iter().map(|call| {
-                    crate::providers::openai::messages::OpenAIToolCall {
+                let messages_calls: Vec<_> = calls
+                    .into_iter()
+                    .map(|call| crate::providers::openai::messages::OpenAIToolCall {
                         id: call.id,
                         call_type: call.call_type,
                         function: crate::providers::openai::messages::OpenAIFunctionCall {
                             name: call.function.name,
                             arguments: call.function.arguments,
                         },
-                    }
-                }).collect();
+                    })
+                    .collect();
                 Some(messages_calls)
-            },
+            }
         };
 
         OpenAIMessage {
             role: self.role.clone().unwrap_or_else(|| "assistant".to_string()),
-            content: if self.content.is_empty() { 
-                None 
-            } else { 
-                Some(crate::providers::openai::OpenAIContent::Text(self.content.clone())) 
+            content: if self.content.is_empty() {
+                None
+            } else {
+                Some(crate::providers::openai::OpenAIContent::Text(
+                    self.content.clone(),
+                ))
             },
             name: None,
             tool_calls: tool_calls_vec,
@@ -617,7 +634,8 @@ impl StreamMetrics {
 
         // Update average chunk size
         let total_size = self.average_chunk_size * (self.chunks_processed - 1) as f32;
-        self.average_chunk_size = (total_size + chunk.id.len() as f32) / self.chunks_processed as f32;
+        self.average_chunk_size =
+            (total_size + chunk.id.len() as f32) / self.chunks_processed as f32;
 
         // Count tool calls
         match &chunk.choices {
@@ -707,7 +725,7 @@ pub fn stream_from_sse_events(events: AsyncStream<SSEEvent>) -> AsyncStream<Comp
                                 break; // Stream closed
                             }
                         }
-                        Ok(None) => {} // No chunk to yield yet
+                        Ok(None) => {}   // No chunk to yield yet
                         Err(_) => break, // Error processing chunk
                     }
                 }
@@ -741,8 +759,8 @@ pub fn optimize_stream_batching(
         while let Some(chunk) = futures_util::StreamExt::next(&mut stream_iter).await {
             batch.push(chunk);
 
-            let should_flush = batch.len() >= batch_size || 
-                last_batch_time.elapsed().unwrap_or_default().as_millis() >= timeout_ms as u128;
+            let should_flush = batch.len() >= batch_size
+                || last_batch_time.elapsed().unwrap_or_default().as_millis() >= timeout_ms as u128;
 
             if should_flush && !batch.is_empty() {
                 let batched_chunks = ZeroOneOrMany::from_vec(std::mem::take(&mut batch));

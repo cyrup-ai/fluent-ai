@@ -6,6 +6,9 @@
 
 #![allow(clippy::type_complexity)]
 
+use bytes::Bytes;
+use serde_json::json;
+
 use super::client::Client;
 use crate::{
     audio_generation::{
@@ -14,10 +17,8 @@ use crate::{
     client::AudioGenerationClient,
     runtime::{self, AsyncTask},
 };
-use bytes::Bytes;
-use serde_json::json;
 
-/* ───────────────────────────── provider model ──────────────────────────── */
+// ───────────────────────────── provider model ────────────────────────────
 
 #[derive(Clone)]
 pub struct AudioGenerationModel {
@@ -34,7 +35,7 @@ impl AudioGenerationModel {
     }
 }
 
-/* ───────────────────────────── impl AudioGenerationModel ───────────────────── */
+// ───────────────────────────── impl AudioGenerationModel ─────────────────────
 
 impl audio_generation::AudioGenerationModel for AudioGenerationModel {
     type Response = Bytes;
@@ -48,7 +49,7 @@ impl audio_generation::AudioGenerationModel for AudioGenerationModel {
     }
 }
 
-/* ───────────────────────────── internal async helpers ─────────────────── */
+// ───────────────────────────── internal async helpers ───────────────────
 
 impl AudioGenerationModel {
     async fn perform_audio_generation(
@@ -86,7 +87,7 @@ impl AudioGenerationModel {
     }
 }
 
-/* ───────────────────────────── client implementation ─────────────────── */
+// ───────────────────────────── client implementation ───────────────────
 
 impl AudioGenerationClient for Client {
     type AudioGenerationModel = AudioGenerationModel;

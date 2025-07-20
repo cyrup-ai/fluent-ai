@@ -1,5 +1,5 @@
-use std::time::{SystemTime, UNIX_EPOCH};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Cached timestamp for zero-allocation timestamp operations
 static CACHED_TIMESTAMP: AtomicU64 = AtomicU64::new(0);
@@ -40,11 +40,11 @@ pub fn get_cached_system_time() -> SystemTime {
 pub fn initialize_timestamp_cache() {
     use std::sync::Once;
     static INIT: Once = Once::new();
-    
+
     INIT.call_once(|| {
         // Initial timestamp update
         update_cached_timestamp();
-        
+
         // Start background thread for periodic updates
         std::thread::spawn(|| {
             loop {

@@ -5,11 +5,12 @@
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
 use arc_swap::ArcSwap;
-use crossbeam_utils::atomic::AtomicCell;
-use crossbeam_channel::{Sender, Receiver, bounded, unbounded, TryRecvError, TrySendError};
-use smallvec::SmallVec;
 use arrayvec::ArrayVec;
+use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError, bounded, unbounded};
+use crossbeam_utils::atomic::AtomicCell;
+use smallvec::SmallVec;
 
 use super::error::{CandleError, CandleResult};
 
@@ -40,14 +41,17 @@ pub enum FinishReason {
 impl FinishReason {
     /// Check if this represents a successful completion
     pub fn is_success(&self) -> bool {
-        matches!(self, FinishReason::Completed | FinishReason::StopToken | FinishReason::MaxLength)
+        matches!(
+            self,
+            FinishReason::Completed | FinishReason::StopToken | FinishReason::MaxLength
+        )
     }
-    
+
     /// Check if this represents an error condition
     pub fn is_error(&self) -> bool {
         matches!(self, FinishReason::Error | FinishReason::Timeout)
     }
-    
+
     /// Convert to string representation
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -87,7 +91,7 @@ impl StreamingChunk {
     pub fn new(token_id: u32, text_bytes: &[u8], token_position: u32) -> Self {
         let mut text_vec = SmallVec::new();
         text_vec.extend_from_slice(text_bytes);
-        
+
         Self {
             token_id,
             text_bytes: text_vec,
@@ -96,32 +100,33 @@ impl StreamingChunk {
             sequence_number: 0, // Will be set by streaming coordinator
         }
     }
-    
+
     /// Get text as string slice
     pub fn text(&self) -> CandleResult<&str> {
-        std::str::from_utf8(&self.text_bytes)
-            .map_err(|e| CandleError::streaming(
+        std::str::from_utf8(&self.text_bytes).map_err(|e| {
+            CandleError::streaming(
                 &format!("Invalid UTF-8 in chunk: {}", e),
                 "text",
                 "valid UTF-8 bytes",
-            ))
+            )
+        })
     }
-    
+
     /// Get text bytes
     pub fn text_bytes(&self) -> &[u8] {
         &self.text_bytes
     }
-    
+
     /// Get chunk size in bytes
     pub fn size_bytes(&self) -> usize {
         self.text_bytes.len()
     }
-    
+
     /// Check if chunk is empty
     pub fn is_empty(&self) -> bool {
         self.text_bytes.is_empty()
     }
-    
+
     /// Get age of this chunk
     pub fn age(&self) -> Duration {
         self.timestamp.elapsed()
@@ -178,7 +183,7 @@ impl StreamingConfig {
             enable_statistics: true,
         }
     }
-    
+
     /// Create configuration optimized for high throughput
     pub fn high_throughput() -> Self {
         Self {
@@ -192,12 +197,12 @@ impl StreamingConfig {
             enable_statistics: true,
         }
     }
-    
+
     /// Create configuration for balanced performance
     pub fn balanced() -> Self {
         Self::default()
     }
-    
+
     /// Validate configuration parameters
     pub fn validate(&self) -> CandleResult<()> {
         if self.max_buffer_size == 0 {
@@ -207,7 +212,7 @@ impl StreamingConfig {
                 "> 0",
             ));
         }
-        
+
         if self.max_buffer_size > 10000 {
             return Err(CandleError::config(
                 "Buffer size too large",
@@ -215,7 +220,7 @@ impl StreamingConfig {
                 "<= 10000",
             ));
         }
-        
+
         if self.min_batch_size == 0 {
             return Err(CandleError::config(
                 "Minimum batch size must be positive",
@@ -223,7 +228,7 @@ impl StreamingConfig {
                 "> 0",
             ));
         }
-        
+
         if self.max_batch_size < self.min_batch_size {
             return Err(CandleError::config(
                 "Maximum batch size must be >= minimum batch size",
@@ -231,7 +236,7 @@ impl StreamingConfig {
                 ">= min_batch_size",
             ));
         }
-        
+
         if self.chunk_timeout.is_zero() {
             return Err(CandleError::config(
                 "Chunk timeout must be positive",
@@ -239,7 +244,7 @@ impl StreamingConfig {
                 "> 0",
             ));
         }
-        
+
         if self.max_latency.is_zero() {
             return Err(CandleError::config(
                 "Maximum latency must be positive",
@@ -247,7 +252,7 @@ impl StreamingConfig {
                 "> 0",
             ));
         }
-        
+
         Ok(())
     }
 }
@@ -298,12 +303,12 @@ impl StreamingSession {
             finish_reason: None,
         }
     }
-    
+
     /// Get session duration
     fn duration(&self) -> Duration {
         self.start_time.elapsed()
     }
-    
+
     /// Calculate throughput in chunks per second
     fn chunks_per_second(&self) -> f32 {
         let duration_secs = self.duration().as_secs_f32();
@@ -313,7 +318,7 @@ impl StreamingSession {
             0.0
         }
     }
-    
+
     /// Calculate bandwidth in bytes per second
     fn bytes_per_second(&self) -> f32 {
         let duration_secs = self.duration().as_secs_f32();
@@ -375,7 +380,7 @@ impl StreamingCoordinator {
             let (s, r) = unbounded();
             (s, r)
         };
-        
+
         Self {
             config,
             session: ArcSwap::from_pointee(StreamingSession::default()),
@@ -385,27 +390,27 @@ impl StreamingCoordinator {
             flow_control: FlowControl::default(),
         }
     }
-    
+
     /// Start a new streaming session
     pub fn start_streaming(&self) -> CandleResult<u64> {
         let session_id = self.stats.total_sessions.load() + 1;
         let new_session = StreamingSession::new(session_id);
-        
+
         self.session.store(Arc::new(new_session));
         self.stats.total_sessions.store(session_id);
         self.stats.active_sessions.store(1);
-        
+
         // Reset flow control
         self.flow_control.buffer_level.store(0);
         self.flow_control.backpressure_active.store(false);
-        
+
         Ok(session_id)
     }
-    
+
     /// Send a streaming chunk
     pub fn send_chunk(&self, mut chunk: StreamingChunk) -> CandleResult<()> {
         let session = self.session.load();
-        
+
         if !session.is_active {
             return Err(CandleError::streaming(
                 "No active streaming session",
@@ -413,28 +418,30 @@ impl StreamingCoordinator {
                 "active session",
             ));
         }
-        
+
         // Set sequence number
         chunk.sequence_number = session.sequence_number + 1;
-        
+
         // Check for backpressure
         if self.config.enable_backpressure {
             match self.chunk_sender.try_send(chunk.clone()) {
                 Ok(_) => {
                     // Success - update flow control
-                    self.flow_control.buffer_level.store(
-                        self.chunk_sender.len()
-                    );
+                    self.flow_control
+                        .buffer_level
+                        .store(self.chunk_sender.len());
                     self.flow_control.backpressure_active.store(false);
                 }
                 Err(TrySendError::Full(_)) => {
                     // Backpressure - handle according to configuration
                     self.flow_control.backpressure_active.store(true);
-                    self.flow_control.last_backpressure.store(Some(Instant::now()));
-                    self.flow_control.chunks_dropped.store(
-                        self.flow_control.chunks_dropped.load() + 1
-                    );
-                    
+                    self.flow_control
+                        .last_backpressure
+                        .store(Some(Instant::now()));
+                    self.flow_control
+                        .chunks_dropped
+                        .store(self.flow_control.chunks_dropped.load() + 1);
+
                     return Err(CandleError::streaming(
                         "Streaming buffer full (backpressure)",
                         "send_chunk",
@@ -451,36 +458,33 @@ impl StreamingCoordinator {
             }
         } else {
             // No backpressure - send with blocking
-            self.chunk_sender.send(chunk.clone())
-                .map_err(|_| CandleError::streaming(
-                    "Failed to send chunk",
-                    "send_chunk",
-                    "connected receiver",
-                ))?;
+            self.chunk_sender.send(chunk.clone()).map_err(|_| {
+                CandleError::streaming("Failed to send chunk", "send_chunk", "connected receiver")
+            })?;
         }
-        
+
         // Update session state
         let mut new_session = (**session).clone();
         new_session.sequence_number += 1;
         new_session.chunks_sent += 1;
         new_session.bytes_sent += chunk.size_bytes() as u64;
         self.session.store(Arc::new(new_session));
-        
+
         // Update statistics
-        self.stats.total_chunks_sent.store(
-            self.stats.total_chunks_sent.load() + 1
-        );
-        self.stats.total_bytes_sent.store(
-            self.stats.total_bytes_sent.load() + chunk.size_bytes() as u64
-        );
-        
+        self.stats
+            .total_chunks_sent
+            .store(self.stats.total_chunks_sent.load() + 1);
+        self.stats
+            .total_bytes_sent
+            .store(self.stats.total_bytes_sent.load() + chunk.size_bytes() as u64);
+
         Ok(())
     }
-    
+
     /// End the current streaming session
     pub fn end_streaming(&self, finish_reason: FinishReason) -> CandleResult<()> {
         let current_session = self.session.load();
-        
+
         if !current_session.is_active {
             return Err(CandleError::streaming(
                 "No active streaming session to end",
@@ -488,54 +492,56 @@ impl StreamingCoordinator {
                 "active session",
             ));
         }
-        
+
         // Update session with finish reason
         let mut final_session = (**current_session).clone();
         final_session.is_active = false;
         final_session.finish_reason = Some(finish_reason);
         self.session.store(Arc::new(final_session));
-        
+
         // Update statistics
         self.stats.active_sessions.store(0);
-        
+
         if finish_reason.is_success() {
-            self.stats.successful_sessions.store(
-                self.stats.successful_sessions.load() + 1
-            );
+            self.stats
+                .successful_sessions
+                .store(self.stats.successful_sessions.load() + 1);
         } else {
-            self.stats.failed_sessions.store(
-                self.stats.failed_sessions.load() + 1
-            );
+            self.stats
+                .failed_sessions
+                .store(self.stats.failed_sessions.load() + 1);
         }
-        
+
         Ok(())
     }
-    
+
     /// Get the next chunk (consumer side)
     pub fn receive_chunk(&self) -> Result<StreamingChunk, TryRecvError> {
         let result = self.chunk_receiver.try_recv();
-        
+
         // Update flow control buffer level
-        self.flow_control.buffer_level.store(self.chunk_receiver.len());
-        
+        self.flow_control
+            .buffer_level
+            .store(self.chunk_receiver.len());
+
         if result.is_ok() {
-            self.stats.total_chunks_received.store(
-                self.stats.total_chunks_received.load() + 1
-            );
+            self.stats
+                .total_chunks_received
+                .store(self.stats.total_chunks_received.load() + 1);
         }
-        
+
         result
     }
-    
+
     /// Check if streaming session is active
     pub fn is_streaming(&self) -> bool {
         self.session.load().is_active
     }
-    
+
     /// Get current session information
     pub fn current_session(&self) -> Option<StreamingSessionInfo> {
         let session = self.session.load();
-        
+
         if session.session_id > 0 {
             Some(StreamingSessionInfo {
                 session_id: session.session_id,
@@ -551,22 +557,22 @@ impl StreamingCoordinator {
             None
         }
     }
-    
+
     /// Get current buffer level
     pub fn buffer_level(&self) -> usize {
         self.flow_control.buffer_level.load()
     }
-    
+
     /// Check if backpressure is active
     pub fn is_backpressure_active(&self) -> bool {
         self.flow_control.backpressure_active.load()
     }
-    
+
     /// Get streaming configuration
     pub fn config(&self) -> &StreamingConfig {
         &self.config
     }
-    
+
     /// Get comprehensive streaming statistics
     pub fn statistics(&self) -> StreamingStatistics {
         StreamingStatistics {
@@ -578,7 +584,11 @@ impl StreamingCoordinator {
             total_chunks_received: self.stats.total_chunks_received.load(),
             total_bytes_sent: self.stats.total_bytes_sent.load(),
             chunks_dropped: self.flow_control.chunks_dropped.load(),
-            backpressure_events: if self.flow_control.last_backpressure.load().is_some() { 1 } else { 0 },
+            backpressure_events: if self.flow_control.last_backpressure.load().is_some() {
+                1
+            } else {
+                0
+            },
             current_buffer_level: self.buffer_level(),
             is_backpressure_active: self.is_backpressure_active(),
         }
@@ -661,7 +671,7 @@ impl StreamingStatistics {
             0.0
         }
     }
-    
+
     /// Calculate chunk delivery rate
     pub fn delivery_rate(&self) -> f32 {
         let sent = self.total_chunks_sent.load();
@@ -671,7 +681,7 @@ impl StreamingStatistics {
             0.0
         }
     }
-    
+
     /// Calculate drop rate due to backpressure
     pub fn drop_rate(&self) -> f32 {
         let total_attempted = self.total_chunks_sent.load() + self.chunks_dropped.load();
@@ -681,7 +691,7 @@ impl StreamingStatistics {
             0.0
         }
     }
-    
+
     /// Get average bytes per chunk
     pub fn avg_bytes_per_chunk(&self) -> f32 {
         let chunks = self.total_chunks_sent.load();
@@ -691,13 +701,13 @@ impl StreamingStatistics {
             0.0
         }
     }
-    
+
     /// Check if streaming is performing well
     pub fn is_healthy(&self) -> bool {
         let success_rate = self.success_rate();
         let delivery_rate = self.delivery_rate();
         let drop_rate = self.drop_rate();
-        
+
         success_rate >= 0.95 && delivery_rate >= 0.98 && drop_rate <= 0.02
     }
 }
@@ -706,10 +716,10 @@ impl StreamingStatistics {
 pub trait TokenStreamer {
     /// Handle a streaming chunk
     fn handle_chunk(&mut self, chunk: StreamingChunk) -> CandleResult<()>;
-    
+
     /// Handle session completion
     fn handle_completion(&mut self, session_info: StreamingSessionInfo) -> CandleResult<()>;
-    
+
     /// Handle streaming error
     fn handle_error(&mut self, error: CandleError) -> CandleResult<()>;
 }
@@ -733,12 +743,12 @@ impl TokenStreamer for TextAccumulator {
         self.bytes_received += chunk.size_bytes();
         Ok(())
     }
-    
+
     fn handle_completion(&mut self, _session_info: StreamingSessionInfo) -> CandleResult<()> {
         // Default implementation does nothing
         Ok(())
     }
-    
+
     fn handle_error(&mut self, _error: CandleError) -> CandleResult<()> {
         // Default implementation does nothing
         Ok(())
@@ -750,22 +760,22 @@ impl TextAccumulator {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     /// Get accumulated text
     pub fn text(&self) -> &str {
         &self.text
     }
-    
+
     /// Get chunk count
     pub fn chunk_count(&self) -> usize {
         self.chunk_count
     }
-    
+
     /// Get bytes received
     pub fn bytes_received(&self) -> usize {
         self.bytes_received
     }
-    
+
     /// Clear accumulated data
     pub fn clear(&mut self) {
         self.text.clear();
@@ -791,7 +801,7 @@ mod tests {
     fn test_streaming_config_validation() {
         let config = StreamingConfig::default();
         assert!(config.validate().is_ok());
-        
+
         let mut invalid_config = config.clone();
         invalid_config.max_buffer_size = 0;
         assert!(invalid_config.validate().is_err());
@@ -801,10 +811,10 @@ mod tests {
     fn test_finish_reason_properties() {
         assert!(FinishReason::Completed.is_success());
         assert!(!FinishReason::Completed.is_error());
-        
+
         assert!(!FinishReason::Error.is_success());
         assert!(FinishReason::Error.is_error());
-        
+
         assert_eq!(FinishReason::StopToken.as_str(), "stop_token");
     }
 
@@ -812,7 +822,7 @@ mod tests {
     fn test_streaming_coordinator_creation() {
         let config = StreamingConfig::balanced();
         let coordinator = StreamingCoordinator::new(config);
-        
+
         assert!(!coordinator.is_streaming());
         assert_eq!(coordinator.buffer_level(), 0);
         assert!(!coordinator.is_backpressure_active());
@@ -822,16 +832,16 @@ mod tests {
     fn test_streaming_session_lifecycle() {
         let config = StreamingConfig::balanced();
         let coordinator = StreamingCoordinator::new(config);
-        
+
         // Start session
         let session_id = coordinator.start_streaming().unwrap();
         assert!(session_id > 0);
         assert!(coordinator.is_streaming());
-        
+
         // End session
         coordinator.end_streaming(FinishReason::Completed).unwrap();
         assert!(!coordinator.is_streaming());
-        
+
         let stats = coordinator.statistics();
         assert_eq!(stats.successful_sessions.load(), 1);
     }
@@ -839,13 +849,13 @@ mod tests {
     #[test]
     fn test_text_accumulator() {
         let mut accumulator = TextAccumulator::new();
-        
+
         let chunk1 = StreamingChunk::new(1, b"Hello", 0);
         let chunk2 = StreamingChunk::new(2, b" world", 1);
-        
+
         accumulator.handle_chunk(chunk1).unwrap();
         accumulator.handle_chunk(chunk2).unwrap();
-        
+
         assert_eq!(accumulator.text(), "Hello world");
         assert_eq!(accumulator.chunk_count(), 2);
         assert_eq!(accumulator.bytes_received(), 11);

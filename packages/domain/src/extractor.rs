@@ -10,8 +10,8 @@ use serde_json::Value;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::agent::Agent;
-use crate::chunk::CompletionChunk;
 use crate::completion::{CompletionModel, CompletionRequest, ToolDefinition};
+use crate::context::chunk::{CompletionChunk, FinishReason};
 use crate::model::Model;
 use crate::prompt::Prompt;
 use crate::{AsyncTask, ZeroOneOrMany, spawn_async};
@@ -276,11 +276,10 @@ impl CompletionModel for AgentCompletionModel {
                 prompt.content().chars().take(100).collect::<String>()
             );
 
-            let chunk = CompletionChunk {
-                content: Some(content),
-                finish_reason: Some("stop".to_string()),
+            let chunk = CompletionChunk::Complete {
+                text: content,
+                finish_reason: Some(FinishReason::Stop),
                 usage: None,
-                model: Some(format!("{:?}", agent.model)),
             };
 
             // Send the completion chunk

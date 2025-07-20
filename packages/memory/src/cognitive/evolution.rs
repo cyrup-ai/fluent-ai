@@ -297,7 +297,7 @@ impl CodeEvolution for CognitiveCodeEvolution {
                         }
                         CommitteeEvent::SteeringDecision(decision) => {
                             info!(
-                                "Committee steering: strategy={:?}, confidence={}", 
+                                "Committee steering: strategy={:?}, confidence={}",
                                 decision.strategy, decision.confidence
                             );
                         }
@@ -309,8 +309,9 @@ impl CodeEvolution for CognitiveCodeEvolution {
             // Create committee
             // Create committee config
             let committee_config = crate::cognitive::common::types::CommitteeConfig::default();
-            
-            let committee = match EvaluationCommittee::new(committee_config, event_tx.clone()).await {
+
+            let committee = match EvaluationCommittee::new(committee_config, event_tx.clone()).await
+            {
                 Ok(c) => Arc::new(c),
                 Err(e) => {
                     error!("Failed to create committee: {}", e);
@@ -558,7 +559,10 @@ impl EvolutionEngine {
         for mutation in &mutations {
             if let Err(_) = self.mutation_queue.push(mutation.clone()) {
                 // Queue is full, skip this mutation
-                tracing::warn!("Mutation queue full, skipping mutation: {}", mutation.description);
+                tracing::warn!(
+                    "Mutation queue full, skipping mutation: {}",
+                    mutation.description
+                );
             }
         }
 
@@ -738,7 +742,7 @@ impl EvolutionEngine {
     /// Evolve to the next generation
     pub async fn evolve_generation(&mut self) -> Result<EvolutionSummary, CognitiveError> {
         self.generation += 1;
-        
+
         // Create evolution summary
         let summary = EvolutionSummary {
             generation: self.generation,
@@ -749,7 +753,7 @@ impl EvolutionEngine {
             average_fitness: 0.75,
             innovations: Vec::new(),
         };
-        
+
         Ok(summary)
     }
 

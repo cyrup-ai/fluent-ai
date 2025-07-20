@@ -3,12 +3,13 @@
 //! This module provides comprehensive error types for the Candle client with cache-efficient
 //! error representations, atomic error tracking, and zero-allocation error construction.
 
-use std::sync::atomic::{AtomicU64, AtomicU32, Ordering};
 use std::fmt;
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+
 use arrayvec::ArrayString;
 use smallvec::SmallVec;
 
-use super::models::{CandleModel, CandleDevice};
+use super::models::{CandleDevice, CandleModel};
 
 /// Cache-efficient error type with atomic operation support
 #[repr(u8)]
@@ -78,7 +79,7 @@ pub enum CandleError {
         parameter: ArrayString<64>,
         constraint: ArrayString<128>,
     },
-    
+
     /// Model loading and management errors
     Model {
         context: ErrorContext,
@@ -86,7 +87,7 @@ pub enum CandleError {
         phase: ModelPhase,
         details: ArrayString<256>,
     },
-    
+
     /// Device initialization and management errors
     Device {
         context: ErrorContext,
@@ -94,7 +95,7 @@ pub enum CandleError {
         capability: ArrayString<64>,
         available: SmallVec<[CandleDevice; 4]>,
     },
-    
+
     /// Tokenization and text processing errors
     Tokenizer {
         context: ErrorContext,
@@ -102,7 +103,7 @@ pub enum CandleError {
         max_length: u32,
         encoding: ArrayString<32>,
     },
-    
+
     /// Text generation and sampling errors
     Generation {
         context: ErrorContext,
@@ -110,7 +111,7 @@ pub enum CandleError {
         sequence_length: u32,
         sampling_step: ArrayString<64>,
     },
-    
+
     /// Memory allocation and management errors
     Memory {
         context: ErrorContext,
@@ -118,7 +119,7 @@ pub enum CandleError {
         available_bytes: u64,
         memory_type: MemoryType,
     },
-    
+
     /// File I/O and filesystem errors
     Io {
         context: ErrorContext,
@@ -126,7 +127,7 @@ pub enum CandleError {
         operation: IoOperation,
         os_error: Option<i32>,
     },
-    
+
     /// Network and download errors
     Network {
         context: ErrorContext,
@@ -134,7 +135,7 @@ pub enum CandleError {
         status_code: Option<u16>,
         retry_count: u8,
     },
-    
+
     /// Cache management errors
     Cache {
         context: ErrorContext,
@@ -142,7 +143,7 @@ pub enum CandleError {
         key: ArrayString<128>,
         size_bytes: u64,
     },
-    
+
     /// Streaming and async coordination errors
     Streaming {
         context: ErrorContext,
@@ -211,7 +212,7 @@ impl CandleError {
             constraint: ArrayString::from(constraint).unwrap_or_default(),
         }
     }
-    
+
     /// Create model error with detailed context
     #[inline]
     pub fn model(model: CandleModel, phase: ModelPhase, details: &str) -> Self {
@@ -228,19 +229,15 @@ impl CandleError {
             details: ArrayString::from(details).unwrap_or_default(),
         }
     }
-    
+
     /// Create device error with available alternatives
     #[inline]
-    pub fn device(
-        device: CandleDevice, 
-        capability: &str, 
-        available: &[CandleDevice]
-    ) -> Self {
+    pub fn device(device: CandleDevice, capability: &str, available: &[CandleDevice]) -> Self {
         let mut available_vec = SmallVec::new();
         for &dev in available.iter().take(4) {
             available_vec.push(dev);
         }
-        
+
         Self::Device {
             context: ErrorContext::new(
                 ErrorCategory::Device,
@@ -254,7 +251,7 @@ impl CandleError {
             available: available_vec,
         }
     }
-    
+
     /// Create tokenizer error with length information
     #[inline]
     pub fn tokenizer(input_length: u32, max_length: u32, encoding: &str) -> Self {
@@ -271,14 +268,10 @@ impl CandleError {
             encoding: ArrayString::from(encoding).unwrap_or_default(),
         }
     }
-    
+
     /// Create generation error with sampling context
     #[inline]
-    pub fn generation(
-        tokens_processed: u32, 
-        sequence_length: u32, 
-        sampling_step: &str
-    ) -> Self {
+    pub fn generation(tokens_processed: u32, sequence_length: u32, sampling_step: &str) -> Self {
         Self::Generation {
             context: ErrorContext::new(
                 ErrorCategory::Generation,
@@ -292,14 +285,10 @@ impl CandleError {
             sampling_step: ArrayString::from(sampling_step).unwrap_or_default(),
         }
     }
-    
+
     /// Create memory error with allocation details
     #[inline]
-    pub fn memory(
-        requested_bytes: u64, 
-        available_bytes: u64, 
-        memory_type: MemoryType
-    ) -> Self {
+    pub fn memory(requested_bytes: u64, available_bytes: u64, memory_type: MemoryType) -> Self {
         Self::Memory {
             context: ErrorContext::new(
                 ErrorCategory::Memory,
@@ -313,7 +302,7 @@ impl CandleError {
             memory_type,
         }
     }
-    
+
     /// Create I/O error with path and operation details
     #[inline]
     pub fn io(path: &str, operation: IoOperation, os_error: Option<i32>) -> Self {
@@ -330,7 +319,7 @@ impl CandleError {
             os_error,
         }
     }
-    
+
     /// Create network error with URL and status information
     #[inline]
     pub fn network(url: &str, status_code: Option<u16>, retry_count: u8) -> Self {
@@ -347,15 +336,10 @@ impl CandleError {
             retry_count,
         }
     }
-    
+
     /// Create cache error with detailed context
     #[inline]
-    pub fn cache(
-        cache_type: CacheType, 
-        key: &str, 
-        size_bytes: u64, 
-        operation: &str
-    ) -> Self {
+    pub fn cache(cache_type: CacheType, key: &str, size_bytes: u64, operation: &str) -> Self {
         Self::Cache {
             context: ErrorContext::new(
                 ErrorCategory::Cache,
@@ -369,15 +353,10 @@ impl CandleError {
             size_bytes,
         }
     }
-    
+
     /// Create streaming error with stream context
     #[inline]
-    pub fn streaming(
-        stream_id: u64, 
-        chunk_index: u32, 
-        buffer_size: u32, 
-        operation: &str
-    ) -> Self {
+    pub fn streaming(stream_id: u64, chunk_index: u32, buffer_size: u32, operation: &str) -> Self {
         Self::Streaming {
             context: ErrorContext::new(
                 ErrorCategory::Streaming,
@@ -391,7 +370,7 @@ impl CandleError {
             buffer_size,
         }
     }
-    
+
     /// Get error category for fast filtering
     #[inline(always)]
     pub fn category(&self) -> ErrorCategory {
@@ -408,7 +387,7 @@ impl CandleError {
             Self::Streaming { .. } => ErrorCategory::Streaming,
         }
     }
-    
+
     /// Get error context for detailed analysis
     #[inline(always)]
     pub fn context(&self) -> &ErrorContext {
@@ -425,31 +404,33 @@ impl CandleError {
             Self::Streaming { context, .. } => context,
         }
     }
-    
+
     /// Check if error is recoverable
     #[inline]
     pub fn is_recoverable(&self) -> bool {
         match self {
             Self::Configuration { .. } => false, // Config errors are permanent
-            Self::Model { phase, .. } => matches!(phase, ModelPhase::Download | ModelPhase::Loading),
-            Self::Device { .. } => true, // Can try different device
-            Self::Tokenizer { .. } => true, // Can retry with different input
+            Self::Model { phase, .. } => {
+                matches!(phase, ModelPhase::Download | ModelPhase::Loading)
+            }
+            Self::Device { .. } => true,     // Can try different device
+            Self::Tokenizer { .. } => true,  // Can retry with different input
             Self::Generation { .. } => true, // Can retry generation
-            Self::Memory { .. } => true, // Can free memory and retry
-            Self::Io { .. } => true, // I/O operations can be retried
-            Self::Network { .. } => true, // Network requests can be retried
-            Self::Cache { .. } => true, // Cache operations can be retried
-            Self::Streaming { .. } => true, // Streaming can be restarted
+            Self::Memory { .. } => true,     // Can free memory and retry
+            Self::Io { .. } => true,         // I/O operations can be retried
+            Self::Network { .. } => true,    // Network requests can be retried
+            Self::Cache { .. } => true,      // Cache operations can be retried
+            Self::Streaming { .. } => true,  // Streaming can be restarted
         }
     }
-    
+
     /// Get suggested retry delay in milliseconds
     #[inline]
     pub fn retry_delay_ms(&self) -> Option<u64> {
         if !self.is_recoverable() {
             return None;
         }
-        
+
         match self {
             Self::Network { retry_count, .. } => {
                 // Exponential backoff: 100ms * 2^retry_count, capped at 30s
@@ -457,10 +438,10 @@ impl CandleError {
                 Some(delay.min(30_000))
             }
             Self::Memory { .. } => Some(500), // Wait for memory to be freed
-            Self::Io { .. } => Some(100), // Quick retry for I/O
+            Self::Io { .. } => Some(100),     // Quick retry for I/O
             Self::Model { phase, .. } => match phase {
                 ModelPhase::Download => Some(1000), // Network delay
-                ModelPhase::Loading => Some(2000), // Model loading delay
+                ModelPhase::Loading => Some(2000),  // Model loading delay
                 _ => Some(500),
             },
             _ => Some(200), // Default retry delay
@@ -471,45 +452,124 @@ impl CandleError {
 impl fmt::Display for CandleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Configuration { parameter, constraint, .. } => {
-                write!(f, "Configuration error: parameter '{}' violates constraint: {}", 
-                       parameter, constraint)
+            Self::Configuration {
+                parameter,
+                constraint,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Configuration error: parameter '{}' violates constraint: {}",
+                    parameter, constraint
+                )
             }
-            Self::Model { model, phase, details, .. } => {
-                write!(f, "Model error: {:?} failed during {:?}: {}", 
-                       model, phase, details)
+            Self::Model {
+                model,
+                phase,
+                details,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Model error: {:?} failed during {:?}: {}",
+                    model, phase, details
+                )
             }
-            Self::Device { device, capability, available, .. } => {
-                write!(f, "Device error: {:?} lacks capability '{}', available: {:?}", 
-                       device, capability, available)
+            Self::Device {
+                device,
+                capability,
+                available,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Device error: {:?} lacks capability '{}', available: {:?}",
+                    device, capability, available
+                )
             }
-            Self::Tokenizer { input_length, max_length, encoding, .. } => {
-                write!(f, "Tokenizer error: input length {} exceeds maximum {} for encoding {}", 
-                       input_length, max_length, encoding)
+            Self::Tokenizer {
+                input_length,
+                max_length,
+                encoding,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Tokenizer error: input length {} exceeds maximum {} for encoding {}",
+                    input_length, max_length, encoding
+                )
             }
-            Self::Generation { tokens_processed, sequence_length, sampling_step, .. } => {
-                write!(f, "Generation error: failed at step '{}' after {} tokens (sequence length: {})", 
-                       sampling_step, tokens_processed, sequence_length)
+            Self::Generation {
+                tokens_processed,
+                sequence_length,
+                sampling_step,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Generation error: failed at step '{}' after {} tokens (sequence length: {})",
+                    sampling_step, tokens_processed, sequence_length
+                )
             }
-            Self::Memory { requested_bytes, available_bytes, memory_type, .. } => {
-                write!(f, "Memory error: requested {} bytes but only {} available for {:?}", 
-                       requested_bytes, available_bytes, memory_type)
+            Self::Memory {
+                requested_bytes,
+                available_bytes,
+                memory_type,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Memory error: requested {} bytes but only {} available for {:?}",
+                    requested_bytes, available_bytes, memory_type
+                )
             }
-            Self::Io { path, operation, os_error, .. } => {
-                write!(f, "I/O error: {:?} operation failed on '{}' (OS error: {:?})", 
-                       operation, path, os_error)
+            Self::Io {
+                path,
+                operation,
+                os_error,
+                ..
+            } => {
+                write!(
+                    f,
+                    "I/O error: {:?} operation failed on '{}' (OS error: {:?})",
+                    operation, path, os_error
+                )
             }
-            Self::Network { url, status_code, retry_count, .. } => {
-                write!(f, "Network error: request to '{}' failed with status {:?} (retries: {})", 
-                       url, status_code, retry_count)
+            Self::Network {
+                url,
+                status_code,
+                retry_count,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Network error: request to '{}' failed with status {:?} (retries: {})",
+                    url, status_code, retry_count
+                )
             }
-            Self::Cache { cache_type, key, size_bytes, .. } => {
-                write!(f, "Cache error: {:?} cache operation failed for key '{}' ({} bytes)", 
-                       cache_type, key, size_bytes)
+            Self::Cache {
+                cache_type,
+                key,
+                size_bytes,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Cache error: {:?} cache operation failed for key '{}' ({} bytes)",
+                    cache_type, key, size_bytes
+                )
             }
-            Self::Streaming { stream_id, chunk_index, buffer_size, .. } => {
-                write!(f, "Streaming error: stream {} failed at chunk {} (buffer: {} bytes)", 
-                       stream_id, chunk_index, buffer_size)
+            Self::Streaming {
+                stream_id,
+                chunk_index,
+                buffer_size,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Streaming error: stream {} failed at chunk {} (buffer: {} bytes)",
+                    stream_id, chunk_index, buffer_size
+                )
             }
         }
     }
@@ -555,7 +615,7 @@ impl ErrorMetrics {
             last_error_timestamp: AtomicU64::new(0),
         }
     }
-    
+
     /// Record an error occurrence
     #[inline]
     pub fn record_error(&self, error: &CandleError) {
@@ -563,30 +623,30 @@ impl ErrorMetrics {
         if category_index < self.category_counts.len() {
             self.category_counts[category_index].fetch_add(1, Ordering::Relaxed);
         }
-        
+
         if error.is_recoverable() {
             self.recoverable_errors.fetch_add(1, Ordering::Relaxed);
         } else {
             self.non_recoverable_errors.fetch_add(1, Ordering::Relaxed);
         }
-        
+
         // Update timestamp
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_millis() as u64)
             .unwrap_or(0);
         self.last_error_timestamp.store(now, Ordering::Relaxed);
-        
+
         // Update frequency (simplified calculation)
         self.update_frequency();
     }
-    
+
     /// Record a retry attempt
     #[inline]
     pub fn record_retry(&self) {
         self.retry_attempts.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Get total errors for a specific category
     #[inline]
     pub fn get_category_count(&self, category: ErrorCategory) -> u64 {
@@ -597,37 +657,37 @@ impl ErrorMetrics {
             0
         }
     }
-    
+
     /// Get total recoverable errors
     #[inline(always)]
     pub fn get_recoverable_count(&self) -> u64 {
         self.recoverable_errors.load(Ordering::Relaxed)
     }
-    
+
     /// Get total non-recoverable errors
     #[inline(always)]
     pub fn get_non_recoverable_count(&self) -> u64 {
         self.non_recoverable_errors.load(Ordering::Relaxed)
     }
-    
+
     /// Get total retry attempts
     #[inline(always)]
     pub fn get_retry_count(&self) -> u64 {
         self.retry_attempts.load(Ordering::Relaxed)
     }
-    
+
     /// Get current error frequency (errors per second)
     #[inline(always)]
     pub fn get_frequency(&self) -> f32 {
         f32::from_bits(self.error_frequency.load(Ordering::Relaxed))
     }
-    
+
     /// Get last error timestamp
     #[inline(always)]
     pub fn get_last_error_timestamp(&self) -> u64 {
         self.last_error_timestamp.load(Ordering::Relaxed)
     }
-    
+
     /// Reset all metrics
     pub fn reset(&self) {
         for counter in &self.category_counts {
@@ -639,22 +699,23 @@ impl ErrorMetrics {
         self.error_frequency.store(0, Ordering::Relaxed);
         self.last_error_timestamp.store(0, Ordering::Relaxed);
     }
-    
+
     /// Update error frequency calculation
     fn update_frequency(&self) {
         // Simplified frequency calculation
         // In a production system, this would use a sliding window
-        let total_errors = self.recoverable_errors.load(Ordering::Relaxed) + 
-                          self.non_recoverable_errors.load(Ordering::Relaxed);
-        
+        let total_errors = self.recoverable_errors.load(Ordering::Relaxed)
+            + self.non_recoverable_errors.load(Ordering::Relaxed);
+
         if total_errors > 0 {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_secs())
                 .unwrap_or(1);
-            
+
             let frequency = total_errors as f32 / now.max(1) as f32;
-            self.error_frequency.store(frequency.to_bits(), Ordering::Relaxed);
+            self.error_frequency
+                .store(frequency.to_bits(), Ordering::Relaxed);
         }
     }
 }

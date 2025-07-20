@@ -8,22 +8,21 @@
 //! - Real-time monitoring with rolling window statistics
 //! - Outlier detection using z-score and Isolation Forest algorithms
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicU32, AtomicUsize, Ordering};
 use std::collections::VecDeque;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use arrayvec::ArrayString;
-use smallvec::SmallVec;
 use crossbeam_utils::CachePadded;
 use dashmap::DashMap;
-use serde::{Deserialize, Serialize};
-use tokio::sync::{watch, RwLock};
-use tokio::time::interval;
-use thiserror::Error;
-
 // Import quantum router for coherence scoring
-use fluent_ai_memory::cognitive::quantum::router::{QuantumRouter, QuantumMetrics};
+use fluent_ai_memory::cognitive::quantum::router::{QuantumMetrics, QuantumRouter};
+use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
+use thiserror::Error;
+use tokio::sync::{RwLock, watch};
+use tokio::time::interval;
 
 /// Maximum embedding dimension for SIMD optimization
 const MAX_EMBEDDING_DIM: usize = 4096;
@@ -93,22 +92,23 @@ impl<T: Clone> RingBuffer<T> {
     pub fn push(&self, item: T) {
         let current_tail = self.tail.load(Ordering::Relaxed);
         let next_tail = (current_tail + 1) % self.capacity;
-        
+
         unsafe {
             // SAFETY: We own the ring buffer and indices are bounded by capacity
             let data_ptr = self.data.as_ptr() as *mut Option<T>;
             std::ptr::write(data_ptr.add(current_tail), Some(item));
         }
-        
+
         self.tail.store(next_tail, Ordering::Release);
-        
+
         let current_size = self.size.load(Ordering::Relaxed);
         if current_size < self.capacity {
             self.size.store(current_size + 1, Ordering::Relaxed);
         } else {
             // Move head if buffer is full
             let current_head = self.head.load(Ordering::Relaxed);
-            self.head.store((current_head + 1) % self.capacity, Ordering::Relaxed);
+            self.head
+                .store((current_head + 1) % self.capacity, Ordering::Relaxed);
         }
     }
 
@@ -127,7 +127,7 @@ impl<T: Clone> RingBuffer<T> {
         let size = self.len();
         let mut result = Vec::with_capacity(size);
         let head = self.head.load(Ordering::Acquire);
-        
+
         for i in 0..size {
             let index = (head + i) % self.capacity;
             unsafe {
@@ -138,7 +138,7 @@ impl<T: Clone> RingBuffer<T> {
                 }
             }
         }
-        
+
         result
     }
 }
@@ -167,10 +167,8 @@ impl StatisticalSummary {
 
         let count = values.len() as u64;
         let mean = values.iter().sum::<f64>() / count as f64;
-        
-        let variance = values.iter()
-            .map(|x| (x - mean).powi(2))
-            .sum::<f64>() / count as f64;
+
+        let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / count as f64;
         let std_deviation = variance.sqrt();
 
         let min = sorted_values[0];
@@ -247,7 +245,7 @@ impl OutlierDetector {
     /// Check if value is an outlier and update statistics
     pub async fn is_outlier(&self, value: f64) -> bool {
         let mut stats = self.rolling_stats.write().await;
-        
+
         // Add new value
         if stats.len() >= self.window_size {
             stats.pop_front();
@@ -261,9 +259,7 @@ impl OutlierDetector {
 
         let values: Vec<f64> = stats.iter().copied().collect();
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter()
-            .map(|x| (x - mean).powi(2))
-            .sum::<f64>() / values.len() as f64;
+        let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
         let std_dev = variance.sqrt();
 
         if std_dev == 0.0 {
@@ -278,15 +274,13 @@ impl OutlierDetector {
     pub async fn get_statistics(&self) -> (f64, f64, usize) {
         let stats = self.rolling_stats.read().await;
         let values: Vec<f64> = stats.iter().copied().collect();
-        
+
         if values.is_empty() {
             return (0.0, 0.0, 0);
         }
 
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let variance = values.iter()
-            .map(|x| (x - mean).powi(2))
-            .sum::<f64>() / values.len() as f64;
+        let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
         let std_dev = variance.sqrt();
 
         (mean, std_dev, values.len())
@@ -343,19 +337,19 @@ impl QualityAnalysisMetrics {
 pub enum QualityAnalysisError {
     #[error("Invalid embedding dimension: expected {expected}, got {actual}")]
     InvalidDimension { expected: usize, actual: usize },
-    
+
     #[error("Empty embedding vector")]
     EmptyEmbedding,
-    
+
     #[error("Invalid embedding values: {reason}")]
     InvalidValues { reason: String },
-    
+
     #[error("Quantum coherence calculation failed: {error}")]
     CoherenceCalculationFailed { error: String },
-    
+
     #[error("Statistical analysis failed: {error}")]
     StatisticalAnalysisFailed { error: String },
-    
+
     #[error("Provider not found: {provider}")]
     ProviderNotFound { provider: String },
 }
@@ -390,7 +384,7 @@ impl QualityAnalyzer {
         reference_embedding: Option<&[f32]>,
     ) -> Result<QualityDataPoint, QualityAnalysisError> {
         let start_time = Instant::now();
-        
+
         if embedding.is_empty() {
             return Err(QualityAnalysisError::EmptyEmbedding);
         }
@@ -399,7 +393,7 @@ impl QualityAnalyzer {
         self.verify_embedding_dimensions(embedding, provider)?;
 
         // Statistical analysis with SIMD operations
-        let (l2_norm, max_abs_value, mean_abs_value, std_deviation) = 
+        let (l2_norm, max_abs_value, mean_abs_value, std_deviation) =
             self.compute_embedding_statistics_simd(embedding);
 
         // Cosine similarity if reference provided
@@ -454,8 +448,12 @@ impl QualityAnalyzer {
 
         // Record metrics
         let analysis_time = start_time.elapsed().as_millis() as u64;
-        self.analysis_metrics.assessments_total.fetch_add(1, Ordering::Relaxed);
-        self.analysis_metrics.analysis_time_total_ms.fetch_add(analysis_time, Ordering::Relaxed);
+        self.analysis_metrics
+            .assessments_total
+            .fetch_add(1, Ordering::Relaxed);
+        self.analysis_metrics
+            .analysis_time_total_ms
+            .fetch_add(analysis_time, Ordering::Relaxed);
 
         Ok(data_point)
     }
@@ -472,11 +470,13 @@ impl QualityAnalyzer {
             "openai_large" => 3072, // text-embedding-3-large
             "candle_mini" => 384,   // all-MiniLM-L6-v2
             "candle_mpnet" => 768,  // all-mpnet-base-v2
-            _ => return Ok(()), // Unknown provider, skip validation
+            _ => return Ok(()),     // Unknown provider, skip validation
         };
 
         if embedding.len() != expected_dims {
-            self.analysis_metrics.dimension_mismatches.fetch_add(1, Ordering::Relaxed);
+            self.analysis_metrics
+                .dimension_mismatches
+                .fetch_add(1, Ordering::Relaxed);
             return Err(QualityAnalysisError::InvalidDimension {
                 expected: expected_dims,
                 actual: embedding.len(),
@@ -488,7 +488,9 @@ impl QualityAnalyzer {
 
     /// Compute embedding statistics using SIMD operations
     fn compute_embedding_statistics_simd(&self, embedding: &[f32]) -> (f32, f32, f32, f32) {
-        self.analysis_metrics.simd_operations.fetch_add(1, Ordering::Relaxed);
+        self.analysis_metrics
+            .simd_operations
+            .fetch_add(1, Ordering::Relaxed);
 
         let mut sum_squares = 0.0f32;
         let mut sum_abs = 0.0f32;
@@ -536,14 +538,19 @@ impl QualityAnalyzer {
             });
         }
 
-        self.analysis_metrics.simd_operations.fetch_add(1, Ordering::Relaxed);
+        self.analysis_metrics
+            .simd_operations
+            .fetch_add(1, Ordering::Relaxed);
 
         let mut dot_product = 0.0f32;
         let mut norm1_sq = 0.0f32;
         let mut norm2_sq = 0.0f32;
 
         // SIMD-style processing in chunks
-        for (chunk1, chunk2) in embedding1.chunks(SIMD_CHUNK_SIZE).zip(embedding2.chunks(SIMD_CHUNK_SIZE)) {
+        for (chunk1, chunk2) in embedding1
+            .chunks(SIMD_CHUNK_SIZE)
+            .zip(embedding2.chunks(SIMD_CHUNK_SIZE))
+        {
             for (&v1, &v2) in chunk1.iter().zip(chunk2.iter()) {
                 dot_product += v1 * v2;
                 norm1_sq += v1 * v1;
@@ -552,7 +559,7 @@ impl QualityAnalyzer {
         }
 
         let norm_product = (norm1_sq * norm2_sq).sqrt();
-        
+
         if norm_product == 0.0 {
             return Ok(0.0);
         }
@@ -565,7 +572,9 @@ impl QualityAnalyzer {
         &self,
         embedding: &[f32],
     ) -> Result<f32, QualityAnalysisError> {
-        self.analysis_metrics.coherence_calculations.fetch_add(1, Ordering::Relaxed);
+        self.analysis_metrics
+            .coherence_calculations
+            .fetch_add(1, Ordering::Relaxed);
 
         // Convert embedding to quantum state representation
         // This is a simplified approach - in practice would use proper quantum state mapping
@@ -577,15 +586,15 @@ impl QualityAnalyzer {
                 // Compute coherence based on quantum metrics
                 let base_coherence = metrics.coherence_factor;
                 let entanglement_factor = metrics.entanglement_strength;
-                
+
                 // Incorporate embedding-specific coherence
                 let embedding_coherence = self.compute_embedding_coherence(&quantum_state);
-                
+
                 // Weighted combination
-                let coherence_score = (base_coherence * 0.4 + 
-                                     entanglement_factor * 0.3 + 
-                                     embedding_coherence * 0.3) as f32;
-                
+                let coherence_score = (base_coherence * 0.4
+                    + entanglement_factor * 0.3
+                    + embedding_coherence * 0.3) as f32;
+
                 Ok(coherence_score.min(1.0).max(0.0))
             }
             Err(e) => Err(QualityAnalysisError::CoherenceCalculationFailed {
@@ -601,7 +610,7 @@ impl QualityAnalyzer {
         if norm == 0.0 {
             return vec![0.0; embedding.len()];
         }
-        
+
         embedding.iter().map(|x| x / norm).collect()
     }
 
@@ -645,32 +654,40 @@ impl QualityAnalyzer {
         let latency_score = (1.0 - (latency_ms as f32 / 10000.0)).max(0.0); // Penalize >10s latency
 
         // Weighted combination
-        let quality_score = norm_score * CONSISTENCY_WEIGHT +
-                           std_score * DIMENSION_WEIGHT +
-                           coherence_score * COHERENCE_WEIGHT +
-                           (consistency_score * latency_score) * PERFORMANCE_WEIGHT;
+        let quality_score = norm_score * CONSISTENCY_WEIGHT
+            + std_score * DIMENSION_WEIGHT
+            + coherence_score * COHERENCE_WEIGHT
+            + (consistency_score * latency_score) * PERFORMANCE_WEIGHT;
 
         quality_score.min(1.0).max(0.0)
     }
 
     /// Detect outliers in quality metrics
     async fn detect_outliers(&self, data_point: &QualityDataPoint) {
-        let is_quality_outlier = self.quality_outlier_detector
-            .is_outlier(data_point.quality_score as f64).await;
-        
+        let is_quality_outlier = self
+            .quality_outlier_detector
+            .is_outlier(data_point.quality_score as f64)
+            .await;
+
         let is_consistency_outlier = if let Some(similarity) = data_point.cosine_similarity {
-            self.consistency_outlier_detector.is_outlier(similarity as f64).await
+            self.consistency_outlier_detector
+                .is_outlier(similarity as f64)
+                .await
         } else {
             false
         };
 
         if is_quality_outlier || is_consistency_outlier {
-            self.analysis_metrics.outliers_detected.fetch_add(1, Ordering::Relaxed);
+            self.analysis_metrics
+                .outliers_detected
+                .fetch_add(1, Ordering::Relaxed);
         }
 
         if let Some(similarity) = data_point.cosine_similarity {
             if similarity < 0.5 {
-                self.analysis_metrics.consistency_failures.fetch_add(1, Ordering::Relaxed);
+                self.analysis_metrics
+                    .consistency_failures
+                    .fetch_add(1, Ordering::Relaxed);
             }
         }
     }
@@ -678,8 +695,9 @@ impl QualityAnalyzer {
     /// Update provider performance metrics
     async fn update_provider_metrics(&self, data_point: &QualityDataPoint) {
         let provider_key = data_point.provider.clone();
-        
-        self.provider_metrics.entry(provider_key.clone())
+
+        self.provider_metrics
+            .entry(provider_key.clone())
             .and_modify(|metrics| {
                 // Update metrics (simplified - would use proper rolling statistics)
                 metrics.sample_count += 1;
@@ -700,7 +718,8 @@ impl QualityAnalyzer {
 
     /// Get provider performance comparison
     pub fn get_provider_comparison(&self) -> Vec<ProviderPerformanceMetrics> {
-        self.provider_metrics.iter()
+        self.provider_metrics
+            .iter()
             .map(|entry| entry.value().clone())
             .collect()
     }
@@ -712,7 +731,8 @@ impl QualityAnalyzer {
             .map(|d| d.as_secs().saturating_sub(time_range_seconds))
             .unwrap_or(0);
 
-        let quality_scores: Vec<f64> = self.quality_history
+        let quality_scores: Vec<f64> = self
+            .quality_history
             .collect()
             .into_iter()
             .filter(|dp| dp.timestamp >= cutoff_time)
@@ -737,14 +757,14 @@ impl QualityAnalyzer {
 
             loop {
                 monitoring_interval.tick().await;
-                
+
                 // Perform periodic analysis and cleanup
                 // Could include trend analysis, alerting, etc.
-                
+
                 // Log current metrics
                 let total_assessments = analysis_metrics.assessments_total.load(Ordering::Relaxed);
                 let outliers = analysis_metrics.outliers_detected.load(Ordering::Relaxed);
-                
+
                 if total_assessments > 0 {
                     let outlier_rate = outliers as f64 / total_assessments as f64;
                     if outlier_rate > 0.1 {

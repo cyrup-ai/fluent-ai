@@ -2,16 +2,17 @@
 //!
 //! Provides EXACT API syntax for document loading and processing.
 
-use fluent_ai_domain::{
-    Document, ContentFormat, DocumentMediaType, ZeroOneOrMany, AsyncTask, spawn_async, HashMap,
-    async_task::AsyncStream
-};
-use fluent_ai_domain::chunk::DocumentChunk;
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
-use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+use fluent_ai_domain::chunk::DocumentChunk;
+use fluent_ai_domain::{
+    AsyncTask, ContentFormat, Document, DocumentMediaType, HashMap, ZeroOneOrMany,
+    async_task::AsyncStream, spawn_async,
+};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
+use serde_json::Value;
 use tokio::fs;
 
 /// Document builder data enumeration for zero-allocation type tracking
@@ -19,7 +20,11 @@ use tokio::fs;
 pub enum DocumentBuilderData {
     File(PathBuf),
     Url(String),
-    Github { repo: String, path: String, branch: Option<String> },
+    Github {
+        repo: String,
+        path: String,
+        branch: Option<String>,
+    },
     Glob(String),
     Text(String),
 }
@@ -71,7 +76,7 @@ impl Document {
             additional_props: BTreeMap::new(),
             encoding: None,
             max_size: Some(10 * 1024 * 1024), // 10MB default
-            timeout_ms: Some(30000), // 30s default
+            timeout_ms: Some(30000),          // 30s default
             retry_attempts: 3,
             cache_enabled: true,
         }
@@ -91,7 +96,7 @@ impl Document {
             additional_props: BTreeMap::new(),
             encoding: None,
             max_size: Some(1024 * 1024), // 1MB default for GitHub files
-            timeout_ms: Some(15000), // 15s default
+            timeout_ms: Some(15000),     // 15s default
             retry_attempts: 3,
             cache_enabled: true,
         }
@@ -205,7 +210,12 @@ impl DocumentBuilder {
     /// Set GitHub branch - EXACT syntax: .branch("main")
     #[inline]
     pub fn branch(mut self, branch: impl Into<String>) -> Self {
-        if let DocumentBuilderData::Github { repo: _, path: _, ref mut branch_ref } = &mut self.data {
+        if let DocumentBuilderData::Github {
+            repo: _,
+            path: _,
+            ref mut branch_ref,
+        } = &mut self.data
+        {
             *branch_ref = Some(branch.into());
         }
         self
@@ -332,7 +342,12 @@ impl DocumentBuilderWithHandler {
     /// Set GitHub branch - EXACT syntax: .branch("main")
     #[inline]
     pub fn branch(mut self, branch: impl Into<String>) -> Self {
-        if let DocumentBuilderData::Github { repo: _, path: _, ref mut branch_ref } = &mut self.inner.data {
+        if let DocumentBuilderData::Github {
+            repo: _,
+            path: _,
+            ref mut branch_ref,
+        } = &mut self.inner.data
+        {
             *branch_ref = Some(branch.into());
         }
         self
@@ -349,7 +364,7 @@ impl DocumentBuilderWithHandler {
     pub fn load_async(self) -> AsyncTask<Document> {
         let inner = self.inner;
         let error_handler = self.error_handler;
-        
+
         spawn_async(async move {
             match Self::load_document_data(inner, error_handler.clone()).await {
                 Ok(document) => document,
@@ -371,7 +386,7 @@ impl DocumentBuilderWithHandler {
     pub fn load_all(self) -> AsyncTask<ZeroOneOrMany<Document>> {
         let inner = self.inner;
         let error_handler = self.error_handler;
-        
+
         spawn_async(async move {
             match inner.data {
                 DocumentBuilderData::Glob(pattern) => {
@@ -397,7 +412,7 @@ impl DocumentBuilderWithHandler {
         let inner = self.inner;
         let error_handler = self.error_handler;
         let chunk_handler = self.chunk_handler;
-        
+
         tokio::spawn(async move {
             match inner.data {
                 DocumentBuilderData::Glob(pattern) => {
@@ -414,8 +429,9 @@ impl DocumentBuilderWithHandler {
                                 retry_attempts: inner.retry_attempts,
                                 cache_enabled: inner.cache_enabled,
                             };
-                            
-                            match Self::load_document_data(doc_builder, error_handler.clone()).await {
+
+                            match Self::load_document_data(doc_builder, error_handler.clone()).await
+                            {
                                 Ok(doc) => {
                                     if tx.send(doc).is_err() {
                                         break;
@@ -426,17 +442,15 @@ impl DocumentBuilderWithHandler {
                         }
                     }
                 }
-                _ => {
-                    match Self::load_document_data(inner, error_handler.clone()).await {
-                        Ok(doc) => {
-                            let _ = tx.send(doc);
-                        }
-                        Err(error) => error_handler(error),
+                _ => match Self::load_document_data(inner, error_handler.clone()).await {
+                    Ok(doc) => {
+                        let _ = tx.send(doc);
                     }
-                }
+                    Err(error) => error_handler(error),
+                },
             }
         });
-        
+
         AsyncStream::new(rx)
     }
 
@@ -444,7 +458,7 @@ impl DocumentBuilderWithHandler {
     pub fn stream_chunks(self, chunk_size: usize) -> AsyncStream<DocumentChunk> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let chunk_handler = self.chunk_handler;
-        
+
         tokio::spawn(async move {
             match self.load_async().await {
                 Ok(doc) => {
@@ -453,7 +467,8 @@ impl DocumentBuilderWithHandler {
 
                     while offset < content.len() {
                         let end = (offset + chunk_size).min(content.len());
-                        let mut chunk = DocumentChunk::new(&content[offset..end]).with_range(offset, end);
+                        let mut chunk =
+                            DocumentChunk::new(&content[offset..end]).with_range(offset, end);
 
                         // Apply chunk handler if present
                         if let Some(ref handler) = chunk_handler {
@@ -478,13 +493,14 @@ impl DocumentBuilderWithHandler {
     pub fn stream_lines(self) -> AsyncStream<DocumentChunk> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let chunk_handler = self.chunk_handler;
-        
+
         tokio::spawn(async move {
             match self.load_async().await {
                 Ok(doc) => {
                     let mut offset = 0;
                     for line in doc.data.lines() {
-                        let mut chunk = DocumentChunk::new(line).with_range(offset, offset + line.len());
+                        let mut chunk =
+                            DocumentChunk::new(line).with_range(offset, offset + line.len());
 
                         // Apply chunk handler if present
                         if let Some(ref handler) = chunk_handler {
@@ -514,12 +530,8 @@ impl DocumentBuilderWithHandler {
         error_handler: Arc<dyn Fn(String) + Send + Sync>,
     ) -> Result<Document, String> {
         let content = match builder.data {
-            DocumentBuilderData::File(path) => {
-                Self::load_file_content(&path, &builder).await?
-            }
-            DocumentBuilderData::Url(url) => {
-                Self::load_url_content(&url, &builder).await?
-            }
+            DocumentBuilderData::File(path) => Self::load_file_content(&path, &builder).await?,
+            DocumentBuilderData::Url(url) => Self::load_url_content(&url, &builder).await?,
             DocumentBuilderData::Github { repo, path, branch } => {
                 Self::load_github_content(&repo, &path, branch.as_deref(), &builder).await?
             }
@@ -530,27 +542,30 @@ impl DocumentBuilderWithHandler {
         };
 
         // Detect format if not specified
-        let format = builder.format.unwrap_or_else(|| {
-            Self::detect_format(&content, &builder.data)
-        });
+        let format = builder
+            .format
+            .unwrap_or_else(|| Self::detect_format(&content, &builder.data));
 
         // Detect media type if not specified
-        let media_type = builder.media_type.unwrap_or_else(|| {
-            Self::detect_media_type(&format, &builder.data)
-        });
+        let media_type = builder
+            .media_type
+            .unwrap_or_else(|| Self::detect_media_type(&format, &builder.data));
 
         // Build metadata
         let mut metadata = HashMap::with_capacity(builder.additional_props.len() + 4);
         for (key, value) in builder.additional_props {
             metadata.insert(key, value);
         }
-        
+
         if let Some(encoding) = builder.encoding {
             metadata.insert("encoding".to_string(), Value::String(encoding));
         }
-        
+
         metadata.insert("size".to_string(), Value::Number(content.len().into()));
-        metadata.insert("cache_enabled".to_string(), Value::Bool(builder.cache_enabled));
+        metadata.insert(
+            "cache_enabled".to_string(),
+            Value::Bool(builder.cache_enabled),
+        );
 
         Ok(Document {
             data: content,
@@ -563,11 +578,16 @@ impl DocumentBuilderWithHandler {
     async fn load_file_content(path: &Path, builder: &DocumentBuilder) -> Result<String, String> {
         // Check file size first if max_size is set
         if let Some(max_size) = builder.max_size {
-            let metadata = fs::metadata(path).await
+            let metadata = fs::metadata(path)
+                .await
                 .map_err(|e| format!("Failed to read file metadata: {}", e))?;
-            
+
             if metadata.len() as usize > max_size {
-                return Err(format!("File size {} exceeds maximum {}", metadata.len(), max_size));
+                return Err(format!(
+                    "File size {} exceeds maximum {}",
+                    metadata.len(),
+                    max_size
+                ));
             }
         }
 
@@ -580,22 +600,27 @@ impl DocumentBuilderWithHandler {
                     last_error = format!("Attempt {}: {}", attempt + 1, e);
                     if attempt < builder.retry_attempts {
                         tokio::time::sleep(tokio::time::Duration::from_millis(
-                            100 * (1 << attempt) // Exponential backoff
-                        )).await;
+                            100 * (1 << attempt), // Exponential backoff
+                        ))
+                        .await;
                     }
                 }
             }
         }
-        
-        Err(format!("Failed to read file after {} attempts: {}", builder.retry_attempts + 1, last_error))
+
+        Err(format!(
+            "Failed to read file after {} attempts: {}",
+            builder.retry_attempts + 1,
+            last_error
+        ))
     }
 
     async fn load_url_content(url: &str, builder: &DocumentBuilder) -> Result<String, String> {
         let client = HttpClient::with_config(HttpConfig::ai_optimized())
             .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
-        let mut request = HttpRequest::get(url)
-            .map_err(|e| format!("Failed to create HTTP request: {}", e))?;
+        let mut request =
+            HttpRequest::get(url).map_err(|e| format!("Failed to create HTTP request: {}", e))?;
 
         // Set timeout if specified
         if let Some(timeout_ms) = builder.timeout_ms {
@@ -608,16 +633,22 @@ impl DocumentBuilderWithHandler {
             match client.send(request.clone()).await {
                 Ok(response) => {
                     if response.status().is_success() {
-                        let content = response.text().await
+                        let content = response
+                            .text()
+                            .await
                             .map_err(|e| format!("Failed to read response body: {}", e))?;
-                        
+
                         // Check size if max_size is set
                         if let Some(max_size) = builder.max_size {
                             if content.len() > max_size {
-                                return Err(format!("Response size {} exceeds maximum {}", content.len(), max_size));
+                                return Err(format!(
+                                    "Response size {} exceeds maximum {}",
+                                    content.len(),
+                                    max_size
+                                ));
                             }
                         }
-                        
+
                         return Ok(content);
                     } else {
                         return Err(format!("HTTP error: {}", response.status()));
@@ -627,25 +658,33 @@ impl DocumentBuilderWithHandler {
                     last_error = format!("Attempt {}: {}", attempt + 1, e);
                     if attempt < builder.retry_attempts {
                         tokio::time::sleep(tokio::time::Duration::from_millis(
-                            100 * (1 << attempt) // Exponential backoff
-                        )).await;
+                            100 * (1 << attempt), // Exponential backoff
+                        ))
+                        .await;
                     }
                 }
             }
         }
-        
-        Err(format!("Failed to fetch URL after {} attempts: {}", builder.retry_attempts + 1, last_error))
+
+        Err(format!(
+            "Failed to fetch URL after {} attempts: {}",
+            builder.retry_attempts + 1,
+            last_error
+        ))
     }
 
     async fn load_github_content(
-        repo: &str, 
-        path: &str, 
-        branch: Option<&str>, 
-        builder: &DocumentBuilder
+        repo: &str,
+        path: &str,
+        branch: Option<&str>,
+        builder: &DocumentBuilder,
     ) -> Result<String, String> {
         let branch = branch.unwrap_or("main");
-        let url = format!("https://raw.githubusercontent.com/{}/{}/{}", repo, branch, path);
-        
+        let url = format!(
+            "https://raw.githubusercontent.com/{}/{}/{}",
+            repo, branch, path
+        );
+
         Self::load_url_content(&url, builder).await
     }
 
@@ -667,7 +706,7 @@ impl DocumentBuilderWithHandler {
         }
 
         let mut documents = Vec::with_capacity(paths.len());
-        
+
         for path in paths {
             let doc_builder = DocumentBuilder {
                 data: DocumentBuilderData::File(path),
@@ -680,7 +719,7 @@ impl DocumentBuilderWithHandler {
                 retry_attempts: builder.retry_attempts,
                 cache_enabled: builder.cache_enabled,
             };
-            
+
             match Self::load_document_data(doc_builder, error_handler.clone()).await {
                 Ok(doc) => documents.push(doc),
                 Err(error) => error_handler(error),
@@ -713,7 +752,9 @@ impl DocumentBuilderWithHandler {
                     Some("csv") => ContentFormat::Csv,
                     _ => {
                         // Content-based detection
-                        if content.trim_start().starts_with('{') || content.trim_start().starts_with('[') {
+                        if content.trim_start().starts_with('{')
+                            || content.trim_start().starts_with('[')
+                        {
                             ContentFormat::Json
                         } else if content.trim_start().starts_with('<') {
                             ContentFormat::Html
@@ -747,19 +788,19 @@ impl DocumentBuilderWithHandler {
             ContentFormat::Xml => DocumentMediaType::Xml,
             ContentFormat::Csv => DocumentMediaType::Csv,
             ContentFormat::Yaml => DocumentMediaType::Yaml,
-            ContentFormat::Base64 => {
-                match data {
-                    DocumentBuilderData::File(path) => {
-                        match path.extension().and_then(|ext| ext.to_str()) {
-                            Some("pdf") => DocumentMediaType::PDF,
-                            Some("doc") | Some("docx") => DocumentMediaType::Document,
-                            Some("jpg") | Some("jpeg") | Some("png") | Some("gif") => DocumentMediaType::Image,
-                            _ => DocumentMediaType::Binary,
+            ContentFormat::Base64 => match data {
+                DocumentBuilderData::File(path) => {
+                    match path.extension().and_then(|ext| ext.to_str()) {
+                        Some("pdf") => DocumentMediaType::PDF,
+                        Some("doc") | Some("docx") => DocumentMediaType::Document,
+                        Some("jpg") | Some("jpeg") | Some("png") | Some("gif") => {
+                            DocumentMediaType::Image
                         }
+                        _ => DocumentMediaType::Binary,
                     }
-                    _ => DocumentMediaType::Binary,
                 }
-            }
+                _ => DocumentMediaType::Binary,
+            },
             _ => DocumentMediaType::PlainText,
         }
     }

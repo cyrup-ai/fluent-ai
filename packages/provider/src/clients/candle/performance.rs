@@ -3,10 +3,11 @@
 //! This module provides SIMD acceleration, parallel processing, memory prefetching,
 //! and comprehensive performance monitoring for blazing-fast inference.
 
+use std::alloc::{Layout, alloc, dealloc};
+use std::ptr::NonNull;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::alloc::{alloc, dealloc, Layout};
-use std::ptr::NonNull;
+
 use arc_swap::ArcSwap;
 use crossbeam_utils::atomic::AtomicCell;
 use rayon::prelude::*;
@@ -50,9 +51,15 @@ impl SimdCapabilities {
             let has_avx2 = std::arch::is_x86_feature_detected!("avx2");
             let has_fma = std::arch::is_x86_feature_detected!("fma");
             let has_sse41 = std::arch::is_x86_feature_detected!("sse4.1");
-            
-            let vector_width = if has_avx { 8 } else if has_sse41 { 4 } else { 1 };
-            
+
+            let vector_width = if has_avx {
+                8
+            } else if has_sse41 {
+                4
+            } else {
+                1
+            };
+
             Self {
                 has_avx,
                 has_avx2,
@@ -61,7 +68,7 @@ impl SimdCapabilities {
                 vector_width,
             }
         }
-        
+
         #[cfg(target_arch = "aarch64")]
         {
             // ARM NEON is standard on AArch64
@@ -73,7 +80,7 @@ impl SimdCapabilities {
                 vector_width: 4, // NEON 128-bit / 32-bit = 4
             }
         }
-        
+
         #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
         {
             // Fallback for other architectures
@@ -86,19 +93,20 @@ impl SimdCapabilities {
             }
         }
     }
-    
+
     /// Check if SIMD acceleration is available
     pub fn has_simd(&self) -> bool {
         self.vector_width > 1
     }
-    
+
     /// Get optimal chunk size for parallel processing
     pub fn optimal_chunk_size(&self, total_size: usize) -> usize {
         let num_threads = rayon::current_num_threads();
         let chunk_size = (total_size + num_threads - 1) / num_threads;
-        
+
         // Align to SIMD width
-        let simd_aligned = (chunk_size + self.vector_width - 1) / self.vector_width * self.vector_width;
+        let simd_aligned =
+            (chunk_size + self.vector_width - 1) / self.vector_width * self.vector_width;
         simd_aligned.max(self.vector_width)
     }
 }
@@ -119,15 +127,16 @@ pub struct AlignedBuffer {
 impl AlignedBuffer {
     /// Create new aligned buffer with specified capacity
     pub fn new(capacity: usize) -> CandleResult<Self> {
-        let layout = Layout::from_size_align(
-            capacity * std::mem::size_of::<f32>(),
-            CACHE_LINE_SIZE,
-        ).map_err(|e| CandleError::performance(
-            &format!("Invalid buffer layout: {}", e),
-            "new",
-            "valid capacity and alignment",
-        ))?;
-        
+        let layout =
+            Layout::from_size_align(capacity * std::mem::size_of::<f32>(), CACHE_LINE_SIZE)
+                .map_err(|e| {
+                    CandleError::performance(
+                        &format!("Invalid buffer layout: {}", e),
+                        "new",
+                        "valid capacity and alignment",
+                    )
+                })?;
+
         let ptr = unsafe {
             let raw_ptr = alloc(layout) as *mut f32;
             if raw_ptr.is_null() {
@@ -139,7 +148,7 @@ impl AlignedBuffer {
             }
             NonNull::new_unchecked(raw_ptr)
         };
-        
+
         Ok(Self {
             ptr,
             capacity,
@@ -147,21 +156,17 @@ impl AlignedBuffer {
             layout,
         })
     }
-    
+
     /// Get mutable slice of the buffer
     pub fn as_mut_slice(&mut self) -> &mut [f32] {
-        unsafe {
-            std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.length)
-        }
+        unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.length) }
     }
-    
+
     /// Get read-only slice of the buffer
     pub fn as_slice(&self) -> &[f32] {
-        unsafe {
-            std::slice::from_raw_parts(self.ptr.as_ptr(), self.length)
-        }
+        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.length) }
     }
-    
+
     /// Set buffer length (must be <= capacity)
     pub fn set_length(&mut self, length: usize) -> CandleResult<()> {
         if length > self.capacity {
@@ -171,40 +176,38 @@ impl AlignedBuffer {
                 "length <= capacity",
             ));
         }
-        
+
         self.length = length;
         Ok(())
     }
-    
+
     /// Get buffer capacity
     pub fn capacity(&self) -> usize {
         self.capacity
     }
-    
+
     /// Get current length
     pub fn length(&self) -> usize {
         self.length
     }
-    
+
     /// Clear the buffer
     pub fn clear(&mut self) {
         self.length = 0;
-        
+
         // Zero out memory for security
         unsafe {
             std::ptr::write_bytes(self.ptr.as_ptr(), 0, self.capacity);
         }
     }
-    
+
     /// Fill buffer with value
     pub fn fill(&mut self, value: f32) {
-        let slice = unsafe {
-            std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.capacity)
-        };
+        let slice = unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.capacity) };
         slice.fill(value);
         self.length = self.capacity;
     }
-    
+
     /// Copy from slice into buffer
     pub fn copy_from_slice(&mut self, src: &[f32]) -> CandleResult<()> {
         if src.len() > self.capacity {
@@ -214,15 +217,11 @@ impl AlignedBuffer {
                 "src.len() <= capacity",
             ));
         }
-        
+
         unsafe {
-            std::ptr::copy_nonoverlapping(
-                src.as_ptr(),
-                self.ptr.as_ptr(),
-                src.len(),
-            );
+            std::ptr::copy_nonoverlapping(src.as_ptr(), self.ptr.as_ptr(), src.len());
         }
-        
+
         self.length = src.len();
         Ok(())
     }
@@ -260,7 +259,7 @@ pub struct PerformanceConfig {
 impl Default for PerformanceConfig {
     fn default() -> Self {
         let capabilities = SimdCapabilities::detect();
-        
+
         Self {
             enable_simd: capabilities.has_simd(),
             enable_parallel: true,
@@ -278,7 +277,7 @@ impl PerformanceConfig {
     /// Create configuration for maximum performance
     pub fn max_performance() -> Self {
         let capabilities = SimdCapabilities::detect();
-        
+
         Self {
             enable_simd: capabilities.has_simd(),
             enable_parallel: true,
@@ -290,7 +289,7 @@ impl PerformanceConfig {
             aggressive_optimizations: true,
         }
     }
-    
+
     /// Create configuration for debugging/profiling
     pub fn debug_profile() -> Self {
         Self {
@@ -304,7 +303,7 @@ impl PerformanceConfig {
             aggressive_optimizations: false,
         }
     }
-    
+
     /// Validate configuration
     pub fn validate(&self) -> CandleResult<()> {
         if self.parallel_threshold == 0 {
@@ -314,7 +313,7 @@ impl PerformanceConfig {
                 "> 0",
             ));
         }
-        
+
         if self.chunk_size == 0 {
             return Err(CandleError::config(
                 "Chunk size must be positive",
@@ -322,7 +321,7 @@ impl PerformanceConfig {
                 "> 0",
             ));
         }
-        
+
         Ok(())
     }
 }
@@ -358,19 +357,19 @@ impl BenchmarkResult {
         } else {
             0.0
         };
-        
+
         let avg_time_per_op = if iterations > 0 {
             duration / iterations as u32
         } else {
             Duration::ZERO
         };
-        
+
         let memory_throughput = if duration_secs > 0.0 {
             bytes_processed as f64 / duration_secs
         } else {
             0.0
         };
-        
+
         Self {
             operation,
             duration,
@@ -380,7 +379,7 @@ impl BenchmarkResult {
             memory_throughput,
         }
     }
-    
+
     /// Get throughput in MB/s
     pub fn throughput_mbps(&self) -> f64 {
         self.memory_throughput / (1024.0 * 1024.0)
@@ -404,7 +403,7 @@ impl PerformanceOptimizer {
     /// Create new performance optimizer
     pub fn new(config: PerformanceConfig) -> Self {
         let simd_capabilities = SimdCapabilities::detect();
-        
+
         Self {
             config,
             simd_capabilities,
@@ -412,7 +411,7 @@ impl PerformanceOptimizer {
             benchmarks: ArcSwap::from_pointee(Vec::new()),
         }
     }
-    
+
     /// Optimized vector addition with SIMD acceleration
     pub fn vector_add(&self, a: &[f32], b: &[f32], result: &mut [f32]) -> CandleResult<()> {
         if a.len() != b.len() || a.len() != result.len() {
@@ -422,9 +421,9 @@ impl PerformanceOptimizer {
                 "equal length vectors",
             ));
         }
-        
+
         let start_time = Instant::now();
-        
+
         if self.config.enable_parallel && a.len() >= self.config.parallel_threshold {
             self.parallel_vector_add(a, b, result)?;
         } else if self.config.enable_simd && self.simd_capabilities.has_simd() {
@@ -432,20 +431,22 @@ impl PerformanceOptimizer {
         } else {
             self.scalar_vector_add(a, b, result);
         }
-        
+
         let duration = start_time.elapsed();
-        self.stats.total_operations.store(self.stats.total_operations.load() + 1);
-        self.stats.total_compute_time.store(
-            self.stats.total_compute_time.load() + duration.as_nanos() as u64
-        );
-        
+        self.stats
+            .total_operations
+            .store(self.stats.total_operations.load() + 1);
+        self.stats
+            .total_compute_time
+            .store(self.stats.total_compute_time.load() + duration.as_nanos() as u64);
+
         Ok(())
     }
-    
+
     /// Parallel vector addition
     fn parallel_vector_add(&self, a: &[f32], b: &[f32], result: &mut [f32]) -> CandleResult<()> {
         let chunk_size = self.simd_capabilities.optimal_chunk_size(a.len());
-        
+
         result
             .par_chunks_mut(chunk_size)
             .zip(a.par_chunks(chunk_size))
@@ -457,19 +458,19 @@ impl PerformanceOptimizer {
                     self.scalar_vector_add(a_chunk, b_chunk, result_chunk);
                 }
             });
-        
-        self.stats.parallel_operations.store(
-            self.stats.parallel_operations.load() + 1
-        );
-        
+
+        self.stats
+            .parallel_operations
+            .store(self.stats.parallel_operations.load() + 1);
+
         Ok(())
     }
-    
+
     /// SIMD vector addition
     fn simd_vector_add(&self, a: &[f32], b: &[f32], result: &mut [f32]) -> CandleResult<()> {
         let vector_width = self.simd_capabilities.vector_width;
         let simd_len = (a.len() / vector_width) * vector_width;
-        
+
         // SIMD portion
         for i in (0..simd_len).step_by(vector_width) {
             // Note: In a real implementation, this would use actual SIMD intrinsics
@@ -485,34 +486,34 @@ impl PerformanceOptimizer {
                         );
                     }
                 }
-                
+
                 result[i + j] = a[i + j] + b[i + j];
             }
         }
-        
+
         // Handle remainder
         if simd_len < a.len() {
             self.scalar_vector_add(&a[simd_len..], &b[simd_len..], &mut result[simd_len..]);
         }
-        
-        self.stats.simd_operations.store(
-            self.stats.simd_operations.load() + 1
-        );
-        
+
+        self.stats
+            .simd_operations
+            .store(self.stats.simd_operations.load() + 1);
+
         Ok(())
     }
-    
+
     /// Scalar vector addition fallback
     fn scalar_vector_add(&self, a: &[f32], b: &[f32], result: &mut [f32]) {
         for i in 0..a.len() {
             result[i] = a[i] + b[i];
         }
-        
-        self.stats.scalar_operations.store(
-            self.stats.scalar_operations.load() + 1
-        );
+
+        self.stats
+            .scalar_operations
+            .store(self.stats.scalar_operations.load() + 1);
     }
-    
+
     /// Optimized matrix multiplication
     pub fn matrix_multiply(
         &self,
@@ -530,24 +531,26 @@ impl PerformanceOptimizer {
                 "compatible dimensions",
             ));
         }
-        
+
         let start_time = Instant::now();
-        
+
         if self.config.enable_parallel && m * n >= self.config.parallel_threshold {
             self.parallel_matrix_multiply(a, b, result, m, n, k)?;
         } else {
             self.scalar_matrix_multiply(a, b, result, m, n, k);
         }
-        
+
         let duration = start_time.elapsed();
-        self.stats.total_operations.store(self.stats.total_operations.load() + 1);
-        self.stats.total_compute_time.store(
-            self.stats.total_compute_time.load() + duration.as_nanos() as u64
-        );
-        
+        self.stats
+            .total_operations
+            .store(self.stats.total_operations.load() + 1);
+        self.stats
+            .total_compute_time
+            .store(self.stats.total_compute_time.load() + duration.as_nanos() as u64);
+
         Ok(())
     }
-    
+
     /// Parallel matrix multiplication
     fn parallel_matrix_multiply(
         &self,
@@ -570,14 +573,14 @@ impl PerformanceOptimizer {
                     result_row[j] = sum;
                 }
             });
-        
-        self.stats.parallel_operations.store(
-            self.stats.parallel_operations.load() + 1
-        );
-        
+
+        self.stats
+            .parallel_operations
+            .store(self.stats.parallel_operations.load() + 1);
+
         Ok(())
     }
-    
+
     /// Scalar matrix multiplication
     fn scalar_matrix_multiply(
         &self,
@@ -597,12 +600,12 @@ impl PerformanceOptimizer {
                 result[i * n + j] = sum;
             }
         }
-        
-        self.stats.scalar_operations.store(
-            self.stats.scalar_operations.load() + 1
-        );
+
+        self.stats
+            .scalar_operations
+            .store(self.stats.scalar_operations.load() + 1);
     }
-    
+
     /// Benchmark an operation
     pub fn benchmark<F>(&self, name: &str, mut operation: F, iterations: usize) -> BenchmarkResult
     where
@@ -610,38 +613,33 @@ impl PerformanceOptimizer {
     {
         let start_time = Instant::now();
         let mut total_bytes = 0;
-        
+
         for _ in 0..iterations {
             total_bytes += operation();
         }
-        
+
         let duration = start_time.elapsed();
-        
-        let result = BenchmarkResult::new(
-            name.to_string(),
-            duration,
-            iterations,
-            total_bytes,
-        );
-        
+
+        let result = BenchmarkResult::new(name.to_string(), duration, iterations, total_bytes);
+
         // Store benchmark result
         let mut benchmarks = (**self.benchmarks.load()).clone();
         benchmarks.push(result.clone());
         self.benchmarks.store(Arc::new(benchmarks));
-        
+
         result
     }
-    
+
     /// Get SIMD capabilities
     pub fn simd_capabilities(&self) -> &SimdCapabilities {
         &self.simd_capabilities
     }
-    
+
     /// Get configuration
     pub fn config(&self) -> &PerformanceConfig {
         &self.config
     }
-    
+
     /// Get performance statistics
     pub fn statistics(&self) -> PerformanceStatistics {
         PerformanceStatistics {
@@ -654,7 +652,7 @@ impl PerformanceOptimizer {
             config: self.config.clone(),
         }
     }
-    
+
     /// Get benchmark results
     pub fn benchmark_results(&self) -> Vec<BenchmarkResult> {
         (**self.benchmarks.load()).clone()
@@ -704,7 +702,7 @@ impl PerformanceStatistics {
             0.0
         }
     }
-    
+
     /// Calculate parallel utilization rate
     pub fn parallel_utilization(&self) -> f32 {
         let total = self.total_operations.load();
@@ -714,7 +712,7 @@ impl PerformanceStatistics {
             0.0
         }
     }
-    
+
     /// Get average operation time
     pub fn avg_operation_time(&self) -> Duration {
         let total_ops = self.total_operations.load();
@@ -724,12 +722,12 @@ impl PerformanceStatistics {
             Duration::ZERO
         }
     }
-    
+
     /// Check if performance optimizations are effective
     pub fn is_optimized(&self) -> bool {
         let simd_util = self.simd_utilization();
         let parallel_util = self.parallel_utilization();
-        
+
         // Consider optimized if using SIMD or parallel processing significantly
         simd_util > 0.5 || parallel_util > 0.3
     }
@@ -750,11 +748,11 @@ mod tests {
         let mut buffer = AlignedBuffer::new(1024).unwrap();
         assert_eq!(buffer.capacity(), 1024);
         assert_eq!(buffer.length(), 0);
-        
+
         buffer.fill(1.0);
         assert_eq!(buffer.length(), 1024);
         assert_eq!(buffer.as_slice()[0], 1.0);
-        
+
         buffer.clear();
         assert_eq!(buffer.length(), 0);
     }
@@ -763,15 +761,15 @@ mod tests {
     fn test_performance_optimizer() {
         let config = PerformanceConfig::default();
         let optimizer = PerformanceOptimizer::new(config);
-        
+
         let a = vec![1.0, 2.0, 3.0, 4.0];
         let b = vec![5.0, 6.0, 7.0, 8.0];
         let mut result = vec![0.0; 4];
-        
+
         optimizer.vector_add(&a, &b, &mut result).unwrap();
-        
+
         assert_eq!(result, vec![6.0, 8.0, 10.0, 12.0]);
-        
+
         let stats = optimizer.statistics();
         assert_eq!(stats.total_operations.load(), 1);
     }
@@ -780,13 +778,15 @@ mod tests {
     fn test_matrix_multiplication() {
         let config = PerformanceConfig::default();
         let optimizer = PerformanceOptimizer::new(config);
-        
+
         let a = vec![1.0, 2.0, 3.0, 4.0]; // 2x2 matrix
         let b = vec![5.0, 6.0, 7.0, 8.0]; // 2x2 matrix
-        let mut result = vec![0.0; 4];     // 2x2 result
-        
-        optimizer.matrix_multiply(&a, &b, &mut result, 2, 2, 2).unwrap();
-        
+        let mut result = vec![0.0; 4]; // 2x2 result
+
+        optimizer
+            .matrix_multiply(&a, &b, &mut result, 2, 2, 2)
+            .unwrap();
+
         // Expected: [1*5+2*7, 1*6+2*8; 3*5+4*7, 3*6+4*8] = [19, 22; 43, 50]
         assert_eq!(result, vec![19.0, 22.0, 43.0, 50.0]);
     }
@@ -795,13 +795,17 @@ mod tests {
     fn test_benchmark() {
         let config = PerformanceConfig::default();
         let optimizer = PerformanceOptimizer::new(config);
-        
-        let result = optimizer.benchmark("test_op", || {
-            // Simulate some work
-            std::thread::sleep(Duration::from_micros(1));
-            1024 // bytes processed
-        }, 10);
-        
+
+        let result = optimizer.benchmark(
+            "test_op",
+            || {
+                // Simulate some work
+                std::thread::sleep(Duration::from_micros(1));
+                1024 // bytes processed
+            },
+            10,
+        );
+
         assert_eq!(result.operation, "test_op");
         assert_eq!(result.iterations, 10);
         assert!(result.duration > Duration::ZERO);

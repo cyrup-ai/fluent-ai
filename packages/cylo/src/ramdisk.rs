@@ -2,13 +2,13 @@
 use std::env;
 use std::path::PathBuf;
 
-use crate::{config::RamdiskConfig, error::StorageError, platform::RamdiskPlatform};
 use tracing::{info, warn};
 
 #[cfg(target_os = "linux")]
 use crate::linux::LinuxRamdisk;
 #[cfg(target_os = "macos")]
 use crate::macos::MacosRamdisk;
+use crate::{config::RamdiskConfig, error::StorageError, platform::RamdiskPlatform};
 
 /// Returns the path to the watched directory within the ramdisk
 pub fn get_watched_dir(config: &RamdiskConfig) -> PathBuf {

@@ -638,38 +638,22 @@ impl From<CohereError> for CompletionError {
     fn from(err: CohereError) -> Self {
         match err {
             CohereError::Authentication { message, .. } => {
-                CompletionError::Authentication { 
-                    message: message.to_string(),
-                    retry_possible: false,
-                }
+                CompletionError::ProviderUnavailable(message.to_string())
             }
-            CohereError::ModelNotSupported { model, suggested_models, .. } => {
-                CompletionError::ModelNotFound { 
-                    model: model.to_string(),
-                    available_models: suggested_models.iter().map(|&s| s.to_string()).collect(),
-                }
+            CohereError::ModelNotSupported { model, .. } => {
+                CompletionError::ModelLoadingFailed(format!("Model not supported: {}", model))
             }
-            CohereError::RateLimited { retry_after_ms, .. } => {
-                CompletionError::RateLimit { 
-                    retry_after_ms: Some(retry_after_ms),
-                    message: "Rate limit exceeded".to_string(),
-                }
+            CohereError::RateLimited { .. } => {
+                CompletionError::RateLimitExceeded
             }
             CohereError::RequestValidation { field, reason, .. } => {
-                CompletionError::InvalidRequest { 
-                    message: format!("Validation failed for {}: {}", field, reason),
-                }
+                CompletionError::InvalidRequest(format!("Validation failed for {}: {}", field, reason))
             }
             CohereError::Timeout { duration_ms, .. } => {
-                CompletionError::Timeout { 
-                    duration_ms,
-                    message: "Request timed out".to_string(),
-                }
+                CompletionError::Timeout
             }
             _ => {
-                CompletionError::Unknown { 
-                    message: err.to_string(),
-                }
+                CompletionError::Internal(err.to_string())
             }
         }
     }

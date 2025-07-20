@@ -1,21 +1,19 @@
 use std::path::Path;
 
-use base64::{prelude::BASE64_STANDARD, Engine};
+use base64::{Engine, prelude::BASE64_STANDARD};
 use mime_guess;
 use serde_json::{Map, Value};
 
+pub use super::completion::{
+    GEMINI_1_5_FLASH, GEMINI_1_5_PRO, GEMINI_1_5_PRO_8B, GEMINI_2_0_FLASH,
+};
+use super::{Client, completion::gemini_api_types::GenerateContentResponse};
 use crate::{
+    OneOrMany,
     clients::gemini::completion::gemini_api_types::{
         Blob, Content, GenerateContentRequest, GenerationConfig, Part, Role,
     },
     transcription::{self, TranscriptionError},
-    OneOrMany,
-};
-
-use super::{completion::gemini_api_types::GenerateContentResponse, Client};
-
-pub use super::completion::{
-    GEMINI_1_5_FLASH, GEMINI_1_5_PRO, GEMINI_1_5_PRO_8B, GEMINI_2_0_FLASH,
 };
 
 const TRANSCRIPTION_PREAMBLE: &str =
@@ -136,7 +134,7 @@ impl TryFrom<GenerateContentResponse>
             _ => {
                 return Err(TranscriptionError::ResponseError(
                     "Response content was not text".to_string(),
-                ))
+                ));
             }
         };
 

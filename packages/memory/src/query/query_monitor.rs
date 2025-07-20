@@ -234,15 +234,22 @@ pub struct QueryHandle<'a> {
 impl<'a> QueryHandle<'a> {
     /// Complete the query successfully
     pub async fn complete(self, stats: QueryStats) {
-        let execution_time_ms = Utc::now().signed_duration_since(self.started_at).num_milliseconds() as u64;
+        let execution_time_ms = Utc::now()
+            .signed_duration_since(self.started_at)
+            .num_milliseconds() as u64;
         let mut final_stats = stats;
         final_stats.execution_time_ms = execution_time_ms;
-        self.monitor.complete_query(self.id, final_stats, None).await.ok();
+        self.monitor
+            .complete_query(self.id, final_stats, None)
+            .await
+            .ok();
     }
 
     /// Complete the query with an error
     pub async fn fail(self, error: String) {
-        let execution_time_ms = Utc::now().signed_duration_since(self.started_at).num_milliseconds() as u64;
+        let execution_time_ms = Utc::now()
+            .signed_duration_since(self.started_at)
+            .num_milliseconds() as u64;
         let stats = QueryStats {
             execution_time_ms,
             documents_scanned: 0,

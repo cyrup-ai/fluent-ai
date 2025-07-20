@@ -3,9 +3,10 @@
 //! Provides comprehensive support for OpenAI's text embedding models (text-embedding-3-large/small)
 //! with optimal performance patterns and batch processing capabilities.
 
+use serde::{Deserialize, Serialize};
+
 use super::{OpenAIError, OpenAIResult};
 use crate::ZeroOneOrMany;
-use serde::{Deserialize, Serialize};
 
 /// OpenAI embedding request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -158,35 +159,52 @@ impl EmbeddingInput {
         match self {
             Self::Single(text) => {
                 if text.is_empty() {
-                    return Err(OpenAIError::EmbeddingError("Input text cannot be empty".to_string()));
+                    return Err(OpenAIError::EmbeddingError(
+                        "Input text cannot be empty".to_string(),
+                    ));
                 }
-                if text.len() > 8191 * 4 { // Rough token limit * chars per token
-                    return Err(OpenAIError::EmbeddingError("Input text too long".to_string()));
+                if text.len() > 8191 * 4 {
+                    // Rough token limit * chars per token
+                    return Err(OpenAIError::EmbeddingError(
+                        "Input text too long".to_string(),
+                    ));
                 }
             }
             Self::Array(texts) => {
                 if texts.is_empty() {
-                    return Err(OpenAIError::EmbeddingError("Input array cannot be empty".to_string()));
+                    return Err(OpenAIError::EmbeddingError(
+                        "Input array cannot be empty".to_string(),
+                    ));
                 }
                 if texts.len() > 2048 {
-                    return Err(OpenAIError::EmbeddingError("Too many inputs in batch".to_string()));
+                    return Err(OpenAIError::EmbeddingError(
+                        "Too many inputs in batch".to_string(),
+                    ));
                 }
                 for text in texts {
                     if text.is_empty() {
-                        return Err(OpenAIError::EmbeddingError("Individual text cannot be empty".to_string()));
+                        return Err(OpenAIError::EmbeddingError(
+                            "Individual text cannot be empty".to_string(),
+                        ));
                     }
                 }
             }
             Self::TokenArrays(arrays) => {
                 if arrays.is_empty() {
-                    return Err(OpenAIError::EmbeddingError("Token arrays cannot be empty".to_string()));
+                    return Err(OpenAIError::EmbeddingError(
+                        "Token arrays cannot be empty".to_string(),
+                    ));
                 }
                 for tokens in arrays {
                     if tokens.is_empty() {
-                        return Err(OpenAIError::EmbeddingError("Individual token array cannot be empty".to_string()));
+                        return Err(OpenAIError::EmbeddingError(
+                            "Individual token array cannot be empty".to_string(),
+                        ));
                     }
                     if tokens.len() > 8191 {
-                        return Err(OpenAIError::EmbeddingError("Token array too long".to_string()));
+                        return Err(OpenAIError::EmbeddingError(
+                            "Token array too long".to_string(),
+                        ));
                     }
                 }
             }
@@ -278,18 +296,18 @@ impl EmbeddingConfig {
             if self.model == "text-embedding-3-large" {
                 if dimensions > 3072 {
                     return Err(OpenAIError::EmbeddingError(
-                        "text-embedding-3-large maximum dimensions is 3072".to_string()
+                        "text-embedding-3-large maximum dimensions is 3072".to_string(),
                     ));
                 }
             } else if self.model == "text-embedding-3-small" {
                 if dimensions > 1536 {
                     return Err(OpenAIError::EmbeddingError(
-                        "text-embedding-3-small maximum dimensions is 1536".to_string()
+                        "text-embedding-3-small maximum dimensions is 1536".to_string(),
                     ));
                 }
             } else if self.model == "text-embedding-ada-002" {
                 return Err(OpenAIError::EmbeddingError(
-                    "text-embedding-ada-002 does not support custom dimensions".to_string()
+                    "text-embedding-ada-002 does not support custom dimensions".to_string(),
                 ));
             }
         }
@@ -310,7 +328,8 @@ impl EmbeddingConfig {
     /// Get effective dimensions (custom or default)
     #[inline(always)]
     pub fn get_dimensions(&self) -> u32 {
-        self.dimensions.unwrap_or_else(|| self.get_default_dimensions())
+        self.dimensions
+            .unwrap_or_else(|| self.get_default_dimensions())
     }
 }
 
@@ -321,7 +340,7 @@ impl BatchEmbeddingRequest {
         Self {
             inputs,
             config,
-            chunk_size: 100, // Default batch size
+            chunk_size: 100,      // Default batch size
             parallel_requests: 4, // Default parallel requests
         }
     }
@@ -344,15 +363,21 @@ impl BatchEmbeddingRequest {
     #[inline(always)]
     pub fn validate(&self) -> OpenAIResult<()> {
         if self.inputs.is_empty() {
-            return Err(OpenAIError::EmbeddingError("Batch inputs cannot be empty".to_string()));
+            return Err(OpenAIError::EmbeddingError(
+                "Batch inputs cannot be empty".to_string(),
+            ));
         }
 
         if self.chunk_size == 0 {
-            return Err(OpenAIError::EmbeddingError("Chunk size must be greater than 0".to_string()));
+            return Err(OpenAIError::EmbeddingError(
+                "Chunk size must be greater than 0".to_string(),
+            ));
         }
 
         if self.parallel_requests == 0 {
-            return Err(OpenAIError::EmbeddingError("Parallel requests must be greater than 0".to_string()));
+            return Err(OpenAIError::EmbeddingError(
+                "Parallel requests must be greater than 0".to_string(),
+            ));
         }
 
         self.config.validate()?;
@@ -381,7 +406,9 @@ impl SimilarityMetrics {
     #[inline(always)]
     pub fn calculate(embedding1: &[f32], embedding2: &[f32]) -> OpenAIResult<Self> {
         if embedding1.len() != embedding2.len() {
-            return Err(OpenAIError::EmbeddingError("Embedding dimensions must match".to_string()));
+            return Err(OpenAIError::EmbeddingError(
+                "Embedding dimensions must match".to_string(),
+            ));
         }
 
         let cosine_similarity = cosine_similarity(embedding1, embedding2)?;
@@ -415,13 +442,12 @@ impl ChunkingStrategy {
     #[inline(always)]
     pub fn chunk_text(&self, text: &str) -> Vec<String> {
         match self {
-            Self::FixedLength(length) => {
-                text.chars()
-                    .collect::<Vec<_>>()
-                    .chunks(*length)
-                    .map(|chunk| chunk.iter().collect())
-                    .collect()
-            }
+            Self::FixedLength(length) => text
+                .chars()
+                .collect::<Vec<_>>()
+                .chunks(*length)
+                .map(|chunk| chunk.iter().collect())
+                .collect(),
             Self::Sentences(max_sentences) => {
                 let sentences: Vec<&str> = text.split('.').collect();
                 sentences
@@ -429,12 +455,11 @@ impl ChunkingStrategy {
                     .map(|chunk| chunk.join("."))
                     .collect()
             }
-            Self::Paragraphs => {
-                text.split("\n\n")
-                    .map(|p| p.trim().to_string())
-                    .filter(|p| !p.is_empty())
-                    .collect()
-            }
+            Self::Paragraphs => text
+                .split("\n\n")
+                .map(|p| p.trim().to_string())
+                .filter(|p| !p.is_empty())
+                .collect(),
             Self::Tokens(max_tokens) => {
                 // Approximate token chunking (4 chars per token)
                 let chars_per_chunk = max_tokens * 4;
@@ -452,7 +477,9 @@ impl ChunkingStrategy {
 #[inline(always)]
 pub fn cosine_similarity(a: &[f32], b: &[f32]) -> OpenAIResult<f32> {
     if a.len() != b.len() {
-        return Err(OpenAIError::EmbeddingError("Vector dimensions must match".to_string()));
+        return Err(OpenAIError::EmbeddingError(
+            "Vector dimensions must match".to_string(),
+        ));
     }
 
     let dot = dot_product(a, b);
@@ -485,10 +512,7 @@ pub fn euclidean_distance(a: &[f32], b: &[f32]) -> f32 {
 /// Calculate Manhattan distance between two embeddings
 #[inline(always)]
 pub fn manhattan_distance(a: &[f32], b: &[f32]) -> f32 {
-    a.iter()
-        .zip(b.iter())
-        .map(|(x, y)| (x - y).abs())
-        .sum()
+    a.iter().zip(b.iter()).map(|(x, y)| (x - y).abs()).sum()
 }
 
 /// Normalize embedding vector to unit length
@@ -520,10 +544,10 @@ pub fn find_most_similar(
 
     // Sort by similarity (descending)
     similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    
+
     // Take top k
     similarities.truncate(top_k);
-    
+
     Ok(similarities)
 }
 
@@ -545,7 +569,7 @@ pub fn supports_custom_dimensions(model: &str) -> bool {
 pub fn available_models() -> Vec<&'static str> {
     vec![
         "text-embedding-3-large",
-        "text-embedding-3-small", 
+        "text-embedding-3-small",
         "text-embedding-ada-002",
     ]
 }

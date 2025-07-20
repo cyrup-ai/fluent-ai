@@ -2,25 +2,33 @@
 //!
 //! All extractor construction logic and builder patterns.
 
-use fluent_ai_domain::{AsyncTask, spawn_async};
-use fluent_ai_domain::extractor::{Extractor, ExtractorImpl};
-use fluent_ai_domain::completion::CompletionModel;
-use fluent_ai_domain::agent::Agent;
-use fluent_ai_domain::Models;
-use serde::de::DeserializeOwned;
 use std::fmt;
 use std::marker::PhantomData;
 
+use fluent_ai_domain::Models;
+use fluent_ai_domain::agent::Agent;
+use fluent_ai_domain::completion::CompletionModel;
+use fluent_ai_domain::extractor::{Extractor, ExtractorImpl};
+use fluent_ai_domain::{AsyncTask, spawn_async};
+use serde::de::DeserializeOwned;
+
 /// Builder for creating Extractor instances
-pub struct ExtractorBuilder<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static, M: CompletionModel> {
+pub struct ExtractorBuilder<
+    T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static,
+    M: CompletionModel,
+> {
     model: M,
     system_prompt: Option<String>,
     _marker: PhantomData<T>,
 }
 
 /// Builder with error handler for polymorphic error handling
-pub struct ExtractorBuilderWithHandler<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static, M: CompletionModel> {
-    #[allow(dead_code)] // TODO: Use for completion model integration and structured data extraction
+pub struct ExtractorBuilderWithHandler<
+    T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static,
+    M: CompletionModel,
+> {
+    #[allow(dead_code)]
+    // TODO: Use for completion model integration and structured data extraction
     model: M,
     #[allow(dead_code)] // TODO: Use for extraction guidance and schema specification
     system_prompt: Option<String>,
@@ -102,35 +110,31 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static, M: Comple
     }
 }
 
-impl<
-    T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static,
-    M: CompletionModel + 'static,
-> ExtractorBuilderWithHandler<T, M>
+impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static, M: CompletionModel + 'static>
+    ExtractorBuilderWithHandler<T, M>
 {
     // Terminal method - returns impl Extractor
     pub fn build(self) -> impl Extractor<T> {
         // TODO: Convert model to agent properly
         let agent = Agent::new(Models::Gpt35Turbo, "");
-            
+
         let mut extractor = ExtractorImpl::new(agent);
         if let Some(prompt) = self.system_prompt {
             extractor = extractor.with_system_prompt(prompt);
         }
         extractor
     }
-    
+
     // Terminal method - async build
     pub fn build_async(self) -> AsyncTask<impl Extractor<T>>
     where
         ExtractorImpl<T>: fluent_ai_domain::async_task::NotResult,
     {
-        spawn_async(async move {
-            self.build()
-        })
+        spawn_async(async move { self.build() })
     }
-    
+
     // Terminal method - extract from text immediately
-    pub fn extract_from_text(self, text: impl Into<String>) -> AsyncTask<T> 
+    pub fn extract_from_text(self, text: impl Into<String>) -> AsyncTask<T>
     where
         T: fluent_ai_domain::async_task::NotResult,
     {

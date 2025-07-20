@@ -13,11 +13,11 @@ use std::{marker::PhantomData, mem};
 
 use crate::{
     completion::{
-        message::{Message, Text},
         CompletionError, CompletionModel, CompletionRequest, CompletionResponse,
         StreamingCompletionResponse,
+        message::{Message, Text},
     },
-    runtime::{spawn_async, AsyncTask},
+    runtime::{AsyncTask, spawn_async},
     streaming::streaming::StreamingResultDyn,
 };
 

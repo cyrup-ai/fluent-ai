@@ -2,14 +2,16 @@
 //!
 //! Provides EXACT API syntax for workflow composition and parallel execution.
 
-use fluent_ai_domain::{
-    memory::{MemoryManager, MemoryNode, MemoryType, MemoryError},
-    memory_ops::{self, Op},
-    ZeroOneOrMany, AsyncTask, spawn_async
-};
-use serde_json::Value;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use fluent_ai_domain::{
+    AsyncTask, ZeroOneOrMany,
+    memory::{MemoryError, MemoryManager, MemoryNode, MemoryType},
+    memory_ops::{self, Op},
+    spawn_async,
+};
+use serde_json::Value;
 use tracing::{error, warn};
 
 /// Create a new workflow builder - EXACT syntax: workflow::new()
@@ -53,16 +55,16 @@ impl WorkflowBuilder {
         I: IntoIterator<Item = Box<dyn Op<Input = Value, Output = Value> + Send + Sync>>,
     {
         let mut indices = Vec::new();
-        
+
         for op in ops {
             indices.push(self.ops.len());
             self.ops.push(op);
         }
-        
+
         if !indices.is_empty() {
             self.parallel_groups.push(indices);
         }
-        
+
         self
     }
 
@@ -78,27 +80,33 @@ impl WorkflowBuilder {
         // Execute operations in sequence and parallel groups
         while op_index < self.ops.len() {
             // Check if this operation is part of a parallel group
-            if let Some(group) = self.parallel_groups.iter().find(|group| group.contains(&op_index)) {
+            if let Some(group) = self
+                .parallel_groups
+                .iter()
+                .find(|group| group.contains(&op_index))
+            {
                 // Execute parallel group
                 let mut futures = Vec::with_capacity(group.len());
-                
+
                 for &idx in group {
                     let op = &self.ops[idx];
                     let input_clone = current_value.clone();
                     futures.push(op.call(input_clone));
                 }
-                
+
                 // Await all parallel operations
                 let results = futures::future::join_all(futures).await;
-                
+
                 // Combine results (take the first successful result or Null)
-                current_value = results
-                    .into_iter()
-                    .next()
-                    .unwrap_or(Value::Null);
-                
+                current_value = results.into_iter().next().unwrap_or(Value::Null);
+
                 // Skip all operations in this parallel group
-                op_index = group.iter().max().copied().map(|x| x + 1).unwrap_or(op_index + 1);
+                op_index = group
+                    .iter()
+                    .max()
+                    .copied()
+                    .map(|x| x + 1)
+                    .unwrap_or(op_index + 1);
             } else {
                 // Execute sequential operation
                 if let Some(op) = self.ops.get(op_index) {
@@ -114,9 +122,7 @@ impl WorkflowBuilder {
     /// Build an executable workflow - EXACT syntax: .build()
     #[inline(always)]
     pub fn build(self) -> ExecutableWorkflow {
-        ExecutableWorkflow {
-            builder: self,
-        }
+        ExecutableWorkflow { builder: self }
     }
 }
 
@@ -256,15 +262,15 @@ where
         // Format the prompt with context using pre-sized capacity for efficiency
         let mut context_parts = Vec::with_capacity(self.context_limit);
         match memories {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(memory) => {
                 context_parts.push(format!("- {}", memory.content));
-            },
+            }
             ZeroOneOrMany::Many(memories) => {
                 for memory in memories.iter().take(self.context_limit) {
                     context_parts.push(format!("- {}", memory.content));
                 }
-            },
+            }
         }
         let context = context_parts.join("\n");
 
@@ -393,7 +399,8 @@ where
             "input": input,
             "output": output,
             "timestamp": timestamp,
-        }).to_string();
+        })
+        .to_string();
 
         let memory = MemoryNode::new(memory_content, MemoryType::Episodic).with_importance(0.5); // Initial neutral importance
 
@@ -405,7 +412,7 @@ where
 }
 
 /// Store memory with exponential backoff retry logic
-/// 
+///
 /// Attempts to store a memory with up to 3 retries using exponential backoff.
 /// If all attempts fail, returns a fallback error ID to maintain system stability.
 async fn store_memory_with_retry<M: MemoryManager>(
@@ -414,7 +421,7 @@ async fn store_memory_with_retry<M: MemoryManager>(
 ) -> String {
     const MAX_RETRIES: u32 = 3;
     const BASE_DELAY_MS: u64 = 100;
-    
+
     for attempt in 0..MAX_RETRIES {
         match memory_manager.create_memory(memory.clone()).await {
             Ok(stored_memory) => {
@@ -423,20 +430,20 @@ async fn store_memory_with_retry<M: MemoryManager>(
             Err(e) => {
                 if attempt == MAX_RETRIES - 1 {
                     error!(
-                        "Failed to store memory after {} attempts: {}. Using fallback ID.", 
+                        "Failed to store memory after {} attempts: {}. Using fallback ID.",
                         MAX_RETRIES, e
                     );
                     // Return a fallback error ID to maintain API compatibility
                     return format!("error_fallback_{}", timestamp_safe());
                 } else {
                     warn!(
-                        "Memory storage attempt {} failed ({}), retrying in {}ms: {}", 
-                        attempt + 1, 
+                        "Memory storage attempt {} failed ({}), retrying in {}ms: {}",
+                        attempt + 1,
                         MAX_RETRIES,
                         BASE_DELAY_MS * (1 << attempt), // Exponential backoff: 100ms, 200ms, 400ms
                         e
                     );
-                    
+
                     // Exponential backoff delay
                     let delay = Duration::from_millis(BASE_DELAY_MS * (1 << attempt));
                     tokio::time::sleep(delay).await;
@@ -444,7 +451,7 @@ async fn store_memory_with_retry<M: MemoryManager>(
             }
         }
     }
-    
+
     // This should never be reached due to the return in the last iteration,
     // but provide a final fallback for safety
     format!("error_exhausted_{}", timestamp_safe())

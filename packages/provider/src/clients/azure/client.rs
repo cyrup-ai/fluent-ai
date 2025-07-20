@@ -6,27 +6,26 @@
 
 #![allow(clippy::type_complexity)]
 
-use serde_json::json;
-use bytes::Bytes;
 use std::time::Duration;
+
 use arc_swap::ArcSwap;
-use arrayvec::{ArrayVec, ArrayString};
+use arrayvec::{ArrayString, ArrayVec};
+use bytes::Bytes;
+use fluent_ai_domain::AsyncTask as DomainAsyncTask;
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
+use serde_json::json;
 use smallvec::{SmallVec, smallvec};
 
+use super::{embedding::EmbeddingModel, transcription::TranscriptionModel};
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient, TranscriptionClient},
+    clients::azure::completion::{CompletionModel, GPT_4O},
     completion::{
         self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
     },
     message::Message,
-    clients::azure::completion::{CompletionModel, GPT_4O},
     runtime::{self as rt, AsyncTask},
 };
-
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
-use fluent_ai_domain::AsyncTask as DomainAsyncTask;
-
-use super::{embedding::EmbeddingModel, transcription::TranscriptionModel};
 
 /// Azure OpenAI authentication with zero-allocation patterns
 #[derive(Clone, Debug)]
@@ -46,7 +45,7 @@ impl AzureOpenAIAuth {
                 suggestion: "Provide a valid Azure OpenAI API key".to_string(),
             });
         }
-        
+
         ArrayString::from(key_str)
             .map(Self::ApiKey)
             .map_err(|_| AzureError::Configuration {
@@ -55,7 +54,7 @@ impl AzureOpenAIAuth {
                 suggestion: "Use a valid Azure OpenAI API key".to_string(),
             })
     }
-    
+
     /// Create token authentication with zero allocation validation
     pub fn token(token: impl AsRef<str>) -> Result<Self, AzureError> {
         let token_str = token.as_ref();
@@ -66,7 +65,7 @@ impl AzureOpenAIAuth {
                 suggestion: "Provide a valid Azure OpenAI token".to_string(),
             });
         }
-        
+
         ArrayString::from(token_str)
             .map(Self::Token)
             .map_err(|_| AzureError::Configuration {
@@ -151,27 +150,38 @@ impl Client {
     /// * `auth` - Azure OpenAI API key or token required for authentication
     /// * `api_version` - API version to use (e.g., "2024-10-21" for GA, "2024-10-01-preview" for preview)
     /// * `azure_endpoint` - Azure OpenAI endpoint URL, for example: https://{your-resource-name}.openai.azure.com
-    pub fn new(auth: impl Into<AzureOpenAIAuth>, api_version: &str, azure_endpoint: &str) -> Result<Self> {
-        let http_client = HttpClient::with_config(HttpConfig::ai_optimized())
-            .map_err(|e| AzureError::Configuration {
+    pub fn new(
+        auth: impl Into<AzureOpenAIAuth>,
+        api_version: &str,
+        azure_endpoint: &str,
+    ) -> Result<Self> {
+        let http_client = HttpClient::with_config(HttpConfig::ai_optimized()).map_err(|e| {
+            AzureError::Configuration {
                 field: "http_client".to_string(),
                 message: format!("Failed to create HTTP3 client: {}", e),
                 suggestion: "Check network configuration and try again".to_string(),
-            })?;
-            
+            }
+        })?;
+
         let auth = auth.into();
-        
-        let api_version_array = ArrayString::from(api_version)
-            .map_err(|_| AzureError::Configuration {
+
+        let api_version_array =
+            ArrayString::from(api_version).map_err(|_| AzureError::Configuration {
                 field: "api_version".to_string(),
-                message: format!("API version too long: {} characters (max 32)", api_version.len()),
+                message: format!(
+                    "API version too long: {} characters (max 32)",
+                    api_version.len()
+                ),
                 suggestion: "Use a valid Azure API version string".to_string(),
             })?;
-            
-        let endpoint_array = ArrayString::from(azure_endpoint)
-            .map_err(|_| AzureError::Configuration {
+
+        let endpoint_array =
+            ArrayString::from(azure_endpoint).map_err(|_| AzureError::Configuration {
                 field: "azure_endpoint".to_string(),
-                message: format!("Endpoint URL too long: {} characters (max 256)", azure_endpoint.len()),
+                message: format!(
+                    "Endpoint URL too long: {} characters (max 256)",
+                    azure_endpoint.len()
+                ),
                 suggestion: "Use a valid Azure OpenAI endpoint URL".to_string(),
             })?;
 
@@ -200,27 +210,34 @@ impl Client {
     pub(crate) fn auth_header(&self) -> (&'static str, ArrayString<300>) {
         let auth = self.auth.load();
         match auth.as_ref() {
-            AzureOpenAIAuth::ApiKey(api_key) => {
-                ("api-key", ArrayString::from(api_key.as_str()).unwrap_or_default())
-            },
+            AzureOpenAIAuth::ApiKey(api_key) => (
+                "api-key",
+                ArrayString::from(api_key.as_str()).unwrap_or_default(),
+            ),
             AzureOpenAIAuth::Token(token) => {
                 let mut bearer_token = ArrayString::<300>::new();
                 let _ = bearer_token.try_push_str("Bearer ");
                 let _ = bearer_token.try_push_str(token.as_str());
                 ("Authorization", bearer_token)
-            },
+            }
         }
     }
-    
+
     /// Build optimized headers with zero allocation
     #[inline(always)]
     fn build_headers(&self) -> SmallVec<[(&'static str, ArrayString<300>); 4]> {
         let (auth_header_name, auth_header_value) = self.auth_header();
-        
+
         smallvec![
             (auth_header_name, auth_header_value),
-            ("Content-Type", ArrayString::from("application/json").unwrap_or_default()),
-            ("User-Agent", ArrayString::from("fluent-ai-http3/1.0").unwrap_or_default()),
+            (
+                "Content-Type",
+                ArrayString::from("application/json").unwrap_or_default()
+            ),
+            (
+                "User-Agent",
+                ArrayString::from("fluent-ai-http3/1.0").unwrap_or_default()
+            ),
         ]
     }
 
@@ -231,26 +248,29 @@ impl Client {
         );
         let headers = self.build_headers();
         let mut request = HttpRequest::post(url, Vec::new())?;
-        
+
         for (name, value) in headers.iter() {
             request = request.header(*name, value.as_str());
         }
-        
+
         Ok(request.timeout(self.timeout))
     }
 
-    pub(crate) fn post_chat_completion(&self, deployment_id: &str) -> Result<HttpRequest, HttpError> {
+    pub(crate) fn post_chat_completion(
+        &self,
+        deployment_id: &str,
+    ) -> Result<HttpRequest, HttpError> {
         let url = format!(
             "{}/openai/deployments/{}/chat/completions?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
         let headers = self.build_headers();
         let mut request = HttpRequest::post(url, Vec::new())?;
-        
+
         for (name, value) in headers.iter() {
             request = request.header(*name, value.as_str());
         }
-        
+
         Ok(request.timeout(self.timeout))
     }
 
@@ -261,61 +281,69 @@ impl Client {
         );
         let headers = self.build_headers();
         let mut request = HttpRequest::post(url, Vec::new())?;
-        
+
         for (name, value) in headers.iter() {
             request = request.header(*name, value.as_str());
         }
-        
+
         Ok(request.timeout(self.timeout))
     }
 
     #[cfg(feature = "image")]
-    pub(crate) fn post_image_generation(&self, deployment_id: &str) -> Result<HttpRequest, HttpError> {
+    pub(crate) fn post_image_generation(
+        &self,
+        deployment_id: &str,
+    ) -> Result<HttpRequest, HttpError> {
         let url = format!(
             "{}/openai/deployments/{}/images/generations?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
         let headers = self.build_headers();
         let mut request = HttpRequest::post(url, Vec::new())?;
-        
+
         for (name, value) in headers.iter() {
             request = request.header(*name, value.as_str());
         }
-        
+
         Ok(request.timeout(self.timeout))
     }
 
     #[cfg(feature = "audio")]
-    pub(crate) fn post_audio_generation(&self, deployment_id: &str) -> Result<HttpRequest, HttpError> {
+    pub(crate) fn post_audio_generation(
+        &self,
+        deployment_id: &str,
+    ) -> Result<HttpRequest, HttpError> {
         let url = format!(
             "{}/openai/deployments/{}/audio/speech?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
         let headers = self.build_headers();
         let mut request = HttpRequest::post(url, Vec::new())?;
-        
+
         for (name, value) in headers.iter() {
             request = request.header(*name, value.as_str());
         }
-        
+
         Ok(request.timeout(self.timeout))
     }
-    
+
     /// Test connection to Azure OpenAI service
     pub async fn test_connection(&self) -> Result<()> {
-        let url = format!("{}/openai/models?api-version={}", 
-            self.azure_endpoint, self.api_version);
-        
+        let url = format!(
+            "{}/openai/models?api-version={}",
+            self.azure_endpoint, self.api_version
+        );
+
         let headers = self.build_headers();
         let mut request = HttpRequest::get(&url)?;
-        
+
         for (name, value) in headers.iter() {
             request = request.header(*name, value.as_str());
         }
-        
+
         let request = request.timeout(Duration::from_secs(10));
         let response = self.http_client.send(request).await?;
-        
+
         if response.status().is_success() {
             Ok(())
         } else {
@@ -498,20 +526,24 @@ impl Client {
         } else {
             return Err(AzureError::Configuration {
                 field: "authentication".to_string(),
-                message: "Neither AZURE_API_KEY nor AZURE_TOKEN environment variable is set".to_string(),
-                suggestion: "Set either AZURE_API_KEY or AZURE_TOKEN environment variable".to_string(),
+                message: "Neither AZURE_API_KEY nor AZURE_TOKEN environment variable is set"
+                    .to_string(),
+                suggestion: "Set either AZURE_API_KEY or AZURE_TOKEN environment variable"
+                    .to_string(),
             });
         };
 
-        let api_version = std::env::var("AZURE_API_VERSION")
-            .map_err(|_| AzureError::Configuration {
+        let api_version =
+            std::env::var("AZURE_API_VERSION").map_err(|_| AzureError::Configuration {
                 field: "AZURE_API_VERSION".to_string(),
                 message: "AZURE_API_VERSION environment variable not set".to_string(),
-                suggestion: "Set AZURE_API_VERSION to your desired API version (e.g., '2024-10-21')".to_string(),
+                suggestion:
+                    "Set AZURE_API_VERSION to your desired API version (e.g., '2024-10-21')"
+                        .to_string(),
             })?;
-            
-        let azure_endpoint = std::env::var("AZURE_ENDPOINT")
-            .map_err(|_| AzureError::Configuration {
+
+        let azure_endpoint =
+            std::env::var("AZURE_ENDPOINT").map_err(|_| AzureError::Configuration {
                 field: "AZURE_ENDPOINT".to_string(),
                 message: "AZURE_ENDPOINT environment variable not set".to_string(),
                 suggestion: "Set AZURE_ENDPOINT to your Azure OpenAI endpoint URL".to_string(),
@@ -540,11 +572,15 @@ impl ProviderClient for Client {
     fn provider_name(&self) -> &'static str {
         "azure"
     }
-    
-    fn test_connection(&self) -> DomainAsyncTask<std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+
+    fn test_connection(
+        &self,
+    ) -> DomainAsyncTask<std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>> {
         let client = self.clone();
         DomainAsyncTask::spawn(async move {
-            client.test_connection().await
+            client
+                .test_connection()
+                .await
                 .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
         })
     }

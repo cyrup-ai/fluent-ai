@@ -22,7 +22,7 @@ const STREAM_CAPACITY: usize = 256;
 // ---------------------------------------------------------------------------
 pub struct AudioGenerationFlow {
     pub chunks: AsyncStream<AudioGenerationChunk, STREAM_CAPACITY>,
-    pub done:   AsyncTask<Result<(), AudioGenerationError>>,
+    pub done: AsyncTask<Result<(), AudioGenerationError>>,
 }
 
 // ---------------------------------------------------------------------------

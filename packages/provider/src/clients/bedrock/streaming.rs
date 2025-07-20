@@ -7,14 +7,16 @@
 //! - Finish reason detection
 //! - Error recovery and partial response handling
 
-use super::error::{BedrockError, Result};
-use fluent_ai_http3::HttpResponse;
-use fluent_ai_domain::{AsyncStream, AsyncTask};
+use std::collections::VecDeque;
+
+use arrayvec::ArrayString;
 use fluent_ai_domain::chunk::CompletionChunk;
 use fluent_ai_domain::usage::Usage;
+use fluent_ai_domain::{AsyncStream, AsyncTask};
+use fluent_ai_http3::HttpResponse;
 use serde_json::Value;
-use arrayvec::ArrayString;
-use std::collections::VecDeque;
+
+use super::error::{BedrockError, Result};
 
 /// Bedrock streaming response handler
 pub struct BedrockStream {
@@ -47,22 +49,22 @@ impl BedrockStream {
             finished: false,
         }
     }
-    
+
     /// Convert to async stream of completion chunks
     pub fn into_chunk_stream(mut self) -> AsyncStream<CompletionChunk> {
         AsyncStream::new(async move {
             let mut chunks = VecDeque::new();
-            
+
             // Get event stream from response
             let mut event_stream = self.response.event_stream();
-            
+
             while let Some(event_result) = event_stream.next().await {
                 match event_result {
                     Ok(event) => {
                         if let Some(chunk) = self.process_event(event).await {
                             chunks.push_back(chunk);
                         }
-                        
+
                         if self.finished {
                             break;
                         }
@@ -81,11 +83,15 @@ impl BedrockStream {
                     }
                 }
             }
-            
+
             // Ensure we send a final chunk if we haven't already
             if !self.finished {
                 let final_chunk = CompletionChunk {
-                    content: if self.content_buffer.is_empty() { None } else { Some(self.content_buffer.clone()) },
+                    content: if self.content_buffer.is_empty() {
+                        None
+                    } else {
+                        Some(self.content_buffer.clone())
+                    },
                     finish_reason: self.finish_reason.or_else(|| Some("stop".to_string())),
                     usage: self.usage,
                     model: Some(self.model.to_string()),
@@ -93,19 +99,22 @@ impl BedrockStream {
                 };
                 chunks.push_back(final_chunk);
             }
-            
+
             AsyncStream::from_iter(chunks.into_iter())
         })
     }
-    
+
     /// Process a single event stream event
-    async fn process_event(&mut self, event: fluent_ai_http3::EventStreamEvent) -> Option<CompletionChunk> {
+    async fn process_event(
+        &mut self,
+        event: fluent_ai_http3::EventStreamEvent,
+    ) -> Option<CompletionChunk> {
         // Parse event data as JSON
         let event_data = match self.parse_event_data(&event.data) {
             Ok(data) => data,
             Err(_) => return None, // Skip malformed events
         };
-        
+
         // Handle different event types
         if let Some(event_type) = event.event_type.as_deref() {
             match event_type {
@@ -121,13 +130,13 @@ impl BedrockStream {
             self.process_generic_event(event_data)
         }
     }
-    
+
     /// Parse event data as JSON with error handling
     fn parse_event_data(&self, data: &[u8]) -> Result<Value> {
         serde_json::from_slice(data)
             .map_err(|e| BedrockError::config_error("event_parse", &e.to_string()))
     }
-    
+
     /// Process chunk event (generic streaming data)
     fn process_chunk_event(&mut self, data: Value) -> Option<CompletionChunk> {
         // Extract delta content
@@ -135,11 +144,11 @@ impl BedrockStream {
             .get("delta")
             .and_then(|d| d.get("text"))
             .and_then(|t| t.as_str());
-        
+
         if let Some(text) = delta_text {
             self.delta_buffer.push_str(text);
             self.content_buffer.push_str(text);
-            
+
             return Some(CompletionChunk {
                 content: Some(text.to_string()),
                 finish_reason: None,
@@ -148,10 +157,10 @@ impl BedrockStream {
                 delta: Some(text.to_string()),
             });
         }
-        
+
         None
     }
-    
+
     /// Process message start event
     fn process_message_start_event(&mut self, data: Value) -> Option<CompletionChunk> {
         // Extract initial message metadata
@@ -159,7 +168,7 @@ impl BedrockStream {
             .get("message")
             .and_then(|m| m.get("role"))
             .and_then(|r| r.as_str());
-        
+
         if role == Some("assistant") {
             return Some(CompletionChunk {
                 content: None,
@@ -169,21 +178,21 @@ impl BedrockStream {
                 delta: None,
             });
         }
-        
+
         None
     }
-    
+
     /// Process content block delta event
     fn process_content_delta_event(&mut self, data: Value) -> Option<CompletionChunk> {
         let delta_text = data
             .get("delta")
             .and_then(|d| d.get("text"))
             .and_then(|t| t.as_str());
-        
+
         if let Some(text) = delta_text {
             self.delta_buffer.push_str(text);
             self.content_buffer.push_str(text);
-            
+
             return Some(CompletionChunk {
                 content: Some(text.to_string()),
                 finish_reason: None,
@@ -192,10 +201,10 @@ impl BedrockStream {
                 delta: Some(text.to_string()),
             });
         }
-        
+
         None
     }
-    
+
     /// Process message stop event
     fn process_message_stop_event(&mut self, data: Value) -> Option<CompletionChunk> {
         // Extract finish reason
@@ -203,19 +212,23 @@ impl BedrockStream {
             .get("stopReason")
             .and_then(|r| r.as_str())
             .unwrap_or("stop");
-        
+
         self.finish_reason = Some(finish_reason.to_string());
         self.finished = true;
-        
+
         Some(CompletionChunk {
-            content: if self.content_buffer.is_empty() { None } else { Some(self.content_buffer.clone()) },
+            content: if self.content_buffer.is_empty() {
+                None
+            } else {
+                Some(self.content_buffer.clone())
+            },
             finish_reason: Some(finish_reason.to_string()),
             usage: self.usage.clone(),
             model: Some(self.model.to_string()),
             delta: None,
         })
     }
-    
+
     /// Process metadata event (usage statistics)
     fn process_metadata_event(&mut self, data: Value) -> Option<CompletionChunk> {
         // Extract usage statistics
@@ -224,20 +237,20 @@ impl BedrockStream {
                 .get("inputTokens")
                 .and_then(|t| t.as_u64())
                 .unwrap_or(0) as u32;
-            
+
             let output_tokens = usage_data
                 .get("outputTokens")
                 .and_then(|t| t.as_u64())
                 .unwrap_or(0) as u32;
-            
+
             let total_tokens = input_tokens + output_tokens;
-            
+
             self.usage = Some(Usage {
                 prompt_tokens: input_tokens,
                 completion_tokens: output_tokens,
                 total_tokens,
             });
-            
+
             return Some(CompletionChunk {
                 content: None,
                 finish_reason: None,
@@ -246,10 +259,10 @@ impl BedrockStream {
                 delta: None,
             });
         }
-        
+
         None
     }
-    
+
     /// Process generic/unknown event format
     fn process_generic_event(&mut self, data: Value) -> Option<CompletionChunk> {
         // Try to extract any text content from various possible locations
@@ -261,11 +274,11 @@ impl BedrockStream {
             ["message", "content", "text"],
             ["delta", "text"],
         ];
-        
+
         for path in &possible_text_paths {
             let mut current = &data;
             let mut found = true;
-            
+
             for key in path {
                 if let Some(next) = current.get(*key) {
                     current = next;
@@ -274,12 +287,12 @@ impl BedrockStream {
                     break;
                 }
             }
-            
+
             if found {
                 if let Some(text) = current.as_str() {
                     if !text.is_empty() {
                         self.content_buffer.push_str(text);
-                        
+
                         return Some(CompletionChunk {
                             content: Some(text.to_string()),
                             finish_reason: None,
@@ -291,16 +304,20 @@ impl BedrockStream {
                 }
             }
         }
-        
+
         // Check for finish/stop indication
         let finish_indicators = ["finish_reason", "stop_reason", "done", "finished"];
         for indicator in &finish_indicators {
             if let Some(reason) = data.get(*indicator).and_then(|r| r.as_str()) {
                 self.finish_reason = Some(reason.to_string());
                 self.finished = true;
-                
+
                 return Some(CompletionChunk {
-                    content: if self.content_buffer.is_empty() { None } else { Some(self.content_buffer.clone()) },
+                    content: if self.content_buffer.is_empty() {
+                        None
+                    } else {
+                        Some(self.content_buffer.clone())
+                    },
                     finish_reason: Some(reason.to_string()),
                     usage: self.usage.clone(),
                     model: Some(self.model.to_string()),
@@ -308,27 +325,28 @@ impl BedrockStream {
                 });
             }
         }
-        
+
         None
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use fluent_ai_http3::{HttpClient, HttpConfig};
-    
+
+    use super::*;
+
     #[test]
     fn test_stream_creation() {
         // Create a mock response for testing
         let client = HttpClient::with_config(HttpConfig::default())
             .expect("Failed to create http client in test");
-        
+
         // Note: This is a placeholder test since we can't easily mock HttpResponse
         // In a real test environment, you would create a mock HttpResponse
         assert!(true); // Placeholder assertion
     }
-    
+
     #[test]
     fn test_event_data_parsing() {
         let stream = BedrockStream {
@@ -340,11 +358,11 @@ mod tests {
             finish_reason: None,
             finished: false,
         };
-        
+
         let test_json = br#"{"delta": {"text": "Hello"}}"#;
         let parsed = stream.parse_event_data(test_json);
         assert!(parsed.is_ok());
-        
+
         let data = parsed.expect("Failed to parse test JSON");
         let text = data
             .get("delta")

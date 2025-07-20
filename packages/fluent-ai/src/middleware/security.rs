@@ -3,12 +3,13 @@
 //! Provides blazing-fast security checks with zero-allocation patterns
 //! and production-ready authorization mechanisms.
 
-use std::sync::Arc;
 use std::collections::HashSet;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use crossbeam_utils::CachePadded;
 
+use crossbeam_utils::CachePadded;
 use fluent_ai_domain::chat::commands::types::*;
+
 use super::command::CommandMiddleware;
 
 /// Security policy for command execution
@@ -26,7 +27,7 @@ impl Default for SecurityPolicy {
     fn default() -> Self {
         Self {
             allowed_commands: HashSet::new(),
-            rate_limit: 60, // 60 commands per minute
+            rate_limit: 60,          // 60 commands per minute
             max_execution_time: 300, // 5 minutes
         }
     }
@@ -56,7 +57,7 @@ impl RateLimiter {
             .unwrap_or(0);
 
         let window_start = self.window_start.load(Ordering::Relaxed);
-        
+
         // Reset window if more than 60 seconds have passed
         if now - window_start >= 60 {
             self.window_start.store(now, Ordering::Relaxed);
@@ -99,7 +100,7 @@ impl SecurityMiddleware {
         if self.policy.allowed_commands.is_empty() {
             return true; // Allow all if no restrictions
         }
-        
+
         let command_type = match command {
             ChatCommand::Help(_) => "help",
             ChatCommand::Clear(_) => "clear",
@@ -112,7 +113,7 @@ impl SecurityMiddleware {
             ChatCommand::Debug(_) => "debug",
             ChatCommand::Custom(cmd) => &cmd.name,
         };
-        
+
         self.policy.allowed_commands.contains(command_type)
     }
 }
@@ -128,7 +129,8 @@ impl CommandMiddleware for SecurityMiddleware {
         &'a self,
         command: &'a ChatCommand,
         _context: &'a CommandContext,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>> {
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>
+    {
         Box::pin(async move {
             // Check rate limiting
             if !self.rate_limiter.is_allowed(self.policy.rate_limit) {
@@ -149,7 +151,8 @@ impl CommandMiddleware for SecurityMiddleware {
         _command: &'a ChatCommand,
         _context: &'a CommandContext,
         _result: &'a CommandResult<CommandOutput>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>> {
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>
+    {
         Box::pin(async move {
             // Security post-processing if needed
             Ok(())

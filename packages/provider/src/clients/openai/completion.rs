@@ -12,17 +12,23 @@
 //!     .prompt("Hello world")
 //! ```
 
-use fluent_ai_domain::{AsyncTask, spawn_async};
-use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
-use fluent_ai_domain::{Message, Document};
-use fluent_ai_domain::tool::ToolDefinition;
-use crate::{AsyncStream, completion_provider::{CompletionProvider, CompletionError, ModelConfig, ModelInfo, ChunkHandler}};
-use crate::clients::openai::model_info::get_model_config;
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
-use serde::{Serialize, Deserialize};
-use serde_json::Value;
 use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
+use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
+use fluent_ai_domain::tool::ToolDefinition;
+use fluent_ai_domain::{AsyncTask, spawn_async};
+use fluent_ai_domain::{Document, Message};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use crate::clients::openai::model_info::get_model_config;
+use crate::{
+    AsyncStream,
+    completion_provider::{
+        ChunkHandler, CompletionError, CompletionProvider, ModelConfig, ModelInfo,
+    },
+};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -30,10 +36,6 @@ const MAX_MESSAGES: usize = 128;
 const MAX_TOOLS: usize = 32;
 /// Maximum documents per request (compile-time bounded)
 const MAX_DOCUMENTS: usize = 64;
-
-
-
-
 
 /// Zero-allocation OpenAI completion builder with perfect ergonomics
 #[derive(Clone)]
@@ -103,7 +105,6 @@ pub struct OpenAICompletionRequest<'a> {
     pub stream_options: Value,
 }
 
-
 /// OpenAI streaming response chunk (optimized deserialization)
 #[derive(Debug, Deserialize)]
 pub struct OpenAIStreamChunk {
@@ -156,9 +157,10 @@ impl CompletionProvider for OpenAICompletionBuilder {
     /// Create new OpenAI completion builder with ModelInfo defaults
     #[inline(always)]
     fn new(api_key: String, model_name: &'static str) -> Result<Self, CompletionError> {
-        let client = HttpClient::with_config(HttpConfig::streaming_optimized())
-            .map_err(|_| CompletionError::HttpError)?;
-        
+        let client = HttpClient::with_config(HttpConfig::streaming_optimized()).map_err(|_| {
+            CompletionError::ProviderUnavailable("HTTP client initialization failed".to_string())
+        })?;
+
         let config = get_model_config(model_name);
 
         Ok(Self {
@@ -188,18 +190,18 @@ impl CompletionProvider for OpenAICompletionBuilder {
         self.explicit_api_key = Some(key.into());
         self
     }
-    
+
     /// Environment variable names to search for OpenAI API keys (ordered by priority)
     #[inline(always)]
     fn env_api_keys(&self) -> ZeroOneOrMany<String> {
         // First found wins - search in priority order
         ZeroOneOrMany::Many(vec![
-            "OPENAI_API_KEY".to_string(),      // Primary OpenAI key
-            "OPENAI_TOKEN".to_string(),        // Alternative name
-            "OPEN_AI_API_KEY".to_string(),     // Common variation
+            "OPENAI_API_KEY".to_string(),  // Primary OpenAI key
+            "OPENAI_TOKEN".to_string(),    // Alternative name
+            "OPEN_AI_API_KEY".to_string(), // Common variation
         ])
     }
-    
+
     /// Set system prompt (overrides ModelInfo default)
     #[inline(always)]
     fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
@@ -246,15 +248,17 @@ impl CompletionProvider for OpenAICompletionBuilder {
     #[inline(always)]
     fn chat_history(mut self, history: ZeroOneOrMany<Message>) -> Result<Self, CompletionError> {
         match history {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(msg) => {
-                self.chat_history.try_push(msg)
-                    .map_err(|_| CompletionError::RequestTooLarge)?;
-            },
+                self.chat_history.try_push(msg).map_err(|_| {
+                    CompletionError::InvalidRequest("Request too large".to_string())
+                })?;
+            }
             ZeroOneOrMany::Many(msgs) => {
                 for msg in msgs {
-                    self.chat_history.try_push(msg)
-                        .map_err(|_| CompletionError::RequestTooLarge)?;
+                    self.chat_history.try_push(msg).map_err(|_| {
+                        CompletionError::InvalidRequest("Request too large".to_string())
+                    })?;
                 }
             }
         }
@@ -265,15 +269,17 @@ impl CompletionProvider for OpenAICompletionBuilder {
     #[inline(always)]
     fn documents(mut self, docs: ZeroOneOrMany<Document>) -> Result<Self, CompletionError> {
         match docs {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(doc) => {
-                self.documents.try_push(doc)
-                    .map_err(|_| CompletionError::RequestTooLarge)?;
-            },
+                self.documents.try_push(doc).map_err(|_| {
+                    CompletionError::InvalidRequest("Request too large".to_string())
+                })?;
+            }
             ZeroOneOrMany::Many(documents) => {
                 for doc in documents {
-                    self.documents.try_push(doc)
-                        .map_err(|_| CompletionError::RequestTooLarge)?;
+                    self.documents.try_push(doc).map_err(|_| {
+                        CompletionError::InvalidRequest("Request too large".to_string())
+                    })?;
                 }
             }
         }
@@ -284,15 +290,17 @@ impl CompletionProvider for OpenAICompletionBuilder {
     #[inline(always)]
     fn tools(mut self, tools: ZeroOneOrMany<ToolDefinition>) -> Result<Self, CompletionError> {
         match tools {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(tool) => {
-                self.tools.try_push(tool)
-                    .map_err(|_| CompletionError::RequestTooLarge)?;
-            },
+                self.tools.try_push(tool).map_err(|_| {
+                    CompletionError::InvalidRequest("Request too large".to_string())
+                })?;
+            }
             ZeroOneOrMany::Many(tool_list) => {
                 for tool in tool_list {
-                    self.tools.try_push(tool)
-                        .map_err(|_| CompletionError::RequestTooLarge)?;
+                    self.tools.try_push(tool).map_err(|_| {
+                        CompletionError::InvalidRequest("Request too large".to_string())
+                    })?;
                 }
             }
         }
@@ -308,7 +316,7 @@ impl CompletionProvider for OpenAICompletionBuilder {
 
     /// Set chunk handler with cyrup_sugars pattern matching syntax
     #[inline(always)]
-    fn on_chunk<F>(mut self, handler: F) -> Self 
+    fn on_chunk<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<CompletionChunk, CompletionError>) + Send + Sync + 'static,
     {
@@ -360,7 +368,6 @@ impl CompletionProvider for OpenAICompletionBuilder {
 
         receiver
     }
-
 }
 
 impl OpenAICompletionBuilder {
@@ -372,28 +379,29 @@ impl OpenAICompletionBuilder {
     ) -> Result<AsyncStream<Result<CompletionChunk, CompletionError>>, CompletionError> {
         let request_body = self.build_request(&prompt)?;
         let body_bytes = serde_json::to_vec(&request_body)
-            .map_err(|_| CompletionError::ParseError)?;
+            .map_err(|_| CompletionError::Internal("Parse error".to_string()))?;
 
         // Use explicit API key if set, otherwise use discovered key
         let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
-        
-        let request = HttpRequest::post(
-            &format!("{}/chat/completions", self.base_url),
-            body_bytes,
-        )
-        .map_err(|_| CompletionError::HttpError)?
-        .header("Content-Type", "application/json")
-        .header("Authorization", &format!("Bearer {}", auth_key));
 
-        let response = self.client.send(request).await
-            .map_err(|_| CompletionError::HttpError)?;
+        let request = HttpRequest::post(&format!("{}/chat/completions", self.base_url), body_bytes)
+            .map_err(|_| {
+                CompletionError::ProviderUnavailable("HTTP request creation failed".to_string())
+            })?
+            .header("Content-Type", "application/json")
+            .header("Authorization", &format!("Bearer {}", auth_key));
+
+        let response =
+            self.client.send(request).await.map_err(|_| {
+                CompletionError::ProviderUnavailable("HTTP request failed".to_string())
+            })?;
 
         if !response.status().is_success() {
             return Err(match response.status().as_u16() {
-                401 => CompletionError::AuthError,
-                413 => CompletionError::RequestTooLarge,
-                429 => CompletionError::RateLimited,
-                _ => CompletionError::HttpError,
+                401 => CompletionError::ProviderUnavailable("Authentication failed".to_string()),
+                413 => CompletionError::InvalidRequest("Request too large".to_string()),
+                429 => CompletionError::RateLimitExceeded,
+                _ => CompletionError::ProviderUnavailable("HTTP error".to_string()),
             });
         }
 
@@ -403,7 +411,7 @@ impl OpenAICompletionBuilder {
         spawn_async(async move {
             use futures_util::StreamExt;
             let mut sse_stream = sse_stream;
-            
+
             while let Some(event) = sse_stream.next().await {
                 match event {
                     Ok(sse_event) => {
@@ -427,7 +435,8 @@ impl OpenAICompletionBuilder {
                         }
                     }
                     Err(_) => {
-                        let _ = chunk_sender.send(Err(CompletionError::StreamError));
+                        let _ = chunk_sender
+                            .send(Err(CompletionError::Internal("Stream error".to_string())));
                         break;
                     }
                 }
@@ -444,36 +453,43 @@ impl OpenAICompletionBuilder {
 
         // Add system prompt (always present from ModelInfo)
         if !self.system_prompt.is_empty() {
-            messages.try_push(OpenAIMessage {
-                role: "system",
-                content: Some(&self.system_prompt),
-                tool_calls: None,
-            }).map_err(|_| CompletionError::RequestTooLarge)?;
+            messages
+                .try_push(OpenAIMessage {
+                    role: "system",
+                    content: Some(&self.system_prompt),
+                    tool_calls: None,
+                })
+                .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
         }
 
         // Add documents as context (zero allocation conversion)
         for doc in &self.documents {
             let content = format!("Document: {}", doc.content());
-            messages.try_push(OpenAIMessage {
-                role: "user", 
-                content: Some(Box::leak(content.into_boxed_str())),
-                tool_calls: None,
-            }).map_err(|_| CompletionError::RequestTooLarge)?;
+            messages
+                .try_push(OpenAIMessage {
+                    role: "user",
+                    content: Some(Box::leak(content.into_boxed_str())),
+                    tool_calls: None,
+                })
+                .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
         }
 
         // Add chat history (zero allocation domain conversion)
         for msg in &self.chat_history {
             let openai_msg = self.convert_domain_message(msg)?;
-            messages.try_push(openai_msg)
-                .map_err(|_| CompletionError::RequestTooLarge)?;
+            messages
+                .try_push(openai_msg)
+                .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
         }
 
         // Add user prompt
-        messages.try_push(OpenAIMessage {
-            role: "user",
-            content: Some(prompt),
-            tool_calls: None,
-        }).map_err(|_| CompletionError::RequestTooLarge)?;
+        messages
+            .try_push(OpenAIMessage {
+                role: "user",
+                content: Some(prompt),
+                tool_calls: None,
+            })
+            .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
 
         let tools = if self.tools.is_empty() {
             None
@@ -501,8 +517,7 @@ impl OpenAICompletionBuilder {
         // Complete domain type conversion without TODOs
         match msg.role() {
             fluent_ai_domain::message::MessageRole::User => {
-                let content = msg.content().text()
-                    .ok_or(CompletionError::ParseError)?;
+                let content = msg.content().text().ok_or(CompletionError::ParseError)?;
                 Ok(OpenAIMessage {
                     role: "user",
                     content: Some(content),
@@ -523,8 +538,7 @@ impl OpenAICompletionBuilder {
                 })
             }
             fluent_ai_domain::message::MessageRole::System => {
-                let content = msg.content().text()
-                    .ok_or(CompletionError::ParseError)?;
+                let content = msg.content().text().ok_or(CompletionError::ParseError)?;
                 Ok(OpenAIMessage {
                     role: "system",
                     content: Some(content),
@@ -536,21 +550,26 @@ impl OpenAICompletionBuilder {
 
     /// Convert domain tool calls to OpenAI format (zero allocation)
     #[inline(always)]
-    fn convert_tool_calls(&self, msg: &Message) -> Result<ArrayVec<OpenAIToolCall<'_>, MAX_TOOLS>, CompletionError> {
+    fn convert_tool_calls(
+        &self,
+        msg: &Message,
+    ) -> Result<ArrayVec<OpenAIToolCall<'_>, MAX_TOOLS>, CompletionError> {
         let mut tool_calls = ArrayVec::new();
-        
+
         for tool_call in msg.tool_calls() {
-            tool_calls.try_push(OpenAIToolCall {
-                id: tool_call.id(),
-                tool_type: "function",
-                function: OpenAIFunction {
-                    name: tool_call.function().name(),
-                    arguments: &serde_json::to_string(&tool_call.function().arguments())
-                        .map_err(|_| CompletionError::ParseError)?,
-                },
-            }).map_err(|_| CompletionError::RequestTooLarge)?;
+            tool_calls
+                .try_push(OpenAIToolCall {
+                    id: tool_call.id(),
+                    tool_type: "function",
+                    function: OpenAIFunction {
+                        name: tool_call.function().name(),
+                        arguments: &serde_json::to_string(&tool_call.function().arguments())
+                            .map_err(|_| CompletionError::ParseError)?,
+                    },
+                })
+                .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
         }
-        
+
         Ok(tool_calls)
     }
 
@@ -558,7 +577,7 @@ impl OpenAICompletionBuilder {
     #[inline(always)]
     fn convert_tools(&self) -> Result<ArrayVec<Value, MAX_TOOLS>, CompletionError> {
         let mut tools = ArrayVec::new();
-        
+
         for tool in &self.tools {
             let tool_value = serde_json::json!({
                 "type": "function",
@@ -568,10 +587,11 @@ impl OpenAICompletionBuilder {
                     "parameters": tool.parameters()
                 }
             });
-            tools.try_push(tool_value)
-                .map_err(|_| CompletionError::RequestTooLarge)?;
+            tools
+                .try_push(tool_value)
+                .map_err(|_| CompletionError::InvalidRequest("Request too large".to_string()))?;
         }
-        
+
         Ok(tools)
     }
 
@@ -579,8 +599,8 @@ impl OpenAICompletionBuilder {
     #[inline(always)]
     fn parse_sse_chunk(data: &[u8]) -> Result<CompletionChunk, CompletionError> {
         // Fast JSON parsing from bytes using serde_json
-        let chunk: OpenAIStreamChunk = serde_json::from_slice(data)
-            .map_err(|_| CompletionError::ParseError)?;
+        let chunk: OpenAIStreamChunk =
+            serde_json::from_slice(data).map_err(|_| CompletionError::ParseError)?;
 
         match chunk.choices {
             ZeroOneOrMany::None => Ok(CompletionChunk::text("")),
@@ -597,7 +617,10 @@ impl OpenAICompletionBuilder {
 
     /// Process choice into CompletionChunk (zero allocation)
     #[inline(always)]
-    fn process_choice(choice: &OpenAIChoice, usage: Option<OpenAIUsage>) -> Result<CompletionChunk, CompletionError> {
+    fn process_choice(
+        choice: &OpenAIChoice,
+        usage: Option<OpenAIUsage>,
+    ) -> Result<CompletionChunk, CompletionError> {
         // Handle finish reason
         if let Some(ref finish_reason) = choice.finish_reason {
             let reason = match finish_reason.as_str() {
@@ -646,7 +669,9 @@ impl OpenAICompletionBuilder {
 
     /// Process tool call delta (zero allocation)
     #[inline(always)]
-    fn process_tool_call(tool_call: &OpenAIToolCallDelta) -> Result<CompletionChunk, CompletionError> {
+    fn process_tool_call(
+        tool_call: &OpenAIToolCallDelta,
+    ) -> Result<CompletionChunk, CompletionError> {
         if let Some(ref id) = tool_call.id {
             if let Some(ref function) = tool_call.function {
                 if let Some(ref name) = function.name {
@@ -654,7 +679,7 @@ impl OpenAICompletionBuilder {
                 }
             }
         }
-        
+
         if let Some(ref function) = tool_call.function {
             if let Some(ref args) = function.arguments {
                 return Ok(CompletionChunk::tool_partial("", "", args));
@@ -667,7 +692,10 @@ impl OpenAICompletionBuilder {
 
 /// Public constructor for OpenAI completion builder
 #[inline(always)]
-pub fn completion_builder(api_key: String, model_name: &'static str) -> Result<OpenAICompletionBuilder, CompletionError> {
+pub fn completion_builder(
+    api_key: String,
+    model_name: &'static str,
+) -> Result<OpenAICompletionBuilder, CompletionError> {
     OpenAICompletionBuilder::new(api_key, model_name)
 }
 
@@ -676,7 +704,7 @@ pub fn completion_builder(api_key: String, model_name: &'static str) -> Result<O
 pub const fn available_models() -> &'static [&'static str] {
     &[
         "gpt-4o",
-        "gpt-4o-mini", 
+        "gpt-4o-mini",
         "gpt-4-turbo",
         "gpt-4-turbo-preview",
         "gpt-4",

@@ -2,13 +2,12 @@
 //!
 //! Contains the fundamental traits and interfaces for completion functionality.
 
+use super::request::CompletionRequest;
+use super::response::CompletionResponse;
+use super::types::CompletionParams;
 use crate::async_task::AsyncStream;
 use crate::chunk::CompletionChunk;
 use crate::prompt::Prompt;
-
-use super::types::CompletionParams;
-use super::request::CompletionRequest;
-use super::response::CompletionResponse;
 
 /// Core trait for completion models
 pub trait CompletionModel: Send + Sync + 'static {

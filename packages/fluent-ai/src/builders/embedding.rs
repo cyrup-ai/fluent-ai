@@ -2,8 +2,8 @@
 //!
 //! All embedding construction logic and builder patterns.
 
-use fluent_ai_domain::{AsyncTask, spawn_async, ZeroOneOrMany};
 use fluent_ai_domain::embedding::Embedding;
+use fluent_ai_domain::{AsyncTask, ZeroOneOrMany, spawn_async};
 
 pub struct EmbeddingBuilder {
     document: String,
@@ -18,9 +18,11 @@ pub struct EmbeddingBuilderWithHandler {
     #[allow(dead_code)] // TODO: Use for polymorphic error handling during embedding operations
     error_handler: Box<dyn Fn(String) + Send + Sync>,
     #[allow(dead_code)] // TODO: Use for embedding result processing and transformation
-    result_handler: Option<Box<dyn FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static>>,
+    result_handler:
+        Option<Box<dyn FnOnce(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static>>,
     #[allow(dead_code)] // TODO: Use for embedding streaming chunk processing
-    chunk_handler: Option<Box<dyn FnMut(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static>>,
+    chunk_handler:
+        Option<Box<dyn FnMut(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + 'static>>,
 }
 
 impl Embedding {

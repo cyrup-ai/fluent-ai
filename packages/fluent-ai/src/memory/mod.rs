@@ -1,18 +1,21 @@
 //! Memory system integration for fluent-ai
-//! Implements the sweetmcp-memory traits
+//! Implements the sweetmcp-memory traits and library memory services
 
 use crate::prelude::*;
-use futures::Stream;
-use parking_lot::RwLock;
+
+// Library memory integration service
+pub mod library;
 use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use futures::Stream;
+pub use library::{LibraryExt, LibraryMemoryService, LibraryServiceError, LibraryServiceResult};
+use parking_lot::RwLock;
 // Re-export key types from sweetmcp-memory
 pub use sweetmcp_memory::{
-    MemoryNode, MemoryMetadata, MemoryType, MemoryRelationship,
-    MemoryManager as MemoryManagerTrait,
+    MemoryManager as MemoryManagerTrait, MemoryMetadata, MemoryNode, MemoryRelationship, MemoryType,
 };
 
 // Placeholder types until sweetmcp_memory is added
@@ -236,9 +239,7 @@ impl Memory {
             None => return crate::async_task::spawn_async(async move { false }),
         };
 
-        crate::async_task::spawn_async(async move { 
-            manager.delete_memory(&id).await
-        })
+        crate::async_task::spawn_async(async move { manager.delete_memory(&id).await })
     }
 }
 
@@ -443,7 +444,7 @@ impl QueryMemory {
             while let Some(node) = pinned_stream.next().await {
                 results.push(node);
             }
-            
+
             match results.len() {
                 0 => ZeroOneOrMany::None,
                 1 => {
@@ -452,7 +453,7 @@ impl QueryMemory {
                     } else {
                         ZeroOneOrMany::None
                     }
-                },
+                }
                 _ => ZeroOneOrMany::from_vec(results),
             }
         })
@@ -490,16 +491,18 @@ impl Relationship {
     pub fn create(self, memory: &Memory) -> AsyncTask<MemoryRelationship> {
         let manager = match memory.inner.read().manager.clone() {
             Some(manager) => manager,
-            None => return crate::async_task::spawn_async(async move { 
-                // Return default relationship when manager not configured
-                MemoryRelationship {
-                    id: uuid::Uuid::new_v4().to_string(),
-                    source_id: String::new(),
-                    target_id: String::new(),
-                    relationship_type: "error".to_string(),
-                    metadata: None,
-                }
-            }),
+            None => {
+                return crate::async_task::spawn_async(async move {
+                    // Return default relationship when manager not configured
+                    MemoryRelationship {
+                        id: uuid::Uuid::new_v4().to_string(),
+                        source_id: String::new(),
+                        target_id: String::new(),
+                        relationship_type: "error".to_string(),
+                        metadata: None,
+                    }
+                });
+            }
         };
 
         let relationship = MemoryRelationship {

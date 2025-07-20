@@ -15,7 +15,7 @@ use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime};
 
 use crate::async_task::{AsyncTask, AsyncTaskBuilder};
-use crate::backends::{create_backend, BackendConfig, ExecutionBackend, HealthStatus};
+use crate::backends::{BackendConfig, ExecutionBackend, HealthStatus, create_backend};
 use crate::execution_env::{CyloError, CyloInstance, CyloResult};
 
 /// Thread-safe instance manager for Cylo execution environments
@@ -590,7 +590,9 @@ mod tests {
     async fn instance_manager_creation() {
         let manager = InstanceManager::new();
 
-        let instances = manager.list_instances().expect("Failed to list instances in test");
+        let instances = manager
+            .list_instances()
+            .expect("Failed to list instances in test");
         assert!(instances.is_empty());
     }
 
@@ -642,7 +644,9 @@ mod tests {
     async fn instance_list() {
         let manager = InstanceManager::new();
 
-        let initial_list = manager.list_instances().expect("Failed to get initial instance list in test");
+        let initial_list = manager
+            .list_instances()
+            .expect("Failed to get initial instance list in test");
         assert!(initial_list.is_empty());
 
         // Try to register an instance
@@ -652,7 +656,9 @@ mod tests {
         let register_result = manager.register_instance(instance.clone()).await;
 
         if register_result.is_ok() {
-            let updated_list = manager.list_instances().expect("Failed to get updated instance list in test");
+            let updated_list = manager
+                .list_instances()
+                .expect("Failed to get updated instance list in test");
             assert!(updated_list.contains(&instance.id()));
         }
         // Platform support determines if this test can complete
@@ -662,7 +668,10 @@ mod tests {
     async fn health_check_all() {
         let manager = InstanceManager::new();
 
-        let health_results = manager.health_check_all().await.expect("Failed to check health of all instances in test");
+        let health_results = manager
+            .health_check_all()
+            .await
+            .expect("Failed to check health of all instances in test");
         assert!(health_results.is_empty());
     }
 
@@ -670,7 +679,10 @@ mod tests {
     async fn cleanup_idle_instances() {
         let manager = InstanceManager::new();
 
-        let cleaned_count = manager.cleanup_idle_instances().await.expect("Failed to cleanup idle instances in test");
+        let cleaned_count = manager
+            .cleanup_idle_instances()
+            .await
+            .expect("Failed to cleanup idle instances in test");
         assert_eq!(cleaned_count, 0);
     }
 
@@ -685,7 +697,9 @@ mod tests {
     #[test]
     fn global_instance_manager_access() {
         let manager = global_instance_manager();
-        let instances = manager.list_instances().expect("Failed to list instances from global manager in test");
+        let instances = manager
+            .list_instances()
+            .expect("Failed to list instances from global manager in test");
         assert!(instances.is_empty());
     }
 

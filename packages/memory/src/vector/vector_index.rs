@@ -168,7 +168,6 @@ pub struct VectorPoint {
     pub data: Vec<f32>,
 }
 
-
 /// Space implementation for different distance metrics
 #[derive(Debug, Clone)]
 pub struct ConfigurableSpace {
@@ -195,8 +194,6 @@ impl instant_distance::Point for VectorPoint {
     }
 }
 
-
-
 /// HNSW (Hierarchical Navigable Small World) index with production-ready implementation
 pub struct HNSWIndex {
     config: VectorIndexConfig,
@@ -221,7 +218,7 @@ impl HNSWIndex {
     /// Zero allocation initialization with optimal HNSW parameters
     pub fn new(config: VectorIndexConfig) -> Self {
         let space = ConfigurableSpace::new(config.metric.clone());
-        
+
         Self {
             config,
             hnsw: None,
@@ -241,31 +238,41 @@ impl HNSWIndex {
     /// Get optimal HNSW parameters from configuration
     fn get_hnsw_params(&self) -> HNSWParams {
         // Extract parameters from config or use sensible defaults
-        let m = self.config.parameters
+        let m = self
+            .config
+            .parameters
             .get("m")
             .and_then(|v| v.as_u64())
             .map(|v| v as usize)
             .unwrap_or(16); // Default M parameter
 
-        let ef_construction = self.config.parameters
+        let ef_construction = self
+            .config
+            .parameters
             .get("ef_construction")
             .and_then(|v| v.as_u64())
             .map(|v| v as usize)
             .unwrap_or(200); // Default ef_construction
 
-        let max_m = self.config.parameters
+        let max_m = self
+            .config
+            .parameters
             .get("max_m")
             .and_then(|v| v.as_u64())
             .map(|v| v as usize)
             .unwrap_or(m); // Default max_m = m
 
-        let max_m0 = self.config.parameters
+        let max_m0 = self
+            .config
+            .parameters
             .get("max_m0")
             .and_then(|v| v.as_u64())
             .map(|v| v as usize)
             .unwrap_or(m * 2); // Default max_m0 = m * 2
 
-        let ml = self.config.parameters
+        let ml = self
+            .config
+            .parameters
             .get("ml")
             .and_then(|v| v.as_f64())
             .unwrap_or(1.0 / (2.0_f64.ln())); // Default mL
@@ -288,7 +295,8 @@ impl HNSWIndex {
         }
 
         // Collect all vectors for building
-        let points: Vec<VectorPoint> = self.vectors
+        let points: Vec<VectorPoint> = self
+            .vectors
             .iter()
             .map(|entry| entry.value().clone())
             .collect();
@@ -300,13 +308,13 @@ impl HNSWIndex {
 
         // Build HNSW with optimal parameters
         let params = self.get_hnsw_params();
-        
+
         // Note: instant-distance Builder only supports ef_construction and ml
         // m, max_m, max_m0 are stored in config for future use or other HNSW implementations
         let builder = Builder::default()
             .ef_construction(params.ef_construction)
             .ml(params.ml as f32);
-            
+
         // The m, max_m, max_m0 parameters are available in params but instant-distance
         // uses its own internal defaults for these values
 
@@ -320,7 +328,8 @@ impl HNSWIndex {
 
     /// Get next available internal index
     fn next_internal_index(&self) -> usize {
-        self.next_index.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        self.next_index
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Update index with configuration parameters
@@ -364,13 +373,14 @@ impl VectorIndex for HNSWIndex {
         // Check if ID already exists
         if self.id_to_index.contains_key(&id) {
             return Err(crate::utils::error::Error::InvalidInput(format!(
-                "Vector with ID '{}' already exists", id
+                "Vector with ID '{}' already exists",
+                id
             )));
         }
 
         // Generate internal index
         let internal_index = self.next_internal_index();
-        
+
         // Create vector point
         let point = VectorPoint { data: vector };
 
@@ -397,11 +407,12 @@ impl VectorIndex for HNSWIndex {
             // Mark for rebuild since instant-distance doesn't support dynamic removal
             // This is a limitation of the current HNSW implementation
             self.hnsw = None;
-            
+
             Ok(())
         } else {
             Err(crate::utils::error::Error::NotFound(format!(
-                "Vector with ID '{}' not found", id
+                "Vector with ID '{}' not found",
+                id
             )))
         }
     }
@@ -420,12 +431,16 @@ impl VectorIndex for HNSWIndex {
         }
 
         // Create query point
-        let query_point = VectorPoint { data: query.to_vec() };
+        let query_point = VectorPoint {
+            data: query.to_vec(),
+        };
 
         match &self.hnsw {
             Some(hnsw) => {
                 // Use HNSW for fast approximate search
-                let _ef = self.config.parameters
+                let _ef = self
+                    .config
+                    .parameters
                     .get("ef")
                     .and_then(|v| v.as_u64())
                     .map(|v| v as usize)
@@ -433,10 +448,10 @@ impl VectorIndex for HNSWIndex {
 
                 let mut search = instant_distance::Search::default();
                 let search_results = hnsw.search(&query_point, &mut search);
-                
+
                 // Convert internal indices back to string IDs
                 let mut results = Vec::with_capacity(search_results.len());
-                
+
                 for item in search_results {
                     let index_key = item.pid.into_inner() as usize;
                     if let Some(id_entry) = self.index_to_id.get(&index_key) {
@@ -449,11 +464,11 @@ impl VectorIndex for HNSWIndex {
             None => {
                 // Fallback to brute force search if HNSW not built
                 let mut distances: Vec<(String, f32)> = Vec::new();
-                
+
                 for entry in self.vectors.iter() {
                     let internal_index = *entry.key();
                     let vector_point = entry.value();
-                    
+
                     if let Some(id_entry) = self.index_to_id.get(&internal_index) {
                         let distance = self.space.distance(&query_point, vector_point);
                         distances.push((id_entry.clone(), distance));
@@ -461,7 +476,8 @@ impl VectorIndex for HNSWIndex {
                 }
 
                 // Sort by distance
-                distances.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+                distances
+                    .sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
                 distances.truncate(k);
 
                 Ok(distances)
@@ -509,7 +525,7 @@ fn cosine_distance(a: &[f32], b: &[f32]) -> f32 {
     }
 
     let norm_product = norm_a.sqrt() * norm_b.sqrt();
-    
+
     if norm_product == 0.0 {
         0.0
     } else {
@@ -556,11 +572,17 @@ mod tests {
         let id1 = uuid::Uuid::new_v4().to_string();
         let id2 = uuid::Uuid::new_v4().to_string();
 
-        index.add(id1.clone(), vec![1.0, 0.0, 0.0]).expect("Failed to add vector to index in test");
-        index.add(id2.clone(), vec![0.0, 1.0, 0.0]).expect("Failed to add vector to index in test");
+        index
+            .add(id1.clone(), vec![1.0, 0.0, 0.0])
+            .expect("Failed to add vector to index in test");
+        index
+            .add(id2.clone(), vec![0.0, 1.0, 0.0])
+            .expect("Failed to add vector to index in test");
 
         // Search
-        let results = index.search(&[1.0, 0.0, 0.0], 2).expect("Failed to search index in test");
+        let results = index
+            .search(&[1.0, 0.0, 0.0], 2)
+            .expect("Failed to search index in test");
 
         assert_eq!(results.len(), 2);
         assert_eq!(results[0].0, id1); // Should match exactly
@@ -576,8 +598,14 @@ mod tests {
         };
 
         // Configure HNSW parameters for testing
-        config.parameters.insert("m".to_string(), serde_json::Value::Number(serde_json::Number::from(8)));
-        config.parameters.insert("ef_construction".to_string(), serde_json::Value::Number(serde_json::Number::from(50)));
+        config.parameters.insert(
+            "m".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(8)),
+        );
+        config.parameters.insert(
+            "ef_construction".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(50)),
+        );
 
         let mut index = HNSWIndex::new(config);
 
@@ -586,15 +614,23 @@ mod tests {
         let id2 = "test2".to_string();
         let id3 = "test3".to_string();
 
-        index.add(id1.clone(), vec![1.0, 0.0, 0.0, 0.0]).expect("Failed to add vector 1");
-        index.add(id2.clone(), vec![0.0, 1.0, 0.0, 0.0]).expect("Failed to add vector 2");
-        index.add(id3.clone(), vec![0.0, 0.0, 1.0, 0.0]).expect("Failed to add vector 3");
+        index
+            .add(id1.clone(), vec![1.0, 0.0, 0.0, 0.0])
+            .expect("Failed to add vector 1");
+        index
+            .add(id2.clone(), vec![0.0, 1.0, 0.0, 0.0])
+            .expect("Failed to add vector 2");
+        index
+            .add(id3.clone(), vec![0.0, 0.0, 1.0, 0.0])
+            .expect("Failed to add vector 3");
 
         // Build index
         index.build().expect("Failed to build HNSW index");
 
         // Search for nearest neighbors
-        let results = index.search(&[1.0, 0.0, 0.0, 0.0], 2).expect("Failed to search HNSW index");
+        let results = index
+            .search(&[1.0, 0.0, 0.0, 0.0], 2)
+            .expect("Failed to search HNSW index");
 
         assert!(!results.is_empty());
         assert_eq!(results[0].0, id1); // Should match exactly with first vector
@@ -604,7 +640,7 @@ mod tests {
         assert_eq!(index.len(), 2);
     }
 
-    #[test] 
+    #[test]
     fn test_distance_functions() {
         let a = vec![1.0, 0.0, 0.0];
         let b = vec![0.0, 1.0, 0.0];
@@ -613,14 +649,14 @@ mod tests {
         // Test euclidean distance
         let dist_ab = euclidean_distance(&a, &b);
         let dist_ac = euclidean_distance(&a, &c);
-        
+
         assert!(dist_ab > dist_ac); // a and c are identical, so distance should be 0
         assert!((dist_ac - 0.0).abs() < f32::EPSILON);
 
         // Test cosine distance
         let cos_dist_ab = cosine_distance(&a, &b);
         let cos_dist_ac = cosine_distance(&a, &c);
-        
+
         assert!(cos_dist_ab > cos_dist_ac);
         assert!((cos_dist_ac - 0.0).abs() < f32::EPSILON);
     }

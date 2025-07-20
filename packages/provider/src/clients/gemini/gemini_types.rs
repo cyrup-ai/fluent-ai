@@ -1,14 +1,20 @@
 //! Type definitions and constants for Gemini API integration
-//! 
+//!
 //! This module contains all Gemini model constants, API types, and conversion
 //! utilities with zero-allocation patterns and production-ready implementations.
 
-use crate::{completion::{self, CompletionError}, message, OneOrMany};
-use fluent_ai_domain::{chunk::{CompletionChunk, FinishReason, Usage}};
+use std::{collections::HashMap, convert::Infallible, str::FromStr};
+
+use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{collections::HashMap, convert::Infallible, str::FromStr};
+
 use super::gemini_error::{GeminiError, GeminiResult};
+use crate::{
+    OneOrMany,
+    completion::{self, CompletionError},
+    message,
+};
 
 // =================================================================
 // Gemini Model Constants (Compile-time optimized)
@@ -166,16 +172,16 @@ impl TryFrom<Content> for message::Message {
                                     )
                                 }
                                 _ => {
-                                    return Err(message::MessageError::ConversionError(
-                                        format!("Unsupported media type {mime_type:?}"),
-                                    ))
+                                    return Err(message::MessageError::ConversionError(format!(
+                                        "Unsupported media type {mime_type:?}"
+                                    )));
                                 }
                             }
                         }
                         _ => {
                             return Err(message::MessageError::ConversionError(format!(
                                 "Unsupported gemini content part type: {part:?}"
-                            )))
+                            )));
                         }
                     })
                 })?,
@@ -190,7 +196,7 @@ impl TryFrom<Content> for message::Message {
                         _ => {
                             return Err(message::MessageError::ConversionError(format!(
                                 "Unsupported part type: {part:?}"
-                            )))
+                            )));
                         }
                     })
                 })?,
@@ -253,7 +259,7 @@ impl TryFrom<message::UserContent> for Part {
                     message::ToolResultContent::Image(_) => {
                         return Err(message::MessageError::ConversionError(
                             "Tool result content must be text".to_string(),
-                        ))
+                        ));
                     }
                 };
                 Ok(Part::FunctionResponse(FunctionResponse {
@@ -700,9 +706,10 @@ impl TryFrom<Value> for Schema {
     type Error = GeminiError;
 
     fn try_from(value: Value) -> GeminiResult<Self> {
-        let obj = value.as_object()
+        let obj = value
+            .as_object()
             .ok_or_else(|| GeminiError::schema_error("root", "Expected JSON object for Schema"))?;
-        
+
         let r#type = obj
             .get("type")
             .and_then(|v| {
@@ -717,7 +724,7 @@ impl TryFrom<Value> for Schema {
                 }
             })
             .unwrap_or_default();
-            
+
         let properties = obj
             .get("properties")
             .and_then(|v| v.as_object())
@@ -730,7 +737,7 @@ impl TryFrom<Value> for Schema {
                 Ok(result)
             })
             .transpose()?;
-            
+
         let items = obj
             .get("items")
             .map(|v| -> GeminiResult<Box<Schema>> {
@@ -742,15 +749,24 @@ impl TryFrom<Value> for Schema {
         Ok(Schema {
             r#type,
             format: obj.get("format").and_then(|v| v.as_str()).map(String::from),
-            description: obj.get("description").and_then(|v| v.as_str()).map(String::from),
+            description: obj
+                .get("description")
+                .and_then(|v| v.as_str())
+                .map(String::from),
             nullable: obj.get("nullable").and_then(|v| v.as_bool()),
             r#enum: obj.get("enum").and_then(|v| v.as_array()).map(|arr| {
                 arr.iter()
                     .filter_map(|v| v.as_str().map(String::from))
                     .collect()
             }),
-            max_items: obj.get("maxItems").and_then(|v| v.as_i64()).map(|v| v as i32),
-            min_items: obj.get("minItems").and_then(|v| v.as_i64()).map(|v| v as i32),
+            max_items: obj
+                .get("maxItems")
+                .and_then(|v| v.as_i64())
+                .map(|v| v as i32),
+            min_items: obj
+                .get("minItems")
+                .and_then(|v| v.as_i64())
+                .map(|v| v as i32),
             properties,
             required: obj.get("required").and_then(|v| v.as_array()).map(|arr| {
                 arr.iter()
@@ -863,9 +879,10 @@ impl TryFrom<GenerateContentResponse> for completion::CompletionResponse<Generat
     type Error = GeminiError;
 
     fn try_from(response: GenerateContentResponse) -> GeminiResult<Self> {
-        let candidate = response.candidates.first().ok_or_else(|| {
-            GeminiError::invalid_response("No response candidates in response")
-        })?;
+        let candidate = response
+            .candidates
+            .first()
+            .ok_or_else(|| GeminiError::invalid_response("No response candidates in response"))?;
 
         let content = candidate
             .content
@@ -882,16 +899,14 @@ impl TryFrom<GenerateContentResponse> for completion::CompletionResponse<Generat
                     _ => {
                         return Err(GeminiError::invalid_response(
                             "Response did not contain a message or tool call",
-                        ))
+                        ));
                     }
                 })
             })
             .collect::<GeminiResult<Vec<_>>>()?;
 
         let choice = OneOrMany::many(content).map_err(|_| {
-            GeminiError::invalid_response(
-                "Response contained no message or tool call (empty)",
-            )
+            GeminiError::invalid_response("Response contained no message or tool call (empty)")
         })?;
 
         Ok(completion::CompletionResponse {
@@ -907,9 +922,9 @@ impl From<FinishReason> for fluent_ai_domain::chunk::FinishReason {
         match reason {
             FinishReason::Stop => Self::Stop,
             FinishReason::MaxTokens => Self::Length,
-            FinishReason::Safety | 
-            FinishReason::Blocklist | 
-            FinishReason::ProhibitedContent => Self::ContentFilter,
+            FinishReason::Safety | FinishReason::Blocklist | FinishReason::ProhibitedContent => {
+                Self::ContentFilter
+            }
             _ => Self::Stop,
         }
     }
@@ -932,7 +947,9 @@ pub fn parse_gemini_chunk(data: &[u8]) -> GeminiResult<CompletionChunk> {
     let response: GenerateContentResponse = serde_json::from_slice(data)
         .map_err(|e| GeminiError::parse_error(format!("Invalid JSON in SSE chunk: {}", e)))?;
 
-    let candidate = response.candidates.first()
+    let candidate = response
+        .candidates
+        .first()
         .ok_or_else(|| GeminiError::invalid_response("No candidates in chunk"))?;
 
     let mut text_content = String::new();

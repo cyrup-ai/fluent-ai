@@ -134,7 +134,7 @@ impl Default for CommitteeConfig {
         agent_perspectives.insert("performance".to_string(), "gpt-4".to_string());
         agent_perspectives.insert("safety".to_string(), "claude-3".to_string());
         agent_perspectives.insert("maintainability".to_string(), "gpt-4".to_string());
-        
+
         Self {
             rounds: 3,
             concurrency: 4,

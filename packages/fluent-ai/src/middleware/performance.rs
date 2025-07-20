@@ -4,11 +4,12 @@
 //! and production-ready observability features.
 
 use std::sync::Arc;
-use std::time::Instant;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use crossbeam_utils::CachePadded;
+use std::time::Instant;
 
+use crossbeam_utils::CachePadded;
 use fluent_ai_domain::chat::commands::types::*;
+
 use super::command::CommandMiddleware;
 
 /// Performance metrics for command execution
@@ -38,7 +39,8 @@ impl PerformanceMetrics {
     pub fn record_success(&self, duration_ns: u64) {
         self.total_commands.fetch_add(1, Ordering::Relaxed);
         self.successful_executions.fetch_add(1, Ordering::Relaxed);
-        self.total_execution_time_ns.fetch_add(duration_ns, Ordering::Relaxed);
+        self.total_execution_time_ns
+            .fetch_add(duration_ns, Ordering::Relaxed);
         self.update_average();
     }
 
@@ -47,7 +49,8 @@ impl PerformanceMetrics {
     pub fn record_failure(&self, duration_ns: u64) {
         self.total_commands.fetch_add(1, Ordering::Relaxed);
         self.failed_executions.fetch_add(1, Ordering::Relaxed);
-        self.total_execution_time_ns.fetch_add(duration_ns, Ordering::Relaxed);
+        self.total_execution_time_ns
+            .fetch_add(duration_ns, Ordering::Relaxed);
         self.update_average();
     }
 
@@ -108,7 +111,8 @@ impl CommandMiddleware for PerformanceMiddleware {
         &'a self,
         _command: &'a ChatCommand,
         context: &'a CommandContext,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>> {
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>
+    {
         Box::pin(async move {
             // Store start time in context for later use
             // This would typically use a context extension mechanism
@@ -121,16 +125,17 @@ impl CommandMiddleware for PerformanceMiddleware {
         _command: &'a ChatCommand,
         _context: &'a CommandContext,
         result: &'a CommandResult<CommandOutput>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>> {
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>
+    {
         Box::pin(async move {
             // Calculate execution time and record metrics
             let duration_ns = 1000000; // Placeholder - would calculate actual duration
-            
+
             match result {
                 Ok(_) => self.metrics.record_success(duration_ns),
                 Err(_) => self.metrics.record_failure(duration_ns),
             }
-            
+
             Ok(())
         })
     }

@@ -1,5 +1,6 @@
-use anyhow;
 use std::{io, sync::Arc};
+
+use anyhow;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -58,35 +59,37 @@ pub enum StorageError {
 pub enum SandboxError {
     #[error("Configuration failed: {detail}")]
     ConfigurationFailed { detail: Arc<str> },
-    
+
     #[error("Environment setup failed: {detail}")]
     EnvironmentSetup { detail: Arc<str> },
-    
+
     #[error("Process launch failed: {detail}")]
     ProcessLaunch { detail: Arc<str> },
-    
+
     #[error("Resource exhausted: {resource}")]
     ResourceExhausted { resource: Arc<str> },
-    
+
     #[error("Permission denied: {operation}")]
     PermissionDenied { operation: Arc<str> },
-    
+
     #[error("IO error ({kind:?}): {detail}")]
-    IoError { kind: io::ErrorKind, detail: Arc<str> },
-    
+    IoError {
+        kind: io::ErrorKind,
+        detail: Arc<str>,
+    },
+
     #[error("Command not found: {command}")]
     CommandNotFound { command: Arc<str> },
-    
+
     #[error("Environment invalid: {detail}")]
     EnvironmentInvalid { detail: Arc<str> },
-    
+
     #[error("Path invalid: {detail}")]
     PathInvalid { detail: Arc<str> },
-    
+
     #[error("Runtime not found: {runtime}")]
     RuntimeNotFound { runtime: Arc<str> },
 }
-
 
 /// Zero-allocation error conversion from std::io::Error
 impl From<io::Error> for SandboxError {
@@ -104,26 +107,36 @@ impl From<SandboxError> for ExecError {
     #[inline]
     fn from(error: SandboxError) -> Self {
         match error {
-            SandboxError::ConfigurationFailed { detail } => 
-                ExecError::RuntimeError(format!("Configuration failed: {}", detail)),
-            SandboxError::EnvironmentSetup { detail } => 
-                ExecError::RuntimeError(format!("Environment setup failed: {}", detail)),
-            SandboxError::ProcessLaunch { detail } => 
-                ExecError::CommandFailed(format!("Process launch failed: {}", detail)),
-            SandboxError::ResourceExhausted { resource } => 
-                ExecError::RuntimeError(format!("Resource exhausted: {}", resource)),
-            SandboxError::PermissionDenied { operation } => 
-                ExecError::RuntimeError(format!("Permission denied: {}", operation)),
-            SandboxError::IoError { kind: _, detail } => 
-                ExecError::RuntimeError(format!("IO error: {}", detail)),
-            SandboxError::CommandNotFound { command } => 
-                ExecError::RuntimeError(format!("Command not found: {}", command)),
-            SandboxError::EnvironmentInvalid { detail } => 
-                ExecError::RuntimeError(format!("Environment invalid: {}", detail)),
-            SandboxError::PathInvalid { detail } => 
-                ExecError::RuntimeError(format!("Path invalid: {}", detail)),
-            SandboxError::RuntimeNotFound { runtime } => 
-                ExecError::RuntimeError(format!("Runtime not found: {}", runtime)),
+            SandboxError::ConfigurationFailed { detail } => {
+                ExecError::RuntimeError(format!("Configuration failed: {}", detail))
+            }
+            SandboxError::EnvironmentSetup { detail } => {
+                ExecError::RuntimeError(format!("Environment setup failed: {}", detail))
+            }
+            SandboxError::ProcessLaunch { detail } => {
+                ExecError::CommandFailed(format!("Process launch failed: {}", detail))
+            }
+            SandboxError::ResourceExhausted { resource } => {
+                ExecError::RuntimeError(format!("Resource exhausted: {}", resource))
+            }
+            SandboxError::PermissionDenied { operation } => {
+                ExecError::RuntimeError(format!("Permission denied: {}", operation))
+            }
+            SandboxError::IoError { kind: _, detail } => {
+                ExecError::RuntimeError(format!("IO error: {}", detail))
+            }
+            SandboxError::CommandNotFound { command } => {
+                ExecError::RuntimeError(format!("Command not found: {}", command))
+            }
+            SandboxError::EnvironmentInvalid { detail } => {
+                ExecError::RuntimeError(format!("Environment invalid: {}", detail))
+            }
+            SandboxError::PathInvalid { detail } => {
+                ExecError::RuntimeError(format!("Path invalid: {}", detail))
+            }
+            SandboxError::RuntimeNotFound { runtime } => {
+                ExecError::RuntimeError(format!("Runtime not found: {}", runtime))
+            }
         }
     }
 }

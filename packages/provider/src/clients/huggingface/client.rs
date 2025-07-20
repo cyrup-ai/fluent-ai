@@ -9,13 +9,14 @@
 //!     .prompt("Hello world")
 //! ```
 
+use fluent_ai_domain::AsyncTask as DomainAsyncTask;
+use fluent_ai_http3::{HttpClient, HttpConfig};
+
+use super::completion::HuggingFaceCompletionBuilder;
 use crate::{
     client::{CompletionClient, ProviderClient},
-    completion_provider::{CompletionProvider, CompletionError},
+    completion_provider::{CompletionError, CompletionProvider},
 };
-use super::completion::HuggingFaceCompletionBuilder;
-use fluent_ai_http3::{HttpClient, HttpConfig};
-use fluent_ai_domain::AsyncTask as DomainAsyncTask;
 
 /// HuggingFace client providing clean completion builder factory methods
 #[derive(Clone)]
@@ -29,33 +30,40 @@ impl HuggingFaceClient {
         if api_key.is_empty() {
             return Err(CompletionError::AuthError);
         }
-        
+
         Ok(Self { api_key })
     }
-    
+
     /// Create from environment (HUGGINGFACE_API_KEY)
     pub fn from_env() -> Result<Self, CompletionError> {
         let api_key = std::env::var("HUGGINGFACE_API_KEY")
             .or_else(|_| std::env::var("HF_TOKEN"))
-            .map_err(|_| CompletionError::ConfigError("HUGGINGFACE_API_KEY or HF_TOKEN environment variable not set".into()))?;
+            .map_err(|_| {
+                CompletionError::ConfigError(
+                    "HUGGINGFACE_API_KEY or HF_TOKEN environment variable not set".into(),
+                )
+            })?;
         Self::new(api_key)
     }
-    
+
     /// Create completion builder for specific model with ModelInfo defaults loaded
-    pub fn completion_model(&self, model_name: &'static str) -> Result<HuggingFaceCompletionBuilder, CompletionError> {
+    pub fn completion_model(
+        &self,
+        model_name: &'static str,
+    ) -> Result<HuggingFaceCompletionBuilder, CompletionError> {
         HuggingFaceCompletionBuilder::new(self.api_key.clone(), model_name)
     }
-    
+
     /// Test connection to HuggingFace API
     pub async fn test_connection(&self) -> Result<(), CompletionError> {
         // Create a minimal completion request to test connectivity
         let builder = self.completion_model("meta-llama/Meta-Llama-3.1-8B-Instruct")?;
-        
+
         // For now, we'll return success if we can create the builder
         // A full implementation would make an actual API call
         Ok(())
     }
-    
+
     /// Get API key
     pub fn api_key(&self) -> &str {
         &self.api_key
@@ -70,12 +78,12 @@ impl HuggingFaceProvider {
     pub fn new() -> Self {
         Self
     }
-    
+
     /// Get provider name
     pub const fn name() -> &'static str {
         "huggingface"
     }
-    
+
     /// Get available models (compile-time constant)
     pub const fn models() -> &'static [&'static str] {
         &[
@@ -100,7 +108,7 @@ impl Default for HuggingFaceProvider {
 /// CompletionClient trait implementation for auto-generation
 impl CompletionClient for HuggingFaceClient {
     type Model = Result<HuggingFaceCompletionBuilder, CompletionError>;
-    
+
     fn completion_model(&self, model: &str) -> Self::Model {
         HuggingFaceCompletionBuilder::new(self.api_key.clone(), model)
     }
@@ -111,11 +119,15 @@ impl ProviderClient for HuggingFaceClient {
     fn provider_name(&self) -> &'static str {
         "huggingface"
     }
-    
-    fn test_connection(&self) -> DomainAsyncTask<std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+
+    fn test_connection(
+        &self,
+    ) -> DomainAsyncTask<std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>> {
         let client = self.clone();
         DomainAsyncTask::spawn(async move {
-            client.test_connection().await
+            client
+                .test_connection()
+                .await
                 .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
         })
     }
@@ -124,29 +136,30 @@ impl ProviderClient for HuggingFaceClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_client_creation() {
         let client = HuggingFaceClient::new("test-key".to_string());
         assert!(client.is_ok());
-        
+
         let client = client.expect("Failed to create huggingface client in test");
         assert_eq!(client.api_key(), "test-key");
     }
-    
+
     #[test]
     fn test_client_creation_empty_key() {
         let client = HuggingFaceClient::new("".to_string());
         assert!(matches!(client, Err(CompletionError::AuthError)));
     }
-    
+
     #[test]
     fn test_completion_model_factory() {
-        let client = HuggingFaceClient::new("test-key".to_string()).expect("Failed to create huggingface client in test");
+        let client = HuggingFaceClient::new("test-key".to_string())
+            .expect("Failed to create huggingface client in test");
         let builder = client.completion_model("meta-llama/Meta-Llama-3.1-8B-Instruct");
         assert!(builder.is_ok());
     }
-    
+
     #[test]
     fn test_provider() {
         let provider = HuggingFaceProvider::new();

@@ -31,7 +31,7 @@ impl MemoryRecord {
             output_length: output.len() as u32,
         }
     }
-    
+
     /// Serialize to binary format with zero allocation
     #[inline(always)]
     pub fn serialize_to_buffer(&self, buffer: &mut SerializationBuffer) {
@@ -42,25 +42,26 @@ impl MemoryRecord {
         buffer.write_u32(self.input_length);
         buffer.write_u32(self.output_length);
     }
-    
+
     /// Deserialize from binary format with zero allocation
     #[inline(always)]
     pub fn deserialize_from_buffer(buffer: &SerializationBuffer) -> Option<Self> {
-        if buffer.data.len() < 32 { // 8+8+8+4+4 = 32 bytes
+        if buffer.data.len() < 32 {
+            // 8+8+8+4+4 = 32 bytes
             return None;
         }
-        
+
         let mut pos = 0;
-        let input_hash = u64::from_le_bytes(buffer.data[pos..pos+8].try_into().ok()?);
+        let input_hash = u64::from_le_bytes(buffer.data[pos..pos + 8].try_into().ok()?);
         pos += 8;
-        let output_hash = u64::from_le_bytes(buffer.data[pos..pos+8].try_into().ok()?);
+        let output_hash = u64::from_le_bytes(buffer.data[pos..pos + 8].try_into().ok()?);
         pos += 8;
-        let timestamp = u64::from_le_bytes(buffer.data[pos..pos+8].try_into().ok()?);
+        let timestamp = u64::from_le_bytes(buffer.data[pos..pos + 8].try_into().ok()?);
         pos += 8;
-        let input_length = u32::from_le_bytes(buffer.data[pos..pos+4].try_into().ok()?);
+        let input_length = u32::from_le_bytes(buffer.data[pos..pos + 4].try_into().ok()?);
         pos += 4;
-        let output_length = u32::from_le_bytes(buffer.data[pos..pos+4].try_into().ok()?);
-        
+        let output_length = u32::from_le_bytes(buffer.data[pos..pos + 4].try_into().ok()?);
+
         Some(Self {
             input_hash,
             output_hash,
@@ -69,15 +70,16 @@ impl MemoryRecord {
             output_length,
         })
     }
-    
+
     /// Format as string for storage (minimal allocation)
     #[inline]
     pub fn to_content_string(&self) -> String {
-        format!("{}:{}:{}:{}:{}", 
-            self.input_hash, 
-            self.output_hash, 
-            self.timestamp, 
-            self.input_length, 
+        format!(
+            "{}:{}:{}:{}:{}",
+            self.input_hash,
+            self.output_hash,
+            self.timestamp,
+            self.input_length,
             self.output_length
         )
     }
@@ -99,43 +101,43 @@ impl SerializationBuffer {
             capacity,
         }
     }
-    
+
     /// Clear buffer for reuse (zero allocation)
     #[inline(always)]
     pub fn clear(&mut self) {
         self.data.clear();
     }
-    
+
     /// Write u64 in little-endian format
     #[inline(always)]
     pub fn write_u64(&mut self, value: u64) {
         self.data.extend_from_slice(&value.to_le_bytes());
     }
-    
+
     /// Write u32 in little-endian format
     #[inline(always)]
     pub fn write_u32(&mut self, value: u32) {
         self.data.extend_from_slice(&value.to_le_bytes());
     }
-    
+
     /// Get buffer data as slice
     #[inline(always)]
     pub fn as_slice(&self) -> &[u8] {
         &self.data
     }
-    
+
     /// Get buffer length
     #[inline(always)]
     pub fn len(&self) -> usize {
         self.data.len()
     }
-    
+
     /// Check if buffer is empty
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
-    
+
     /// Reserve additional capacity if needed
     #[inline]
     pub fn reserve(&mut self, additional: usize) {
@@ -155,7 +157,7 @@ impl Default for SerializationBuffer {
 
 // Thread-local serialization buffer pool for zero-allocation operations
 thread_local! {
-    static SERIALIZATION_BUFFER: std::cell::RefCell<SerializationBuffer> = 
+    static SERIALIZATION_BUFFER: std::cell::RefCell<SerializationBuffer> =
         std::cell::RefCell::new(SerializationBuffer::new(1024));
 }
 

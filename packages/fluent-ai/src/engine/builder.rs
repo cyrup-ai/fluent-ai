@@ -3,9 +3,10 @@
 //! This module provides a compile-time safe builder pattern for configuring engines.
 //! The builder uses phantom types to enforce configuration order and completeness at compile time.
 
-use super::{Engine, register_engine, set_default_engine};
 use std::marker::PhantomData;
 use std::sync::Arc;
+
+use super::{Engine, register_engine, set_default_engine};
 
 /// Errors that can occur during engine building
 #[derive(Debug, thiserror::Error)]

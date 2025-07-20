@@ -3,16 +3,12 @@
 //! From [Together AI Reference](https://docs.together.ai/docs/chat-overview)
 // ================================================================
 
-use crate::{
-    completion::{self, CompletionError},
-    json_util,
-    clients::openai,
-};
-
-use super::client::{together_ai_api_types::ApiResponse, Client};
-use crate::completion::CompletionRequest;
-use crate::streaming::StreamingCompletionResponse;
+use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, CompletionRequest};
 use serde_json::json;
+
+use super::client::{Client, together_ai_api_types::ApiResponse};
+use crate::streaming::StreamingCompletionResponse;
+use crate::{clients::openai, json_util};
 
 // ================================================================
 // Together Completion Models
@@ -200,13 +196,22 @@ impl completion::CompletionModel for CompletionModel {
     ) -> Result<completion::CompletionResponse<openai::CompletionResponse>, CompletionError> {
         let request = self.create_completion_request(completion_request)?;
 
-        let request_body = serde_json::to_vec(&request)
-            .map_err(|e| CompletionError::ProviderError(format!("Failed to serialize request: {}", e)))?;
+        let request_body = serde_json::to_vec(&request).map_err(|e| {
+            CompletionError::ProviderError(format!("Failed to serialize request: {}", e))
+        })?;
 
-        let http_request = self.client.post("/v1/chat/completions", request_body)
-            .map_err(|e| CompletionError::ProviderError(format!("Failed to create request: {}", e)))?;
+        let http_request = self
+            .client
+            .post("/v1/chat/completions", request_body)
+            .map_err(|e| {
+                CompletionError::ProviderError(format!("Failed to create request: {}", e))
+            })?;
 
-        let response = self.client.http_client.send(http_request).await
+        let response = self
+            .client
+            .http_client
+            .send(http_request)
+            .await
             .map_err(|e| CompletionError::ProviderError(format!("Request failed: {}", e)))?;
 
         if response.status().is_success() {

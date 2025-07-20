@@ -1,24 +1,27 @@
 pub mod builder;
 pub mod fluent_engine;
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 pub use builder::*;
 pub use fluent_engine::*;
 
-use crate::domain::agent::Agent as DomainAgent;
 use crate::ZeroOneOrMany;
-use std::collections::HashMap;
-use std::sync::Arc;
+use crate::domain::agent::Agent as DomainAgent;
 
 /// Engine trait for AI operations
 pub trait Engine: Send + Sync {
     /// Get engine name
     fn name(&self) -> &str;
     /// Execute completion
-    fn complete(&self, request: &crate::domain::completion::CompletionRequest) -> crate::runtime::AsyncTask<Result<CompletionResponse, crate::completion::CompletionError>>;
+    fn complete(
+        &self,
+        request: &crate::domain::completion::CompletionRequest,
+    ) -> crate::runtime::AsyncTask<Result<CompletionResponse, crate::completion::CompletionError>>;
 }
 
 /// Agent configuration for engine operations
-
 
 /// Completion response from engine
 #[derive(Debug, Clone)]

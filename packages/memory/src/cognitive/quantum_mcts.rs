@@ -520,7 +520,7 @@ impl QuantumMCTS {
         for _ in 0..entanglement_count {
             self.metrics.inc_entanglements();
         }
-        
+
         Ok(())
     }
 
@@ -705,7 +705,10 @@ impl QuantumMCTS {
     }
 
     /// Recursively improve the quantum state through MCTS iterations
-    pub fn recursive_improve(&mut self, max_iterations: usize) -> Result<CodeState, CognitiveError> {
+    pub fn recursive_improve(
+        &mut self,
+        max_iterations: usize,
+    ) -> Result<CodeState, CognitiveError> {
         // Use the existing run method which implements the same logic
         self.run(max_iterations)
     }
@@ -715,7 +718,7 @@ impl QuantumMCTS {
         // Find the node with the highest quantum UCB score
         let mut best_state = CodeState::default();
         let mut best_score = 0.0;
-        
+
         // Iterate through the tree to find the best node
         for entry in self.tree.iter() {
             let node = entry.value();
@@ -725,7 +728,7 @@ impl QuantumMCTS {
                 best_state = node.quantum_state.classical_state.clone();
             }
         }
-        
+
         Ok(best_state)
     }
 }

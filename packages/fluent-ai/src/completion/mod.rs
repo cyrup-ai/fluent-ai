@@ -5,10 +5,10 @@ pub mod request_builder;
 pub use builder::*;
 pub use message::*;
 pub use request_builder::*;
-pub use crate::streaming::streaming::StreamingCompletionResponse;
 
 // Re-export the correct completion model trait
 pub use crate::client::completion::CompletionModel;
+pub use crate::streaming::streaming::StreamingCompletionResponse;
 
 /// Completion request type
 #[derive(Debug, Clone)]
@@ -99,15 +99,15 @@ impl CompletionRequestBuilder {
 }
 
 // Core types that other developers added
-use crate::runtime::AsyncTask;
 use thiserror::Error;
+
+use crate::runtime::AsyncTask;
 
 /// Dynamic trait for completion models
 pub trait CompletionModelDyn: Send + Sync {
     /// Complete a prompt
     fn complete(&self, prompt: &str) -> AsyncTask<Result<String, CompletionError>>;
 }
-
 
 #[derive(Debug, Error)]
 pub enum CompletionError {
@@ -139,7 +139,10 @@ pub trait CompletionModelTrait: Send + Sync {
     /// Complete a prompt
     fn complete(&self, prompt: &str) -> AsyncTask<Result<String, CompletionError>>;
     /// Stream completion
-    fn stream_completion(&self, prompt: &str) -> AsyncTask<Result<Self::StreamingResponse, CompletionError>>;
+    fn stream_completion(
+        &self,
+        prompt: &str,
+    ) -> AsyncTask<Result<Self::StreamingResponse, CompletionError>>;
 }
 
 // Additional traits that other developers added

@@ -18,13 +18,10 @@ pub mod completion;
 pub mod streaming;
 
 // Explicit re-exports to avoid ambiguity
-pub use client::{
-    DeepSeekClient, DeepSeekProvider
-};
-
+pub use client::{DeepSeekClient, DeepSeekProvider};
 pub use completion::{
-    DeepSeekCompletionBuilder, DeepSeekCompletionRequest, DeepSeekStreamChunk,
-    DeepSeekMessage, DeepSeekChoice, DeepSeekDelta, DeepSeekUsage,
-    DeepSeekToolCall, DeepSeekFunction, DeepSeekToolCallDelta, DeepSeekFunctionDelta,
-    completion_builder, available_models, get_model_config
+    DeepSeekChoice, DeepSeekCompletionBuilder, DeepSeekCompletionRequest, DeepSeekDelta,
+    DeepSeekFunction, DeepSeekFunctionDelta, DeepSeekMessage, DeepSeekStreamChunk,
+    DeepSeekToolCall, DeepSeekToolCallDelta, DeepSeekUsage, available_models, completion_builder,
+    get_model_config,
 };

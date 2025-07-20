@@ -20,10 +20,10 @@ use std::{
 use crate::{
     agent::{Agent, AgentBuilder},
     client::{
+        ProviderClient,
         completion::{CompletionClientDyn, CompletionModelHandle},
         embeddings::EmbeddingsClientDyn,
         transcription::TranscriptionClientDyn,
-        ProviderClient,
     },
     completion::CompletionModelDyn,
     embedding::embedding::EmbeddingModelDyn,

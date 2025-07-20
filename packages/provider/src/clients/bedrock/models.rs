@@ -6,7 +6,7 @@
 use arrayvec::ArrayString;
 
 /// Basic model capability validation
-/// 
+///
 /// Most models support these capabilities, this is just basic validation
 pub fn validate_model_capability(model_id: &str, capability: &str) -> Result<(), ArrayString<128>> {
     // Basic capability check - most Bedrock models support these features
@@ -15,7 +15,10 @@ pub fn validate_model_capability(model_id: &str, capability: &str) -> Result<(),
             // Most Bedrock models support tools except embedding models
             if model_id.contains("embed") {
                 let mut error = ArrayString::new();
-                let _ = error.try_push_str(&format!("embedding model {} does not support tools", model_id));
+                let _ = error.try_push_str(&format!(
+                    "embedding model {} does not support tools",
+                    model_id
+                ));
                 Err(error)
             } else {
                 Ok(())
@@ -35,7 +38,10 @@ pub fn validate_model_capability(model_id: &str, capability: &str) -> Result<(),
             // All text models support streaming except embeddings
             if model_id.contains("embed") {
                 let mut error = ArrayString::new();
-                let _ = error.try_push_str(&format!("embedding model {} does not support streaming", model_id));
+                let _ = error.try_push_str(&format!(
+                    "embedding model {} does not support streaming",
+                    model_id
+                ));
                 Err(error)
             } else {
                 Ok(())

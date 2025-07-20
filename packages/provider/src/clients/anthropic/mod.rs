@@ -17,24 +17,23 @@ pub mod client;
 pub mod completion;
 pub mod config;
 pub mod discovery;
+pub mod error;
 pub mod expression_evaluator;
 pub mod messages;
 pub mod requests;
 pub mod responses;
 pub mod streaming;
 pub mod tools;
-pub mod error;
 
 pub use client::*;
 pub use completion::*;
+// Re-export the polymorphic extension traits
+pub use completion::{AnthropicExtensions, SearchResultData};
 pub use config::*;
 pub use discovery::AnthropicDiscovery;
+pub use error::*;
 pub use messages::*;
 pub use requests::*;
 pub use responses::*;
 pub use streaming::*;
 pub use tools::*;
-pub use error::*;
-
-// Re-export the polymorphic extension traits
-pub use completion::{AnthropicExtensions, SearchResultData};

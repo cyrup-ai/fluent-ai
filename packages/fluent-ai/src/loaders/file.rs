@@ -14,7 +14,7 @@ use std::{fs, path::PathBuf};
 use glob::glob;
 use thiserror::Error;
 
-use crate::runtime::{spawn_async, AsyncStream};
+use crate::runtime::{AsyncStream, spawn_async};
 
 // ring size for the producer → consumer channel
 const STREAM_CAP: usize = 256;
@@ -72,9 +72,9 @@ pub struct FileLoader<'a, T> {
     iterator: Box<dyn Iterator<Item = T> + 'a>,
 }
 
-/* -------------------------------------------------------------------------
- * Constructors
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Constructors
+// ----------------------------------------------------------------------
 impl FileLoader<'_, Result<PathBuf, FileLoaderError>> {
     pub fn with_glob(pattern: &str) -> Result<Self, FileLoaderError> {
         let paths = glob(pattern)?;
@@ -94,9 +94,9 @@ impl FileLoader<'_, Result<PathBuf, FileLoaderError>> {
     }
 }
 
-/* -------------------------------------------------------------------------
- * Stage 1 – SYNC read (iterator)
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Stage 1 – SYNC read (iterator)
+// ----------------------------------------------------------------------
 impl<'a> FileLoader<'a, Result<PathBuf, FileLoaderError>> {
     #[inline(always)]
     pub fn read(self) -> FileLoader<'a, Result<String, FileLoaderError>> {
@@ -113,9 +113,9 @@ impl<'a> FileLoader<'a, Result<PathBuf, FileLoaderError>> {
     }
 }
 
-/* -------------------------------------------------------------------------
- * Stage 2 – ASYNC read (stream)
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Stage 2 – ASYNC read (stream)
+// ----------------------------------------------------------------------
 impl<'a> FileLoader<'a, Result<PathBuf, FileLoaderError>> {
     /// Non-blocking stream of plain file contents.
     pub fn read_async(self) -> AsyncStream<Result<String, FileLoaderError>, STREAM_CAP> {
@@ -161,9 +161,9 @@ impl<'a> FileLoader<'a, Result<PathBuf, FileLoaderError>> {
     }
 }
 
-/* -------------------------------------------------------------------------
- * Error-skipping helper – iterator variant
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Error-skipping helper – iterator variant
+// ----------------------------------------------------------------------
 impl<'a, T> FileLoader<'a, Result<T, FileLoaderError>> {
     #[inline(always)]
     pub fn ignore_errors(self) -> FileLoader<'a, T> {
@@ -173,9 +173,9 @@ impl<'a, T> FileLoader<'a, Result<T, FileLoaderError>> {
     }
 }
 
-/* -------------------------------------------------------------------------
- * Thin iterator wrapper
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Thin iterator wrapper
+// ----------------------------------------------------------------------
 pub struct LoaderIter<'a, T> {
     inner: Box<dyn Iterator<Item = T> + 'a>,
 }

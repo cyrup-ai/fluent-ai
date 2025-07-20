@@ -319,7 +319,7 @@ pub async fn complete_with_engine(config: &EngineConfig, input: &str) -> EngineR
     // Process completion
     let response = engine.process_completion_internal(&request, config).await?;
 
-    Ok(response.content.to_string())
+    Ok(response.text.to_string())
 }
 
 /// Engine streaming function with async task pattern
@@ -342,7 +342,7 @@ pub fn stream_with_engine(config: &EngineConfig, input: &str) -> AsyncTask<Engin
             .process_completion_internal(&request, &config)
             .await?;
 
-        Ok(response.content.to_string())
+        Ok(response.text.to_string())
     })
 }
 

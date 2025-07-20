@@ -1,18 +1,20 @@
 //! Production-ready calculator tool with comprehensive mathematical evaluation
-//! 
+//!
 //! This module provides a secure, zero-allocation calculator tool that supports
 //! arithmetic operations, mathematical functions, constants, and variables.
 
-use super::{
-    core::{Tool, AnthropicResult, AnthropicError},
-    function_calling::{ToolExecutor, ToolExecutionContext, ToolOutput}
-};
-use serde_json::{json, Value};
 use std::{
     collections::HashMap,
-    f64::consts::{PI, E, TAU},
-    pin::Pin,
+    f64::consts::{E, PI, TAU},
     future::Future,
+    pin::Pin,
+};
+
+use serde_json::{Value, json};
+
+use super::{
+    core::{AnthropicError, AnthropicResult, Tool},
+    function_calling::{ToolExecutionContext, ToolExecutor, ToolOutput},
 };
 
 /// Built-in calculator tool with production-ready expression evaluation
@@ -28,10 +30,12 @@ impl ToolExecutor for CalculatorTool {
             let expression = input
                 .get("expression")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| AnthropicError::InvalidRequest(
-                    "Calculator requires 'expression' parameter".to_string()
-                ))?;
-            
+                .ok_or_else(|| {
+                    AnthropicError::InvalidRequest(
+                        "Calculator requires 'expression' parameter".to_string(),
+                    )
+                })?;
+
             // Production-ready expression evaluation with comprehensive error handling
             let mut evaluator = ExpressionEvaluator::new();
             match evaluator.evaluate(expression) {
@@ -57,7 +61,7 @@ impl ToolExecutor for CalculatorTool {
             }
         })
     }
-    
+
     fn definition(&self) -> Tool {
         Tool::new(
             "calculator",
@@ -96,7 +100,11 @@ impl std::fmt::Display for ExpressionError {
             }
             ExpressionError::DivisionByZero => write!(f, "Division by zero"),
             ExpressionError::InvalidFunctionCall { function, args } => {
-                write!(f, "Invalid function call: {}() with {} arguments", function, args)
+                write!(
+                    f,
+                    "Invalid function call: {}() with {} arguments",
+                    function, args
+                )
             }
             ExpressionError::UndefinedVariable { variable } => {
                 write!(f, "Undefined variable: {}", variable)
@@ -147,12 +155,12 @@ impl ExpressionEvaluator {
     /// Create new expression evaluator with predefined constants
     pub fn new() -> Self {
         let mut variables = HashMap::new();
-        
+
         // Mathematical constants
         variables.insert("pi".to_string(), PI);
         variables.insert("e".to_string(), E);
         variables.insert("tau".to_string(), TAU);
-        
+
         Self {
             variables,
             position: 0,
@@ -160,21 +168,21 @@ impl ExpressionEvaluator {
             current_token: 0,
         }
     }
-    
+
     /// Evaluate mathematical expression with comprehensive error handling
     pub fn evaluate(&mut self, expression: &str) -> Result<f64, ExpressionError> {
         self.position = 0;
         self.current_token = 0;
         self.tokens = self.tokenize(expression)?;
-        
+
         if self.tokens.is_empty() || matches!(self.tokens[0], Token::End) {
             return Err(ExpressionError::InvalidExpression {
                 message: "Empty expression".to_string(),
             });
         }
-        
+
         let result = self.parse_assignment()?;
-        
+
         // Check for unconsumed tokens
         if self.current_token < self.tokens.len() - 1 {
             return Err(ExpressionError::ParseError {
@@ -182,29 +190,29 @@ impl ExpressionEvaluator {
                 message: "Unexpected tokens after expression".to_string(),
             });
         }
-        
+
         // Check for overflow and special values
         if result.is_infinite() {
             return Err(ExpressionError::Overflow {
                 operation: "expression evaluation".to_string(),
             });
         }
-        
+
         if result.is_nan() {
             return Err(ExpressionError::InvalidExpression {
                 message: "Expression resulted in NaN".to_string(),
             });
         }
-        
+
         Ok(result)
     }
-    
+
     /// Tokenize input expression into structured tokens
     fn tokenize(&mut self, expression: &str) -> Result<Vec<Token>, ExpressionError> {
         let mut tokens = Vec::new();
         let chars: Vec<char> = expression.chars().collect();
         let mut i = 0;
-        
+
         while i < chars.len() {
             match chars[i] {
                 ' ' | '\t' | '\r' | '\n' => {
@@ -260,22 +268,25 @@ impl ExpressionEvaluator {
                     let start = i;
                     let mut has_dot = c == '.';
                     i += 1;
-                    
-                    while i < chars.len() && (chars[i].is_ascii_digit() || (chars[i] == '.' && !has_dot)) {
+
+                    while i < chars.len()
+                        && (chars[i].is_ascii_digit() || (chars[i] == '.' && !has_dot))
+                    {
                         if chars[i] == '.' {
                             has_dot = true;
                         }
                         i += 1;
                     }
-                    
+
                     let number_str: String = chars[start..i].iter().collect();
-                    let number = number_str.parse::<f64>().map_err(|_| {
-                        ExpressionError::ParseError {
-                            position: start,
-                            message: format!("Invalid number: {}", number_str),
-                        }
-                    })?;
-                    
+                    let number =
+                        number_str
+                            .parse::<f64>()
+                            .map_err(|_| ExpressionError::ParseError {
+                                position: start,
+                                message: format!("Invalid number: {}", number_str),
+                            })?;
+
                     tokens.push(Token::Number(number));
                 }
                 c if c.is_ascii_alphabetic() || c == '_' => {
@@ -283,9 +294,9 @@ impl ExpressionEvaluator {
                     while i < chars.len() && (chars[i].is_ascii_alphanumeric() || chars[i] == '_') {
                         i += 1;
                     }
-                    
+
                     let identifier: String = chars[start..i].iter().collect();
-                    
+
                     // Check if followed by parenthesis (function call)
                     if i < chars.len() && chars[i] == '(' {
                         tokens.push(Token::Function(identifier));
@@ -301,11 +312,11 @@ impl ExpressionEvaluator {
                 }
             }
         }
-        
+
         tokens.push(Token::End);
         Ok(tokens)
     }
-    
+
     /// Parse assignment expressions (x = 5)
     fn parse_assignment(&mut self) -> Result<f64, ExpressionError> {
         if let Some(Token::Variable(var_name)) = self.peek_token() {
@@ -313,25 +324,25 @@ impl ExpressionEvaluator {
                 let var_name = var_name.clone();
                 self.advance_token(); // consume variable
                 self.advance_token(); // consume =
-                
+
                 let value = self.parse_expression()?;
                 self.variables.insert(var_name, value);
                 return Ok(value);
             }
         }
-        
+
         self.parse_expression()
     }
-    
+
     /// Parse arithmetic expressions with proper precedence
     fn parse_expression(&mut self) -> Result<f64, ExpressionError> {
         let mut left = self.parse_term()?;
-        
+
         while matches!(self.peek_token(), Some(Token::Plus) | Some(Token::Minus)) {
             let op = self.peek_token().cloned();
             self.advance_token();
             let right = self.parse_term()?;
-            
+
             match op {
                 Some(Token::Plus) => {
                     left = left + right;
@@ -352,19 +363,22 @@ impl ExpressionEvaluator {
                 _ => unreachable!(),
             }
         }
-        
+
         Ok(left)
     }
-    
+
     /// Parse multiplication, division, and modulo terms
     fn parse_term(&mut self) -> Result<f64, ExpressionError> {
         let mut left = self.parse_power()?;
-        
-        while matches!(self.peek_token(), Some(Token::Multiply) | Some(Token::Divide) | Some(Token::Modulo)) {
+
+        while matches!(
+            self.peek_token(),
+            Some(Token::Multiply) | Some(Token::Divide) | Some(Token::Modulo)
+        ) {
             let op = self.peek_token().cloned();
             self.advance_token();
             let right = self.parse_power()?;
-            
+
             match op {
                 Some(Token::Multiply) => {
                     left = left * right;
@@ -394,29 +408,29 @@ impl ExpressionEvaluator {
                 _ => unreachable!(),
             }
         }
-        
+
         Ok(left)
     }
-    
+
     /// Parse power/exponentiation (right-associative)
     fn parse_power(&mut self) -> Result<f64, ExpressionError> {
         let mut left = self.parse_factor()?;
-        
+
         if matches!(self.peek_token(), Some(Token::Power)) {
             self.advance_token();
             let right = self.parse_power()?; // Right-associative
             left = left.powf(right);
-            
+
             if left.is_infinite() {
                 return Err(ExpressionError::Overflow {
                     operation: "exponentiation".to_string(),
                 });
             }
         }
-        
+
         Ok(left)
     }
-    
+
     /// Parse factors (numbers, variables, functions, parentheses)
     fn parse_factor(&mut self) -> Result<f64, ExpressionError> {
         match self.peek_token() {
@@ -428,10 +442,11 @@ impl ExpressionEvaluator {
             Some(Token::Variable(var)) => {
                 let var_name = var.clone();
                 self.advance_token();
-                
-                self.variables.get(&var_name).copied().ok_or_else(|| {
-                    ExpressionError::UndefinedVariable { variable: var_name }
-                })
+
+                self.variables
+                    .get(&var_name)
+                    .copied()
+                    .ok_or_else(|| ExpressionError::UndefinedVariable { variable: var_name })
             }
             Some(Token::Function(func)) => {
                 let func_name = func.clone();
@@ -441,7 +456,7 @@ impl ExpressionEvaluator {
             Some(Token::LeftParen) => {
                 self.advance_token();
                 let result = self.parse_expression()?;
-                
+
                 if !matches!(self.peek_token(), Some(Token::RightParen)) {
                     return Err(ExpressionError::ParseError {
                         position: self.position,
@@ -466,7 +481,7 @@ impl ExpressionEvaluator {
             }),
         }
     }
-    
+
     /// Parse function calls with argument validation
     fn parse_function_call(&mut self, func_name: &str) -> Result<f64, ExpressionError> {
         if !matches!(self.peek_token(), Some(Token::LeftParen)) {
@@ -476,16 +491,16 @@ impl ExpressionEvaluator {
             });
         }
         self.advance_token();
-        
+
         let mut args = Vec::new();
-        
+
         // Handle empty argument list
         if matches!(self.peek_token(), Some(Token::RightParen)) {
             self.advance_token();
         } else {
             loop {
                 args.push(self.parse_expression()?);
-                
+
                 match self.peek_token() {
                     Some(Token::Comma) => {
                         self.advance_token();
@@ -498,16 +513,17 @@ impl ExpressionEvaluator {
                     _ => {
                         return Err(ExpressionError::ParseError {
                             position: self.position,
-                            message: "Expected comma or closing parenthesis in function call".to_string(),
+                            message: "Expected comma or closing parenthesis in function call"
+                                .to_string(),
                         });
                     }
                 }
             }
         }
-        
+
         self.evaluate_function(func_name, &args)
     }
-    
+
     /// Evaluate mathematical functions with comprehensive error handling
     fn evaluate_function(&self, func_name: &str, args: &[f64]) -> Result<f64, ExpressionError> {
         match func_name {
@@ -740,17 +756,17 @@ impl ExpressionEvaluator {
             }),
         }
     }
-    
+
     /// Peek at current token without consuming it
     fn peek_token(&self) -> Option<&Token> {
         self.tokens.get(self.current_token)
     }
-    
+
     /// Peek at next token without consuming current
     fn peek_next_token(&self) -> Option<&Token> {
         self.tokens.get(self.current_token + 1)
     }
-    
+
     /// Advance to next token
     fn advance_token(&mut self) {
         if self.current_token < self.tokens.len() {

@@ -9,20 +9,20 @@
 //! - Zero-allocation error tracking with SIMD validation
 //! - Comprehensive observability and metrics collection
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicU32, AtomicBool, Ordering};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::collections::VecDeque;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use arrayvec::ArrayString;
-use smallvec::SmallVec;
 use crossbeam_utils::CachePadded;
 use dashmap::DashMap;
-use serde::{Deserialize, Serialize};
-use tokio::sync::{RwLock, Semaphore, broadcast};
-use tokio::time::{sleep, interval};
-use thiserror::Error;
 use fastrand::Rng;
+use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
+use thiserror::Error;
+use tokio::sync::{RwLock, Semaphore, broadcast};
+use tokio::time::{interval, sleep};
 
 /// Maximum number of circuit breakers to track
 const MAX_CIRCUIT_BREAKERS: usize = 128;
@@ -61,7 +61,7 @@ impl CircuitState {
     pub fn allows_requests(&self) -> bool {
         matches!(self, CircuitState::Closed | CircuitState::HalfOpen)
     }
-    
+
     /// Check if circuit is in failure state
     pub fn is_failure_state(&self) -> bool {
         matches!(self, CircuitState::Open | CircuitState::ForcedOpen)
@@ -229,7 +229,8 @@ impl CircuitBreakerMetrics {
     /// Update error rate
     pub fn update_error_rate(&self) {
         let error_rate = self.calculate_error_rate();
-        self.error_rate_percent.store(error_rate as u32, Ordering::Relaxed);
+        self.error_rate_percent
+            .store(error_rate as u32, Ordering::Relaxed);
     }
 }
 
@@ -308,7 +309,7 @@ impl AdaptiveThresholdCalculator {
         max_threshold: u64,
     ) -> u64 {
         let mut rates = self.historical_error_rates.write().await;
-        
+
         // Add current rate
         if rates.len() >= self.window_size {
             rates.pop_front();
@@ -322,9 +323,8 @@ impl AdaptiveThresholdCalculator {
 
         let rates_vec: Vec<f64> = rates.iter().copied().collect();
         let mean = rates_vec.iter().sum::<f64>() / rates_vec.len() as f64;
-        let variance = rates_vec.iter()
-            .map(|x| (x - mean).powi(2))
-            .sum::<f64>() / rates_vec.len() as f64;
+        let variance =
+            rates_vec.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / rates_vec.len() as f64;
         let std_dev = variance.sqrt();
 
         // Adjust threshold based on volatility
@@ -346,16 +346,16 @@ impl AdaptiveThresholdCalculator {
 pub enum CircuitBreakerError {
     #[error("Circuit breaker is open: {reason}")]
     CircuitOpen { reason: String },
-    
+
     #[error("Request rejected: {reason}")]
     RequestRejected { reason: String },
-    
+
     #[error("Configuration error: {error}")]
     ConfigurationError { error: String },
-    
+
     #[error("State transition error: {error}")]
     StateTransitionError { error: String },
-    
+
     #[error("Resource exhaustion: {resource}")]
     ResourceExhaustion { resource: String },
 }
@@ -395,17 +395,20 @@ impl CircuitBreaker {
     {
         // Check if circuit allows requests
         if !self.can_execute().await? {
-            self.metrics.rejected_requests.fetch_add(1, Ordering::Relaxed);
+            self.metrics
+                .rejected_requests
+                .fetch_add(1, Ordering::Relaxed);
             return Err(CircuitBreakerError::CircuitOpen {
                 reason: format!("Circuit breaker {} is open", self.id),
             });
         }
 
         // Acquire resource permit
-        let _permit = self.resource_semaphore.acquire().await
-            .map_err(|_| CircuitBreakerError::ResourceExhaustion {
+        let _permit = self.resource_semaphore.acquire().await.map_err(|_| {
+            CircuitBreakerError::ResourceExhaustion {
                 resource: "circuit_breaker_permits".to_string(),
-            })?;
+            }
+        })?;
 
         // Execute operation
         let start_time = Instant::now();
@@ -423,8 +426,9 @@ impl CircuitBreaker {
                     FailureType::RequestLevel,
                     &error.to_string(),
                     duration,
-                ).await;
-                
+                )
+                .await;
+
                 Err(CircuitBreakerError::RequestRejected {
                     reason: error.to_string(),
                 })
@@ -435,7 +439,7 @@ impl CircuitBreaker {
     /// Check if circuit breaker allows execution
     async fn can_execute(&self) -> Result<bool, CircuitBreakerError> {
         let current_state = self.get_current_state();
-        
+
         match current_state {
             CircuitState::Closed => Ok(true),
             CircuitState::Open | CircuitState::ForcedOpen => {
@@ -452,7 +456,9 @@ impl CircuitBreaker {
                 // Allow limited probes in half-open state
                 let current_probes = self.metrics.half_open_probes.load(Ordering::Relaxed);
                 if current_probes < self.config.success_threshold {
-                    self.metrics.half_open_probes.fetch_add(1, Ordering::Relaxed);
+                    self.metrics
+                        .half_open_probes
+                        .fetch_add(1, Ordering::Relaxed);
                     Ok(true)
                 } else {
                     Ok(false)
@@ -463,16 +469,22 @@ impl CircuitBreaker {
 
     /// Record successful operation
     async fn record_success(&self) {
-        let consecutive_successes = self.metrics.consecutive_successes.fetch_add(1, Ordering::Relaxed) + 1;
-        self.metrics.consecutive_failures.store(0, Ordering::Relaxed);
+        let consecutive_successes = self
+            .metrics
+            .consecutive_successes
+            .fetch_add(1, Ordering::Relaxed)
+            + 1;
+        self.metrics
+            .consecutive_failures
+            .store(0, Ordering::Relaxed);
         self.metrics.update_error_rate();
 
         let current_state = self.get_current_state();
-        
+
         // Check for transition from half-open to closed
-        if current_state == CircuitState::HalfOpen 
-            && consecutive_successes >= self.config.success_threshold {
-            
+        if current_state == CircuitState::HalfOpen
+            && consecutive_successes >= self.config.success_threshold
+        {
             if let Err(e) = self.transition_to_closed("Success threshold reached").await {
                 // Log error but continue
                 eprintln!("Failed to transition to closed state: {}", e);
@@ -489,8 +501,14 @@ impl CircuitBreaker {
         duration: Duration,
     ) {
         self.metrics.total_failures.fetch_add(1, Ordering::Relaxed);
-        let consecutive_failures = self.metrics.consecutive_failures.fetch_add(1, Ordering::Relaxed) + 1;
-        self.metrics.consecutive_successes.store(0, Ordering::Relaxed);
+        let consecutive_failures = self
+            .metrics
+            .consecutive_failures
+            .fetch_add(1, Ordering::Relaxed)
+            + 1;
+        self.metrics
+            .consecutive_successes
+            .store(0, Ordering::Relaxed);
         self.metrics.update_error_rate();
 
         // Record error in history
@@ -523,27 +541,33 @@ impl CircuitBreaker {
         // Check if failure should trigger circuit opening
         if self.should_trigger_failure(error_category, failure_type) {
             let current_state = self.get_current_state();
-            
+
             match current_state {
                 CircuitState::Closed => {
                     // Calculate adaptive threshold
                     let error_rate = self.metrics.calculate_error_rate();
-                    let adaptive_threshold = self.adaptive_calculator.calculate_adaptive_threshold(
-                        error_rate,
-                        self.config.failure_threshold,
-                        self.config.min_failure_threshold,
-                        self.config.max_failure_threshold,
-                    ).await;
+                    let adaptive_threshold = self
+                        .adaptive_calculator
+                        .calculate_adaptive_threshold(
+                            error_rate,
+                            self.config.failure_threshold,
+                            self.config.min_failure_threshold,
+                            self.config.max_failure_threshold,
+                        )
+                        .await;
 
                     if consecutive_failures >= adaptive_threshold {
-                        if let Err(e) = self.transition_to_open("Failure threshold exceeded").await {
+                        if let Err(e) = self.transition_to_open("Failure threshold exceeded").await
+                        {
                             eprintln!("Failed to transition to open state: {}", e);
                         }
                     }
                 }
                 CircuitState::HalfOpen => {
                     // Any failure in half-open state returns to open
-                    self.metrics.failed_recoveries.fetch_add(1, Ordering::Relaxed);
+                    self.metrics
+                        .failed_recoveries
+                        .fetch_add(1, Ordering::Relaxed);
                     if let Err(e) = self.transition_to_open("Half-open recovery failed").await {
                         eprintln!("Failed to transition to open state: {}", e);
                     }
@@ -554,15 +578,22 @@ impl CircuitBreaker {
     }
 
     /// Check if error should trigger circuit breaker failure
-    fn should_trigger_failure(&self, error_category: ErrorCategory, failure_type: FailureType) -> bool {
-        self.config.trigger_failure_types.contains(&failure_type) &&
-        self.config.failure_error_categories.contains(&error_category)
+    fn should_trigger_failure(
+        &self,
+        error_category: ErrorCategory,
+        failure_type: FailureType,
+    ) -> bool {
+        self.config.trigger_failure_types.contains(&failure_type)
+            && self
+                .config
+                .failure_error_categories
+                .contains(&error_category)
     }
 
     /// Classify error into category
     fn classify_error<E: std::error::Error>(&self, error: &E) -> ErrorCategory {
         let error_str = error.to_string().to_lowercase();
-        
+
         if error_str.contains("timeout") || error_str.contains("deadline") {
             ErrorCategory::Timeout
         } else if error_str.contains("5") && error_str.contains("server") {
@@ -618,11 +649,14 @@ impl CircuitBreaker {
     async fn transition_to_open(&self, reason: &str) -> Result<(), CircuitBreakerError> {
         let previous_state = self.get_current_state();
         self.set_state(CircuitState::Open);
-        
+
         let backoff_duration = self.calculate_backoff_duration().await;
-        self.metrics.current_backoff_ms.store(backoff_duration, Ordering::Relaxed);
-        
-        self.notify_state_change(previous_state, CircuitState::Open, reason).await;
+        self.metrics
+            .current_backoff_ms
+            .store(backoff_duration, Ordering::Relaxed);
+
+        self.notify_state_change(previous_state, CircuitState::Open, reason)
+            .await;
         Ok(())
     }
 
@@ -631,8 +665,9 @@ impl CircuitBreaker {
         let previous_state = self.get_current_state();
         self.set_state(CircuitState::HalfOpen);
         self.metrics.half_open_probes.store(0, Ordering::Relaxed);
-        
-        self.notify_state_change(previous_state, CircuitState::HalfOpen, reason).await;
+
+        self.notify_state_change(previous_state, CircuitState::HalfOpen, reason)
+            .await;
         Ok(())
     }
 
@@ -640,12 +675,19 @@ impl CircuitBreaker {
     async fn transition_to_closed(&self, reason: &str) -> Result<(), CircuitBreakerError> {
         let previous_state = self.get_current_state();
         self.set_state(CircuitState::Closed);
-        self.metrics.consecutive_failures.store(0, Ordering::Relaxed);
-        self.metrics.consecutive_successes.store(0, Ordering::Relaxed);
+        self.metrics
+            .consecutive_failures
+            .store(0, Ordering::Relaxed);
+        self.metrics
+            .consecutive_successes
+            .store(0, Ordering::Relaxed);
         self.metrics.current_backoff_ms.store(0, Ordering::Relaxed);
-        self.metrics.successful_recoveries.fetch_add(1, Ordering::Relaxed);
-        
-        self.notify_state_change(previous_state, CircuitState::Closed, reason).await;
+        self.metrics
+            .successful_recoveries
+            .fetch_add(1, Ordering::Relaxed);
+
+        self.notify_state_change(previous_state, CircuitState::Closed, reason)
+            .await;
         Ok(())
     }
 
@@ -661,8 +703,12 @@ impl CircuitBreaker {
             .map(|d| d.as_secs())
             .unwrap_or(0);
 
-        self.metrics.last_state_change.store(timestamp, Ordering::Relaxed);
-        self.metrics.state_transitions.fetch_add(1, Ordering::Relaxed);
+        self.metrics
+            .last_state_change
+            .store(timestamp, Ordering::Relaxed);
+        self.metrics
+            .state_transitions
+            .fetch_add(1, Ordering::Relaxed);
 
         let state_change = CircuitStateChange {
             circuit_id: self.id.clone(),
@@ -703,7 +749,8 @@ impl CircuitBreaker {
     pub async fn force_open(&self, reason: &str) -> Result<(), CircuitBreakerError> {
         let previous_state = self.get_current_state();
         self.set_state(CircuitState::ForcedOpen);
-        self.notify_state_change(previous_state, CircuitState::ForcedOpen, reason).await;
+        self.notify_state_change(previous_state, CircuitState::ForcedOpen, reason)
+            .await;
         Ok(())
     }
 
@@ -769,7 +816,7 @@ impl CircuitBreakerRegistry {
     /// Create new registry
     pub fn new(default_config: CircuitBreakerConfig) -> Self {
         let (global_state_sender, _) = broadcast::channel(10000);
-        
+
         Self {
             circuit_breakers: Arc::new(DashMap::new()),
             global_state_sender,
@@ -789,7 +836,7 @@ impl CircuitBreakerRegistry {
 
         let circuit_config = config.unwrap_or_else(|| self.default_config.clone());
         let circuit_breaker = Arc::new(CircuitBreaker::new(id.clone(), circuit_config)?);
-        
+
         self.circuit_breakers.insert(id, circuit_breaker.clone());
         Ok(circuit_breaker)
     }
@@ -806,7 +853,10 @@ impl CircuitBreakerRegistry {
 
     /// Get all circuit breaker IDs
     pub fn get_all_ids(&self) -> Vec<ArrayString<64>> {
-        self.circuit_breakers.iter().map(|entry| entry.key().clone()).collect()
+        self.circuit_breakers
+            .iter()
+            .map(|entry| entry.key().clone())
+            .collect()
     }
 
     /// Get global state change subscription
@@ -817,21 +867,28 @@ impl CircuitBreakerRegistry {
     /// Start health check monitoring for all circuit breakers
     pub fn start_health_monitoring(&self) -> tokio::task::JoinHandle<()> {
         let circuit_breakers = self.circuit_breakers.clone();
-        
+
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_millis(HEALTH_CHECK_INTERVAL_MS));
-            
+
             loop {
                 interval.tick().await;
-                
+
                 for entry in circuit_breakers.iter() {
                     let circuit_breaker = entry.value();
-                    
+
                     // Check if circuit should attempt recovery
                     if circuit_breaker.get_current_state() == CircuitState::Open {
                         if circuit_breaker.should_attempt_reset().await {
-                            if let Err(e) = circuit_breaker.transition_to_half_open("Health check triggered").await {
-                                eprintln!("Failed to transition circuit {} to half-open: {}", entry.key(), e);
+                            if let Err(e) = circuit_breaker
+                                .transition_to_half_open("Health check triggered")
+                                .await
+                            {
+                                eprintln!(
+                                    "Failed to transition circuit {} to half-open: {}",
+                                    entry.key(),
+                                    e
+                                );
                             }
                         }
                     }
@@ -853,14 +910,14 @@ impl CircuitBreakerRegistry {
             let circuit_breaker = entry.value();
             let state = circuit_breaker.get_current_state();
             let metrics = circuit_breaker.get_metrics();
-            
+
             match state {
                 CircuitState::Closed => closed_count += 1,
                 CircuitState::Open => open_count += 1,
                 CircuitState::HalfOpen => half_open_count += 1,
                 CircuitState::ForcedOpen => forced_open_count += 1,
             }
-            
+
             total_requests += metrics.total_requests;
             total_failures += metrics.total_failures;
         }
@@ -897,10 +954,12 @@ pub struct RegistryStats {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
-    use tokio::time::{sleep, Duration};
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    use tokio::time::{Duration, sleep};
+
+    use super::*;
 
     #[tokio::test]
     async fn test_circuit_breaker_basic_operation() {
@@ -910,11 +969,9 @@ mod tests {
             timeout_ms: 1000,
             ..Default::default()
         };
-        
-        let circuit_breaker = CircuitBreaker::new(
-            ArrayString::from("test_circuit").unwrap(),
-            config,
-        ).unwrap();
+
+        let circuit_breaker =
+            CircuitBreaker::new(ArrayString::from("test_circuit").unwrap(), config).unwrap();
 
         // Initial state should be closed
         assert_eq!(circuit_breaker.get_current_state(), CircuitState::Closed);
@@ -938,15 +995,16 @@ mod tests {
             adaptive_thresholds: false,
             ..Default::default()
         };
-        
-        let circuit_breaker = CircuitBreaker::new(
-            ArrayString::from("test_circuit_failures").unwrap(),
-            config,
-        ).unwrap();
+
+        let circuit_breaker =
+            CircuitBreaker::new(ArrayString::from("test_circuit_failures").unwrap(), config)
+                .unwrap();
 
         // Simulate failures to trigger circuit opening
         for _ in 0..3 {
-            let result = circuit_breaker.execute(|| Err::<(), &str>("simulated error")).await;
+            let result = circuit_breaker
+                .execute(|| Err::<(), &str>("simulated error"))
+                .await;
             assert!(result.is_err());
         }
 
@@ -956,7 +1014,10 @@ mod tests {
         // Additional requests should be rejected
         let result = circuit_breaker.execute(|| Ok::<(), &str>(())).await;
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), CircuitBreakerError::CircuitOpen { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            CircuitBreakerError::CircuitOpen { .. }
+        ));
     }
 
     #[tokio::test]
@@ -969,11 +1030,10 @@ mod tests {
             exponential_backoff: false,
             ..Default::default()
         };
-        
-        let circuit_breaker = CircuitBreaker::new(
-            ArrayString::from("test_circuit_recovery").unwrap(),
-            config,
-        ).unwrap();
+
+        let circuit_breaker =
+            CircuitBreaker::new(ArrayString::from("test_circuit_recovery").unwrap(), config)
+                .unwrap();
 
         // Trigger circuit opening
         for _ in 0..3 {
@@ -1019,39 +1079,52 @@ mod tests {
     #[tokio::test]
     async fn test_adaptive_threshold_calculator() {
         let calculator = AdaptiveThresholdCalculator::new(20, 0.5);
-        
+
         // Test with stable error rates
         for _ in 0..15 {
-            calculator.calculate_adaptive_threshold(5.0, 10, 5, 20).await;
+            calculator
+                .calculate_adaptive_threshold(5.0, 10, 5, 20)
+                .await;
         }
-        
-        let threshold = calculator.calculate_adaptive_threshold(5.0, 10, 5, 20).await;
+
+        let threshold = calculator
+            .calculate_adaptive_threshold(5.0, 10, 5, 20)
+            .await;
         assert!(threshold >= 5 && threshold <= 20);
-        
+
         // Test with volatile error rates
         for i in 0..15 {
             let error_rate = if i % 2 == 0 { 1.0 } else { 15.0 };
-            calculator.calculate_adaptive_threshold(error_rate, 10, 5, 20).await;
+            calculator
+                .calculate_adaptive_threshold(error_rate, 10, 5, 20)
+                .await;
         }
-        
-        let volatile_threshold = calculator.calculate_adaptive_threshold(8.0, 10, 5, 20).await;
+
+        let volatile_threshold = calculator
+            .calculate_adaptive_threshold(8.0, 10, 5, 20)
+            .await;
         assert!(volatile_threshold >= 5 && volatile_threshold <= 20);
     }
 
     #[tokio::test]
     async fn test_error_classification() {
         let config = CircuitBreakerConfig::default();
-        let circuit_breaker = CircuitBreaker::new(
-            ArrayString::from("test_classification").unwrap(),
-            config,
-        ).unwrap();
+        let circuit_breaker =
+            CircuitBreaker::new(ArrayString::from("test_classification").unwrap(), config).unwrap();
 
         // Test timeout error
         let timeout_error = std::io::Error::new(std::io::ErrorKind::TimedOut, "timeout occurred");
-        assert_eq!(circuit_breaker.classify_error(&timeout_error), ErrorCategory::Timeout);
+        assert_eq!(
+            circuit_breaker.classify_error(&timeout_error),
+            ErrorCategory::Timeout
+        );
 
         // Test network error
-        let network_error = std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "connection failed");
-        assert_eq!(circuit_breaker.classify_error(&network_error), ErrorCategory::NetworkError);
+        let network_error =
+            std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "connection failed");
+        assert_eq!(
+            circuit_breaker.classify_error(&network_error),
+            ErrorCategory::NetworkError
+        );
     }
 }

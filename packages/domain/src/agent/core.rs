@@ -7,13 +7,12 @@ use arrayvec::ArrayVec;
 use crossbeam_utils::CachePadded;
 use serde_json::Value;
 
-use crate::mcp_tool::McpToolData;
-use crate::memory::{MemoryConfig, MemoryError};
-use crate::memory::{MemoryTool, MemoryToolError};
-use crate::{
-    document::Document, Memory, ZeroOneOrMany,
-    model::{Model, ModelInfo},
-};
+use crate::ZeroOneOrMany;
+use crate::context::Document;
+use crate::library::Library;
+use crate::memory::{Memory, MemoryError, MemoryTool, MemoryToolError};
+use crate::model::Model;
+use crate::tool::McpToolData;
 
 /// Maximum number of tools per agent (const generic default)
 pub const MAX_AGENT_TOOLS: usize = 32;

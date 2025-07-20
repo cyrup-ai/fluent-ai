@@ -3,18 +3,18 @@
 //! This module provides comprehensive device detection, selection, and management for
 //! Candle ML inference with zero-allocation patterns and lock-free atomic operations.
 
-use std::sync::atomic::{AtomicU8, AtomicU64, AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
-use arrayvec::ArrayVec;
-use smallvec::SmallVec;
-use crossbeam::utils::CachePadded;
 use arc_swap::{ArcSwap, Guard};
-
+use arrayvec::ArrayVec;
 use candle_core::Device;
-use super::models::CandleDevice;
+use crossbeam::utils::CachePadded;
+use smallvec::SmallVec;
+
 use super::error::{CandleError, CandleResult, ErrorMetrics, record_global_error};
+use super::models::CandleDevice;
 
 /// Device type enumeration for platform-specific optimizations
 #[repr(u8)]
@@ -98,13 +98,14 @@ impl DeviceInfo {
     #[inline]
     pub fn record_operation(&mut self, success: bool, duration: Duration) {
         let duration_us = duration.as_micros() as u32;
-        
+
         if success {
             self.success_count += 1;
             // Update running average (simplified)
             let total_ops = self.success_count;
-            self.avg_operation_time_us = 
-                ((self.avg_operation_time_us as u64 * (total_ops - 1)) + duration_us as u64) as u32 / total_ops as u32;
+            self.avg_operation_time_us = ((self.avg_operation_time_us as u64 * (total_ops - 1))
+                + duration_us as u64) as u32
+                / total_ops as u32;
         } else {
             self.failure_count += 1;
         }
@@ -125,14 +126,15 @@ impl DeviceInfo {
     #[inline]
     pub fn performance_score(&self) -> f32 {
         let base_score = self.compute_capability;
-        let memory_factor = (self.available_memory_bytes as f32) / (self.total_memory_bytes as f32).max(1.0);
+        let memory_factor =
+            (self.available_memory_bytes as f32) / (self.total_memory_bytes as f32).max(1.0);
         let success_factor = self.success_ratio() / 100.0;
         let speed_factor = if self.avg_operation_time_us > 0 {
             1000000.0 / (self.avg_operation_time_us as f32) // Inverse of time for speed
         } else {
             1.0
         };
-        
+
         base_score * memory_factor * success_factor * speed_factor.min(10.0)
     }
 }
@@ -235,12 +237,11 @@ impl DeviceManager {
     /// Initialize device manager and discover available devices
     pub async fn initialize(&self) -> CandleResult<()> {
         // Prevent concurrent initialization
-        if self.initialization_in_progress.compare_exchange(
-            false, 
-            true, 
-            Ordering::AcqRel, 
-            Ordering::Acquire
-        ).is_err() {
+        if self
+            .initialization_in_progress
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
             // Wait for ongoing initialization
             while self.initialization_in_progress.load(Ordering::Acquire) {
                 tokio::time::sleep(Duration::from_millis(10)).await;
@@ -249,7 +250,8 @@ impl DeviceManager {
         }
 
         let result = self.perform_initialization().await;
-        self.initialization_in_progress.store(false, Ordering::Release);
+        self.initialization_in_progress
+            .store(false, Ordering::Release);
         result
     }
 
@@ -286,7 +288,9 @@ impl DeviceManager {
         // Update state atomically
         let scan_time = start_time.elapsed();
         let scan_time_us = scan_time.as_micros() as u32;
-        self.metrics.avg_scan_time_us.store(scan_time_us, Ordering::Relaxed);
+        self.metrics
+            .avg_scan_time_us
+            .store(scan_time_us, Ordering::Relaxed);
 
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -315,20 +319,16 @@ impl DeviceManager {
     /// Discover CPU device capabilities
     async fn discover_cpu_device(&self) -> CandleResult<DeviceInfo> {
         let start_time = Instant::now();
-        
+
         // Test CPU device creation
         let _cpu_device = Device::Cpu;
-        
+
         // Get system memory information
         let total_memory = self.get_system_memory_bytes();
         let compute_capability = self.benchmark_cpu_performance().await;
 
-        let mut cpu_info = DeviceInfo::new(
-            CandleDevice::Cpu,
-            "CPU",
-            total_memory,
-            compute_capability,
-        );
+        let mut cpu_info =
+            DeviceInfo::new(CandleDevice::Cpu, "CPU", total_memory, compute_capability);
 
         cpu_info.is_available = true;
         cpu_info.record_operation(true, start_time.elapsed());
@@ -341,7 +341,8 @@ impl DeviceManager {
         let mut cuda_devices = SmallVec::new();
 
         // Try to detect CUDA devices
-        for device_id in 0..8 { // Check up to 8 CUDA devices
+        for device_id in 0..8 {
+            // Check up to 8 CUDA devices
             match self.test_cuda_device(device_id).await {
                 Ok(device_info) => cuda_devices.push(device_info),
                 Err(_) => break, // Stop on first unavailable device
@@ -362,14 +363,15 @@ impl DeviceManager {
     /// Test individual CUDA device
     async fn test_cuda_device(&self, device_id: u32) -> CandleResult<DeviceInfo> {
         let start_time = Instant::now();
-        
+
         // Try to create CUDA device
-        let cuda_device = Device::new_cuda(device_id as usize)
-            .map_err(|e| CandleError::device(
+        let cuda_device = Device::new_cuda(device_id as usize).map_err(|e| {
+            CandleError::device(
                 CandleDevice::Cuda(device_id),
                 "CUDA device creation",
                 &[CandleDevice::Cpu],
-            ))?;
+            )
+        })?;
 
         // Estimate CUDA device capabilities
         let total_memory = self.get_cuda_memory_bytes(device_id);
@@ -394,7 +396,8 @@ impl DeviceManager {
         let mut metal_devices = SmallVec::new();
 
         // Try to detect Metal devices
-        for device_id in 0..2 { // Check up to 2 Metal devices (integrated + discrete)
+        for device_id in 0..2 {
+            // Check up to 2 Metal devices (integrated + discrete)
             match self.test_metal_device(device_id).await {
                 Ok(device_info) => metal_devices.push(device_info),
                 Err(_) => continue, // Try next device
@@ -416,14 +419,15 @@ impl DeviceManager {
     #[cfg(target_os = "macos")]
     async fn test_metal_device(&self, device_id: u32) -> CandleResult<DeviceInfo> {
         let start_time = Instant::now();
-        
+
         // Try to create Metal device
-        let _metal_device = Device::new_metal(device_id as usize)
-            .map_err(|e| CandleError::device(
+        let _metal_device = Device::new_metal(device_id as usize).map_err(|e| {
+            CandleError::device(
                 CandleDevice::Metal(device_id),
                 "Metal device creation",
                 &[CandleDevice::Cpu],
-            ))?;
+            )
+        })?;
 
         // Estimate Metal device capabilities
         let total_memory = self.get_metal_memory_bytes(device_id);
@@ -462,13 +466,17 @@ impl DeviceManager {
                 continue;
             }
 
-            let preference_bonus = match state.preference_order.iter().position(|&pref| pref == device.device_type) {
+            let preference_bonus = match state
+                .preference_order
+                .iter()
+                .position(|&pref| pref == device.device_type)
+            {
                 Some(pos) => 10.0 / (pos as f32 + 1.0), // Higher bonus for preferred devices
                 None => 1.0,
             };
 
             let score = device.performance_score() * preference_bonus;
-            
+
             if score > best_score {
                 best_score = score;
                 best_index = index;
@@ -481,7 +489,7 @@ impl DeviceManager {
     /// Get current device
     pub fn current_device(&self) -> CandleResult<CandleDevice> {
         let state = self.state.load();
-        
+
         if !state.is_initialized {
             return Err(CandleError::device(
                 CandleDevice::Cpu,
@@ -490,20 +498,17 @@ impl DeviceManager {
             ));
         }
 
-        state.available_devices
+        state
+            .available_devices
             .get(state.current_device_index)
             .map(|info| info.device)
-            .ok_or_else(|| CandleError::device(
-                CandleDevice::Cpu,
-                "valid device index",
-                &[],
-            ))
+            .ok_or_else(|| CandleError::device(CandleDevice::Cpu, "valid device index", &[]))
     }
 
     /// Get fallback device using preference order
     pub fn fallback_device(&self) -> CandleResult<CandleDevice> {
         let state = self.state.load();
-        
+
         if !state.is_initialized {
             return Err(CandleError::device(
                 CandleDevice::Cpu,
@@ -514,7 +519,8 @@ impl DeviceManager {
 
         // Try devices in preference order
         for &preferred_type in &state.preference_order {
-            if let Some(device_info) = state.available_devices
+            if let Some(device_info) = state
+                .available_devices
                 .iter()
                 .find(|info| info.device_type == preferred_type && info.is_available)
             {
@@ -524,21 +530,18 @@ impl DeviceManager {
         }
 
         // Fallback to first available device
-        state.available_devices
+        state
+            .available_devices
             .iter()
             .find(|info| info.is_available)
             .map(|info| info.device)
-            .ok_or_else(|| CandleError::device(
-                CandleDevice::Cpu,
-                "any available device",
-                &[],
-            ))
+            .ok_or_else(|| CandleError::device(CandleDevice::Cpu, "any available device", &[]))
     }
 
     /// Switch to specific device
     pub async fn switch_device(&self, target_device: CandleDevice) -> CandleResult<()> {
         let state = self.state.load();
-        
+
         if !state.is_initialized {
             return Err(CandleError::device(
                 target_device,
@@ -548,14 +551,21 @@ impl DeviceManager {
         }
 
         // Find target device in available devices
-        let target_index = state.available_devices
+        let target_index = state
+            .available_devices
             .iter()
             .position(|info| info.device == target_device && info.is_available)
-            .ok_or_else(|| CandleError::device(
-                target_device,
-                "available device",
-                &state.available_devices.iter().map(|info| info.device).collect::<Vec<_>>(),
-            ))?;
+            .ok_or_else(|| {
+                CandleError::device(
+                    target_device,
+                    "available device",
+                    &state
+                        .available_devices
+                        .iter()
+                        .map(|info| info.device)
+                        .collect::<Vec<_>>(),
+                )
+            })?;
 
         // Update state if different from current
         if target_index != state.current_device_index {

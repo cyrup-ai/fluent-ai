@@ -30,8 +30,8 @@ pub mod workflow;
 // Re-export all builder traits and types
 pub use agent::*;
 pub use agent_role::{
-    AgentRoleBuilder, McpServerBuilder, Stdio,
-    AgentRoleBuilderWithHandler, AgentRoleBuilderWithChunkHandler
+    AgentRoleBuilder, AgentRoleBuilderWithChunkHandler, AgentRoleBuilderWithHandler,
+    McpServerBuilder, Stdio,
 };
 pub use audio::{AudioBuilder, AudioBuilderWithHandler};
 pub use chunk::*;

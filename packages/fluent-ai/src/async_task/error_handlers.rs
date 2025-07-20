@@ -1,5 +1,5 @@
 //! Zero-allocation error handler infrastructure for unwrapping Results in AsyncTask/AsyncStream
-//! 
+//!
 //! This module provides blazing-fast, lock-free error handling patterns for the fluent-ai builder system.
 //! All operations are zero-allocation with static dispatch for maximum performance.
 
@@ -58,7 +58,7 @@ where
             _phantom: PhantomData,
         }
     }
-    
+
     /// Handle error with zero allocation
     /// Performance: Inlined, static dispatch
     #[inline(always)]
@@ -87,7 +87,7 @@ where
             _phantom: PhantomData,
         }
     }
-    
+
     /// Handle result with zero allocation
     /// Performance: Inlined, static dispatch
     #[inline(always)]
@@ -116,7 +116,7 @@ where
             _phantom: PhantomData,
         }
     }
-    
+
     /// Handle chunk with zero allocation
     /// Performance: Inlined, static dispatch
     #[inline(always)]

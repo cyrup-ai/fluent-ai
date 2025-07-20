@@ -11,9 +11,9 @@
 // ============================================================================
 
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::OnceLock;
 use std::time::SystemTime;
-use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
@@ -741,10 +741,11 @@ mod tests {
         #[cfg(target_os = "linux")]
         {
             assert!(info.available_backends.iter().any(|b| b.name == "LandLock"));
-            assert!(info
-                .available_backends
-                .iter()
-                .any(|b| b.name == "FireCracker"));
+            assert!(
+                info.available_backends
+                    .iter()
+                    .any(|b| b.name == "FireCracker")
+            );
         }
     }
 }

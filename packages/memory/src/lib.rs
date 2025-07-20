@@ -26,13 +26,13 @@ pub use api::APIServer;
 pub use cognitive::{
     CognitiveMemoryManager, CognitiveMemoryNode, CognitiveSettings, CognitiveState,
     EvolutionMetadata, QuantumSignature,
-    llm::{ProductionLLMProvider, ProviderConfig, ModelConfig, PerformanceConfig},
+    llm::{ModelConfig, PerformanceConfig, ProductionLLMProvider, ProviderConfig},
 };
-pub use memory::manager::MemoryManager;
 pub use memory::MemoryMetadata;
 pub use memory::MemoryNode;
 pub use memory::SurrealDBMemoryManager;
 pub use memory::SurrealDBMemoryManager as SurrealMemoryManager;
+pub use memory::manager::MemoryManager;
 pub use schema::MemoryType;
 #[cfg(feature = "api")]
 pub use utils::config::APIConfig;

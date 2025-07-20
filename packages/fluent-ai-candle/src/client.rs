@@ -1,9 +1,11 @@
 //! Production-ready CandleCompletionClient with zero allocation and lock-free design
 
-use crate::error::{CandleError, CandleResult};
-use crate::generator::{CandleGenerator, GenerationConfig};
-use crate::model::CandleModel;
-use crate::tokenizer::{CandleTokenizer, TokenizerConfig};
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
+use std::time::Instant;
+
 use arc_swap::ArcSwap;
 use candle_core::Device;
 use fluent_ai_core::completion::{
@@ -14,11 +16,11 @@ use fluent_ai_core::completion::{
     streaming::StreamingResponse,
     CompletionResult,
 };
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Arc;
-use std::time::Instant;
+
+use crate::error::{CandleError, CandleResult};
+use crate::generator::{CandleGenerator, GenerationConfig};
+use crate::model::CandleModel;
+use crate::tokenizer::{CandleTokenizer, TokenizerConfig};
 
 /// Configuration for CandleCompletionClient
 #[repr(C)]
@@ -217,16 +219,17 @@ impl CandleCompletionClient {
     #[inline(always)]
     pub async fn new(config: CandleClientConfig) -> CandleResult<Self> {
         let device = Self::create_device(config.device_type)?;
-        
+
         // Load model
         let model = Arc::new(CandleModel::load_from_path(&config.model_path, &device).await?);
-        
+
         // Load tokenizer
-        let tokenizer_path = config.tokenizer_path
-            .as_ref()
-            .unwrap_or(&config.model_path);
-        let tokenizer = Arc::new(CandleTokenizer::from_file(tokenizer_path, config.tokenizer_config.clone())?);
-        
+        let tokenizer_path = config.tokenizer_path.as_ref().unwrap_or(&config.model_path);
+        let tokenizer = Arc::new(CandleTokenizer::from_file(
+            tokenizer_path,
+            config.tokenizer_config.clone(),
+        )?);
+
         // Create generator
         let generator = CandleGenerator::new(
             Arc::clone(&model),
@@ -234,7 +237,7 @@ impl CandleCompletionClient {
             config.generation_config.clone(),
             device.clone(),
         );
-        
+
         let client = Self {
             config: config.clone(),
             model,
@@ -245,21 +248,22 @@ impl CandleCompletionClient {
             is_initialized: AtomicBool::new(true),
             request_semaphore: tokio::sync::Semaphore::new(config.max_concurrent_requests as usize),
         };
-        
+
         Ok(client)
     }
-    
+
     /// Create a new client from HuggingFace Hub
     #[inline(always)]
     pub async fn from_hub(repo_id: &str, config: CandleClientConfig) -> CandleResult<Self> {
         let device = Self::create_device(config.device_type)?;
-        
+
         // Load model from hub
         let model = Arc::new(CandleModel::load_from_hub(repo_id, &device).await?);
-        
+
         // Load tokenizer from hub
-        let tokenizer = Arc::new(CandleTokenizer::from_hub(repo_id, config.tokenizer_config.clone()).await?);
-        
+        let tokenizer =
+            Arc::new(CandleTokenizer::from_hub(repo_id, config.tokenizer_config.clone()).await?);
+
         // Create generator
         let generator = CandleGenerator::new(
             Arc::clone(&model),
@@ -267,7 +271,7 @@ impl CandleCompletionClient {
             config.generation_config.clone(),
             device.clone(),
         );
-        
+
         let client = Self {
             config: config.clone(),
             model,
@@ -278,10 +282,10 @@ impl CandleCompletionClient {
             is_initialized: AtomicBool::new(true),
             request_semaphore: tokio::sync::Semaphore::new(config.max_concurrent_requests as usize),
         };
-        
+
         Ok(client)
     }
-    
+
     /// Create device based on device type
     #[inline(always)]
     fn create_device(device_type: DeviceType) -> CandleResult<Device> {
@@ -289,29 +293,29 @@ impl CandleCompletionClient {
             DeviceType::Auto => {
                 // Try CUDA first, then Metal, then CPU
                 if candle_core::Device::cuda_if_available(0).is_ok() {
-                    candle_core::Device::cuda_if_available(0)
-                        .map_err(|e| CandleError::from(e))
+                    candle_core::Device::cuda_if_available(0).map_err(|e| CandleError::from(e))
                 } else if cfg!(target_os = "macos") && candle_core::Device::new_metal(0).is_ok() {
-                    candle_core::Device::new_metal(0)
-                        .map_err(|e| CandleError::from(e))
+                    candle_core::Device::new_metal(0).map_err(|e| CandleError::from(e))
                 } else {
                     Ok(Device::Cpu)
                 }
             }
             DeviceType::Cpu => Ok(Device::Cpu),
-            DeviceType::Cuda => candle_core::Device::cuda_if_available(0)
-                .map_err(|e| CandleError::from(e)),
+            DeviceType::Cuda => {
+                candle_core::Device::cuda_if_available(0).map_err(|e| CandleError::from(e))
+            }
             DeviceType::Metal => {
                 if cfg!(target_os = "macos") {
-                    candle_core::Device::new_metal(0)
-                        .map_err(|e| CandleError::from(e))
+                    candle_core::Device::new_metal(0).map_err(|e| CandleError::from(e))
                 } else {
-                    Err(CandleError::device_allocation("Metal not available on this platform"))
+                    Err(CandleError::device_allocation(
+                        "Metal not available on this platform",
+                    ))
                 }
             }
         }
     }
-    
+
     /// Update generation configuration
     #[inline(always)]
     pub fn update_generation_config(&self, config: GenerationConfig) {
@@ -319,43 +323,43 @@ impl CandleCompletionClient {
         new_generator.update_config(config);
         self.generator.store(Arc::new(new_generator));
     }
-    
+
     /// Get client statistics
     #[inline(always)]
     pub fn stats(&self) -> &ClientStats {
         &self.stats
     }
-    
+
     /// Get client configuration
     #[inline(always)]
     pub fn config(&self) -> &CandleClientConfig {
         &self.config
     }
-    
+
     /// Check if client is initialized
     #[inline(always)]
     pub fn is_initialized(&self) -> bool {
         self.is_initialized.load(Ordering::Acquire)
     }
-    
+
     /// Get device information
     #[inline(always)]
     pub fn device(&self) -> &Device {
         &self.device
     }
-    
+
     /// Get model information
     #[inline(always)]
     pub fn model(&self) -> &Arc<CandleModel> {
         &self.model
     }
-    
+
     /// Get tokenizer information
     #[inline(always)]
     pub fn tokenizer(&self) -> &Arc<CandleTokenizer> {
         &self.tokenizer
     }
-    
+
     /// Warm up the model with a dummy request
     #[inline(always)]
     pub async fn warmup(&self) -> CandleResult<()> {
@@ -365,27 +369,36 @@ impl CandleCompletionClient {
             .temperature(0.0)
             .build()
             .map_err(|_| CandleError::configuration("Failed to build warmup request"))?;
-        
+
         let _response = self.complete(warmup_request).await?;
         Ok(())
     }
-    
+
     /// Record request statistics
     #[inline(always)]
     fn record_request_stats(&self, success: bool, tokens_generated: u32, processing_time_us: u64) {
         self.stats.total_requests.fetch_add(1, Ordering::Relaxed);
-        
+
         if success {
-            self.stats.successful_requests.fetch_add(1, Ordering::Relaxed);
-            self.stats.total_tokens_generated.fetch_add(tokens_generated as u64, Ordering::Relaxed);
-            self.stats.total_processing_time_us.fetch_add(processing_time_us, Ordering::Relaxed);
-            
+            self.stats
+                .successful_requests
+                .fetch_add(1, Ordering::Relaxed);
+            self.stats
+                .total_tokens_generated
+                .fetch_add(tokens_generated as u64, Ordering::Relaxed);
+            self.stats
+                .total_processing_time_us
+                .fetch_add(processing_time_us, Ordering::Relaxed);
+
             // Update average tokens per second
             let total_tokens = self.stats.total_tokens_generated.load(Ordering::Relaxed);
-            let total_time_s = self.stats.total_processing_time_us.load(Ordering::Relaxed) / 1_000_000;
+            let total_time_s =
+                self.stats.total_processing_time_us.load(Ordering::Relaxed) / 1_000_000;
             if total_time_s > 0 {
                 let avg_tps = total_tokens / total_time_s;
-                self.stats.average_tokens_per_second.store(avg_tps, Ordering::Relaxed);
+                self.stats
+                    .average_tokens_per_second
+                    .store(avg_tps, Ordering::Relaxed);
             }
         } else {
             self.stats.failed_requests.fetch_add(1, Ordering::Relaxed);
@@ -395,28 +408,38 @@ impl CandleCompletionClient {
 
 impl CompletionClient for CandleCompletionClient {
     #[inline(always)]
-    fn complete<'a>(&'a self, request: CompletionRequest<'_>) -> Pin<Box<dyn Future<Output = CompletionResult<CompletionResponse>> + Send + 'a>> {
+    fn complete<'a>(
+        &'a self,
+        request: CompletionRequest<'_>,
+    ) -> Pin<Box<dyn Future<Output = CompletionResult<CompletionResponse>> + Send + 'a>> {
         Box::pin(async move {
             let start_time = Instant::now();
-            
+
             // Check if client is initialized
             if !self.is_initialized() {
-                return Err(CompletionError::from(CandleError::configuration("Client not initialized")));
+                return Err(CompletionError::from(CandleError::configuration(
+                    "Client not initialized",
+                )));
             }
-            
+
             // Acquire semaphore permit for rate limiting
-            let _permit = self.request_semaphore.acquire().await
-                .map_err(|_| CompletionError::from(CandleError::configuration("Request semaphore error")))?;
-            
+            let _permit = self.request_semaphore.acquire().await.map_err(|_| {
+                CompletionError::from(CandleError::configuration("Request semaphore error"))
+            })?;
+
             // Generate completion
             let generator = self.generator.load();
             let result = generator.generate(&request).await;
-            
+
             let processing_time_us = start_time.elapsed().as_micros() as u64;
-            
+
             match result {
                 Ok(response) => {
-                    self.record_request_stats(true, response.tokens_generated(), processing_time_us);
+                    self.record_request_stats(
+                        true,
+                        response.tokens_generated(),
+                        processing_time_us,
+                    );
                     Ok(response)
                 }
                 Err(e) => {
@@ -426,27 +449,33 @@ impl CompletionClient for CandleCompletionClient {
             }
         })
     }
-    
+
     #[inline(always)]
-    fn complete_stream<'a>(&'a self, request: CompletionRequest<'_>) -> Pin<Box<dyn Future<Output = CompletionResult<StreamingResponse>> + Send + 'a>> {
+    fn complete_stream<'a>(
+        &'a self,
+        request: CompletionRequest<'_>,
+    ) -> Pin<Box<dyn Future<Output = CompletionResult<StreamingResponse>> + Send + 'a>> {
         Box::pin(async move {
             let start_time = Instant::now();
-            
+
             // Check if client is initialized
             if !self.is_initialized() {
-                return Err(CompletionError::from(CandleError::configuration("Client not initialized")));
+                return Err(CompletionError::from(CandleError::configuration(
+                    "Client not initialized",
+                )));
             }
-            
+
             // Acquire semaphore permit for rate limiting
-            let _permit = self.request_semaphore.acquire().await
-                .map_err(|_| CompletionError::from(CandleError::configuration("Request semaphore error")))?;
-            
+            let _permit = self.request_semaphore.acquire().await.map_err(|_| {
+                CompletionError::from(CandleError::configuration("Request semaphore error"))
+            })?;
+
             // Generate streaming completion
             let generator = self.generator.load();
             let result = generator.generate_stream(&request).await;
-            
+
             let processing_time_us = start_time.elapsed().as_micros() as u64;
-            
+
             match result {
                 Ok(stream) => {
                     // Note: We can't easily track tokens for streaming here
@@ -481,35 +510,35 @@ impl CandleClientBuilder {
             config: CandleClientConfig::default(),
         }
     }
-    
+
     /// Set model path
     #[inline(always)]
     pub fn model_path<S: Into<String>>(mut self, path: S) -> Self {
         self.config.model_path = path.into();
         self
     }
-    
+
     /// Set tokenizer path
     #[inline(always)]
     pub fn tokenizer_path<S: Into<String>>(mut self, path: S) -> Self {
         self.config.tokenizer_path = Some(path.into());
         self
     }
-    
+
     /// Set device type
     #[inline(always)]
     pub fn device_type(mut self, device_type: DeviceType) -> Self {
         self.config.device_type = device_type;
         self
     }
-    
+
     /// Set generation configuration
     #[inline(always)]
     pub fn generation_config(mut self, config: GenerationConfig) -> Self {
         self.config.generation_config = config;
         self
     }
-    
+
     /// Enable quantization
     #[inline(always)]
     pub fn quantization(mut self, quantization_type: QuantizationType) -> Self {
@@ -517,20 +546,20 @@ impl CandleClientBuilder {
         self.config.quantization_type = quantization_type;
         self
     }
-    
+
     /// Set maximum concurrent requests
     #[inline(always)]
     pub fn max_concurrent_requests(mut self, max: u32) -> Self {
         self.config.max_concurrent_requests = max;
         self
     }
-    
+
     /// Build the client
     #[inline(always)]
     pub async fn build(self) -> CandleResult<CandleCompletionClient> {
         CandleCompletionClient::new(self.config).await
     }
-    
+
     /// Build the client from HuggingFace Hub
     #[inline(always)]
     pub async fn build_from_hub(self, repo_id: &str) -> CandleResult<CandleCompletionClient> {

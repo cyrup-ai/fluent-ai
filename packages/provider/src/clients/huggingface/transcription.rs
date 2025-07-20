@@ -1,11 +1,12 @@
-use super::completion::ApiResponse;
-use super::Client;
-use crate::transcription;
-use crate::transcription::TranscriptionError;
-use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use serde::Deserialize;
 use serde_json::json;
+
+use super::Client;
+use super::completion::ApiResponse;
+use crate::transcription;
+use crate::transcription::TranscriptionError;
 
 pub const WHISPER_LARGE_V3: &str = "openai/whisper-large-v3";
 pub const WHISPER_LARGE_V3_TURBO: &str = "openai/whisper-large-v3-turbo";

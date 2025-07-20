@@ -3,19 +3,15 @@
 //! From [xAI Reference](https://docs.x.ai/docs/api-reference#chat-completions)
 // ================================================================
 
-use crate::{
-    completion::{self, CompletionError},
-    json_util,
-    clients::openai::Message,
-};
+use fluent_ai_domain::fluent_ai_domain::completion::CompletionRequest;
+use serde_json::{Value, json};
+use xai_api_types::{CompletionResponse, ToolDefinition};
 
-use crate::clients::anthropic::ApiResponse;
 use super::client::Client;
-use crate::completion::CompletionRequest;
+use crate::clients::anthropic::ApiResponse;
 use crate::clients::openai;
 use crate::streaming::StreamingCompletionResponse;
-use serde_json::{json, Value};
-use xai_api_types::{CompletionResponse, ToolDefinition};
+use crate::{clients::openai::Message, completion_provider::CompletionError, json_util};
 
 /// xAI completion models as of 2025-06-04
 pub const GROK_2_1212: &str = "grok-2-1212";
@@ -39,7 +35,7 @@ pub struct CompletionModel {
 impl CompletionModel {
     pub(crate) fn create_completion_request(
         &self,
-        completion_request: completion::CompletionRequest,
+        completion_request: fluent_ai_domain::completion::CompletionRequest,
     ) -> Result<Value, CompletionError> {
         // Convert documents into user message
         let docs: Option<Vec<Message>> = completion_request
@@ -110,7 +106,7 @@ impl completion::CompletionModel for CompletionModel {
     #[cfg_attr(feature = "worker", worker::send)]
     async fn completion(
         &self,
-        completion_request: completion::CompletionRequest,
+        completion_request: fluent_ai_domain::completion::CompletionRequest,
     ) -> Result<completion::CompletionResponse<CompletionResponse>, CompletionError> {
         let request = self.create_completion_request(completion_request)?;
 
@@ -143,9 +139,9 @@ impl completion::CompletionModel for CompletionModel {
 pub mod xai_api_types {
     use serde::{Deserialize, Serialize};
 
-    use crate::completion::{self, CompletionError};
-    use crate::clients::openai::{AssistantContent, Message};
     use crate::OneOrMany;
+    use crate::clients::openai::{AssistantContent, Message};
+    use crate::completion_provider::CompletionError;
 
     impl TryFrom<CompletionResponse> for completion::CompletionResponse {
         type Error = CompletionError;

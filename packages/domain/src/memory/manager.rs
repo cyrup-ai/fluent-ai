@@ -243,7 +243,7 @@ impl Memory {
     /// # Performance
     /// Zero allocation initialization with lock-free connection pooling
     pub async fn new(config: MemoryConfig) -> Result<Self, MemoryError> {
-        let memory = Arc::new(SurrealDBMemoryManager::new(config).await?);
+        let memory = Arc::new(fluent_ai_memory::initialize(&config).await?);
 
         Ok(Self { memory })
     }

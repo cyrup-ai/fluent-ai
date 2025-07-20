@@ -9,7 +9,7 @@ use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
 
 use super::role::AgentRoleImpl;
-use crate::chunk::ChatMessageChunk;
+use crate::context::{ChatMessageChunk, CompletionChunk};
 use crate::memory::{Memory, MemoryError, MemoryNode, MemoryType};
 use crate::memory::{MemoryTool, MemoryToolError};
 

@@ -1,0 +1,29 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../cylo"
+		},
+		{
+			"path": "../fluent-ai"
+		},
+		{
+			"path": "../fluent-ai-candle"
+		},
+		{
+			"path": "../http3"
+		},
+		{
+			"path": "../memory"
+		},
+		{
+			"path": "../provider"
+		},
+		{
+			"path": "../termcolor"
+		}
+	],
+	"settings": {}
+}

@@ -39,7 +39,7 @@
 
 pub mod execution_env;
 pub use execution_env::{
-    validate_environment_spec, validate_instance_name, Cylo, CyloError, CyloInstance, CyloResult,
+    Cylo, CyloError, CyloInstance, CyloResult, validate_environment_spec, validate_instance_name,
 };
 
 // ============================================================================
@@ -48,8 +48,6 @@ pub use execution_env::{
 
 pub mod backends;
 pub use backends::{
-    // Factory function
-    create_backend,
     // Backend implementations
     AppleBackend,
     BackendConfig,
@@ -58,6 +56,8 @@ pub use backends::{
     ExecutionRequest,
     ExecutionResult,
     HealthStatus,
+    // Factory function
+    create_backend,
 };
 // Platform-specific backends
 #[cfg(target_os = "linux")]
@@ -69,18 +69,18 @@ pub use backends::{FireCrackerBackend, LandLockBackend};
 
 pub mod platform;
 pub use platform::{
-    get_available_backends,
-    get_recommended_backend,
-    has_kvm,
-    has_landlock,
-    is_apple_silicon,
-    is_linux,
     // Structs
     Architecture,
     BackendAvailability,
     OperatingSystem,
     PerformanceHints,
     PlatformInfo,
+    get_available_backends,
+    get_recommended_backend,
+    has_kvm,
+    has_landlock,
+    is_apple_silicon,
+    is_linux,
 };
 
 // ============================================================================
@@ -98,10 +98,10 @@ pub mod config;
 pub use config::{FileSystem, RamdiskConfig};
 
 pub mod exec;
-pub use exec::{exec_go, exec_js, exec_python, exec_rust, exec_bash};
+pub use exec::{exec_bash, exec_go, exec_js, exec_python, exec_rust};
 
 pub mod ramdisk;
-pub use ramdisk::{create_ramdisk, remove_ramdisk, get_watched_dir, create_secure_ramdisk};
+pub use ramdisk::{create_ramdisk, create_secure_ramdisk, get_watched_dir, remove_ramdisk};
 
 pub mod metadata;
 pub use metadata::MetadataManager;
@@ -131,7 +131,7 @@ pub use macos::MacosRamdisk;
 
 pub mod instance_manager;
 pub use instance_manager::{
-    global_instance_manager, init_global_instance_manager, InstanceManager,
+    InstanceManager, global_instance_manager, init_global_instance_manager,
 };
 // ============================================================================
 // Asynchronous task utilities

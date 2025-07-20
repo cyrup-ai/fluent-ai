@@ -48,42 +48,42 @@ impl CsvExportConfig {
             batch_size: 1000,
         }
     }
-    
+
     /// Set custom delimiter
     #[inline]
     pub const fn with_delimiter(mut self, delimiter: u8) -> Self {
         self.delimiter = delimiter;
         self
     }
-    
+
     /// Set custom quote character
     #[inline]
     pub const fn with_quote_char(mut self, quote_char: u8) -> Self {
         self.quote_char = quote_char;
         self
     }
-    
+
     /// Set whether to include headers
     #[inline]
     pub const fn with_headers(mut self, has_headers: bool) -> Self {
         self.has_headers = has_headers;
         self
     }
-    
+
     /// Set custom buffer size for I/O operations
     #[inline]
     pub const fn with_buffer_size(mut self, buffer_size: usize) -> Self {
         self.buffer_size = buffer_size;
         self
     }
-    
+
     /// Set custom batch size for record processing
     #[inline]
     pub const fn with_batch_size(mut self, batch_size: usize) -> Self {
         self.batch_size = batch_size;
         self
     }
-    
+
     /// Create configuration optimized for large datasets
     #[inline]
     pub const fn for_large_datasets() -> Self {
@@ -95,7 +95,7 @@ impl CsvExportConfig {
             batch_size: 5000,       // Larger batches for throughput
         }
     }
-    
+
     /// Create configuration optimized for memory-constrained environments
     #[inline]
     pub const fn for_low_memory() -> Self {
@@ -103,8 +103,8 @@ impl CsvExportConfig {
             delimiter: b',',
             quote_char: b'"',
             has_headers: true,
-            buffer_size: 4 * 1024,  // 4KB buffer for low memory
-            batch_size: 100,        // Small batches to minimize memory usage
+            buffer_size: 4 * 1024, // 4KB buffer for low memory
+            batch_size: 100,       // Small batches to minimize memory usage
         }
     }
 }
@@ -167,27 +167,33 @@ impl DataExporter {
         path: &Path,
         config: &CsvExportConfig,
     ) -> Result<()> {
-        use csv::WriterBuilder;
         use std::io::BufWriter;
         use std::sync::atomic::{AtomicU64, Ordering};
         use std::time::Instant;
-        
+
+        use csv::WriterBuilder;
+
         let start_time = Instant::now();
         let records_processed = AtomicU64::new(0);
         let bytes_written = AtomicU64::new(0);
-        
+
         // Validate inputs and pre-flight checks
         if data.is_empty() {
             return Err(MigrationError::ValidationFailed("No data to export".into()));
         }
-        
+
         // Create file with proper error handling
-        let file = File::create(path)
-            .map_err(|e| MigrationError::DatabaseError(format!("Failed to create file {}: {}", path.display(), e)))?;
-        
+        let file = File::create(path).map_err(|e| {
+            MigrationError::DatabaseError(format!(
+                "Failed to create file {}: {}",
+                path.display(),
+                e
+            ))
+        })?;
+
         // Use optimized buffered writer with large buffer for minimal syscalls
         let buf_writer = BufWriter::with_capacity(config.buffer_size, file);
-        
+
         // Configure CSV writer for maximum performance
         let mut csv_writer = WriterBuilder::new()
             .delimiter(config.delimiter)
@@ -195,11 +201,11 @@ impl DataExporter {
             .has_headers(config.has_headers)
             .buffer_capacity(config.buffer_size)
             .from_writer(buf_writer);
-        
+
         // Process records in optimized batches for better cache locality
         let mut batch_count = 0;
         let batch_size = config.batch_size;
-        
+
         for chunk in data.chunks(batch_size) {
             for record in chunk {
                 match csv_writer.serialize(record) {
@@ -217,9 +223,9 @@ impl DataExporter {
                     }
                 }
             }
-            
+
             batch_count += 1;
-            
+
             // Periodic flush for large datasets to prevent memory buildup
             if batch_count % 10 == 0 {
                 if let Err(e) = csv_writer.flush() {
@@ -227,31 +233,31 @@ impl DataExporter {
                 }
             }
         }
-        
+
         // Final flush and finalization
-        csv_writer.flush()
-            .map_err(|e| MigrationError::IoError(e))?;
-        
+        csv_writer.flush().map_err(|e| MigrationError::IoError(e))?;
+
         // Get final metrics
         let final_records = records_processed.load(Ordering::Relaxed);
         let duration = start_time.elapsed();
-        
+
         // Calculate approximate bytes written (file size)
         if let Ok(metadata) = std::fs::metadata(path) {
             bytes_written.store(metadata.len(), Ordering::Relaxed);
         }
-        
+
         tracing::info!(
             "CSV export completed successfully: {} records exported to {} in {:.2}ms ({:.2} MB/s)",
             final_records,
             path.display(),
             duration.as_secs_f64() * 1000.0,
-            (bytes_written.load(Ordering::Relaxed) as f64 / (1024.0 * 1024.0)) / duration.as_secs_f64().max(0.001)
+            (bytes_written.load(Ordering::Relaxed) as f64 / (1024.0 * 1024.0))
+                / duration.as_secs_f64().max(0.001)
         );
-        
+
         Ok(())
     }
-    
+
     /// High-performance streaming CSV export for large datasets
     #[allow(dead_code)]
     fn export_csv_streaming<T, I>(
@@ -265,21 +271,27 @@ impl DataExporter {
         T: Serialize,
         I: Iterator<Item = T>,
     {
-        use csv::WriterBuilder;
         use std::io::BufWriter;
         use std::sync::atomic::{AtomicU64, Ordering};
         use std::time::Instant;
-        
+
+        use csv::WriterBuilder;
+
         let start_time = Instant::now();
         let records_processed = AtomicU64::new(0);
-        
+
         // Create file with proper error handling
-        let file = File::create(path)
-            .map_err(|e| MigrationError::DatabaseError(format!("Failed to create file {}: {}", path.display(), e)))?;
-        
+        let file = File::create(path).map_err(|e| {
+            MigrationError::DatabaseError(format!(
+                "Failed to create file {}: {}",
+                path.display(),
+                e
+            ))
+        })?;
+
         // Use large buffer for streaming to minimize syscalls
         let buf_writer = BufWriter::with_capacity(config.buffer_size * 2, file);
-        
+
         // Configure CSV writer for streaming performance
         let mut csv_writer = WriterBuilder::new()
             .delimiter(config.delimiter)
@@ -287,21 +299,26 @@ impl DataExporter {
             .has_headers(config.has_headers)
             .buffer_capacity(config.buffer_size)
             .from_writer(buf_writer);
-        
+
         // Process streaming data with periodic progress reporting
-        let progress_interval = estimated_count.map(|c| (c / 100).max(1000)).unwrap_or(10000);
-        
+        let progress_interval = estimated_count
+            .map(|c| (c / 100).max(1000))
+            .unwrap_or(10000);
+
         for record in data_iter {
             match csv_writer.serialize(&record) {
                 Ok(()) => {
                     let current_count = records_processed.fetch_add(1, Ordering::Relaxed) + 1;
-                    
+
                     // Periodic progress reporting and flushing
                     if current_count % progress_interval as u64 == 0 {
                         if let Err(e) = csv_writer.flush() {
-                            return Err(MigrationError::DatabaseError(format!("Failed to flush during streaming: {}", e)));
+                            return Err(MigrationError::DatabaseError(format!(
+                                "Failed to flush during streaming: {}",
+                                e
+                            )));
                         }
-                        
+
                         tracing::info!(
                             "Streaming CSV export progress: {} records processed",
                             current_count
@@ -318,14 +335,15 @@ impl DataExporter {
                 }
             }
         }
-        
+
         // Final flush
-        csv_writer.flush()
-            .map_err(|e| MigrationError::DatabaseError(format!("Failed to flush final streaming data: {}", e)))?;
-        
+        csv_writer.flush().map_err(|e| {
+            MigrationError::DatabaseError(format!("Failed to flush final streaming data: {}", e))
+        })?;
+
         let final_records = records_processed.load(Ordering::Relaxed);
         let duration = start_time.elapsed();
-        
+
         tracing::info!(
             "Streaming CSV export completed: {} records exported to {} in {:.2}ms ({:.0} records/sec)",
             final_records,
@@ -333,7 +351,7 @@ impl DataExporter {
             duration.as_secs_f64() * 1000.0,
             final_records as f64 / duration.as_secs_f64().max(0.001)
         );
-        
+
         Ok(())
     }
 

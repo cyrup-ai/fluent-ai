@@ -56,12 +56,16 @@ pub trait EmbeddingModel: Clone + Send + Sync + 'static {
     #[inline(always)]
     fn embed_text<'a>(&'a self, text: &'a str) -> BoxFuture<'a, Result<Embedding, EmbeddingError>> {
         Box::pin(async move {
-            match self.embed_texts(std::iter::once(text.to_owned()))
+            match self
+                .embed_texts(std::iter::once(text.to_owned()))
                 .await?
                 .into_iter()
-                .next() {
+                .next()
+            {
                 Some(embedding) => Ok(embedding),
-                None => Err(EmbeddingError::Provider("No embeddings returned from provider".to_string())),
+                None => Err(EmbeddingError::Provider(
+                    "No embeddings returned from provider".to_string(),
+                )),
             }
         })
     }
@@ -128,12 +132,16 @@ pub trait ImageEmbeddingModel: Clone + Send + Sync + 'static {
         bytes: &'a [u8],
     ) -> BoxFuture<'a, Result<Embedding, EmbeddingError>> {
         Box::pin(async move {
-            match self.embed_images(std::iter::once(bytes.to_owned()))
+            match self
+                .embed_images(std::iter::once(bytes.to_owned()))
                 .await?
                 .into_iter()
-                .next() {
+                .next()
+            {
                 Some(embedding) => Ok(embedding),
-                None => Err(EmbeddingError::Provider("No embeddings returned from provider".to_string())),
+                None => Err(EmbeddingError::Provider(
+                    "No embeddings returned from provider".to_string(),
+                )),
             }
         })
     }

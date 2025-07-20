@@ -11,54 +11,53 @@
 //! - Advanced similarity operations and vector normalization
 //! - Streaming embeddings for large datasets
 
-pub mod providers;
-pub mod cognitive_embedder;
 pub mod batch;
 pub mod builder;
+pub mod cognitive_embedder;
 pub mod distance;
 pub mod embed;
 pub mod embedding;
 pub mod image;
-pub mod similarity;
-pub mod normalization;
-pub mod tool;
 pub mod metrics;
+pub mod normalization;
+pub mod providers;
 pub mod resilience;
+pub mod similarity;
+pub mod tool;
 
 // Re-export core types
-pub use providers::{
-    EnhancedEmbeddingModel, EmbeddingConfig, EmbeddingError, 
-    OpenAIEmbeddingProvider, CohereEmbeddingProvider,
-    CognitiveEmbeddingProvider, QueryIntent, CognitivePerformanceMetrics,
-    openai_from_env, cohere_from_env
-};
+pub use batch::{BatchConfig, BatchProcessor, BatchResult, EmbeddingBatch};
+pub use builder::*;
 pub use cognitive_embedder::{
     CognitiveEmbedder, CognitiveEmbedderConfig, CognitiveEmbedderPerformanceMetrics,
-    QuantumRouterTrait, SuperpositionState, Complex64, CoherenceTracker, QuantumMemory
+    CoherenceTracker, Complex64, QuantumMemory, QuantumRouterTrait, SuperpositionState,
 };
-pub use batch::{EmbeddingBatch, BatchConfig, BatchResult, BatchProcessor};
-pub use builder::*;
 pub use distance::*;
 pub use embed::*;
 pub use embedding::*;
 pub use image::{
-    ImageEmbeddingModel, ImageData, ImageEmbeddingConfig, ImageEmbeddingResult, 
-    CLIPEmbeddingModel, ImageFormat
+    CLIPEmbeddingModel, ImageData, ImageEmbeddingConfig, ImageEmbeddingModel, ImageEmbeddingResult,
+    ImageFormat,
 };
-pub use similarity::{
-    SimilarityMetric, SimilarityConfig, SimilarityResult, BatchSimilarityComputer,
-    cosine_similarity, euclidean_distance, manhattan_distance
+pub use metrics::{
+    AlertConfig, AlertSeverity, GlobalMetrics, LatencyHistogram, PerformanceAlert,
+    PerformanceMetric, PerformanceMonitor, QualityAnalysisError, QualityAnalysisMetrics,
+    QualityAnalyzer, QualityDataPoint,
 };
 pub use normalization::{
-    normalize_vector, l2_norm, l1_norm, max_norm, NormalizationMethod, apply_normalization
+    NormalizationMethod, apply_normalization, l1_norm, l2_norm, max_norm, normalize_vector,
 };
-pub use tool::*;
-pub use metrics::{
-    QualityAnalyzer, QualityDataPoint, QualityAnalysisMetrics, QualityAnalysisError,
-    PerformanceMonitor, PerformanceMetric, LatencyHistogram, GlobalMetrics,
-    PerformanceAlert, AlertSeverity, AlertConfig
+pub use providers::{
+    CognitiveEmbeddingProvider, CognitivePerformanceMetrics, CohereEmbeddingProvider,
+    EmbeddingConfig, EmbeddingError, EnhancedEmbeddingModel, OpenAIEmbeddingProvider, QueryIntent,
+    cohere_from_env, openai_from_env,
 };
 pub use resilience::{
-    CircuitBreaker, CircuitBreakerRegistry, CircuitBreakerConfig, CircuitBreakerError,
-    CircuitState, FailureType, ErrorCategory, CircuitStateChange
+    CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitBreakerRegistry,
+    CircuitState, CircuitStateChange, ErrorCategory, FailureType,
 };
+pub use similarity::{
+    BatchSimilarityComputer, SimilarityConfig, SimilarityMetric, SimilarityResult,
+    cosine_similarity, euclidean_distance, manhattan_distance,
+};
+pub use tool::*;

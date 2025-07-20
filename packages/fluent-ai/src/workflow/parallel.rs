@@ -30,9 +30,9 @@ impl<A, B> Parallel<A, B> {
     }
 }
 
-/* --------------------------------------------------------------------------
- * Op implementation – returns both outputs as a tuple.
- * ----------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Op implementation – returns both outputs as a tuple.
+// -----------------------------------------------------------------------
 impl<A, B> Op for Parallel<A, B>
 where
     A: Op,
@@ -48,9 +48,9 @@ where
     }
 }
 
-/* --------------------------------------------------------------------------
- * TryOp implementation – short-circuits on the first error.
- * ----------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// TryOp implementation – short-circuits on the first error.
+// -----------------------------------------------------------------------
 impl<A, B> TryOp for Parallel<A, B>
 where
     A: TryOp,
@@ -128,7 +128,7 @@ macro_rules! parallel {
     };
 }
 
-/* ------------- try_parallel! (error-propagating variant) ----------------- */
+// ------------- try_parallel! (error-propagating variant) -----------------
 // Internal macro - not exported
 macro_rules! try_parallel_internal {
     (

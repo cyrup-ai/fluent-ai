@@ -3,12 +3,13 @@
 //! This module provides blazing-fast response parsing and validation with minimal allocations
 //! and no locking requirements.
 
-use crate::http::HttpResponse;
-use super::error::{AnthropicError, AnthropicResult};
-use super::completion::AnthropicCompletionResponse;
-use super::streaming::AnthropicStreamChunk;
 use bytes::Bytes;
 use serde_json;
+
+use super::completion::AnthropicCompletionResponse;
+use super::error::{AnthropicError, AnthropicResult};
+use super::streaming::AnthropicStreamChunk;
+use crate::http::HttpResponse;
 
 /// Content type constants for response validation
 const CONTENT_TYPE_JSON: &str = "application/json";
@@ -25,41 +26,47 @@ pub struct AnthropicResponseProcessor;
 impl AnthropicResponseProcessor {
     /// Process a completion response
     #[inline]
-    pub fn process_completion_response(response: HttpResponse) -> AnthropicResult<AnthropicCompletionResponse> {
+    pub fn process_completion_response(
+        response: HttpResponse,
+    ) -> AnthropicResult<AnthropicCompletionResponse> {
         // Validate response status
         if !response.status.is_success() {
             return Err(Self::process_error_response(response));
         }
-        
+
         // Validate content type
         Self::validate_json_content_type(&response)?;
-        
+
         // Parse JSON response
-        let completion_response: AnthropicCompletionResponse = serde_json::from_slice(&response.body)
-            .map_err(|e| AnthropicError::DeserializationError {
-                message: format!("Failed to parse completion response: {}", e),
+        let completion_response: AnthropicCompletionResponse =
+            serde_json::from_slice(&response.body).map_err(|e| {
+                AnthropicError::DeserializationError {
+                    message: format!("Failed to parse completion response: {}", e),
+                }
             })?;
-        
+
         // Validate response structure
         Self::validate_completion_response(&completion_response)?;
-        
+
         Ok(completion_response)
     }
 
     /// Process a streaming response into chunks
     #[inline]
-    pub fn process_streaming_response(response: HttpResponse) -> AnthropicResult<Vec<AnthropicStreamChunk>> {
+    pub fn process_streaming_response(
+        response: HttpResponse,
+    ) -> AnthropicResult<Vec<AnthropicStreamChunk>> {
         // Validate response status
         if !response.status.is_success() {
             return Err(Self::process_error_response(response));
         }
-        
+
         // Validate content type for streaming
         Self::validate_stream_content_type(&response)?;
-        
+
         // Parse SSE stream
         let chunks = Self::parse_sse_stream(&response.body)?;
-        
+
         Ok(chunks)
     }
 
@@ -70,16 +77,18 @@ impl AnthropicResponseProcessor {
         if !response.status.is_success() {
             return Err(Self::process_error_response(response));
         }
-        
+
         // For test connections, we just need to verify it's a valid response
         Self::validate_json_content_type(&response)?;
-        
+
         // Try to parse as completion response to ensure it's valid
-        let _: AnthropicCompletionResponse = serde_json::from_slice(&response.body)
-            .map_err(|e| AnthropicError::DeserializationError {
-                message: format!("Test response is not a valid completion response: {}", e),
+        let _: AnthropicCompletionResponse =
+            serde_json::from_slice(&response.body).map_err(|e| {
+                AnthropicError::DeserializationError {
+                    message: format!("Test response is not a valid completion response: {}", e),
+                }
             })?;
-        
+
         Ok(())
     }
 
@@ -88,17 +97,21 @@ impl AnthropicResponseProcessor {
     fn process_error_response(response: HttpResponse) -> AnthropicError {
         let status = response.status.as_u16();
         let body = String::from_utf8_lossy(&response.body);
-        
+
         // Try to parse as JSON error
         if let Ok(error_json) = serde_json::from_slice::<serde_json::Value>(&response.body) {
-            if let Some(error_message) = error_json.get("error").and_then(|e| e.get("message")).and_then(|m| m.as_str()) {
+            if let Some(error_message) = error_json
+                .get("error")
+                .and_then(|e| e.get("message"))
+                .and_then(|m| m.as_str())
+            {
                 return AnthropicError::ApiError {
                     status,
                     message: error_message.to_string(),
                 };
             }
         }
-        
+
         // Fallback to raw body
         AnthropicError::HttpStatus {
             status,
@@ -110,19 +123,20 @@ impl AnthropicResponseProcessor {
     #[inline]
     fn validate_json_content_type(response: &HttpResponse) -> AnthropicResult<()> {
         if let Some(content_type) = response.headers.get("content-type") {
-            let content_type_str = content_type.to_str().map_err(|_| {
-                AnthropicError::ResponseError {
-                    message: "Invalid content-type header".to_string(),
-                }
-            })?;
-            
+            let content_type_str =
+                content_type
+                    .to_str()
+                    .map_err(|_| AnthropicError::ResponseError {
+                        message: "Invalid content-type header".to_string(),
+                    })?;
+
             if !content_type_str.starts_with(CONTENT_TYPE_JSON) {
                 return Err(AnthropicError::ResponseError {
                     message: format!("Expected JSON content type, got: {}", content_type_str),
                 });
             }
         }
-        
+
         Ok(())
     }
 
@@ -130,19 +144,20 @@ impl AnthropicResponseProcessor {
     #[inline]
     fn validate_stream_content_type(response: &HttpResponse) -> AnthropicResult<()> {
         if let Some(content_type) = response.headers.get("content-type") {
-            let content_type_str = content_type.to_str().map_err(|_| {
-                AnthropicError::ResponseError {
-                    message: "Invalid content-type header".to_string(),
-                }
-            })?;
-            
+            let content_type_str =
+                content_type
+                    .to_str()
+                    .map_err(|_| AnthropicError::ResponseError {
+                        message: "Invalid content-type header".to_string(),
+                    })?;
+
             if !content_type_str.starts_with(CONTENT_TYPE_STREAM) {
                 return Err(AnthropicError::ResponseError {
                     message: format!("Expected streaming content type, got: {}", content_type_str),
                 });
             }
         }
-        
+
         Ok(())
     }
 
@@ -154,51 +169,50 @@ impl AnthropicResponseProcessor {
                 message: "Completion response has no content".to_string(),
             });
         }
-        
+
         if response.model.is_empty() {
             return Err(AnthropicError::ResponseError {
                 message: "Completion response has no model".to_string(),
             });
         }
-        
+
         Ok(())
     }
 
     /// Parse SSE stream into chunks
     #[inline]
     fn parse_sse_stream(body: &[u8]) -> AnthropicResult<Vec<AnthropicStreamChunk>> {
-        let body_str = std::str::from_utf8(body).map_err(|_| {
-            AnthropicError::ResponseError {
-                message: "Invalid UTF-8 in streaming response".to_string(),
-            }
+        let body_str = std::str::from_utf8(body).map_err(|_| AnthropicError::ResponseError {
+            message: "Invalid UTF-8 in streaming response".to_string(),
         })?;
-        
+
         let mut chunks = Vec::new();
-        
+
         for line in body_str.lines() {
             if line.starts_with(SSE_DATA_PREFIX) {
                 let json_str = &line[SSE_DATA_PREFIX.len()..];
-                
+
                 // Skip empty lines and comments
                 if json_str.trim().is_empty() || json_str.starts_with(':') {
                     continue;
                 }
-                
+
                 // Check for done marker
                 if json_str.trim() == SSE_DONE_MARKER {
                     break;
                 }
-                
+
                 // Parse JSON chunk
-                let chunk: AnthropicStreamChunk = serde_json::from_str(json_str)
-                    .map_err(|e| AnthropicError::DeserializationError {
+                let chunk: AnthropicStreamChunk = serde_json::from_str(json_str).map_err(|e| {
+                    AnthropicError::DeserializationError {
                         message: format!("Failed to parse stream chunk: {}", e),
-                    })?;
-                
+                    }
+                })?;
+
                 chunks.push(chunk);
             }
         }
-        
+
         Ok(chunks)
     }
 
@@ -206,7 +220,7 @@ impl AnthropicResponseProcessor {
     #[inline]
     pub fn extract_rate_limit_info(response: &HttpResponse) -> RateLimitInfo {
         let mut info = RateLimitInfo::default();
-        
+
         // Extract rate limit headers
         if let Some(remaining) = response.headers.get("x-ratelimit-remaining") {
             if let Ok(remaining_str) = remaining.to_str() {
@@ -215,7 +229,7 @@ impl AnthropicResponseProcessor {
                 }
             }
         }
-        
+
         if let Some(reset) = response.headers.get("x-ratelimit-reset") {
             if let Ok(reset_str) = reset.to_str() {
                 if let Ok(reset_val) = reset_str.parse::<u64>() {
@@ -223,7 +237,7 @@ impl AnthropicResponseProcessor {
                 }
             }
         }
-        
+
         if let Some(limit) = response.headers.get("x-ratelimit-limit") {
             if let Ok(limit_str) = limit.to_str() {
                 if let Ok(limit_val) = limit_str.parse::<u64>() {
@@ -231,7 +245,7 @@ impl AnthropicResponseProcessor {
                 }
             }
         }
-        
+
         info
     }
 
@@ -240,10 +254,14 @@ impl AnthropicResponseProcessor {
     pub fn validate_response_size(response: &HttpResponse, max_size: usize) -> AnthropicResult<()> {
         if response.body.len() > max_size {
             return Err(AnthropicError::ResponseError {
-                message: format!("Response size {} exceeds maximum {}", response.body.len(), max_size),
+                message: format!(
+                    "Response size {} exceeds maximum {}",
+                    response.body.len(),
+                    max_size
+                ),
             });
         }
-        
+
         Ok(())
     }
 }
@@ -271,7 +289,7 @@ impl RateLimitInfo {
             _ => false,
         }
     }
-    
+
     /// Get the current rate limit utilization as a percentage
     #[inline]
     pub fn utilization_percentage(&self) -> Option<f64> {
@@ -291,13 +309,17 @@ impl RateLimitInfo {
 
 /// Standalone function to process a completion response
 #[inline]
-pub fn process_completion_response(response: HttpResponse) -> AnthropicResult<AnthropicCompletionResponse> {
+pub fn process_completion_response(
+    response: HttpResponse,
+) -> AnthropicResult<AnthropicCompletionResponse> {
     AnthropicResponseProcessor::process_completion_response(response)
 }
 
 /// Standalone function to process a streaming response
 #[inline]
-pub fn process_streaming_response(response: HttpResponse) -> AnthropicResult<Vec<AnthropicStreamChunk>> {
+pub fn process_streaming_response(
+    response: HttpResponse,
+) -> AnthropicResult<Vec<AnthropicStreamChunk>> {
     AnthropicResponseProcessor::process_streaming_response(response)
 }
 

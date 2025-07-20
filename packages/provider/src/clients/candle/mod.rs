@@ -18,15 +18,19 @@ pub mod streaming;
 pub mod tokenizer;
 
 pub use client::CandleCompletionClient;
-pub use config::{CandleGlobalConfig, MetricsCollector, ModelSpecificConfig, CacheConfig, ComputeConfig};
-pub use device_manager::{DeviceManager, DeviceInfo, DeviceType};
+pub use config::{
+    CacheConfig, CandleGlobalConfig, ComputeConfig, MetricsCollector, ModelSpecificConfig,
+};
+pub use device_manager::{DeviceInfo, DeviceManager, DeviceType};
 pub use error::{CandleError, CandleResult, ErrorMetrics};
-pub use generation::{TextGenerator, SamplingConfig, GenerationStatistics, TokenProb};
-pub use kv_cache::{ModelKvCache, LayerCache, ModelCacheConfig, KvCacheStatistics};
-pub use memory_pool::{MemoryPoolManager, MemoryPool, PooledEntry, PoolConfig, PoolStatistics};
-pub use model_repo::{ModelRepository, ModelMetadata, ModelState, ModelArchitecture};
+pub use generation::{GenerationStatistics, SamplingConfig, TextGenerator, TokenProb};
+pub use kv_cache::{KvCacheStatistics, LayerCache, ModelCacheConfig, ModelKvCache};
+pub use memory_pool::{MemoryPool, MemoryPoolManager, PoolConfig, PoolStatistics, PooledEntry};
+pub use model_repo::{ModelArchitecture, ModelMetadata, ModelRepository, ModelState};
 pub use models::{CandleModel, CandleModelInfo};
-pub use performance::{PerformanceOptimizer, PerformanceConfig, SimdCapabilities, AlignedBuffer, BenchmarkResult};
+pub use performance::{
+    AlignedBuffer, BenchmarkResult, PerformanceConfig, PerformanceOptimizer, SimdCapabilities,
+};
 pub use provider::CandleProvider;
-pub use streaming::{StreamingCoordinator, StreamingChunk, FinishReason, TokenStreamer};
-pub use tokenizer::{CandleTokenizer, TokenizationResult, SpecialTokens, TokenizerConfig};
+pub use streaming::{FinishReason, StreamingChunk, StreamingCoordinator, TokenStreamer};
+pub use tokenizer::{CandleTokenizer, SpecialTokens, TokenizationResult, TokenizerConfig};

@@ -10,10 +10,10 @@
 use std::sync::Arc;
 
 use crate::{
+    OneOrMany,
     completion::message::{AssistantContent, Message},
     runtime::{AsyncStream, AsyncTask},
     streaming::{AsyncStreamDyn, StreamingCompletionResponse, StreamingResultDyn},
-    OneOrMany,
 };
 
 /// Dynamic trait for completion clients
@@ -274,8 +274,8 @@ impl<M: CompletionModel> CompletionRequestBuilder<M> {
         }
     }
 
-    /* setters identical to original – omitted for brevity; implement exactly as before
-    (they just mutate self and return Self) */
+    // setters identical to original – omitted for brevity; implement exactly as before
+    // (they just mutate self and return Self)
 
     #[inline(always)]
     pub fn build(self) -> CompletionRequest {
@@ -331,7 +331,7 @@ where
 /// Trait for completion clients
 pub trait CompletionClient: crate::client::ProviderClient + Clone + Send + Sync + 'static {
     type Model: CompletionModel;
-    
+
     /// Get completion model handle
     fn completion_model(&self, model: &str) -> Self::Model;
 }

@@ -2,8 +2,9 @@
 //!
 //! All memory node construction logic and builder patterns.
 
-use fluent_ai_domain::memory::{MemoryNode, MemoryType, MemoryMetadata};
 use std::time::SystemTime;
+
+use fluent_ai_domain::memory::{MemoryMetadata, MemoryNode, MemoryType};
 
 /// Zero-allocation memory node builder with blazing-fast construction
 pub struct MemoryNodeBuilder {

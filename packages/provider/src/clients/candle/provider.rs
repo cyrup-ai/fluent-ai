@@ -1,6 +1,7 @@
 //! Candle provider implementation that complies with domain traits
 
 use fluent_ai_domain::{Provider, ZeroOneOrMany};
+
 use super::models::CandleModel;
 
 /// Candle provider for local ML model inference

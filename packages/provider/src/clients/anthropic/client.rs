@@ -9,11 +9,12 @@
 //!     .prompt("Hello world")
 //! ```
 
-use crate::completion_provider::{CompletionProvider, CompletionError};
-use crate::client::{CompletionClient, ProviderClient};
-use super::completion::AnthropicCompletionBuilder;
-use fluent_ai_http3::{HttpClient, HttpConfig};
 use fluent_ai_domain::AsyncTask;
+use fluent_ai_http3::{HttpClient, HttpConfig};
+
+use super::completion::AnthropicCompletionBuilder;
+use crate::client::{CompletionClient, ProviderClient};
+use crate::completion_provider::{CompletionError, CompletionProvider};
 
 /// Anthropic client providing clean completion builder factory methods
 #[derive(Clone)]
@@ -27,15 +28,18 @@ impl AnthropicClient {
         if api_key.is_empty() {
             return Err(CompletionError::AuthError);
         }
-        
+
         Ok(Self { api_key })
     }
-    
+
     /// Create completion builder for specific model with ModelInfo defaults loaded
-    pub fn completion_model(&self, model_name: &'static str) -> Result<AnthropicCompletionBuilder, CompletionError> {
+    pub fn completion_model(
+        &self,
+        model_name: &'static str,
+    ) -> Result<AnthropicCompletionBuilder, CompletionError> {
         AnthropicCompletionBuilder::new(self.api_key.clone(), model_name)
     }
-    
+
     /// Get API key
     pub fn api_key(&self) -> &str {
         &self.api_key
@@ -50,27 +54,24 @@ impl AnthropicProvider {
     pub fn new() -> Self {
         Self
     }
-    
+
     /// Get provider name
     pub const fn name() -> &'static str {
         "anthropic"
     }
-    
+
     /// Get available models (compile-time constant)
     pub const fn models() -> &'static [&'static str] {
         &[
             // Claude 4 models (newest and most powerful)
             "claude-opus-4-20250514",
             "claude-sonnet-4-20250514",
-            
             // Claude 3.7 models
             "claude-3-7-sonnet-20250219",
-            
-            // Claude 3.5 models 
-            "claude-3-5-sonnet-20241022",    // v2 (latest)
-            "claude-3-5-sonnet-20240620",    // v1 (original)
+            // Claude 3.5 models
+            "claude-3-5-sonnet-20241022", // v2 (latest)
+            "claude-3-5-sonnet-20240620", // v1 (original)
             "claude-3-5-haiku-20241022",
-            
             // Claude 3 models
             "claude-3-opus-20240229",
             "claude-3-sonnet-20240229",
@@ -111,7 +112,7 @@ impl CompletionClient for AnthropicClient {
                 Box::leak(model.to_string().into_boxed_str())
             }
         };
-        
+
         AnthropicCompletionBuilder::new(self.api_key.clone(), static_model)
     }
 }
@@ -128,22 +129,22 @@ impl ProviderClient for AnthropicClient {
     #[inline]
     fn test_connection(&self) -> AsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
         let api_key = self.api_key.clone();
-        
+
         AsyncTask::spawn(async move {
             // Zero-allocation validation: check API key format and non-empty
             if api_key.is_empty() {
                 return Err("Anthropic API key is empty".into());
             }
-            
+
             if !api_key.starts_with("sk-ant-") {
                 return Err("Anthropic API key format invalid (must start with 'sk-ant-')".into());
             }
-            
+
             // Basic length validation for Anthropic keys
             if api_key.len() < 100 {
                 return Err("Anthropic API key too short".into());
             }
-            
+
             Ok(())
         })
     }
@@ -152,29 +153,30 @@ impl ProviderClient for AnthropicClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_client_creation() {
         let client = AnthropicClient::new("test-key".to_string());
         assert!(client.is_ok());
-        
+
         let client = client.expect("Failed to create anthropic client in test");
         assert_eq!(client.api_key(), "test-key");
     }
-    
+
     #[test]
     fn test_client_creation_empty_key() {
         let client = AnthropicClient::new("".to_string());
         assert!(matches!(client, Err(CompletionError::AuthError)));
     }
-    
+
     #[test]
     fn test_completion_model_factory() {
-        let client = AnthropicClient::new("test-key".to_string()).expect("Failed to create anthropic client in test");
+        let client = AnthropicClient::new("test-key".to_string())
+            .expect("Failed to create anthropic client in test");
         let builder = client.completion_model("claude-3-5-sonnet-20241022");
         assert!(builder.is_ok());
     }
-    
+
     #[test]
     fn test_provider() {
         let provider = AnthropicProvider::new();

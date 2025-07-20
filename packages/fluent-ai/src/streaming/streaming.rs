@@ -12,18 +12,19 @@ use core::{
     pin::Pin,
     task::{Context, Poll},
 };
+
 use futures::{Stream, StreamExt};
 use serde_json::Value;
 
 use crate::{
+    OneOrMany,
     agent::Agent,
     completion::{
         CompletionError, CompletionModel, CompletionRequestBuilder, CompletionResponse, Message,
         message::{AssistantContent, ToolCall, ToolFunction},
     },
-    OneOrMany,
-    runtime::{AsyncTask, spawn_async},
     runtime::async_stream::AsyncStream,
+    runtime::{AsyncTask, spawn_async},
 };
 
 // ============================================================================
@@ -227,7 +228,8 @@ pub fn stream_to_stdout<M: CompletionModel>(
 ) -> AsyncTask<Result<(), std::io::Error>> {
     spawn_async(async move {
         use std::io::{self, Write};
-        use termcolor::{colored_print, colored_println, info, ColoredMessage};
+
+        use termcolor::{ColoredMessage, colored_print, colored_println, info};
 
         let mut stream = stream;
         colored_print!(primary: "Response: ");
@@ -245,7 +247,8 @@ pub fn stream_to_stdout<M: CompletionModel>(
                         .accent(&tc.function.name)
                         .text_secondary(" with args: ")
                         .text_muted(&tc.function.arguments.to_string())
-                        .println().ok();
+                        .println()
+                        .ok();
                 }
                 Err(e) => {
                     colored_println!(error: "Error: {e}");

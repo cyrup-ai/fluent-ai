@@ -1,7 +1,8 @@
-//! Chunk types for streaming operations
+//! Chunk Types for Streaming Operations
 //!
 //! These types represent partial data that flows through AsyncStream<T>
 //! and are designed to work with the NotResult constraint.
+//! Originally from chunk.rs.
 
 use std::collections::HashMap;
 use std::path::PathBuf;

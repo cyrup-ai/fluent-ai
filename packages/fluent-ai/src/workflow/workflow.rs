@@ -16,14 +16,14 @@
 use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use futures::future::BoxFuture;
 
+use futures::future::BoxFuture;
 #[allow(unused_imports)] // used in downstream macro expansion
 use futures::join;
 use futures::stream;
 
-use crate::{completion, vector_store};
 use crate::prelude::*;
+use crate::{completion, vector_store};
 
 // ================================================================
 // 0. Polymorphic WorkflowStep trait for flexible workflow construction
@@ -69,7 +69,7 @@ where
     Out: Send + 'static,
 {
     /// Execute the workflow once
-    pub fn execute(&self, input: In) -> AsyncTask<Out> 
+    pub fn execute(&self, input: In) -> AsyncTask<Out>
     where
         Out: crate::async_task::NotResult,
     {
@@ -168,9 +168,9 @@ pub trait Op: Send + Sync {
         }
     }
 
-    /* ---------------------------------------------------------------------
-     * Fluent combinators
-     * ------------------------------------------------------------------ */
+    // ---------------------------------------------------------------------
+    // Fluent combinators
+    // ------------------------------------------------------------------
     #[inline]
     fn map<F, Out2>(self, f: F) -> Sequential<Self, Map<F, Self::Output>>
     where
@@ -526,7 +526,7 @@ impl Workflow<(), ()> {
                     },
                     Err(_) => return Err("Failed to acquire task lock".to_string()),
                 };
-                
+
                 // task.await returns T directly since AsyncTask handles errors internally
                 Ok(task.await)
             }
@@ -550,7 +550,7 @@ impl Workflow<(), ()> {
                     },
                     Err(_) => return Err("Failed to acquire stream lock".to_string()),
                 };
-                
+
                 // Manually collect stream items since AsyncStream doesn't have collect()
                 let mut items = Vec::new();
                 use futures_util::StreamExt;
@@ -589,9 +589,9 @@ where
     f
 }
 
-/* --------------------------------------------------------------------------
- * Tests
- * ----------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Tests
+// -----------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;

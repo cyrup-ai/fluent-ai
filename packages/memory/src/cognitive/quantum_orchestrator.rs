@@ -4,11 +4,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use num_complex::Complex64;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, mpsc};
 use tokio::time::{self, Duration};
 use tracing::{info, warn};
-use num_complex::Complex64;
 
 use crate::cognitive::state::CognitiveStateManager;
 use crate::cognitive::types::{
@@ -201,7 +201,8 @@ impl QuantumOrchestrator {
             )?;
 
             // Run recursive improvement
-            let _improved_state = quantum_mcts.recursive_improve(self.config.max_iterations_per_depth as usize)?;
+            let _improved_state =
+                quantum_mcts.recursive_improve(self.config.max_iterations_per_depth as usize)?;
 
             // Get best modification
             let best_modification = quantum_mcts.best_quantum_modification()?;
@@ -239,9 +240,7 @@ impl QuantumOrchestrator {
             };
 
             // Apply quantum evolution
-            let evolved_state = self
-                .apply_quantum_evolution(&quantum_state, &stats)
-                .await?;
+            let evolved_state = self.apply_quantum_evolution(&quantum_state, &stats).await?;
 
             current_state = evolved_state.classical_state;
             total_improvement += improvement;

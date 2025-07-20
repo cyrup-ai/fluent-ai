@@ -3,17 +3,19 @@
 //! Foundational types and traits for the Anthropic tool system with
 //! optimal performance, lock-free operations, and elegant ergonomics.
 
-use super::super::{AnthropicError, AnthropicResult, Message};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use std::any::TypeId;
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::marker::PhantomData;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::any::TypeId;
-use crossbeam_channel as channel;
+
 use bytes::Bytes;
+use crossbeam_channel as channel;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use super::super::{AnthropicError, AnthropicResult, Message};
 
 /// Schema type specification for tool parameter definitions
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,9 +32,13 @@ pub enum SchemaType {
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 /// Zero-allocation closure storage types for event handlers
-pub type InvocationHandler<D, Req, Res> = Box<dyn Fn(&Conversation, &Emitter, Req, &D) -> BoxFuture<'_, AnthropicResult<()>> + Send + Sync>;
-pub type ErrorHandler<D> = Box<dyn Fn(&Conversation, &ChainControl, AnthropicError, &D) + Send + Sync>;
-pub type ResultHandler<D, Res> = Box<dyn Fn(&Conversation, &ChainControl, Res, &D) -> Res + Send + Sync>;
+pub type InvocationHandler<D, Req, Res> = Box<
+    dyn Fn(&Conversation, &Emitter, Req, &D) -> BoxFuture<'_, AnthropicResult<()>> + Send + Sync,
+>;
+pub type ErrorHandler<D> =
+    Box<dyn Fn(&Conversation, &ChainControl, AnthropicError, &D) + Send + Sync>;
+pub type ResultHandler<D, Res> =
+    Box<dyn Fn(&Conversation, &ChainControl, Res, &D) -> Res + Send + Sync>;
 
 /// Typestate marker types for compile-time safety in builder pattern
 pub struct NameRequired;
@@ -98,7 +104,7 @@ impl std::error::Error for ToolRegistrationError {}
 /// Foundational trait for tool execution with zero-allocation patterns
 pub trait ToolExecutor: Send + Sync {
     /// Execute tool with given input and context
-    /// 
+    ///
     /// # Performance
     /// - Zero-allocation execution path
     /// - Atomic error handling
@@ -189,37 +195,41 @@ impl Emitter {
         };
         (emitter, receiver)
     }
-    
+
     /// Emit a tool output chunk in real-time
     #[inline(always)]
     pub fn emit<T: Into<ToolOutputChunk>>(&self, chunk: T) -> AnthropicResult<()> {
         if self.completed.load(Ordering::Acquire) {
-            return Err(AnthropicError::InvalidState("Emitter already completed".into()));
+            return Err(AnthropicError::InvalidState(
+                "Emitter already completed".into(),
+            ));
         }
-        
-        self.sender.send(chunk.into())
+
+        self.sender
+            .send(chunk.into())
             .map_err(|_| AnthropicError::StreamError("Failed to emit chunk".into()))?;
-        
+
         self.chunk_count.fetch_add(1, Ordering::Relaxed);
         Ok(())
     }
-    
+
     /// Mark emission as complete
     #[inline(always)]
     pub fn complete(&self) -> AnthropicResult<()> {
         self.completed.store(true, Ordering::Release);
-        
+
         // Send completion marker
         let completion_chunk = ToolOutputChunk {
             tool_use_id: "completion".to_string(),
             content: "".to_string(),
             chunk_type: ChunkType::Complete,
         };
-        
-        self.sender.send(completion_chunk)
+
+        self.sender
+            .send(completion_chunk)
             .map_err(|_| AnthropicError::StreamError("Failed to emit completion".into()))
     }
-    
+
     /// Get performance metrics
     #[inline(always)]
     pub fn metrics(&self) -> EmitterMetrics {
@@ -253,9 +263,17 @@ pub struct ToolExecutionResult {
 pub enum ToolOutput {
     Text(String),
     Json(Value),
-    Error { message: String, code: Option<String> },
-    Binary { data: Bytes, mime_type: String },
-    Stream { chunks: Vec<ToolOutputChunk> },
+    Error {
+        message: String,
+        code: Option<String>,
+    },
+    Binary {
+        data: Bytes,
+        mime_type: String,
+    },
+    Stream {
+        chunks: Vec<ToolOutputChunk>,
+    },
 }
 
 impl Default for ToolExecutionContext {
@@ -277,14 +295,14 @@ impl ToolExecutionContext {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     /// Add metadata entry with zero allocation for static keys
     #[inline(always)]
     pub fn with_metadata(mut self, key: &str, value: Value) -> Self {
         self.metadata.insert(key.to_string(), value);
         self
     }
-    
+
     /// Set tool use ID
     #[inline(always)]
     pub fn with_tool_use_id(mut self, id: String) -> Self {
@@ -323,25 +341,25 @@ impl ChainControl {
             retry_count: AtomicU32::new(0),
         }
     }
-    
+
     /// Stop execution chain
     #[inline(always)]
     pub fn stop(&self) {
         self.should_continue.store(false, Ordering::Release);
     }
-    
+
     /// Check if execution should continue
     #[inline(always)]
     pub fn should_continue(&self) -> bool {
         self.should_continue.load(Ordering::Acquire)
     }
-    
+
     /// Increment error count atomically
     #[inline(always)]
     pub fn record_error(&self) -> u32 {
         self.error_count.fetch_add(1, Ordering::Relaxed)
     }
-    
+
     /// Increment retry count atomically
     #[inline(always)]
     pub fn record_retry(&self) -> u32 {

@@ -3,13 +3,13 @@
 //! Provides blazing-fast middleware system for cross-cutting concerns with zero-allocation patterns
 //! and production-ready performance monitoring, logging, and security.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
-use std::collections::HashMap;
-use tokio::sync::RwLock;
 
 // Import domain types that middleware operates on
 use fluent_ai_domain::chat::commands::types::*;
+use tokio::sync::RwLock;
 
 /// Command middleware trait for intercepting command execution
 pub trait CommandMiddleware: Send + Sync + 'static {

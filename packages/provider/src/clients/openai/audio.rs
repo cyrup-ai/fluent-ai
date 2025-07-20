@@ -3,9 +3,11 @@
 //! Provides comprehensive support for OpenAI's audio models including Whisper (transcription),
 //! TTS (text-to-speech), and audio processing with optimal performance patterns.
 
-use super::{OpenAIError, OpenAIResult};
-use serde::{Deserialize, Serialize};
 use std::time::Duration;
+
+use serde::{Deserialize, Serialize};
+
+use super::{OpenAIError, OpenAIResult};
 
 /// Audio format types supported by OpenAI
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -167,7 +169,10 @@ impl AudioFormat {
             "webm" => Ok(Self::WEBM),
             "flac" => Ok(Self::FLAC),
             "ogg" => Ok(Self::OGG),
-            _ => Err(OpenAIError::AudioError(format!("Unsupported audio format: {}", ext))),
+            _ => Err(OpenAIError::AudioError(format!(
+                "Unsupported audio format: {}",
+                ext
+            ))),
         }
     }
 
@@ -220,7 +225,14 @@ impl Voice {
     /// Get all available voices
     #[inline(always)]
     pub fn all() -> Vec<Self> {
-        vec![Self::Alloy, Self::Echo, Self::Fable, Self::Onyx, Self::Nova, Self::Shimmer]
+        vec![
+            Self::Alloy,
+            Self::Echo,
+            Self::Fable,
+            Self::Onyx,
+            Self::Nova,
+            Self::Shimmer,
+        ]
     }
 
     /// Get voice description
@@ -241,7 +253,10 @@ impl Voice {
     pub fn supports_language(&self, language: &str) -> bool {
         // All voices support English and major languages
         // This could be expanded with specific voice-language compatibility
-        matches!(language, "en" | "es" | "fr" | "de" | "it" | "pt" | "nl" | "ja" | "ko" | "zh")
+        matches!(
+            language,
+            "en" | "es" | "fr" | "de" | "it" | "pt" | "nl" | "ja" | "ko" | "zh"
+        )
     }
 }
 
@@ -341,7 +356,9 @@ impl LanguageCode {
     #[inline(always)]
     pub fn validate(&self) -> OpenAIResult<()> {
         if self.0.len() < 2 || self.0.len() > 5 {
-            return Err(OpenAIError::AudioError("Invalid language code format".to_string()));
+            return Err(OpenAIError::AudioError(
+                "Invalid language code format".to_string(),
+            ));
         }
         Ok(())
     }
@@ -366,11 +383,13 @@ impl AudioData {
     pub fn from_file(path: &str) -> OpenAIResult<Self> {
         let data = std::fs::read(path)
             .map_err(|e| OpenAIError::AudioError(format!("Failed to read audio file: {}", e)))?;
-        
+
         let format = if let Some(ext) = path.split('.').last() {
             AudioFormat::from_extension(ext)?
         } else {
-            return Err(OpenAIError::AudioError("Cannot determine audio format from path".to_string()));
+            return Err(OpenAIError::AudioError(
+                "Cannot determine audio format from path".to_string(),
+            ));
         };
 
         Ok(Self::from_bytes(data, format))
@@ -389,8 +408,8 @@ impl AudioData {
         const MAX_SIZE: usize = 25 * 1024 * 1024;
         if self.data.len() > MAX_SIZE {
             return Err(OpenAIError::AudioError(format!(
-                "Audio size {} bytes exceeds maximum of {} bytes", 
-                self.data.len(), 
+                "Audio size {} bytes exceeds maximum of {} bytes",
+                self.data.len(),
                 MAX_SIZE
             )));
         }
@@ -413,9 +432,9 @@ impl AudioData {
         // Rough estimation based on format and size
         let estimated_seconds = match self.format {
             AudioFormat::WAV => self.data.len() / (44100 * 2 * 2), // 44.1kHz, 16-bit, stereo
-            AudioFormat::FLAC => self.data.len() / (44100 * 2), // Compressed but lossless
-            AudioFormat::MP3 => self.data.len() / 16000, // ~128kbps average
-            _ => self.data.len() / 20000, // Conservative estimate
+            AudioFormat::FLAC => self.data.len() / (44100 * 2),    // Compressed but lossless
+            AudioFormat::MP3 => self.data.len() / 16000,           // ~128kbps average
+            _ => self.data.len() / 20000,                          // Conservative estimate
         };
 
         Duration::from_secs(estimated_seconds as u64)
@@ -507,7 +526,10 @@ impl TranscriptionRequest {
     /// Enable segment-level timestamps
     #[inline(always)]
     pub fn with_segment_timestamps(mut self) -> Self {
-        if !self.timestamp_granularities.contains(&"segment".to_string()) {
+        if !self
+            .timestamp_granularities
+            .contains(&"segment".to_string())
+        {
             self.timestamp_granularities.push("segment".to_string());
         }
         self
@@ -520,7 +542,9 @@ impl TranscriptionRequest {
 
         if let Some(temp) = self.temperature {
             if !(0.0..=2.0).contains(&temp) {
-                return Err(OpenAIError::AudioError("Temperature must be between 0.0 and 2.0".to_string()));
+                return Err(OpenAIError::AudioError(
+                    "Temperature must be between 0.0 and 2.0".to_string(),
+                ));
             }
         }
 
@@ -582,17 +606,23 @@ impl TTSRequest {
     #[inline(always)]
     pub fn validate(&self) -> OpenAIResult<()> {
         if self.input.is_empty() {
-            return Err(OpenAIError::AudioError("Input text cannot be empty".to_string()));
+            return Err(OpenAIError::AudioError(
+                "Input text cannot be empty".to_string(),
+            ));
         }
 
         // Check character limit (4096 characters for TTS)
         if self.input.len() > 4096 {
-            return Err(OpenAIError::AudioError("Input text exceeds 4096 character limit".to_string()));
+            return Err(OpenAIError::AudioError(
+                "Input text exceeds 4096 character limit".to_string(),
+            ));
         }
 
         if let Some(speed) = self.speed {
             if !(0.25..=4.0).contains(&speed) {
-                return Err(OpenAIError::AudioError("Speed must be between 0.25 and 4.0".to_string()));
+                return Err(OpenAIError::AudioError(
+                    "Speed must be between 0.25 and 4.0".to_string(),
+                ));
             }
         }
 
@@ -648,7 +678,9 @@ impl TranslationRequest {
 
         if let Some(temp) = self.temperature {
             if !(0.0..=2.0).contains(&temp) {
-                return Err(OpenAIError::AudioError("Temperature must be between 0.0 and 2.0".to_string()));
+                return Err(OpenAIError::AudioError(
+                    "Temperature must be between 0.0 and 2.0".to_string(),
+                ));
             }
         }
 

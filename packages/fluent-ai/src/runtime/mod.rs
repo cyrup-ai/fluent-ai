@@ -5,20 +5,21 @@ pub mod thread_pool;
 pub mod tokio_rt;
 
 pub use async_stream::AsyncStream;
-pub use async_task::{spawn_async, AsyncTask};
+pub use async_task::{AsyncTask, spawn_async};
 pub use channel::*;
+// Export executor module functionality
+pub use executor::GlobalExecutor as Executor;
 pub use thread_pool::ThreadPool;
 pub use tokio_rt::*;
 
-// Export executor module functionality
-pub use executor::GlobalExecutor as Executor;
-
 // global single-thread executor reused by AsyncTask
 pub(crate) mod executor {
-    use super::thread_pool::ThreadPool;
-    use crossbeam_channel::{bounded, Receiver};
-    use futures_util::task::AtomicWaker;
     use std::sync::Once;
+
+    use crossbeam_channel::{Receiver, bounded};
+    use futures_util::task::AtomicWaker;
+
+    use super::thread_pool::ThreadPool;
 
     static INIT: Once = Once::new();
     static mut EXEC: Option<GlobalExecutor> = None;
@@ -61,14 +62,14 @@ pub(crate) mod executor {
     }
 
     /// Enqueue a future for execution in the current tokio runtime
-    /// 
+    ///
     /// # Arguments
     /// * `f` - Future to execute
-    /// 
+    ///
     /// # Panics
     /// Panics if no tokio runtime is available. This enforces async-only execution
     /// per production code constraints.
-    /// 
+    ///
     /// # Architecture
     /// This function no longer provides blocking fallbacks. All callers must
     /// ensure they're operating within a proper async runtime context.
@@ -80,7 +81,7 @@ pub(crate) mod executor {
         // PRODUCTION CONSTRAINT: No blocking code allowed
         // Previous implementation used futures_executor::block_on and rt.block_on
         // which violate the strict async-only requirement.
-        
+
         match tokio::runtime::Handle::try_current() {
             Ok(handle) => {
                 // We have a tokio runtime available - use it

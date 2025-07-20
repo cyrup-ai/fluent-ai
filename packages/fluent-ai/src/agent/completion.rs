@@ -9,7 +9,6 @@
 //! This module wires the zero‑alloc [`Agent`](crate::agent::Agent) created by
 //! [`AgentBuilder`](crate::agent::builder::AgentBuilder) to the existing
 //! *provider‑agnostic* completion / chat traits (`Completion`, `Prompt`, …).
-//!
 /// The implementation tries hard to keep the **hot path** free from heap
 /// allocations and locks:
 ///
@@ -19,12 +18,11 @@
 ///   ring powering [`AsyncStream`].
 /// * concurrent fetches use `FuturesUnordered` which avoids intermediate `Vec`s
 ///   and allocates at most **once** for the task list.
-
 use std::collections::HashMap;
 
 use futures::{
-    stream::{self, FuturesUnordered},
     StreamExt, TryStreamExt,
+    stream::{self, FuturesUnordered},
 };
 
 use crate::{
@@ -34,16 +32,14 @@ use crate::{
         Completion, CompletionError, CompletionModelTrait, CompletionRequestBuilder, Document,
         Message, Prompt, PromptError,
     },
-    streaming::{
-        StreamingChat, StreamingCompletion, StreamingCompletionResponse, StreamingPrompt,
-    },
     domain::tool::ToolSet,
+    streaming::{StreamingChat, StreamingCompletion, StreamingCompletionResponse, StreamingPrompt},
     vector_store::{VectorStoreError, VectorStoreIndexDyn},
 };
 
-/* ------------------------------------------------------------------------- */
-/* Completion impl                                                            */
-/* ------------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Completion impl
+// -------------------------------------------------------------------------
 
 impl<M: CompletionModelTrait> Completion<M> for Agent<M> {
     /// Build a provider‑specific *request builder* for a completion / chat turn.
@@ -61,9 +57,9 @@ impl<M: CompletionModelTrait> Completion<M> for Agent<M> {
     ) -> Result<CompletionRequestBuilder<M>, CompletionError> {
         let prompt: Message = prompt.into();
 
-        /* --------------------------------------------------------- */
-        /* 1. Prepare the base request (static artefacts only)       */
-        /* --------------------------------------------------------- */
+        // ---------------------------------------------------------
+        // 1. Prepare the base request (static artefacts only)
+        // ---------------------------------------------------------
 
         let mut req = self
             .model
@@ -75,9 +71,9 @@ impl<M: CompletionModelTrait> Completion<M> for Agent<M> {
             .additional_params_opt(self.additional_params.clone())
             .documents(self.static_context.clone());
 
-        /* --------------------------------------------------------- */
-        /* 2. Determine whether RAG is needed                        */
-        /* --------------------------------------------------------- */
+        // ---------------------------------------------------------
+        // 2. Determine whether RAG is needed
+        // ---------------------------------------------------------
 
         let rag_seed = prompt
             .rag_text()
@@ -99,12 +95,16 @@ impl<M: CompletionModelTrait> Completion<M> for Agent<M> {
 
         let rag_seed = match rag_seed {
             Some(seed) => seed,
-            None => return Err(CompletionError::RequestError(Box::new(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Missing RAG seed")))),
+            None => {
+                return Err(CompletionError::RequestError(Box::new(
+                    std::io::Error::new(std::io::ErrorKind::InvalidInput, "Missing RAG seed"),
+                )));
+            }
         };
 
-        /* --------------------------------------------------------- */
-        /* 3. Dynamic context (vector stores)                        */
-        /* --------------------------------------------------------- */
+        // ---------------------------------------------------------
+        // 3. Dynamic context (vector stores)
+        // ---------------------------------------------------------
 
         let dyn_ctx = self
             .dynamic_context
@@ -136,9 +136,9 @@ impl<M: CompletionModelTrait> Completion<M> for Agent<M> {
             .await
             .map_err(|e| CompletionError::RequestError(Box::new(e)))?;
 
-        /* --------------------------------------------------------- */
-        /* 4. Dynamic & static tools                                 */
-        /* --------------------------------------------------------- */
+        // ---------------------------------------------------------
+        // 4. Dynamic & static tools
+        // ---------------------------------------------------------
 
         // (a) dynamic tool IDs from vector stores
         let dyn_tool_defs = self
@@ -177,9 +177,9 @@ impl<M: CompletionModelTrait> Completion<M> for Agent<M> {
             .collect::<Vec<_>>()
             .await;
 
-        /* --------------------------------------------------------- */
-        /* 5. Return the fully‑specified request builder             */
-        /* --------------------------------------------------------- */
+        // ---------------------------------------------------------
+        // 5. Return the fully‑specified request builder
+        // ---------------------------------------------------------
         req = req
             .documents(dyn_ctx)
             .tools([static_defs, dyn_tool_defs].concat());
@@ -188,14 +188,14 @@ impl<M: CompletionModelTrait> Completion<M> for Agent<M> {
     }
 }
 
-/* ------------------------------------------------------------------------- */
-/* Prompt / Chat trait impls                                                 */
-/* ------------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Prompt / Chat trait impls
+// -------------------------------------------------------------------------
 
 #[allow(refining_impl_trait)]
 impl<M: CompletionModelTrait> Prompt for Agent<M> {
     type PromptedBuilder = PromptRequest<'static, M>;
-    
+
     fn prompt(self, prompt: impl ToString) -> Result<Self::PromptedBuilder, PromptError> {
         // Create a PromptRequest with proper lifetime management
         let prompt_text = prompt.to_string();
@@ -211,7 +211,7 @@ impl<M: CompletionModelTrait> Prompt for Agent<M> {
 #[allow(refining_impl_trait)]
 impl<M: CompletionModelTrait> Prompt for &Agent<M> {
     type PromptedBuilder = PromptRequest<'static, M>;
-    
+
     fn prompt(self, prompt: impl ToString) -> Result<Self::PromptedBuilder, PromptError> {
         Ok(PromptRequest::new(self, prompt.to_string()))
     }
@@ -224,18 +224,15 @@ impl<M: CompletionModelTrait> Chat for Agent<M> {
         prompt: impl Into<Message> + Send,
         mut chat_history: Vec<Message>,
     ) -> AsyncTask<Result<String, PromptError>> {
-        let prompt_request = PromptRequest::new(self, prompt)
-            .with_history(&mut chat_history);
-        
-        crate::async_task::spawn_async(async move {
-            prompt_request.await
-        })
+        let prompt_request = PromptRequest::new(self, prompt).with_history(&mut chat_history);
+
+        crate::async_task::spawn_async(async move { prompt_request.await })
     }
 }
 
-/* ------------------------------------------------------------------------- */
-/* Streaming glue                                                            */
-/* ------------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Streaming glue
+// -------------------------------------------------------------------------
 
 impl<M: CompletionModelTrait> StreamingCompletion<M> for Agent<M> {
     fn stream_completion(
@@ -244,9 +241,7 @@ impl<M: CompletionModelTrait> StreamingCompletion<M> for Agent<M> {
         chat_history: Vec<Message>,
     ) -> crate::runtime::AsyncTask<Result<CompletionRequestBuilder<M>, CompletionError>> {
         let agent = self.clone();
-        crate::runtime::spawn_async(async move {
-            agent.completion(prompt, chat_history).await
-        })
+        crate::runtime::spawn_async(async move { agent.completion(prompt, chat_history).await })
     }
 }
 
@@ -254,11 +249,11 @@ impl<M: CompletionModelTrait> StreamingPrompt<M::StreamingResponse> for Agent<M>
     fn stream_prompt(
         &self,
         prompt: impl Into<Message> + Send,
-    ) -> crate::runtime::AsyncTask<Result<StreamingCompletionResponse<M::StreamingResponse>, CompletionError>> {
+    ) -> crate::runtime::AsyncTask<
+        Result<StreamingCompletionResponse<M::StreamingResponse>, CompletionError>,
+    > {
         let agent = self.clone();
-        crate::runtime::spawn_async(async move {
-            agent.stream_chat(prompt, Vec::new()).await
-        })
+        crate::runtime::spawn_async(async move { agent.stream_chat(prompt, Vec::new()).await })
     }
 }
 
@@ -267,10 +262,13 @@ impl<M: CompletionModelTrait> StreamingChat<M::StreamingResponse> for Agent<M> {
         &self,
         prompt: impl Into<Message> + Send,
         chat_history: Vec<Message>,
-    ) -> crate::runtime::AsyncTask<Result<StreamingCompletionResponse<M::StreamingResponse>, CompletionError>> {
+    ) -> crate::runtime::AsyncTask<
+        Result<StreamingCompletionResponse<M::StreamingResponse>, CompletionError>,
+    > {
         let agent = self.clone();
         crate::runtime::spawn_async(async move {
-            agent.stream_completion(prompt, chat_history)
+            agent
+                .stream_completion(prompt, chat_history)
                 .await?
                 .stream()
                 .await

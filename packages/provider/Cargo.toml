@@ -94,6 +94,7 @@ rayon = "1.10"                # CPU parallelism for inference optimization
 
 # Optional acceleration dependencies
 half = { version = "2.6", optional = true }
+parking_lot = "0.12.4"
 
 [build-dependencies]
 fluent_ai_http3 = { path = "../http3" }
@@ -115,6 +116,14 @@ wide = "0.7"                  # SIMD acceleration for string processing
 arc-swap = "1.7"              # Atomic lock-free reference swapping
 smallvec = "2.0.0-alpha.11"   # Stack-allocated vectors for small collections
 once_cell = "1.21.3"
+async-trait = "0.1.88"
+log = "0.4.27"
+thiserror = "2.0.12"
+bincode = "1.3"
+lru = "0.16.0"
+twox-hash = "2.1.1"
+futures = "0.3"
+parking_lot = "0.12"
 
 # OS-specific acceleration dependencies
 [target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]

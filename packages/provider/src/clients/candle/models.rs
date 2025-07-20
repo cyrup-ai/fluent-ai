@@ -1,8 +1,9 @@
 //! Candle model definitions that comply with domain traits
 
+use std::borrow::Cow;
+
 use fluent_ai_domain::{Model, ModelInfo, ModelInfoData};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 /// Candle-supported models for local inference
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -133,7 +134,7 @@ impl Model for CandleModel {
                 optimal_thinking_budget: None,
             },
         };
-        
+
         ModelInfo::from_data(data)
     }
 }
@@ -143,7 +144,7 @@ impl std::fmt::Display for CandleModel {
         let name = match self {
             CandleModel::Devstral_22B => "DeepSeek-V3 Devstral 22B",
             CandleModel::Llama2_7B => "LLaMA 2 7B",
-            CandleModel::Llama2_13B => "LLaMA 2 13B", 
+            CandleModel::Llama2_13B => "LLaMA 2 13B",
             CandleModel::Mistral_7B => "Mistral 7B",
             CandleModel::CodeLlama_7B => "Code Llama 7B",
             CandleModel::Phi3_Mini => "Phi-3 Mini",
@@ -189,7 +190,7 @@ impl Default for CandleDevice {
         // Default to Metal on macOS, CPU otherwise
         #[cfg(target_os = "macos")]
         return CandleDevice::Metal(0);
-        
+
         #[cfg(not(target_os = "macos"))]
         CandleDevice::Cpu
     }

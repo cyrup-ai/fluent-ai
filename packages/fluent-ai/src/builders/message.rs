@@ -2,9 +2,9 @@
 //!
 //! All message construction logic and builder patterns.
 
+use fluent_ai_domain::message::{AssistantContent, Content, Message, ToolCall, UserContent};
 use fluent_ai_domain::{AsyncTask, spawn_async};
-use fluent_ai_domain::message::{Message, UserContent, AssistantContent, Content, ToolCall};
-use fluent_ai_domain::{Image, Audio, Document};
+use fluent_ai_domain::{Audio, Document, Image};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -70,31 +70,48 @@ impl MessageBuilder for UserMessageBuilder {
     }
 
     fn build(self) -> Message {
-        Message::user(self.content.unwrap_or_else(|| UserContent::Text(fluent_ai_domain::message::Text { content: "".to_string() })).as_text())
+        Message::user(
+            self.content
+                .unwrap_or_else(|| {
+                    UserContent::Text(fluent_ai_domain::message::Text {
+                        content: "".to_string(),
+                    })
+                })
+                .as_text(),
+        )
     }
 }
 
 impl UserMessageBuilderTrait for UserMessageBuilder {
     fn text(mut self, text: impl Into<String>) -> Self {
-        self.content = Some(UserContent::Text(fluent_ai_domain::message::Text { content: text.into() }));
+        self.content = Some(UserContent::Text(fluent_ai_domain::message::Text {
+            content: text.into(),
+        }));
         self
     }
 
     fn image(mut self, image: Image) -> Self {
         // Convert image to user content format
-        self.content = Some(UserContent::Image { url: image.data, detail: None });
+        self.content = Some(UserContent::Image {
+            url: image.data,
+            detail: None,
+        });
         self
     }
 
     fn audio(mut self, audio: Audio) -> Self {
         // Convert audio to text for user content
-        self.content = Some(UserContent::Text(fluent_ai_domain::message::Text { content: format!("[Audio: {}]", audio.data) }));
+        self.content = Some(UserContent::Text(fluent_ai_domain::message::Text {
+            content: format!("[Audio: {}]", audio.data),
+        }));
         self
     }
 
     fn document(mut self, document: Document) -> Self {
         // Convert document to text for user content
-        self.content = Some(UserContent::Text(fluent_ai_domain::message::Text { content: document.content }));
+        self.content = Some(UserContent::Text(fluent_ai_domain::message::Text {
+            content: document.content,
+        }));
         self
     }
 
@@ -112,17 +129,32 @@ impl MessageBuilder for AssistantMessageBuilder {
     }
 
     fn build(self) -> Message {
-        Message::assistant(self.content.unwrap_or_else(|| AssistantContent::Text(fluent_ai_domain::message::Text { content: "".to_string() })).as_text())
+        Message::assistant(
+            self.content
+                .unwrap_or_else(|| {
+                    AssistantContent::Text(fluent_ai_domain::message::Text {
+                        content: "".to_string(),
+                    })
+                })
+                .as_text(),
+        )
     }
 }
 
 impl AssistantMessageBuilderTrait for AssistantMessageBuilder {
     fn text(mut self, text: impl Into<String>) -> Self {
-        self.content = Some(AssistantContent::Text(fluent_ai_domain::message::Text { content: text.into() }));
+        self.content = Some(AssistantContent::Text(fluent_ai_domain::message::Text {
+            content: text.into(),
+        }));
         self
     }
 
-    fn tool_call(mut self, id: impl Into<String>, name: impl Into<String>, arguments: Value) -> Self {
+    fn tool_call(
+        mut self,
+        id: impl Into<String>,
+        name: impl Into<String>,
+        arguments: Value,
+    ) -> Self {
         let tool_call = ToolCall {
             id: id.into(),
             function: fluent_ai_domain::message::ToolFunction {
@@ -136,15 +168,15 @@ impl AssistantMessageBuilderTrait for AssistantMessageBuilder {
     }
 
     fn tool_result(mut self, tool_call_id: impl Into<String>, result: Value) -> Self {
-        self.content = Some(AssistantContent::Text(fluent_ai_domain::message::Text { 
-            content: format!("Tool result for {}: {}", tool_call_id.into(), result) 
+        self.content = Some(AssistantContent::Text(fluent_ai_domain::message::Text {
+            content: format!("Tool result for {}: {}", tool_call_id.into(), result),
         }));
         self
     }
 
     fn tool_error(mut self, tool_call_id: impl Into<String>, error: impl Into<String>) -> Self {
-        self.content = Some(AssistantContent::Text(fluent_ai_domain::message::Text { 
-            content: format!("Tool error for {}: {}", tool_call_id.into(), error.into()) 
+        self.content = Some(AssistantContent::Text(fluent_ai_domain::message::Text {
+            content: format!("Tool error for {}: {}", tool_call_id.into(), error.into()),
         }));
         self
     }

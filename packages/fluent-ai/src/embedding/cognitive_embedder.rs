@@ -2,17 +2,20 @@
 //!
 //! Advanced embedding generation that integrates with the quantum router for
 //! superposition-based enhancement, coherence tracking, and sequential thinking patterns.
-//! 
+//!
 //! Zero-allocation design with lock-free concurrent access and SIMD optimization.
 
 use std::collections::HashMap;
-use std::sync::{Arc, atomic::{AtomicU64, AtomicU32, Ordering}};
+use std::sync::{
+    Arc,
+    atomic::{AtomicU32, AtomicU64, Ordering},
+};
 use std::time::{Duration, Instant, SystemTime};
 
+use arrayvec::ArrayVec;
 use crossbeam_utils::CachePadded;
 use dashmap::DashMap;
 use smallvec::{SmallVec, smallvec};
-use arrayvec::ArrayVec;
 
 /// Quantum-enhanced cognitive embedder with superposition state management
 pub struct CognitiveEmbedder {
@@ -37,22 +40,24 @@ pub trait QuantumRouterTrait: Send + Sync {
         &self,
         text: &str,
         dimensions: usize,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<SuperpositionState, String>> + Send + '_>>;
-    
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<SuperpositionState, String>> + Send + '_>,
+    >;
+
     /// Enhance embedding with quantum coherence
     fn enhance_embedding_with_quantum_coherence(
         &self,
         embedding: &mut [f32],
         coherence_score: f64,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<f64, String>> + Send + '_>>;
-    
+
     /// Calculate quantum coherence for text and embedding
     fn calculate_quantum_coherence(
         &self,
         text: &str,
         embedding: &[f32],
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<f64, String>> + Send + '_>>;
-    
+
     /// Perform quantum measurement on superposition state
     fn measure_superposition(
         &self,
@@ -88,19 +93,19 @@ impl Complex64 {
     pub const fn new(real: f64, imag: f64) -> Self {
         Self { real, imag }
     }
-    
+
     /// Calculate magnitude (modulus) of complex number
     #[inline(always)]
     pub fn magnitude(self) -> f64 {
         (self.real * self.real + self.imag * self.imag).sqrt()
     }
-    
+
     /// Calculate phase of complex number
     #[inline(always)]
     pub fn phase(self) -> f64 {
         self.imag.atan2(self.real)
     }
-    
+
     /// Multiply two complex numbers
     #[inline(always)]
     pub fn multiply(self, other: Complex64) -> Complex64 {
@@ -109,7 +114,7 @@ impl Complex64 {
             self.real * other.imag + self.imag * other.real,
         )
     }
-    
+
     /// Add two complex numbers
     #[inline(always)]
     pub fn add(self, other: Complex64) -> Complex64 {
@@ -547,7 +552,7 @@ impl CognitiveEmbedder {
         config: Option<CognitiveEmbedderConfig>,
     ) -> Result<Self, String> {
         let config = config.unwrap_or_default();
-        
+
         // Initialize coherence tracker
         let coherence_tracker = Arc::new(CoherenceTracker {
             coherence_threshold: config.min_coherence_threshold,
@@ -567,13 +572,15 @@ impl CognitiveEmbedder {
                 None
             },
         });
-        
+
         // Initialize quantum memory
         let quantum_memory = Arc::new(QuantumMemory {
             quantum_registers: Arc::new(DashMap::new()),
             memory_capacity: config.superposition_dimensions * 100, // 100 registers per dimension
             current_usage: AtomicUsize::new(0),
-            garbage_collector: Arc::new(Self::create_garbage_collector(config.enable_garbage_collection)),
+            garbage_collector: Arc::new(Self::create_garbage_collector(
+                config.enable_garbage_collection,
+            )),
             allocation_metrics: Arc::new(CachePadded::new(QuantumMemoryMetrics {
                 total_allocations: AtomicU64::new(0),
                 total_deallocations: AtomicU64::new(0),
@@ -582,7 +589,7 @@ impl CognitiveEmbedder {
                 avg_allocation_size: AtomicU64::new(0),
             })),
         });
-        
+
         // Initialize metrics
         let metrics = Arc::new(CachePadded::new(CognitiveEmbedderMetrics {
             total_embeddings: AtomicU64::new(0),
@@ -594,7 +601,7 @@ impl CognitiveEmbedder {
             avg_coherence_score: AtomicU64::new(0),
             cache_hit_rate: AtomicU64::new(0),
         }));
-        
+
         Ok(Self {
             quantum_router,
             superposition_cache: Arc::new(DashMap::new()),
@@ -604,7 +611,7 @@ impl CognitiveEmbedder {
             config,
         })
     }
-    
+
     /// Generate quantum-enhanced embedding for text
     pub async fn generate_quantum_enhanced_embedding(
         &self,
@@ -612,63 +619,76 @@ impl CognitiveEmbedder {
         base_embedding: &[f32],
     ) -> Result<Vec<f32>, String> {
         let start_time = Instant::now();
-        
-        self.metrics.total_embeddings.fetch_add(1, Ordering::Relaxed);
-        
+
+        self.metrics
+            .total_embeddings
+            .fetch_add(1, Ordering::Relaxed);
+
         if !self.config.enable_quantum_enhancement {
             return Ok(base_embedding.to_vec());
         }
-        
+
         // Create cache key
         let cache_key = self.create_cache_key(text, base_embedding);
-        
+
         // Check superposition cache
         if let Some(cached_state) = self.superposition_cache.get(&cache_key) {
-            if cached_state.created_at.elapsed() < self.config.cache_config.cache_ttl &&
-               cached_state.coherence_time > Duration::ZERO {
-                
+            if cached_state.created_at.elapsed() < self.config.cache_config.cache_ttl
+                && cached_state.coherence_time > Duration::ZERO
+            {
                 self.metrics.cache_hit_rate.fetch_add(1, Ordering::Relaxed);
-                
+
                 // Measure cached superposition state
                 let mut state_copy = cached_state.clone();
-                return self.quantum_router.measure_superposition(&mut state_copy).await;
+                return self
+                    .quantum_router
+                    .measure_superposition(&mut state_copy)
+                    .await;
             } else {
                 // Remove expired cache entry
                 self.superposition_cache.remove(&cache_key);
             }
         }
-        
+
         // Create new superposition state
-        let mut superposition_state = self.quantum_router
-            .create_superposition_state(text, base_embedding.len()).await?;
-        
-        self.metrics.superposition_creations.fetch_add(1, Ordering::Relaxed);
-        
+        let mut superposition_state = self
+            .quantum_router
+            .create_superposition_state(text, base_embedding.len())
+            .await?;
+
+        self.metrics
+            .superposition_creations
+            .fetch_add(1, Ordering::Relaxed);
+
         // Initialize state with base embedding
         self.initialize_superposition_with_embedding(&mut superposition_state, base_embedding)?;
-        
+
         // Apply quantum enhancement
-        if let Ok(enhanced_embedding) = self.apply_quantum_enhancement(
-            &mut superposition_state,
-            text,
-            base_embedding,
-        ).await {
-            self.metrics.quantum_enhanced.fetch_add(1, Ordering::Relaxed);
-            
+        if let Ok(enhanced_embedding) = self
+            .apply_quantum_enhancement(&mut superposition_state, text, base_embedding)
+            .await
+        {
+            self.metrics
+                .quantum_enhanced
+                .fetch_add(1, Ordering::Relaxed);
+
             // Cache the superposition state for future use
-            self.cache_superposition_state(cache_key, superposition_state).await;
-            
+            self.cache_superposition_state(cache_key, superposition_state)
+                .await;
+
             // Update metrics
             let processing_time = start_time.elapsed().as_micros() as u64;
-            self.metrics.avg_processing_time_us.store(processing_time, Ordering::Relaxed);
-            
+            self.metrics
+                .avg_processing_time_us
+                .store(processing_time, Ordering::Relaxed);
+
             Ok(enhanced_embedding)
         } else {
             // Fallback to base embedding if quantum enhancement fails
             Ok(base_embedding.to_vec())
         }
     }
-    
+
     /// Apply quantum enhancement to superposition state
     async fn apply_quantum_enhancement(
         &self,
@@ -678,43 +698,47 @@ impl CognitiveEmbedder {
     ) -> Result<Vec<f32>, String> {
         // Calculate initial coherence
         let initial_coherence = self.calculate_state_coherence(superposition_state).await?;
-        
+
         // Apply decoherence evolution
-        self.evolve_superposition_with_decoherence(superposition_state).await?;
-        
+        self.evolve_superposition_with_decoherence(superposition_state)
+            .await?;
+
         // Apply error correction if enabled
         if self.config.enable_error_correction {
             if let Some(ref error_correction) = self.coherence_tracker.error_correction {
-                self.apply_error_correction(superposition_state, error_correction).await?;
+                self.apply_error_correction(superposition_state, error_correction)
+                    .await?;
             }
         }
-        
+
         // Entangle dimensions for enhanced representation
-        self.create_quantum_entanglements(superposition_state, text).await?;
-        
+        self.create_quantum_entanglements(superposition_state, text)
+            .await?;
+
         // Calculate final coherence
         let final_coherence = self.calculate_state_coherence(superposition_state).await?;
-        
+
         // Measure superposition to get enhanced embedding
-        let mut enhanced_embedding = self.quantum_router.measure_superposition(superposition_state).await?;
-        
+        let mut enhanced_embedding = self
+            .quantum_router
+            .measure_superposition(superposition_state)
+            .await?;
+
         // Apply quantum coherence enhancement to the measured embedding
         if final_coherence >= self.config.min_coherence_threshold {
-            self.quantum_router.enhance_embedding_with_quantum_coherence(
-                &mut enhanced_embedding,
-                final_coherence,
-            ).await?;
+            self.quantum_router
+                .enhance_embedding_with_quantum_coherence(&mut enhanced_embedding, final_coherence)
+                .await?;
         }
-        
+
         // Update coherence metrics
-        self.metrics.avg_coherence_score.store(
-            (final_coherence * 1000.0) as u64,
-            Ordering::Relaxed
-        );
-        
+        self.metrics
+            .avg_coherence_score
+            .store((final_coherence * 1000.0) as u64, Ordering::Relaxed);
+
         Ok(enhanced_embedding)
     }
-    
+
     /// Initialize superposition state with base embedding
     fn initialize_superposition_with_embedding(
         &self,
@@ -724,10 +748,10 @@ impl CognitiveEmbedder {
         if state.amplitudes.len() != embedding.len() {
             return Err("Dimension mismatch between superposition state and embedding".to_string());
         }
-        
+
         // Initialize amplitudes with normalized embedding values
         let norm = embedding.iter().map(|&x| x * x).sum::<f32>().sqrt();
-        
+
         if norm > f32::EPSILON {
             for (i, &value) in embedding.iter().enumerate() {
                 let normalized_value = value / norm;
@@ -741,101 +765,110 @@ impl CognitiveEmbedder {
                 *amplitude = Complex64::new(uniform_amplitude, 0.0);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Calculate coherence of superposition state
     async fn calculate_state_coherence(&self, state: &SuperpositionState) -> Result<f64, String> {
-        self.metrics.coherence_measurements.fetch_add(1, Ordering::Relaxed);
-        
+        self.metrics
+            .coherence_measurements
+            .fetch_add(1, Ordering::Relaxed);
+
         // Calculate quantum coherence using purity measure
         let mut purity = 0.0;
         let mut total_probability = 0.0;
-        
+
         for amplitude in &state.amplitudes {
             let probability = amplitude.magnitude() * amplitude.magnitude();
             purity += probability * probability;
             total_probability += probability;
         }
-        
+
         // Normalize purity
         if total_probability > f64::EPSILON {
             purity /= total_probability * total_probability;
         }
-        
+
         // Calculate coherence from purity (1 = pure state, 1/d = maximally mixed)
         let dimension = state.amplitudes.len() as f64;
         let coherence = (purity * dimension - 1.0) / (dimension - 1.0);
-        
+
         Ok(coherence.max(0.0).min(1.0))
     }
-    
+
     /// Create cache key for superposition state
     fn create_cache_key(&self, text: &str, embedding: &[f32]) -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         text.hash(&mut hasher);
-        
+
         // Hash first few embedding values for additional uniqueness
         for &value in embedding.iter().take(16) {
             value.to_bits().hash(&mut hasher);
         }
-        
+
         format!("quantum:{:016x}", hasher.finish())
     }
-    
+
     /// Cache superposition state for future use
     async fn cache_superposition_state(&self, key: String, state: SuperpositionState) {
         // Enforce cache size limit
         if self.superposition_cache.len() >= self.config.cache_config.max_cached_states {
             self.evict_old_cache_entries().await;
         }
-        
+
         self.superposition_cache.insert(key, state);
     }
-    
+
     /// Evict old cache entries based on coherence and age
     async fn evict_old_cache_entries(&self) {
         let mut to_evict = Vec::new();
         let now = Instant::now();
-        
+
         // Collect candidates for eviction
         for entry in self.superposition_cache.iter() {
             let state = entry.value();
             let age = now.duration_since(state.created_at);
-            
+
             // Evict if expired or low coherence
-            if age > self.config.cache_config.cache_ttl ||
-               (self.config.cache_config.coherence_based_eviction && 
-                state.quality_score < self.config.min_coherence_threshold) {
+            if age > self.config.cache_config.cache_ttl
+                || (self.config.cache_config.coherence_based_eviction
+                    && state.quality_score < self.config.min_coherence_threshold)
+            {
                 to_evict.push(entry.key().clone());
             }
         }
-        
+
         // Remove evicted entries
         for key in to_evict {
             self.superposition_cache.remove(&key);
         }
     }
-    
+
     /// Create default decoherence models
     fn default_decoherence_models() -> Vec<DecoherenceModel> {
         vec![
-            DecoherenceModel::Exponential { decay_constant: 0.01 },
-            DecoherenceModel::PhaseNoise { noise_strength: 0.001 },
-            DecoherenceModel::AmplitudeDamping { damping_rate: 0.005 },
+            DecoherenceModel::Exponential {
+                decay_constant: 0.01,
+            },
+            DecoherenceModel::PhaseNoise {
+                noise_strength: 0.001,
+            },
+            DecoherenceModel::AmplitudeDamping {
+                damping_rate: 0.005,
+            },
         ]
     }
-    
+
     /// Create error correction system
     fn create_error_correction_system() -> QuantumErrorCorrection {
         let mut syndrome_thresholds = HashMap::new();
         syndrome_thresholds.insert("amplitude_error".to_string(), 0.1);
         syndrome_thresholds.insert("phase_error".to_string(), 0.05);
-        
+
         QuantumErrorCorrection {
             code_type: ErrorCorrectionCode::Steane,
             syndrome_thresholds,
@@ -850,7 +883,7 @@ impl CognitiveEmbedder {
             })),
         }
     }
-    
+
     /// Create garbage collector
     fn create_garbage_collector(enabled: bool) -> QuantumGarbageCollector {
         QuantumGarbageCollector {
@@ -874,24 +907,24 @@ impl CognitiveEmbedder {
             last_collection: AtomicU64::new(0),
         }
     }
-    
+
     /// Evolve superposition state with decoherence
     async fn evolve_superposition_with_decoherence(
         &self,
         state: &mut SuperpositionState,
     ) -> Result<(), String> {
         let time_elapsed = state.created_at.elapsed();
-        
+
         for model in &self.coherence_tracker.decoherence_models {
             self.apply_decoherence_model(state, model, time_elapsed)?;
         }
-        
+
         // Update remaining coherence time
         state.coherence_time = state.coherence_time.saturating_sub(time_elapsed);
-        
+
         Ok(())
     }
-    
+
     /// Apply specific decoherence model
     fn apply_decoherence_model(
         &self,
@@ -900,7 +933,7 @@ impl CognitiveEmbedder {
         time_elapsed: Duration,
     ) -> Result<(), String> {
         let t = time_elapsed.as_secs_f64();
-        
+
         match model {
             DecoherenceModel::Exponential { decay_constant } => {
                 let decay_factor = (-decay_constant * t).exp();
@@ -917,7 +950,7 @@ impl CognitiveEmbedder {
                     let phase_noise = noise_strength * t * (2.0 * PI * fastrand::f64() - PI);
                     let cos_noise = phase_noise.cos();
                     let sin_noise = phase_noise.sin();
-                    
+
                     *amplitude = Complex64::new(
                         amplitude.real * cos_noise - amplitude.imag * sin_noise,
                         amplitude.real * sin_noise + amplitude.imag * cos_noise,
@@ -927,20 +960,17 @@ impl CognitiveEmbedder {
             DecoherenceModel::AmplitudeDamping { damping_rate } => {
                 let damping_factor = (-damping_rate * t).exp();
                 for amplitude in &mut state.amplitudes {
-                    *amplitude = Complex64::new(
-                        amplitude.real * damping_factor,
-                        amplitude.imag,
-                    );
+                    *amplitude = Complex64::new(amplitude.real * damping_factor, amplitude.imag);
                 }
             }
             _ => {
                 // Implement other decoherence models as needed
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Create quantum entanglements between dimensions
     async fn create_quantum_entanglements(
         &self,
@@ -949,62 +979,63 @@ impl CognitiveEmbedder {
     ) -> Result<(), String> {
         // Clear existing entanglements
         state.entanglements.clear();
-        
+
         // Create entanglements based on text semantics and dimension relationships
         let text_bytes = text.as_bytes();
         let num_dims = state.amplitudes.len();
-        
+
         for i in 0..self.config.max_entanglements.min(num_dims / 2) {
             // Use text content to determine entanglement patterns
             let source_dim = (text_bytes.get(i * 2).copied().unwrap_or(0) as usize) % num_dims;
             let target_dim = (text_bytes.get(i * 2 + 1).copied().unwrap_or(0) as usize) % num_dims;
-            
+
             if source_dim != target_dim {
                 let strength = (text_bytes.len() as f64 / (i + 1) as f64).min(1.0) * 0.5;
-                
+
                 let entanglement = QuantumEntanglement {
                     source_dim,
                     target_dim,
                     strength,
                     entanglement_type: EntanglementType::Bell,
                 };
-                
+
                 // Apply entanglement to state
                 self.apply_entanglement_to_state(state, &entanglement)?;
-                
+
                 state.entanglements.push(entanglement);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Apply entanglement operation to quantum state
     fn apply_entanglement_to_state(
         &self,
         state: &mut SuperpositionState,
         entanglement: &QuantumEntanglement,
     ) -> Result<(), String> {
-        if entanglement.source_dim >= state.amplitudes.len() ||
-           entanglement.target_dim >= state.amplitudes.len() {
+        if entanglement.source_dim >= state.amplitudes.len()
+            || entanglement.target_dim >= state.amplitudes.len()
+        {
             return Err("Entanglement dimensions out of bounds".to_string());
         }
-        
+
         match entanglement.entanglement_type {
             EntanglementType::Bell => {
                 // Apply Bell state entanglement (simplified)
                 let source_amp = state.amplitudes[entanglement.source_dim];
                 let target_amp = state.amplitudes[entanglement.target_dim];
-                
+
                 let strength = entanglement.strength;
                 let sqrt_strength = strength.sqrt();
-                
+
                 // Create entangled superposition
                 state.amplitudes[entanglement.source_dim] = Complex64::new(
                     (source_amp.real + target_amp.real) * sqrt_strength,
                     (source_amp.imag + target_amp.imag) * sqrt_strength,
                 );
-                
+
                 state.amplitudes[entanglement.target_dim] = Complex64::new(
                     (source_amp.real - target_amp.real) * sqrt_strength,
                     (source_amp.imag - target_amp.imag) * sqrt_strength,
@@ -1014,32 +1045,40 @@ impl CognitiveEmbedder {
                 // Implement other entanglement types as needed
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Apply quantum error correction
     async fn apply_error_correction(
         &self,
         _state: &mut SuperpositionState,
         error_correction: &QuantumErrorCorrection,
     ) -> Result<(), String> {
-        self.metrics.error_corrections.fetch_add(1, Ordering::Relaxed);
-        error_correction.metrics.total_corrections.fetch_add(1, Ordering::Relaxed);
-        
+        self.metrics
+            .error_corrections
+            .fetch_add(1, Ordering::Relaxed);
+        error_correction
+            .metrics
+            .total_corrections
+            .fetch_add(1, Ordering::Relaxed);
+
         // Implement error correction logic based on the code type
         // For now, this is a placeholder that simulates successful correction
-        error_correction.metrics.successful_corrections.fetch_add(1, Ordering::Relaxed);
-        
+        error_correction
+            .metrics
+            .successful_corrections
+            .fetch_add(1, Ordering::Relaxed);
+
         Ok(())
     }
-    
+
     /// Get comprehensive performance metrics
     pub fn get_performance_metrics(&self) -> CognitiveEmbedderPerformanceMetrics {
         let total_embeddings = self.metrics.total_embeddings.load(Ordering::Relaxed);
         let quantum_enhanced = self.metrics.quantum_enhanced.load(Ordering::Relaxed);
         let cache_hits = self.metrics.cache_hit_rate.load(Ordering::Relaxed);
-        
+
         CognitiveEmbedderPerformanceMetrics {
             total_embeddings,
             quantum_enhanced_embeddings: quantum_enhanced,
@@ -1052,7 +1091,9 @@ impl CognitiveEmbedder {
             coherence_measurements: self.metrics.coherence_measurements.load(Ordering::Relaxed),
             error_corrections: self.metrics.error_corrections.load(Ordering::Relaxed),
             average_processing_time_us: self.metrics.avg_processing_time_us.load(Ordering::Relaxed),
-            average_coherence_score: self.metrics.avg_coherence_score.load(Ordering::Relaxed) as f64 / 1000.0,
+            average_coherence_score: self.metrics.avg_coherence_score.load(Ordering::Relaxed)
+                as f64
+                / 1000.0,
             cache_hit_rate: cache_hits as f64 / total_embeddings.max(1) as f64,
             current_cached_states: self.superposition_cache.len(),
         }

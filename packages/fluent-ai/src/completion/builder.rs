@@ -10,18 +10,17 @@
 
 #![allow(clippy::type_complexity)]
 
+use fluent_ai_provider::Model;
 use serde_json::json;
 
 use crate::{
-    completion::{
-        CompletionError, CompletionRequest, CompletionRequestBuilder, PromptError,
-        ToolDefinition,
-    },
     completion::message::Message,
+    completion::{
+        CompletionError, CompletionRequest, CompletionRequestBuilder, PromptError, ToolDefinition,
+    },
     runtime::{self, AsyncTask},
     streaming,
 };
-use fluent_ai_provider::Model;
 
 /// ------------------------------------------------------------
 /// Typestate markers
@@ -49,9 +48,9 @@ pub struct CompletionBuilder<M, S> {
     _state: std::marker::PhantomData<S>,
 }
 
-/* --------------------------------------------------------------------- */
-/* 1. Bare-bones constructor + default_builder with sensible switches     */
-/* --------------------------------------------------------------------- */
+// ---------------------------------------------------------------------
+// 1. Bare-bones constructor + default_builder with sensible switches
+// ---------------------------------------------------------------------
 impl<M: Model> CompletionBuilder<M, NeedsPrompt> {
     #[inline(always)]
     pub fn new(model: M) -> Self {
@@ -81,9 +80,9 @@ pub fn default_builder<M: Model>(model: M) -> CompletionBuilder<M, NeedsPrompt> 
         .cache_control(json!({ "max_age_secs": 86_400 }))
 }
 
-/* --------------------------------------------------------------------- */
-/* 2. Fluent setters (provider-agnostic)                                  */
-/* --------------------------------------------------------------------- */
+// ---------------------------------------------------------------------
+// 2. Fluent setters (provider-agnostic)
+// ---------------------------------------------------------------------
 impl<M, S> CompletionBuilder<M, S> {
     #[inline(always)]
     pub fn temperature(mut self, t: f64) -> Self {
@@ -139,9 +138,9 @@ impl<M, S> CompletionBuilder<M, S> {
     }
 }
 
-/* --------------------------------------------------------------------- */
-/* 3. NeedsPrompt → HasPrompt transition                                 */
-/* --------------------------------------------------------------------- */
+// ---------------------------------------------------------------------
+// 3. NeedsPrompt → HasPrompt transition
+// ---------------------------------------------------------------------
 impl<M: Model> CompletionBuilder<M, NeedsPrompt> {
     #[inline(always)]
     pub fn prompt(self, p: impl Into<Message>) -> CompletionBuilder<M, HasPrompt> {
@@ -163,19 +162,20 @@ impl<M: Model> CompletionBuilder<M, NeedsPrompt> {
     }
 }
 
-/* --------------------------------------------------------------------- */
-/* 4. Final stage (HasPrompt) – produce request / fire async              */
-/* --------------------------------------------------------------------- */
+// ---------------------------------------------------------------------
+// 4. Final stage (HasPrompt) – produce request / fire async
+// ---------------------------------------------------------------------
 impl<M: Model> CompletionBuilder<M, HasPrompt> {
     fn into_request(self) -> CompletionRequest {
-        let mut b = CompletionRequestBuilder::new(self.model.clone(), self.prompt.unwrap_or_default())
-            .preamble_opt(self.preamble)
-            .chat_history(self.chat_history)
-            .documents(self.documents)
-            .tools(self.tools)
-            .temperature_opt(self.temperature)
-            .max_tokens_opt(self.max_tokens)
-            .additional_params(self.extra_params);
+        let mut b =
+            CompletionRequestBuilder::new(self.model.clone(), self.prompt.unwrap_or_default())
+                .preamble_opt(self.preamble)
+                .chat_history(self.chat_history)
+                .documents(self.documents)
+                .tools(self.tools)
+                .temperature_opt(self.temperature)
+                .max_tokens_opt(self.max_tokens)
+                .additional_params(self.extra_params);
 
         if self.extended_thinking {
             b = b.additional_params(json!({ "extended_thinking": true }));
@@ -191,14 +191,7 @@ impl<M: Model> CompletionBuilder<M, HasPrompt> {
     }
 
     #[inline(always)]
-    pub fn send(
-        self,
-    ) -> AsyncTask<
-        Result<
-            crate::completion::CompletionResponse,
-            CompletionError,
-        >,
-    > {
+    pub fn send(self) -> AsyncTask<Result<crate::completion::CompletionResponse, CompletionError>> {
         self.into_request().send()
     }
 
@@ -218,9 +211,9 @@ impl<M: Model> CompletionBuilder<M, HasPrompt> {
     }
 }
 
-/* --------------------------------------------------------------------- */
-/* 5. Provider-extension *sparse traits*                                  */
-/* --------------------------------------------------------------------- */
+// ---------------------------------------------------------------------
+// 5. Provider-extension *sparse traits*
+// ---------------------------------------------------------------------
 
 /// Blanket trait – implemented automatically for every builder.
 /// Provider crates add `use` + `impl AnthropicExt for CompletionBuilder<AnthropicModel,_> { … }`.
@@ -236,7 +229,7 @@ impl<M, S> BuilderExt for CompletionBuilder<M, S> {
     }
 }
 
-/* ---------------- Anthropic sample extension (in provider crate) ------ */
+// ---------------- Anthropic sample extension (in provider crate) ------
 
 // The actual impl belongs inside `providers::anthropic` so downstream users
 // only get the methods when the Anthropic feature is enabled.
@@ -249,9 +242,7 @@ trait AnthropicBuilderExt {
     fn beta(self, tag: &'static str) -> Self;
 }
 #[allow(dead_code)]
-impl<S> AnthropicBuilderExt
-    for CompletionBuilder<fluent_ai_provider::Models, S>
-{
+impl<S> AnthropicBuilderExt for CompletionBuilder<fluent_ai_provider::Models, S> {
     #[inline(always)]
     fn beta(self, tag: &'static str) -> Self {
         self.provider_param("anthropic_beta", json!(tag))

@@ -9,13 +9,13 @@
 //! Middleware belongs in the application orchestration layer (fluent-ai) as it handles
 //! cross-cutting concerns that coordinate between domain entities and external services.
 
+pub mod caching;
 pub mod command;
 pub mod performance;
 pub mod security;
-pub mod caching;
 
 // Re-export commonly used middleware types
+pub use caching::CachingMiddleware;
 pub use command::{CommandMiddleware, MiddlewareChain};
 pub use performance::PerformanceMiddleware;
 pub use security::SecurityMiddleware;
-pub use caching::CachingMiddleware;

@@ -165,7 +165,10 @@ impl MemoryRepository {
             results.reverse();
         }
 
-        results.into_iter().take(filter.limit.unwrap_or(usize::MAX)).collect()
+        results
+            .into_iter()
+            .take(filter.limit.unwrap_or(usize::MAX))
+            .collect()
     }
 
     /// Add a relationship between two memories

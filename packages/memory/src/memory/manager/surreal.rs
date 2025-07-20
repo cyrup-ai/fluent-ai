@@ -337,8 +337,13 @@ impl SurrealDBMemoryManager {
     }
 
     /// Execute a raw query against the database
-    pub async fn execute_query(&self, query: &str) -> std::result::Result<surrealdb::Response, Error> {
-        self.db.query(query).await
+    pub async fn execute_query(
+        &self,
+        query: &str,
+    ) -> std::result::Result<surrealdb::Response, Error> {
+        self.db
+            .query(query)
+            .await
             .map_err(|e| Error::Database(Box::new(e)))
     }
 

@@ -15,9 +15,9 @@ use std::sync::Arc;
 use crate::{
     client::ProviderClient,
     embedding::{
+        Embed, Embedding, EmbeddingError,
         builder::EmbeddingsBuilder,
         embedding::{EmbeddingModel, EmbeddingModelDyn},
-        Embed, Embedding, EmbeddingError,
     },
     runtime::AsyncTask,
 };

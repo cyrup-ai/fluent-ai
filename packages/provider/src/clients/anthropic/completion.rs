@@ -12,17 +12,23 @@
 //!     .prompt("Hello world")
 //! ```
 
-use fluent_ai_domain::{AsyncTask, spawn_async};
-use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
-use fluent_ai_domain::{Message, Document};
-use fluent_ai_domain::tool::ToolDefinition;
-use crate::{AsyncStream, completion_provider::{CompletionProvider, CompletionError, ModelConfig, ModelInfo, ChunkHandler}};
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
-use serde::{Serialize, Deserialize};
-use serde_json::Value;
 use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
+use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
+use fluent_ai_domain::tool::ToolDefinition;
+use fluent_ai_domain::{AsyncTask, spawn_async};
+use fluent_ai_domain::{Document, Message};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
 use super::messages::ContentBlock;
+use crate::{
+    AsyncStream,
+    completion_provider::{
+        ChunkHandler, CompletionError, CompletionProvider, ModelConfig, ModelInfo,
+    },
+};
 
 /// Maximum messages per completion request (compile-time bounded)
 const MAX_MESSAGES: usize = 128;
@@ -122,16 +128,21 @@ pub struct AnthropicCompletionBuilder {
 /// Anthropic-specific builder extensions available only for Anthropic provider
 pub trait AnthropicExtensions {
     /// Add search results for citation support
-    /// 
+    ///
     /// Search results enable Claude to cite sources properly and provide
     /// natural citations in responses. Each search result includes:
     /// - source: URL or identifier for the source
     /// - title: Descriptive title of the content
     /// - content: Array of content blocks (typically text)
     fn with_search_results(self, search_results: Vec<SearchResultData>) -> Self;
-    
+
     /// Add a single search result for citation support
-    fn with_search_result(self, source: impl Into<String>, title: impl Into<String>, content: Vec<ContentBlock>) -> Self;
+    fn with_search_result(
+        self,
+        source: impl Into<String>,
+        title: impl Into<String>,
+        content: Vec<ContentBlock>,
+    ) -> Self;
 }
 
 /// Anthropic API message (zero-allocation serialization)
@@ -203,7 +214,7 @@ impl CompletionProvider for AnthropicCompletionBuilder {
     fn new(api_key: String, model_name: &'static str) -> Result<Self, CompletionError> {
         let client = HttpClient::with_config(HttpConfig::streaming_optimized())
             .map_err(|_| CompletionError::HttpError)?;
-        
+
         let config = get_model_config(model_name);
 
         Ok(Self {
@@ -248,17 +259,17 @@ impl CompletionProvider for AnthropicCompletionBuilder {
         self.explicit_api_key = Some(key.into());
         self
     }
-    
+
     /// Environment variable names to search for Anthropic API keys (ordered by priority)
     #[inline(always)]
     fn env_api_keys(&self) -> ZeroOneOrMany<String> {
         // First found wins - search in priority order
         ZeroOneOrMany::Many(vec![
-            "ANTHROPIC_API_KEY".to_string(),       // Primary Anthropic key
-            "CLAUDE_API_KEY".to_string(),          // Alternative Claude key
+            "ANTHROPIC_API_KEY".to_string(), // Primary Anthropic key
+            "CLAUDE_API_KEY".to_string(),    // Alternative Claude key
         ])
     }
-    
+
     /// Set system prompt (overrides ModelInfo default)
     #[inline(always)]
     fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
@@ -305,14 +316,16 @@ impl CompletionProvider for AnthropicCompletionBuilder {
     #[inline(always)]
     fn chat_history(mut self, history: ZeroOneOrMany<Message>) -> Result<Self, CompletionError> {
         match history {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(msg) => {
-                self.chat_history.try_push(msg)
+                self.chat_history
+                    .try_push(msg)
                     .map_err(|_| CompletionError::RequestTooLarge)?;
-            },
+            }
             ZeroOneOrMany::Many(msgs) => {
                 for msg in msgs {
-                    self.chat_history.try_push(msg)
+                    self.chat_history
+                        .try_push(msg)
                         .map_err(|_| CompletionError::RequestTooLarge)?;
                 }
             }
@@ -324,14 +337,16 @@ impl CompletionProvider for AnthropicCompletionBuilder {
     #[inline(always)]
     fn documents(mut self, docs: ZeroOneOrMany<Document>) -> Result<Self, CompletionError> {
         match docs {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(doc) => {
-                self.documents.try_push(doc)
+                self.documents
+                    .try_push(doc)
                     .map_err(|_| CompletionError::RequestTooLarge)?;
-            },
+            }
             ZeroOneOrMany::Many(documents) => {
                 for doc in documents {
-                    self.documents.try_push(doc)
+                    self.documents
+                        .try_push(doc)
                         .map_err(|_| CompletionError::RequestTooLarge)?;
                 }
             }
@@ -343,14 +358,16 @@ impl CompletionProvider for AnthropicCompletionBuilder {
     #[inline(always)]
     fn tools(mut self, tools: ZeroOneOrMany<ToolDefinition>) -> Result<Self, CompletionError> {
         match tools {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(tool) => {
-                self.tools.try_push(tool)
+                self.tools
+                    .try_push(tool)
                     .map_err(|_| CompletionError::RequestTooLarge)?;
-            },
+            }
             ZeroOneOrMany::Many(tool_list) => {
                 for tool in tool_list {
-                    self.tools.try_push(tool)
+                    self.tools
+                        .try_push(tool)
                         .map_err(|_| CompletionError::RequestTooLarge)?;
                 }
             }
@@ -367,14 +384,14 @@ impl CompletionProvider for AnthropicCompletionBuilder {
 
     /// Set chunk handler with cyrup_sugars pattern matching syntax
     #[inline(always)]
-    fn on_chunk<F>(mut self, handler: F) -> Self 
+    fn on_chunk<F>(mut self, handler: F) -> Self
     where
         F: Fn(Result<CompletionChunk, CompletionError>) + Send + Sync + 'static,
     {
         self.chunk_handler = Some(Box::new(handler));
         self
     }
-    
+
     /// Terminal action - execute completion with user prompt (blazing-fast streaming)
     #[inline(always)]
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
@@ -434,16 +451,21 @@ impl AnthropicExtensions for AnthropicCompletionBuilder {
         }
         self
     }
-    
+
     /// Add a single search result for citation support
     #[inline(always)]
-    fn with_search_result(mut self, source: impl Into<String>, title: impl Into<String>, content: Vec<ContentBlock>) -> Self {
+    fn with_search_result(
+        mut self,
+        source: impl Into<String>,
+        title: impl Into<String>,
+        content: Vec<ContentBlock>,
+    ) -> Self {
         let search_result = SearchResultData {
             source: source.into(),
             title: title.into(),
             content,
         };
-        
+
         if self.search_results.try_push(search_result).is_err() {
             // ArrayVec is full, remove oldest entry and add new one
             self.search_results.remove(0);
@@ -459,7 +481,7 @@ impl AnthropicExtensions for AnthropicCompletionBuilder {
 
 impl AnthropicCompletionBuilder {
     /// Enable prompt caching for cost optimization and faster processing
-    /// 
+    ///
     /// Anthropic's prompt caching reduces costs for repeated content:
     /// - Cache writes cost 25% more than base input tokens
     /// - Cache hits cost only 10% of base input token price
@@ -490,13 +512,16 @@ impl AnthropicCompletionBuilder {
         }
 
         // Minimum cacheable tokens: 1024 for most models, 2048 for Haiku
-        let min_tokens = if self.model_name.contains("haiku") { 2048 } else { 1024 };
-        
+        let min_tokens = if self.model_name.contains("haiku") {
+            2048
+        } else {
+            1024
+        };
+
         // Rough estimate: ~4 characters per token for English text
         let estimated_tokens = content.len() / 4;
         estimated_tokens >= min_tokens
     }
-
 }
 
 impl AnthropicCompletionBuilder {
@@ -507,22 +532,22 @@ impl AnthropicCompletionBuilder {
         prompt: String,
     ) -> Result<AsyncStream<Result<CompletionChunk, CompletionError>>, CompletionError> {
         let request_body = self.build_request(&prompt)?;
-        let body_bytes = serde_json::to_vec(&request_body)
-            .map_err(|_| CompletionError::ParseError)?;
+        let body_bytes =
+            serde_json::to_vec(&request_body).map_err(|_| CompletionError::ParseError)?;
 
         // Use explicit API key if set, otherwise use discovered key
         let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
-        
-        let request = HttpRequest::post(
-            &format!("{}/v1/messages", self.base_url),
-            body_bytes,
-        )
-        .map_err(|_| CompletionError::HttpError)?
-        .header("Content-Type", "application/json")
-        .header("x-api-key", auth_key)
-        .header("anthropic-version", "2023-06-01");
 
-        let response = self.client.send(request).await
+        let request = HttpRequest::post(&format!("{}/v1/messages", self.base_url), body_bytes)
+            .map_err(|_| CompletionError::HttpError)?
+            .header("Content-Type", "application/json")
+            .header("x-api-key", auth_key)
+            .header("anthropic-version", "2023-06-01");
+
+        let response = self
+            .client
+            .send(request)
+            .await
             .map_err(|_| CompletionError::HttpError)?;
 
         if !response.status().is_success() {
@@ -540,7 +565,7 @@ impl AnthropicCompletionBuilder {
         spawn_async(async move {
             use futures_util::StreamExt;
             let mut sse_stream = sse_stream;
-            
+
             while let Some(event) = sse_stream.next().await {
                 match event {
                     Ok(sse_event) => {
@@ -576,37 +601,46 @@ impl AnthropicCompletionBuilder {
 
     /// Build Anthropic request with zero allocation where possible
     #[inline(always)]
-    fn build_request(&self, prompt: &str) -> Result<AnthropicCompletionRequest<'_>, CompletionError> {
+    fn build_request(
+        &self,
+        prompt: &str,
+    ) -> Result<AnthropicCompletionRequest<'_>, CompletionError> {
         let mut messages = ArrayVec::new();
 
         // Add documents as context (zero allocation conversion)
         for doc in &self.documents {
             let content = format!("Document: {}", doc.content());
             let should_cache = self.should_cache_content(&content);
-            
-            messages.try_push(AnthropicMessage {
-                role: "user", 
-                content: Box::leak(content.into_boxed_str()),
-                cache_control: if should_cache {
-                    Some(CacheControl::default())
-                } else {
-                    None
-                },
-            }).map_err(|_| CompletionError::RequestTooLarge)?;
+
+            messages
+                .try_push(AnthropicMessage {
+                    role: "user",
+                    content: Box::leak(content.into_boxed_str()),
+                    cache_control: if should_cache {
+                        Some(CacheControl::default())
+                    } else {
+                        None
+                    },
+                })
+                .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
         // Add chat history (zero allocation domain conversion)
         for msg in &self.chat_history {
             let anthropic_msg = self.convert_domain_message(msg)?;
-            messages.try_push(anthropic_msg)
+            messages
+                .try_push(anthropic_msg)
                 .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
         // Add search results as user messages for citation support
         for search_result in &self.search_results {
-            let search_content = format!("Search Result - {}: {}", 
-                search_result.title, 
-                search_result.content.iter()
+            let search_content = format!(
+                "Search Result - {}: {}",
+                search_result.title,
+                search_result
+                    .content
+                    .iter()
                     .filter_map(|c| match c {
                         ContentBlock::Text { text } => Some(text.as_str()),
                         _ => None,
@@ -614,24 +648,28 @@ impl AnthropicCompletionBuilder {
                     .collect::<Vec<_>>()
                     .join(" ")
             );
-            
-            messages.try_push(AnthropicMessage {
-                role: "user",
-                content: Box::leak(search_content.into_boxed_str()),
-                cache_control: if self.should_cache_content(&search_content) {
-                    Some(CacheControl::default())
-                } else {
-                    None
-                },
-            }).map_err(|_| CompletionError::RequestTooLarge)?;
+
+            messages
+                .try_push(AnthropicMessage {
+                    role: "user",
+                    content: Box::leak(search_content.into_boxed_str()),
+                    cache_control: if self.should_cache_content(&search_content) {
+                        Some(CacheControl::default())
+                    } else {
+                        None
+                    },
+                })
+                .map_err(|_| CompletionError::RequestTooLarge)?;
         }
 
         // Add user prompt (typically not cached as it's unique)
-        messages.try_push(AnthropicMessage {
-            role: "user",
-            content: prompt,
-            cache_control: None, // User prompts are typically unique, so no caching
-        }).map_err(|_| CompletionError::RequestTooLarge)?;
+        messages
+            .try_push(AnthropicMessage {
+                role: "user",
+                content: prompt,
+                cache_control: None, // User prompts are typically unique, so no caching
+            })
+            .map_err(|_| CompletionError::RequestTooLarge)?;
 
         let tools = if self.tools.is_empty() {
             None
@@ -667,12 +705,14 @@ impl AnthropicCompletionBuilder {
 
     /// Convert domain Message to Anthropic format (zero allocation)
     #[inline(always)]
-    fn convert_domain_message(&self, msg: &Message) -> Result<AnthropicMessage<'_>, CompletionError> {
+    fn convert_domain_message(
+        &self,
+        msg: &Message,
+    ) -> Result<AnthropicMessage<'_>, CompletionError> {
         // Complete domain type conversion without TODOs
         match msg.role() {
             fluent_ai_domain::message::MessageRole::User => {
-                let content = msg.content().text()
-                    .ok_or(CompletionError::ParseError)?;
+                let content = msg.content().text().ok_or(CompletionError::ParseError)?;
                 Ok(AnthropicMessage {
                     role: "user",
                     content,
@@ -684,8 +724,7 @@ impl AnthropicCompletionBuilder {
                 })
             }
             fluent_ai_domain::message::MessageRole::Assistant => {
-                let content = msg.content().text()
-                    .ok_or(CompletionError::ParseError)?;
+                let content = msg.content().text().ok_or(CompletionError::ParseError)?;
                 Ok(AnthropicMessage {
                     role: "assistant",
                     content,
@@ -699,8 +738,7 @@ impl AnthropicCompletionBuilder {
             fluent_ai_domain::message::MessageRole::System => {
                 // Anthropic handles system messages differently - they go in the system field
                 // For now, convert to user message with system prefix
-                let content = msg.content().text()
-                    .ok_or(CompletionError::ParseError)?;
+                let content = msg.content().text().ok_or(CompletionError::ParseError)?;
                 let prefixed_content = format!("System: {}", content);
                 let should_cache = self.should_cache_content(&prefixed_content);
                 Ok(AnthropicMessage {
@@ -720,17 +758,18 @@ impl AnthropicCompletionBuilder {
     #[inline(always)]
     fn convert_tools(&self) -> Result<ArrayVec<Value, MAX_TOOLS>, CompletionError> {
         let mut tools = ArrayVec::new();
-        
+
         for tool in &self.tools {
             let tool_value = serde_json::json!({
                 "name": tool.name(),
                 "description": tool.description(),
                 "input_schema": tool.parameters()
             });
-            tools.try_push(tool_value)
+            tools
+                .try_push(tool_value)
                 .map_err(|_| CompletionError::RequestTooLarge)?;
         }
-        
+
         Ok(tools)
     }
 
@@ -738,8 +777,8 @@ impl AnthropicCompletionBuilder {
     #[inline(always)]
     fn parse_sse_chunk(data: &[u8]) -> Result<CompletionChunk, CompletionError> {
         // Fast JSON parsing from bytes using serde_json
-        let chunk: AnthropicStreamChunk = serde_json::from_slice(data)
-            .map_err(|_| CompletionError::ParseError)?;
+        let chunk: AnthropicStreamChunk =
+            serde_json::from_slice(data).map_err(|_| CompletionError::ParseError)?;
 
         // Process Anthropic-specific streaming format
         match chunk.chunk_type.as_str() {
@@ -790,7 +829,10 @@ impl AnthropicCompletionBuilder {
 
 /// Public constructor for Anthropic completion builder
 #[inline(always)]
-pub fn completion_builder(api_key: String, model_name: &'static str) -> Result<AnthropicCompletionBuilder, CompletionError> {
+pub fn completion_builder(
+    api_key: String,
+    model_name: &'static str,
+) -> Result<AnthropicCompletionBuilder, CompletionError> {
     AnthropicCompletionBuilder::new(api_key, model_name)
 }
 
@@ -801,15 +843,12 @@ pub const fn available_models() -> &'static [&'static str] {
         // Claude 4 models (newest and most powerful)
         "claude-opus-4-20250514",
         "claude-sonnet-4-20250514",
-        
         // Claude 3.7 models
         "claude-3-7-sonnet-20250219",
-        
-        // Claude 3.5 models 
-        "claude-3-5-sonnet-20241022",    // v2 (latest)
-        "claude-3-5-sonnet-20240620",    // v1 (original)
+        // Claude 3.5 models
+        "claude-3-5-sonnet-20241022", // v2 (latest)
+        "claude-3-5-sonnet-20240620", // v1 (original)
         "claude-3-5-haiku-20241022",
-        
         // Claude 3 models
         "claude-3-opus-20240229",
         "claude-3-sonnet-20240229",

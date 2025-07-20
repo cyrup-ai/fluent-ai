@@ -1,5 +1,5 @@
 use std::fmt::Formatter;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
 use tracing::{error, info};

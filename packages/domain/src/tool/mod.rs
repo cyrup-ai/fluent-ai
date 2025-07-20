@@ -16,15 +16,11 @@ pub mod types;
 
 // Re-export core tool functionality
 pub use core::{
-    Tool, NamedTool, ToolSet, ToolDefinition, 
-    Perplexity, ExecToText, ToolEmbeddingDyn
+    ExecToText, NamedTool, Perplexity, Tool, ToolDefinition, ToolEmbeddingDyn, ToolSet,
 };
 
 // Re-export MCP functionality
-pub use mcp::{
-    Client as McpClient, StdioTransport, Transport, McpError
-};
-
+pub use mcp::{Client as McpClient, McpError, StdioTransport, Transport};
 // Re-export MCP tool traits and data
-pub use traits::{Tool as ToolTrait, McpTool};
+pub use traits::{McpTool, Tool as ToolTrait};
 pub use types::{McpToolData, Tool as McpToolType};

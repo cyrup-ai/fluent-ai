@@ -4,17 +4,17 @@
 // Core Agent struct - only buildable through AgentBuilder
 // ============================================================================
 
-use crate::{
-    completion::{CompletionModel, CompletionRequest, CompletionRequestBuilder, Document, Message},
-    runtime::{AsyncStream, AsyncTask},
-    domain::tool::ToolSet,
-    vector_store::VectorStoreIndexDyn,
-};
 use std::collections::HashMap;
 
 use super::{
     builder::{AgentBuilder, MissingCtx, MissingSys},
     prompt::{Prompt, PromptRequest},
+};
+use crate::{
+    completion::{CompletionModel, CompletionRequest, CompletionRequestBuilder, Document, Message},
+    domain::tool::ToolSet,
+    runtime::{AsyncStream, AsyncTask},
+    vector_store::VectorStoreIndexDyn,
 };
 
 // ============================================================================
@@ -55,7 +55,7 @@ impl<M: CompletionModel> Agent<M> {
     pub fn for_provider(model: M) -> AgentBuilder<M, MissingSys, MissingCtx> {
         AgentBuilder::new(model)
     }
-    
+
     /// Internal constructor for building from AgentBuilder
     pub(crate) fn new(
         model: M,

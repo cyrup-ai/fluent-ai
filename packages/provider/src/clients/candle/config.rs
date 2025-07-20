@@ -3,14 +3,15 @@
 //! This module provides comprehensive configuration management and real-time
 //! metrics collection for optimal performance monitoring and tuning.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::collections::HashMap;
+
 use arc_swap::ArcSwap;
 use crossbeam_utils::atomic::AtomicCell;
 
-use super::models::CandleModel;
 use super::error::{CandleError, CandleResult};
+use super::models::CandleModel;
 
 /// Global configuration for Candle operations
 #[derive(Debug, Clone)]
@@ -30,7 +31,7 @@ pub struct CandleGlobalConfig {
 impl Default for CandleGlobalConfig {
     fn default() -> Self {
         let mut model_configs = HashMap::new();
-        
+
         // Add default configurations for each model
         for model in [
             CandleModel::Llama2_7B,
@@ -43,7 +44,7 @@ impl Default for CandleGlobalConfig {
         ] {
             model_configs.insert(model, ModelSpecificConfig::for_model(model));
         }
-        
+
         Self {
             model_configs,
             cache_config: CacheConfig::default(),
@@ -64,15 +65,15 @@ impl CandleGlobalConfig {
         config.performance_config = PerformanceSettings::aggressive();
         config
     }
-    
+
     /// Create configuration optimized for specific model
     pub fn for_model(model: CandleModel) -> CandleResult<Self> {
         let mut config = Self::default();
-        
+
         // Get model-specific configuration
         let model_config = ModelSpecificConfig::for_model(model);
         config.model_configs.insert(model, model_config.clone());
-        
+
         // Adjust global settings based on model requirements
         match model {
             CandleModel::Llama2_13B => {
@@ -98,11 +99,11 @@ impl CandleGlobalConfig {
                 config.compute_config.enable_fp16 = true;
             }
         }
-        
+
         config.validate()?;
         Ok(config)
     }
-    
+
     /// Create configuration for development/debugging
     pub fn development() -> Self {
         let mut config = Self::default();
@@ -112,33 +113,34 @@ impl CandleGlobalConfig {
         config.performance_config = PerformanceSettings::conservative();
         config
     }
-    
+
     /// Get configuration for specific model
     pub fn get_model_config(&self, model: CandleModel) -> Option<&ModelSpecificConfig> {
         self.model_configs.get(&model)
     }
-    
+
     /// Update model configuration
     pub fn set_model_config(&mut self, model: CandleModel, config: ModelSpecificConfig) {
         self.model_configs.insert(model, config);
     }
-    
+
     /// Validate all configurations
     pub fn validate(&self) -> CandleResult<()> {
         self.cache_config.validate()?;
         self.compute_config.validate()?;
         self.metrics_config.validate()?;
         self.performance_config.validate()?;
-        
+
         for (model, config) in &self.model_configs {
-            config.validate()
-                .map_err(|e| CandleError::config(
+            config.validate().map_err(|e| {
+                CandleError::config(
                     &format!("Invalid config for model {}: {}", model, e),
                     "model_config",
                     "valid configuration",
-                ))?;
+                )
+            })?;
         }
-        
+
         Ok(())
     }
 }
@@ -171,7 +173,7 @@ impl ModelSpecificConfig {
                     model,
                     optimal_batch_size: 8,
                     memory_limit_bytes: 16 * 1024 * 1024 * 1024, // 16GB
-                    kv_cache_size_mb: 2048, // 2GB
+                    kv_cache_size_mb: 2048,                      // 2GB
                     context_window: 4096,
                     temperature_range: (0.1, 2.0),
                     parallel_config: ParallelConfig::medium(),
@@ -182,7 +184,7 @@ impl ModelSpecificConfig {
                     model,
                     optimal_batch_size: 4,
                     memory_limit_bytes: 32 * 1024 * 1024 * 1024, // 32GB
-                    kv_cache_size_mb: 4096, // 4GB
+                    kv_cache_size_mb: 4096,                      // 4GB
                     context_window: 4096,
                     temperature_range: (0.1, 1.5),
                     parallel_config: ParallelConfig::high(),
@@ -193,7 +195,7 @@ impl ModelSpecificConfig {
                     model,
                     optimal_batch_size: 16,
                     memory_limit_bytes: 8 * 1024 * 1024 * 1024, // 8GB
-                    kv_cache_size_mb: 1024, // 1GB
+                    kv_cache_size_mb: 1024,                     // 1GB
                     context_window: 4096,
                     temperature_range: (0.1, 2.0),
                     parallel_config: ParallelConfig::low(),
@@ -204,7 +206,7 @@ impl ModelSpecificConfig {
                     model,
                     optimal_batch_size: 8,
                     memory_limit_bytes: 20 * 1024 * 1024 * 1024, // 20GB
-                    kv_cache_size_mb: 3072, // 3GB
+                    kv_cache_size_mb: 3072,                      // 3GB
                     context_window: 8192,
                     temperature_range: (0.1, 1.8),
                     parallel_config: ParallelConfig::medium(),
@@ -212,7 +214,7 @@ impl ModelSpecificConfig {
             }
         }
     }
-    
+
     /// Validate configuration
     pub fn validate(&self) -> CandleResult<()> {
         if self.optimal_batch_size == 0 {
@@ -222,7 +224,7 @@ impl ModelSpecificConfig {
                 "> 0",
             ));
         }
-        
+
         if self.memory_limit_bytes == 0 {
             return Err(CandleError::config(
                 "Memory limit must be positive",
@@ -230,7 +232,7 @@ impl ModelSpecificConfig {
                 "> 0",
             ));
         }
-        
+
         if self.context_window == 0 {
             return Err(CandleError::config(
                 "Context window must be positive",
@@ -238,7 +240,7 @@ impl ModelSpecificConfig {
                 "> 0",
             ));
         }
-        
+
         if self.temperature_range.0 >= self.temperature_range.1 {
             return Err(CandleError::config(
                 "Temperature range invalid",
@@ -246,9 +248,9 @@ impl ModelSpecificConfig {
                 "min < max",
             ));
         }
-        
+
         self.parallel_config.validate()?;
-        
+
         Ok(())
     }
 }
@@ -276,7 +278,7 @@ impl ParallelConfig {
             thread_affinity: ThreadAffinity::None,
         }
     }
-    
+
     /// Medium parallelism configuration
     pub fn medium() -> Self {
         Self {
@@ -286,7 +288,7 @@ impl ParallelConfig {
             thread_affinity: ThreadAffinity::Core,
         }
     }
-    
+
     /// High parallelism configuration
     pub fn high() -> Self {
         Self {
@@ -296,7 +298,7 @@ impl ParallelConfig {
             thread_affinity: ThreadAffinity::Socket,
         }
     }
-    
+
     /// Validate configuration
     pub fn validate(&self) -> CandleResult<()> {
         if self.model_threads == 0 {
@@ -306,7 +308,7 @@ impl ParallelConfig {
                 "> 0",
             ));
         }
-        
+
         if self.data_threads == 0 {
             return Err(CandleError::config(
                 "Data threads must be positive",
@@ -314,7 +316,7 @@ impl ParallelConfig {
                 "> 0",
             ));
         }
-        
+
         Ok(())
     }
 }
@@ -352,9 +354,9 @@ pub struct CacheConfig {
 impl Default for CacheConfig {
     fn default() -> Self {
         Self {
-            model_cache_mb: 4096,     // 4GB for models
-            tokenizer_cache_mb: 256,  // 256MB for tokenizers
-            kv_cache_limit_mb: 2048,  // 2GB for KV cache
+            model_cache_mb: 4096,    // 4GB for models
+            tokenizer_cache_mb: 256, // 256MB for tokenizers
+            kv_cache_limit_mb: 2048, // 2GB for KV cache
             aggressive_caching: false,
             eviction_policy: EvictionPolicy::LRU,
             warming_strategy: WarmingStrategy::Lazy,
@@ -366,27 +368,27 @@ impl CacheConfig {
     /// High-performance cache configuration
     pub fn high_performance() -> Self {
         Self {
-            model_cache_mb: 8192,     // 8GB
-            tokenizer_cache_mb: 512,  // 512MB
-            kv_cache_limit_mb: 4096,  // 4GB
+            model_cache_mb: 8192,    // 8GB
+            tokenizer_cache_mb: 512, // 512MB
+            kv_cache_limit_mb: 4096, // 4GB
             aggressive_caching: true,
             eviction_policy: EvictionPolicy::LFU,
             warming_strategy: WarmingStrategy::Eager,
         }
     }
-    
+
     /// Development cache configuration
     pub fn development() -> Self {
         Self {
-            model_cache_mb: 1024,     // 1GB
-            tokenizer_cache_mb: 128,  // 128MB
-            kv_cache_limit_mb: 512,   // 512MB
+            model_cache_mb: 1024,    // 1GB
+            tokenizer_cache_mb: 128, // 128MB
+            kv_cache_limit_mb: 512,  // 512MB
             aggressive_caching: false,
             eviction_policy: EvictionPolicy::LRU,
             warming_strategy: WarmingStrategy::Manual,
         }
     }
-    
+
     /// Validate cache configuration
     pub fn validate(&self) -> CandleResult<()> {
         if self.model_cache_mb == 0 {
@@ -396,7 +398,7 @@ impl CacheConfig {
                 "> 0",
             ));
         }
-        
+
         if self.kv_cache_limit_mb == 0 {
             return Err(CandleError::config(
                 "KV cache limit must be positive",
@@ -404,7 +406,7 @@ impl CacheConfig {
                 "> 0",
             ));
         }
-        
+
         Ok(())
     }
 }
@@ -475,7 +477,7 @@ impl ComputeConfig {
             precision: ComputePrecision::Mixed,
         }
     }
-    
+
     /// Debug compute configuration
     pub fn debug() -> Self {
         Self {
@@ -487,7 +489,7 @@ impl ComputeConfig {
             precision: ComputePrecision::FP32,
         }
     }
-    
+
     /// Validate compute configuration
     pub fn validate(&self) -> CandleResult<()> {
         // All configurations are valid - no constraints to check
@@ -561,7 +563,7 @@ impl MetricsConfig {
             real_time: false,
         }
     }
-    
+
     /// Verbose metrics for development
     pub fn verbose() -> Self {
         Self {
@@ -573,7 +575,7 @@ impl MetricsConfig {
             real_time: true,
         }
     }
-    
+
     /// Validate metrics configuration
     pub fn validate(&self) -> CandleResult<()> {
         if self.collection_interval.is_zero() {
@@ -583,7 +585,7 @@ impl MetricsConfig {
                 "> 0",
             ));
         }
-        
+
         if self.retention_period.is_zero() {
             return Err(CandleError::config(
                 "Retention period must be positive",
@@ -591,7 +593,7 @@ impl MetricsConfig {
                 "> 0",
             ));
         }
-        
+
         Ok(())
     }
 }
@@ -634,7 +636,7 @@ impl PerformanceSettings {
             adaptive_optimization: true,
         }
     }
-    
+
     /// Conservative performance settings
     pub fn conservative() -> Self {
         Self {
@@ -645,7 +647,7 @@ impl PerformanceSettings {
             adaptive_optimization: false,
         }
     }
-    
+
     /// Validate performance settings
     pub fn validate(&self) -> CandleResult<()> {
         if self.optimization_level > 3 {
@@ -655,7 +657,7 @@ impl PerformanceSettings {
                 "0 <= level <= 3",
             ));
         }
-        
+
         if self.profile_interval.is_zero() {
             return Err(CandleError::config(
                 "Profile interval must be positive",
@@ -663,7 +665,7 @@ impl PerformanceSettings {
                 "> 0",
             ));
         }
-        
+
         Ok(())
     }
 }
@@ -698,10 +700,10 @@ impl MetricsCollector {
                 real_time: false,
             }
         };
-        
+
         Self::with_config(config)
     }
-    
+
     /// Create new metrics collector with full configuration
     pub fn with_config(config: MetricsConfig) -> Self {
         Self {
@@ -712,64 +714,64 @@ impl MetricsCollector {
             last_collection: AtomicCell::new(Instant::now()),
         }
     }
-    
+
     /// Record inference operation
     pub fn record_inference(&self, duration: Duration, tokens_generated: u32) {
         if self.config.enable_performance {
-            self.performance_metrics.total_inferences.store(
-                self.performance_metrics.total_inferences.load() + 1
-            );
+            self.performance_metrics
+                .total_inferences
+                .store(self.performance_metrics.total_inferences.load() + 1);
             self.performance_metrics.total_inference_time.store(
-                self.performance_metrics.total_inference_time.load() + duration.as_nanos() as u64
+                self.performance_metrics.total_inference_time.load() + duration.as_nanos() as u64,
             );
             self.performance_metrics.total_tokens_generated.store(
-                self.performance_metrics.total_tokens_generated.load() + tokens_generated as u64
+                self.performance_metrics.total_tokens_generated.load() + tokens_generated as u64,
             );
         }
     }
-    
+
     /// Record memory usage
     pub fn record_memory_usage(&self, bytes_used: u64) {
         if self.config.enable_memory {
             self.memory_metrics.current_memory_usage.store(bytes_used);
-            
+
             let peak = self.memory_metrics.peak_memory_usage.load();
             if bytes_used > peak {
                 self.memory_metrics.peak_memory_usage.store(bytes_used);
             }
         }
     }
-    
+
     /// Record error occurrence
     pub fn record_error(&self, error_type: &str) {
         if self.config.enable_errors {
-            self.error_metrics.total_errors.store(
-                self.error_metrics.total_errors.load() + 1
-            );
+            self.error_metrics
+                .total_errors
+                .store(self.error_metrics.total_errors.load() + 1);
             // In a real implementation, we'd track error types in a HashMap
         }
     }
-    
+
     /// Get performance metrics
     pub fn performance_metrics(&self) -> PerformanceMetrics {
         self.performance_metrics.clone()
     }
-    
+
     /// Get memory metrics
     pub fn memory_metrics(&self) -> MemoryMetrics {
         self.memory_metrics.clone()
     }
-    
+
     /// Get error metrics
     pub fn error_metrics(&self) -> ErrorMetrics {
         self.error_metrics.clone()
     }
-    
+
     /// Check if metrics should be collected
     pub fn should_collect(&self) -> bool {
         let now = Instant::now();
         let last = self.last_collection.load();
-        
+
         if now.duration_since(last) >= self.config.collection_interval {
             self.last_collection.store(now);
             true
@@ -805,19 +807,19 @@ impl PerformanceMetrics {
     pub fn avg_inference_time(&self) -> Duration {
         let total_time = self.total_inference_time.load();
         let total_inferences = self.total_inferences.load();
-        
+
         if total_inferences > 0 {
             Duration::from_nanos(total_time / total_inferences)
         } else {
             Duration::ZERO
         }
     }
-    
+
     /// Calculate tokens per second
     pub fn tokens_per_second(&self) -> f64 {
         let total_time_secs = self.total_inference_time.load() as f64 / 1_000_000_000.0;
         let total_tokens = self.total_tokens_generated.load() as f64;
-        
+
         if total_time_secs > 0.0 {
             total_tokens / total_time_secs
         } else {
@@ -849,7 +851,7 @@ impl MemoryMetrics {
     pub fn current_usage_mb(&self) -> f64 {
         self.current_memory_usage.load() as f64 / (1024.0 * 1024.0)
     }
-    
+
     /// Get peak memory usage in MB
     pub fn peak_usage_mb(&self) -> f64 {
         self.peak_memory_usage.load() as f64 / (1024.0 * 1024.0)
@@ -886,7 +888,7 @@ mod tests {
     fn test_global_config_creation() {
         let config = CandleGlobalConfig::default();
         assert!(config.validate().is_ok());
-        
+
         let prod_config = CandleGlobalConfig::production();
         assert!(prod_config.validate().is_ok());
     }
@@ -901,18 +903,18 @@ mod tests {
     #[test]
     fn test_metrics_collector() {
         let collector = MetricsCollector::new(true);
-        
+
         collector.record_inference(Duration::from_millis(100), 50);
         collector.record_memory_usage(1024 * 1024 * 1024); // 1GB
         collector.record_error("test_error");
-        
+
         let perf_metrics = collector.performance_metrics();
         assert_eq!(perf_metrics.total_inferences.load(), 1);
         assert_eq!(perf_metrics.total_tokens_generated.load(), 50);
-        
+
         let mem_metrics = collector.memory_metrics();
         assert_eq!(mem_metrics.current_usage_mb(), 1024.0);
-        
+
         let error_metrics = collector.error_metrics();
         assert_eq!(error_metrics.total_errors(), 1);
     }
@@ -921,7 +923,7 @@ mod tests {
     fn test_cache_config() {
         let config = CacheConfig::default();
         assert!(config.validate().is_ok());
-        
+
         let hp_config = CacheConfig::high_performance();
         assert!(hp_config.validate().is_ok());
         assert!(hp_config.aggressive_caching);

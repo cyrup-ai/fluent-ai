@@ -1,9 +1,8 @@
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::embeddings::{self, EmbeddingError};
-
 use super::client::{ApiResponse, Client, Usage};
+use crate::embeddings::{self, EmbeddingError};
 
 // ================================================================
 // Mistral Embedding API
@@ -46,12 +45,22 @@ impl embeddings::EmbeddingModel for EmbeddingModel {
             "model": self.model,
             "input": documents,
         }))
-        .map_err(|e| EmbeddingError::ProviderError(format!("Failed to serialize request: {}", e)))?;
+        .map_err(|e| {
+            EmbeddingError::ProviderError(format!("Failed to serialize request: {}", e))
+        })?;
 
-        let http_request = self.client.post("v1/embeddings", request_body)
-            .map_err(|e| EmbeddingError::ProviderError(format!("Failed to create request: {}", e)))?;
+        let http_request = self
+            .client
+            .post("v1/embeddings", request_body)
+            .map_err(|e| {
+                EmbeddingError::ProviderError(format!("Failed to create request: {}", e))
+            })?;
 
-        let response = self.client.http_client.send(http_request).await
+        let response = self
+            .client
+            .http_client
+            .send(http_request)
+            .await
             .map_err(|e| EmbeddingError::ProviderError(format!("Request failed: {}", e)))?;
 
         if response.status().is_success() {

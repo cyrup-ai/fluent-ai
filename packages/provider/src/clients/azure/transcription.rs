@@ -6,15 +6,16 @@
 
 #![allow(clippy::type_complexity)]
 
+use reqwest::multipart::Part;
+
 use super::client::Client;
 use crate::{
     clients::openai::TranscriptionResponse,
     runtime::{self as rt, AsyncTask},
     transcription::{self, TranscriptionError},
 };
-use reqwest::multipart::Part;
 
-/* ───────────────────────────── error handling ─────────────────────── */
+// ───────────────────────────── error handling ───────────────────────
 
 #[derive(Debug, serde::Deserialize)]
 struct ApiErrorResponse {
@@ -28,7 +29,7 @@ enum ApiResponse<T> {
     Err(ApiErrorResponse),
 }
 
-/* ───────────────────────────── provider model ──────────────────────────── */
+// ───────────────────────────── provider model ────────────────────────────
 
 #[derive(Clone)]
 pub struct TranscriptionModel {
@@ -45,7 +46,7 @@ impl TranscriptionModel {
     }
 }
 
-/* ───────────────────────────── impl TranscriptionModel ───────────────────── */
+// ───────────────────────────── impl TranscriptionModel ─────────────────────
 
 impl transcription::TranscriptionModel for TranscriptionModel {
     type Response = TranscriptionResponse;
@@ -64,7 +65,7 @@ impl transcription::TranscriptionModel for TranscriptionModel {
     }
 }
 
-/* ───────────────────────────── internal async helpers ─────────────────── */
+// ───────────────────────────── internal async helpers ───────────────────
 
 impl TranscriptionModel {
     async fn perform_transcription(

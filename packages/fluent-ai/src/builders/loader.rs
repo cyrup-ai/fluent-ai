@@ -2,10 +2,11 @@
 //!
 //! All loader construction logic and builder patterns.
 
-use fluent_ai_domain::{AsyncTask, spawn_async, ZeroOneOrMany};
-use fluent_ai_domain::loader::{Loader, LoaderImpl};
 use std::fmt;
 use std::path::PathBuf;
+
+use fluent_ai_domain::loader::{Loader, LoaderImpl};
+use fluent_ai_domain::{AsyncTask, ZeroOneOrMany, spawn_async};
 
 /// Builder for creating Loader instances
 pub struct LoaderBuilder<T: Send + Sync + fmt::Debug + Clone + 'static> {
@@ -41,9 +42,7 @@ impl LoaderImpl<PathBuf> {
     }
 }
 
-impl<T: Send + Sync + fmt::Debug + Clone + 'static>
-    LoaderBuilder<T>
-{
+impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilder<T> {
     pub fn recursive(mut self, recursive: bool) -> Self {
         self.recursive = recursive;
         self
@@ -114,11 +113,12 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static>
     }
 }
 
-impl<T: Send + Sync + fmt::Debug + Clone + 'static>
-    LoaderBuilderWithHandler<T>
-{
+impl<T: Send + Sync + fmt::Debug + Clone + 'static> LoaderBuilderWithHandler<T> {
     // Terminal method - returns impl Loader
-    pub fn build(self) -> impl Loader<T> where LoaderImpl<T>: Loader<T> {
+    pub fn build(self) -> impl Loader<T>
+    where
+        LoaderImpl<T>: Loader<T>,
+    {
         LoaderImpl {
             pattern: self.pattern,
             recursive: self.recursive,
@@ -126,30 +126,28 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static>
             filter_fn: None,
         }
     }
-    
+
     // Terminal method - async build
-    pub fn build_async(self) -> AsyncTask<impl Loader<T>> 
-    where 
+    pub fn build_async(self) -> AsyncTask<impl Loader<T>>
+    where
         LoaderImpl<T>: Loader<T> + fluent_ai_domain::async_task::NotResult,
     {
-        spawn_async(async move {
-            self.build()
-        })
+        spawn_async(async move { self.build() })
     }
-    
+
     // Terminal method - load files immediately
-    pub fn load_files(self) -> AsyncTask<ZeroOneOrMany<T>> 
-    where 
+    pub fn load_files(self) -> AsyncTask<ZeroOneOrMany<T>>
+    where
         LoaderImpl<T>: Loader<T>,
         T: fluent_ai_domain::async_task::NotResult,
     {
         let loader = self.build();
         loader.load_all()
     }
-    
-    // Terminal method - stream files immediately  
-    pub fn stream(self) -> fluent_ai_domain::async_task::AsyncStream<T> 
-    where 
+
+    // Terminal method - stream files immediately
+    pub fn stream(self) -> fluent_ai_domain::async_task::AsyncStream<T>
+    where
         LoaderImpl<T>: Loader<T>,
         T: fluent_ai_domain::async_task::NotResult,
     {
@@ -158,8 +156,8 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static>
     }
 
     // Legacy terminal methods for backward compatibility
-    pub fn load(self) -> AsyncTask<ZeroOneOrMany<T>> 
-    where 
+    pub fn load(self) -> AsyncTask<ZeroOneOrMany<T>>
+    where
         LoaderImpl<T>: Loader<T>,
         T: fluent_ai_domain::async_task::NotResult,
     {
@@ -190,7 +188,7 @@ impl<T: Send + Sync + fmt::Debug + Clone + 'static>
                 Err(_) => return, // Handle JoinError
             };
             match items {
-                ZeroOneOrMany::None => {},
+                ZeroOneOrMany::None => {}
                 ZeroOneOrMany::One(item) => handler(&item),
                 ZeroOneOrMany::Many(items) => {
                     for item in &items {

@@ -8,24 +8,25 @@
 //!
 //! All operations use static dispatch and avoid heap allocations wherever possible.
 
-use serde::de::{self, Deserializer, SeqAccess, Visitor};
-use serde::{Deserialize, Serializer};
 use std::convert::Infallible;
 use std::fmt;
 use std::marker::PhantomData;
 use std::str::FromStr;
+
+use serde::de::{self, Deserializer, SeqAccess, Visitor};
+use serde::{Deserialize, Serializer};
 
 // ============================================================================
 // Zero-allocation JSON merging operations
 // ============================================================================
 
 /// Merge two `serde_json::Value` objects by value with zero allocations on hot path
-/// 
+///
 /// Performance characteristics:
 /// • Zero allocation when `b` is empty or non-object
 /// • In-place key insertion for object merging
 /// • No intermediate copies or clones
-/// 
+///
 /// # Examples
 /// ```rust
 /// use serde_json::json;
@@ -56,12 +57,12 @@ pub fn merge(mut a: serde_json::Value, b: serde_json::Value) -> serde_json::Valu
 }
 
 /// Mutate `a` in-place by union-inserting all keys from `b` (zero allocation)
-/// 
+///
 /// Performance characteristics:
 /// • True zero allocation - only modifies existing objects
 /// • Inlined for compiler optimization
 /// • Lock-free operation
-/// 
+///
 /// # Examples
 /// ```rust
 /// use serde_json::json;
@@ -85,12 +86,12 @@ pub fn merge_inplace(a: &mut serde_json::Value, b: serde_json::Value) {
 // ============================================================================
 
 /// Serde adapter for values serialized as escaped JSON strings
-/// 
+///
 /// Many APIs serialize JSON objects as strings (e.g., `"{\"key\":\"value\"}"`)
 /// This adapter handles this pattern with zero allocation during serialization.
-/// 
+///
 /// Use with: `#[serde(with = "stringified_json")]`
-/// 
+///
 /// Performance: Inlined serialization, minimal string allocation only when necessary
 pub mod stringified_json {
     use super::*;
@@ -123,17 +124,17 @@ pub mod stringified_json {
 // ============================================================================
 
 /// Zero-allocation deserializer: string ∪ array ∪ null → Vec<T>
-/// 
+///
 /// Accepts multiple JSON input formats and normalizes to Vec<T>:
 /// • String: `"value"` → `vec![T::from_str("value")]`
 /// • Array: `[item1, item2]` → `vec![item1, item2]`
 /// • Null/Unit: `null` → `vec![]`
-/// 
+///
 /// Performance characteristics:
 /// • Static dispatch via visitor pattern
 /// • Zero allocation visitor (zero-sized type)
 /// • Inlined for maximum speed
-/// 
+///
 /// # Examples
 /// ```rust
 /// #[derive(Deserialize)]
@@ -209,16 +210,16 @@ where
 }
 
 /// Zero-allocation deserializer: array ∪ null → Vec<T>
-/// 
+///
 /// Similar to `string_or_vec` but only accepts arrays and null:
 /// • Array: `[item1, item2]` → `vec![item1, item2]`
 /// • Null/Unit: `null` → `vec![]`
-/// 
+///
 /// Performance characteristics:
 /// • Static dispatch via visitor pattern
 /// • Zero allocation visitor (zero-sized type)
 /// • Inlined for maximum speed
-/// 
+///
 /// # Examples
 /// ```rust
 /// #[derive(Deserialize)]
@@ -302,7 +303,9 @@ pub fn ensure_object_and_merge(target: &mut serde_json::Value, source: serde_jso
 /// Performance: Zero allocation if already an object
 #[inline(always)]
 #[allow(dead_code)] // TODO: Use in provider implementations
-pub fn ensure_object_map(value: &mut serde_json::Value) -> Option<&mut serde_json::Map<String, serde_json::Value>> {
+pub fn ensure_object_map(
+    value: &mut serde_json::Value,
+) -> Option<&mut serde_json::Map<String, serde_json::Value>> {
     if !value.is_object() {
         *value = serde_json::Value::Object(serde_json::Map::new());
     }
@@ -330,11 +333,11 @@ where
         Some(value) => value,
         None => serde_json::Value::Object(serde_json::Map::new()),
     };
-    
+
     for value in iter {
         result = merge(result, value);
     }
-    
+
     result
 }
 
@@ -372,8 +375,9 @@ pub fn to_pretty_string(value: &serde_json::Value) -> Result<String, serde_json:
 // ============================================================================
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde::{Deserialize, Serialize};
+
+    use super::*;
 
     #[derive(Serialize, Deserialize, Debug, PartialEq)]
     struct Dummy {
@@ -448,7 +452,7 @@ mod tests {
     fn test_ensure_object_and_merge() {
         let mut target = serde_json::json!("not an object");
         let source = serde_json::json!({"key": "value"});
-        
+
         ensure_object_and_merge(&mut target, source);
         assert_eq!(target, serde_json::json!({"key": "value"}));
     }
@@ -471,7 +475,7 @@ mod tests {
             serde_json::json!({"b": 2}),
             serde_json::json!({"c": 3}),
         ];
-        
+
         let result = merge_multiple(values);
         assert_eq!(result, serde_json::json!({"a": 1, "b": 2, "c": 3}));
     }

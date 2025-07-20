@@ -7,22 +7,24 @@
 use futures::StreamExt;
 use serde_json::Value;
 
-use crate::{
-    completion::CompletionError,
-    http::{HttpClient, HttpRequest},
-    clients::openai::{CompletionResponse, StreamingChoice, StreamingMessage},
-    runtime::{self, AsyncStream},
-};
-
 // Re-export OpenAI streaming response type since Groq uses the same format
 pub use crate::clients::openai::StreamingCompletionResponse;
+use crate::{
+    clients::openai::{CompletionResponse, StreamingChoice, StreamingMessage},
+    completion::CompletionError,
+    http::{HttpClient, HttpRequest},
+    runtime::{self, AsyncStream},
+};
 
 /// Send a streaming request to Groq and return an AsyncStream
 pub fn send_groq_streaming_request(
     client: HttpClient,
     request: HttpRequest,
 ) -> crate::runtime::AsyncTask<
-    Result<crate::streaming::StreamingCompletionResponse<StreamingCompletionResponse>, CompletionError>,
+    Result<
+        crate::streaming::StreamingCompletionResponse<StreamingCompletionResponse>,
+        CompletionError,
+    >,
 > {
     crate::runtime::spawn_async(async move {
         // Create the AsyncStream channel
@@ -34,14 +36,16 @@ pub fn send_groq_streaming_request(
             let response = match client.send(request).await {
                 Ok(response) => response,
                 Err(e) => {
-                    let _ = tx.try_send(Err(CompletionError::RequestError(e.to_string())));
+                    let _ = tx.try_send(Err(CompletionError::InvalidRequest(e.to_string())));
                     return;
                 }
             };
 
             if !response.status().is_success() {
                 let error_body = String::from_utf8_lossy(response.body());
-                let _ = tx.try_send(Err(CompletionError::ProviderError(error_body.to_string())));
+                let _ = tx.try_send(Err(CompletionError::ProviderUnavailable(
+                    error_body.to_string(),
+                )));
                 return;
             }
 
@@ -66,22 +70,23 @@ pub fn send_groq_streaming_request(
                                 }
                                 Err(e) => {
                                     tracing::error!(target: "rig", "Failed to parse Groq streaming response: {}", e);
-                                    let _ = tx.try_send(Err(CompletionError::DeserializationError(
-                                        e.to_string(),
-                                    )));
+                                    let _ =
+                                        tx.try_send(Err(CompletionError::Internal(e.to_string())));
                                 }
                             }
                         }
                     }
                     Err(e) => {
                         tracing::error!(target: "rig", "Groq streaming error: {}", e);
-                        let _ = tx.try_send(Err(CompletionError::RequestError(e.to_string())));
+                        let _ = tx.try_send(Err(CompletionError::InvalidRequest(e.to_string())));
                         break;
                     }
                 }
             }
         });
 
-        Ok(crate::streaming::StreamingCompletionResponse::new(Box::pin(stream)))
+        Ok(crate::streaming::StreamingCompletionResponse::new(
+            Box::pin(stream),
+        ))
     })
 }

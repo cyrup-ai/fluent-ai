@@ -4,17 +4,14 @@
 //! The core domain types are now defined in the domain package.
 
 // Re-export domain types for backward compatibility
-pub use fluent_ai_domain::{
-    model_info::ModelInfoData,
-    models::Models,
-};
+pub use fluent_ai_domain::{model_info::ModelInfoData, models::Models};
 
 // Provider client implementations
 pub mod clients;
 
 // Re-export Candle client for convenience
 #[cfg(feature = "candle")]
-pub use clients::candle::{CandleCompletionClient, CandleProvider, CandleModel};
+pub use clients::candle::{CandleCompletionClient, CandleModel, CandleProvider};
 
 // Client factory for provider-to-client mapping
 pub mod client_factory;
@@ -31,13 +28,12 @@ pub mod completion_provider;
 // Re-export client traits for provider implementations
 pub use client::*;
 pub use completion_provider::*;
-pub use providers::Providers;
-
+pub use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
 // Re-export fluent-ai types for provider implementations
 pub use fluent_ai_domain as domain;
 pub use fluent_ai_domain::AsyncTask;
 pub use fluent_ai_domain::spawn_async;
-pub use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
+pub use providers::Providers;
 
 // Create our own AsyncStream type for provider compatibility
 pub type AsyncStream<T> = tokio_stream::wrappers::UnboundedReceiverStream<T>;

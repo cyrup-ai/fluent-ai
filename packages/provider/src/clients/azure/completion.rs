@@ -6,24 +6,24 @@
 
 #![allow(clippy::type_complexity)]
 
+use std::{convert::Infallible, str::FromStr};
+
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+
 use super::client::Client;
 use crate::{
-    completion::{
-        self, CompletionError, StreamingCompletionResponse as RigStreaming,
-    },
+    OneOrMany,
+    clients::openai::{self, TranscriptionResponse, send_compatible_streaming_request},
     completion::CompletionRequest,
+    completion::{self, CompletionError, StreamingCompletionResponse as RigStreaming},
     json_util::{self, merge},
     message::{self, MessageError},
-    OneOrMany,
-    clients::openai::{self, send_compatible_streaming_request, TranscriptionResponse},
     runtime::{self as rt, AsyncTask},
     streaming::StreamingCompletionResponse,
 };
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::{convert::Infallible, str::FromStr};
 
-/* ───────────────────────────── public constants ────────────────────────── */
+// ───────────────────────────── public constants ──────────────────────────
 
 /// `o1` completion model
 pub const O1: &str = "o1";
@@ -52,7 +52,7 @@ pub const GPT_35_TURBO_INSTRUCT: &str = "gpt-3.5-turbo-instruct";
 /// `gpt-3.5-turbo-16k` completion model
 pub const GPT_35_TURBO_16K: &str = "gpt-3.5-turbo-16k";
 
-/* ───────────────────────────── response helpers ─────────────────────── */
+// ───────────────────────────── response helpers ───────────────────────
 
 #[derive(Debug, Deserialize)]
 struct ApiErrorResponse {
@@ -66,7 +66,7 @@ enum ApiResponse<T> {
     Err(ApiErrorResponse),
 }
 
-/* ───────────────────────────── provider model ──────────────────────────── */
+// ───────────────────────────── provider model ────────────────────────────
 
 pub use crate::Models as CompletionModel;
 
@@ -80,7 +80,7 @@ impl CompletionModel {
     }
 }
 
-/* ───────────────────────────── impl CompletionModel ───────────────────── */
+// ───────────────────────────── impl CompletionModel ─────────────────────
 
 impl completion::CompletionModel for CompletionModel {
     type Response = openai::CompletionResponse;
@@ -103,10 +103,10 @@ impl completion::CompletionModel for CompletionModel {
     }
 }
 
-/* ───────────────────────────── internal async helpers ─────────────────── */
+// ───────────────────────────── internal async helpers ───────────────────
 
 impl CompletionModel {
-    /* Actual POST call – lifted into an internal method so the public trait stays sync. */
+    // Actual POST call – lifted into an internal method so the public trait stays sync.
     async fn perform_completion(
         self,
         completion_request: CompletionRequest,
@@ -139,7 +139,7 @@ impl CompletionModel {
         }
     }
 
-    /* streaming variant – re-uses OpenAI compatibility layer */
+    // streaming variant – re-uses OpenAI compatibility layer
     async fn perform_stream(
         self,
         completion_request: CompletionRequest,
@@ -159,7 +159,7 @@ impl CompletionModel {
         send_compatible_streaming_request(builder).await
     }
 
-    /* helper: create the outbound JSON without sending – reused by both paths */
+    // helper: create the outbound JSON without sending – reused by both paths
     fn create_completion_request(
         &self,
         completion_request: CompletionRequest,

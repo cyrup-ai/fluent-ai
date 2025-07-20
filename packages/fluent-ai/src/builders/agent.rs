@@ -2,13 +2,13 @@
 //!
 //! All agent construction logic and builder patterns.
 
-use fluent_ai_domain::{Models, Document, Memory, Message, MessageRole, ZeroOneOrMany, ByteSize};
-use fluent_ai_domain::{AsyncTask, spawn_async, AsyncStream};
-use fluent_ai_domain::mcp_tool::McpToolData;
+use fluent_ai_domain::agent::Agent;
 use fluent_ai_domain::chunk::{ChatMessageChunk, CompletionChunk};
 use fluent_ai_domain::completion::CompletionRequest;
 use fluent_ai_domain::conversation::Conversation;
-use fluent_ai_domain::agent::Agent;
+use fluent_ai_domain::mcp_tool::McpToolData;
+use fluent_ai_domain::{AsyncStream, AsyncTask, spawn_async};
+use fluent_ai_domain::{ByteSize, Document, Memory, Message, MessageRole, Models, ZeroOneOrMany};
 use serde_json::Value;
 
 pub struct AgentBuilder {
@@ -114,7 +114,9 @@ impl AgentBuilderWithHandler {
         Agent {
             model: self.model,
             system_prompt: self.system_prompt,
-            context: self.context.unwrap_or_else(|| ZeroOneOrMany::one(Document::from_text("").load())),
+            context: self
+                .context
+                .unwrap_or_else(|| ZeroOneOrMany::one(Document::from_text("").load())),
             tools: self.tools,
             memory: self.memory,
             temperature: self.temperature,
@@ -123,9 +125,12 @@ impl AgentBuilderWithHandler {
         }
     }
 
-    pub fn chat_message(self, message: impl Into<String>) -> impl AsyncStream<Item = ChatMessageChunk> {
+    pub fn chat_message(
+        self,
+        message: impl Into<String>,
+    ) -> impl AsyncStream<Item = ChatMessageChunk> {
         let message = message.into();
-        
+
         // Create channel for streaming chunks
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -134,20 +139,21 @@ impl AgentBuilderWithHandler {
             let user_chunk = ChatMessageChunk::new(message.clone(), MessageRole::User);
             let _ = tx.send(user_chunk);
 
-            let response_chunk = ChatMessageChunk::new(
-                format!("Echo: {}", message),
-                MessageRole::Assistant,
-            );
+            let response_chunk =
+                ChatMessageChunk::new(format!("Echo: {}", message), MessageRole::Assistant);
             let _ = tx.send(response_chunk);
         });
 
         fluent_ai_domain::async_task::AsyncStream::new(rx)
     }
 
-    pub fn stream_completion(self, prompt: impl Into<String>) -> impl AsyncStream<Item = CompletionChunk> {
+    pub fn stream_completion(
+        self,
+        prompt: impl Into<String>,
+    ) -> impl AsyncStream<Item = CompletionChunk> {
         let _agent = self.agent();
         let _prompt = prompt.into();
-        
+
         // Create empty stream for now
         let (_tx, rx) = tokio::sync::mpsc::unbounded_channel();
         fluent_ai_domain::async_task::AsyncStream::new(rx)

@@ -77,9 +77,9 @@ pub struct PdfFileLoader<'a, T> {
     iterator: Box<dyn Iterator<Item = T> + 'a>,
 }
 
-/* -------------------------------------------------------------------------
- * Constructor helpers – glob / dir.
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Constructor helpers – glob / dir.
+// ----------------------------------------------------------------------
 impl PdfFileLoader<'_, Result<PathBuf, FileLoaderError>> {
     /// Build a loader from a glob pattern (`**/*.pdf` etc.).
     pub fn with_glob(
@@ -107,9 +107,9 @@ impl PdfFileLoader<'_, Result<PathBuf, FileLoaderError>> {
     }
 }
 
-/* -------------------------------------------------------------------------
- * Stage 1 – turn *paths* into `lopdf::Document` (raw PDFs).
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Stage 1 – turn *paths* into `lopdf::Document` (raw PDFs).
+// ----------------------------------------------------------------------
 impl<'a> PdfFileLoader<'a, Result<PathBuf, PdfLoaderError>> {
     #[inline(always)]
     pub fn load(self) -> PdfFileLoader<'a, Result<Document, PdfLoaderError>> {
@@ -126,9 +126,9 @@ impl<'a> PdfFileLoader<'a, Result<PathBuf, PdfLoaderError>> {
     }
 }
 
-/* -------------------------------------------------------------------------
- * Stage 2 – extract full-document strings.
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Stage 2 – extract full-document strings.
+// ----------------------------------------------------------------------
 impl<'a> PdfFileLoader<'a, Result<PathBuf, PdfLoaderError>> {
     pub fn read(self) -> PdfFileLoader<'a, Result<String, PdfLoaderError>> {
         PdfFileLoader {
@@ -149,9 +149,9 @@ impl<'a> PdfFileLoader<'a, Result<PathBuf, PdfLoaderError>> {
     }
 }
 
-/* -------------------------------------------------------------------------
- * Stage 3 – page chunking.
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Stage 3 – page chunking.
+// ----------------------------------------------------------------------
 impl<'a> PdfFileLoader<'a, Document> {
     #[inline(always)]
     pub fn by_page(self) -> PdfFileLoader<'a, Result<String, PdfLoaderError>> {
@@ -180,9 +180,9 @@ impl<'a> PdfFileLoader<'a, (PathBuf, Document)> {
     }
 }
 
-/* -------------------------------------------------------------------------
- * Error-ignoring helpers – available at any stage where `Item = Result<…>`.
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Error-ignoring helpers – available at any stage where `Item = Result<…>`.
+// ----------------------------------------------------------------------
 impl<'a, T> PdfFileLoader<'a, Result<T, PdfLoaderError>> {
     #[inline(always)]
     pub fn ignore_errors(self) -> PdfFileLoader<'a, T> {
@@ -209,9 +209,9 @@ impl<'a> PdfFileLoader<'a, ByPage> {
     }
 }
 
-/* -------------------------------------------------------------------------
- * Iterator plumbing – zero-cost abstraction.
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Iterator plumbing – zero-cost abstraction.
+// ----------------------------------------------------------------------
 pub struct LoaderIter<'a, T> {
     inner: Box<dyn Iterator<Item = T> + 'a>,
 }
@@ -235,9 +235,9 @@ impl<T> Iterator for LoaderIter<'_, T> {
     }
 }
 
-/* -------------------------------------------------------------------------
- * 3. Private helpers
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// 3. Private helpers
+// ----------------------------------------------------------------------
 #[inline]
 fn extract_all_pages(doc: &Document) -> Result<String, PdfLoaderError> {
     (0..doc.get_pages().len())

@@ -22,9 +22,10 @@
 //! ```
 #![allow(clippy::type_complexity)]
 
+use serde::{Deserialize, Serialize};
+
 use super::*;
 use crate::OneOrMany;
-use serde::{Deserialize, Serialize};
 
 // Core message types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

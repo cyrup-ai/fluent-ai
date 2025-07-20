@@ -3,20 +3,19 @@
 //! Provides real-time streaming with tool calling, proper SSE handling,
 //! and efficient chunk processing with minimal memory allocation using HTTP3 client.
 
-use crate::runtime::AsyncStream;
-use crate::domain::chunk::CompletionChunk;
-use super::{
-    AnthropicResult, AnthropicCompletionRequest,
-    handle_json_error,
-};
-use super::messages::ContentBlock;
-use futures_util::{Stream, StreamExt};
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
+use futures_util::{Stream, StreamExt};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio::sync::mpsc;
+
+use super::messages::ContentBlock;
+use super::{AnthropicCompletionRequest, AnthropicResult, handle_json_error};
+use crate::domain::chunk::CompletionChunk;
+use crate::runtime::AsyncStream;
 
 /// Streaming completion chunk from Anthropic API
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,12 +73,8 @@ pub struct StreamingMessage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ContentDelta {
-    TextDelta {
-        text: String,
-    },
-    InputJsonDelta {
-        partial_json: String,
-    },
+    TextDelta { text: String },
+    InputJsonDelta { partial_json: String },
 }
 
 /// Message delta for completion updates
@@ -119,7 +114,7 @@ pub struct AnthropicStreamChunk {
 }
 
 /// High-performance zero-allocation streaming implementation for Anthropic
-/// 
+///
 /// This implementation uses HTTP3 client with streaming-first design for optimal performance
 /// with no unsafe code, no unchecked operations, and no locking.
 pub struct AnthropicStreamingProcessor {
@@ -132,10 +127,12 @@ impl AnthropicStreamingProcessor {
     /// Create a new streaming processor with HTTP3 client
     #[inline(always)]
     pub fn new() -> AnthropicResult<Self> {
-        let client = HttpClient::with_config(HttpConfig::streaming_optimized())
-            .map_err(|e| crate::providers::anthropic::AnthropicError::RequestError(
-                format!("Failed to create HTTP3 client: {}", e)
-            ))?;
+        let client = HttpClient::with_config(HttpConfig::streaming_optimized()).map_err(|e| {
+            crate::providers::anthropic::AnthropicError::RequestError(format!(
+                "Failed to create HTTP3 client: {}",
+                e
+            ))
+        })?;
 
         Ok(Self {
             client,
@@ -150,14 +147,16 @@ impl AnthropicStreamingProcessor {
         &self,
         http3_request: Http3Request,
     ) -> crate::runtime::AsyncTask<
-        Result<AsyncStream<Result<AnthropicStreamChunk, crate::providers::anthropic::AnthropicError>>, 
-               crate::providers::anthropic::AnthropicError>,
+        Result<
+            AsyncStream<Result<AnthropicStreamChunk, crate::providers::anthropic::AnthropicError>>,
+            crate::providers::anthropic::AnthropicError,
+        >,
     > {
         let client = self.client.clone();
 
         crate::runtime::spawn_async(async move {
             let (tx, stream) = crate::runtime::async_stream::<
-                Result<AnthropicStreamChunk, crate::providers::anthropic::AnthropicError>
+                Result<AnthropicStreamChunk, crate::providers::anthropic::AnthropicError>,
             >(512);
 
             // Spawn the streaming task with zero-allocation patterns
@@ -166,9 +165,11 @@ impl AnthropicStreamingProcessor {
                 let stream_response = match client.send_stream(http3_request).await {
                     Ok(stream) => stream,
                     Err(e) => {
-                        let _ = tx.try_send(Err(crate::providers::anthropic::AnthropicError::RequestError(
-                            e.to_string()
-                        )));
+                        let _ = tx.try_send(Err(
+                            crate::providers::anthropic::AnthropicError::RequestError(
+                                e.to_string(),
+                            ),
+                        ));
                         return Ok::<(), crate::providers::anthropic::AnthropicError>(());
                     }
                 };
@@ -177,12 +178,12 @@ impl AnthropicStreamingProcessor {
                 let mut sse_stream = stream_response.sse();
                 let mut content_accumulator = String::with_capacity(4096);
                 let mut current_usage = None;
-                
+
                 while let Some(event) = sse_stream.next().await {
                     match event {
                         Ok(sse_event) => {
                             let data = sse_event.data_string();
-                            
+
                             // Skip empty events
                             if data.trim().is_empty() {
                                 continue;
@@ -201,9 +202,9 @@ impl AnthropicStreamingProcessor {
 
                             // Process the chunk based on its type
                             let processed_chunk = match process_anthropic_chunk(
-                                &chunk, 
-                                &mut content_accumulator, 
-                                &mut current_usage
+                                &chunk,
+                                &mut content_accumulator,
+                                &mut current_usage,
                             ) {
                                 Ok(Some(chunk)) => chunk,
                                 Ok(None) => continue, // Skip internal chunks
@@ -221,9 +222,11 @@ impl AnthropicStreamingProcessor {
                         }
                         Err(e) => {
                             tracing::error!(target: "rig", "Anthropic streaming error: {}", e);
-                            let _ = tx.try_send(Err(crate::providers::anthropic::AnthropicError::RequestError(
-                                e.to_string()
-                            )));
+                            let _ = tx.try_send(Err(
+                                crate::providers::anthropic::AnthropicError::RequestError(
+                                    e.to_string(),
+                                ),
+                            ));
                             break;
                         }
                     }
@@ -243,7 +246,7 @@ impl Default for AnthropicStreamingProcessor {
             // Fallback to default configuration if streaming optimization fails
             let client = HttpClient::with_config(HttpConfig::ai_optimized())
                 .unwrap_or_else(|_| HttpClient::default());
-            
+
             Self {
                 client,
                 accumulator: String::with_capacity(4096),
@@ -254,7 +257,7 @@ impl Default for AnthropicStreamingProcessor {
 }
 
 /// Process an Anthropic streaming chunk with zero-allocation patterns
-/// 
+///
 /// This function handles the different types of Anthropic streaming chunks
 /// and accumulates content efficiently without unnecessary allocations.
 #[inline(always)]
@@ -316,7 +319,7 @@ fn process_anthropic_chunk(
             if let Some(new_usage) = usage {
                 *current_usage = Some(new_usage.clone());
             }
-            
+
             // Check for stop reason
             if let Some(stop_reason) = &delta.stop_reason {
                 Ok(Some(AnthropicStreamChunk {

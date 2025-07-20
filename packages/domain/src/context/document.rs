@@ -1,3 +1,8 @@
+//! Document Types and Loading
+//!
+//! This module provides document types, content formats, and basic document loading
+//! functionality. Originally from document.rs.
+
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};

@@ -1,9 +1,10 @@
 //! MCP client builder implementation moved from domain
 //! Builders are behavioral/construction logic, separate from core domain models
 
-use fluent_ai_domain::{McpClient, Transport, Tool, Client, AsyncTask, spawn_async, McpError};
-use serde_json::Value;
 use std::sync::Arc;
+
+use fluent_ai_domain::{AsyncTask, Client, McpClient, McpError, Tool, Transport, spawn_async};
+use serde_json::Value;
 
 pub struct McpClientBuilder<T: Transport> {
     client: Arc<Client<T>>,
@@ -72,15 +73,9 @@ impl<T: Transport> McpClientBuilder<T> {
                 Err(McpError::ExecutionFailed(msg)) => {
                     Value::String(format!("Execution failed: {}", msg))
                 }
-                Err(McpError::Transport(msg)) => {
-                    Value::String(format!("Transport error: {}", msg))
-                }
-                Err(McpError::Protocol(msg)) => {
-                    Value::String(format!("Protocol error: {}", msg))
-                }
-                Err(McpError::Timeout) => {
-                    Value::String("Request timeout".to_string())
-                }
+                Err(McpError::Transport(msg)) => Value::String(format!("Transport error: {}", msg)),
+                Err(McpError::Protocol(msg)) => Value::String(format!("Protocol error: {}", msg)),
+                Err(McpError::Timeout) => Value::String("Request timeout".to_string()),
                 Err(McpError::InvalidResponse) => {
                     Value::String("Invalid response from server".to_string())
                 }
@@ -90,12 +85,8 @@ impl<T: Transport> McpClientBuilder<T> {
                 Err(McpError::Authentication(msg)) => {
                     Value::String(format!("Authentication failed: {}", msg))
                 }
-                Err(McpError::ResourceNotFound) => {
-                    Value::String("Resource not found".to_string())
-                }
-                Err(McpError::Internal(msg)) => {
-                    Value::String(format!("Internal error: {}", msg))
-                }
+                Err(McpError::ResourceNotFound) => Value::String("Resource not found".to_string()),
+                Err(McpError::Internal(msg)) => Value::String(format!("Internal error: {}", msg)),
             }
         })
     }

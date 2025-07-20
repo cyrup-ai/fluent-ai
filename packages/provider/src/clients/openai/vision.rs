@@ -3,11 +3,13 @@
 //! Provides comprehensive support for OpenAI's vision models (GPT-4O, GPT-4V)
 //! with optimal performance patterns and full multimodal capabilities.
 
-use super::{OpenAIError, OpenAIResult};
+use std::collections::HashMap;
+
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
-use base64::Engine;
+
+use super::{OpenAIError, OpenAIResult};
 
 /// Image detail levels for vision models
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -42,37 +44,41 @@ impl ImageFormat {
             Self::GIF => Ok(image::ImageFormat::Gif),
         }
     }
-    
+
     /// Detect image format from raw bytes using magic numbers
     #[inline(always)]
     pub fn from_bytes(data: &[u8]) -> Result<Self, OpenAIError> {
         if data.len() < 4 {
-            return Err(OpenAIError::VisionError("Insufficient data to determine image format".to_string()));
+            return Err(OpenAIError::VisionError(
+                "Insufficient data to determine image format".to_string(),
+            ));
         }
-        
+
         // PNG: starts with 89 50 4E 47 (PNG signature)
         if data.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
             return Ok(Self::PNG);
         }
-        
+
         // JPEG: starts with FF D8 FF
         if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
             return Ok(Self::JPEG);
         }
-        
+
         // WebP: RIFF header with WEBP
         if data.starts_with(b"RIFF") && data.len() >= 12 && &data[8..12] == b"WEBP" {
             return Ok(Self::WEBP);
         }
-        
+
         // GIF: starts with GIF87a or GIF89a
         if data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a") {
             return Ok(Self::GIF);
         }
-        
-        Err(OpenAIError::VisionError("Unsupported or unrecognized image format".to_string()))
+
+        Err(OpenAIError::VisionError(
+            "Unsupported or unrecognized image format".to_string(),
+        ))
     }
-    
+
     /// Detect image format from file extension
     #[inline(always)]
     pub fn from_extension(ext: &str) -> Result<Self, OpenAIError> {
@@ -81,28 +87,31 @@ impl ImageFormat {
             "jpg" | "jpeg" => Ok(Self::JPEG),
             "webp" => Ok(Self::WEBP),
             "gif" => Ok(Self::GIF),
-            _ => Err(OpenAIError::VisionError(format!("Unsupported image extension: {}", ext))),
+            _ => Err(OpenAIError::VisionError(format!(
+                "Unsupported image extension: {}",
+                ext
+            ))),
         }
     }
-    
+
     /// Get MIME type for the format
     #[inline(always)]
     pub fn mime_type(self) -> &'static str {
         match self {
             Self::PNG => "image/png",
-            Self::JPEG => "image/jpeg", 
+            Self::JPEG => "image/jpeg",
             Self::WEBP => "image/webp",
             Self::GIF => "image/gif",
         }
     }
-    
+
     /// Get file extension for the format
     #[inline(always)]
     pub fn extension(self) -> &'static str {
         match self {
             Self::PNG => "png",
             Self::JPEG => "jpg",
-            Self::WEBP => "webp", 
+            Self::WEBP => "webp",
             Self::GIF => "gif",
         }
     }
@@ -131,11 +140,21 @@ pub struct VisionRequest {
 #[derive(Debug, Clone)]
 pub enum ImageInput {
     /// Image URL (publicly accessible)
-    Url { url: String, detail: Option<ImageDetail> },
+    Url {
+        url: String,
+        detail: Option<ImageDetail>,
+    },
     /// Base64 encoded image data
-    Data { data: Vec<u8>, mime_type: String, detail: Option<ImageDetail> },
+    Data {
+        data: Vec<u8>,
+        mime_type: String,
+        detail: Option<ImageDetail>,
+    },
     /// File path to image
-    Path { path: String, detail: Option<ImageDetail> },
+    Path {
+        path: String,
+        detail: Option<ImageDetail>,
+    },
 }
 
 /// Vision analysis response
@@ -192,7 +211,7 @@ impl ImageDetail {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Low => "low",
-            Self::High => "high", 
+            Self::High => "high",
             Self::Auto => "auto",
         }
     }
@@ -228,7 +247,10 @@ impl ImageFormat {
             "jpg" | "jpeg" => Ok(Self::JPEG),
             "webp" => Ok(Self::WEBP),
             "gif" => Ok(Self::GIF),
-            _ => Err(OpenAIError::VisionError(format!("Unsupported image format: {}", ext))),
+            _ => Err(OpenAIError::VisionError(format!(
+                "Unsupported image format: {}",
+                ext
+            ))),
         }
     }
 
@@ -236,7 +258,9 @@ impl ImageFormat {
     #[inline(always)]
     pub fn from_bytes(data: &[u8]) -> OpenAIResult<Self> {
         if data.len() < 8 {
-            return Err(OpenAIError::VisionError("Image data too short to detect format".to_string()));
+            return Err(OpenAIError::VisionError(
+                "Image data too short to detect format".to_string(),
+            ));
         }
 
         if data.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
@@ -294,7 +318,7 @@ impl ImageData {
     pub fn from_file(path: &str) -> OpenAIResult<Self> {
         let data = std::fs::read(path)
             .map_err(|e| OpenAIError::VisionError(format!("Failed to read image file: {}", e)))?;
-        
+
         let format = if let Some(ext) = path.split('.').last() {
             ImageFormat::from_extension(ext)?
         } else {
@@ -329,8 +353,8 @@ impl ImageData {
         const MAX_SIZE: usize = 20 * 1024 * 1024;
         if self.data.len() > MAX_SIZE {
             return Err(OpenAIError::VisionError(format!(
-                "Image size {} bytes exceeds maximum of {} bytes", 
-                self.data.len(), 
+                "Image size {} bytes exceeds maximum of {} bytes",
+                self.data.len(),
                 MAX_SIZE
             )));
         }
@@ -351,9 +375,10 @@ impl ImageData {
     pub fn resize_if_needed(&mut self, max_width: u32, max_height: u32) -> OpenAIResult<()> {
         #[cfg(feature = "image")]
         {
-            use image::{ImageFormat, DynamicImage, imageops::FilterType};
             use std::io::Cursor;
-            
+
+            use image::{DynamicImage, ImageFormat, imageops::FilterType};
+
             // Check if resizing is needed
             if let (Some(width), Some(height)) = (self.width, self.height) {
                 if width > max_width || height > max_height {
@@ -361,25 +386,32 @@ impl ImageData {
                     let width_ratio = max_width as f64 / width as f64;
                     let height_ratio = max_height as f64 / height as f64;
                     let scale_factor = width_ratio.min(height_ratio);
-                    
+
                     let new_width = (width as f64 * scale_factor) as u32;
                     let new_height = (height as f64 * scale_factor) as u32;
-                    
+
                     // Decode image data
                     let cursor = Cursor::new(&self.data);
-                    let img = image::load(cursor, self.format.to_image_format()?)
-                        .map_err(|e| OpenAIError::VisionError(format!("Failed to decode image: {}", e)))?;
-                    
+                    let img = image::load(cursor, self.format.to_image_format()?).map_err(|e| {
+                        OpenAIError::VisionError(format!("Failed to decode image: {}", e))
+                    })?;
+
                     // Resize using high-quality Lanczos3 filter for optimal results
                     let resized_img = img.resize(new_width, new_height, FilterType::Lanczos3);
-                    
+
                     // Re-encode to original format with optimized quality
                     let mut output_buffer = Vec::with_capacity(self.data.len());
                     let mut cursor = Cursor::new(&mut output_buffer);
-                    
-                    resized_img.write_to(&mut cursor, self.format.to_image_format()?)
-                        .map_err(|e| OpenAIError::VisionError(format!("Failed to encode resized image: {}", e)))?;
-                    
+
+                    resized_img
+                        .write_to(&mut cursor, self.format.to_image_format()?)
+                        .map_err(|e| {
+                            OpenAIError::VisionError(format!(
+                                "Failed to encode resized image: {}",
+                                e
+                            ))
+                        })?;
+
                     // Update image data and metadata
                     self.data = output_buffer;
                     self.width = Some(new_width);
@@ -388,7 +420,7 @@ impl ImageData {
                 }
             }
         }
-        
+
         #[cfg(not(feature = "image"))]
         {
             // Fallback validation when image processing is not available
@@ -401,7 +433,7 @@ impl ImageData {
                 }
             }
         }
-        
+
         Ok(())
     }
 }
@@ -453,7 +485,7 @@ impl ImageInput {
                 let mut image_url = serde_json::json!({
                     "url": url
                 });
-                
+
                 if let Some(detail_level) = detail {
                     image_url["detail"] = Value::String(detail_level.as_str().to_string());
                 }
@@ -463,14 +495,18 @@ impl ImageInput {
                     "image_url": image_url
                 }))
             }
-            Self::Data { data, mime_type, detail } => {
+            Self::Data {
+                data,
+                mime_type,
+                detail,
+            } => {
                 let base64_data = base64::engine::general_purpose::STANDARD.encode(data);
                 let data_url = format!("data:{};base64,{}", mime_type, base64_data);
-                
+
                 let mut image_url = serde_json::json!({
                     "url": data_url
                 });
-                
+
                 if let Some(detail_level) = detail {
                     image_url["detail"] = Value::String(detail_level.as_str().to_string());
                 }
@@ -483,11 +519,11 @@ impl ImageInput {
             Self::Path { path, detail } => {
                 let image_data = ImageData::from_file(path)?;
                 let data_url = image_data.to_data_url();
-                
+
                 let mut image_url = serde_json::json!({
                     "url": data_url
                 });
-                
+
                 if let Some(detail_level) = detail {
                     image_url["detail"] = Value::String(detail_level.as_str().to_string());
                 }
@@ -506,42 +542,60 @@ impl ImageInput {
         match self {
             Self::Url { url, .. } => {
                 if url.is_empty() {
-                    return Err(OpenAIError::VisionError("Image URL cannot be empty".to_string()));
+                    return Err(OpenAIError::VisionError(
+                        "Image URL cannot be empty".to_string(),
+                    ));
                 }
-                
+
                 // Validate URL format
-                if !url.starts_with("http://") && !url.starts_with("https://") && !url.starts_with("data:") {
+                if !url.starts_with("http://")
+                    && !url.starts_with("https://")
+                    && !url.starts_with("data:")
+                {
                     return Err(OpenAIError::VisionError("Invalid URL format".to_string()));
                 }
-                
+
                 Ok(())
             }
-            Self::Data { data, mime_type, .. } => {
+            Self::Data {
+                data, mime_type, ..
+            } => {
                 if data.is_empty() {
-                    return Err(OpenAIError::VisionError("Image data cannot be empty".to_string()));
+                    return Err(OpenAIError::VisionError(
+                        "Image data cannot be empty".to_string(),
+                    ));
                 }
-                
+
                 if mime_type.is_empty() {
-                    return Err(OpenAIError::VisionError("MIME type cannot be empty".to_string()));
+                    return Err(OpenAIError::VisionError(
+                        "MIME type cannot be empty".to_string(),
+                    ));
                 }
-                
+
                 // Validate MIME type
                 if !mime_type.starts_with("image/") {
-                    return Err(OpenAIError::VisionError("Invalid image MIME type".to_string()));
+                    return Err(OpenAIError::VisionError(
+                        "Invalid image MIME type".to_string(),
+                    ));
                 }
-                
+
                 Ok(())
             }
             Self::Path { path, .. } => {
                 if path.is_empty() {
-                    return Err(OpenAIError::VisionError("Image path cannot be empty".to_string()));
+                    return Err(OpenAIError::VisionError(
+                        "Image path cannot be empty".to_string(),
+                    ));
                 }
-                
+
                 // Check if file exists
                 if !std::path::Path::new(path).exists() {
-                    return Err(OpenAIError::VisionError(format!("Image file not found: {}", path)));
+                    return Err(OpenAIError::VisionError(format!(
+                        "Image file not found: {}",
+                        path
+                    )));
                 }
-                
+
                 Ok(())
             }
         }
@@ -570,7 +624,12 @@ impl VisionRequest {
 
     /// Add image data to request
     #[inline(always)]
-    pub fn add_image_data(mut self, data: Vec<u8>, mime_type: impl Into<String>, detail: Option<ImageDetail>) -> Self {
+    pub fn add_image_data(
+        mut self,
+        data: Vec<u8>,
+        mime_type: impl Into<String>,
+        detail: Option<ImageDetail>,
+    ) -> Self {
         self.images.push(ImageInput::data(data, mime_type, detail));
         self
     }
@@ -607,11 +666,15 @@ impl VisionRequest {
     #[inline(always)]
     pub fn validate(&self) -> OpenAIResult<()> {
         if self.prompt.is_empty() {
-            return Err(OpenAIError::VisionError("Prompt cannot be empty".to_string()));
+            return Err(OpenAIError::VisionError(
+                "Prompt cannot be empty".to_string(),
+            ));
         }
 
         if self.images.is_empty() {
-            return Err(OpenAIError::VisionError("At least one image is required".to_string()));
+            return Err(OpenAIError::VisionError(
+                "At least one image is required".to_string(),
+            ));
         }
 
         // Validate each image
@@ -621,7 +684,9 @@ impl VisionRequest {
 
         // Check image count limits
         if self.images.len() > 10 {
-            return Err(OpenAIError::VisionError("Maximum 10 images per request".to_string()));
+            return Err(OpenAIError::VisionError(
+                "Maximum 10 images per request".to_string(),
+            ));
         }
 
         Ok(())
@@ -631,7 +696,9 @@ impl VisionRequest {
     #[inline(always)]
     pub fn estimate_tokens(&self) -> u32 {
         let base_tokens = self.prompt.len() as u32 / 4; // Rough estimate: 4 chars per token
-        let image_tokens: u32 = self.images.iter()
+        let image_tokens: u32 = self
+            .images
+            .iter()
             .map(|img| {
                 let detail = img.get_detail();
                 match detail {
@@ -641,7 +708,7 @@ impl VisionRequest {
                 }
             })
             .sum();
-        
+
         base_tokens + image_tokens
     }
 
@@ -650,18 +717,18 @@ impl VisionRequest {
     pub fn to_openai_request(&self) -> OpenAIResult<serde_json::Value> {
         // Validate request before conversion
         self.validate()?;
-        
+
         // Build content array with text and images
         let mut content = vec![serde_json::json!({
             "type": "text",
             "text": self.prompt
         })];
-        
+
         // Add images to content
         for image in &self.images {
             content.push(image.to_content_part()?);
         }
-        
+
         Ok(serde_json::json!({
             "model": "gpt-4o",
             "messages": [{
@@ -708,9 +775,16 @@ pub fn get_model_capabilities(model: &str) -> ImageAnalysisCapabilities {
 /// Check if model supports vision features
 #[inline(always)]
 pub fn supports_vision(model: &str) -> bool {
-    matches!(model,
-        "gpt-4o" | "gpt-4o-mini" | "gpt-4-vision-preview" | "gpt-4-turbo" |
-        "gpt-4-turbo-2024-04-09" | "gpt-4-1106-vision-preview" |
-        "chatgpt-4o-latest" | "gpt-4o-search-preview" | "gpt-4o-mini-search-preview"
+    matches!(
+        model,
+        "gpt-4o"
+            | "gpt-4o-mini"
+            | "gpt-4-vision-preview"
+            | "gpt-4-turbo"
+            | "gpt-4-turbo-2024-04-09"
+            | "gpt-4-1106-vision-preview"
+            | "chatgpt-4o-latest"
+            | "gpt-4o-search-preview"
+            | "gpt-4o-mini-search-preview"
     )
 }

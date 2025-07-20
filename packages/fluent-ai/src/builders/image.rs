@@ -2,9 +2,9 @@
 //!
 //! All image construction logic and builder patterns.
 
-use fluent_ai_domain::image::{Image, ContentFormat, ImageMediaType, ImageDetail};
-use fluent_ai_domain::chunk::ImageChunk;
 use fluent_ai_domain::AsyncStream;
+use fluent_ai_domain::chunk::ImageChunk;
+use fluent_ai_domain::image::{ContentFormat, Image, ImageDetail, ImageMediaType};
 
 pub struct ImageBuilder {
     data: String,

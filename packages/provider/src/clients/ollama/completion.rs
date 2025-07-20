@@ -5,9 +5,12 @@
 // ============================================================================
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
+use super::client::Client;
+use super::streaming;
 use crate::{
+    OneOrMany,
     completion::{
         self, AssistantContent, CompletionError, CompletionRequest, Message as CompletionMessage,
     },
@@ -16,11 +19,7 @@ use crate::{
     message::{self, Message, MessageError, Text, ToolResultContent, UserContent},
     runtime::{self, AsyncTask},
     streaming::StreamingCompletionResponse,
-    OneOrMany,
 };
-
-use super::client::Client;
-use super::streaming;
 
 // ============================================================================
 // Model Constants
@@ -192,11 +191,13 @@ impl CompletionModel {
             "stream": false,
         });
         if !completion_request.tools.is_empty() {
-            request_payload["tools"] = json!(completion_request
-                .tools
-                .into_iter()
-                .map(|tool| tool.into())
-                .collect::<Vec<ToolDefinition>>());
+            request_payload["tools"] = json!(
+                completion_request
+                    .tools
+                    .into_iter()
+                    .map(|tool| tool.into())
+                    .collect::<Vec<ToolDefinition>>()
+            );
         }
 
         tracing::debug!(target: "rig", "Chat mode payload: {}", request_payload);
@@ -576,8 +577,12 @@ impl From<ProviderMessage> for CompletionMessage {
                     ));
                 }
                 CompletionMessage::Assistant {
-                    content: OneOrMany::many(assistant_contents)
-                        .map_err(|e| CompletionError::ServerError(format!("Failed to create assistant content: {}", e)))?,
+                    content: OneOrMany::many(assistant_contents).map_err(|e| {
+                        CompletionError::ServerError(format!(
+                            "Failed to create assistant content: {}",
+                            e
+                        ))
+                    })?,
                 }
             }
             // System and ToolResult are converted to User message as needed.

@@ -1,12 +1,13 @@
 //! High-performance mathematical expression evaluator with zero-allocation parsing
-//! 
+//!
 //! Production-ready expression evaluation supporting arithmetic operations,
 //! mathematical functions, constants, and variables with comprehensive error handling.
 
-use pest::Parser;
-use pest_derive::Parser;
 use std::collections::HashMap;
 use std::f64::consts;
+
+use pest::Parser;
+use pest_derive::Parser;
 use thiserror::Error;
 
 #[derive(Parser)]
@@ -18,22 +19,22 @@ pub struct ExpressionParser;
 pub enum ExpressionError {
     #[error("Parse error: {message} at position {position}")]
     ParseError { message: String, position: usize },
-    
+
     #[error("Division by zero in expression")]
     DivisionByZero,
-    
+
     #[error("Invalid function call: {function} with {arg_count} arguments")]
     InvalidFunctionCall { function: String, arg_count: usize },
-    
+
     #[error("Undefined variable: {variable}")]
     UndefinedVariable { variable: String },
-    
+
     #[error("Mathematical domain error: {operation} with value {value}")]
     DomainError { operation: String, value: f64 },
-    
+
     #[error("Overflow in calculation: {operation}")]
     Overflow { operation: String },
-    
+
     #[error("Invalid expression: {message}")]
     InvalidExpression { message: String },
 }
@@ -54,22 +55,22 @@ impl VariableContext {
             variables: HashMap::new(),
         }
     }
-    
+
     /// Set variable value
     pub fn set(&mut self, name: impl Into<String>, value: f64) {
         self.variables.insert(name.into(), value);
     }
-    
+
     /// Get variable value
     pub fn get(&self, name: &str) -> Option<f64> {
         self.variables.get(name).copied()
     }
-    
+
     /// Check if variable exists
     pub fn contains(&self, name: &str) -> bool {
         self.variables.contains_key(name)
     }
-    
+
     /// Clear all variables
     pub fn clear(&mut self) {
         self.variables.clear();
@@ -88,181 +89,253 @@ impl ExpressionEvaluator {
             context: VariableContext::new(),
         }
     }
-    
+
     /// Create evaluator with variable context
     pub fn with_context(context: VariableContext) -> Self {
         Self { context }
     }
-    
+
     /// Evaluate mathematical expression
     pub fn evaluate(&mut self, expression: &str) -> ExpressionResult<f64> {
         // Parse expression using pest
-        let pairs = ExpressionParser::parse(Rule::calculator, expression)
-            .map_err(|e| ExpressionError::ParseError {
+        let pairs = ExpressionParser::parse(Rule::calculator, expression).map_err(|e| {
+            ExpressionError::ParseError {
                 message: format!("Parsing failed: {}", e),
                 position: 0,
-            })?;
-        
+            }
+        })?;
+
         // Get the main pair
-        let main_pair = pairs.into_iter().next()
-            .ok_or_else(|| ExpressionError::InvalidExpression {
-                message: "Empty expression".to_string(),
-            })?;
-        
+        let main_pair =
+            pairs
+                .into_iter()
+                .next()
+                .ok_or_else(|| ExpressionError::InvalidExpression {
+                    message: "Empty expression".to_string(),
+                })?;
+
         // Check if it's an assignment or just evaluation
-        let inner_pair = main_pair.into_inner().next()
-            .ok_or_else(|| ExpressionError::InvalidExpression {
-                message: "Invalid expression structure".to_string(),
-            })?;
-        
+        let inner_pair =
+            main_pair
+                .into_inner()
+                .next()
+                .ok_or_else(|| ExpressionError::InvalidExpression {
+                    message: "Invalid expression structure".to_string(),
+                })?;
+
         if inner_pair.as_rule() == Rule::expression {
             // Simple evaluation
             self.evaluate_expression(inner_pair)
         } else {
             // Assignment (variable = expression)
             let mut inner_pairs = inner_pair.into_inner();
-            let var_name = inner_pairs.next()
+            let var_name = inner_pairs
+                .next()
                 .ok_or_else(|| ExpressionError::InvalidExpression {
                     message: "Missing variable name in assignment".to_string(),
                 })?
                 .as_str()
                 .to_string();
-            
-            let expr_pair = inner_pairs.next()
-                .ok_or_else(|| ExpressionError::InvalidExpression {
-                    message: "Missing expression in assignment".to_string(),
-                })?;
-            
+
+            let expr_pair =
+                inner_pairs
+                    .next()
+                    .ok_or_else(|| ExpressionError::InvalidExpression {
+                        message: "Missing expression in assignment".to_string(),
+                    })?;
+
             let value = self.evaluate_expression(expr_pair)?;
             self.context.set(var_name, value);
             Ok(value)
         }
     }
-    
+
     /// Evaluate expression with custom variables
-    pub fn evaluate_with_vars(&mut self, expression: &str, variables: &HashMap<String, f64>) -> ExpressionResult<f64> {
+    pub fn evaluate_with_vars(
+        &mut self,
+        expression: &str,
+        variables: &HashMap<String, f64>,
+    ) -> ExpressionResult<f64> {
         // Temporarily add variables to context
         let original_vars = self.context.variables.clone();
-        
+
         for (name, value) in variables {
             self.context.set(name.clone(), *value);
         }
-        
+
         let result = self.evaluate(expression);
-        
+
         // Restore original context
         self.context.variables = original_vars;
-        
+
         result
     }
-    
+
     /// Set variable in context
     pub fn set_variable(&mut self, name: impl Into<String>, value: f64) {
         self.context.set(name, value);
     }
-    
+
     /// Get variable from context
     pub fn get_variable(&self, name: &str) -> Option<f64> {
         self.context.get(name)
     }
-    
+
     /// Clear all variables
     pub fn clear_variables(&mut self) {
         self.context.clear();
     }
-    
+
     /// Evaluate parsed expression pair
     fn evaluate_expression(&self, pair: pest::iterators::Pair<Rule>) -> ExpressionResult<f64> {
         match pair.as_rule() {
             Rule::expression => {
-                let inner = pair.into_inner().next()
-                    .ok_or_else(|| ExpressionError::InvalidExpression {
-                        message: "Empty expression".to_string(),
-                    })?;
+                let inner =
+                    pair.into_inner()
+                        .next()
+                        .ok_or_else(|| ExpressionError::InvalidExpression {
+                            message: "Empty expression".to_string(),
+                        })?;
                 self.evaluate_expression(inner)
             }
-            
+
             Rule::logical_or => {
                 let mut inner = pair.into_inner();
-                let mut result = self.evaluate_expression(inner.next()
-                    .ok_or_else(|| ExpressionError::InvalidExpression {
+                let mut result = self.evaluate_expression(inner.next().ok_or_else(|| {
+                    ExpressionError::InvalidExpression {
                         message: "Missing operand in logical OR".to_string(),
-                    })?)?;
-                
+                    }
+                })?)?;
+
                 for expr in inner {
                     let right = self.evaluate_expression(expr)?;
-                    result = if result != 0.0 || right != 0.0 { 1.0 } else { 0.0 };
-                }
-                Ok(result)
-            }
-            
-            Rule::logical_and => {
-                let mut inner = pair.into_inner();
-                let mut result = self.evaluate_expression(inner.next()
-                    .ok_or_else(|| ExpressionError::InvalidExpression {
-                        message: "Missing operand in logical AND".to_string(),
-                    })?)?;
-                
-                for expr in inner {
-                    let right = self.evaluate_expression(expr)?;
-                    result = if result != 0.0 && right != 0.0 { 1.0 } else { 0.0 };
-                }
-                Ok(result)
-            }
-            
-            Rule::comparison => {
-                let mut inner = pair.into_inner();
-                let mut result = self.evaluate_expression(inner.next()
-                    .ok_or_else(|| ExpressionError::InvalidExpression {
-                        message: "Missing operand in comparison".to_string(),
-                    })?)?;
-                
-                let mut inner_iter = inner.peekable();
-                while inner_iter.peek().is_some() {
-                    let op = inner_iter.next()
-                        .ok_or_else(|| ExpressionError::InvalidExpression {
-                            message: "Missing operator in comparison expression".to_string(),
-                        })?
-                        .as_str();
-                    let right = self.evaluate_expression(inner_iter.next()
-                        .ok_or_else(|| ExpressionError::InvalidExpression {
-                            message: "Missing right operand in comparison".to_string(),
-                        })?)?;
-                    
-                    result = match op {
-                        "==" => if (result - right).abs() < f64::EPSILON { 1.0 } else { 0.0 },
-                        "!=" => if (result - right).abs() >= f64::EPSILON { 1.0 } else { 0.0 },
-                        "<" => if result < right { 1.0 } else { 0.0 },
-                        "<=" => if result <= right { 1.0 } else { 0.0 },
-                        ">" => if result > right { 1.0 } else { 0.0 },
-                        ">=" => if result >= right { 1.0 } else { 0.0 },
-                        _ => return Err(ExpressionError::InvalidExpression {
-                            message: format!("Unknown comparison operator: {}", op),
-                        }),
+                    result = if result != 0.0 || right != 0.0 {
+                        1.0
+                    } else {
+                        0.0
                     };
                 }
                 Ok(result)
             }
-            
-            Rule::additive => {
+
+            Rule::logical_and => {
                 let mut inner = pair.into_inner();
-                let mut result = self.evaluate_expression(inner.next()
-                    .ok_or_else(|| ExpressionError::InvalidExpression {
-                        message: "Missing operand in addition".to_string(),
-                    })?)?;
-                
+                let mut result = self.evaluate_expression(inner.next().ok_or_else(|| {
+                    ExpressionError::InvalidExpression {
+                        message: "Missing operand in logical AND".to_string(),
+                    }
+                })?)?;
+
+                for expr in inner {
+                    let right = self.evaluate_expression(expr)?;
+                    result = if result != 0.0 && right != 0.0 {
+                        1.0
+                    } else {
+                        0.0
+                    };
+                }
+                Ok(result)
+            }
+
+            Rule::comparison => {
+                let mut inner = pair.into_inner();
+                let mut result = self.evaluate_expression(inner.next().ok_or_else(|| {
+                    ExpressionError::InvalidExpression {
+                        message: "Missing operand in comparison".to_string(),
+                    }
+                })?)?;
+
                 let mut inner_iter = inner.peekable();
                 while inner_iter.peek().is_some() {
-                    let op = inner_iter.next()
+                    let op = inner_iter
+                        .next()
+                        .ok_or_else(|| ExpressionError::InvalidExpression {
+                            message: "Missing operator in comparison expression".to_string(),
+                        })?
+                        .as_str();
+                    let right =
+                        self.evaluate_expression(inner_iter.next().ok_or_else(|| {
+                            ExpressionError::InvalidExpression {
+                                message: "Missing right operand in comparison".to_string(),
+                            }
+                        })?)?;
+
+                    result = match op {
+                        "==" => {
+                            if (result - right).abs() < f64::EPSILON {
+                                1.0
+                            } else {
+                                0.0
+                            }
+                        }
+                        "!=" => {
+                            if (result - right).abs() >= f64::EPSILON {
+                                1.0
+                            } else {
+                                0.0
+                            }
+                        }
+                        "<" => {
+                            if result < right {
+                                1.0
+                            } else {
+                                0.0
+                            }
+                        }
+                        "<=" => {
+                            if result <= right {
+                                1.0
+                            } else {
+                                0.0
+                            }
+                        }
+                        ">" => {
+                            if result > right {
+                                1.0
+                            } else {
+                                0.0
+                            }
+                        }
+                        ">=" => {
+                            if result >= right {
+                                1.0
+                            } else {
+                                0.0
+                            }
+                        }
+                        _ => {
+                            return Err(ExpressionError::InvalidExpression {
+                                message: format!("Unknown comparison operator: {}", op),
+                            });
+                        }
+                    };
+                }
+                Ok(result)
+            }
+
+            Rule::additive => {
+                let mut inner = pair.into_inner();
+                let mut result = self.evaluate_expression(inner.next().ok_or_else(|| {
+                    ExpressionError::InvalidExpression {
+                        message: "Missing operand in addition".to_string(),
+                    }
+                })?)?;
+
+                let mut inner_iter = inner.peekable();
+                while inner_iter.peek().is_some() {
+                    let op = inner_iter
+                        .next()
                         .ok_or_else(|| ExpressionError::InvalidExpression {
                             message: "Missing operator in addition expression".to_string(),
                         })?
                         .as_str();
-                    let right = self.evaluate_expression(inner_iter.next()
-                        .ok_or_else(|| ExpressionError::InvalidExpression {
-                            message: "Missing right operand in addition".to_string(),
+                    let right =
+                        self.evaluate_expression(inner_iter.next().ok_or_else(|| {
+                            ExpressionError::InvalidExpression {
+                                message: "Missing right operand in addition".to_string(),
+                            }
                         })?)?;
-                    
+
                     match op {
                         "+" => {
                             result = result + right;
@@ -280,33 +353,39 @@ impl ExpressionEvaluator {
                                 });
                             }
                         }
-                        _ => return Err(ExpressionError::InvalidExpression {
-                            message: format!("Unknown additive operator: {}", op),
-                        }),
+                        _ => {
+                            return Err(ExpressionError::InvalidExpression {
+                                message: format!("Unknown additive operator: {}", op),
+                            });
+                        }
                     }
                 }
                 Ok(result)
             }
-            
+
             Rule::multiplicative => {
                 let mut inner = pair.into_inner();
-                let mut result = self.evaluate_expression(inner.next()
-                    .ok_or_else(|| ExpressionError::InvalidExpression {
+                let mut result = self.evaluate_expression(inner.next().ok_or_else(|| {
+                    ExpressionError::InvalidExpression {
                         message: "Missing operand in multiplication".to_string(),
-                    })?)?;
-                
+                    }
+                })?)?;
+
                 let mut inner_iter = inner.peekable();
                 while inner_iter.peek().is_some() {
-                    let op = inner_iter.next()
+                    let op = inner_iter
+                        .next()
                         .ok_or_else(|| ExpressionError::InvalidExpression {
                             message: "Missing operator in multiplication expression".to_string(),
                         })?
                         .as_str();
-                    let right = self.evaluate_expression(inner_iter.next()
-                        .ok_or_else(|| ExpressionError::InvalidExpression {
-                            message: "Missing right operand in multiplication".to_string(),
+                    let right =
+                        self.evaluate_expression(inner_iter.next().ok_or_else(|| {
+                            ExpressionError::InvalidExpression {
+                                message: "Missing right operand in multiplication".to_string(),
+                            }
                         })?)?;
-                    
+
                     match op {
                         "*" => {
                             result = result * right;
@@ -333,21 +412,24 @@ impl ExpressionEvaluator {
                             }
                             result = result % right;
                         }
-                        _ => return Err(ExpressionError::InvalidExpression {
-                            message: format!("Unknown multiplicative operator: {}", op),
-                        }),
+                        _ => {
+                            return Err(ExpressionError::InvalidExpression {
+                                message: format!("Unknown multiplicative operator: {}", op),
+                            });
+                        }
                     }
                 }
                 Ok(result)
             }
-            
+
             Rule::power => {
                 let mut inner = pair.into_inner();
-                let mut result = self.evaluate_expression(inner.next()
-                    .ok_or_else(|| ExpressionError::InvalidExpression {
+                let mut result = self.evaluate_expression(inner.next().ok_or_else(|| {
+                    ExpressionError::InvalidExpression {
                         message: "Missing base in power operation".to_string(),
-                    })?)?;
-                
+                    }
+                })?)?;
+
                 // Power is right-associative
                 let powers: Vec<_> = inner.collect();
                 for power_expr in powers.into_iter().rev() {
@@ -361,89 +443,94 @@ impl ExpressionEvaluator {
                 }
                 Ok(result)
             }
-            
+
             Rule::unary => {
                 let mut inner = pair.into_inner();
-                let first = inner.next()
+                let first = inner
+                    .next()
                     .ok_or_else(|| ExpressionError::InvalidExpression {
                         message: "Missing operand in unary operation".to_string(),
                     })?;
-                
+
                 if first.as_str() == "-" {
-                    let operand = self.evaluate_expression(inner.next()
-                        .ok_or_else(|| ExpressionError::InvalidExpression {
+                    let operand = self.evaluate_expression(inner.next().ok_or_else(|| {
+                        ExpressionError::InvalidExpression {
                             message: "Missing operand after unary minus".to_string(),
-                        })?)?;
+                        }
+                    })?)?;
                     Ok(-operand)
                 } else if first.as_str() == "+" {
-                    let operand = self.evaluate_expression(inner.next()
-                        .ok_or_else(|| ExpressionError::InvalidExpression {
+                    let operand = self.evaluate_expression(inner.next().ok_or_else(|| {
+                        ExpressionError::InvalidExpression {
                             message: "Missing operand after unary plus".to_string(),
-                        })?)?;
+                        }
+                    })?)?;
                     Ok(operand)
                 } else {
                     // No unary operator, evaluate the primary
                     self.evaluate_expression(first)
                 }
             }
-            
+
             Rule::primary => {
-                let inner = pair.into_inner().next()
-                    .ok_or_else(|| ExpressionError::InvalidExpression {
-                        message: "Empty primary expression".to_string(),
-                    })?;
+                let inner =
+                    pair.into_inner()
+                        .next()
+                        .ok_or_else(|| ExpressionError::InvalidExpression {
+                            message: "Empty primary expression".to_string(),
+                        })?;
                 self.evaluate_expression(inner)
             }
-            
+
             Rule::number => {
                 let num_str = pair.as_str();
-                num_str.parse::<f64>()
+                num_str
+                    .parse::<f64>()
                     .map_err(|_| ExpressionError::InvalidExpression {
                         message: format!("Invalid number: {}", num_str),
                     })
             }
-            
-            Rule::constant => {
-                match pair.as_str() {
-                    "pi" => Ok(consts::PI),
-                    "e" => Ok(consts::E),
-                    "tau" => Ok(consts::TAU),
-                    name => Err(ExpressionError::InvalidExpression {
-                        message: format!("Unknown constant: {}", name),
-                    }),
-                }
-            }
-            
+
+            Rule::constant => match pair.as_str() {
+                "pi" => Ok(consts::PI),
+                "e" => Ok(consts::E),
+                "tau" => Ok(consts::TAU),
+                name => Err(ExpressionError::InvalidExpression {
+                    message: format!("Unknown constant: {}", name),
+                }),
+            },
+
             Rule::variable => {
                 let var_name = pair.as_str();
-                self.context.get(var_name)
+                self.context
+                    .get(var_name)
                     .ok_or_else(|| ExpressionError::UndefinedVariable {
                         variable: var_name.to_string(),
                     })
             }
-            
+
             Rule::function => {
                 let mut inner = pair.into_inner();
-                let func_name = inner.next()
+                let func_name = inner
+                    .next()
                     .ok_or_else(|| ExpressionError::InvalidExpression {
                         message: "Missing function name".to_string(),
                     })?
                     .as_str();
-                
-                let args: Result<Vec<f64>, ExpressionError> = inner
-                    .map(|arg| self.evaluate_expression(arg))
-                    .collect();
+
+                let args: Result<Vec<f64>, ExpressionError> =
+                    inner.map(|arg| self.evaluate_expression(arg)).collect();
                 let args = args?;
-                
+
                 self.evaluate_function(func_name, &args)
             }
-            
+
             _ => Err(ExpressionError::InvalidExpression {
                 message: format!("Unsupported rule: {:?}", pair.as_rule()),
             }),
         }
     }
-    
+
     /// Evaluate mathematical function
     fn evaluate_function(&self, name: &str, args: &[f64]) -> ExpressionResult<f64> {
         match name {
@@ -665,7 +752,13 @@ impl ExpressionEvaluator {
                     });
                 }
                 let value = args[0];
-                Ok(if value > 0.0 { 1.0 } else if value < 0.0 { -1.0 } else { 0.0 })
+                Ok(if value > 0.0 {
+                    1.0
+                } else if value < 0.0 {
+                    -1.0
+                } else {
+                    0.0
+                })
             }
             "deg" => {
                 if args.len() != 1 {
@@ -723,20 +816,24 @@ pub fn evaluate_expression(expression: &str) -> ExpressionResult<f64> {
 }
 
 /// Utility function for expression evaluation with variables
-pub fn evaluate_expression_with_vars(expression: &str, variables: &HashMap<String, f64>) -> ExpressionResult<f64> {
+pub fn evaluate_expression_with_vars(
+    expression: &str,
+    variables: &HashMap<String, f64>,
+) -> ExpressionResult<f64> {
     let mut evaluator = ExpressionEvaluator::new();
     evaluator.evaluate_with_vars(expression, variables)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::HashMap;
+
+    use super::*;
 
     #[test]
     fn test_basic_arithmetic() {
         let mut eval = ExpressionEvaluator::new();
-        
+
         assert_eq!(eval.evaluate("2 + 3").expect("Should work"), 5.0);
         assert_eq!(eval.evaluate("10 - 4").expect("Should work"), 6.0);
         assert_eq!(eval.evaluate("6 * 7").expect("Should work"), 42.0);
@@ -744,20 +841,23 @@ mod tests {
         assert_eq!(eval.evaluate("17 % 5").expect("Should work"), 2.0);
         assert_eq!(eval.evaluate("2 ^ 3").expect("Should work"), 8.0);
     }
-    
+
     #[test]
     fn test_parentheses() {
         let mut eval = ExpressionEvaluator::new();
-        
+
         assert_eq!(eval.evaluate("(2 + 3) * 4").expect("Should work"), 20.0);
         assert_eq!(eval.evaluate("2 + (3 * 4)").expect("Should work"), 14.0);
-        assert_eq!(eval.evaluate("((2 + 3) * 4) / 2").expect("Should work"), 10.0);
+        assert_eq!(
+            eval.evaluate("((2 + 3) * 4) / 2").expect("Should work"),
+            10.0
+        );
     }
-    
+
     #[test]
     fn test_functions() {
         let mut eval = ExpressionEvaluator::new();
-        
+
         assert!((eval.evaluate("sin(0)").expect("Should work") - 0.0).abs() < f64::EPSILON);
         assert!((eval.evaluate("cos(0)").expect("Should work") - 1.0).abs() < f64::EPSILON);
         assert_eq!(eval.evaluate("sqrt(16)").expect("Should work"), 4.0);
@@ -765,64 +865,73 @@ mod tests {
         assert_eq!(eval.evaluate("max(3, 7)").expect("Should work"), 7.0);
         assert_eq!(eval.evaluate("min(3, 7)").expect("Should work"), 3.0);
     }
-    
+
     #[test]
     fn test_constants() {
         let mut eval = ExpressionEvaluator::new();
-        
-        assert!((eval.evaluate("pi").expect("Should work") - std::f64::consts::PI).abs() < f64::EPSILON);
-        assert!((eval.evaluate("e").expect("Should work") - std::f64::consts::E).abs() < f64::EPSILON);
-        assert!((eval.evaluate("tau").expect("Should work") - std::f64::consts::TAU).abs() < f64::EPSILON);
+
+        assert!(
+            (eval.evaluate("pi").expect("Should work") - std::f64::consts::PI).abs() < f64::EPSILON
+        );
+        assert!(
+            (eval.evaluate("e").expect("Should work") - std::f64::consts::E).abs() < f64::EPSILON
+        );
+        assert!(
+            (eval.evaluate("tau").expect("Should work") - std::f64::consts::TAU).abs()
+                < f64::EPSILON
+        );
     }
-    
+
     #[test]
     fn test_variables() {
         let mut eval = ExpressionEvaluator::new();
-        
+
         eval.set_variable("x", 5.0);
         assert_eq!(eval.evaluate("x * 2").expect("Should work"), 10.0);
-        
+
         eval.set_variable("y", 3.0);
         assert_eq!(eval.evaluate("x + y").expect("Should work"), 8.0);
     }
-    
+
     #[test]
     fn test_assignment() {
         let mut eval = ExpressionEvaluator::new();
-        
+
         assert_eq!(eval.evaluate("x = 10").expect("Should work"), 10.0);
         assert_eq!(eval.evaluate("x * 2").expect("Should work"), 20.0);
-        
+
         assert_eq!(eval.evaluate("y = x + 5").expect("Should work"), 15.0);
         assert_eq!(eval.evaluate("y").expect("Should work"), 15.0);
     }
-    
+
     #[test]
     fn test_error_handling() {
         let mut eval = ExpressionEvaluator::new();
-        
+
         // Division by zero
         assert!(eval.evaluate("5 / 0").is_err());
-        
+
         // Undefined variable
         assert!(eval.evaluate("undefined_var").is_err());
-        
+
         // Invalid function
         assert!(eval.evaluate("unknown_func(1)").is_err());
-        
+
         // Domain error
         assert!(eval.evaluate("sqrt(-1)").is_err());
         assert!(eval.evaluate("ln(0)").is_err());
     }
-    
+
     #[test]
     fn test_complex_expressions() {
         let mut eval = ExpressionEvaluator::new();
-        
+
         // Complex mathematical expression
-        let result = eval.evaluate("sin(pi/2) + cos(0) * sqrt(16) - 2^3").expect("Should work");
+        let result = eval
+            .evaluate("sin(pi/2) + cos(0) * sqrt(16) - 2^3")
+            .expect("Should work");
         assert!((result - (-3.0)).abs() < f64::EPSILON);
-        
+
         // Expression with variables
         eval.set_variable("a", 3.0);
         eval.set_variable("b", 4.0);

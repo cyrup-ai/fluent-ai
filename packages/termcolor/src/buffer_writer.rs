@@ -472,7 +472,9 @@ mod tests {
     #[test]
     fn test_buffer_data_access() {
         let mut buffer = Buffer::ansi();
-        buffer.write_all(b"hello world").expect("Failed to write to buffer in test");
+        buffer
+            .write_all(b"hello world")
+            .expect("Failed to write to buffer in test");
 
         assert_eq!(buffer.as_slice(), b"hello world");
 

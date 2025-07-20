@@ -3,9 +3,11 @@
 //! High-performance similarity computations with SIMD optimizations,
 //! configurable metrics, and efficient batch operations.
 
-use crate::embedding::normalization::{l2_norm, stable_dot_product};
-use serde::{Deserialize, Serialize};
 use std::f32;
+
+use serde::{Deserialize, Serialize};
+
+use crate::embedding::normalization::{l2_norm, stable_dot_product};
 
 /// Similarity metric types for embedding comparison
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -68,7 +70,7 @@ pub struct SimilarityResult {
 }
 
 /// Calculate cosine similarity between two vectors
-/// 
+///
 /// Returns value in range [-1, 1], where 1 is identical, 0 is orthogonal, -1 is opposite
 #[inline(always)]
 pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
@@ -94,7 +96,8 @@ pub fn euclidean_distance(a: &[f32], b: &[f32]) -> f32 {
         return f32::INFINITY;
     }
 
-    let sum_squares: f32 = a.iter()
+    let sum_squares: f32 = a
+        .iter()
         .zip(b.iter())
         .map(|(&x, &y)| (x - y) * (x - y))
         .sum();
@@ -122,10 +125,7 @@ pub fn manhattan_distance(a: &[f32], b: &[f32]) -> f32 {
         return f32::INFINITY;
     }
 
-    a.iter()
-        .zip(b.iter())
-        .map(|(&x, &y)| (x - y).abs())
-        .sum()
+    a.iter().zip(b.iter()).map(|(&x, &y)| (x - y).abs()).sum()
 }
 
 /// Calculate dot product similarity
@@ -135,7 +135,7 @@ pub fn dot_product_similarity(a: &[f32], b: &[f32]) -> f32 {
 }
 
 /// Calculate Jaccard similarity for sparse vectors
-/// 
+///
 /// Treats values below threshold as zero for sparsity computation
 #[inline(always)]
 pub fn jaccard_similarity(a: &[f32], b: &[f32], threshold: f32) -> f32 {
@@ -173,7 +173,7 @@ pub fn pearson_correlation(a: &[f32], b: &[f32]) -> f32 {
     }
 
     let n = a.len() as f32;
-    
+
     // Calculate means
     let mean_a: f32 = a.iter().sum::<f32>() / n;
     let mean_b: f32 = b.iter().sum::<f32>() / n;
@@ -186,7 +186,7 @@ pub fn pearson_correlation(a: &[f32], b: &[f32]) -> f32 {
     for (&x, &y) in a.iter().zip(b.iter()) {
         let diff_a = x - mean_a;
         let diff_b = y - mean_b;
-        
+
         covariance += diff_a * diff_b;
         var_a += diff_a * diff_a;
         var_b += diff_b * diff_b;
@@ -204,11 +204,7 @@ pub fn pearson_correlation(a: &[f32], b: &[f32]) -> f32 {
 
 /// Compute similarity using specified metric
 #[inline(always)]
-pub fn compute_similarity(
-    a: &[f32],
-    b: &[f32],
-    config: &SimilarityConfig,
-) -> SimilarityResult {
+pub fn compute_similarity(a: &[f32], b: &[f32], config: &SimilarityConfig) -> SimilarityResult {
     let score = match config.metric {
         SimilarityMetric::Cosine => cosine_similarity(a, b),
         SimilarityMetric::Euclidean => {
@@ -263,7 +259,7 @@ pub fn find_most_similar(
 
     for (idx, candidate) in candidates.iter().enumerate().skip(1) {
         let result = compute_similarity(query, candidate, config);
-        
+
         // For similarity metrics, higher is better
         // For distance metrics, we already convert to similarity in compute_similarity
         if result.score > best_result.score {
@@ -297,7 +293,11 @@ pub fn find_top_k_similar(
         .collect();
 
     // Sort by similarity score (descending)
-    results.sort_by(|a, b| b.1.score.partial_cmp(&a.1.score).unwrap_or(std::cmp::Ordering::Equal));
+    results.sort_by(|a, b| {
+        b.1.score
+            .partial_cmp(&a.1.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     // Return top K results
     results.into_iter().take(k).collect()
@@ -453,10 +453,7 @@ pub mod utils {
 
     /// Find outliers based on distance from centroid
     #[inline(always)]
-    pub fn find_outliers(
-        vectors: &[Vec<f32>],
-        threshold_multiplier: f32,
-    ) -> Vec<usize> {
+    pub fn find_outliers(vectors: &[Vec<f32>], threshold_multiplier: f32) -> Vec<usize> {
         if vectors.len() < 3 {
             return Vec::new();
         }
@@ -492,7 +489,7 @@ pub mod utils {
 
         let mut assignments = vec![0; vectors.len()];
         let dimensions = vectors[0].len();
-        
+
         // Initialize centroids randomly
         let mut centroids = Vec::with_capacity(num_clusters);
         let step = vectors.len() / num_clusters;

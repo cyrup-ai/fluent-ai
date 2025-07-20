@@ -10,9 +10,9 @@
 use std::future::IntoFuture;
 
 use crate::{
+    completion::message::Message,
     completion::{self, CompletionModel, Prompt, PromptError},
     extractor::{ExtractionError, Extractor},
-    completion::message::Message,
     vector_store::{self, VectorStoreError, VectorStoreIndex, VectorStoreIndexDyn},
     workflow::Op, // updated path
 };

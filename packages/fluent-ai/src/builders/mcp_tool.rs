@@ -1,5 +1,6 @@
-use crate::domain::mcp_tool::Tool;
 use serde_json::Value;
+
+use crate::domain::mcp_tool::Tool;
 
 /// Builder for MCP Tool objects
 pub struct McpToolBuilder {
@@ -54,9 +55,10 @@ impl Tool for McpToolImpl {
         &self.parameters
     }
 
-    fn execute(&self, _args: Value) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Value, String>> + Send>> {
-        Box::pin(async move {
-            Ok(Value::Null)
-        })
+    fn execute(
+        &self,
+        _args: Value,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Value, String>> + Send>> {
+        Box::pin(async move { Ok(Value::Null) })
     }
 }

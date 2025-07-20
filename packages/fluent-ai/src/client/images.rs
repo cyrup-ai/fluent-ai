@@ -13,7 +13,7 @@
 
 use std::sync::Arc;
 
-use crossbeam_channel::{unbounded, Receiver};
+use crossbeam_channel::{Receiver, unbounded};
 
 use crate::{
     client::{AsImageGeneration, ProviderClient},

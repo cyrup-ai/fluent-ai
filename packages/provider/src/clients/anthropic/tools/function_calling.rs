@@ -1,26 +1,20 @@
 //! Function calling and tool execution system with zero-allocation streaming
-//! 
-//! This module provides a type-safe, zero-allocation function calling system for 
+//!
+//! This module provides a type-safe, zero-allocation function calling system for
 //! Anthropic tool execution with lock-free streaming and compile-time safety.
 
-use super::core::{
-    Tool, ToolError, ToolExecutionError, ToolRegistrationError, 
-    Emitter, ChainControl, SchemaType, Message, AnthropicResult, AnthropicError,
-    InvocationHandler, ErrorHandler, ResultHandler
-};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::{
-    any::TypeId,
-    collections::HashMap,
-    marker::PhantomData,
-    future::Future,
-    pin::Pin,
-};
-use arrayvec::ArrayVec;
+use std::{any::TypeId, collections::HashMap, future::Future, marker::PhantomData, pin::Pin};
 
+use arrayvec::ArrayVec;
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
+
+use super::core::{
+    AnthropicError, AnthropicResult, ChainControl, Emitter, ErrorHandler, InvocationHandler,
+    Message, ResultHandler, SchemaType, Tool, ToolError, ToolExecutionError, ToolRegistrationError,
+};
 #[cfg(feature = "cylo")]
-use crate::execution::{CyloInstance, CyloExecutor, ExecutionRequest};
+use crate::execution::{CyloExecutor, CyloInstance, ExecutionRequest};
 
 /// Tool execution context with metadata and message history
 #[derive(Debug, Clone)]
@@ -56,7 +50,10 @@ pub struct ToolResult {
 pub enum ToolOutput {
     Text(String),
     Json(Value),
-    Error { message: String, code: Option<String> },
+    Error {
+        message: String,
+        code: Option<String>,
+    },
 }
 
 impl From<String> for ToolOutput {
@@ -89,46 +86,72 @@ pub trait DescribedTool {
 pub trait ToolWithDeps<D: Send + Sync + 'static> {
     type WithRequestSchemaBuilder<Req: serde::de::DeserializeOwned + Send + 'static>: ToolWithRequestSchema<D, Req>;
     fn request_schema<Req: serde::de::DeserializeOwned + Send + 'static>(
-        self, 
-        schema_type: SchemaType
+        self,
+        schema_type: SchemaType,
     ) -> Self::WithRequestSchemaBuilder<Req>;
 }
 
 /// Trait for tools with request schema
-pub trait ToolWithRequestSchema<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static> {
+pub trait ToolWithRequestSchema<
+    D: Send + Sync + 'static,
+    Req: serde::de::DeserializeOwned + Send + 'static,
+>
+{
     type WithSchemasBuilder<Res: serde::Serialize + Send + 'static>: ToolWithSchemas<D, Req, Res>;
     fn result_schema<Res: serde::Serialize + Send + 'static>(
         self,
-        schema_type: SchemaType
+        schema_type: SchemaType,
     ) -> Self::WithSchemasBuilder<Res>;
 }
 
 /// Trait for tools with complete schemas
-pub trait ToolWithSchemas<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static, Res: serde::Serialize + Send + 'static> {
+pub trait ToolWithSchemas<
+    D: Send + Sync + 'static,
+    Req: serde::de::DeserializeOwned + Send + 'static,
+    Res: serde::Serialize + Send + 'static,
+>
+{
     type WithInvocationBuilder: ToolWithInvocation<D, Req, Res>;
     fn on_invocation<F, Fut>(self, handler: F) -> Self::WithInvocationBuilder
-    where 
+    where
         F: Fn(&Conversation, &Emitter, Req, &D) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = AnthropicResult<()>> + Send + 'static;
 }
 
 /// Trait for tools with invocation handler
-pub trait ToolWithInvocation<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static, Res: serde::Serialize + Send + 'static> {
+pub trait ToolWithInvocation<
+    D: Send + Sync + 'static,
+    Req: serde::de::DeserializeOwned + Send + 'static,
+    Res: serde::Serialize + Send + 'static,
+>
+{
     fn on_error<F>(self, handler: F) -> Self
-    where F: Fn(&Conversation, &ChainControl, AnthropicError, &D) + Send + Sync + 'static;
-    
+    where
+        F: Fn(&Conversation, &ChainControl, AnthropicError, &D) + Send + Sync + 'static;
+
     fn on_result<F>(self, handler: F) -> Self
-    where F: Fn(&Conversation, &ChainControl, Res, &D) -> Res + Send + Sync + 'static;
-    
+    where
+        F: Fn(&Conversation, &ChainControl, Res, &D) -> Res + Send + Sync + 'static;
+
     fn build(self) -> impl TypedToolTrait<D, Req, Res>;
 }
 
 /// Trait for built typed tools
-pub trait TypedToolTrait<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static, Res: serde::Serialize + Send + 'static> {
+pub trait TypedToolTrait<
+    D: Send + Sync + 'static,
+    Req: serde::de::DeserializeOwned + Send + 'static,
+    Res: serde::Serialize + Send + 'static,
+>
+{
     fn name(&self) -> &'static str;
     fn description(&self) -> &'static str;
     fn dependency(&self) -> &D;
-    fn execute(&self, conversation: &Conversation, emitter: &Emitter, request: Req) -> impl Future<Output = AnthropicResult<()>> + Send;
+    fn execute(
+        &self,
+        conversation: &Conversation,
+        emitter: &Emitter,
+        request: Req,
+    ) -> impl Future<Output = AnthropicResult<()>> + Send;
 }
 
 /// Entry point for typestate builder pattern
@@ -204,7 +227,7 @@ struct ToolHandlers<D, Req, Res> {
 // Trait implementations for typestate builder pattern
 impl NamedTool for NamedToolBuilder {
     type DescribedBuilder = DescribedToolBuilder;
-    
+
     #[inline(always)]
     fn description(self, desc: &'static str) -> Self::DescribedBuilder {
         DescribedToolBuilder {
@@ -216,7 +239,7 @@ impl NamedTool for NamedToolBuilder {
 
 impl DescribedTool for DescribedToolBuilder {
     type WithDepsBuilder<D: Send + Sync + 'static> = ToolWithDepsBuilder<D>;
-    
+
     #[inline(always)]
     fn with<D: Send + Sync + 'static>(self, dependency: D) -> Self::WithDepsBuilder<D> {
         ToolWithDepsBuilder {
@@ -228,12 +251,13 @@ impl DescribedTool for DescribedToolBuilder {
 }
 
 impl<D: Send + Sync + 'static> ToolWithDeps<D> for ToolWithDepsBuilder<D> {
-    type WithRequestSchemaBuilder<Req: serde::de::DeserializeOwned + Send + 'static> = ToolWithRequestSchemaBuilder<D, Req>;
-    
+    type WithRequestSchemaBuilder<Req: serde::de::DeserializeOwned + Send + 'static> =
+        ToolWithRequestSchemaBuilder<D, Req>;
+
     #[inline(always)]
     fn request_schema<Req: serde::de::DeserializeOwned + Send + 'static>(
-        self, 
-        schema_type: SchemaType
+        self,
+        schema_type: SchemaType,
     ) -> Self::WithRequestSchemaBuilder<Req> {
         ToolWithRequestSchemaBuilder {
             name: self.name,
@@ -245,13 +269,16 @@ impl<D: Send + Sync + 'static> ToolWithDeps<D> for ToolWithDepsBuilder<D> {
     }
 }
 
-impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static> ToolWithRequestSchema<D, Req> for ToolWithRequestSchemaBuilder<D, Req> {
-    type WithSchemasBuilder<Res: serde::Serialize + Send + 'static> = ToolWithSchemasBuilder<D, Req, Res>;
-    
+impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static>
+    ToolWithRequestSchema<D, Req> for ToolWithRequestSchemaBuilder<D, Req>
+{
+    type WithSchemasBuilder<Res: serde::Serialize + Send + 'static> =
+        ToolWithSchemasBuilder<D, Req, Res>;
+
     #[inline(always)]
     fn result_schema<Res: serde::Serialize + Send + 'static>(
         self,
-        schema_type: SchemaType
+        schema_type: SchemaType,
     ) -> Self::WithSchemasBuilder<Res> {
         ToolWithSchemasBuilder {
             name: self.name,
@@ -264,7 +291,12 @@ impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static
     }
 }
 
-impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static, Res: serde::Serialize + Send + 'static> ToolWithSchemasBuilder<D, Req, Res> {
+impl<
+    D: Send + Sync + 'static,
+    Req: serde::de::DeserializeOwned + Send + 'static,
+    Res: serde::Serialize + Send + 'static,
+> ToolWithSchemasBuilder<D, Req, Res>
+{
     /// Set Cylo execution environment - EXACT syntax: .cylo(Cylo::Apple("python:alpine3.20").instance("env_name"))
     #[cfg(feature = "cylo")]
     #[inline(always)]
@@ -279,7 +311,7 @@ impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static
             _phantom: PhantomData,
         }
     }
-    
+
     /// No-op when cylo feature is disabled
     #[cfg(not(feature = "cylo"))]
     #[inline(always)]
@@ -288,19 +320,23 @@ impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static
     }
 }
 
-impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static, Res: serde::Serialize + Send + 'static> ToolWithSchemas<D, Req, Res> for ToolWithSchemasBuilder<D, Req, Res> {
+impl<
+    D: Send + Sync + 'static,
+    Req: serde::de::DeserializeOwned + Send + 'static,
+    Res: serde::Serialize + Send + 'static,
+> ToolWithSchemas<D, Req, Res> for ToolWithSchemasBuilder<D, Req, Res>
+{
     type WithInvocationBuilder = ToolWithInvocationBuilder<D, Req, Res>;
-    
+
     #[inline(always)]
     fn on_invocation<F, Fut>(self, handler: F) -> Self::WithInvocationBuilder
-    where 
+    where
         F: Fn(&Conversation, &Emitter, Req, &D) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = AnthropicResult<()>> + Send + 'static,
     {
-        let boxed_handler: InvocationHandler<D, Req, Res> = Box::new(move |conv, emitter, req, dep| {
-            Box::pin(handler(conv, emitter, req, dep))
-        });
-        
+        let boxed_handler: InvocationHandler<D, Req, Res> =
+            Box::new(move |conv, emitter, req, dep| Box::pin(handler(conv, emitter, req, dep)));
+
         ToolWithInvocationBuilder {
             name: self.name,
             description: self.description,
@@ -314,21 +350,30 @@ impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static
     }
 }
 
-impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static, Res: serde::Serialize + Send + 'static> ToolWithInvocation<D, Req, Res> for ToolWithInvocationBuilder<D, Req, Res> {
+impl<
+    D: Send + Sync + 'static,
+    Req: serde::de::DeserializeOwned + Send + 'static,
+    Res: serde::Serialize + Send + 'static,
+> ToolWithInvocation<D, Req, Res> for ToolWithInvocationBuilder<D, Req, Res>
+{
     #[inline(always)]
     fn on_error<F>(mut self, handler: F) -> Self
-    where F: Fn(&Conversation, &ChainControl, AnthropicError, &D) + Send + Sync + 'static {
+    where
+        F: Fn(&Conversation, &ChainControl, AnthropicError, &D) + Send + Sync + 'static,
+    {
         self.error_handler = Some(Box::new(handler));
         self
     }
-    
+
     #[inline(always)]
     fn on_result<F>(mut self, handler: F) -> Self
-    where F: Fn(&Conversation, &ChainControl, Res, &D) -> Res + Send + Sync + 'static {
+    where
+        F: Fn(&Conversation, &ChainControl, Res, &D) -> Res + Send + Sync + 'static,
+    {
         self.result_handler = Some(Box::new(handler));
         self
     }
-    
+
     #[inline(always)]
     fn build(self) -> impl TypedToolTrait<D, Req, Res> {
         TypedToolImpl {
@@ -346,23 +391,33 @@ impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static
     }
 }
 
-impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static, Res: serde::Serialize + Send + 'static> TypedToolTrait<D, Req, Res> for TypedToolImpl<D, Req, Res> {
+impl<
+    D: Send + Sync + 'static,
+    Req: serde::de::DeserializeOwned + Send + 'static,
+    Res: serde::Serialize + Send + 'static,
+> TypedToolTrait<D, Req, Res> for TypedToolImpl<D, Req, Res>
+{
     #[inline(always)]
     fn name(&self) -> &'static str {
         self.name
     }
-    
+
     #[inline(always)]
     fn description(&self) -> &'static str {
         self.description
     }
-    
+
     #[inline(always)]
     fn dependency(&self) -> &D {
         &self.dependency
     }
-    
-    async fn execute(&self, conversation: &Conversation, emitter: &Emitter, request: Req) -> AnthropicResult<()> {
+
+    async fn execute(
+        &self,
+        conversation: &Conversation,
+        emitter: &Emitter,
+        request: Req,
+    ) -> AnthropicResult<()> {
         #[cfg(feature = "cylo")]
         {
             if let Some(cylo_instance) = &self.cylo_instance {
@@ -374,25 +429,25 @@ impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static
                     working_dir: None,
                     timeout: None,
                 };
-                
+
                 let executor = CyloExecutor::new(cylo_instance.clone());
                 match executor.execute_async(execution_request).await {
                     Ok(_execution_result) => {
                         // Execute the actual tool handler within the Cylo environment
-                        (self.handlers.invocation)(conversation, emitter, request, &self.dependency).await
+                        (self.handlers.invocation)(conversation, emitter, request, &self.dependency)
+                            .await
                     }
-                    Err(e) => {
-                        Err(AnthropicError::ExecutionError(format!(
-                            "Cylo execution failed: {}", e
-                        )))
-                    }
+                    Err(e) => Err(AnthropicError::ExecutionError(format!(
+                        "Cylo execution failed: {}",
+                        e
+                    ))),
                 }
             } else {
                 // No Cylo environment configured, execute directly
                 (self.handlers.invocation)(conversation, emitter, request, &self.dependency).await
             }
         }
-        
+
         #[cfg(not(feature = "cylo"))]
         {
             // Cylo feature disabled, execute directly
@@ -444,7 +499,7 @@ impl TypedToolStorage {
             tool_count: 0,
         }
     }
-    
+
     /// Register a typed tool with compile-time type safety and zero allocation
     #[inline(always)]
     pub fn register<D, Req, Res>(&mut self, tool: TypedTool<D, Req, Res>) -> AnthropicResult<()>
@@ -456,55 +511,60 @@ impl TypedToolStorage {
         // Check capacity before allocation
         if self.tool_count >= MAX_TYPED_TOOLS {
             return Err(AnthropicError::InvalidRequest(
-                "Maximum tool capacity reached".to_string()
+                "Maximum tool capacity reached".to_string(),
             ));
         }
-        
+
         // Check for duplicate tool names in O(n) time (acceptable for bounded n)
         for entry in &self.entries {
             if entry.name == tool.name {
                 return Err(AnthropicError::InvalidRequest(format!(
-                    "Tool '{}' already registered", tool.name
+                    "Tool '{}' already registered",
+                    tool.name
                 )));
             }
         }
-        
+
         // Create type identifier for compile-time type safety
         let type_id = TypeId::of::<TypedTool<D, Req, Res>>();
-        
+
         // Store schemas with bounds checking
         let schema_index = self.schemas.len();
-        if self.schemas.try_push((tool.request_schema, tool.result_schema)).is_err() {
+        if self
+            .schemas
+            .try_push((tool.request_schema, tool.result_schema))
+            .is_err()
+        {
             return Err(AnthropicError::InvalidRequest(
-                "Schema storage capacity exceeded".to_string()
+                "Schema storage capacity exceeded".to_string(),
             ));
         }
-        
+
         // Store tool entry with bounds checking
         let entry = ToolStorageEntry {
             type_id,
             name: tool.name,
             schema_index,
         };
-        
+
         if self.entries.try_push(entry).is_err() {
             // Rollback schema storage if entry storage fails
             self.schemas.pop();
             return Err(AnthropicError::InvalidRequest(
-                "Tool storage capacity exceeded".to_string()
+                "Tool storage capacity exceeded".to_string(),
             ));
         }
-        
+
         self.tool_count += 1;
         Ok(())
     }
-    
+
     /// Check if tool exists by name with O(n) lookup (acceptable for bounded n)
     #[inline(always)]
     pub fn contains_tool(&self, name: &str) -> bool {
         self.entries.iter().any(|entry| entry.name == name)
     }
-    
+
     /// Get tool schemas for validation with O(n) lookup
     #[inline(always)]
     pub fn get_schemas(&self, name: &str) -> Option<&(Value, Value)> {
@@ -513,25 +573,25 @@ impl TypedToolStorage {
             .find(|entry| entry.name == name)
             .and_then(|entry| self.schemas.get(entry.schema_index))
     }
-    
+
     /// List all registered tool names with zero allocation
     #[inline(always)]
     pub fn tool_names(&self) -> impl Iterator<Item = &'static str> + '_ {
         self.entries.iter().map(|entry| entry.name)
     }
-    
+
     /// Get current tool count
     #[inline(always)]
     pub fn tool_count(&self) -> usize {
         self.tool_count
     }
-    
+
     /// Get remaining capacity
     #[inline(always)]
     pub fn remaining_capacity(&self) -> usize {
         MAX_TYPED_TOOLS - self.tool_count
     }
-    
+
     /// Execute typed tool with zero-allocation streaming pipeline
     pub async fn execute_typed_tool<D, Req, Res>(
         &self,
@@ -546,52 +606,55 @@ impl TypedToolStorage {
     {
         // Verify tool exists with type safety
         let type_id = TypeId::of::<TypedTool<D, Req, Res>>();
-        let _entry = self.entries
+        let _entry = self
+            .entries
             .iter()
             .find(|entry| entry.name == name && entry.type_id == type_id)
             .ok_or_else(|| AnthropicError::ToolExecutionError {
                 tool_name: name.to_string(),
                 error: "Tool not found or type mismatch".to_string(),
             })?;
-        
+
         // Create bounded streaming channel with backpressure
-        let channel_capacity = context.metadata
+        let channel_capacity = context
+            .metadata
             .get("channel_capacity")
             .and_then(|v| v.as_u64())
             .map(|v| v as usize)
             .filter(|&v| v > 0 && v <= 65536) // Validate capacity bounds
             .unwrap_or(1024); // Default 1KB buffer
-            
+
         let (_bounded_sender, receiver) = tokio::sync::mpsc::channel(channel_capacity);
-        
+
         // Create stack-allocated conversation context using message history from context
         let messages = &context.message_history;
-        let last_message = messages.last()
-            .ok_or_else(|| AnthropicError::InvalidRequest(
-                "No messages available in conversation context".to_string()
-            ))?;
+        let last_message = messages.last().ok_or_else(|| {
+            AnthropicError::InvalidRequest(
+                "No messages available in conversation context".to_string(),
+            )
+        })?;
         let _conversation = Conversation {
             messages,
             context,
             last_message,
         };
-        
+
         // Create chain control with atomic operations
         let _chain_control = ChainControl::new();
-        
+
         // In a complete implementation, we would execute the tool handler here
         // and stream results through the bounded_sender channel
-        
+
         Ok(receiver)
     }
-    
+
     /// Memory optimization with stack-based cleanup
     #[inline(always)]
     pub fn optimize_memory(&mut self) {
         // No dynamic allocation to clean up - stack-based storage is automatically optimized
         // This is a no-op for stack-allocated structures but maintains API compatibility
     }
-    
+
     /// Get memory usage statistics for monitoring
     #[inline(always)]
     pub fn memory_stats(&self) -> (usize, usize, usize) {
@@ -618,16 +681,16 @@ pub trait ToolExecutor: Send + Sync {
         input: Value,
         context: &ToolExecutionContext,
     ) -> Pin<Box<dyn Future<Output = AnthropicResult<ToolOutput>> + Send>>;
-    
+
     /// Get tool definition
     fn definition(&self) -> Tool;
-    
+
     /// Validate input before execution with production-ready error handling
     fn validate_input(&self, input: &Value) -> AnthropicResult<()> {
         // Default validation - check if input is an object
         if !input.is_object() {
             return Err(AnthropicError::InvalidRequest(
-                "Tool input must be a JSON object".to_string()
+                "Tool input must be a JSON object".to_string(),
             ));
         }
         Ok(())
@@ -650,24 +713,32 @@ impl ToolRegistry {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     /// Register a legacy tool executor
-    pub fn register_tool(&mut self, name: String, executor: Box<dyn ToolExecutor + Send + Sync>) -> AnthropicResult<()> {
+    pub fn register_tool(
+        &mut self,
+        name: String,
+        executor: Box<dyn ToolExecutor + Send + Sync>,
+    ) -> AnthropicResult<()> {
         if self.tools.contains_key(&name) {
             return Err(AnthropicError::InvalidRequest(format!(
-                "Tool '{}' already registered", name
+                "Tool '{}' already registered",
+                name
             )));
         }
-        
+
         let definition = executor.definition();
         self.tools.insert(name.clone(), definition);
         self.executors.insert(name, executor);
         Ok(())
     }
-    
+
     /// Register a typed tool with zero allocation
     #[inline(always)]
-    pub fn register_typed_tool<D, Req, Res>(&mut self, tool: TypedTool<D, Req, Res>) -> AnthropicResult<()>
+    pub fn register_typed_tool<D, Req, Res>(
+        &mut self,
+        tool: TypedTool<D, Req, Res>,
+    ) -> AnthropicResult<()>
     where
         D: Send + Sync + 'static,
         Req: serde::de::DeserializeOwned + Send + 'static,
@@ -675,19 +746,19 @@ impl ToolRegistry {
     {
         self.typed_storage.register(tool)
     }
-    
+
     /// Get all registered tools
     #[inline(always)]
     pub fn list_tools(&self) -> Vec<&Tool> {
         self.tools.values().collect()
     }
-    
+
     /// Check if tool exists
     #[inline(always)]
     pub fn has_tool(&self, name: &str) -> bool {
         self.tools.contains_key(name) || self.typed_storage.contains_tool(name)
     }
-    
+
     /// Execute tool with production-ready error handling
     pub async fn execute_tool(
         &self,
@@ -700,7 +771,7 @@ impl ToolRegistry {
             executor.validate_input(&input)?;
             return executor.execute(input, context).await;
         }
-        
+
         // Tool not found in either storage
         Err(AnthropicError::ToolExecutionError {
             tool_name: name.to_string(),
@@ -716,20 +787,20 @@ macro_rules! tool_builder {
     ($name:expr) => {
         $crate::clients::anthropic::tools::function_calling::ToolBuilder::named($name)
     };
-    
+
     // With description
     ($name:expr, $desc:expr) => {
         $crate::clients::anthropic::tools::function_calling::ToolBuilder::named($name)
             .description($desc)
     };
-    
+
     // With description and dependency
     ($name:expr, $desc:expr, $dep:expr) => {
         $crate::clients::anthropic::tools::function_calling::ToolBuilder::named($name)
             .description($desc)
             .with($dep)
     };
-    
+
     // Full builder with all parameters
     ($name:expr, $desc:expr, $dep:expr, $req:ty, $res:ty, $handler:expr) => {
         $crate::clients::anthropic::tools::function_calling::ToolBuilder::named($name)

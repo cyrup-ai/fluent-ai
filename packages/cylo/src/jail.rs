@@ -1,11 +1,12 @@
-use anyhow::{Context, Result};
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
+
+use anyhow::{Context, Result};
 use tracing::{info, warn};
 
 use crate::error::StorageError;
@@ -107,8 +108,8 @@ fn apply_landlock_restrictions(allowed_dir: &str) -> Result<(), StorageError> {
     #[cfg(all(target_os = "linux", feature = "landlock"))]
     {
         use landlock::{
-            Access, AccessFs, PathBeneath, PathFd, Ruleset, RulesetAttr, RulesetCreatedAttr,
-            RulesetStatus, ABI,
+            ABI, Access, AccessFs, PathBeneath, PathFd, Ruleset, RulesetAttr, RulesetCreatedAttr,
+            RulesetStatus,
         };
 
         // Set up Landlock to only allow file access in the specified directory

@@ -2,9 +2,10 @@
 //!
 //! All conversation construction logic and builder patterns.
 
-use fluent_ai_domain::{AsyncTask, spawn_async, ZeroOneOrMany};
-use fluent_ai_domain::conversation::Conversation;
 use std::fmt;
+
+use fluent_ai_domain::conversation::Conversation;
+use fluent_ai_domain::{AsyncTask, ZeroOneOrMany, spawn_async};
 
 /// Default implementation of the Conversation trait
 #[derive(Debug, Clone)]
@@ -37,7 +38,7 @@ impl Conversation for ConversationImpl {
                 } else {
                     ZeroOneOrMany::None
                 }
-            },
+            }
             _ => ZeroOneOrMany::many(self.messages.clone()),
         }
     }
@@ -108,8 +109,6 @@ impl ConversationBuilderWithHandler {
     /// Terminal method - create conversation with async handling
     pub fn build_async(self) -> AsyncTask<ConversationImpl> {
         let initial_message = self.initial_message.unwrap_or_else(|| "".to_string());
-        spawn_async(async move {
-            ConversationImpl::new(initial_message)
-        })
+        spawn_async(async move { ConversationImpl::new(initial_message) })
     }
 }

@@ -4,13 +4,20 @@
 // Together AI client with typestate-driven builder pattern
 // ============================================================================
 
-use serde_json::json;
-use arrayvec::{ArrayVec, ArrayString};
-use smallvec::{SmallVec, smallvec};
-use arc_swap::ArcSwap;
-use atomic_counter::RelaxedCounter;
 use std::sync::LazyLock;
 
+use arc_swap::ArcSwap;
+use arrayvec::{ArrayString, ArrayVec};
+use atomic_counter::RelaxedCounter;
+use fluent_ai_domain::AsyncTask as DomainAsyncTask;
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
+use serde_json::json;
+use smallvec::{SmallVec, smallvec};
+
+use super::{
+    completion::{CompletionModel, LLAMA_3_2_11B_VISION_INSTRUCT_TURBO},
+    embedding::{EmbeddingModel, M2_BERT_80M_8K_RETRIEVAL},
+};
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient},
     completion::{
@@ -20,13 +27,6 @@ use crate::{
     message::Message,
     runtime::{self, AsyncTask},
 };
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
-use fluent_ai_domain::AsyncTask as DomainAsyncTask;
-
-use super::{
-    completion::{CompletionModel, LLAMA_3_2_11B_VISION_INSTRUCT_TURBO},
-    embedding::{EmbeddingModel, M2_BERT_80M_8K_RETRIEVAL},
-};
 
 // ============================================================================
 // Together AI API Client with HTTP3 and dual-endpoint optimization
@@ -35,13 +35,11 @@ const TOGETHER_AI_BASE_URL: &str = "https://api.together.xyz";
 
 /// Global HTTP3 clients optimized for different endpoints
 static CHAT_HTTP_CLIENT: LazyLock<HttpClient> = LazyLock::new(|| {
-    HttpClient::with_config(HttpConfig::ai_optimized())
-        .unwrap_or_else(|_| HttpClient::new())
+    HttpClient::with_config(HttpConfig::ai_optimized()).unwrap_or_else(|_| HttpClient::new())
 });
 
 static EMBED_HTTP_CLIENT: LazyLock<HttpClient> = LazyLock::new(|| {
-    HttpClient::with_config(HttpConfig::embedding_optimized())
-        .unwrap_or_else(|_| HttpClient::new())
+    HttpClient::with_config(HttpConfig::embedding_optimized()).unwrap_or_else(|_| HttpClient::new())
 });
 
 /// Lock-free performance metrics
@@ -91,12 +89,14 @@ impl Client {
     #[inline]
     pub fn new(api_key: String) -> Result<Self, CompletionError> {
         if api_key.is_empty() {
-            return Err(CompletionError::ConfigError("API key cannot be empty".into()));
+            return Err(CompletionError::InvalidRequest(
+                "API key cannot be empty".into(),
+            ));
         }
-        
+
         let api_key_array = ArrayString::from(&api_key)
-            .map_err(|_| CompletionError::ConfigError("API key too long".into()))?;
-            
+            .map_err(|_| CompletionError::InvalidRequest("API key too long".into()))?;
+
         Ok(Self {
             api_key: ArcSwap::from_pointee(api_key_array),
             base_url: TOGETHER_AI_BASE_URL,
@@ -109,9 +109,9 @@ impl Client {
     /// Environment variable names to search for Together API keys (ordered by priority)
     pub fn env_api_keys() -> &'static [&'static str] {
         &[
-            "TOGETHER_API_KEY",       // Primary Together key
-            "TOGETHERAI_API_KEY",     // Alternative name
-            "TOGETHER_AI_API_KEY",    // Full name variation
+            "TOGETHER_API_KEY",    // Primary Together key
+            "TOGETHERAI_API_KEY",  // Alternative name
+            "TOGETHER_AI_API_KEY", // Full name variation
         ]
     }
 
@@ -125,91 +125,124 @@ impl Client {
                 }
             }
         }
-        Err(CompletionError::ConfigError(format!(
-            "No Together API key found. Set one of: {}", 
+        Err(CompletionError::InvalidRequest(format!(
+            "No Together API key found. Set one of: {}",
             Self::env_api_keys().join(", ")
         )))
     }
-    
+
     /// Update API key with zero downtime hot-swapping
     #[inline]
     pub fn update_api_key(&self, new_api_key: String) -> Result<(), CompletionError> {
         if new_api_key.is_empty() {
-            return Err(CompletionError::ConfigError("API key cannot be empty".into()));
+            return Err(CompletionError::InvalidRequest(
+                "API key cannot be empty".into(),
+            ));
         }
-        
+
         let api_key_array = ArrayString::from(&new_api_key)
-            .map_err(|_| CompletionError::ConfigError("API key too long".into()))?;
-        
+            .map_err(|_| CompletionError::InvalidRequest("API key too long".into()))?;
+
         self.api_key.store(std::sync::Arc::new(api_key_array));
         Ok(())
     }
 
     /// Build authenticated chat request with optimized client
     #[inline]
-    pub(crate) async fn chat_request(&self, endpoint: &str, body: Vec<u8>) -> Result<fluent_ai_http3::Response, HttpError> {
+    pub(crate) async fn chat_request(
+        &self,
+        endpoint: &str,
+        body: Vec<u8>,
+    ) -> Result<fluent_ai_http3::Response, HttpError> {
         let url = format!("{}/{}", self.base_url, endpoint);
-        
-        let response = self.make_authenticated_request(&self.chat_client, &url, body).await?;
+
+        let response = self
+            .make_authenticated_request(&self.chat_client, &url, body)
+            .await?;
         self.metrics.chat_requests.inc();
         Ok(response)
     }
-    
+
     /// Build authenticated embedding request with optimized client
     #[inline]
-    pub(crate) async fn embedding_request(&self, body: Vec<u8>) -> Result<fluent_ai_http3::Response, HttpError> {
+    pub(crate) async fn embedding_request(
+        &self,
+        body: Vec<u8>,
+    ) -> Result<fluent_ai_http3::Response, HttpError> {
         let url = format!("{}/embeddings", self.base_url);
-        
-        let response = self.make_authenticated_request(&self.embed_client, &url, body).await?;
+
+        let response = self
+            .make_authenticated_request(&self.embed_client, &url, body)
+            .await?;
         self.metrics.embedding_requests.inc();
         Ok(response)
     }
-    
+
     /// Build authenticated request with zero allocations
     #[inline]
-    async fn make_authenticated_request(&self, client: &HttpClient, url: &str, body: Vec<u8>) -> Result<fluent_ai_http3::Response, HttpError> {
+    async fn make_authenticated_request(
+        &self,
+        client: &HttpClient,
+        url: &str,
+        body: Vec<u8>,
+    ) -> Result<fluent_ai_http3::Response, HttpError> {
         // Build headers with zero allocation
         let mut headers: SmallVec<[(&str, ArrayString<180>); 4]> = smallvec![];
-        
+
         // Build auth header
         let mut auth_header = ArrayString::<180>::new();
-        auth_header.try_push_str("Bearer ").map_err(|_| HttpError::HeaderTooLong)?;
-        auth_header.try_push_str(&self.api_key.load()).map_err(|_| HttpError::HeaderTooLong)?;
-        
+        auth_header
+            .try_push_str("Bearer ")
+            .map_err(|_| HttpError::HeaderTooLong)?;
+        auth_header
+            .try_push_str(&self.api_key.load())
+            .map_err(|_| HttpError::HeaderTooLong)?;
+
         headers.push(("Authorization", auth_header));
-        headers.push(("Content-Type", ArrayString::from("application/json").unwrap()));
-        headers.push(("User-Agent", ArrayString::from("fluent-ai-together/1.0").unwrap()));
-        
+        headers.push((
+            "Content-Type",
+            ArrayString::from("application/json").unwrap(),
+        ));
+        headers.push((
+            "User-Agent",
+            ArrayString::from("fluent-ai-together/1.0").unwrap(),
+        ));
+
         let request = HttpRequest::post(url, body)
             .map_err(HttpError::from)?
             .headers(headers.iter().map(|(k, v)| (*k, v.as_str())));
-            
+
         // Update metrics atomically
         self.metrics.total_requests.inc();
         self.metrics.concurrent_requests.inc();
-        
+
         let response = client.send(request).await;
-        
+
         self.metrics.concurrent_requests.dec();
-        
+
         match &response {
             Ok(_) => self.metrics.successful_requests.inc(),
             Err(_) => self.metrics.failed_requests.inc(),
         }
-        
+
         response
     }
-    
+
     /// Test connection to Together AI API
     #[inline]
     pub async fn test_connection(&self) -> Result<(), CompletionError> {
-        let response = self.chat_request("models", vec![]).await
+        let response = self
+            .chat_request("models", vec![])
+            .await
             .map_err(|e| CompletionError::HttpError(e.to_string()))?;
-            
+
         if response.status().is_success() {
             Ok(())
         } else {
-            Err(CompletionError::ApiError(format!("Connection test failed with status: {}", response.status())))
+            Err(CompletionError::ApiError(format!(
+                "Connection test failed with status: {}",
+                response.status()
+            )))
         }
     }
 
@@ -234,7 +267,7 @@ impl Client {
     pub fn embedding_model_with_ndims(&self, model: &str, ndims: usize) -> EmbeddingModel {
         EmbeddingModel::new(self.clone(), model, ndims)
     }
-    
+
     /// Get current performance metrics
     #[inline]
     pub fn get_metrics(&self) -> (usize, usize, usize, usize, usize, usize) {
@@ -252,7 +285,7 @@ impl Client {
 /// CompletionClient trait implementation for auto-generation
 impl CompletionClient for Client {
     type Model = Result<CompletionModel, CompletionError>;
-    
+
     #[inline]
     fn completion_model(&self, model: &str) -> Self::Model {
         Ok(CompletionModel::new(self.clone(), model))
@@ -262,7 +295,7 @@ impl CompletionClient for Client {
 /// EmbeddingsClient trait implementation for auto-generation
 impl EmbeddingsClient for Client {
     type Model = Result<EmbeddingModel, CompletionError>;
-    
+
     #[inline]
     fn embedding_model(&self, model: &str) -> Self::Model {
         let ndims = match model {
@@ -271,7 +304,7 @@ impl EmbeddingsClient for Client {
         };
         Ok(EmbeddingModel::new(self.clone(), model, ndims))
     }
-    
+
     #[inline]
     fn embedding_model_with_ndims(&self, model: &str, ndims: usize) -> Self::Model {
         Ok(EmbeddingModel::new(self.clone(), model, ndims))
@@ -284,12 +317,16 @@ impl ProviderClient for Client {
     fn provider_name(&self) -> &'static str {
         "together"
     }
-    
+
     #[inline]
-    fn test_connection(&self) -> DomainAsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+    fn test_connection(
+        &self,
+    ) -> DomainAsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
         let client = self.clone();
         DomainAsyncTask::spawn(async move {
-            client.test_connection().await
+            client
+                .test_connection()
+                .await
                 .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
         })
     }
@@ -462,7 +499,10 @@ impl<'a> TogetherCompletionBuilder<'a, NeedsPrompt> {
 impl<'a> TogetherCompletionBuilder<'a, HasPrompt> {
     /// Build the completion request
     fn build_request(&self) -> Result<CompletionRequest, PromptError> {
-        let prompt = self.prompt.as_ref().ok_or_else(|| PromptError::ValidationError("Prompt is required".to_string()))?;
+        let prompt = self
+            .prompt
+            .as_ref()
+            .ok_or_else(|| PromptError::ValidationError("Prompt is required".to_string()))?;
 
         let mut builder =
             CompletionRequestBuilder::new(self.model_name.to_string(), prompt.clone())?;

@@ -11,31 +11,30 @@
 
 pub mod client;
 pub mod completion;
-pub mod completion_old;  // Legacy monolithic implementation
+pub mod completion_old; // Legacy monolithic implementation
 pub mod embedding;
 pub mod model_info;
 pub mod streaming;
 pub mod transcription;
 
 // New modular implementation
-pub mod gemini_error;
-pub mod gemini_types;
-pub mod gemini_streaming;
 pub mod gemini_client;
+pub mod gemini_error;
+pub mod gemini_streaming;
+pub mod gemini_types;
 
 pub use client::{Client, GeminiCompletionBuilder as OldGeminiCompletionBuilder};
-pub use completion::{GeminiCompletionBuilder, completion_builder, CompletionModel};
-
+pub use completion::{CompletionModel, GeminiCompletionBuilder, completion_builder};
+pub use gemini_client::completion_builder as new_completion_builder;
 // Re-export new modular components
 pub use gemini_error::{GeminiError, GeminiResult};
+pub use gemini_streaming::{GeminiStreamProcessor, StreamingMetrics, StreamingResponse};
 pub use gemini_types::{
-    GenerateContentResponse, GenerateContentRequest, Content, Part, Role, 
-    FunctionCall, FunctionResponse, GenerationConfig, Schema, available_models,
-    GEMINI_2_5_PRO_PREVIEW_06_05, GEMINI_2_5_FLASH_PREVIEW_05_20, GEMINI_2_0_FLASH,
-    GEMINI_1_5_PRO, GEMINI_1_5_FLASH, GEMINI_1_5_PRO_8B, GEMINI_1_0_PRO,
+    Content, FunctionCall, FunctionResponse, GEMINI_1_0_PRO, GEMINI_1_5_FLASH, GEMINI_1_5_PRO,
+    GEMINI_1_5_PRO_8B, GEMINI_2_0_FLASH, GEMINI_2_5_FLASH_PREVIEW_05_20,
+    GEMINI_2_5_PRO_PREVIEW_06_05, GenerateContentRequest, GenerateContentResponse,
+    GenerationConfig, Part, Role, Schema, available_models,
 };
-pub use gemini_streaming::{GeminiStreamProcessor, StreamingResponse, StreamingMetrics};
-pub use gemini_client::{completion_builder as new_completion_builder};
 
 // API Response wrapper for compatibility
 #[derive(Debug, serde::Deserialize)]

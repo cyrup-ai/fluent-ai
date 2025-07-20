@@ -13,7 +13,7 @@ use std::io::{self, Write};
 use std::thread::yield_now;
 
 use futures_util::FutureExt; // for `now_or_never`
-use termcolor::{colored_println, info_i, ColoredMessage};
+use termcolor::{ColoredMessage, colored_println, info_i};
 
 use crate::{
     completion::{Chat, Message, PromptError},
@@ -37,9 +37,7 @@ where
 
     loop {
         // Colored prompt
-        ColoredMessage::new()
-            .accent("> ")
-            .print().ok();
+        ColoredMessage::new().accent("> ").print().ok();
         if let Err(e) = io::stdout().flush() {
             colored_println!(error: "Failed to flush stdout: {}", e);
         }
@@ -85,7 +83,8 @@ where
             .newline()
             .text_primary(&reply)
             .newline()
-            .println().ok();
+            .println()
+            .ok();
     }
 
     Ok(())

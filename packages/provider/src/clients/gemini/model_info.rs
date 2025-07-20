@@ -3,10 +3,11 @@
 //! Compile-time model configurations for blazing-fast zero-allocation initialization
 //! All configurations are const and embedded in the binary for optimal performance
 
-use crate::completion_provider::{ModelConfig, ModelInfo, ModelPrompt, CompletionProvider};
-use crate::clients::gemini::completion::GeminiCompletionBuilder;
-use crate::AsyncStream;
 use fluent_ai_domain::chunk::CompletionChunk;
+
+use crate::AsyncStream;
+use crate::clients::gemini::completion::GeminiCompletionBuilder;
+use crate::completion_provider::{CompletionProvider, ModelConfig, ModelInfo, ModelPrompt};
 
 /// Gemini 2.5 Pro model information
 #[derive(Debug, Clone, Copy)]
@@ -187,8 +188,13 @@ impl ModelPrompt for Gemini10Pro {
 #[inline(always)]
 pub const fn get_model_config(model_name: &str) -> &'static ModelConfig {
     match model_name {
-        "gemini-2.5-pro-preview-06-05" | "gemini-2.5-pro-preview-05-06" | "gemini-2.5-pro-preview-03-25" | "gemini-2.5-pro-exp-03-25" => &Gemini25Pro::CONFIG,
-        "gemini-2.5-flash-preview-05-20" | "gemini-2.5-flash-preview-04-17" => &Gemini25Flash::CONFIG,
+        "gemini-2.5-pro-preview-06-05"
+        | "gemini-2.5-pro-preview-05-06"
+        | "gemini-2.5-pro-preview-03-25"
+        | "gemini-2.5-pro-exp-03-25" => &Gemini25Pro::CONFIG,
+        "gemini-2.5-flash-preview-05-20" | "gemini-2.5-flash-preview-04-17" => {
+            &Gemini25Flash::CONFIG
+        }
         "gemini-2.0-flash" | "gemini-2.0-flash-lite" => &Gemini20Flash::CONFIG,
         "gemini-1.5-pro" => &Gemini15Pro::CONFIG,
         "gemini-1.5-flash" => &Gemini15Flash::CONFIG,

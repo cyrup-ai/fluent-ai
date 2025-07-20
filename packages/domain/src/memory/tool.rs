@@ -22,7 +22,7 @@ use crate::async_task::{AsyncStream, AsyncTask, spawn_async};
 use crate::error::{
     ErrorCategory, ErrorRecoverability, ErrorSeverity, ZeroAllocError, ZeroAllocResult,
 };
-use crate::mcp_tool_traits::{McpTool, McpToolData, Tool};
+use crate::tool::{McpTool, McpToolData, ToolTrait as Tool};
 
 /// Maximum number of memory nodes in result collections
 const MAX_MEMORY_TOOL_RESULTS: usize = 1000;

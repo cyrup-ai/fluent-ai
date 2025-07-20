@@ -14,10 +14,11 @@ use crossbeam_queue::SegQueue;
 use crossbeam_utils::CachePadded;
 use fluent_ai_memory::cognitive::CognitiveSettings;
 use fluent_ai_memory::utils::config::{
-    CacheConfig, DatabaseConfig, DatabaseType, LLMConfig, LoggingConfig, VectorStoreConfig,
+    CacheConfig, DatabaseConfig as LegacyDatabaseConfig, DatabaseType as LegacyDatabaseType,
+    LLMConfig as LegacyLLMConfig, LoggingConfig, VectorStoreConfig as LegacyVectorStoreConfig,
 };
 use fluent_ai_memory::{
-    Error as MemoryError, MemoryConfig, MemoryManager, SurrealDBMemoryManager, initialize,
+    Error as LegacyMemoryError, MemoryConfig, MemoryManager, SurrealDBMemoryManager, initialize,
 };
 use once_cell::sync::Lazy;
 
@@ -623,29 +624,25 @@ pub use futures::stream::Stream as AsyncStream;
 pub mod agent;
 pub mod audio;
 pub mod chat;
-pub mod chunk;
 pub mod completion;
+pub mod context;
 pub mod conversation;
-pub mod document;
 pub mod embedding;
 pub mod engine;
 pub mod error;
 pub mod extractor;
 pub mod image;
 pub mod library;
-pub mod loader;
 
 pub mod memory;
 pub mod message;
-pub mod message_processing;
 pub mod model;
 
 pub mod prompt;
 pub mod provider;
-pub mod text_processing;
+
 pub mod tool;
 pub mod usage;
-pub mod workflow;
 
 // Re-export all types for convenience
 // Handle conflicting types by using specific imports to avoid ambiguity
@@ -657,16 +654,11 @@ pub use audio::ContentFormat as AudioContentFormat;
 
 // Audio module exports - specify ContentFormat to avoid conflict with image
 pub use audio::{Audio, AudioMediaType};
-// Chunk module exports
-pub use chunk::*;
 // Completion module exports - consolidated from completion.rs and candle_completion.rs
-pub use completion::{
-    CompletionBackend, CompletionModel, CompletionRequest, CompletionResponse,
-    CompletionCoreClient, CompletionCoreRequest, CompletionCoreResponse,
-    ToolDefinition as CompletionToolDefinition, ModelParams as CompletionModelParams
-};
-// Context module exports
-// Context module removed - was causing import errors
+pub use completion::{CompletionBackend, CompletionModel, CompletionRequest, CompletionResponse};
+// Context module exports - consolidated from document.rs, chunk.rs, context.rs, and loader.rs
+pub use context::*;
+// Conversation module exports - specify types to avoid conflict with message
 pub use conversation::Conversation as ConversationTrait;
 // Conversation module exports - specify types to avoid conflict with message
 pub use conversation::ConversationImpl;
@@ -692,40 +684,87 @@ pub use image::ContentFormat as ImageContentFormat;
 pub use image::{Image, ImageDetail, ImageMediaType};
 // Library module exports
 pub use library::*;
-// Loader module exports
-pub use loader::*;
 // MCP module exports - specify Tool to avoid conflict with mcp_tool
 pub use mcp::{Client, McpClient, McpError, StdioTransport, Transport};
 pub use mcp_tool::Tool as McpToolTrait;
-// McpClientBuilder moved to fluent-ai/src/builders/mcp.rs
+// Memory module exports (consolidated with new high-performance types)
+pub use memory::{
+    AlignedActivationPattern,
+    AlignedCoherenceFingerprint,
+    AtomicAttentionWeights,
+    BaseMemory,
+    CausalLink,
+    CognitiveError,
+    CognitiveMemoryEntry,
+    CognitiveResult,
 
-// MCP Tool module exports - specify Tool to avoid conflict with mcp
-// Implementation types are now in fluent_ai package
-pub use mcp_tool_traits::{McpTool, McpToolData, Tool};
-// Memory module exports (consolidated)
-pub use memory::*;
+    // Cognitive computing types
+    CognitiveState,
+    CompatibilityError,
+
+    CompatibilityLayer,
+    // Compatibility types
+    CompatibilityMode,
+    CpuArchitecture,
+    CpuFeatures,
+    // Configuration types
+    DatabaseConfig,
+    DatabaseType,
+    DistanceMetric,
+    EntanglementBond,
+    EntanglementType,
+    ImportanceContext,
+    IndexType,
+    LLMConfig,
+    LLMProvider,
+    LegacyMemoryError,
+    LegacyMemoryMetadata,
+    LegacyMemoryNode,
+    LegacyMemoryRelationship,
+    LegacyMemoryType,
+    // Legacy types (backward compatibility)
+    Memory,
+    MemoryContent,
+    MemoryError,
+    MemoryNode,
+    MemoryNodeBuilder,
+    // SIMD operations and tools
+    MemoryOperation,
+    MemoryRelationship,
+    MemoryResult,
+
+    MemorySystemBuilder,
+    MemorySystemConfig,
+    MemoryTool,
+    MemoryToolError,
+    MemoryToolResult,
+    // New high-performance domain types
+    MemoryTypeEnum,
+    ModelConfig,
+    Op,
+    QuantumSignature,
+    RateLimitConfig,
+
+    RelationshipType,
+    SimdInstructionSet,
+    StreamingConfig,
+    TemporalContext,
+    VectorStoreConfig,
+    VectorStoreError,
+    VectorStoreIndex,
+    VectorStoreIndexDyn,
+    VectorStoreType,
+    WorkingMemoryItem,
+    calculate_importance,
+
+    next_memory_id,
+};
 pub use message::Conversation as MessageConversation;
 // Message module exports - specify Conversation to avoid conflict with conversation
 pub use message::{
     AssistantContent, AssistantContentExt, Content, ContentContainer, ConversationMap, Message,
     MessageChunk, MessageError, MessageRole, MimeType, Text, ToolCall, ToolFunction, ToolResult,
     ToolResultContent, UserContent, UserContentExt,
-};
-pub use message_processing::MessageError as ProcessingMessageError;
-// Message processing module exports - high-performance lock-free message pipeline
-pub use message_processing::{
-    HealthStatus, Message as ProcessingMessage, MessagePriority, MessageProcessor, MessageType,
-    ProcessingConfig, ProcessingHealth, ProcessingResult, ProcessingStats, ProcessingWorker,
-    ResultType, RouteType, WorkerStats, WorkerStatsSnapshot, get_global_processor, send_message,
-};
-// Tool module exports - consolidated from tool.rs, tool_v2.rs, mcp.rs, mcp_tool.rs, mcp_tool_traits.rs
-pub use tool::{
-    // Core tool functionality
-    Tool, NamedTool, ToolSet, ToolDefinition, Perplexity, ExecToText, ToolEmbeddingDyn,
-    // MCP functionality
-    McpClient, StdioTransport, Transport, McpError,
-    // MCP tool traits and data
-    ToolTrait, McpTool, McpToolData, McpToolType
 };
 // Model module exports
 pub use model::*;
@@ -735,9 +774,27 @@ pub use model::*;
 // PromptBuilder moved to fluent-ai/src/builders/prompt.rs
 pub use prompt::Prompt as PromptStruct;
 pub use provider::*;
-
-// Workflow module exports
-pub use workflow::*;
+// Tool module exports - consolidated from tool.rs, tool_v2.rs, mcp.rs, mcp_tool.rs, mcp_tool_traits.rs
+pub use tool::{
+    ExecToText,
+    // MCP functionality
+    McpClient,
+    McpError,
+    McpTool,
+    McpToolData,
+    McpToolType,
+    NamedTool,
+    Perplexity,
+    StdioTransport,
+    // Core tool functionality
+    Tool,
+    ToolDefinition,
+    ToolEmbeddingDyn,
+    ToolSet,
+    // MCP tool traits and data
+    ToolTrait,
+    Transport,
+};
 
 // Pricing module exports
 pub mod pricing;

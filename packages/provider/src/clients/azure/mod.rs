@@ -21,13 +21,12 @@ pub mod audio_generation;
 pub mod image_generation;
 
 // Re-export main types
+#[cfg(feature = "audio")]
+pub use audio_generation::*;
 pub use client::{AzureOpenAIAuth, Client, ClientBuilder};
 pub use completion::*;
 pub use embedding::*;
-pub use streaming::*;
-pub use transcription::*;
-
-#[cfg(feature = "audio")]
-pub use audio_generation::*;
 #[cfg(feature = "image")]
 pub use image_generation::*;
+pub use streaming::*;
+pub use transcription::*;

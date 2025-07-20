@@ -23,16 +23,16 @@ use super::{
 };
 use crate::loaders::file::FileLoaderError;
 
-/* -------------------------------------------------------------------------
- * 0. Internal low-level helper – open an EPUB archive.
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// 0. Internal low-level helper – open an EPUB archive.
+// ----------------------------------------------------------------------
 fn open_epub<P: AsRef<Path>>(p: P) -> Result<EpubDoc<BufReader<File>>, EpubLoaderError> {
     EpubDoc::new(p).map_err(EpubLoaderError::from)
 }
 
-/* -------------------------------------------------------------------------
- * 1. Loadable abstraction – allows deferred I/O with compile-time safety.
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// 1. Loadable abstraction – allows deferred I/O with compile-time safety.
+// ----------------------------------------------------------------------
 trait Loadable: Sized {
     type Output;
     fn load(self) -> Result<Self::Output, EpubLoaderError>;
@@ -57,15 +57,15 @@ where
     }
 }
 
-/* -------------------------------------------------------------------------
- * 2. Public loader – zero-cost state machine encoded in the type system.
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// 2. Public loader – zero-cost state machine encoded in the type system.
+// ----------------------------------------------------------------------
 pub struct EpubFileLoader<'a, It, P = RawTextProcessor> {
     it: Box<dyn Iterator<Item = It> + 'a>,
     _processor: PhantomData<P>,
 }
 
-/* -- constructor helpers -------------------------------------------------- */
+// -- constructor helpers --------------------------------------------------
 impl<'a, P> EpubFileLoader<'a, Result<PathBuf, FileLoaderError>, P> {
     pub fn with_glob(pattern: &str) -> Result<Self, EpubLoaderError> {
         let paths = glob(pattern).map_err(FileLoaderError::PatternError)?;
@@ -84,7 +84,7 @@ impl<'a, P> EpubFileLoader<'a, Result<PathBuf, FileLoaderError>, P> {
     }
 }
 
-/* -- state: iterator over path Results ----------------------------------- */
+// -- state: iterator over path Results -----------------------------------
 impl<'a, P> EpubFileLoader<'a, Result<PathBuf, FileLoaderError>, P> {
     pub fn load(self) -> EpubFileLoader<'a, Result<EpubDoc<BufReader<File>>, EpubLoaderError>, P> {
         EpubFileLoader {
@@ -137,7 +137,7 @@ impl<'a, P> EpubFileLoader<'a, Result<PathBuf, FileLoaderError>, P> {
     }
 }
 
-/* -- state helper: Result<T, E> iterators → ignore_errors() -------------- */
+// -- state helper: Result<T, E> iterators → ignore_errors() --------------
 impl<'a, P, T> EpubFileLoader<'a, Result<T, EpubLoaderError>, P> {
     #[inline]
     pub fn ignore_errors(self) -> EpubFileLoader<'a, T, P> {
@@ -148,7 +148,7 @@ impl<'a, P, T> EpubFileLoader<'a, Result<T, EpubLoaderError>, P> {
     }
 }
 
-/* -- state helper: iterator over docs → by_chapter ----------------------- */
+// -- state helper: iterator over docs → by_chapter -----------------------
 impl<'a, P> EpubFileLoader<'a, EpubDoc<BufReader<File>>, P>
 where
     P: TextProcessor + 'a,
@@ -178,7 +178,7 @@ where
     }
 }
 
-/* -- iterator plumbing --------------------------------------------------- */
+// -- iterator plumbing ---------------------------------------------------
 pub struct LoaderIter<'a, T> {
     it: Box<dyn Iterator<Item = T> + 'a>,
 }
@@ -197,9 +197,9 @@ impl<'a, T> Iterator for LoaderIter<'a, T> {
     }
 }
 
-/* -------------------------------------------------------------------------
- * 3. Chapter iterator – zero-alloc text extraction
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// 3. Chapter iterator – zero-alloc text extraction
+// ----------------------------------------------------------------------
 struct EpubChapterIter<P> {
     epub: EpubDoc<BufReader<File>>,
     finished: bool,

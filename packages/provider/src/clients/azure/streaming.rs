@@ -6,17 +6,18 @@
 
 #![allow(clippy::type_complexity)]
 
+use serde_json::json;
+
 use super::completion::CompletionModel;
 use crate::{
+    clients::openai::{self, send_compatible_streaming_request},
     completion::{CompletionError, CompletionRequest},
     json_util::merge,
-    clients::openai::{self, send_compatible_streaming_request},
     runtime::{self as rt, AsyncTask},
     streaming::StreamingCompletionResponse as RigStreaming,
 };
-use serde_json::json;
 
-/* ─────────────────────────── streaming response type ─────────────────── */
+// ─────────────────────────── streaming response type ───────────────────
 
 #[derive(Clone)]
 pub struct StreamingCompletionResponse {
@@ -30,7 +31,7 @@ impl From<openai::StreamingCompletionResponse> for StreamingCompletionResponse {
     }
 }
 
-/* ───────────────────────── CompletionModel::stream ────────────────────── */
+// ───────────────────────── CompletionModel::stream ──────────────────────
 
 impl CompletionModel {
     /// Public sync façade: returns **one** AsyncTask that resolves to a
@@ -43,7 +44,7 @@ impl CompletionModel {
         rt::spawn_async(self.clone().drive_stream(req))
     }
 
-    /* ---------------- internal async driver (NOT public) ---------------- */
+    // ---------------- internal async driver (NOT public) ----------------
 
     async fn drive_stream(
         self,

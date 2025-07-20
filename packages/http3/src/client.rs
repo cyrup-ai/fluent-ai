@@ -209,6 +209,68 @@ impl HttpClient {
         HttpRequest::new(crate::HttpMethod::Head, url.to_string())
     }
 
+    /// Download a file from the given URL with streaming support
+    /// Returns a DownloadStream that yields DownloadChunk items
+    pub async fn download_file(&self, url: &str) -> HttpResult<crate::DownloadStream> {
+        // Validate URL
+        let parsed_url = url::Url::parse(url).map_err(|e| crate::HttpError::InvalidUrl {
+            url: url.to_string(),
+            message: format!("Invalid URL format: {}", e),
+        })?;
+
+        // Only allow HTTP/HTTPS schemes for downloads
+        match parsed_url.scheme() {
+            "http" | "https" => {}
+            scheme => {
+                return Err(crate::HttpError::InvalidUrl {
+                    url: url.to_string(),
+                    message: format!("Unsupported URL scheme for download: {}", scheme),
+                });
+            }
+        }
+
+        // Build optimized request for downloading
+        let mut req_builder = self.inner
+            .get(url)
+            .header("Accept", "*/*")
+            .header("Accept-Encoding", "identity") // Disable compression for downloads
+            .header("Connection", "keep-alive")
+            .header("User-Agent", &self.config.user_agent);
+
+        // Add range support header to enable resumable downloads
+        req_builder = req_builder.header("Accept-Ranges", "bytes");
+
+        // Send request and get streaming response
+        let response = req_builder.send().await.map_err(|e| crate::HttpError::NetworkError {
+            message: format!("Failed to initiate download: {}", e),
+        })?;
+
+        // Check for successful response status
+        let status = response.status();
+        if !status.is_success() {
+            return Err(crate::HttpError::HttpStatus {
+                status: status.as_u16(),
+                message: format!("Download failed with status: {}", status),
+                body: String::new(), // Empty body for download errors
+            });
+        }
+
+        // Validate content type if present
+        if let Some(content_type) = response.headers().get("content-type") {
+            if let Ok(content_type_str) = content_type.to_str() {
+                // Reject HTML responses as they're likely error pages
+                if content_type_str.starts_with("text/html") {
+                    return Err(crate::HttpError::InvalidResponse {
+                        message: "Received HTML response, likely an error page".to_string(),
+                    });
+                }
+            }
+        }
+
+        // Create download stream
+        Ok(crate::DownloadStream::new(response))
+    }
+
     /// Send an HTTP request with optimal performance and caching
     pub async fn send(&self, request: HttpRequest) -> HttpResult<HttpResponse> {
         let start_time = Instant::now();

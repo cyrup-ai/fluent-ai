@@ -3,17 +3,17 @@
 //! Optimized implementation using SIMD operations where available,
 //! efficient indexing, and configurable similarity thresholds.
 
-use crate::async_task::{AsyncTask, error_handlers::BadTraitImpl};
-use crate::domain::memory::VectorStoreIndexDyn;
-use crate::embedding::similarity::{
-    SimilarityMetric, cosine_similarity, euclidean_distance
-};
-use crate::ZeroOneOrMany;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
+
 use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use crate::ZeroOneOrMany;
+use crate::async_task::{AsyncTask, error_handlers::BadTraitImpl};
+use crate::domain::memory::VectorStoreIndexDyn;
+use crate::embedding::similarity::{SimilarityMetric, cosine_similarity, euclidean_distance};
 
 /// Configuration for the in-memory vector store
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,7 +102,7 @@ struct VectorStorage {
 pub trait EmbeddingProvider: Send + Sync {
     /// Convert text query to embedding vector
     fn embed_query(&self, query: &str) -> AsyncTask<Vec<f32>>;
-    
+
     /// Get embedding dimensions
     fn dimensions(&self) -> usize;
 }
@@ -117,20 +117,21 @@ impl VectorStorage {
             dimensions: None,
         }
     }
-    
+
     fn insert(&mut self, entry: VectorEntry) -> Result<(), String> {
         // Validate dimensions
         if let Some(expected_dims) = self.dimensions {
             if entry.vector.len() != expected_dims {
                 return Err(format!(
                     "Vector dimension mismatch: expected {}, got {}",
-                    expected_dims, entry.vector.len()
+                    expected_dims,
+                    entry.vector.len()
                 ));
             }
         } else {
             self.dimensions = Some(entry.vector.len());
         }
-        
+
         // Check if entry already exists
         if let Some(existing_index) = self.id_to_index.get(&entry.id) {
             // Update existing entry
@@ -144,32 +145,32 @@ impl VectorStorage {
             self.id_to_index.insert(entry.id.clone(), index);
             self.entries.insert(entry.id.clone(), entry);
         }
-        
+
         Ok(())
     }
-    
+
     fn remove(&mut self, id: &str) -> bool {
         if let Some(index) = self.id_to_index.remove(id) {
             // Remove from all structures
             self.entries.remove(id);
             self.vectors.remove(index);
             self.index_to_id.remove(index);
-            
+
             // Update indices for subsequent entries
             for (idx, entry_id) in self.index_to_id.iter().enumerate().skip(index) {
                 self.id_to_index.insert(entry_id.clone(), idx);
             }
-            
+
             true
         } else {
             false
         }
     }
-    
+
     fn get(&self, id: &str) -> Option<&VectorEntry> {
         self.entries.get(id)
     }
-    
+
     fn search_similar(
         &self,
         query_vector: &[f32],
@@ -180,9 +181,9 @@ impl VectorStorage {
         if self.vectors.is_empty() {
             return Vec::new();
         }
-        
+
         let mut results = Vec::with_capacity(self.vectors.len().min(top_k * 2));
-        
+
         // Compute similarities for all vectors
         for (index, vector) in self.vectors.iter().enumerate() {
             let similarity = match similarity_metric {
@@ -194,16 +195,15 @@ impl VectorStorage {
                     } else {
                         1.0 / (1.0 + distance)
                     }
-                },
-                SimilarityMetric::DotProduct => {
-                    query_vector.iter()
-                        .zip(vector.iter())
-                        .map(|(&a, &b)| a * b)
-                        .sum::<f32>()
-                },
+                }
+                SimilarityMetric::DotProduct => query_vector
+                    .iter()
+                    .zip(vector.iter())
+                    .map(|(&a, &b)| a * b)
+                    .sum::<f32>(),
                 _ => cosine_similarity(query_vector, vector), // Default to cosine
             };
-            
+
             // Apply threshold filter
             if similarity >= threshold {
                 let entry_id = &self.index_to_id[index];
@@ -217,19 +217,23 @@ impl VectorStorage {
                 }
             }
         }
-        
+
         // Sort by similarity score (descending)
-        results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
-        
+        results.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
         // Return top K results
         results.truncate(top_k);
         results
     }
-    
+
     fn len(&self) -> usize {
         self.entries.len()
     }
-    
+
     fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
@@ -241,19 +245,19 @@ impl InMemoryVectorStore {
     pub fn new() -> Self {
         Self::with_config(InMemoryVectorStoreConfig::default())
     }
-    
+
     /// Create new in-memory vector store with custom configuration
     #[inline(always)]
     pub fn with_config(config: InMemoryVectorStoreConfig) -> Self {
         let storage = VectorStorage::new(config.initial_capacity);
-        
+
         Self {
             config,
             storage: Arc::new(RwLock::new(storage)),
             embedding_provider: None,
         }
     }
-    
+
     /// Set embedding provider for query vectorization
     #[inline(always)]
     pub fn with_embedding_provider<P>(mut self, provider: P) -> Self
@@ -263,36 +267,44 @@ impl InMemoryVectorStore {
         self.embedding_provider = Some(Arc::new(provider));
         self
     }
-    
+
     /// Insert a vector with metadata
-    pub fn insert(&self, id: impl Into<String>, vector: Vec<f32>, metadata: Value) -> AsyncTask<()> {
+    pub fn insert(
+        &self,
+        id: impl Into<String>,
+        vector: Vec<f32>,
+        metadata: Value,
+    ) -> AsyncTask<()> {
         let id = id.into();
         let storage = self.storage.clone();
         let config = self.config.clone();
-        
+
         crate::async_task::spawn_async(async move {
             let mut normalized_vector = vector;
-            
+
             // Apply normalization if configured
             if config.normalize_on_insert {
                 crate::embedding::normalization::normalize_vector(&mut normalized_vector);
             }
-            
+
             let entry = VectorEntry {
                 id: id.clone(),
                 vector: normalized_vector,
                 metadata,
                 content: None,
             };
-            
+
             let mut storage = storage.write();
             if let Err(e) = storage.insert(entry) {
                 eprintln!("Warning: Failed to insert vector entry: {:?}", e);
-                return Err(VectorStoreError::InsertionFailed(format!("Failed to insert entry: {:?}", e)));
+                return Err(VectorStoreError::InsertionFailed(format!(
+                    "Failed to insert entry: {:?}",
+                    e
+                )));
             }
         })
     }
-    
+
     /// Insert a vector with content and metadata
     pub fn insert_with_content(
         &self,
@@ -305,52 +317,58 @@ impl InMemoryVectorStore {
         let content = content.into();
         let storage = self.storage.clone();
         let config = self.config.clone();
-        
+
         crate::async_task::spawn_async(async move {
             let mut normalized_vector = vector;
-            
+
             // Apply normalization if configured
             if config.normalize_on_insert {
                 crate::embedding::normalization::normalize_vector(&mut normalized_vector);
             }
-            
+
             let entry = VectorEntry {
                 id: id.clone(),
                 vector: normalized_vector,
                 metadata,
                 content: Some(content),
             };
-            
+
             let mut storage = storage.write();
             if let Err(e) = storage.insert(entry) {
-                eprintln!("Warning: Failed to insert vector entry with content: {:?}", e);
-                return Err(VectorStoreError::InsertionFailed(format!("Failed to insert entry: {:?}", e)));
+                eprintln!(
+                    "Warning: Failed to insert vector entry with content: {:?}",
+                    e
+                );
+                return Err(VectorStoreError::InsertionFailed(format!(
+                    "Failed to insert entry: {:?}",
+                    e
+                )));
             }
         })
     }
-    
+
     /// Remove a vector by ID
     pub fn remove(&self, id: &str) -> AsyncTask<bool> {
         let id = id.to_string();
         let storage = self.storage.clone();
-        
+
         crate::async_task::spawn_async(async move {
             let mut storage = storage.write();
             storage.remove(&id)
         })
     }
-    
+
     /// Get a vector entry by ID
     pub fn get(&self, id: &str) -> AsyncTask<Option<VectorEntry>> {
         let id = id.to_string();
         let storage = self.storage.clone();
-        
+
         crate::async_task::spawn_async(async move {
             let storage = storage.read();
             storage.get(&id).cloned()
         })
     }
-    
+
     /// Search for similar vectors using a query vector
     pub fn search_vector(
         &self,
@@ -360,7 +378,7 @@ impl InMemoryVectorStore {
         let storage = self.storage.clone();
         let config = self.config.clone();
         let top_k = top_k.unwrap_or(config.default_top_k);
-        
+
         crate::async_task::spawn_async(async move {
             let storage = storage.read();
             storage.search_similar(
@@ -371,15 +389,19 @@ impl InMemoryVectorStore {
             )
         })
     }
-    
+
     /// Search for similar vectors using a text query (requires embedding provider)
-    pub fn search_text(&self, query: impl Into<String>, top_k: Option<usize>) -> AsyncTask<Vec<SearchResult>> {
+    pub fn search_text(
+        &self,
+        query: impl Into<String>,
+        top_k: Option<usize>,
+    ) -> AsyncTask<Vec<SearchResult>> {
         let query = query.into();
         let storage = self.storage.clone();
         let config = self.config.clone();
         let embedding_provider = self.embedding_provider.clone();
         let top_k = top_k.unwrap_or(config.default_top_k);
-        
+
         crate::async_task::spawn_async(async move {
             if let Some(provider) = embedding_provider {
                 let query_vector = provider.embed_query(&query).await;
@@ -395,40 +417,40 @@ impl InMemoryVectorStore {
             }
         })
     }
-    
+
     /// Get the number of vectors in the store
     pub fn len(&self) -> usize {
         let storage = self.storage.read();
         storage.len()
     }
-    
+
     /// Check if the store is empty
     pub fn is_empty(&self) -> bool {
         let storage = self.storage.read();
         storage.is_empty()
     }
-    
+
     /// Clear all vectors from the store
     pub fn clear(&self) -> AsyncTask<()> {
         let storage = self.storage.clone();
         let capacity = self.config.initial_capacity;
-        
+
         crate::async_task::spawn_async(async move {
             let mut storage = storage.write();
             *storage = VectorStorage::new(capacity);
         })
     }
-    
+
     /// Get current configuration
     pub fn config(&self) -> &InMemoryVectorStoreConfig {
         &self.config
     }
-    
+
     /// Update similarity threshold
     pub fn set_similarity_threshold(&mut self, threshold: f32) {
         self.config.similarity_threshold = threshold;
     }
-    
+
     /// Update similarity metric
     pub fn set_similarity_metric(&mut self, metric: SimilarityMetric) {
         self.config.similarity_metric = metric;
@@ -459,20 +481,15 @@ impl BadTraitImpl for Vec<SearchResult> {
     }
 }
 
-
 /// Implementation of VectorStoreIndexDyn trait for integration with the domain layer
 impl VectorStoreIndexDyn for InMemoryVectorStore {
-    fn top_n(
-        &self,
-        query: &str,
-        n: usize,
-    ) -> AsyncTask<ZeroOneOrMany<(f64, String, Value)>> {
+    fn top_n(&self, query: &str, n: usize) -> AsyncTask<ZeroOneOrMany<(f64, String, Value)>> {
         let query = query.to_string();
         let store = self.clone();
-        
+
         crate::async_task::spawn_async(async move {
             let results = store.search_text(query, Some(n)).await;
-            
+
             if results.is_empty() {
                 ZeroOneOrMany::None
             } else {
@@ -480,7 +497,7 @@ impl VectorStoreIndexDyn for InMemoryVectorStore {
                     .into_iter()
                     .map(|result| (result.score, result.id, result.metadata))
                     .collect();
-                
+
                 match tuples.len() {
                     1 => {
                         if let Some(tuple) = tuples.into_iter().next() {
@@ -488,24 +505,20 @@ impl VectorStoreIndexDyn for InMemoryVectorStore {
                         } else {
                             ZeroOneOrMany::None
                         }
-                    },
+                    }
                     _ => ZeroOneOrMany::Many(tuples),
                 }
             }
         })
     }
-    
-    fn top_n_ids(
-        &self,
-        query: &str,
-        n: usize,
-    ) -> AsyncTask<ZeroOneOrMany<(f64, String)>> {
+
+    fn top_n_ids(&self, query: &str, n: usize) -> AsyncTask<ZeroOneOrMany<(f64, String)>> {
         let query = query.to_string();
         let store = self.clone();
-        
+
         crate::async_task::spawn_async(async move {
             let results = store.search_text(query, Some(n)).await;
-            
+
             if results.is_empty() {
                 ZeroOneOrMany::None
             } else {
@@ -513,7 +526,7 @@ impl VectorStoreIndexDyn for InMemoryVectorStore {
                     .into_iter()
                     .map(|result| (result.score, result.id))
                     .collect();
-                
+
                 match tuples.len() {
                     1 => {
                         if let Some(tuple) = tuples.into_iter().next() {
@@ -521,7 +534,7 @@ impl VectorStoreIndexDyn for InMemoryVectorStore {
                         } else {
                             ZeroOneOrMany::None
                         }
-                    },
+                    }
                     _ => ZeroOneOrMany::Many(tuples),
                 }
             }

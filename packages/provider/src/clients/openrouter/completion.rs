@@ -1,17 +1,15 @@
 use serde::Deserialize;
+use serde_json::{Value, json};
 
 use super::client::{ApiErrorResponse, ApiResponse, Client, Usage};
-
+use super::streaming::{FinalCompletionResponse, StreamingCompletionResponse};
+use crate::clients::openai::AssistantContent;
 use crate::{
+    OneOrMany,
+    clients::openai::Message,
     completion::{self, CompletionError, CompletionRequest},
     json_util,
-    clients::openai::Message,
-    OneOrMany,
 };
-use serde_json::{json, Value};
-
-use crate::clients::openai::AssistantContent;
-use super::streaming::{FinalCompletionResponse, StreamingCompletionResponse};
 
 // ================================================================
 // OpenRouter Completion API

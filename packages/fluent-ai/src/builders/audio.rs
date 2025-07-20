@@ -2,10 +2,11 @@
 //!
 //! All audio construction logic and builder patterns.
 
-use fluent_ai_domain::{AsyncStream};
-use fluent_ai_domain::audio::{Audio, ContentFormat, AudioMediaType};
-use fluent_ai_domain::chunk::{AudioFormat, SpeechChunk, TranscriptionChunk};
 use std::collections::HashMap;
+
+use fluent_ai_domain::AsyncStream;
+use fluent_ai_domain::audio::{Audio, AudioMediaType, ContentFormat};
+use fluent_ai_domain::chunk::{AudioFormat, SpeechChunk, TranscriptionChunk};
 
 pub struct AudioBuilder {
     data: String,
@@ -18,7 +19,8 @@ pub struct AudioBuilderWithHandler {
     format: Option<ContentFormat>,
     media_type: Option<AudioMediaType>,
     error_handler: Box<dyn Fn(String) + Send + Sync>,
-    chunk_handler: Option<Box<dyn FnMut(TranscriptionChunk) -> TranscriptionChunk + Send + 'static>>,
+    chunk_handler:
+        Option<Box<dyn FnMut(TranscriptionChunk) -> TranscriptionChunk + Send + 'static>>,
 }
 
 impl Audio {

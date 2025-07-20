@@ -23,17 +23,13 @@ pub mod streaming;
 pub mod transcription;
 
 // Explicit re-exports to avoid ambiguity
-pub use client::{
-    HuggingFaceClient, HuggingFaceProvider
-};
-
+pub use client::{HuggingFaceClient, HuggingFaceProvider};
 pub use completion::{
-    HuggingFaceCompletionBuilder, HuggingFaceCompletionRequest, HuggingFaceStreamChunk,
-    HuggingFaceMessage, HuggingFaceChoice, HuggingFaceDelta, HuggingFaceUsage,
-    HuggingFaceToolCall, HuggingFaceFunction, HuggingFaceToolCallDelta, HuggingFaceFunctionDelta,
-    completion_builder, available_models, get_model_config
+    HuggingFaceChoice, HuggingFaceCompletionBuilder, HuggingFaceCompletionRequest,
+    HuggingFaceDelta, HuggingFaceFunction, HuggingFaceFunctionDelta, HuggingFaceMessage,
+    HuggingFaceStreamChunk, HuggingFaceToolCall, HuggingFaceToolCallDelta, HuggingFaceUsage,
+    available_models, completion_builder, get_model_config,
 };
-
 #[cfg(feature = "image")]
 pub use image_generation::{FLUX_1, KOLORS, STABLE_DIFFUSION_3};
 pub use transcription::{WHISPER_LARGE_V3, WHISPER_LARGE_V3_TURBO, WHISPER_SMALL};

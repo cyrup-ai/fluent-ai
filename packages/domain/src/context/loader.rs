@@ -1,3 +1,9 @@
+//! Core File Loading Interface and Implementation
+//!
+//! This module provides the core file loading interface and implementation
+//! for pattern-based file loading and streaming operations.
+//! Originally from loader.rs.
+
 use std::fmt;
 use std::path::PathBuf;
 

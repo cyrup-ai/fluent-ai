@@ -11,29 +11,28 @@
 //! - Real-time performance monitoring with nanosecond precision
 //! - Seamless integration with fluent_ai_domain types
 
-use std::sync::atomic::{AtomicU8, AtomicU16, AtomicU32, AtomicU64, AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, SystemTime, Instant};
 use std::future::Future;
 use std::pin::Pin;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU16, AtomicU32, AtomicU64, Ordering};
 use std::task::{Context, Poll};
+use std::time::{Duration, Instant, SystemTime};
 
-use arrayvec::{ArrayVec, ArrayString};
-use smallvec::{SmallVec, smallvec};
-use atomic_counter::RelaxedCounter;
 use arc_swap::ArcSwap;
+use arrayvec::{ArrayString, ArrayVec};
+use async_stream::stream;
+use atomic_counter::RelaxedCounter;
 use crossbeam_skiplist::SkipMap;
+use fluent_ai_domain::chunk::{CompletionChunk, ToolCall, ToolCallDelta, ToolCallStatus};
+use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, CompletionRequest};
+use fluent_ai_domain::types::{CompletionUsage, ContentType, FinishReason};
+use fluent_ai_http3::{HttpClient, HttpError, SseEvent};
+use futures_util::{Stream, StreamExt};
+use smallvec::{SmallVec, smallvec};
 use thiserror::Error;
 
-use fluent_ai_http3::{HttpClient, HttpError, SseEvent};
-use fluent_ai_domain::chunk::{CompletionChunk, ToolCall, ToolCallDelta, ToolCallStatus};
-use fluent_ai_domain::types::{CompletionUsage, FinishReason, ContentType};
-
-use crate::completion::{CompletionError, CompletionRequest};
 use crate::{AsyncStream, AsyncStreamSender, async_stream_channel};
-use futures_util::{Stream, StreamExt};
-use async_stream::stream;
-use std::pin::Pin;
 
 // ================================================================================================
 // Streaming Types
@@ -62,7 +61,9 @@ pub struct StreamingCompletionResponse<T> {
 }
 
 impl<T> StreamingCompletionResponse<T> {
-    pub fn new(stream: Pin<Box<dyn Stream<Item = Result<RawStreamingChoice, CompletionError>> + Send>>) -> Self {
+    pub fn new(
+        stream: Pin<Box<dyn Stream<Item = Result<RawStreamingChoice, CompletionError>> + Send>>,
+    ) -> Self {
         Self {
             stream,
             _phantom: std::marker::PhantomData,
@@ -73,7 +74,10 @@ impl<T> StreamingCompletionResponse<T> {
 impl<T> Stream for StreamingCompletionResponse<T> {
     type Item = Result<RawStreamingChoice, CompletionError>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+    fn poll_next(
+        mut self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
         self.stream.as_mut().poll_next(cx)
     }
 }
@@ -86,11 +90,11 @@ impl<T> Stream for StreamingCompletionResponse<T> {
 #[derive(Debug, Clone, Copy)]
 pub enum ToolCallState {
     Waiting,
-    InitiatingName { 
+    InitiatingName {
         buffer: ArrayString<256>,
         start_offset: u16,
     },
-    AccumulatingArgs { 
+    AccumulatingArgs {
         name: ArrayString<256>,
         args_buffer: ArrayString<8192>, // Optimized for 99% of tool calls
         brace_depth: u8,
@@ -104,7 +108,7 @@ pub enum ToolCallState {
         call_id: ArrayString<64>,
         duration_ns: u64,
     },
-    Error { 
+    Error {
         message: ArrayString<512>,
         error_code: ToolCallErrorCode,
         recovery_action: RecoveryAction,
@@ -144,8 +148,8 @@ pub struct ToolCallParser {
 
 /// SIMD-optimized JSON validation using AVX2/AVX-512
 struct SIMDJsonValidator {
-    brace_masks: [u64; 4],  // Vectorized brace matching
-    quote_masks: [u64; 4],  // Vectorized quote detection
+    brace_masks: [u64; 4],     // Vectorized brace matching
+    quote_masks: [u64; 4],     // Vectorized quote detection
     escape_patterns: [u8; 32], // SIMD escape sequence detection
 }
 
@@ -164,48 +168,48 @@ struct StackMemoryPool<const SIZE: usize> {
 #[derive(Error, Debug, Clone)]
 pub enum ToolCallError {
     #[error("JSON parsing failed at position {position}: {error_type:?}")]
-    JsonParsing { 
-        position: usize, 
+    JsonParsing {
+        position: usize,
         error_type: JsonErrorType,
         recovery_strategy: RecoveryStrategy,
         context_buffer: ArrayString<256>,
     },
     #[error("Tool call state transition error: {from:?} -> {to:?}")]
-    StateTransition { 
+    StateTransition {
         from: ToolCallState,
         to: ToolCallState,
         reason: StateTransitionError,
         recovery_action: AutoRecoveryAction,
     },
     #[error("Buffer overflow: attempted {size} bytes, limit {limit}")]
-    BufferOverflow { 
-        size: usize, 
+    BufferOverflow {
+        size: usize,
         limit: usize,
         buffer_type: BufferType,
         optimization_suggestion: BufferOptimization,
     },
     #[error("Concurrent tool call limit exceeded: {current}/{max}")]
-    ConcurrencyLimit { 
-        current: u8, 
+    ConcurrencyLimit {
+        current: u8,
         max: u8,
         queue_depth: usize,
         estimated_wait_time_ms: u64,
     },
     #[error("Tool call timeout after {duration_ms}ms")]
-    Timeout { 
+    Timeout {
         duration_ms: u64,
         stage: ToolCallStage,
         partial_data: Option<ArrayString<1024>>,
         recovery_feasible: bool,
     },
     #[error("SIMD processing error: {operation:?}")]
-    SIMDProcessing { 
+    SIMDProcessing {
         operation: SIMDOperation,
         cpu_features: CpuFeatures,
         fallback_available: bool,
     },
     #[error("Circuit breaker {name} is {state:?}")]
-    CircuitBreakerOpen { 
+    CircuitBreakerOpen {
         name: ArrayString<64>,
         state: CircuitBreakerState,
         failure_count: u32,
@@ -318,7 +322,7 @@ struct SIMDJsonAccelerator {
     // Character classification lookup table
     char_class_table: [u8; 256],
     escape_sequence_table: [u8; 256],
-    
+
     // Performance optimization state
     chunk_size_optimizer: AdaptiveChunkSizer,
     pattern_predictor: JsonPatternPredictor,
@@ -385,8 +389,13 @@ struct PredictionAccuracyMetrics {
 #[derive(Debug)]
 pub enum JsonChunkResult {
     Incomplete,
-    Complete { value: serde_json::Value },
-    Invalid { error: JsonErrorType, position: usize },
+    Complete {
+        value: serde_json::Value,
+    },
+    Invalid {
+        error: JsonErrorType,
+        position: usize,
+    },
 }
 
 impl IncrementalJsonParser {
@@ -405,13 +414,13 @@ impl IncrementalJsonParser {
     #[inline(always)]
     pub fn process_chunk_simd(&mut self, chunk: &[u8]) -> Result<JsonChunkResult, ToolCallError> {
         let start_time = self.get_high_precision_timestamp();
-        
+
         // SIMD-optimized chunk processing
         let processing_result = self.simd_accelerator.process_chunk_vectorized(chunk)?;
-        
+
         // Update parser state atomically
         self.update_parser_state_from_simd(&processing_result)?;
-        
+
         // Validate JSON completeness with early termination
         let result = if self.is_json_complete_fast() {
             self.validate_complete_json_simd()
@@ -420,60 +429,71 @@ impl IncrementalJsonParser {
         };
 
         // Update performance metrics
-        let elapsed_ns = self.get_high_precision_timestamp().saturating_sub(start_time);
-        self.performance_monitor.update_metrics(chunk.len(), elapsed_ns);
+        let elapsed_ns = self
+            .get_high_precision_timestamp()
+            .saturating_sub(start_time);
+        self.performance_monitor
+            .update_metrics(chunk.len(), elapsed_ns);
 
         result
     }
-    
+
     #[inline(always)]
     fn validate_complete_json_simd(&self) -> Result<JsonChunkResult, ToolCallError> {
         // Zero-allocation JSON validation using SIMD
         let validation_result = self.simd_accelerator.validate_json_structure(&self.buffer);
-        
+
         match validation_result {
             JsonValidation::Valid => {
                 // Parse JSON with zero additional allocations
                 let parsed_value = self.parse_json_zero_alloc()?;
-                Ok(JsonChunkResult::Complete { value: parsed_value })
-            },
-            JsonValidation::Invalid { error_position, error_type } => {
-                Ok(JsonChunkResult::Invalid { 
-                    error: error_type,
-                    position: error_position,
+                Ok(JsonChunkResult::Complete {
+                    value: parsed_value,
                 })
             }
+            JsonValidation::Invalid {
+                error_position,
+                error_type,
+            } => Ok(JsonChunkResult::Invalid {
+                error: error_type,
+                position: error_position,
+            }),
         }
     }
 
     #[inline(always)]
     fn parse_json_zero_alloc(&self) -> Result<serde_json::Value, ToolCallError> {
-        serde_json::from_str(self.buffer.as_str())
-            .map_err(|e| ToolCallError::JsonParsing {
-                position: 0,
-                error_type: JsonErrorType::InvalidSyntax,
-                recovery_strategy: RecoveryStrategy::FallbackParser,
-                context_buffer: ArrayString::new(),
-            })
+        serde_json::from_str(self.buffer.as_str()).map_err(|e| ToolCallError::JsonParsing {
+            position: 0,
+            error_type: JsonErrorType::InvalidSyntax,
+            recovery_strategy: RecoveryStrategy::FallbackParser,
+            context_buffer: ArrayString::new(),
+        })
     }
 
     #[inline(always)]
     fn is_json_complete_fast(&self) -> bool {
-        self.brace_depth.load(Ordering::Relaxed) == 0 &&
-        !self.quote_state.load(Ordering::Relaxed) &&
-        !self.escape_state.load(Ordering::Relaxed) &&
-        !self.buffer.is_empty()
+        self.brace_depth.load(Ordering::Relaxed) == 0
+            && !self.quote_state.load(Ordering::Relaxed)
+            && !self.escape_state.load(Ordering::Relaxed)
+            && !self.buffer.is_empty()
     }
 
     #[inline(always)]
-    fn update_parser_state_from_simd(&mut self, result: &SIMDProcessingResult) -> Result<(), ToolCallError> {
-        self.brace_depth.store(result.final_brace_depth, Ordering::Relaxed);
+    fn update_parser_state_from_simd(
+        &mut self,
+        result: &SIMDProcessingResult,
+    ) -> Result<(), ToolCallError> {
+        self.brace_depth
+            .store(result.final_brace_depth, Ordering::Relaxed);
         self.quote_state.store(result.in_quote, Ordering::Relaxed);
-        self.escape_state.store(result.escape_active, Ordering::Relaxed);
-        
+        self.escape_state
+            .store(result.escape_active, Ordering::Relaxed);
+
         // Append processed content to buffer
         if self.buffer.remaining_capacity() >= result.processed_content.len() {
-            self.buffer.try_push_str(&result.processed_content)
+            self.buffer
+                .try_push_str(&result.processed_content)
                 .map_err(|_| ToolCallError::BufferOverflow {
                     size: result.processed_content.len(),
                     limit: self.buffer.remaining_capacity(),
@@ -481,7 +501,7 @@ impl IncrementalJsonParser {
                     optimization_suggestion: BufferOptimization::IncreaseSize,
                 })?;
         }
-        
+
         Ok(())
     }
 
@@ -494,7 +514,8 @@ impl IncrementalJsonParser {
         }
         #[cfg(not(target_arch = "x86_64"))]
         {
-            SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
                 .map(|d| d.as_nanos() as u64)
                 .unwrap_or(0)
         }
@@ -513,7 +534,10 @@ struct SIMDProcessingResult {
 #[derive(Debug)]
 enum JsonValidation {
     Valid,
-    Invalid { error_position: usize, error_type: JsonErrorType },
+    Invalid {
+        error_position: usize,
+        error_type: JsonErrorType,
+    },
 }
 
 impl SIMDJsonAccelerator {
@@ -549,7 +573,10 @@ impl SIMDJsonAccelerator {
         table
     }
 
-    fn process_chunk_vectorized(&self, chunk: &[u8]) -> Result<SIMDProcessingResult, ToolCallError> {
+    fn process_chunk_vectorized(
+        &self,
+        chunk: &[u8],
+    ) -> Result<SIMDProcessingResult, ToolCallError> {
         // Simplified SIMD processing (real implementation would use packed_simd)
         let mut brace_depth = 0u8;
         let mut in_quote = false;
@@ -558,29 +585,33 @@ impl SIMDJsonAccelerator {
 
         for &byte in chunk {
             match self.char_class_table[byte as usize] {
-                1 => { // '{'
+                1 => {
+                    // '{'
                     if !in_quote {
                         brace_depth = brace_depth.saturating_add(1);
                     }
                     processed.push(byte as char);
-                },
-                2 => { // '}'
+                }
+                2 => {
+                    // '}'
                     if !in_quote {
                         brace_depth = brace_depth.saturating_sub(1);
                     }
                     processed.push(byte as char);
-                },
-                3 => { // '"'
+                }
+                3 => {
+                    // '"'
                     if !escape_active {
                         in_quote = !in_quote;
                     }
                     processed.push(byte as char);
                     escape_active = false;
-                },
-                4 => { // '\'
+                }
+                4 => {
+                    // '\'
                     escape_active = !escape_active && in_quote;
                     processed.push(byte as char);
-                },
+                }
                 _ => {
                     processed.push(byte as char);
                     escape_active = false;
@@ -604,7 +635,7 @@ impl SIMDJsonAccelerator {
             Err(_) => JsonValidation::Invalid {
                 error_position: 0,
                 error_type: JsonErrorType::InvalidSyntax,
-            }
+            },
         }
     }
 }
@@ -661,7 +692,8 @@ impl JsonParsingMetrics {
 
     fn update_metrics(&self, bytes: usize, time_ns: u64) {
         self.chunks_processed.fetch_add(1, Ordering::Relaxed);
-        self.bytes_processed.fetch_add(bytes as u64, Ordering::Relaxed);
+        self.bytes_processed
+            .fetch_add(bytes as u64, Ordering::Relaxed);
         self.parsing_time_ns.fetch_add(time_ns, Ordering::Relaxed);
     }
 }
@@ -687,18 +719,18 @@ struct LockFreeMetricsCollector {
     total_bytes_processed: AtomicU64,
     concurrent_calls: AtomicU32,
     peak_concurrent_calls: AtomicU32,
-    
+
     // SIMD performance metrics
     simd_operations: AtomicU64,
     simd_efficiency_ratio: AtomicU32, // Percentage as fixed-point
     fallback_operations: AtomicU64,
-    
+
     // Error rate tracking
     json_parse_errors: AtomicU32,
     state_transition_errors: AtomicU32,
     timeout_errors: AtomicU32,
     buffer_overflow_errors: AtomicU32,
-    
+
     // Circuit breaker metrics
     circuit_breaker_trips: AtomicU32,
     circuit_breaker_recoveries: AtomicU32,
@@ -900,14 +932,20 @@ impl ToolCallPerformanceMonitor {
     #[inline(always)]
     pub fn record_tool_call_start(&self, context: &ToolCallContext) -> PerformanceTracker {
         let start_time = self.get_high_precision_timestamp();
-        
+
         // Atomically increment counters
-        self.metrics_collector.total_calls.fetch_add(1, Ordering::Relaxed);
-        let concurrent = self.metrics_collector.concurrent_calls.fetch_add(1, Ordering::Relaxed) + 1;
-        
+        self.metrics_collector
+            .total_calls
+            .fetch_add(1, Ordering::Relaxed);
+        let concurrent = self
+            .metrics_collector
+            .concurrent_calls
+            .fetch_add(1, Ordering::Relaxed)
+            + 1;
+
         // Update peak concurrent calls if necessary
         self.update_peak_concurrent_atomically(concurrent);
-        
+
         // Create performance tracker with zero allocation
         PerformanceTracker {
             start_time,
@@ -916,45 +954,60 @@ impl ToolCallPerformanceMonitor {
             monitor: &PERFORMANCE_MONITOR,
         }
     }
-    
+
     #[inline(always)]
-    pub fn record_tool_call_complete(&self, tracker: PerformanceTracker, result: &Result<CompletionChunk, ToolCallError>) {
+    pub fn record_tool_call_complete(
+        &self,
+        tracker: PerformanceTracker,
+        result: &Result<CompletionChunk, ToolCallError>,
+    ) {
         let end_time = self.get_high_precision_timestamp();
         let duration_ns = end_time.saturating_sub(tracker.start_time);
-        
+
         // Update metrics atomically
         match result {
             Ok(chunk) => {
-                self.metrics_collector.successful_calls.fetch_add(1, Ordering::Relaxed);
+                self.metrics_collector
+                    .successful_calls
+                    .fetch_add(1, Ordering::Relaxed);
                 self.update_success_metrics(duration_ns, chunk.estimated_size_bytes());
-            },
+            }
             Err(error) => {
-                self.metrics_collector.failed_calls.fetch_add(1, Ordering::Relaxed);
+                self.metrics_collector
+                    .failed_calls
+                    .fetch_add(1, Ordering::Relaxed);
                 self.update_error_metrics(duration_ns, error);
             }
         }
-        
+
         // Decrement concurrent calls counter
-        self.metrics_collector.concurrent_calls.fetch_sub(1, Ordering::Relaxed);
-        
+        self.metrics_collector
+            .concurrent_calls
+            .fetch_sub(1, Ordering::Relaxed);
+
         // Update latency histogram atomically
         self.histogram_manager.record_latency(duration_ns);
-        
+
         // Check for bottlenecks in real-time
-        self.bottleneck_detector.analyze_performance(duration_ns, &tracker);
-        
+        self.bottleneck_detector
+            .analyze_performance(duration_ns, &tracker);
+
         // Trigger optimization if performance degradation detected
         if self.should_trigger_optimization(duration_ns) {
             self.optimization_engine.trigger_performance_optimization();
         }
     }
-    
+
     #[inline(always)]
     fn update_success_metrics(&self, duration_ns: u64, bytes_processed: usize) {
         // Atomic updates without locks
-        self.metrics_collector.total_processing_time_ns.fetch_add(duration_ns, Ordering::Relaxed);
-        self.metrics_collector.total_bytes_processed.fetch_add(bytes_processed as u64, Ordering::Relaxed);
-        
+        self.metrics_collector
+            .total_processing_time_ns
+            .fetch_add(duration_ns, Ordering::Relaxed);
+        self.metrics_collector
+            .total_bytes_processed
+            .fetch_add(bytes_processed as u64, Ordering::Relaxed);
+
         // Update throughput metrics
         let throughput = self.calculate_throughput_atomic(bytes_processed, duration_ns);
         self.histogram_manager.record_throughput(throughput);
@@ -964,24 +1017,34 @@ impl ToolCallPerformanceMonitor {
     fn update_error_metrics(&self, duration_ns: u64, error: &ToolCallError) {
         match error {
             ToolCallError::JsonParsing { .. } => {
-                self.metrics_collector.json_parse_errors.fetch_add(1, Ordering::Relaxed);
-            },
+                self.metrics_collector
+                    .json_parse_errors
+                    .fetch_add(1, Ordering::Relaxed);
+            }
             ToolCallError::StateTransition { .. } => {
-                self.metrics_collector.state_transition_errors.fetch_add(1, Ordering::Relaxed);
-            },
+                self.metrics_collector
+                    .state_transition_errors
+                    .fetch_add(1, Ordering::Relaxed);
+            }
             ToolCallError::Timeout { .. } => {
-                self.metrics_collector.timeout_errors.fetch_add(1, Ordering::Relaxed);
-            },
+                self.metrics_collector
+                    .timeout_errors
+                    .fetch_add(1, Ordering::Relaxed);
+            }
             ToolCallError::BufferOverflow { .. } => {
-                self.metrics_collector.buffer_overflow_errors.fetch_add(1, Ordering::Relaxed);
-            },
+                self.metrics_collector
+                    .buffer_overflow_errors
+                    .fetch_add(1, Ordering::Relaxed);
+            }
             ToolCallError::CircuitBreakerOpen { .. } => {
-                self.metrics_collector.circuit_breaker_trips.fetch_add(1, Ordering::Relaxed);
-            },
+                self.metrics_collector
+                    .circuit_breaker_trips
+                    .fetch_add(1, Ordering::Relaxed);
+            }
             _ => {}
         }
     }
-    
+
     #[inline(always)]
     fn get_high_precision_timestamp(&self) -> u64 {
         // Use TSC (Time Stamp Counter) for maximum precision
@@ -991,7 +1054,8 @@ impl ToolCallPerformanceMonitor {
         }
         #[cfg(not(target_arch = "x86_64"))]
         {
-            SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
                 .map(|d| d.as_nanos() as u64)
                 .unwrap_or(0)
         }
@@ -999,11 +1063,16 @@ impl ToolCallPerformanceMonitor {
 
     #[inline(always)]
     fn update_peak_concurrent_atomically(&self, current: u32) {
-        let mut peak = self.metrics_collector.peak_concurrent_calls.load(Ordering::Relaxed);
+        let mut peak = self
+            .metrics_collector
+            .peak_concurrent_calls
+            .load(Ordering::Relaxed);
         while current > peak {
-            match self.metrics_collector.peak_concurrent_calls.compare_exchange_weak(
-                peak, current, Ordering::Relaxed, Ordering::Relaxed
-            ) {
+            match self
+                .metrics_collector
+                .peak_concurrent_calls
+                .compare_exchange_weak(peak, current, Ordering::Relaxed, Ordering::Relaxed)
+            {
                 Ok(_) => break,
                 Err(actual) => peak = actual,
             }
@@ -1051,21 +1120,57 @@ impl LockFreeMetricsCollector {
 impl AtomicHistogramManager {
     const fn new() -> Self {
         const LATENCY_BUCKETS: [AtomicU64; 32] = [
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
         ];
-        
+
         const THROUGHPUT_BUCKETS: [AtomicU64; 16] = [
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
-            AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
+            AtomicU64::new(0),
         ];
 
         Self {
@@ -1092,12 +1197,17 @@ impl AtomicHistogramManager {
 
     fn find_latency_bucket(&self, latency_ns: u64) -> usize {
         // Binary search for bucket (simplified)
-        self.bucket_boundaries.binary_search(&latency_ns).unwrap_or_else(|i| i)
+        self.bucket_boundaries
+            .binary_search(&latency_ns)
+            .unwrap_or_else(|i| i)
     }
 
     fn find_throughput_bucket(&self, throughput: u64) -> usize {
         // Linear mapping for throughput buckets
-        std::cmp::min((throughput / 1000) as usize, self.throughput_buckets.len() - 1)
+        std::cmp::min(
+            (throughput / 1000) as usize,
+            self.throughput_buckets.len() - 1,
+        )
     }
 }
 
@@ -1121,9 +1231,9 @@ impl RealTimeBottleneckDetector {
             bottleneck_patterns: ArrayVec::new_const(),
             detection_thresholds: BottleneckThresholds {
                 latency_p95_threshold_ns: 50_000_000, // 50ms
-                error_rate_threshold: 0.05, // 5%
-                throughput_min_threshold: 1000, // ops/sec
-                memory_pressure_threshold: 0.8, // 80%
+                error_rate_threshold: 0.05,           // 5%
+                throughput_min_threshold: 1000,       // ops/sec
+                memory_pressure_threshold: 0.8,       // 80%
             },
         }
     }
@@ -1203,8 +1313,12 @@ impl ToolCallContext {
     pub fn compute_hash(&self) -> u64 {
         // Simple hash computation for performance tracking
         let mut hash = 0u64;
-        hash = hash.wrapping_mul(31).wrapping_add(self.call_id.len() as u64);
-        hash = hash.wrapping_mul(31).wrapping_add(self.function_name.len() as u64);
+        hash = hash
+            .wrapping_mul(31)
+            .wrapping_add(self.call_id.len() as u64);
+        hash = hash
+            .wrapping_mul(31)
+            .wrapping_add(self.function_name.len() as u64);
         hash
     }
 }
@@ -1281,17 +1395,19 @@ impl OpenRouterStream {
         }
     }
 
-    pub async fn process_sse_chunk(&mut self, chunk: &[u8]) -> Result<ArrayVec<RawStreamingChoice, 16>, ToolCallError> {
+    pub async fn process_sse_chunk(
+        &mut self,
+        chunk: &[u8],
+    ) -> Result<ArrayVec<RawStreamingChoice, 16>, ToolCallError> {
         let mut results = ArrayVec::new();
-        
+
         // Convert bytes to string
-        let chunk_str = std::str::from_utf8(chunk)
-            .map_err(|_| ToolCallError::JsonParsing {
-                position: 0,
-                error_type: JsonErrorType::InvalidSyntax,
-                recovery_strategy: RecoveryStrategy::NoRecovery,
-                context_buffer: ArrayString::new(),
-            })?;
+        let chunk_str = std::str::from_utf8(chunk).map_err(|_| ToolCallError::JsonParsing {
+            position: 0,
+            error_type: JsonErrorType::InvalidSyntax,
+            recovery_strategy: RecoveryStrategy::NoRecovery,
+            context_buffer: ArrayString::new(),
+        })?;
 
         // Process each line in the chunk
         for line in chunk_str.lines() {
@@ -1305,11 +1421,15 @@ impl OpenRouterStream {
         Ok(results)
     }
 
-    async fn process_sse_line(&mut self, line: &str) -> Result<Option<RawStreamingChoice>, ToolCallError> {
+    async fn process_sse_line(
+        &mut self,
+        line: &str,
+    ) -> Result<Option<RawStreamingChoice>, ToolCallError> {
         // Skip empty lines and processing messages
-        if line.trim().is_empty() || 
-           line.trim() == ": OPENROUTER PROCESSING" || 
-           line.trim() == "data: [DONE]" {
+        if line.trim().is_empty()
+            || line.trim() == ": OPENROUTER PROCESSING"
+            || line.trim() == "data: [DONE]"
+        {
             return Ok(None);
         }
 
@@ -1317,8 +1437,8 @@ impl OpenRouterStream {
         let json_line = line.strip_prefix("data: ").unwrap_or(line);
 
         // Parse JSON with error handling
-        let data: serde_json::Value = serde_json::from_str(json_line)
-            .map_err(|_| ToolCallError::JsonParsing {
+        let data: serde_json::Value =
+            serde_json::from_str(json_line).map_err(|_| ToolCallError::JsonParsing {
                 position: 0,
                 error_type: JsonErrorType::InvalidSyntax,
                 recovery_strategy: RecoveryStrategy::FallbackParser,
@@ -1329,9 +1449,13 @@ impl OpenRouterStream {
         self.process_streaming_data(&data).await
     }
 
-    async fn process_streaming_data(&mut self, data: &serde_json::Value) -> Result<Option<RawStreamingChoice>, ToolCallError> {
+    async fn process_streaming_data(
+        &mut self,
+        data: &serde_json::Value,
+    ) -> Result<Option<RawStreamingChoice>, ToolCallError> {
         // Extract choices array
-        let choices = data.get("choices")
+        let choices = data
+            .get("choices")
             .and_then(|c| c.as_array())
             .ok_or_else(|| ToolCallError::JsonParsing {
                 position: 0,
@@ -1355,7 +1479,10 @@ impl OpenRouterStream {
         Ok(None)
     }
 
-    async fn process_delta(&mut self, delta: &serde_json::Value) -> Result<Option<RawStreamingChoice>, ToolCallError> {
+    async fn process_delta(
+        &mut self,
+        delta: &serde_json::Value,
+    ) -> Result<Option<RawStreamingChoice>, ToolCallError> {
         // Handle content deltas
         if let Some(content) = delta.get("content").and_then(|c| c.as_str()) {
             if !content.is_empty() {
@@ -1375,10 +1502,11 @@ impl OpenRouterStream {
         Ok(None)
     }
 
-    async fn process_tool_call_delta(&mut self, tool_call: &serde_json::Value) -> Result<Option<RawStreamingChoice>, ToolCallError> {
-        let index = tool_call.get("index")
-            .and_then(|i| i.as_u64())
-            .unwrap_or(0) as usize;
+    async fn process_tool_call_delta(
+        &mut self,
+        tool_call: &serde_json::Value,
+    ) -> Result<Option<RawStreamingChoice>, ToolCallError> {
+        let index = tool_call.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as usize;
 
         // Ensure we have space for this tool call
         while self.active_tool_calls.len() <= index {
@@ -1397,7 +1525,9 @@ impl OpenRouterStream {
         if let Some(id) = tool_call.get("id").and_then(|i| i.as_str()) {
             if !id.is_empty() {
                 active_call.id.clear();
-                active_call.id.try_push_str(id)
+                active_call
+                    .id
+                    .try_push_str(id)
                     .map_err(|_| ToolCallError::BufferOverflow {
                         size: id.len(),
                         limit: active_call.id.capacity(),
@@ -1412,19 +1542,22 @@ impl OpenRouterStream {
             if let Some(name) = function.get("name").and_then(|n| n.as_str()) {
                 if !name.is_empty() {
                     active_call.function_name.clear();
-                    active_call.function_name.try_push_str(name)
-                        .map_err(|_| ToolCallError::BufferOverflow {
+                    active_call.function_name.try_push_str(name).map_err(|_| {
+                        ToolCallError::BufferOverflow {
                             size: name.len(),
                             limit: active_call.function_name.capacity(),
                             buffer_type: BufferType::NameBuffer,
                             optimization_suggestion: BufferOptimization::IncreaseSize,
-                        })?;
+                        }
+                    })?;
                 }
             }
 
             // Update arguments
             if let Some(args) = function.get("arguments").and_then(|a| a.as_str()) {
-                active_call.accumulated_args.try_push_str(args)
+                active_call
+                    .accumulated_args
+                    .try_push_str(args)
                     .map_err(|_| ToolCallError::BufferOverflow {
                         size: args.len(),
                         limit: active_call.accumulated_args.remaining_capacity(),
@@ -1438,7 +1571,9 @@ impl OpenRouterStream {
                         name: active_call.function_name.clone(),
                         arguments: active_call.accumulated_args.clone(),
                         call_id: active_call.id.clone(),
-                        duration_ns: self.performance_monitor.get_high_precision_timestamp()
+                        duration_ns: self
+                            .performance_monitor
+                            .get_high_precision_timestamp()
                             .saturating_sub(active_call.start_time),
                     };
                 } else {
@@ -1457,7 +1592,10 @@ impl OpenRouterStream {
         Ok(None)
     }
 
-    async fn process_message(&mut self, message: &serde_json::Value) -> Result<Option<RawStreamingChoice>, ToolCallError> {
+    async fn process_message(
+        &mut self,
+        message: &serde_json::Value,
+    ) -> Result<Option<RawStreamingChoice>, ToolCallError> {
         // Handle content
         if let Some(content) = message.get("content").and_then(|c| c.as_str()) {
             if !content.is_empty() {
@@ -1477,12 +1615,17 @@ impl OpenRouterStream {
         Ok(None)
     }
 
-    async fn process_complete_tool_call(&mut self, tool_call: &serde_json::Value) -> Result<Option<RawStreamingChoice>, ToolCallError> {
-        let id = tool_call.get("id")
+    async fn process_complete_tool_call(
+        &mut self,
+        tool_call: &serde_json::Value,
+    ) -> Result<Option<RawStreamingChoice>, ToolCallError> {
+        let id = tool_call
+            .get("id")
             .and_then(|i| i.as_str())
             .unwrap_or_default();
 
-        let function = tool_call.get("function")
+        let function = tool_call
+            .get("function")
             .ok_or_else(|| ToolCallError::JsonParsing {
                 position: 0,
                 error_type: JsonErrorType::InvalidSyntax,
@@ -1490,15 +1633,15 @@ impl OpenRouterStream {
                 context_buffer: ArrayString::new(),
             })?;
 
-        let name = function.get("name")
+        let name = function
+            .get("name")
             .and_then(|n| n.as_str())
             .unwrap_or_default();
 
-        let arguments = function.get("arguments")
+        let arguments = function
+            .get("arguments")
             .and_then(|a| match a {
-                serde_json::Value::String(s) => {
-                    serde_json::from_str(s).ok()
-                },
+                serde_json::Value::String(s) => serde_json::from_str(s).ok(),
                 other => Some(other.clone()),
             })
             .unwrap_or(serde_json::Value::Null);
@@ -1569,7 +1712,9 @@ impl OpenRouterStream {
                 let arguments = if !active_call.accumulated_args.is_empty() {
                     match serde_json::from_str(&active_call.accumulated_args) {
                         Ok(v) => v,
-                        Err(_) => serde_json::Value::String(active_call.accumulated_args.to_string()),
+                        Err(_) => {
+                            serde_json::Value::String(active_call.accumulated_args.to_string())
+                        }
                     }
                 } else {
                     serde_json::Value::Null
@@ -1617,7 +1762,7 @@ impl super::CompletionModel {
         completion_request: CompletionRequest,
     ) -> Result<StreamingCompletionResponse<FinalCompletionResponse>, CompletionError> {
         let mut request = self.create_completion_request(completion_request)?;
-        
+
         // Enable streaming
         if let serde_json::Value::Object(ref mut obj) = request {
             obj.insert("stream".to_string(), serde_json::Value::Bool(true));
@@ -1626,16 +1771,19 @@ impl super::CompletionModel {
         let client = HttpClient::with_config(fluent_ai_http3::HttpConfig::streaming_optimized())
             .map_err(|e| CompletionError::ProviderError(format!("HTTP3 client error: {}", e)))?;
 
-        let http_request = fluent_ai_http3::HttpRequest::post("/chat/completions", serde_json::to_vec(&request)?)
-            .map_err(|e| CompletionError::ProviderError(format!("Request build error: {}", e)))?
-            .header("Content-Type", "application/json");
+        let http_request =
+            fluent_ai_http3::HttpRequest::post("/chat/completions", serde_json::to_vec(&request)?)
+                .map_err(|e| CompletionError::ProviderError(format!("Request build error: {}", e)))?
+                .header("Content-Type", "application/json");
 
-        let response = client.send(http_request).await
+        let response = client
+            .send(http_request)
+            .await
             .map_err(|e| CompletionError::ProviderError(format!("Request failed: {}", e)))?;
 
         if !response.status().is_success() {
             return Err(CompletionError::ProviderError(format!(
-                "HTTP {}: Request failed", 
+                "HTTP {}: Request failed",
                 response.status()
             )));
         }
@@ -1704,13 +1852,38 @@ pub struct ResponseUsage {
 static COMMON_JSON_PATTERNS: SkipMap<&'static str, JsonPattern> = SkipMap::new();
 
 static LATENCY_BUCKET_BOUNDARIES: [u64; 32] = [
-    1_000, 2_000, 5_000, 10_000, 20_000, 50_000, 100_000, 200_000,
-    500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000, 20_000_000,
-    50_000_000, 100_000_000, 200_000_000, 500_000_000, 1_000_000_000,
-    2_000_000_000, 5_000_000_000, 10_000_000_000, 20_000_000_000,
-    50_000_000_000, 100_000_000_000, 200_000_000_000, 500_000_000_000,
-    1_000_000_000_000, 2_000_000_000_000, 5_000_000_000_000,
-    10_000_000_000_000, u64::MAX,
+    1_000,
+    2_000,
+    5_000,
+    10_000,
+    20_000,
+    50_000,
+    100_000,
+    200_000,
+    500_000,
+    1_000_000,
+    2_000_000,
+    5_000_000,
+    10_000_000,
+    20_000_000,
+    50_000_000,
+    100_000_000,
+    200_000_000,
+    500_000_000,
+    1_000_000_000,
+    2_000_000_000,
+    5_000_000_000,
+    10_000_000_000,
+    20_000_000_000,
+    50_000_000_000,
+    100_000_000_000,
+    200_000_000_000,
+    500_000_000_000,
+    1_000_000_000_000,
+    2_000_000_000_000,
+    5_000_000_000_000,
+    10_000_000_000_000,
+    u64::MAX,
 ];
 
 static OPTIMIZATION_STRATEGIES: [OptimizationStrategy; 5] = [
@@ -1766,5 +1939,5 @@ static OPTIMIZATION_STRATEGIES: [OptimizationStrategy; 5] = [
     },
 ];
 
-use serde::{Deserialize, Serialize};
 use futures::StreamExt;
+use serde::{Deserialize, Serialize};

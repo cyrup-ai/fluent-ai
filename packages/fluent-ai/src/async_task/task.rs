@@ -1,5 +1,5 @@
 //! IMPORTANT: Cyrup-agent's battle-tested async primitives COPIED INTO fluent-ai
-//! 
+//!
 //! ⚠️  DO NOT IMPORT FROM cyrup-agent - IT WILL BE DELETED! ⚠️
 //! All async primitives are now part of fluent-ai directly
 //!
@@ -11,7 +11,9 @@ use core::{
     pin::Pin,
     task::{Context, Poll},
 };
-use crossbeam_channel::{bounded, Receiver, Sender};
+
+use crossbeam_channel::{Receiver, Sender, bounded};
+
 use super::thread_pool::GLOBAL_EXECUTOR;
 
 /// Cyrup-agent's battle-tested AsyncTask
@@ -20,7 +22,7 @@ pub struct AsyncTask<T> {
     rx: Receiver<T>,
 }
 
-impl<T> AsyncTask<T> 
+impl<T> AsyncTask<T>
 where
     T: Send + 'static,
 {
@@ -79,4 +81,3 @@ where
 
     AsyncTask { rx }
 }
-

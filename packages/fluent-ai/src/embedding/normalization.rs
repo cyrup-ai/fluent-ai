@@ -3,11 +3,12 @@
 //! High-performance normalization functions with optimal memory usage,
 //! SIMD optimizations where available, and numerically stable algorithms.
 
-use serde::{Deserialize, Serialize};
 use std::f32;
 
+use serde::{Deserialize, Serialize};
+
 /// Normalize a vector to unit length (L2 normalization) in place
-/// 
+///
 /// This function modifies the input vector directly for zero-allocation performance.
 /// Uses numerically stable computation to avoid overflow/underflow issues.
 #[inline(always)]
@@ -18,7 +19,7 @@ pub fn normalize_vector(vector: &mut [f32]) {
 
     // Calculate L2 norm with numerical stability
     let norm = l2_norm(vector);
-    
+
     if norm > f32::EPSILON {
         let inv_norm = 1.0 / norm;
         // Vectorized normalization
@@ -29,7 +30,7 @@ pub fn normalize_vector(vector: &mut [f32]) {
 }
 
 /// Calculate L2 norm (Euclidean norm) of a vector
-/// 
+///
 /// Uses numerically stable computation to handle very large or small values.
 #[inline(always)]
 pub fn l2_norm(vector: &[f32]) -> f32 {
@@ -87,7 +88,7 @@ pub fn normalize_max(vector: &mut [f32]) {
 }
 
 /// Normalize multiple vectors to unit length in batch
-/// 
+///
 /// Optimized for processing multiple embeddings simultaneously.
 #[inline(always)]
 pub fn normalize_batch(vectors: &mut [Vec<f32>]) {
@@ -105,14 +106,13 @@ pub fn normalize_zscore(vector: &mut [f32]) {
 
     // Calculate mean
     let mean: f32 = vector.iter().sum::<f32>() / vector.len() as f32;
-    
+
     // Calculate standard deviation
-    let variance: f32 = vector.iter()
-        .map(|&x| (x - mean) * (x - mean))
-        .sum::<f32>() / vector.len() as f32;
-    
+    let variance: f32 =
+        vector.iter().map(|&x| (x - mean) * (x - mean)).sum::<f32>() / vector.len() as f32;
+
     let std_dev = variance.sqrt();
-    
+
     if std_dev > f32::EPSILON {
         // Apply z-score normalization
         for value in vector.iter_mut() {
@@ -130,7 +130,7 @@ pub fn normalize_minmax(vector: &mut [f32]) {
 
     let min_val = vector.iter().fold(f32::INFINITY, |a, &b| a.min(b));
     let max_val = vector.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
-    
+
     let range = max_val - min_val;
     if range > f32::EPSILON {
         for value in vector.iter_mut() {
@@ -201,7 +201,7 @@ pub fn stable_dot_product(a: &[f32], b: &[f32]) -> f32 {
 }
 
 /// Fast approximate normalization using bit manipulation
-/// 
+///
 /// This is a fast approximation that trades some accuracy for speed.
 /// Should only be used when exact normalization is not critical.
 #[inline(always)]
@@ -212,7 +212,7 @@ pub fn fast_normalize_approx(vector: &mut [f32]) {
 
     // Fast inverse square root approximation
     let sum_squares: f32 = vector.iter().map(|&x| x * x).sum();
-    
+
     if sum_squares > f32::EPSILON {
         let inv_norm = fast_inverse_sqrt(sum_squares);
         for value in vector.iter_mut() {
@@ -227,7 +227,7 @@ fn fast_inverse_sqrt(x: f32) -> f32 {
     if x <= 0.0 {
         return 0.0;
     }
-    
+
     // Use built-in sqrt for safety and accuracy in production
     // The classic Quake algorithm is faster but less accurate
     1.0 / x.sqrt()
@@ -260,9 +260,14 @@ pub mod utils {
     /// Get the dimension with maximum absolute value
     #[inline(always)]
     pub fn max_dimension(vector: &[f32]) -> Option<usize> {
-        vector.iter()
+        vector
+            .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.abs().partial_cmp(&b.abs()).unwrap_or(std::cmp::Ordering::Equal))
+            .max_by(|(_, a), (_, b)| {
+                a.abs()
+                    .partial_cmp(&b.abs())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .map(|(idx, _)| idx)
     }
 
@@ -278,7 +283,7 @@ pub mod utils {
         if vector.is_empty() {
             return 0.0;
         }
-        
+
         let zero_count = vector.iter().filter(|&&x| x.abs() <= threshold).count();
         zero_count as f32 / vector.len() as f32
     }

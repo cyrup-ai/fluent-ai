@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+
 use tracing::{error, info, warn};
 
 use crate::config::RamdiskConfig;
@@ -281,7 +282,10 @@ impl ExecutionFlow {
             Ok(true) => {
                 info!("Attempting to unmount ramdisk at {}", mount_point.display());
                 if let Err(e) = crate::ramdisk::remove_ramdisk(mount_point) {
-                    warn!("Failed to cleanup ramdisk: {} - this is expected if ramdisk wasn't created", e);
+                    warn!(
+                        "Failed to cleanup ramdisk: {} - this is expected if ramdisk wasn't created",
+                        e
+                    );
                 } else {
                     info!("Ramdisk cleanup successful");
                 }

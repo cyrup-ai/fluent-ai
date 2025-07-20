@@ -1,14 +1,15 @@
 //! Agent role builder implementation moved from domain
 //! Builders are behavioral/construction logic, separate from core domain models
 
-use fluent_ai_domain::{
-    MessageRole, ChatMessageChunk, HashMap, ZeroOneOrMany, AgentRole, AgentRoleImpl,
-    AgentConversation, AgentRoleAgent, ContextArgs, ToolArgs, ConversationHistoryArgs,
-    AgentWithHistory, AgentConversationMessage
-};
-use serde_json::Value;
 use std::fmt;
 use std::marker::PhantomData;
+
+use fluent_ai_domain::{
+    AgentConversation, AgentConversationMessage, AgentRole, AgentRoleAgent, AgentRoleImpl,
+    AgentWithHistory, ChatMessageChunk, ContextArgs, ConversationHistoryArgs, HashMap, MessageRole,
+    ToolArgs, ZeroOneOrMany,
+};
+use serde_json::Value;
 
 /// MCP Server configuration
 #[derive(Debug, Clone)]
@@ -185,10 +186,7 @@ impl AgentRoleBuilder {
     /// MUST precede .chat()
     pub fn on_chunk<F>(self, handler: F) -> AgentRoleBuilderWithChunkHandler
     where
-        F: Fn(ChatMessageChunk) -> ChatMessageChunk
-            + Send
-            + Sync
-            + 'static,
+        F: Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync + 'static,
     {
         AgentRoleBuilderWithChunkHandler {
             inner: self,
@@ -213,9 +211,7 @@ impl<T> McpServerBuilder<T> {
             init_command: Some(command.into()),
         };
         parent.mcp_servers = match parent.mcp_servers {
-            Some(servers) => {
-                Some(servers.with_pushed(new_config))
-            }
+            Some(servers) => Some(servers.with_pushed(new_config)),
             None => Some(ZeroOneOrMany::one(new_config)),
         };
         parent
@@ -234,10 +230,7 @@ impl AgentRoleBuilderWithHandler {
     /// Add chunk handler after error handler - EXACT syntax: .on_chunk(|chunk| { ... })
     pub fn on_chunk<F>(self, handler: F) -> AgentRoleBuilderWithChunkHandler
     where
-        F: Fn(ChatMessageChunk) -> ChatMessageChunk
-            + Send
-            + Sync
-            + 'static,
+        F: Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync + 'static,
     {
         AgentRoleBuilderWithChunkHandler {
             inner: self.inner,
@@ -269,9 +262,7 @@ impl AgentRoleBuilderWithHandler {
 /// Builder with chunk handler - has access to terminal methods
 pub struct AgentRoleBuilderWithChunkHandler {
     inner: AgentRoleBuilder,
-    chunk_handler: Box<
-        dyn Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync,
-    >,
+    chunk_handler: Box<dyn Fn(ChatMessageChunk) -> ChatMessageChunk + Send + Sync>,
 }
 
 impl AgentRoleBuilderWithChunkHandler {

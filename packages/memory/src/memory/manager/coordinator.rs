@@ -9,7 +9,7 @@ use tokio::sync::{Mutex, RwLock, oneshot};
 
 use crate::memory::{
     MemoryMetadata, MemoryNode, MemoryRelationship, MemoryType, filter::MemoryFilter,
-    repository::MemoryRepository, storage::MemoryStorage, primitives::types::MemoryTypeEnum,
+    primitives::types::MemoryTypeEnum, repository::MemoryRepository, storage::MemoryStorage,
 };
 use crate::utils::{Error, Result};
 use crate::vector::VectorStore;
@@ -163,7 +163,10 @@ where
     /// Get memories by filter
     pub async fn get_memories(&self, filter: MemoryFilter) -> Result<Vec<MemoryNode>> {
         let memories = self.repository.read().await.filter(&filter);
-        Ok(memories.into_iter().map(|arc_memory| (*arc_memory).clone()).collect())
+        Ok(memories
+            .into_iter()
+            .map(|arc_memory| (*arc_memory).clone())
+            .collect())
     }
 
     /// Add a relationship between memories

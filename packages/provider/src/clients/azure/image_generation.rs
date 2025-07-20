@@ -6,6 +6,8 @@
 
 #![allow(clippy::type_complexity)]
 
+use serde_json::json;
+
 use super::client::Client;
 use crate::{
     client::ImageGenerationClient,
@@ -13,9 +15,8 @@ use crate::{
     providers::openai::ImageGenerationResponse,
     runtime::{self, AsyncTask},
 };
-use serde_json::json;
 
-/* ───────────────────────────── error handling ─────────────────────── */
+// ───────────────────────────── error handling ───────────────────────
 
 #[derive(Debug, serde::Deserialize)]
 struct ApiErrorResponse {
@@ -29,7 +30,7 @@ enum ApiResponse<T> {
     Err(ApiErrorResponse),
 }
 
-/* ───────────────────────────── provider model ──────────────────────────── */
+// ───────────────────────────── provider model ────────────────────────────
 
 #[derive(Clone)]
 pub struct ImageGenerationModel {
@@ -46,7 +47,7 @@ impl ImageGenerationModel {
     }
 }
 
-/* ───────────────────────────── impl ImageGenerationModel ───────────────────── */
+// ───────────────────────────── impl ImageGenerationModel ─────────────────────
 
 impl image_generation::ImageGenerationModel for ImageGenerationModel {
     type Response = ImageGenerationResponse;
@@ -62,7 +63,7 @@ impl image_generation::ImageGenerationModel for ImageGenerationModel {
     }
 }
 
-/* ───────────────────────────── internal async helpers ─────────────────── */
+// ───────────────────────────── internal async helpers ───────────────────
 
 impl ImageGenerationModel {
     async fn perform_image_generation(
@@ -103,7 +104,7 @@ impl ImageGenerationModel {
     }
 }
 
-/* ───────────────────────────── client implementation ─────────────────── */
+// ───────────────────────────── client implementation ───────────────────
 
 impl ImageGenerationClient for Client {
     type ImageGenerationModel = ImageGenerationModel;

@@ -19,11 +19,11 @@ use core::cmp::max;
 use std::collections::HashMap;
 
 use crate::{
-    embedding::{
-        embed::{EmbedError, TextEmbedder},
-        Embed, Embedding, EmbeddingError, EmbeddingModel,
-    },
     OneOrMany,
+    embedding::{
+        Embed, Embedding, EmbeddingError, EmbeddingModel,
+        embed::{EmbedError, TextEmbedder},
+    },
     runtime::{self, AsyncTask},
 };
 
@@ -97,16 +97,16 @@ where
 
             let mut embeddings_by_doc: HashMap<usize, OneOrMany<Embedding>> = HashMap::new();
             let mut start = 0;
-            
+
             while start < flat.len() {
                 let end = (start + batch_cap).min(flat.len());
                 let slice = &flat[start..end];
                 let ids: Vec<usize> = slice.iter().map(|(i, _)| *i).collect();
                 let docs_batch: Vec<String> = slice.iter().map(|(_, t)| t.clone()).collect();
-                
+
                 // Process this batch
                 let embeds = self.model.embed_texts(docs_batch).await?;
-                
+
                 // Accumulate embeddings by document
                 for (doc_id, embedding) in ids.into_iter().zip(embeds) {
                     embeddings_by_doc
@@ -114,7 +114,7 @@ where
                         .and_modify(|slot| slot.push(embedding.clone()))
                         .or_insert_with(|| OneOrMany::one(embedding));
                 }
-                
+
                 start = end;
             }
 
@@ -134,12 +134,12 @@ where
     pub fn collect_all(self) -> AsyncTask<Result<Vec<(T, OneOrMany<Embedding>)>, EmbeddingError>> {
         runtime::spawn_async(async move {
             let mut results = Vec::new();
-            
+
             // Use streaming internally but collect results
             let stream_task = self.stream(|doc, embeddings| {
                 results.push((doc, embeddings));
             });
-            
+
             stream_task.await?;
             Ok(results)
         })

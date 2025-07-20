@@ -3,7 +3,8 @@ use core::{
     pin::Pin,
     task::{Context, Poll},
 };
-use crossbeam_channel::{bounded, Receiver, Sender};
+
+use crossbeam_channel::{Receiver, Sender, bounded};
 
 use super::executor::global;
 

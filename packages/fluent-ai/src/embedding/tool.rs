@@ -52,8 +52,8 @@
 use serde::Serialize;
 
 use crate::{
-    embedding::embed::{Embed, EmbedError, TextEmbedder},
     domain::tool::ToolEmbeddingDyn,
+    embedding::embed::{Embed, EmbedError, TextEmbedder},
 };
 
 /// Embeddable representation of a [`Tool`](crate::tool::Tool).
@@ -67,9 +67,9 @@ pub struct ToolSchema {
     pub embedding_docs: Vec<String>,
 }
 
-/* -------------------------------------------------------------------------
- * Embed implementation – feed docs into `TextEmbedder` untouched.
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Embed implementation – feed docs into `TextEmbedder` untouched.
+// ----------------------------------------------------------------------
 impl Embed for ToolSchema {
     fn embed(&self, embedder: &mut TextEmbedder) -> Result<(), EmbedError> {
         for doc in &self.embedding_docs {
@@ -79,9 +79,9 @@ impl Embed for ToolSchema {
     }
 }
 
-/* -------------------------------------------------------------------------
- * Convenient conversion from any dynamic `ToolEmbedding` implementor.
- * ---------------------------------------------------------------------- */
+// -------------------------------------------------------------------------
+// Convenient conversion from any dynamic `ToolEmbedding` implementor.
+// ----------------------------------------------------------------------
 impl ToolSchema {
     /// Build a `ToolSchema` from a dynamic `ToolEmbedding` value.
     #[inline]

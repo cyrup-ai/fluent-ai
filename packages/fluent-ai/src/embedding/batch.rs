@@ -3,14 +3,16 @@
 //! High-performance batch operations with optimal memory management,
 //! parallel processing, and configurable chunking strategies.
 
-use crate::async_task::{AsyncTask, AsyncStream};
-use crate::domain::chunk::EmbeddingChunk;
-use crate::ZeroOneOrMany;
-use crate::embedding::normalization::{NormalizationMethod, apply_normalization};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
 use tokio::sync::Semaphore;
+
+use crate::ZeroOneOrMany;
+use crate::async_task::{AsyncStream, AsyncTask};
+use crate::domain::chunk::EmbeddingChunk;
+use crate::embedding::normalization::{NormalizationMethod, apply_normalization};
 
 /// Batch input types for embedding operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,7 +136,7 @@ where
     #[inline(always)]
     pub fn new(embedding_provider: T, config: BatchConfig) -> Self {
         let semaphore = Arc::new(Semaphore::new(config.max_concurrency));
-        
+
         Self {
             embedding_provider,
             config,
@@ -151,11 +153,11 @@ where
     /// Process a batch of texts with optimal parallelization
     pub fn process_text_batch(&self, texts: Vec<String>) -> AsyncTask<BatchResult> {
         let processor = self.clone();
-        
+
         crate::async_task::spawn_async(async move {
             let start_time = std::time::Instant::now();
             let total_items = texts.len();
-            
+
             if texts.is_empty() {
                 return BatchResult {
                     embeddings: Vec::new(),
@@ -183,18 +185,19 @@ where
                     Ok(permit) => permit,
                     Err(_) => continue, // Skip this batch if semaphore is closed
                 };
-                
+
                 let batch_texts: Vec<String> = chunk.to_vec();
                 let provider = processor.embedding_provider.clone();
                 let config = processor.config.clone();
-                
+
                 // Process batch with retry logic
                 let batch_result = Self::process_batch_with_retry(
                     provider,
                     batch_texts.clone(),
                     batch_idx * processor.config.batch_size,
                     &config.retry_config,
-                ).await;
+                )
+                .await;
 
                 match batch_result {
                     Ok(mut embeddings) => {
@@ -247,23 +250,25 @@ where
 
         tokio::spawn(async move {
             let chunks: Vec<_> = texts.chunks(processor.config.batch_size).collect();
-            
+
             for (batch_idx, chunk) in chunks.into_iter().enumerate() {
                 let _permit = match processor.semaphore.acquire().await {
                     Ok(permit) => permit,
                     Err(_) => continue, // Skip this batch if semaphore is closed
                 };
-                
+
                 let batch_texts: Vec<String> = chunk.to_vec();
                 let provider = processor.embedding_provider.clone();
                 let base_index = batch_idx * processor.config.batch_size;
-                
+
                 match Self::process_batch_with_retry(
                     provider,
                     batch_texts.clone(),
                     base_index,
                     &processor.config.retry_config,
-                ).await {
+                )
+                .await
+                {
                     Ok(mut embeddings) => {
                         // Apply normalization
                         if !matches!(processor.config.normalization, NormalizationMethod::None) {
@@ -279,7 +284,7 @@ where
                                 index: base_index + idx,
                                 metadata: HashMap::new(),
                             };
-                            
+
                             if tx.send(chunk).is_err() {
                                 break;
                             }
@@ -290,14 +295,17 @@ where
                         for failure in failures {
                             let mut metadata = HashMap::new();
                             metadata.insert("error".to_string(), serde_json::json!(failure.error));
-                            metadata.insert("retry_count".to_string(), serde_json::json!(failure.retry_count));
-                            
+                            metadata.insert(
+                                "retry_count".to_string(),
+                                serde_json::json!(failure.retry_count),
+                            );
+
                             let error_chunk = EmbeddingChunk {
                                 embeddings: crate::ZeroOneOrMany::from_vec(Vec::new()),
                                 index: failure.index,
                                 metadata,
                             };
-                            
+
                             if tx.send(error_chunk).is_err() {
                                 break;
                             }
@@ -324,7 +332,9 @@ where
             // Try to process the batch
             let embedding_config = super::EmbeddingConfig::default();
             let texts_zero_one_many = ZeroOneOrMany::from_vec(texts.clone());
-            let result = provider.embed_batch_texts(&texts_zero_one_many, Some(&embedding_config)).await;
+            let result = provider
+                .embed_batch_texts(&texts_zero_one_many, Some(&embedding_config))
+                .await;
 
             // Convert ZeroOneOrMany<ZeroOneOrMany<f32>> to Vec<Vec<f32>> for compatibility
             let result_vec: Vec<Vec<f32>> = match result {
@@ -337,22 +347,23 @@ where
                     };
                     vec![vec_embedding]
                 }
-                ZeroOneOrMany::Many(embeddings) => {
-                    embeddings.into_iter().map(|emb| match emb {
+                ZeroOneOrMany::Many(embeddings) => embeddings
+                    .into_iter()
+                    .map(|emb| match emb {
                         ZeroOneOrMany::None => Vec::new(),
                         ZeroOneOrMany::One(val) => vec![val],
                         ZeroOneOrMany::Many(vals) => vals,
-                    }).collect()
-                }
+                    })
+                    .collect(),
             };
-            
+
             // Check if we got valid embeddings
             if !result_vec.is_empty() && result_vec.len() == texts.len() {
                 // Verify embeddings are not all zeros (indicating errors)
-                let has_valid_embeddings = result_vec.iter().any(|emb| {
-                    !emb.is_empty() && emb.iter().any(|&x| x != 0.0)
-                });
-                
+                let has_valid_embeddings = result_vec
+                    .iter()
+                    .any(|emb| !emb.is_empty() && emb.iter().any(|&x| x != 0.0));
+
                 if has_valid_embeddings {
                     return Ok(result_vec);
                 }
@@ -361,7 +372,8 @@ where
             // If we've exhausted retries, return failures
             attempt += 1;
             if attempt > retry_config.max_retries {
-                let failures: Vec<BatchFailure> = texts.iter()
+                let failures: Vec<BatchFailure> = texts
+                    .iter()
                     .enumerate()
                     .map(|(idx, _)| BatchFailure {
                         index: base_index + idx,
@@ -369,7 +381,7 @@ where
                         retry_count: attempt - 1,
                     })
                     .collect();
-                
+
                 return Err(failures);
             }
 
@@ -400,7 +412,11 @@ pub mod utils {
 
     /// Split large input into optimal batch sizes
     #[inline(always)]
-    pub fn optimize_batch_size(total_items: usize, max_batch_size: usize, max_concurrency: usize) -> usize {
+    pub fn optimize_batch_size(
+        total_items: usize,
+        max_batch_size: usize,
+        max_concurrency: usize,
+    ) -> usize {
         if total_items <= max_batch_size {
             return total_items;
         }
@@ -423,8 +439,9 @@ pub mod utils {
         }
 
         let batches_needed = (item_count + batch_config.batch_size - 1) / batch_config.batch_size;
-        let parallel_batches = (batches_needed + batch_config.max_concurrency - 1) / batch_config.max_concurrency;
-        
+        let parallel_batches =
+            (batches_needed + batch_config.max_concurrency - 1) / batch_config.max_concurrency;
+
         (parallel_batches as f64 * batch_config.batch_size as f64 * avg_time_per_item_ms) as u64
     }
 
@@ -438,7 +455,7 @@ pub mod utils {
         // Estimate memory for concurrent batches
         let concurrent_items = batch_config.batch_size * batch_config.max_concurrency;
         let active_items = concurrent_items.min(item_count);
-        
+
         // Memory for f32 vectors plus overhead
         active_items * avg_embedding_dimensions * std::mem::size_of::<f32>() * 2 // 2x for processing overhead
     }
@@ -453,11 +470,11 @@ pub mod utils {
         // Calculate memory per item (in bytes)
         let memory_per_item = avg_embedding_dims * std::mem::size_of::<f32>() * 2;
         let available_memory_bytes = available_memory_mb * 1024 * 1024;
-        
+
         // Calculate safe batch size based on memory
         let max_items_in_memory = available_memory_bytes / memory_per_item;
         let safe_batch_size = (max_items_in_memory / 4).clamp(10, 1000); // Reserve 75% headroom
-        
+
         // Calculate optimal concurrency
         let optimal_concurrency = if total_items > safe_batch_size * 4 {
             4 // High parallelism for large datasets
@@ -483,19 +500,19 @@ pub mod utils {
         if config.batch_size == 0 {
             return Err("Batch size must be greater than 0".to_string());
         }
-        
+
         if config.max_concurrency == 0 {
             return Err("Max concurrency must be greater than 0".to_string());
         }
-        
+
         if config.timeout_seconds == 0 {
             return Err("Timeout must be greater than 0".to_string());
         }
-        
+
         if config.retry_config.max_retries > 10 {
             return Err("Max retries should not exceed 10".to_string());
         }
-        
+
         Ok(())
     }
 }

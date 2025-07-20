@@ -1,7 +1,8 @@
 //! Zero-allocation error handling for candle integration
 
-use fluent_ai_core::completion::error::{CompletionError, CandleError as CoreCandleError};
 use std::fmt;
+
+use fluent_ai_core::completion::error::{CandleError as CoreCandleError, CompletionError};
 
 /// Result type alias for candle operations
 pub type CandleResult<T> = Result<T, CandleError>;
@@ -34,15 +35,9 @@ pub enum CandleError {
     /// SafeTensors format error
     SafeTensors(&'static str),
     /// Context length exceeded
-    ContextLengthExceeded {
-        current: u32,
-        max: u32,
-    },
+    ContextLengthExceeded { current: u32, max: u32 },
     /// Vocabulary size mismatch
-    VocabularyMismatch {
-        expected: u32,
-        actual: u32,
-    },
+    VocabularyMismatch { expected: u32, actual: u32 },
     /// Generation failed
     GenerationFailed(&'static str),
     /// Cache overflow
@@ -68,7 +63,11 @@ impl fmt::Display for CandleError {
                 write!(f, "Context length exceeded: {} > {}", current, max)
             }
             Self::VocabularyMismatch { expected, actual } => {
-                write!(f, "Vocabulary size mismatch: expected {}, got {}", expected, actual)
+                write!(
+                    f,
+                    "Vocabulary size mismatch: expected {}, got {}",
+                    expected, actual
+                )
             }
             Self::GenerationFailed(msg) => write!(f, "Generation failed: {}", msg),
             Self::CacheOverflow => write!(f, "Cache overflow"),
@@ -109,7 +108,9 @@ impl From<candle_core::Error> for CandleError {
                     Self::TensorOperation("Candle operation failed")
                 }
             }
-            candle_core::Error::Io(_) => Self::ModelNotFound("IO error during model loading".to_string()),
+            candle_core::Error::Io(_) => {
+                Self::ModelNotFound("IO error during model loading".to_string())
+            }
             candle_core::Error::Zip(_) => Self::InvalidModelFormat("ZIP archive error"),
             candle_core::Error::SafeTensorError(_) => Self::SafeTensors("SafeTensors format error"),
             _ => Self::TensorOperation("Unknown candle error"),
@@ -309,19 +310,19 @@ pub struct CandleErrorWithContext {
 impl fmt::Display for CandleErrorWithContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} during {}", self.error, self.context.operation)?;
-        
+
         if let Some(model) = &self.context.model_name {
             write!(f, " (model: {})", model)?;
         }
-        
+
         if let Some(device) = &self.context.device {
             write!(f, " (device: {})", device)?;
         }
-        
+
         if let Some(context) = &self.context.context {
             write!(f, " ({})", context)?;
         }
-        
+
         Ok(())
     }
 }

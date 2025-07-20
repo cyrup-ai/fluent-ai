@@ -3,10 +3,11 @@
 //! This module defines the core traits that provider clients implement
 //! for completion, embedding, transcription, and other AI services.
 
-use fluent_ai_domain::{AsyncTask, AsyncStream};
-use fluent_ai_domain::chunk::{CompletionChunk, EmbeddingChunk, VoiceChunk};
-use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
 use std::collections::HashMap;
+
+use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
+use fluent_ai_domain::chunk::{CompletionChunk, EmbeddingChunk, VoiceChunk};
+use fluent_ai_domain::{AsyncStream, AsyncTask};
 
 /// Core completion client trait using async task patterns
 pub trait CompletionClient: Send + Sync + Clone {
@@ -33,7 +34,7 @@ pub trait EmbeddingsClient: Send + Sync + Clone {
 pub trait ProviderClient: Send + Sync + Clone {
     /// Provider name
     fn provider_name(&self) -> &'static str;
-    
+
     /// Test connection to the provider
     fn test_connection(&self) -> AsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>>;
 }
@@ -60,10 +61,16 @@ pub trait CompletionModel: Send + Sync + Clone {
     fn prompt(&self, prompt: fluent_ai_domain::prompt::Prompt) -> AsyncStream<CompletionChunk>;
 
     /// Perform completion
-    fn completion(&self, request: fluent_ai_domain::completion::CompletionRequest) -> AsyncTask<Result<Self::Response, Self::Error>>;
+    fn completion(
+        &self,
+        request: fluent_ai_domain::completion::CompletionRequest,
+    ) -> AsyncTask<Result<Self::Response, Self::Error>>;
 
     /// Stream completion
-    fn stream(&self, request: fluent_ai_domain::completion::CompletionRequest) -> AsyncTask<Result<AsyncStream<Self::StreamingResponse>, Self::Error>>;
+    fn stream(
+        &self,
+        request: fluent_ai_domain::completion::CompletionRequest,
+    ) -> AsyncTask<Result<AsyncStream<Self::StreamingResponse>, Self::Error>>;
 }
 
 /// Embedding model trait for model-specific implementations  
@@ -75,7 +82,10 @@ pub trait EmbeddingModel: Send + Sync + Clone {
     fn ndims(&self) -> usize;
 
     /// Embed multiple texts
-    fn embed_texts(&self, documents: impl IntoIterator<Item = String>) -> AsyncTask<Result<Vec<crate::embeddings::Embedding>, crate::embeddings::EmbeddingError>>;
+    fn embed_texts(
+        &self,
+        documents: impl IntoIterator<Item = String>,
+    ) -> AsyncTask<Result<Vec<crate::embeddings::Embedding>, crate::embeddings::EmbeddingError>>;
 
     /// Create embeddings for a single text
     fn embed(&self, text: &str) -> AsyncTask<ZeroOneOrMany<f32>>;

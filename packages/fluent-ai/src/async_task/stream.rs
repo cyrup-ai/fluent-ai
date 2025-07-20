@@ -10,13 +10,14 @@ use core::{
     pin::Pin,
     task::{Context, Poll},
 };
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
+
 use crossbeam_queue::ArrayQueue;
 use futures_util::Stream;
 use futures_util::task::AtomicWaker;
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
-};
 
 /// Cyrup-agent's AsyncStream with const-generic capacity
 pub struct AsyncStream<T, const CAP: usize = 1024> {
@@ -69,8 +70,8 @@ impl<T, const CAP: usize> AsyncStream<T, CAP> {
     }
 
     /// Create from tokio mpsc receiver for compatibility
-    pub fn new(mut receiver: tokio::sync::mpsc::UnboundedReceiver<T>) -> Self 
-    where 
+    pub fn new(mut receiver: tokio::sync::mpsc::UnboundedReceiver<T>) -> Self
+    where
         T: Send + 'static,
     {
         let (tx, st) = Self::channel();

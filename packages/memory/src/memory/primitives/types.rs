@@ -327,7 +327,11 @@ impl MemoryType for BaseMemory {
             match serde_json::to_value(value) {
                 Ok(json_value) => json_value,
                 Err(e) => {
-                    tracing::warn!("Failed to serialize field '{}': {}. Using null.", field_name, e);
+                    tracing::warn!(
+                        "Failed to serialize field '{}': {}. Using null.",
+                        field_name,
+                        e
+                    );
                     serde_json::Value::Null
                 }
             }
@@ -386,7 +390,10 @@ impl MemoryType for BaseMemory {
         );
         entity.attributes.insert(
             "last_accessed_at".to_string(),
-            json_to_surreal_value(serialize_field(&self.metadata.last_accessed_at, "last_accessed_at")),
+            json_to_surreal_value(serialize_field(
+                &self.metadata.last_accessed_at,
+                "last_accessed_at",
+            )),
         );
         entity.attributes.insert(
             "embedding".to_string(),

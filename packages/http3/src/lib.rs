@@ -13,10 +13,13 @@
 //! - **Compression support** (gzip, brotli, deflate)
 //! - **Intelligent caching** with `ETag` and conditional requests
 //! - **Streaming support** for real-time AI responses
+//! - **File download streaming** with progress tracking and on_chunk handlers
 //! - **Request/Response middleware** for customization
 //! - **Comprehensive error handling** with detailed diagnostics
 //!
 //! ## Usage
+//!
+//! ### Basic HTTP Requests
 //!
 //! ```rust
 //! use fluent_ai_http3::{HttpClient, HttpRequest, HttpResponse};
@@ -34,6 +37,42 @@
 //!     println!("Status: {}", response.status());
 //!     println!("Body: {}", response.text().await?);
 //!     
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ### File Downloads with Progress Tracking
+//!
+//! ```rust
+//! use fluent_ai_http3::{HttpClient, DownloadChunk};
+//! use futures::StreamExt;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let client = HttpClient::new()?;
+//!     
+//!     let mut download_stream = client
+//!         .download_file("https://example.com/large-file.zip")
+//!         .await?
+//!         .on_chunk(|chunk: &DownloadChunk| {
+//!             if let Some(progress) = chunk.progress_percentage() {
+//!                 println!("Download progress: {:.1}%", progress);
+//!             }
+//!             println!("Downloaded {} bytes", chunk.bytes_downloaded);
+//!             Ok(())
+//!         });
+//!     
+//!     let mut file_data = Vec::new();
+//!     while let Some(chunk_result) = download_stream.next().await {
+//!         let chunk = chunk_result?;
+//!         file_data.extend_from_slice(&chunk.data);
+//!         
+//!         if let Some(speed) = chunk.download_speed {
+//!             println!("Download speed: {:.2} MB/s", speed / 1_048_576.0);
+//!         }
+//!     }
+//!     
+//!     println!("Download complete! Total size: {} bytes", file_data.len());
 //!     Ok(())
 //! }
 //! ```
@@ -63,10 +102,10 @@ pub use cache::CacheEntry;
 pub use client::{ClientStats, HttpClient};
 pub use config::HttpConfig;
 pub use error::{HttpError, HttpResult};
+pub use stream::{DownloadChunk, DownloadStream, HttpStream, LinesStream, SseStream};
 pub use middleware::{Middleware, MiddlewareChain};
 pub use request::{HttpMethod, HttpRequest};
 pub use response::HttpResponse;
-pub use stream::HttpStream;
 
 /// Global HTTP client instance with connection pooling
 /// Uses the Default implementation which provides graceful fallback handling

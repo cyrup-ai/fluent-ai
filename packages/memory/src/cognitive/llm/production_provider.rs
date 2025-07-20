@@ -13,9 +13,9 @@ use anyhow::Result;
 use crossbeam_utils::CachePadded;
 use tokio::sync::{RwLock, Semaphore};
 
-use crate::cognitive::types::CognitiveError;
-use crate::cognitive::quantum::types::QueryIntent;
 use super::super::manager::LLMProvider;
+use crate::cognitive::quantum::types::QueryIntent;
+use crate::cognitive::types::CognitiveError;
 
 /// Production LLM provider with enterprise-grade reliability and performance
 #[derive(Debug)]
@@ -102,7 +102,9 @@ impl Clone for CachedResponse {
         Self {
             content: self.content.clone(),
             timestamp: self.timestamp,
-            hit_count: std::sync::atomic::AtomicU64::new(self.hit_count.load(std::sync::atomic::Ordering::Relaxed)),
+            hit_count: std::sync::atomic::AtomicU64::new(
+                self.hit_count.load(std::sync::atomic::Ordering::Relaxed),
+            ),
         }
     }
 }
@@ -120,7 +122,9 @@ impl Clone for CachedEmbedding {
         Self {
             embedding: self.embedding.clone(),
             timestamp: self.timestamp,
-            hit_count: std::sync::atomic::AtomicU64::new(self.hit_count.load(std::sync::atomic::Ordering::Relaxed)),
+            hit_count: std::sync::atomic::AtomicU64::new(
+                self.hit_count.load(std::sync::atomic::Ordering::Relaxed),
+            ),
         }
     }
 }
@@ -212,9 +216,11 @@ impl ProductionLLMProvider {
     /// Zero allocation initialization with pre-configured caches and connection pooling
     pub async fn new(config: ProviderConfig) -> Result<Self, CognitiveError> {
         // Initialize HTTP client with AI-optimized configuration
-        let http_client = fluent_ai_http3::HttpClient::with_config(
-            fluent_ai_http3::HttpConfig::ai_optimized()
-        ).map_err(|e| CognitiveError::ConfigError(format!("Failed to create HTTP client: {}", e)))?;
+        let http_client =
+            fluent_ai_http3::HttpClient::with_config(fluent_ai_http3::HttpConfig::ai_optimized())
+                .map_err(|e| {
+                CognitiveError::ConfigError(format!("Failed to create HTTP client: {}", e))
+            })?;
 
         let provider_client = Arc::new(ProviderClient {
             http_client,
@@ -223,8 +229,8 @@ impl ProductionLLMProvider {
         });
 
         let circuit_breaker = Arc::new(CircuitBreaker::new(
-            10,  // failure_threshold
-            5,   // success_threshold
+            10,                      // failure_threshold
+            5,                       // success_threshold
             Duration::from_secs(60), // timeout
         ));
 
@@ -260,13 +266,19 @@ impl ProductionLLMProvider {
         let cache_key = format!("intent:{}", query);
         if let Some(cached) = self.response_cache.get(&cache_key) {
             // Record cache hit in metrics
-            self.provider_client.metrics.cache_hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.provider_client
+                .metrics
+                .cache_hits
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let intent = self.parse_intent_from_cached_response(&cached)?;
             return Ok(intent);
         }
 
         // Acquire rate limit permit
-        let _permit = self.rate_limiter.acquire().await
+        let _permit = self
+            .rate_limiter
+            .acquire()
+            .await
             .map_err(|_| anyhow::anyhow!("Rate limit acquisition failed"))?;
 
         // Make request to primary provider
@@ -275,13 +287,14 @@ impl ProductionLLMProvider {
         match result {
             Ok(intent) => {
                 // Cache successful response
-                self.response_cache.insert(cache_key, format!("{:?}", intent));
+                self.response_cache
+                    .insert(cache_key, format!("{:?}", intent));
                 self.circuit_breaker.record_success().await;
                 Ok(intent)
             }
             Err(_e) => {
                 self.circuit_breaker.record_failure().await;
-                
+
                 // Try fallback analysis
                 match self.fallback_intent_analysis(query).await {
                     Ok(intent) => Ok(intent),
@@ -299,15 +312,18 @@ impl ProductionLLMProvider {
                 "role": "system",
                 "content": "Analyze the intent of the following query and respond with one of: retrieval, association, prediction, reasoning, exploration, creation"
             }, {
-                "role": "user", 
+                "role": "user",
                 "content": query
             }],
             "temperature": 0.1,
             "max_tokens": 50
         });
 
-        let response = self.provider_client.make_request("/chat/completions", &request_body).await?;
-        
+        let response = self
+            .provider_client
+            .make_request("/chat/completions", &request_body)
+            .await?;
+
         // Parse response and extract intent
         self.parse_intent_from_response(&response)
     }
@@ -323,12 +339,18 @@ impl ProductionLLMProvider {
         let cache_key = format!("embed:{}", text);
         if let Some(cached) = self.embedding_cache.get(&cache_key) {
             // Record cache hit in metrics
-            self.provider_client.metrics.cache_hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.provider_client
+                .metrics
+                .cache_hits
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             return Ok(cached.embedding.clone());
         }
 
         // Acquire rate limit permit
-        let _permit = self.rate_limiter.acquire().await
+        let _permit = self
+            .rate_limiter
+            .acquire()
+            .await
             .map_err(|_| anyhow::anyhow!("Rate limit acquisition failed"))?;
 
         // Make embedding request
@@ -343,7 +365,7 @@ impl ProductionLLMProvider {
             }
             Err(_e) => {
                 self.circuit_breaker.record_failure().await;
-                
+
                 // Try fallback embedding
                 match self.fallback_embedding(text).await {
                     Ok(embedding) => Ok(embedding),
@@ -361,8 +383,11 @@ impl ProductionLLMProvider {
             "encoding_format": "float"
         });
 
-        let response = self.provider_client.make_request("/embeddings", &request_body).await?;
-        
+        let response = self
+            .provider_client
+            .make_request("/embeddings", &request_body)
+            .await?;
+
         // Parse response and extract embedding
         self.parse_embedding_from_response(&response)
     }
@@ -378,13 +403,19 @@ impl ProductionLLMProvider {
         let cache_key = format!("hints:{}", query);
         if let Some(cached) = self.response_cache.get(&cache_key) {
             // Record cache hit in metrics
-            self.provider_client.metrics.cache_hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.provider_client
+                .metrics
+                .cache_hits
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let hints = self.parse_hints_from_cached_response(&cached)?;
             return Ok(hints);
         }
 
         // Acquire rate limit permit
-        let _permit = self.rate_limiter.acquire().await
+        let _permit = self
+            .rate_limiter
+            .acquire()
+            .await
             .map_err(|_| anyhow::anyhow!("Rate limit acquisition failed"))?;
 
         // Make request to primary provider
@@ -393,7 +424,8 @@ impl ProductionLLMProvider {
         match result {
             Ok(hints) => {
                 // Cache successful response
-                self.response_cache.insert(cache_key, serde_json::to_string(&hints)?);
+                self.response_cache
+                    .insert(cache_key, serde_json::to_string(&hints)?);
                 self.circuit_breaker.record_success().await;
                 Ok(hints)
             }
@@ -419,8 +451,11 @@ impl ProductionLLMProvider {
             "max_tokens": 200
         });
 
-        let response = self.provider_client.make_request("/chat/completions", &request_body).await?;
-        
+        let response = self
+            .provider_client
+            .make_request("/chat/completions", &request_body)
+            .await?;
+
         // Parse response and extract hints
         self.parse_hints_from_response(&response)
     }
@@ -443,18 +478,36 @@ impl ProductionLLMProvider {
 
     fn rule_based_intent_analysis(&self, query: &str) -> QueryIntent {
         let query_lower = query.to_lowercase();
-        
-        if query_lower.contains("find") || query_lower.contains("search") || query_lower.contains("get") {
+
+        if query_lower.contains("find")
+            || query_lower.contains("search")
+            || query_lower.contains("get")
+        {
             QueryIntent::Retrieval
-        } else if query_lower.contains("predict") || query_lower.contains("will") || query_lower.contains("future") {
+        } else if query_lower.contains("predict")
+            || query_lower.contains("will")
+            || query_lower.contains("future")
+        {
             QueryIntent::Prediction
-        } else if query_lower.contains("why") || query_lower.contains("because") || query_lower.contains("reason") {
+        } else if query_lower.contains("why")
+            || query_lower.contains("because")
+            || query_lower.contains("reason")
+        {
             QueryIntent::Reasoning
-        } else if query_lower.contains("related") || query_lower.contains("similar") || query_lower.contains("like") {
+        } else if query_lower.contains("related")
+            || query_lower.contains("similar")
+            || query_lower.contains("like")
+        {
             QueryIntent::Association
-        } else if query_lower.contains("explore") || query_lower.contains("discover") || query_lower.contains("investigate") {
+        } else if query_lower.contains("explore")
+            || query_lower.contains("discover")
+            || query_lower.contains("investigate")
+        {
             QueryIntent::Exploration
-        } else if query_lower.contains("create") || query_lower.contains("generate") || query_lower.contains("make") {
+        } else if query_lower.contains("create")
+            || query_lower.contains("generate")
+            || query_lower.contains("make")
+        {
             QueryIntent::Creation
         } else {
             QueryIntent::Retrieval // Default fallback
@@ -468,13 +521,13 @@ impl ProductionLLMProvider {
     fn computed_embedding(&self, text: &str) -> Vec<f32> {
         // High-quality computed embedding using multiple hash functions and statistical features
         let mut embedding = vec![0.0; 512];
-        
+
         // Character frequency analysis
         let mut char_counts = [0u32; 256];
         for byte in text.bytes() {
             char_counts[byte as usize] += 1;
         }
-        
+
         // Normalize character frequencies
         let total_chars = text.len() as f32;
         for (i, &count) in char_counts.iter().enumerate() {
@@ -482,30 +535,33 @@ impl ProductionLLMProvider {
                 embedding[i % 512] += (count as f32) / total_chars;
             }
         }
-        
+
         // Word-level features
         let words: Vec<&str> = text.split_whitespace().collect();
         let word_count = words.len() as f32;
-        
+
         if word_count > 0.0 {
             // Average word length
             let avg_word_length = words.iter().map(|w| w.len()).sum::<usize>() as f32 / word_count;
             embedding[256] = avg_word_length / 20.0; // Normalize to [0,1]
-            
+
             // Word diversity (unique words / total words)
             let unique_words: std::collections::HashSet<&str> = words.iter().cloned().collect();
             embedding[257] = unique_words.len() as f32 / word_count;
         }
-        
+
         // Semantic hash using multiple hash functions
-        for (i, hash_seed) in [0x9e3779b9, 0x5bd1e995, 0xcc9e2d51, 0x1b873593].iter().enumerate() {
+        for (i, hash_seed) in [0x9e3779b9, 0x5bd1e995, 0xcc9e2d51, 0x1b873593]
+            .iter()
+            .enumerate()
+        {
             let hash = self.compute_semantic_hash(text, *hash_seed);
             let base_idx = 260 + i * 60;
             for j in 0..60 {
                 embedding[base_idx + j] = ((hash >> j) & 1) as f32;
             }
         }
-        
+
         // Normalize the entire embedding to unit vector
         let magnitude: f32 = embedding.iter().map(|x| x * x).sum::<f32>().sqrt();
         if magnitude > 0.0 {
@@ -513,7 +569,7 @@ impl ProductionLLMProvider {
                 *val /= magnitude;
             }
         }
-        
+
         embedding
     }
 
@@ -530,27 +586,37 @@ impl ProductionLLMProvider {
     fn default_cognitive_hints(&self, query: &str) -> Vec<String> {
         let mut hints = Vec::new();
         let query_lower = query.to_lowercase();
-        
+
         // Temporal hints
-        if query_lower.contains("when") || query_lower.contains("time") || query_lower.contains("before") || query_lower.contains("after") {
+        if query_lower.contains("when")
+            || query_lower.contains("time")
+            || query_lower.contains("before")
+            || query_lower.contains("after")
+        {
             hints.push("temporal_analysis".to_string());
         }
-        
+
         // Causal hints
-        if query_lower.contains("because") || query_lower.contains("why") || query_lower.contains("cause") {
+        if query_lower.contains("because")
+            || query_lower.contains("why")
+            || query_lower.contains("cause")
+        {
             hints.push("causal_reasoning".to_string());
         }
-        
+
         // Similarity hints
-        if query_lower.contains("similar") || query_lower.contains("like") || query_lower.contains("related") {
+        if query_lower.contains("similar")
+            || query_lower.contains("like")
+            || query_lower.contains("related")
+        {
             hints.push("semantic_similarity".to_string());
         }
-        
+
         // Complexity hints
         if query.split_whitespace().count() > 20 {
             hints.push("complex_analysis".to_string());
         }
-        
+
         // Question type hints
         if query_lower.starts_with("what") {
             hints.push("factual_retrieval".to_string());
@@ -559,12 +625,12 @@ impl ProductionLLMProvider {
         } else if query_lower.starts_with("where") {
             hints.push("spatial_reasoning".to_string());
         }
-        
+
         // Default hint if no specific patterns found
         if hints.is_empty() {
             hints.push("general_processing".to_string());
         }
-        
+
         hints
     }
 
@@ -572,10 +638,10 @@ impl ProductionLLMProvider {
     fn parse_intent_from_response(&self, response: &str) -> Result<QueryIntent> {
         // Parse JSON response and extract intent
         let parsed: serde_json::Value = serde_json::from_str(response)?;
-        
+
         if let Some(content) = parsed["choices"][0]["message"]["content"].as_str() {
             let content_lower = content.to_lowercase();
-            
+
             if content_lower.contains("retrieval") {
                 Ok(QueryIntent::Retrieval)
             } else if content_lower.contains("association") {
@@ -610,11 +676,15 @@ impl ProductionLLMProvider {
 
     fn parse_embedding_from_response(&self, response: &str) -> Result<Vec<f32>> {
         let parsed: serde_json::Value = serde_json::from_str(response)?;
-        
+
         if let Some(embedding_array) = parsed["data"][0]["embedding"].as_array() {
             let embedding: Result<Vec<f32>, _> = embedding_array
                 .iter()
-                .map(|v| v.as_f64().map(|f| f as f32).ok_or_else(|| anyhow::anyhow!("Invalid embedding value")))
+                .map(|v| {
+                    v.as_f64()
+                        .map(|f| f as f32)
+                        .ok_or_else(|| anyhow::anyhow!("Invalid embedding value"))
+                })
                 .collect();
             embedding
         } else {
@@ -624,7 +694,7 @@ impl ProductionLLMProvider {
 
     fn parse_hints_from_response(&self, response: &str) -> Result<Vec<String>> {
         let parsed: serde_json::Value = serde_json::from_str(response)?;
-        
+
         if let Some(content) = parsed["choices"][0]["message"]["content"].as_str() {
             // Try to parse as JSON array first
             if let Ok(hints_array) = serde_json::from_str::<Vec<String>>(content) {
@@ -651,7 +721,10 @@ impl LLMProvider for ProductionLLMProvider {
         Box::pin(self.analyze_intent_impl(query))
     }
 
-    fn embed<'a>(&'a self, text: &'a str) -> Pin<Box<dyn Future<Output = Result<Vec<f32>>> + Send + 'a>> {
+    fn embed<'a>(
+        &'a self,
+        text: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<f32>>> + Send + 'a>> {
         Box::pin(self.embed_impl(text))
     }
 
@@ -667,48 +740,62 @@ impl ProviderClient {
     /// Make HTTP request to AI provider
     async fn make_request(&self, endpoint: &str, body: &serde_json::Value) -> Result<String> {
         let start_time = Instant::now();
-        
+
         // Increment total requests
-        self.metrics.total_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        
+        self.metrics
+            .total_requests
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
         // Build request URL
         let url = format!("https://api.openai.com/v1{}", endpoint);
-        
+
         // Prepare request body
         let request_body = serde_json::to_vec(body)?;
-        
+
         // Create HTTP request
-        let request = fluent_ai_http3::HttpRequest::new(
-            fluent_ai_http3::HttpMethod::Post, 
-            url
-        ).header("Content-Type", "application/json")
-        .header("Authorization", &format!("Bearer {}", 
-            self.config.api_keys.get(&self.config.primary_provider)
-                .ok_or_else(|| anyhow::anyhow!("API key not found"))?))
-        .with_body(request_body);
-        
+        let request = fluent_ai_http3::HttpRequest::new(fluent_ai_http3::HttpMethod::Post, url)
+            .header("Content-Type", "application/json")
+            .header(
+                "Authorization",
+                &format!(
+                    "Bearer {}",
+                    self.config
+                        .api_keys
+                        .get(&self.config.primary_provider)
+                        .ok_or_else(|| anyhow::anyhow!("API key not found"))?
+                ),
+            )
+            .with_body(request_body);
+
         // Send request with timeout
         let result = tokio::time::timeout(
             self.config.performance.timeout,
-            self.http_client.send(request)
-        ).await;
-        
+            self.http_client.send(request),
+        )
+        .await;
+
         match result {
             Ok(Ok(response)) => {
                 // Collect response - simplified approach
                 let response_body = response.body().to_vec();
                 let response_text = String::from_utf8(response_body)?;
-                
+
                 // Record success metrics
                 let latency = start_time.elapsed().as_millis() as u64;
-                self.metrics.average_latency_ms.store(latency, std::sync::atomic::Ordering::Relaxed);
-                self.metrics.successful_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                
+                self.metrics
+                    .average_latency_ms
+                    .store(latency, std::sync::atomic::Ordering::Relaxed);
+                self.metrics
+                    .successful_requests
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
                 Ok(response_text)
             }
             Ok(Err(_)) | Err(_) => {
                 // Record failure metrics
-                self.metrics.failed_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                self.metrics
+                    .failed_requests
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 Err(anyhow::anyhow!("HTTP request failed"))
             }
         }
@@ -739,7 +826,7 @@ impl CircuitBreaker {
                     .unwrap_or_default()
                     .as_secs();
                 let last_failure = self.last_failure.load(std::sync::atomic::Ordering::Relaxed);
-                
+
                 if now - last_failure > self.timeout.as_secs() {
                     drop(state);
                     *self.state.write().await = CircuitState::HalfOpen;
@@ -756,31 +843,41 @@ impl CircuitBreaker {
         let mut state = self.state.write().await;
         match *state {
             CircuitState::HalfOpen => {
-                let success_count = self.success_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                let success_count = self
+                    .success_count
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                    + 1;
                 if success_count >= self.success_threshold {
                     *state = CircuitState::Closed;
-                    self.failure_count.store(0, std::sync::atomic::Ordering::Relaxed);
-                    self.success_count.store(0, std::sync::atomic::Ordering::Relaxed);
+                    self.failure_count
+                        .store(0, std::sync::atomic::Ordering::Relaxed);
+                    self.success_count
+                        .store(0, std::sync::atomic::Ordering::Relaxed);
                 }
             }
             CircuitState::Closed => {
                 // Reset failure count on successful operation
-                self.failure_count.store(0, std::sync::atomic::Ordering::Relaxed);
+                self.failure_count
+                    .store(0, std::sync::atomic::Ordering::Relaxed);
             }
             _ => {}
         }
     }
 
     async fn record_failure(&self) {
-        let failure_count = self.failure_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-        
+        let failure_count = self
+            .failure_count
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            + 1;
+
         if failure_count >= self.failure_threshold {
             *self.state.write().await = CircuitState::Open;
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            self.last_failure.store(now, std::sync::atomic::Ordering::Relaxed);
+            self.last_failure
+                .store(now, std::sync::atomic::Ordering::Relaxed);
         }
     }
 }
@@ -797,10 +894,12 @@ impl ResponseCache {
     fn get(&self, key: &str) -> Option<String> {
         if let Some(entry) = self.cache.get(key) {
             let cached = entry.value();
-            
+
             // Check TTL
             if cached.timestamp.elapsed() < self.ttl {
-                cached.hit_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                cached
+                    .hit_count
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 Some(cached.content.clone())
             } else {
                 // Remove expired entry
@@ -830,7 +929,7 @@ impl ResponseCache {
             timestamp: Instant::now(),
             hit_count: std::sync::atomic::AtomicU64::new(0),
         };
-        
+
         self.cache.insert(key, cached);
     }
 }
@@ -847,10 +946,12 @@ impl EmbeddingCache {
     fn get(&self, key: &str) -> Option<CachedEmbedding> {
         if let Some(entry) = self.cache.get(key) {
             let cached = entry.value();
-            
+
             // Check TTL
             if cached.timestamp.elapsed() < self.ttl {
-                cached.hit_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                cached
+                    .hit_count
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 Some(cached.clone())
             } else {
                 // Remove expired entry
@@ -879,7 +980,7 @@ impl EmbeddingCache {
             timestamp: Instant::now(),
             hit_count: std::sync::atomic::AtomicU64::new(0),
         };
-        
+
         self.cache.insert(key, cached);
     }
 }
@@ -900,8 +1001,14 @@ impl Default for ProviderConfig {
     fn default() -> Self {
         let mut api_keys = std::collections::HashMap::new();
         // These would be loaded from environment variables in practice
-        api_keys.insert("openai".to_string(), std::env::var("OPENAI_API_KEY").unwrap_or_default());
-        api_keys.insert("anthropic".to_string(), std::env::var("ANTHROPIC_API_KEY").unwrap_or_default());
+        api_keys.insert(
+            "openai".to_string(),
+            std::env::var("OPENAI_API_KEY").unwrap_or_default(),
+        );
+        api_keys.insert(
+            "anthropic".to_string(),
+            std::env::var("ANTHROPIC_API_KEY").unwrap_or_default(),
+        );
 
         Self {
             primary_provider: "openai".to_string(),

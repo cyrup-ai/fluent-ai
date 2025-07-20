@@ -3,15 +3,16 @@
 //! This module provides memory-efficient key-value caching for transformer models
 //! with zero-allocation patterns, cache-aligned data structures, and atomic operations.
 
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
+
 use arc_swap::ArcSwap;
+use arrayvec::ArrayVec;
 use crossbeam_utils::atomic::AtomicCell;
 use smallvec::SmallVec;
-use arrayvec::ArrayVec;
 
-use super::models::CandleModel;
 use super::error::{CandleError, CandleResult};
+use super::models::CandleModel;
 
 /// Maximum number of attention layers in supported models
 const MAX_LAYERS: usize = 80;
@@ -40,7 +41,7 @@ impl AlignedKvData {
     /// Create new aligned KV data
     pub fn new(sequence_length: u32, head_dim: u32) -> Self {
         let capacity = (sequence_length * head_dim) as usize;
-        
+
         Self {
             keys: SmallVec::with_capacity(capacity),
             values: SmallVec::with_capacity(capacity),
@@ -48,13 +49,13 @@ impl AlignedKvData {
             head_dim,
         }
     }
-    
+
     /// Create with pre-allocated data
     pub fn with_data(
-        keys: SmallVec<[f32; 4096]>, 
+        keys: SmallVec<[f32; 4096]>,
         values: SmallVec<[f32; 4096]>,
         sequence_length: u32,
-        head_dim: u32
+        head_dim: u32,
     ) -> Self {
         Self {
             keys,
@@ -63,47 +64,47 @@ impl AlignedKvData {
             head_dim,
         }
     }
-    
+
     /// Get key data
     pub fn keys(&self) -> &[f32] {
         &self.keys
     }
-    
+
     /// Get value data
     pub fn values(&self) -> &[f32] {
         &self.values
     }
-    
+
     /// Get mutable key data
     pub fn keys_mut(&mut self) -> &mut SmallVec<[f32; 4096]> {
         &mut self.keys
     }
-    
+
     /// Get mutable value data
     pub fn values_mut(&mut self) -> &mut SmallVec<[f32; 4096]> {
         &mut self.values
     }
-    
+
     /// Get sequence length
     pub fn sequence_length(&self) -> u32 {
         self.sequence_length
     }
-    
+
     /// Get head dimension
     pub fn head_dim(&self) -> u32 {
         self.head_dim
     }
-    
+
     /// Check if data is empty
     pub fn is_empty(&self) -> bool {
         self.keys.is_empty() && self.values.is_empty()
     }
-    
+
     /// Get memory usage in bytes
     pub fn memory_usage(&self) -> usize {
         (self.keys.len() + self.values.len()) * std::mem::size_of::<f32>()
     }
-    
+
     /// Append new KV data for incremental generation
     pub fn append_incremental(&mut self, new_keys: &[f32], new_values: &[f32]) -> CandleResult<()> {
         if new_keys.len() != new_values.len() {
@@ -113,7 +114,7 @@ impl AlignedKvData {
                 "equal lengths",
             ));
         }
-        
+
         // Check capacity limits
         let new_total_len = self.keys.len() + new_keys.len();
         if new_total_len > MAX_SEQUENCE_LENGTH * self.head_dim as usize {
@@ -123,16 +124,16 @@ impl AlignedKvData {
                 "within sequence limits",
             ));
         }
-        
+
         self.keys.extend_from_slice(new_keys);
         self.values.extend_from_slice(new_values);
-        
+
         // Update sequence length
         self.sequence_length = (self.keys.len() / self.head_dim as usize) as u32;
-        
+
         Ok(())
     }
-    
+
     /// Clear all cached data
     pub fn clear(&mut self) {
         self.keys.clear();
@@ -194,27 +195,34 @@ impl LayerCache {
             stats: LayerCacheStats::default(),
         }
     }
-    
+
     /// Get cached KV data for a batch element
     pub fn get_kv_data(&self, batch_index: usize) -> Option<AlignedKvData> {
         let cache = self.batch_cache.load();
-        
+
         if batch_index < cache.len() {
-            self.stats.cache_hits.store(self.stats.cache_hits.load() + 1);
+            self.stats
+                .cache_hits
+                .store(self.stats.cache_hits.load() + 1);
             Some(cache[batch_index].clone())
         } else {
-            self.stats.cache_misses.store(self.stats.cache_misses.load() + 1);
+            self.stats
+                .cache_misses
+                .store(self.stats.cache_misses.load() + 1);
             None
         }
     }
-    
+
     /// Set KV data for a batch element
     pub fn set_kv_data(&self, batch_index: usize, kv_data: AlignedKvData) -> CandleResult<()> {
         let mut new_cache = (**self.batch_cache.load()).clone();
-        
+
         // Ensure the cache is large enough
         while new_cache.len() <= batch_index {
-            if new_cache.try_push(AlignedKvData::new(0, self.head_dim)).is_err() {
+            if new_cache
+                .try_push(AlignedKvData::new(0, self.head_dim))
+                .is_err()
+            {
                 return Err(CandleError::cache(
                     "Batch cache capacity exceeded",
                     "set_kv_data",
@@ -222,35 +230,35 @@ impl LayerCache {
                 ));
             }
         }
-        
+
         // Calculate memory usage
         let memory_usage = kv_data.memory_usage() as u64;
         let new_total = self.stats.total_memory_bytes.load() + memory_usage;
-        
+
         // Update peak memory if necessary
         let current_peak = self.stats.peak_memory_bytes.load();
         if new_total > current_peak {
             self.stats.peak_memory_bytes.store(new_total);
         }
-        
+
         new_cache[batch_index] = kv_data;
         self.batch_cache.store(Arc::new(new_cache));
-        
+
         // Update memory statistics
         self.stats.total_memory_bytes.store(new_total);
-        
+
         Ok(())
     }
-    
+
     /// Append incremental KV data for autoregressive generation
     pub fn append_incremental_kv(
-        &self, 
-        batch_index: usize, 
-        new_keys: &[f32], 
-        new_values: &[f32]
+        &self,
+        batch_index: usize,
+        new_keys: &[f32],
+        new_values: &[f32],
     ) -> CandleResult<()> {
         let cache = self.batch_cache.load();
-        
+
         if batch_index >= cache.len() {
             return Err(CandleError::cache(
                 "Batch index out of range",
@@ -258,63 +266,65 @@ impl LayerCache {
                 "valid batch index",
             ));
         }
-        
+
         let mut new_cache = (**cache).clone();
         new_cache[batch_index].append_incremental(new_keys, new_values)?;
-        
+
         self.batch_cache.store(Arc::new(new_cache));
-        
+
         Ok(())
     }
-    
+
     /// Clear cache for a specific batch element
     pub fn clear_batch_element(&self, batch_index: usize) -> CandleResult<()> {
         let cache = self.batch_cache.load();
-        
+
         if batch_index >= cache.len() {
             return Ok(()); // Nothing to clear
         }
-        
+
         let mut new_cache = (**cache).clone();
         let old_memory = new_cache[batch_index].memory_usage() as u64;
         new_cache[batch_index].clear();
-        
+
         self.batch_cache.store(Arc::new(new_cache));
-        
+
         // Update memory statistics
         let current_memory = self.stats.total_memory_bytes.load();
         if current_memory >= old_memory {
-            self.stats.total_memory_bytes.store(current_memory - old_memory);
+            self.stats
+                .total_memory_bytes
+                .store(current_memory - old_memory);
         }
-        
+
         Ok(())
     }
-    
+
     /// Clear all cached data for this layer
     pub fn clear_all(&self) {
         let empty_cache = ArrayVec::new();
         self.batch_cache.store(Arc::new(empty_cache));
-        
+
         // Reset statistics
         self.stats.total_memory_bytes.store(0);
         self.stats.evictions.store(self.stats.evictions.load() + 1);
     }
-    
+
     /// Get layer index
     pub fn layer_index(&self) -> u32 {
         self.layer_index
     }
-    
+
     /// Get number of attention heads
     pub fn num_heads(&self) -> u32 {
         self.num_heads
     }
-    
+
     /// Get head dimension
     pub fn head_dim(&self) -> u32 {
         self.head_dim
     }
-    
+
     /// Get cache statistics for this layer
     pub fn statistics(&self) -> LayerCacheStatistics {
         LayerCacheStatistics {
@@ -375,23 +385,23 @@ impl ModelCacheConfig {
                 (40, 40, 128) // 40 layers, 40 heads, 128 head dim (5120 / 40)
             }
             CandleModel::Phi3_Mini => {
-                (32, 32, 96)  // 32 layers, 32 heads, 96 head dim (3072 / 32)
+                (32, 32, 96) // 32 layers, 32 heads, 96 head dim (3072 / 32)
             }
             CandleModel::Gemma_2B => {
-                (18, 8, 256)  // 18 layers, 8 heads, 256 head dim (2048 / 8)
+                (18, 8, 256) // 18 layers, 8 heads, 256 head dim (2048 / 8)
             }
             CandleModel::Gemma_7B => {
                 (28, 16, 192) // 28 layers, 16 heads, 192 head dim (3072 / 16)
             }
         };
-        
+
         let max_seq_len = match model {
             CandleModel::Devstral_22B => 32768,
             CandleModel::CodeLlama_7B => 16384,
             CandleModel::Mistral_7B | CandleModel::Gemma_2B | CandleModel::Gemma_7B => 8192,
             _ => 4096,
         };
-        
+
         Self {
             model,
             num_layers,
@@ -404,7 +414,7 @@ impl ModelCacheConfig {
             eviction_threshold: 0.8, // Evict when 80% of memory limit reached
         }
     }
-    
+
     /// Validate configuration parameters
     pub fn validate(&self) -> CandleResult<()> {
         if self.num_layers == 0 {
@@ -414,7 +424,7 @@ impl ModelCacheConfig {
                 "> 0",
             ));
         }
-        
+
         if self.num_layers > MAX_LAYERS as u32 {
             return Err(CandleError::config(
                 "Number of layers exceeds maximum",
@@ -422,7 +432,7 @@ impl ModelCacheConfig {
                 &format!("<= {}", MAX_LAYERS),
             ));
         }
-        
+
         if self.num_heads == 0 {
             return Err(CandleError::config(
                 "Number of heads must be positive",
@@ -430,7 +440,7 @@ impl ModelCacheConfig {
                 "> 0",
             ));
         }
-        
+
         if self.head_dim == 0 {
             return Err(CandleError::config(
                 "Head dimension must be positive",
@@ -438,7 +448,7 @@ impl ModelCacheConfig {
                 "> 0",
             ));
         }
-        
+
         if self.max_sequence_length > MAX_SEQUENCE_LENGTH as u32 {
             return Err(CandleError::config(
                 "Maximum sequence length exceeds limit",
@@ -446,7 +456,7 @@ impl ModelCacheConfig {
                 &format!("<= {}", MAX_SEQUENCE_LENGTH),
             ));
         }
-        
+
         if self.max_batch_size > MAX_BATCH_SIZE as u32 {
             return Err(CandleError::config(
                 "Maximum batch size exceeds limit",
@@ -454,7 +464,7 @@ impl ModelCacheConfig {
                 &format!("<= {}", MAX_BATCH_SIZE),
             ));
         }
-        
+
         if self.eviction_threshold <= 0.0 || self.eviction_threshold > 1.0 {
             return Err(CandleError::config(
                 "Eviction threshold must be between 0 and 1",
@@ -462,19 +472,20 @@ impl ModelCacheConfig {
                 "0.0 < threshold <= 1.0",
             ));
         }
-        
+
         Ok(())
     }
-    
+
     /// Estimate memory usage for this configuration
     pub fn estimate_memory_usage(&self) -> u64 {
         let kv_size_per_token = (self.num_heads * self.head_dim * 2) as u64; // Keys + Values
-        let memory_per_layer = kv_size_per_token * self.max_sequence_length as u64 * self.max_batch_size as u64;
+        let memory_per_layer =
+            kv_size_per_token * self.max_sequence_length as u64 * self.max_batch_size as u64;
         let total_kv_memory = memory_per_layer * self.num_layers as u64;
-        
+
         // Add overhead for data structures (approximately 20%)
         let overhead = total_kv_memory / 5;
-        
+
         total_kv_memory + overhead
     }
 }
@@ -542,13 +553,13 @@ impl ModelKvCache {
     /// Create a new model KV cache
     pub fn new(config: ModelCacheConfig) -> CandleResult<Self> {
         config.validate()?;
-        
+
         let mut layer_caches = ArrayVec::new();
-        
+
         // Initialize layer caches
         for layer_idx in 0..config.num_layers {
             let layer_cache = LayerCache::new(layer_idx, config.num_heads, config.head_dim);
-            
+
             if layer_caches.try_push(layer_cache).is_err() {
                 return Err(CandleError::cache(
                     "Failed to initialize layer caches",
@@ -557,7 +568,7 @@ impl ModelKvCache {
                 ));
             }
         }
-        
+
         Ok(Self {
             config,
             layer_caches,
@@ -565,39 +576,39 @@ impl ModelKvCache {
             memory_pressure: AtomicCell::new(MemoryPressure::Low),
         })
     }
-    
+
     /// Get KV data for a specific layer and batch element
     pub fn get_layer_kv(&self, layer_index: usize, batch_index: usize) -> Option<AlignedKvData> {
         if layer_index >= self.layer_caches.len() {
             return None;
         }
-        
+
         let result = self.layer_caches[layer_index].get_kv_data(batch_index);
-        
+
         // Update global statistics
-        self.global_stats.total_operations.store(
-            self.global_stats.total_operations.load() + 1
-        );
-        
+        self.global_stats
+            .total_operations
+            .store(self.global_stats.total_operations.load() + 1);
+
         if result.is_some() {
-            self.global_stats.total_hits.store(
-                self.global_stats.total_hits.load() + 1
-            );
+            self.global_stats
+                .total_hits
+                .store(self.global_stats.total_hits.load() + 1);
         } else {
-            self.global_stats.total_misses.store(
-                self.global_stats.total_misses.load() + 1
-            );
+            self.global_stats
+                .total_misses
+                .store(self.global_stats.total_misses.load() + 1);
         }
-        
+
         result
     }
-    
+
     /// Set KV data for a specific layer and batch element
     pub fn set_layer_kv(
-        &self, 
-        layer_index: usize, 
-        batch_index: usize, 
-        kv_data: AlignedKvData
+        &self,
+        layer_index: usize,
+        batch_index: usize,
+        kv_data: AlignedKvData,
     ) -> CandleResult<()> {
         if layer_index >= self.layer_caches.len() {
             return Err(CandleError::cache(
@@ -606,30 +617,30 @@ impl ModelKvCache {
                 "valid layer index",
             ));
         }
-        
+
         // Check memory pressure before setting
         self.check_memory_pressure()?;
-        
+
         let memory_before = self.total_memory_usage();
         self.layer_caches[layer_index].set_kv_data(batch_index, kv_data)?;
         let memory_after = self.total_memory_usage();
-        
+
         // Update global memory usage
         self.global_stats.total_memory_usage.store(memory_after);
-        
+
         // Update memory pressure based on new usage
         self.update_memory_pressure();
-        
+
         Ok(())
     }
-    
+
     /// Append incremental KV data for autoregressive generation
     pub fn append_incremental(
         &self,
         layer_index: usize,
         batch_index: usize,
         new_keys: &[f32],
-        new_values: &[f32]
+        new_values: &[f32],
     ) -> CandleResult<()> {
         if layer_index >= self.layer_caches.len() {
             return Err(CandleError::cache(
@@ -638,17 +649,17 @@ impl ModelKvCache {
                 "valid layer index",
             ));
         }
-        
+
         self.layer_caches[layer_index].append_incremental_kv(batch_index, new_keys, new_values)?;
-        
+
         // Update global memory tracking
         let new_memory_usage = self.total_memory_usage();
         self.global_stats.total_memory_usage.store(new_memory_usage);
         self.update_memory_pressure();
-        
+
         Ok(())
     }
-    
+
     /// Clear cache for a specific layer
     pub fn clear_layer(&self, layer_index: usize) -> CandleResult<()> {
         if layer_index >= self.layer_caches.len() {
@@ -658,69 +669,69 @@ impl ModelKvCache {
                 "valid layer index",
             ));
         }
-        
+
         self.layer_caches[layer_index].clear_all();
-        
+
         // Update global memory usage
         let new_memory_usage = self.total_memory_usage();
         self.global_stats.total_memory_usage.store(new_memory_usage);
         self.update_memory_pressure();
-        
+
         Ok(())
     }
-    
+
     /// Clear all cached data across all layers
     pub fn clear_all(&self) {
         for layer_cache in &self.layer_caches {
             layer_cache.clear_all();
         }
-        
+
         // Reset global statistics
         self.global_stats.total_memory_usage.store(0);
         self.memory_pressure.store(MemoryPressure::Low);
     }
-    
+
     /// Check memory pressure and perform eviction if necessary
     fn check_memory_pressure(&self) -> CandleResult<()> {
         if !self.config.enable_eviction {
             return Ok(());
         }
-        
+
         let current_memory = self.total_memory_usage();
         let memory_limit = self.config.memory_limit_bytes;
-        
+
         if memory_limit > 0 && current_memory > memory_limit {
             // Emergency eviction - clear oldest layers
             let layers_to_clear = self.layer_caches.len() / 4; // Clear 25% of layers
-            
+
             for i in 0..layers_to_clear {
                 self.layer_caches[i].clear_all();
             }
-            
-            self.global_stats.automatic_evictions.store(
-                self.global_stats.automatic_evictions.load() + 1
-            );
-            
+
+            self.global_stats
+                .automatic_evictions
+                .store(self.global_stats.automatic_evictions.load() + 1);
+
             // Update memory usage after eviction
             let new_memory_usage = self.total_memory_usage();
             self.global_stats.total_memory_usage.store(new_memory_usage);
         }
-        
+
         Ok(())
     }
-    
+
     /// Update memory pressure based on current usage
     fn update_memory_pressure(&self) {
         let current_memory = self.total_memory_usage();
         let memory_limit = self.config.memory_limit_bytes;
-        
+
         if memory_limit == 0 {
             self.memory_pressure.store(MemoryPressure::Low);
             return;
         }
-        
+
         let usage_ratio = current_memory as f64 / memory_limit as f64;
-        
+
         let pressure = if usage_ratio >= 1.0 {
             MemoryPressure::Critical
         } else if usage_ratio >= 0.9 {
@@ -730,10 +741,10 @@ impl ModelKvCache {
         } else {
             MemoryPressure::Low
         };
-        
+
         self.memory_pressure.store(pressure);
     }
-    
+
     /// Calculate total memory usage across all layers
     fn total_memory_usage(&self) -> u64 {
         self.layer_caches
@@ -741,34 +752,35 @@ impl ModelKvCache {
             .map(|layer| layer.statistics().total_memory_bytes)
             .sum()
     }
-    
+
     /// Get cache configuration
     pub fn config(&self) -> &ModelCacheConfig {
         &self.config
     }
-    
+
     /// Get number of layers
     pub fn num_layers(&self) -> usize {
         self.layer_caches.len()
     }
-    
+
     /// Get current memory pressure
     pub fn memory_pressure(&self) -> MemoryPressure {
         self.memory_pressure.load()
     }
-    
+
     /// Get comprehensive cache statistics
     pub fn statistics(&self) -> KvCacheStatistics {
-        let layer_stats: Vec<LayerCacheStatistics> = self.layer_caches
+        let layer_stats: Vec<LayerCacheStatistics> = self
+            .layer_caches
             .iter()
             .map(|layer| layer.statistics())
             .collect();
-        
+
         let total_memory = self.total_memory_usage();
         let total_hits = self.global_stats.total_hits.load();
         let total_misses = self.global_stats.total_misses.load();
         let total_ops = total_hits + total_misses;
-        
+
         KvCacheStatistics {
             layer_stats,
             total_memory_bytes: total_memory,
@@ -836,19 +848,22 @@ impl KvCacheStatistics {
         if self.layer_stats.is_empty() {
             return 0.0;
         }
-        
+
         let sum: f32 = self.layer_stats.iter().map(|s| s.hit_rate).sum();
         sum / self.layer_stats.len() as f32
     }
-    
+
     /// Get memory usage in MB
     pub fn memory_usage_mb(&self) -> f32 {
         self.total_memory_bytes as f32 / (1024.0 * 1024.0)
     }
-    
+
     /// Check if cache is under memory pressure
     pub fn is_under_pressure(&self) -> bool {
-        matches!(self.memory_pressure, MemoryPressure::High | MemoryPressure::Critical)
+        matches!(
+            self.memory_pressure,
+            MemoryPressure::High | MemoryPressure::Critical
+        )
     }
 }
 
@@ -880,10 +895,10 @@ mod tests {
         assert_eq!(layer_cache.layer_index(), 0);
         assert_eq!(layer_cache.num_heads(), 32);
         assert_eq!(layer_cache.head_dim(), 128);
-        
+
         // Test cache miss
         assert!(layer_cache.get_kv_data(0).is_none());
-        
+
         let stats = layer_cache.statistics();
         assert_eq!(stats.cache_misses, 1);
         assert_eq!(stats.cache_hits, 0);
@@ -893,9 +908,9 @@ mod tests {
     fn test_memory_pressure_calculation() {
         let config = ModelCacheConfig::for_model(CandleModel::Gemma_2B);
         let cache = ModelKvCache::new(config).unwrap();
-        
+
         assert_eq!(cache.memory_pressure(), MemoryPressure::Low);
-        
+
         let stats = cache.statistics();
         assert_eq!(stats.total_memory_bytes, 0);
         assert!(!stats.is_under_pressure());

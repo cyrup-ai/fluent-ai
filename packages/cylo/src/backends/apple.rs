@@ -15,12 +15,12 @@ use std::collections::HashMap;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+use crate::AsyncTaskBuilder;
 use crate::backends::AsyncTask;
 use crate::backends::{
     BackendConfig, BackendError, BackendResult, ExecutionBackend, ExecutionRequest,
     ExecutionResult, HealthStatus, ResourceUsage,
 };
-use crate::AsyncTaskBuilder;
 
 /// Apple containerization backend
 ///

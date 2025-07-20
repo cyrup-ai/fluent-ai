@@ -210,6 +210,181 @@ pub struct SseEvent {
     pub retry: Option<u64>,
 }
 
+/// Download chunk containing data and metadata for file downloads
+#[derive(Debug, Clone)]
+pub struct DownloadChunk {
+    /// The actual data bytes (zero-copy using Bytes)
+    pub data: bytes::Bytes,
+    /// Sequential chunk number starting from 0
+    pub chunk_number: u64,
+    /// Total file size if known from Content-Length header
+    pub total_size: Option<u64>,
+    /// Total bytes downloaded so far (cumulative)
+    pub bytes_downloaded: u64,
+    /// Timestamp when this chunk was received
+    pub timestamp: std::time::Instant,
+    /// Download speed in bytes per second (calculated)
+    pub download_speed: Option<f64>,
+}
+
+impl DownloadChunk {
+    /// Create a new download chunk
+    pub fn new(
+        data: bytes::Bytes,
+        chunk_number: u64,
+        total_size: Option<u64>,
+        bytes_downloaded: u64,
+        download_speed: Option<f64>,
+    ) -> Self {
+        Self {
+            data,
+            chunk_number,
+            total_size,
+            bytes_downloaded,
+            timestamp: std::time::Instant::now(),
+            download_speed,
+        }
+    }
+
+    /// Get the size of this chunk in bytes
+    pub fn chunk_size(&self) -> usize {
+        self.data.len()
+    }
+
+    /// Calculate download progress as a percentage (0.0 to 100.0)
+    pub fn progress_percentage(&self) -> Option<f64> {
+        self.total_size.map(|total| {
+            if total == 0 {
+                100.0
+            } else {
+                (self.bytes_downloaded as f64 / total as f64) * 100.0
+            }
+        })
+    }
+
+    /// Check if this is the final chunk (when total size is known)
+    pub fn is_final_chunk(&self) -> Option<bool> {
+        self.total_size.map(|total| self.bytes_downloaded >= total)
+    }
+
+    /// Get estimated time remaining based on current download speed
+    pub fn estimated_time_remaining(&self) -> Option<std::time::Duration> {
+        match (self.total_size, self.download_speed) {
+            (Some(total), Some(speed)) if speed > 0.0 => {
+                let remaining_bytes = total.saturating_sub(self.bytes_downloaded) as f64;
+                let remaining_seconds = remaining_bytes / speed;
+                Some(std::time::Duration::from_secs_f64(remaining_seconds))
+            }
+            _ => None,
+        }
+    }
+}
+
+pin_project! {
+    /// Download stream for file downloads with progress tracking
+    pub struct DownloadStream {
+        #[pin]
+        stream: futures::stream::BoxStream<'static, Result<bytes::Bytes, reqwest::Error>>,
+        chunk_number: u64,
+        bytes_downloaded: u64,
+        total_size: Option<u64>,
+        start_time: std::time::Instant,
+        last_chunk_time: std::time::Instant,
+        on_chunk_handler: Option<Box<dyn Fn(&DownloadChunk) -> crate::HttpResult<()> + Send + Sync>>,
+    }
+}
+
+impl DownloadStream {
+    /// Create a new download stream from a reqwest Response
+    pub fn new(response: reqwest::Response) -> Self {
+        use futures::StreamExt;
+        
+        let total_size = response
+            .content_length()
+            .filter(|&size| size > 0);
+
+        // Convert the response into a stream of bytes
+        let stream = response.bytes_stream().boxed();
+
+        let now = std::time::Instant::now();
+        Self {
+            stream,
+            chunk_number: 0,
+            bytes_downloaded: 0,
+            total_size,
+            start_time: now,
+            last_chunk_time: now,
+            on_chunk_handler: None,
+        }
+    }
+
+    /// Set an on_chunk handler for processing chunks as they arrive
+    pub fn on_chunk<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(&DownloadChunk) -> crate::HttpResult<()> + Send + Sync + 'static,
+    {
+        self.on_chunk_handler = Some(Box::new(handler));
+        self
+    }
+
+    /// Calculate current download speed in bytes per second
+    fn calculate_download_speed(&self) -> Option<f64> {
+        let elapsed = self.start_time.elapsed();
+        if elapsed.as_secs_f64() > 0.0 && self.bytes_downloaded > 0 {
+            Some(self.bytes_downloaded as f64 / elapsed.as_secs_f64())
+        } else {
+            None
+        }
+    }
+}
+
+impl Stream for DownloadStream {
+    type Item = crate::HttpResult<DownloadChunk>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.as_mut().project();
+        
+        // Poll the underlying bytes stream
+        match this.stream.poll_next(cx) {
+            Poll::Ready(Some(Ok(chunk))) => {
+                let chunk_size = chunk.len();
+                *this.bytes_downloaded += chunk_size as u64;
+                let chunk_number = *this.chunk_number;
+                *this.chunk_number += 1;
+                *this.last_chunk_time = std::time::Instant::now();
+
+                let download_speed = if this.start_time.elapsed().as_secs_f64() > 0.0 {
+                    Some(*this.bytes_downloaded as f64 / this.start_time.elapsed().as_secs_f64())
+                } else {
+                    None
+                };
+
+                let download_chunk = DownloadChunk::new(
+                    chunk,
+                    chunk_number,
+                    *this.total_size,
+                    *this.bytes_downloaded,
+                    download_speed,
+                );
+
+                // Call the on_chunk handler if set
+                if let Some(handler) = this.on_chunk_handler.as_ref() {
+                    if let Err(e) = handler(&download_chunk) {
+                        return Poll::Ready(Some(Err(e)));
+                    }
+                }
+
+                Poll::Ready(Some(Ok(download_chunk)))
+            }
+            Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(crate::HttpError::NetworkError {
+                message: format!("Download stream error: {}", e),
+            }))),
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
 impl SseStream {
     /// Create a new SSE stream
     pub fn new(stream: HttpStream) -> Self {

@@ -4,22 +4,24 @@
 // DeepSeek streaming implementation using HTTP3 client (OpenAI-compatible SSE format)
 // ============================================================================
 
-use futures::StreamExt;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
+use futures::StreamExt;
 
+// Re-export OpenAI streaming response type since DeepSeek uses the same format
+pub use crate::clients::openai::StreamingCompletionResponse;
 use crate::{
     completion::CompletionError,
     runtime::{self, AsyncStream},
 };
 
-// Re-export OpenAI streaming response type since DeepSeek uses the same format
-pub use crate::clients::openai::StreamingCompletionResponse;
-
 /// Send a streaming request to DeepSeek using HTTP3 client and return an AsyncStream
 pub fn send_deepseek_streaming_request(
     http3_request: Http3Request,
 ) -> crate::runtime::AsyncTask<
-    Result<crate::streaming::StreamingCompletionResponse<StreamingCompletionResponse>, CompletionError>,
+    Result<
+        crate::streaming::StreamingCompletionResponse<StreamingCompletionResponse>,
+        CompletionError,
+    >,
 > {
     crate::runtime::spawn_async(async move {
         // Create the AsyncStream channel
@@ -27,8 +29,9 @@ pub fn send_deepseek_streaming_request(
             runtime::async_stream::<Result<StreamingCompletionResponse, CompletionError>>(512);
 
         // Create HTTP3 client with streaming configuration
-        let client = HttpClient::with_config(HttpConfig::streaming_optimized())
-            .map_err(|e| CompletionError::RequestError(format!("Failed to create HTTP3 client: {}", e)))?;
+        let client = HttpClient::with_config(HttpConfig::streaming_optimized()).map_err(|e| {
+            CompletionError::RequestError(format!("Failed to create HTTP3 client: {}", e))
+        })?;
 
         // Spawn the streaming task
         runtime::spawn_async(async move {
@@ -43,7 +46,7 @@ pub fn send_deepseek_streaming_request(
 
             // Process SSE events
             let mut sse_stream = stream_response.sse();
-            
+
             while let Some(event) = sse_stream.next().await {
                 match event {
                     Ok(event) => {
@@ -83,6 +86,8 @@ pub fn send_deepseek_streaming_request(
             Ok::<(), CompletionError>(())
         });
 
-        Ok(crate::streaming::StreamingCompletionResponse::new(Box::pin(stream)))
+        Ok(crate::streaming::StreamingCompletionResponse::new(
+            Box::pin(stream),
+        ))
     })
 }

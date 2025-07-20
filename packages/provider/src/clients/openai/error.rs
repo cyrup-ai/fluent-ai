@@ -18,9 +18,10 @@
 //! All errors use zero allocation patterns with arrayvec::ArrayString
 //! for context preservation and #[repr(u8)] for minimal memory footprint.
 
-use thiserror::Error;
-use arrayvec::ArrayString;
 use std::fmt;
+
+use arrayvec::ArrayString;
+use thiserror::Error;
 
 /// Result type alias for OpenAI operations
 pub type Result<T> = std::result::Result<T, OpenAIError>;
@@ -32,7 +33,7 @@ pub enum OpenAIError {
     /// HTTP request failed
     #[error("HTTP request failed: {0}")]
     Http(#[from] fluent_ai_http3::HttpError),
-    
+
     /// Authentication failed for OpenAI API
     #[error("Authentication failed: {message}")]
     Authentication {
@@ -49,7 +50,7 @@ pub enum OpenAIError {
         /// HTTP status code
         status_code: u16,
     },
-    
+
     /// Rate limiting exceeded
     #[error("Rate limit exceeded: {message}")]
     RateLimit {
@@ -66,7 +67,7 @@ pub enum OpenAIError {
         /// Affected endpoint
         endpoint: EndpointType,
     },
-    
+
     /// Model not supported or unavailable
     #[error("Model not supported: {model}")]
     ModelNotSupported {
@@ -81,7 +82,7 @@ pub enum OpenAIError {
         /// Whether model exists but is unavailable
         model_exists: bool,
     },
-    
+
     /// Request validation failed
     #[error("Request validation failed: {field} - {reason}")]
     RequestValidation {
@@ -98,7 +99,7 @@ pub enum OpenAIError {
         /// Whether value can be auto-corrected
         auto_correctable: bool,
     },
-    
+
     /// Quota exceeded for OpenAI API
     #[error("Quota exceeded: {quota_type}")]
     QuotaExceeded {
@@ -115,7 +116,7 @@ pub enum OpenAIError {
         /// Affected endpoint
         endpoint: EndpointType,
     },
-    
+
     /// Model capacity exceeded
     #[error("Model capacity exceeded: {model}")]
     ModelCapacity {
@@ -132,7 +133,7 @@ pub enum OpenAIError {
         /// Affected endpoint
         endpoint: EndpointType,
     },
-    
+
     /// Function calling error
     #[error("Function calling failed: {function_name} - {reason}")]
     FunctionCall {
@@ -147,7 +148,7 @@ pub enum OpenAIError {
         /// Whether retry is possible
         retry_possible: bool,
     },
-    
+
     /// Audio processing error
     #[error("Audio processing failed: {operation} - {reason}")]
     AudioProcessing {
@@ -162,7 +163,7 @@ pub enum OpenAIError {
         /// Whether retry is possible
         retry_possible: bool,
     },
-    
+
     /// Vision processing error
     #[error("Vision processing failed: {operation} - {reason}")]
     VisionProcessing {
@@ -177,7 +178,7 @@ pub enum OpenAIError {
         /// Whether retry is possible
         retry_possible: bool,
     },
-    
+
     /// JSON processing error
     #[error("JSON processing failed: {operation} - {message}")]
     JsonProcessing {
@@ -194,7 +195,7 @@ pub enum OpenAIError {
         /// Whether recovery is possible
         recovery_possible: bool,
     },
-    
+
     /// Request timeout
     #[error("Request timeout: {duration_ms}ms")]
     Timeout {
@@ -209,7 +210,7 @@ pub enum OpenAIError {
         /// Suggested timeout for retry
         suggested_timeout_ms: u64,
     },
-    
+
     /// Configuration error
     #[error("Configuration error: {setting} - {reason}")]
     Configuration {
@@ -224,7 +225,7 @@ pub enum OpenAIError {
         /// Endpoint context
         endpoint: EndpointType,
     },
-    
+
     /// Streaming error
     #[error("Streaming error: {reason}")]
     Streaming {
@@ -239,7 +240,7 @@ pub enum OpenAIError {
         /// Endpoint context
         endpoint: EndpointType,
     },
-    
+
     /// Invalid API key format
     #[error("Invalid API key: {reason}")]
     InvalidApiKey {
@@ -252,7 +253,7 @@ pub enum OpenAIError {
         /// Organization ID if present
         organization_id: Option<ArrayString<64>>,
     },
-    
+
     /// Token limit exceeded
     #[error("Token limit exceeded: {model} - {tokens} tokens")]
     TokenLimit {
@@ -267,7 +268,7 @@ pub enum OpenAIError {
         /// Whether request can be split
         can_split: bool,
     },
-    
+
     /// Content policy violation
     #[error("Content policy violation: {reason}")]
     ContentPolicy {
@@ -280,7 +281,7 @@ pub enum OpenAIError {
         /// Whether content can be modified
         modifiable: bool,
     },
-    
+
     /// Usage tracking error
     #[error("Usage tracking failed: {reason}")]
     UsageTracking {
@@ -293,7 +294,7 @@ pub enum OpenAIError {
         /// Whether tracking is required
         required: bool,
     },
-    
+
     /// Embedding processing error
     #[error("Embedding processing failed: {reason}")]
     EmbeddingProcessing {
@@ -306,7 +307,7 @@ pub enum OpenAIError {
         /// Whether retry is possible
         retry_possible: bool,
     },
-    
+
     /// Organization access error
     #[error("Organization access denied: {reason}")]
     OrganizationAccess {
@@ -521,7 +522,7 @@ impl OpenAIError {
             status_code,
         }
     }
-    
+
     /// Create rate limit error with retry information
     #[inline]
     pub fn rate_limit_error(
@@ -541,7 +542,7 @@ impl OpenAIError {
             endpoint,
         }
     }
-    
+
     /// Create model not supported error
     #[inline]
     pub fn model_not_supported(
@@ -560,7 +561,7 @@ impl OpenAIError {
             model_exists,
         }
     }
-    
+
     /// Create request validation error
     #[inline]
     pub fn request_validation_error(
@@ -580,7 +581,7 @@ impl OpenAIError {
             auto_correctable,
         }
     }
-    
+
     /// Create quota exceeded error
     #[inline]
     pub fn quota_exceeded_error(
@@ -600,7 +601,7 @@ impl OpenAIError {
             endpoint,
         }
     }
-    
+
     /// Create model capacity error
     #[inline]
     pub fn model_capacity_error(
@@ -621,7 +622,7 @@ impl OpenAIError {
             endpoint,
         }
     }
-    
+
     /// Create function call error
     #[inline]
     pub fn function_call_error(
@@ -639,7 +640,7 @@ impl OpenAIError {
             retry_possible,
         }
     }
-    
+
     /// Create audio processing error
     #[inline]
     pub fn audio_processing_error(
@@ -657,7 +658,7 @@ impl OpenAIError {
             retry_possible,
         }
     }
-    
+
     /// Create vision processing error
     #[inline]
     pub fn vision_processing_error(
@@ -675,7 +676,7 @@ impl OpenAIError {
             retry_possible,
         }
     }
-    
+
     /// Create JSON processing error
     #[inline]
     pub fn json_error(
@@ -695,7 +696,7 @@ impl OpenAIError {
             recovery_possible,
         }
     }
-    
+
     /// Create timeout error
     #[inline]
     pub fn timeout_error(
@@ -713,7 +714,7 @@ impl OpenAIError {
             suggested_timeout_ms,
         }
     }
-    
+
     /// Create configuration error
     #[inline]
     pub fn configuration_error(
@@ -731,7 +732,7 @@ impl OpenAIError {
             endpoint,
         }
     }
-    
+
     /// Create streaming error
     #[inline]
     pub fn streaming_error(
@@ -749,7 +750,7 @@ impl OpenAIError {
             endpoint,
         }
     }
-    
+
     /// Create invalid API key error
     #[inline]
     pub fn invalid_api_key_error(
@@ -765,7 +766,7 @@ impl OpenAIError {
             organization_id: organization_id.map(|id| ArrayString::from(id).unwrap_or_default()),
         }
     }
-    
+
     /// Create token limit error
     #[inline]
     pub fn token_limit_error(
@@ -783,7 +784,7 @@ impl OpenAIError {
             can_split,
         }
     }
-    
+
     /// Create content policy error
     #[inline]
     pub fn content_policy_error(
@@ -799,7 +800,7 @@ impl OpenAIError {
             modifiable,
         }
     }
-    
+
     /// Create usage tracking error
     #[inline]
     pub fn usage_tracking_error(
@@ -815,7 +816,7 @@ impl OpenAIError {
             required,
         }
     }
-    
+
     /// Create embedding processing error
     #[inline]
     pub fn embedding_processing_error(
@@ -831,7 +832,7 @@ impl OpenAIError {
             retry_possible,
         }
     }
-    
+
     /// Create organization access error
     #[inline]
     pub fn organization_access_error(
@@ -847,7 +848,7 @@ impl OpenAIError {
             can_request_access,
         }
     }
-    
+
     /// Get error code for programmatic handling
     #[inline]
     pub const fn error_code(&self) -> ErrorCode {
@@ -874,7 +875,7 @@ impl OpenAIError {
             Self::Http(_) => ErrorCode::RequestTimeout, // Map HTTP errors to timeout
         }
     }
-    
+
     /// Check if error is retryable
     #[inline]
     pub const fn is_retryable(&self) -> bool {
@@ -882,14 +883,22 @@ impl OpenAIError {
             Self::Authentication { retry_possible, .. } => *retry_possible,
             Self::RateLimit { .. } => true,
             Self::ModelNotSupported { .. } => false,
-            Self::RequestValidation { auto_correctable, .. } => *auto_correctable,
+            Self::RequestValidation {
+                auto_correctable, ..
+            } => *auto_correctable,
             Self::QuotaExceeded { .. } => false,
-            Self::ModelCapacity { retry_recommended, .. } => *retry_recommended,
+            Self::ModelCapacity {
+                retry_recommended, ..
+            } => *retry_recommended,
             Self::FunctionCall { retry_possible, .. } => *retry_possible,
             Self::AudioProcessing { retry_possible, .. } => *retry_possible,
             Self::VisionProcessing { retry_possible, .. } => *retry_possible,
-            Self::JsonProcessing { recovery_possible, .. } => *recovery_possible,
-            Self::Timeout { retry_recommended, .. } => *retry_recommended,
+            Self::JsonProcessing {
+                recovery_possible, ..
+            } => *recovery_possible,
+            Self::Timeout {
+                retry_recommended, ..
+            } => *retry_recommended,
             Self::Configuration { .. } => false,
             Self::Streaming { resumable, .. } => *resumable,
             Self::InvalidApiKey { .. } => false,
@@ -897,24 +906,32 @@ impl OpenAIError {
             Self::ContentPolicy { modifiable, .. } => *modifiable,
             Self::UsageTracking { .. } => true,
             Self::EmbeddingProcessing { retry_possible, .. } => *retry_possible,
-            Self::OrganizationAccess { can_request_access, .. } => *can_request_access,
+            Self::OrganizationAccess {
+                can_request_access, ..
+            } => *can_request_access,
             Self::Http(_) => true, // HTTP errors are generally retryable
         }
     }
-    
+
     /// Get retry delay in seconds
     #[inline]
     pub const fn retry_delay_seconds(&self) -> Option<u32> {
         match self {
-            Self::RateLimit { retry_after_seconds, .. } => Some(*retry_after_seconds),
-            Self::ModelCapacity { estimated_wait_seconds, .. } => Some(*estimated_wait_seconds),
+            Self::RateLimit {
+                retry_after_seconds,
+                ..
+            } => Some(*retry_after_seconds),
+            Self::ModelCapacity {
+                estimated_wait_seconds,
+                ..
+            } => Some(*estimated_wait_seconds),
             Self::Timeout { .. } => Some(5), // Default 5 second delay for timeouts
             Self::AudioProcessing { .. } => Some(10), // Audio processing retry delay
             Self::VisionProcessing { .. } => Some(10), // Vision processing retry delay
             _ => None,
         }
     }
-    
+
     /// Get suggested action for error recovery
     #[inline]
     pub fn suggested_action(&self) -> &'static str {
@@ -922,7 +939,9 @@ impl OpenAIError {
             Self::Authentication { .. } => "Check API key and authentication settings",
             Self::RateLimit { .. } => "Reduce request rate and retry after delay",
             Self::ModelNotSupported { .. } => "Use a supported model from the available list",
-            Self::RequestValidation { .. } => "Validate request parameters and correct invalid values",
+            Self::RequestValidation { .. } => {
+                "Validate request parameters and correct invalid values"
+            }
             Self::QuotaExceeded { .. } => "Upgrade quota or wait for quota reset",
             Self::ModelCapacity { .. } => "Retry with delay or use alternative model",
             Self::FunctionCall { .. } => "Check function definition and arguments",
@@ -956,22 +975,8 @@ impl From<u16> for OpenAIError {
                 EndpointType::ChatCompletions,
                 true,
             ),
-            401 => Self::authentication_error(
-                "Invalid API key",
-                0,
-                None,
-                false,
-                true,
-                401,
-            ),
-            403 => Self::authentication_error(
-                "API key forbidden",
-                0,
-                None,
-                true,
-                false,
-                403,
-            ),
+            401 => Self::authentication_error("Invalid API key", 0, None, false, true, 401),
+            403 => Self::authentication_error("API key forbidden", 0, None, true, false, 403),
             404 => Self::model_not_supported(
                 "unknown",
                 EndpointType::ChatCompletions,
@@ -1123,7 +1128,7 @@ impl fmt::Display for StreamingErrorReason {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_error_creation() {
         let error = OpenAIError::authentication_error(
@@ -1137,7 +1142,7 @@ mod tests {
         assert_eq!(error.error_code(), ErrorCode::AuthenticationFailed);
         assert!(!error.is_retryable());
     }
-    
+
     #[test]
     fn test_rate_limit_error() {
         let error = OpenAIError::rate_limit_error(
@@ -1152,7 +1157,7 @@ mod tests {
         assert!(error.is_retryable());
         assert_eq!(error.retry_delay_seconds(), Some(60));
     }
-    
+
     #[test]
     fn test_function_call_error() {
         let error = OpenAIError::function_call_error(
@@ -1165,7 +1170,7 @@ mod tests {
         assert_eq!(error.error_code(), ErrorCode::FunctionCallFailed);
         assert!(error.is_retryable());
     }
-    
+
     #[test]
     fn test_audio_processing_error() {
         let error = OpenAIError::audio_processing_error(
@@ -1178,7 +1183,7 @@ mod tests {
         assert_eq!(error.error_code(), ErrorCode::AudioProcessingFailed);
         assert!(!error.is_retryable());
     }
-    
+
     #[test]
     fn test_vision_processing_error() {
         let error = OpenAIError::vision_processing_error(
@@ -1191,24 +1196,24 @@ mod tests {
         assert_eq!(error.error_code(), ErrorCode::VisionProcessingFailed);
         assert!(!error.is_retryable());
     }
-    
+
     #[test]
     fn test_http_status_conversion() {
         let error = OpenAIError::from(404u16);
         assert_eq!(error.error_code(), ErrorCode::ModelNotAvailable);
-        
+
         let error = OpenAIError::from(429u16);
         assert_eq!(error.error_code(), ErrorCode::RateLimitExceeded);
         assert!(error.is_retryable());
     }
-    
+
     #[test]
     fn test_json_error_conversion() {
         let json_err = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
         let error = OpenAIError::from(json_err);
         assert_eq!(error.error_code(), ErrorCode::JsonProcessingFailed);
     }
-    
+
     #[test]
     fn test_token_limit_error() {
         let error = OpenAIError::token_limit_error(
@@ -1221,19 +1226,15 @@ mod tests {
         assert_eq!(error.error_code(), ErrorCode::TokenLimitExceeded);
         assert!(error.is_retryable());
     }
-    
+
     #[test]
     fn test_content_policy_error() {
-        let error = OpenAIError::content_policy_error(
-            "Content contains hate speech",
-            "hate",
-            95,
-            true,
-        );
+        let error =
+            OpenAIError::content_policy_error("Content contains hate speech", "hate", 95, true);
         assert_eq!(error.error_code(), ErrorCode::ContentPolicyViolation);
         assert!(error.is_retryable());
     }
-    
+
     #[test]
     fn test_embedding_processing_error() {
         let error = OpenAIError::embedding_processing_error(
@@ -1245,7 +1246,7 @@ mod tests {
         assert_eq!(error.error_code(), ErrorCode::EmbeddingProcessingFailed);
         assert!(error.is_retryable());
     }
-    
+
     #[test]
     fn test_organization_access_error() {
         let error = OpenAIError::organization_access_error(
@@ -1257,16 +1258,26 @@ mod tests {
         assert_eq!(error.error_code(), ErrorCode::OrganizationAccessDenied);
         assert!(error.is_retryable());
     }
-    
+
     #[test]
     fn test_suggested_actions() {
         let error = OpenAIError::authentication_error("Invalid key", 0, None, false, true, 401);
-        assert_eq!(error.suggested_action(), "Check API key and authentication settings");
-        
-        let error = OpenAIError::rate_limit_error("Rate limit", 60, 0, 0, 0, EndpointType::ChatCompletions);
-        assert_eq!(error.suggested_action(), "Reduce request rate and retry after delay");
-        
+        assert_eq!(
+            error.suggested_action(),
+            "Check API key and authentication settings"
+        );
+
+        let error =
+            OpenAIError::rate_limit_error("Rate limit", 60, 0, 0, 0, EndpointType::ChatCompletions);
+        assert_eq!(
+            error.suggested_action(),
+            "Reduce request rate and retry after delay"
+        );
+
         let error = OpenAIError::function_call_error("test", "Invalid args", "{}", None, true);
-        assert_eq!(error.suggested_action(), "Check function definition and arguments");
+        assert_eq!(
+            error.suggested_action(),
+            "Check function definition and arguments"
+        );
     }
 }

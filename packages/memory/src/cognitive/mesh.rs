@@ -7,8 +7,8 @@ use uuid::Uuid;
 
 use crate::cognitive::attention::{AttentionConfig, AttentionRouter, CognitiveAttentionWeights};
 use crate::cognitive::evolution::EvolutionEngine;
-use crate::cognitive::quantum::{QuantumConfig, QuantumRouter};
 use crate::cognitive::quantum::types::RoutingDecision as QuantumRoutingDecision;
+use crate::cognitive::quantum::{QuantumConfig, QuantumRouter};
 use crate::cognitive::state::CognitiveStateManager;
 use crate::cognitive::types::*;
 
@@ -198,15 +198,20 @@ impl CognitiveMesh {
         match strategy {
             RoutingStrategy::Quantum => {
                 let quantum_query = self.convert_to_quantum_query(query);
-                let quantum_decision = self.quantum_router
+                let quantum_decision = self
+                    .quantum_router
                     .route_query(&quantum_query)
                     .await
                     .map_err(|e| CognitiveError::QuantumDecoherence(e.to_string()))?;
-                Ok(self.meta_consciousness.system_monitor.convert_quantum_to_cognitive_decision(quantum_decision))
+                Ok(self
+                    .meta_consciousness
+                    .system_monitor
+                    .convert_quantum_to_cognitive_decision(quantum_decision))
             }
             RoutingStrategy::Attention => {
                 let contexts = self.extract_available_contexts(query).await?;
-                let attention_decision = self.attention_router
+                let attention_decision = self
+                    .attention_router
                     .route_with_attention(query, &contexts)
                     .await
                     .map_err(|e| CognitiveError::ContextProcessingError(e.to_string()))?;
@@ -230,8 +235,13 @@ impl CognitiveMesh {
             match strategy {
                 RoutingStrategy::Quantum => {
                     let quantum_query = self.convert_to_quantum_query(query);
-                    if let Ok(quantum_result) = self.quantum_router.route_query(&quantum_query).await {
-                        let cognitive_result = self.meta_consciousness.system_monitor.convert_quantum_to_cognitive_decision(quantum_result);
+                    if let Ok(quantum_result) =
+                        self.quantum_router.route_query(&quantum_query).await
+                    {
+                        let cognitive_result = self
+                            .meta_consciousness
+                            .system_monitor
+                            .convert_quantum_to_cognitive_decision(quantum_result);
                         results.push(cognitive_result);
                     }
                 }
@@ -277,7 +287,10 @@ impl CognitiveMesh {
                 .route_query(&quantum_query)
                 .await
                 .map_err(|e| CognitiveError::QuantumDecoherence(e.to_string()))?;
-            return Ok(self.meta_consciousness.system_monitor.convert_quantum_to_cognitive_decision(quantum_result));
+            return Ok(self
+                .meta_consciousness
+                .system_monitor
+                .convert_quantum_to_cognitive_decision(quantum_result));
         }
 
         // Use strongest pattern to guide routing
@@ -342,10 +355,10 @@ impl CognitiveMesh {
 
     /// System evolution trigger
     pub async fn evolve_system(&self) -> CognitiveResult<()> {
-        // Capture cognitive state before evolution for monitoring  
+        // Capture cognitive state before evolution for monitoring
         let evolution_state = crate::cognitive::state::CognitiveState::default();
         let pre_evolution_id = self.state_manager.add_state(evolution_state).await;
-        
+
         // Trigger evolution engine
         let mut evolution = self.evolution_engine.write().await;
         let summary = evolution.evolve_generation().await?;
@@ -374,7 +387,8 @@ impl CognitiveMesh {
         if let Some(final_state) = self.state_manager.get_state(&pre_evolution_id).await {
             tracing::info!(
                 "Evolution completed - tracked state: {} (activation: {:.2})",
-                final_state.id, final_state.activation_level
+                final_state.id,
+                final_state.activation_level
             );
         }
 
@@ -389,11 +403,13 @@ impl CognitiveMesh {
     /// Monitor system health and trigger interventions if needed
     pub async fn monitor_and_maintain(&self) -> CognitiveResult<()> {
         // Perform cleanup of inactive cognitive states for health maintenance
-        self.state_manager.cleanup_inactive(std::time::Duration::from_secs(3600)).await;
-        
+        self.state_manager
+            .cleanup_inactive(std::time::Duration::from_secs(3600))
+            .await;
+
         // Log system health for monitoring
         tracing::debug!("Cognitive system maintenance completed - inactive states cleaned up");
-        
+
         self.meta_consciousness.monitor_and_intervene().await
     }
 
@@ -749,7 +765,7 @@ impl SystemMonitor {
     pub async fn collect_metrics(&self) -> CognitiveResult<SystemMetrics> {
         // Update performance metrics with current system state
         let mut metrics = self.performance_metrics.write().await;
-        
+
         // Update metrics based on current system state
         metrics.cognitive_load = 0.6; // Simulate current cognitive load
         metrics.routing_efficiency = 0.85; // Simulate routing efficiency
@@ -757,67 +773,88 @@ impl SystemMonitor {
         metrics.pattern_discovery_rate = 0.07; // Simulate pattern discovery
         metrics.system_stability = 0.92; // Simulate stability
         metrics.user_satisfaction = 0.78; // Simulate user satisfaction
-        
+
         Ok(metrics.clone())
     }
-    
+
     /// Check if any metrics exceed alert thresholds
     pub async fn check_alerts(&self) -> CognitiveResult<Vec<String>> {
         let metrics = self.performance_metrics.read().await;
         let mut alerts = Vec::new();
-        
+
         if metrics.cognitive_load > self.alert_thresholds.max_cognitive_load {
-            alerts.push(format!("High cognitive load: {:.2} > {:.2}", 
-                metrics.cognitive_load, self.alert_thresholds.max_cognitive_load));
+            alerts.push(format!(
+                "High cognitive load: {:.2} > {:.2}",
+                metrics.cognitive_load, self.alert_thresholds.max_cognitive_load
+            ));
         }
-        
+
         if metrics.routing_efficiency < self.alert_thresholds.min_routing_efficiency {
-            alerts.push(format!("Low routing efficiency: {:.2} < {:.2}", 
-                metrics.routing_efficiency, self.alert_thresholds.min_routing_efficiency));
+            alerts.push(format!(
+                "Low routing efficiency: {:.2} < {:.2}",
+                metrics.routing_efficiency, self.alert_thresholds.min_routing_efficiency
+            ));
         }
-        
+
         if metrics.evolution_rate > self.alert_thresholds.max_evolution_rate {
-            alerts.push(format!("High evolution rate: {:.2} > {:.2}", 
-                metrics.evolution_rate, self.alert_thresholds.max_evolution_rate));
+            alerts.push(format!(
+                "High evolution rate: {:.2} > {:.2}",
+                metrics.evolution_rate, self.alert_thresholds.max_evolution_rate
+            ));
         }
-        
+
         if metrics.system_stability < self.alert_thresholds.min_stability {
-            alerts.push(format!("Low system stability: {:.2} < {:.2}", 
-                metrics.system_stability, self.alert_thresholds.min_stability));
+            alerts.push(format!(
+                "Low system stability: {:.2} < {:.2}",
+                metrics.system_stability, self.alert_thresholds.min_stability
+            ));
         }
-        
+
         Ok(alerts)
     }
 
     /// Convert quantum RoutingDecision to cognitive RoutingDecision
-    pub fn convert_quantum_to_cognitive_decision(&self, quantum_decision: QuantumRoutingDecision) -> RoutingDecision {
+    pub fn convert_quantum_to_cognitive_decision(
+        &self,
+        quantum_decision: QuantumRoutingDecision,
+    ) -> RoutingDecision {
         RoutingDecision {
             strategy: self.convert_quantum_to_cognitive_strategy(&quantum_decision.strategy),
             target_context: quantum_decision.target_context,
             confidence: quantum_decision.confidence as f32, // Convert f64 to f32
-            alternatives: quantum_decision.alternatives.into_iter().map(|alt| {
-                AlternativeRoute {
+            alternatives: quantum_decision
+                .alternatives
+                .into_iter()
+                .map(|alt| AlternativeRoute {
                     strategy: self.convert_quantum_to_cognitive_strategy(&alt.strategy),
                     confidence: alt.confidence as f32,
                     estimated_quality: alt.estimated_quality as f32,
-                }
-            }).collect(),
+                })
+                .collect(),
             reasoning: quantum_decision.reasoning,
         }
     }
 
     /// Convert quantum RoutingStrategy to cognitive RoutingStrategy
-    fn convert_quantum_to_cognitive_strategy(&self, quantum_strategy: &crate::cognitive::quantum::types::RoutingStrategy) -> RoutingStrategy {
+    fn convert_quantum_to_cognitive_strategy(
+        &self,
+        quantum_strategy: &crate::cognitive::quantum::types::RoutingStrategy,
+    ) -> RoutingStrategy {
         match quantum_strategy {
             crate::cognitive::quantum::types::RoutingStrategy::Quantum => RoutingStrategy::Quantum,
-            crate::cognitive::quantum::types::RoutingStrategy::Attention => RoutingStrategy::Attention,
+            crate::cognitive::quantum::types::RoutingStrategy::Attention => {
+                RoutingStrategy::Attention
+            }
             crate::cognitive::quantum::types::RoutingStrategy::Causal => RoutingStrategy::Causal,
-            crate::cognitive::quantum::types::RoutingStrategy::Emergent => RoutingStrategy::Emergent,
+            crate::cognitive::quantum::types::RoutingStrategy::Emergent => {
+                RoutingStrategy::Emergent
+            }
             crate::cognitive::quantum::types::RoutingStrategy::Hybrid(strategies) => {
                 RoutingStrategy::Hybrid(
-                    strategies.iter()
+                    strategies
+                        .iter()
                         .map(|s| self.convert_quantum_to_cognitive_strategy(s))
-                        .collect()
+                        .collect(),
                 )
             }
         }
@@ -850,12 +887,12 @@ impl InterventionSystem {
                 TriggerCondition::PatternDetectionFailure => metrics.pattern_discovery_rate < 0.01,
                 TriggerCondition::UserDissatisfaction => metrics.user_satisfaction < 0.3,
             };
-            
+
             if should_trigger {
                 return Ok(Some(strategy.clone()));
             }
         }
-        
+
         Ok(None)
     }
 
@@ -870,10 +907,13 @@ impl InterventionSystem {
             action: strategy.action.clone(),
             effectiveness: 0.8, // Initial effectiveness estimate
         };
-        
+
         // Add to intervention history
-        self.intervention_history.write().await.push(intervention_event.clone());
-        
+        self.intervention_history
+            .write()
+            .await
+            .push(intervention_event.clone());
+
         // Execute the intervention action
         match strategy.action {
             InterventionAction::ReduceCognitiveLoad => {
@@ -897,10 +937,13 @@ impl InterventionSystem {
                 // Implementation would optimize for better user experience
             }
         }
-        
-        tracing::info!("Intervention executed: {} (trigger: {:?})", 
-            strategy.name, strategy.trigger_condition);
-        
+
+        tracing::info!(
+            "Intervention executed: {} (trigger: {:?})",
+            strategy.name,
+            strategy.trigger_condition
+        );
+
         Ok(())
     }
 
@@ -924,20 +967,19 @@ impl StrategySelector {
     ) -> CognitiveResult<RoutingStrategy> {
         // Get performance history for strategy selection
         let performance = self.strategy_performance.read().await;
-        
+
         // Default strategy based on query intent
         let default_strategy = match query.intent {
             QueryIntent::Retrieval => RoutingStrategy::Attention,
             QueryIntent::Association => RoutingStrategy::Quantum,
             QueryIntent::Prediction => RoutingStrategy::Causal,
             QueryIntent::Reasoning => RoutingStrategy::Causal,
-            QueryIntent::Exploration => RoutingStrategy::Hybrid(vec![
-                RoutingStrategy::Quantum,
-                RoutingStrategy::Attention,
-            ]),
+            QueryIntent::Exploration => {
+                RoutingStrategy::Hybrid(vec![RoutingStrategy::Quantum, RoutingStrategy::Attention])
+            }
             QueryIntent::Creation => RoutingStrategy::Emergent,
         };
-        
+
         // Check if we have performance data to make a better choice
         if performance.is_empty() {
             // No performance history, use default
@@ -946,10 +988,14 @@ impl StrategySelector {
             // Find the best performing strategy for this intent
             let best_strategy = performance
                 .iter()
-                .max_by(|(_, a_perf), (_, b_perf)| a_perf.partial_cmp(b_perf).unwrap_or(std::cmp::Ordering::Equal))
+                .max_by(|(_, a_perf), (_, b_perf)| {
+                    a_perf
+                        .partial_cmp(b_perf)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
                 .map(|(strategy, _)| strategy.clone())
                 .unwrap_or(default_strategy);
-            
+
             Ok(best_strategy)
         }
     }
@@ -957,7 +1003,7 @@ impl StrategySelector {
     pub async fn reinforce_successful_strategies(&self) -> CognitiveResult<()> {
         // Reinforce strategies that performed well using adaptation rate
         let mut performance = self.strategy_performance.write().await;
-        
+
         // Update performance scores with adaptation rate
         for (strategy, score) in performance.iter_mut() {
             // Boost successful strategies
@@ -967,23 +1013,32 @@ impl StrategySelector {
                 tracing::debug!("Reinforced strategy {:?} to score {:.3}", strategy, score);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Update strategy performance based on results
-    pub async fn update_strategy_performance(&self, strategy: RoutingStrategy, performance_score: f32) -> CognitiveResult<()> {
+    pub async fn update_strategy_performance(
+        &self,
+        strategy: RoutingStrategy,
+        performance_score: f32,
+    ) -> CognitiveResult<()> {
         let mut performance = self.strategy_performance.write().await;
-        
+
         // Apply exponential moving average using adaptation rate
         let current_score = performance.get(&strategy).copied().unwrap_or(0.5);
-        let new_score = current_score * (1.0 - self.adaptation_rate) + performance_score * self.adaptation_rate;
-        
+        let new_score =
+            current_score * (1.0 - self.adaptation_rate) + performance_score * self.adaptation_rate;
+
         performance.insert(strategy.clone(), new_score);
-        
-        tracing::debug!("Updated strategy {:?} performance: {:.3} -> {:.3}", 
-            strategy, current_score, new_score);
-        
+
+        tracing::debug!(
+            "Updated strategy {:?} performance: {:.3} -> {:.3}",
+            strategy,
+            current_score,
+            new_score
+        );
+
         Ok(())
     }
 }

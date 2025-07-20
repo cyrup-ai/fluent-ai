@@ -1,10 +1,11 @@
 #[cfg(test)]
 mod tests {
     use std::process::Command;
+
     use cylo::{
-        config::{RamdiskConfig, FileSystem},
+        config::{FileSystem, RamdiskConfig},
         exec::{exec_go, exec_js, exec_python, exec_rust},
-        ramdisk::{get_watched_dir, create_ramdisk, remove_ramdisk},
+        ramdisk::{create_ramdisk, get_watched_dir, remove_ramdisk},
     };
 
     #[test]

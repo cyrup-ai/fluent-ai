@@ -4,14 +4,15 @@
 // Perplexity completion types and implementation
 // ============================================================================
 
-use crate::{
-    completion::{self, CompletionError, CompletionRequest},
-    json_util, message, OneOrMany,
-};
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 
 use super::client::Client;
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use crate::{
+    OneOrMany,
+    completion::{self, CompletionError, CompletionRequest},
+    json_util, message,
+};
 
 // ================================================================
 // Perplexity Completion API

@@ -40,7 +40,7 @@ pub use evolution::{
     CodeEvolution, CognitiveCodeEvolution, EvolutionEngine, EvolutionResult, Innovation,
     InnovationType, PerformanceMetrics,
 };
-pub use llm::{ProductionLLMProvider, ProviderConfig, ModelConfig, PerformanceConfig};
+pub use llm::{ModelConfig, PerformanceConfig, ProductionLLMProvider, ProviderConfig};
 pub use manager::CognitiveMemoryManager;
 pub use mcts::{CodeState, MCTS};
 pub use orchestrator::InfiniteOrchestrator;

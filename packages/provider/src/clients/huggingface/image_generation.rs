@@ -1,7 +1,8 @@
+use serde_json::json;
+
 use super::Client;
 use crate::image_generation;
 use crate::image_generation::{ImageGenerationError, ImageGenerationRequest};
-use serde_json::json;
 
 pub const FLUX_1: &str = "black-forest-labs/FLUX.1-dev";
 pub const KOLORS: &str = "Kwai-Kolors/Kolors";

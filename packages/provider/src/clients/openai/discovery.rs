@@ -9,13 +9,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::{debug, error, info, instrument, trace, warn};
 
-use crate::model::{
-    error::ModelError,
-    info::{ModelCapability, ModelInfo, ModelInfoBuilder},
-    registry::{ModelRegistry, RegisteredModel},
-    traits::Model,
-};
-
+use super::super::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
 use super::{
     client::OpenAIClient,
     error::OpenAIError,
@@ -24,8 +18,12 @@ use super::{
         model_supports_vision,
     },
 };
-
-use super::super::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
+use crate::model::{
+    error::ModelError,
+    info::{ModelCapability, ModelInfo, ModelInfoBuilder},
+    registry::{ModelRegistry, RegisteredModel},
+    traits::Model,
+};
 
 /// OpenAI model discovery implementation
 #[derive(Debug, Clone)]
@@ -58,15 +56,15 @@ impl OpenAIDiscovery {
         let config = get_model_config(model_name)?;
 
         let mut capabilities = vec![ModelCapability::TextGeneration];
-        
+
         if config.supports_tools {
             capabilities.push(ModelCapability::FunctionCalling);
         }
-        
+
         if config.supports_vision {
             capabilities.push(ModelCapability::Vision);
         }
-        
+
         if config.supports_audio {
             capabilities.push(ModelCapability::Audio);
         }
@@ -110,10 +108,7 @@ impl ProviderModelDiscovery for OpenAIDiscovery {
 
                 // Register the model
                 if let Err(e) = registry.register("openai", model) {
-                    error!(
-                        "Failed to register OpenAI model {}: {}",
-                        model_name, e
-                    );
+                    error!("Failed to register OpenAI model {}: {}", model_name, e);
                     return Err(DiscoveryError::RegistrationFailed(e.to_string()));
                 }
 
@@ -156,41 +151,47 @@ mod tests {
     async fn test_openai_discovery() {
         let client = OpenAIClient::new("test-api-key".to_string()).unwrap();
         let discovery = OpenAIDiscovery::new(client);
-        
+
         // Test provider name
         assert_eq!(discovery.provider_name(), "openai");
-        
+
         // Test supported models
         let supported_models = discovery.supported_models();
         assert!(!supported_models.is_empty());
         assert!(supported_models.contains(&&"gpt-4o"));
-        
+
         // Test model info retrieval
         let model_info = discovery.get_model_info("gpt-4o").unwrap();
         assert_eq!(model_info.name(), "gpt-4o");
         assert_eq!(model_info.provider(), "openai");
         assert!(model_info.has_capability(ModelCapability::TextGeneration));
-        
+
         // Test model registration
         let result = discovery.discover_and_register().await;
-        assert!(result.is_ok(), "Failed to discover and register models: {:?}", result.err());
-        
+        assert!(
+            result.is_ok(),
+            "Failed to discover and register models: {:?}",
+            result.err()
+        );
+
         // Verify models were registered
         let registry = ModelRegistry::global();
         for model_name in supported_models {
             assert!(
-                registry.get_model::<OpenAIModel>("openai", model_name).is_ok(),
+                registry
+                    .get_model::<OpenAIModel>("openai", model_name)
+                    .is_ok(),
                 "Model {} was not registered",
                 model_name
             );
         }
     }
-    
+
     #[test]
     fn test_get_model_info() {
         let client = OpenAIClient::new("test-api-key".to_string()).unwrap();
         let discovery = OpenAIDiscovery::new(client);
-        
+
         // Test with supported model
         let model_info = discovery.get_model_info("gpt-4o").unwrap();
         assert_eq!(model_info.name(), "gpt-4o");
@@ -198,7 +199,7 @@ mod tests {
         assert!(model_info.has_capability(ModelCapability::TextGeneration));
         assert!(model_info.has_capability(ModelCapability::FunctionCalling));
         assert!(model_info.has_capability(ModelCapability::Vision));
-        
+
         // Test with unsupported model
         assert!(discovery.get_model_info("unsupported-model").is_none());
     }

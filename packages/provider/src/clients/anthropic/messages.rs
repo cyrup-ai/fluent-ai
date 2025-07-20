@@ -44,13 +44,9 @@ pub enum MessageContent {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ContentBlock {
     /// Text content block
-    Text {
-        text: String,
-    },
+    Text { text: String },
     /// Image content block with base64 data
-    Image {
-        source: ImageSource,
-    },
+    Image { source: ImageSource },
     /// Document content block (PDF, etc.)
     Document {
         source: DocumentSource,
@@ -85,8 +81,8 @@ pub enum ContentBlock {
 pub struct ImageSource {
     #[serde(rename = "type")]
     pub source_type: String, // "base64"
-    pub media_type: String,   // "image/jpeg", "image/png", etc.
-    pub data: String,         // base64 encoded data
+    pub media_type: String, // "image/jpeg", "image/png", etc.
+    pub data: String,       // base64 encoded data
 }
 
 /// Document source with format and data
@@ -94,8 +90,8 @@ pub struct ImageSource {
 pub struct DocumentSource {
     #[serde(rename = "type")]
     pub source_type: String, // "base64"
-    pub media_type: String,   // "application/pdf", etc.
-    pub data: String,         // base64 encoded data
+    pub media_type: String, // "application/pdf", etc.
+    pub data: String,       // base64 encoded data
 }
 
 /// Tool call structure for function invocation
@@ -179,9 +175,7 @@ impl Message {
         Self {
             role: Role::User,
             content: MessageContent::Blocks(vec![
-                ContentBlock::Text { 
-                    text: text.into() 
-                },
+                ContentBlock::Text { text: text.into() },
                 ContentBlock::Image {
                     source: ImageSource {
                         source_type: "base64".to_string(),
@@ -206,9 +200,7 @@ impl Message {
         Self {
             role: Role::User,
             content: MessageContent::Blocks(vec![
-                ContentBlock::Text { 
-                    text: text.into() 
-                },
+                ContentBlock::Text { text: text.into() },
                 ContentBlock::Document {
                     source: DocumentSource {
                         source_type: "base64".to_string(),
@@ -291,9 +283,9 @@ impl MessageContent {
     pub fn has_images(&self) -> bool {
         match self {
             MessageContent::Text(_) => false,
-            MessageContent::Blocks(blocks) => {
-                blocks.iter().any(|block| matches!(block, ContentBlock::Image { .. }))
-            }
+            MessageContent::Blocks(blocks) => blocks
+                .iter()
+                .any(|block| matches!(block, ContentBlock::Image { .. })),
         }
     }
 
@@ -302,9 +294,9 @@ impl MessageContent {
     pub fn has_documents(&self) -> bool {
         match self {
             MessageContent::Text(_) => false,
-            MessageContent::Blocks(blocks) => {
-                blocks.iter().any(|block| matches!(block, ContentBlock::Document { .. }))
-            }
+            MessageContent::Blocks(blocks) => blocks
+                .iter()
+                .any(|block| matches!(block, ContentBlock::Document { .. })),
         }
     }
 
@@ -313,9 +305,9 @@ impl MessageContent {
     pub fn has_tool_use(&self) -> bool {
         match self {
             MessageContent::Text(_) => false,
-            MessageContent::Blocks(blocks) => {
-                blocks.iter().any(|block| matches!(block, ContentBlock::ToolUse { .. }))
-            }
+            MessageContent::Blocks(blocks) => blocks
+                .iter()
+                .any(|block| matches!(block, ContentBlock::ToolUse { .. })),
         }
     }
 }
@@ -389,9 +381,7 @@ impl MessageConverter {
         match messages {
             crate::ZeroOneOrMany::None => Vec::new(),
             crate::ZeroOneOrMany::One(msg) => vec![Message::from(msg)],
-            crate::ZeroOneOrMany::Many(msgs) => {
-                msgs.iter().map(Message::from).collect()
-            }
+            crate::ZeroOneOrMany::Many(msgs) => msgs.iter().map(Message::from).collect(),
         }
     }
 
@@ -403,18 +393,13 @@ impl MessageConverter {
         match tools {
             crate::ZeroOneOrMany::None => Vec::new(),
             crate::ZeroOneOrMany::One(tool) => vec![Tool::from_definition(tool)],
-            crate::ZeroOneOrMany::Many(tools) => {
-                tools.iter().map(Tool::from_definition).collect()
-            }
+            crate::ZeroOneOrMany::Many(tools) => tools.iter().map(Tool::from_definition).collect(),
         }
     }
 
     /// Merge additional parameters into request JSON with zero allocation
     #[inline(always)]
-    pub fn merge_additional_params(
-        mut request: Value,
-        additional: Option<Value>,
-    ) -> Value {
+    pub fn merge_additional_params(mut request: Value, additional: Option<Value>) -> Value {
         if let Some(params) = additional {
             request = crate::json_util::merge(request, params);
         }
@@ -427,7 +412,7 @@ impl MessageConverter {
         documents: &crate::ZeroOneOrMany<crate::completion::Document>,
     ) -> Vec<ContentBlock> {
         let mut blocks = Vec::new();
-        
+
         match documents {
             crate::ZeroOneOrMany::None => {}
             crate::ZeroOneOrMany::One(doc) => {
@@ -443,7 +428,7 @@ impl MessageConverter {
                 }
             }
         }
-        
+
         blocks
     }
 }

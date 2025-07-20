@@ -11,16 +11,16 @@
 
 use std::marker::PhantomData;
 
-use schemars::{schema_for, JsonSchema};
-use serde::{de::DeserializeOwned, Serialize};
+use schemars::{JsonSchema, schema_for};
+use serde::{Serialize, de::DeserializeOwned};
 use serde_json::json;
 
 use crate::{
     agent::{Agent, AgentBuilder},
     completion::{CompletionError, CompletionModel, ToolDefinition},
     domain::message::{AssistantContent, Message, ToolCall, ToolFunction},
-    runtime::{spawn_async, AsyncTask},
     domain::tool::Tool,
+    runtime::{AsyncTask, spawn_async},
 };
 
 // -----------------------------------------------------------------------------

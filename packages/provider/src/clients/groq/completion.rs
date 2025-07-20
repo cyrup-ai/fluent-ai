@@ -4,30 +4,30 @@
 // Groq completion model implementation
 // ============================================================================
 
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-
-use crate::{
-    completion::{self, CompletionError, CompletionRequest},
-    completion_provider::{CompletionProvider, CompletionError as ProviderCompletionError, ModelConfig, ChunkHandler},
-    json_util,
-    message::{self, MessageError},
-    runtime::{self, AsyncTask},
-    streaming::StreamingCompletionResponse,
-    OneOrMany,
-    AsyncStream,
-};
-use fluent_ai_domain::{Message, Document};
-use fluent_ai_domain::tool::ToolDefinition as DomainToolDefinition;
-use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage as DomainUsage};
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
-use cyrup_sugars::ZeroOneOrMany;
 use arrayvec::ArrayVec;
+use cyrup_sugars::ZeroOneOrMany;
+use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage as DomainUsage};
+use fluent_ai_domain::tool::ToolDefinition as DomainToolDefinition;
+use fluent_ai_domain::{Document, Message};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use futures::{self, StreamExt};
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 use tokio_stream;
 
 use super::client::Client;
 use super::streaming;
+use crate::{
+    AsyncStream, OneOrMany,
+    completion::{self, CompletionError, CompletionRequest},
+    completion_provider::{
+        ChunkHandler, CompletionError as ProviderCompletionError, CompletionProvider, ModelConfig,
+    },
+    json_util,
+    message::{self, MessageError},
+    runtime::{self, AsyncTask},
+    streaming::StreamingCompletionResponse,
+};
 
 // ============================================================================
 // Model Constants
@@ -149,7 +149,7 @@ impl TryFrom<message::Message> for GroqMessage {
                         message::AssistantContent::ToolCall(_) => {
                             return Err(MessageError::ConversionError(
                                 "Tool calls not supported in Groq messages".into(),
-                            ))
+                            ));
                         }
                     }
                 }
@@ -276,7 +276,10 @@ impl completion::CompletionModel for CompletionModel {
                     let request_body = match serde_json::to_vec(&request) {
                         Ok(body) => body,
                         Err(e) => {
-                            tx.finish(Err(CompletionError::ProviderError(format!("Failed to serialize request: {}", e))));
+                            tx.finish(Err(CompletionError::ProviderError(format!(
+                                "Failed to serialize request: {}",
+                                e
+                            ))));
                             return;
                         }
                     };
@@ -284,7 +287,10 @@ impl completion::CompletionModel for CompletionModel {
                     let http_request = match client.post("/chat/completions", request_body) {
                         Ok(req) => req,
                         Err(e) => {
-                            tx.finish(Err(CompletionError::ProviderError(format!("Failed to create request: {}", e))));
+                            tx.finish(Err(CompletionError::ProviderError(format!(
+                                "Failed to create request: {}",
+                                e
+                            ))));
                             return;
                         }
                     };
@@ -292,7 +298,9 @@ impl completion::CompletionModel for CompletionModel {
                     let result = match client.http_client.send(http_request).await {
                         Ok(response) => {
                             if response.status().is_success() {
-                                match serde_json::from_slice::<ApiResponse<CompletionResponse>>(response.body()) {
+                                match serde_json::from_slice::<ApiResponse<CompletionResponse>>(
+                                    response.body(),
+                                ) {
                                     Ok(ApiResponse::Ok(response)) => {
                                         tracing::info!(target: "rig",
                                             "groq completion token usage: {:?}",
@@ -345,7 +353,10 @@ impl completion::CompletionModel for CompletionModel {
                     let request_body = match serde_json::to_vec(&request) {
                         Ok(body) => body,
                         Err(e) => {
-                            tx.finish(Err(CompletionError::ProviderError(format!("Failed to serialize request: {}", e))));
+                            tx.finish(Err(CompletionError::ProviderError(format!(
+                                "Failed to serialize request: {}",
+                                e
+                            ))));
                             return;
                         }
                     };
@@ -353,12 +364,17 @@ impl completion::CompletionModel for CompletionModel {
                     let http_request = match client.post("/chat/completions", request_body) {
                         Ok(req) => req,
                         Err(e) => {
-                            tx.finish(Err(CompletionError::ProviderError(format!("Failed to create request: {}", e))));
+                            tx.finish(Err(CompletionError::ProviderError(format!(
+                                "Failed to create request: {}",
+                                e
+                            ))));
                             return;
                         }
                     };
 
-                    let result = streaming::send_groq_streaming_request(client.http_client, http_request).await;
+                    let result =
+                        streaming::send_groq_streaming_request(client.http_client, http_request)
+                            .await;
                     tx.finish(result);
                 });
             }
@@ -454,149 +470,150 @@ impl CompletionProvider for GroqCompletionBuilder {
         self.explicit_api_key = Some(key.into());
         self
     }
-    
+
     /// Environment variable names to search for Groq API keys (ordered by priority)
     #[inline(always)]
     fn env_api_keys(&self) -> ZeroOneOrMany<String> {
         // First found wins - search in priority order
         ZeroOneOrMany::One("GROQ_API_KEY".to_string())
     }
-    
+
     /// Set system prompt (overrides ModelInfo default)
     #[inline(always)]
     fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
         self.system_prompt = prompt.into();
         self
     }
-    
+
     /// Set temperature (overrides ModelInfo default)
     #[inline(always)]
     fn temperature(mut self, temp: f64) -> Self {
         self.temperature = temp;
         self
     }
-    
+
     /// Set max tokens (overrides ModelInfo default)
     #[inline(always)]
     fn max_tokens(mut self, tokens: u32) -> Self {
         self.max_tokens = tokens;
         self
     }
-    
+
     /// Set top_p (overrides ModelInfo default)
     #[inline(always)]
     fn top_p(mut self, p: f64) -> Self {
         self.top_p = p;
         self
     }
-    
+
     /// Set frequency penalty (overrides ModelInfo default)
     #[inline(always)]
     fn frequency_penalty(mut self, penalty: f64) -> Self {
         self.frequency_penalty = penalty;
         self
     }
-    
+
     /// Set presence penalty (overrides ModelInfo default)
     #[inline(always)]
     fn presence_penalty(mut self, penalty: f64) -> Self {
         self.presence_penalty = penalty;
         self
     }
-    
+
     /// Add chat history (ZeroOneOrMany with bounded capacity)
-    fn chat_history(mut self, history: ZeroOneOrMany<Message>) -> Result<Self, ProviderCompletionError> {
+    fn chat_history(
+        mut self,
+        history: ZeroOneOrMany<Message>,
+    ) -> Result<Self, ProviderCompletionError> {
         match history {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(message) => {
                 if self.messages.try_push(message).is_err() {
                     return Err(ProviderCompletionError::RequestTooLarge);
                 }
-            },
+            }
             ZeroOneOrMany::Many(messages) => {
                 for message in messages {
                     if self.messages.try_push(message).is_err() {
                         return Err(ProviderCompletionError::RequestTooLarge);
                     }
                 }
-            },
+            }
         }
         Ok(self)
     }
-    
+
     /// Add documents for RAG (ZeroOneOrMany with bounded capacity)
     fn documents(mut self, docs: ZeroOneOrMany<Document>) -> Result<Self, ProviderCompletionError> {
         match docs {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(doc) => {
                 if self.documents.try_push(doc).is_err() {
                     return Err(ProviderCompletionError::RequestTooLarge);
                 }
-            },
+            }
             ZeroOneOrMany::Many(documents) => {
                 for doc in documents {
                     if self.documents.try_push(doc).is_err() {
                         return Err(ProviderCompletionError::RequestTooLarge);
                     }
                 }
-            },
+            }
         }
         Ok(self)
     }
-    
+
     /// Add tools for function calling (ZeroOneOrMany with bounded capacity)
-    fn tools(mut self, tools: ZeroOneOrMany<DomainToolDefinition>) -> Result<Self, ProviderCompletionError> {
+    fn tools(
+        mut self,
+        tools: ZeroOneOrMany<DomainToolDefinition>,
+    ) -> Result<Self, ProviderCompletionError> {
         match tools {
-            ZeroOneOrMany::None => {},
+            ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(tool) => {
                 if self.tools.try_push(tool).is_err() {
                     return Err(ProviderCompletionError::RequestTooLarge);
                 }
-            },
+            }
             ZeroOneOrMany::Many(tools_vec) => {
                 for tool in tools_vec {
                     if self.tools.try_push(tool).is_err() {
                         return Err(ProviderCompletionError::RequestTooLarge);
                     }
                 }
-            },
+            }
         }
         Ok(self)
     }
-    
+
     /// Add provider-specific parameters
     #[inline(always)]
     fn additional_params(mut self, params: Value) -> Self {
         self.additional_params = Some(params);
         self
     }
-    
+
     /// Set chunk handler with cyrup_sugars pattern matching
-    fn on_chunk<F>(mut self, handler: F) -> Self 
+    fn on_chunk<F>(mut self, handler: F) -> Self
     where
-        F: Fn(Result<CompletionChunk, ProviderCompletionError>) + Send + Sync + 'static
+        F: Fn(Result<CompletionChunk, ProviderCompletionError>) + Send + Sync + 'static,
     {
         self.chunk_handler = Some(Box::new(handler));
         self
     }
-    
+
     /// Terminal action - execute completion with user prompt
     /// Returns blazing-fast zero-allocation streaming
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let prompt_text = text.as_ref().to_string();
-        
+
         // Use the explicit API key if provided, otherwise fall back to the original
         let api_key = self.explicit_api_key.unwrap_or(self.api_key);
-        
+
         tokio::spawn(async move {
-            let result = Self::execute_completion(
-                self,
-                prompt_text,
-                api_key,
-                tx.clone()
-            ).await;
-            
+            let result = Self::execute_completion(self, prompt_text, api_key, tx.clone()).await;
+
             if let Err(e) = result {
                 let error_chunk = CompletionChunk {
                     id: "error".to_string(),
@@ -609,7 +626,7 @@ impl CompletionProvider for GroqCompletionBuilder {
                 let _ = tx.send(error_chunk);
             }
         });
-        
+
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
@@ -622,11 +639,9 @@ impl CompletionProvider for GroqCompletionBuilder {
     ) -> Result<(), String> {
         // Add the user prompt to messages
         let user_message = Message::User {
-            content: cyrup_sugars::OneOrMany::One(
-                fluent_ai_domain::UserContent::Text {
-                    text: prompt_text,
-                }
-            )
+            content: cyrup_sugars::OneOrMany::One(fluent_ai_domain::UserContent::Text {
+                text: prompt_text,
+            }),
         };
         if builder.messages.try_push(user_message).is_err() {
             return Err("Too many messages".to_string());
@@ -655,12 +670,14 @@ impl CompletionProvider for GroqCompletionBuilder {
 
         // Convert documents to context message if any
         if !builder.documents.is_empty() {
-            let context = builder.documents.iter()
+            let context = builder
+                .documents
+                .iter()
                 .map(|doc| format!("Document: {}\nContent: {}", doc.name, doc.content))
                 .collect::<Vec<_>>()
                 .join("\n\n");
             messages.push(json!({
-                "role": "system", 
+                "role": "system",
                 "content": format!("Context documents:\n{}", context)
             }));
         }
@@ -669,7 +686,8 @@ impl CompletionProvider for GroqCompletionBuilder {
         for message in builder.messages.iter() {
             match message {
                 Message::User { content } => {
-                    let text = content.iter()
+                    let text = content
+                        .iter()
                         .filter_map(|c| match c {
                             fluent_ai_domain::UserContent::Text { text } => Some(text.clone()),
                             _ => None,
@@ -680,9 +698,10 @@ impl CompletionProvider for GroqCompletionBuilder {
                         "role": "user",
                         "content": text
                     }));
-                },
+                }
                 Message::Assistant { content } => {
-                    let text = content.iter()
+                    let text = content
+                        .iter()
                         .filter_map(|c| match c {
                             fluent_ai_domain::AssistantContent::Text { text } => Some(text.clone()),
                             _ => None,
@@ -693,7 +712,7 @@ impl CompletionProvider for GroqCompletionBuilder {
                         "role": "assistant",
                         "content": text
                     }));
-                },
+                }
             }
         }
 
@@ -701,15 +720,19 @@ impl CompletionProvider for GroqCompletionBuilder {
 
         // Add tools if any
         if !builder.tools.is_empty() {
-            let tools: Vec<Value> = builder.tools.iter()
-                .map(|tool| json!({
-                    "type": "function",
-                    "function": {
-                        "name": tool.name,
-                        "description": tool.description,
-                        "parameters": tool.parameters
-                    }
-                }))
+            let tools: Vec<Value> = builder
+                .tools
+                .iter()
+                .map(|tool| {
+                    json!({
+                        "type": "function",
+                        "function": {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.parameters
+                        }
+                    })
+                })
                 .collect();
             request_json["tools"] = json!(tools);
             request_json["tool_choice"] = json!("auto");
@@ -735,7 +758,10 @@ impl CompletionProvider for GroqCompletionBuilder {
             .header("Authorization", &format!("Bearer {}", api_key));
 
         // Send the request using HTTP3 client
-        let response = builder.client.send(http_request).await
+        let response = builder
+            .client
+            .send(http_request)
+            .await
             .map_err(|e| format!("HTTP request failed: {}", e))?;
 
         if !response.status().is_success() {
@@ -756,10 +782,11 @@ impl CompletionProvider for GroqCompletionBuilder {
                         }
 
                         // Parse the streaming response
-                        match serde_json::from_str::<streaming::StreamingCompletionResponse>(&data) {
+                        match serde_json::from_str::<streaming::StreamingCompletionResponse>(&data)
+                        {
                             Ok(response) => {
                                 request_id = response.id.clone();
-                                
+
                                 if let Some(choice) = response.choices.first() {
                                     let mut chunk = CompletionChunk {
                                         id: response.id.clone(),
@@ -775,7 +802,7 @@ impl CompletionProvider for GroqCompletionBuilder {
                                         if let Some(content) = &delta.content {
                                             chunk.content = Some(content.clone());
                                         }
-                                        
+
                                         if let Some(finish_reason) = &choice.finish_reason {
                                             chunk.finish_reason = match finish_reason.as_str() {
                                                 "stop" => Some(FinishReason::Stop),

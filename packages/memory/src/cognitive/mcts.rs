@@ -242,15 +242,12 @@ impl MCTS {
 
             // Simulation - use the dedicated simulate method
             let reward = self.simulate(&node_to_simulate).await?;
-            
+
             // Backpropagate the result
             self.backpropagate(node_to_simulate, reward);
 
             if (iteration + 1) % 100 == 0 {
-                info!(
-                    "MCTS progress: {}/{} iterations",
-                    iteration + 1, iterations
-                );
+                info!("MCTS progress: {}/{} iterations", iteration + 1, iterations);
             }
         }
 
@@ -396,7 +393,10 @@ impl MCTS {
         action: &str,
     ) -> Result<CodeState, CognitiveError> {
         // Get impact factors from committee
-        let rubric = crate::cognitive::common::types::EvaluationRubric::from_spec(&self.spec, &self.user_objective);
+        let rubric = crate::cognitive::common::types::EvaluationRubric::from_spec(
+            &self.spec,
+            &self.user_objective,
+        );
         let factors = self
             .committee
             .evaluate_action(state, action, &rubric)

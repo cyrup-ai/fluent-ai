@@ -1,9 +1,11 @@
 //! EmitterBuilder - builds AsyncStream with error handling
 
-use super::AsyncStream;
 use std::future::Future;
 use std::pin::Pin;
+
 use tokio::sync::mpsc;
+
+use super::AsyncStream;
 
 /// Builder that emits AsyncStream after handling Result
 pub struct EmitterBuilder<T> {

@@ -5,10 +5,11 @@
 //!
 //! Enables elegant ergonomic syntax: `Model::MistralLarge.prompt("Hello world")`
 
-use crate::completion_provider::{ModelConfig, ModelInfo, ModelPrompt, CompletionProvider};
-use crate::clients::mistral::completion::MistralCompletionBuilder;
-use crate::AsyncStream;
 use fluent_ai_domain::chunk::CompletionChunk;
+
+use crate::AsyncStream;
+use crate::clients::mistral::completion::MistralCompletionBuilder;
+use crate::completion_provider::{CompletionProvider, ModelConfig, ModelInfo, ModelPrompt};
 
 // ================================================================================================
 // Premium Paid Models
@@ -416,16 +417,16 @@ pub const fn get_model_pricing_tier(model_name: &str) -> u8 {
 #[inline(always)]
 pub const fn is_valid_model(model_name: &str) -> bool {
     match model_name {
-        "mistral-large-latest" |
-        "codestral-latest" |
-        "pixtral-large-latest" |
-        "mistral-saba-latest" |
-        "ministral-3b-latest" |
-        "ministral-8b-latest" |
-        "mistral-small-latest" |
-        "pixtral-12b-2409" |
-        "open-mistral-nemo" |
-        "open-codestral-mamba" => true,
+        "mistral-large-latest"
+        | "codestral-latest"
+        | "pixtral-large-latest"
+        | "mistral-saba-latest"
+        | "ministral-3b-latest"
+        | "ministral-8b-latest"
+        | "mistral-small-latest"
+        | "pixtral-12b-2409"
+        | "open-mistral-nemo"
+        | "open-codestral-mamba" => true,
         _ => false,
     }
 }

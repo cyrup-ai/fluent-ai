@@ -4,15 +4,21 @@
 // Gemini client with typestate-driven builder pattern
 // ============================================================================
 
-use serde_json::json;
-use bytes::Bytes;
-use std::time::Duration;
-use arc_swap::ArcSwap;
-use arrayvec::{ArrayVec, ArrayString};
-use smallvec::{SmallVec, smallvec};
-use atomic_counter::RelaxedCounter;
 use std::sync::LazyLock;
+use std::time::Duration;
 
+use arc_swap::ArcSwap;
+use arrayvec::{ArrayString, ArrayVec};
+use atomic_counter::RelaxedCounter;
+use bytes::Bytes;
+use fluent_ai_domain::AsyncTask as DomainAsyncTask;
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
+use serde_json::json;
+use smallvec::{SmallVec, smallvec};
+
+use super::completion::{CompletionModel, GEMINI_1_5_PRO};
+use super::embedding::EmbeddingModel;
+use super::transcription::TranscriptionModel;
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient, TranscriptionClient},
     completion::{
@@ -24,13 +30,6 @@ use crate::{
     runtime::{self, AsyncTask},
 };
 
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
-use fluent_ai_domain::AsyncTask as DomainAsyncTask;
-
-use super::completion::{CompletionModel, GEMINI_1_5_PRO};
-use super::embedding::EmbeddingModel;
-use super::transcription::TranscriptionModel;
-
 // ============================================================================
 // Google Gemini API Client with HTTP3 and zero-allocation patterns
 // ============================================================================
@@ -38,8 +37,7 @@ const GEMINI_API_BASE_URL: &str = "https://generativelanguage.googleapis.com";
 
 /// Global HTTP3 client with AI optimization
 static HTTP_CLIENT: LazyLock<HttpClient> = LazyLock::new(|| {
-    HttpClient::with_config(HttpConfig::ai_optimized())
-        .unwrap_or_else(|_| HttpClient::new())
+    HttpClient::with_config(HttpConfig::ai_optimized()).unwrap_or_else(|_| HttpClient::new())
 });
 
 /// Lock-free performance metrics
@@ -126,21 +124,21 @@ impl Client {
                 suggestion: "Provide a valid Gemini API key".to_string(),
             });
         }
-        
-        let api_key_array = ArrayString::from(&api_key)
-            .map_err(|_| GeminiError::Configuration {
+
+        let api_key_array =
+            ArrayString::from(&api_key).map_err(|_| GeminiError::Configuration {
                 field: "api_key".to_string(),
                 message: format!("API key too long: {} characters (max 128)", api_key.len()),
                 suggestion: "Use a valid Gemini API key".to_string(),
             })?;
-            
-        let base_url_array = ArrayString::from(base_url)
-            .map_err(|_| GeminiError::Configuration {
+
+        let base_url_array =
+            ArrayString::from(base_url).map_err(|_| GeminiError::Configuration {
                 field: "base_url".to_string(),
                 message: format!("Base URL too long: {} characters (max 256)", base_url.len()),
                 suggestion: "Use a valid Gemini API base URL".to_string(),
             })?;
-        
+
         Ok(Self {
             api_key: ArcSwap::from_pointee(api_key_array),
             base_url: base_url_array,
@@ -152,82 +150,111 @@ impl Client {
 
     /// Create a new Gemini client from environment variable with validation
     pub fn from_env() -> Result<Self> {
-        let api_key = std::env::var("GEMINI_API_KEY")
-            .map_err(|_| GeminiError::Configuration {
-                field: "GEMINI_API_KEY".to_string(),
-                message: "GEMINI_API_KEY environment variable not set".to_string(),
-                suggestion: "Set GEMINI_API_KEY environment variable with your Gemini API key".to_string(),
-            })?;
+        let api_key = std::env::var("GEMINI_API_KEY").map_err(|_| GeminiError::Configuration {
+            field: "GEMINI_API_KEY".to_string(),
+            message: "GEMINI_API_KEY environment variable not set".to_string(),
+            suggestion: "Set GEMINI_API_KEY environment variable with your Gemini API key"
+                .to_string(),
+        })?;
         Self::new(api_key)
     }
 
     /// Build authenticated request with zero allocations
-    pub async fn make_request(&self, path: &str, body: Vec<u8>) -> Result<fluent_ai_http3::Response> {
+    pub async fn make_request(
+        &self,
+        path: &str,
+        body: Vec<u8>,
+    ) -> Result<fluent_ai_http3::Response> {
         let url = format!("{}/{}?key={}", self.base_url, path, self.api_key.load());
-        
+
         // Build headers with zero allocation
         let mut headers: SmallVec<[(&str, ArrayString<180>); 4]> = smallvec![];
-        headers.push(("Content-Type", ArrayString::from("application/json").unwrap()));
-        headers.push(("User-Agent", ArrayString::from("fluent-ai-gemini/1.0").unwrap()));
-        
+        headers.push((
+            "Content-Type",
+            ArrayString::from("application/json").unwrap(),
+        ));
+        headers.push((
+            "User-Agent",
+            ArrayString::from("fluent-ai-gemini/1.0").unwrap(),
+        ));
+
         let request = HttpRequest::post(&url, body)?
             .headers(headers.iter().map(|(k, v)| (*k, v.as_str())))
             .timeout(self.timeout);
-            
+
         // Update metrics atomically
         self.metrics.total_requests.inc();
         self.metrics.concurrent_requests.inc();
-        
+
         let response = self.http_client.send(request).await;
-        
+
         self.metrics.concurrent_requests.dec();
-        
+
         match &response {
             Ok(_) => self.metrics.successful_requests.inc(),
             Err(_) => self.metrics.failed_requests.inc(),
         }
-        
+
         response.map_err(GeminiError::Http)
     }
 
     /// Build SSE request for streaming
-    pub async fn make_sse_request(&self, path: &str, body: Vec<u8>) -> Result<fluent_ai_http3::Response> {
-        let url = format!("{}/{}?alt=sse&key={}", self.base_url, path, self.api_key.load());
-        
+    pub async fn make_sse_request(
+        &self,
+        path: &str,
+        body: Vec<u8>,
+    ) -> Result<fluent_ai_http3::Response> {
+        let url = format!(
+            "{}/{}?alt=sse&key={}",
+            self.base_url,
+            path,
+            self.api_key.load()
+        );
+
         let mut headers: SmallVec<[(&str, ArrayString<180>); 4]> = smallvec![];
-        headers.push(("Content-Type", ArrayString::from("application/json").unwrap()));
+        headers.push((
+            "Content-Type",
+            ArrayString::from("application/json").unwrap(),
+        ));
         headers.push(("Accept", ArrayString::from("text/event-stream").unwrap()));
-        headers.push(("User-Agent", ArrayString::from("fluent-ai-gemini/1.0").unwrap()));
-        
+        headers.push((
+            "User-Agent",
+            ArrayString::from("fluent-ai-gemini/1.0").unwrap(),
+        ));
+
         let request = HttpRequest::post(&url, body)?
             .headers(headers.iter().map(|(k, v)| (*k, v.as_str())))
             .timeout(self.timeout);
-            
+
         self.metrics.total_requests.inc();
         self.metrics.concurrent_requests.inc();
-        
+
         let response = self.http_client.send(request).await;
-        
+
         self.metrics.concurrent_requests.dec();
-        
+
         match &response {
             Ok(_) => self.metrics.successful_requests.inc(),
             Err(_) => self.metrics.failed_requests.inc(),
         }
-        
+
         response.map_err(GeminiError::Http)
     }
 
     /// Test connection to Gemini API
     pub async fn test_connection(&self) -> Result<()> {
-        let url = format!("{}/v1beta/models?key={}", self.base_url, self.api_key.load());
-        
+        let url = format!(
+            "{}/v1beta/models?key={}",
+            self.base_url,
+            self.api_key.load()
+        );
+
         let request = HttpRequest::get(&url)?
             .header("User-Agent", "fluent-ai-gemini/1.0")
             .timeout(Duration::from_secs(10));
-            
+
         let response = self.http_client.send(request).await?;
-        
+
         if response.status().is_success() {
             Ok(())
         } else {
@@ -262,7 +289,7 @@ impl Client {
     pub fn transcription_model(&self, model: &str) -> TranscriptionModel {
         TranscriptionModel::new(self.clone(), model)
     }
-    
+
     /// Get current performance metrics
     pub fn get_metrics(&self) -> (usize, usize, usize, usize) {
         (
@@ -288,7 +315,7 @@ impl std::fmt::Debug for Client {
 /// CompletionClient trait implementation for auto-generation
 impl CompletionClient for Client {
     type Model = CompletionModel;
-    
+
     fn completion_model(&self, model: &str) -> Self::Model {
         CompletionModel::new(self.clone(), model)
     }
@@ -297,11 +324,11 @@ impl CompletionClient for Client {
 /// EmbeddingsClient trait implementation
 impl EmbeddingsClient for Client {
     type Model = EmbeddingModel;
-    
+
     fn embedding_model(&self, model: &str) -> Self::Model {
         EmbeddingModel::new(self.clone(), model, None)
     }
-    
+
     fn embedding_model_with_ndims(&self, model: &str, ndims: usize) -> Self::Model {
         EmbeddingModel::new(self.clone(), model, Some(ndims))
     }
@@ -310,7 +337,7 @@ impl EmbeddingsClient for Client {
 /// TranscriptionClient trait implementation
 impl TranscriptionClient for Client {
     type Model = TranscriptionModel;
-    
+
     fn transcription_model(&self, model: &str) -> Self::Model {
         TranscriptionModel::new(self.clone(), model)
     }
@@ -321,11 +348,15 @@ impl ProviderClient for Client {
     fn provider_name(&self) -> &'static str {
         "gemini"
     }
-    
-    fn test_connection(&self) -> DomainAsyncTask<std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+
+    fn test_connection(
+        &self,
+    ) -> DomainAsyncTask<std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>> {
         let client = self.clone();
         DomainAsyncTask::spawn(async move {
-            client.test_connection().await
+            client
+                .test_connection()
+                .await
                 .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
         })
     }

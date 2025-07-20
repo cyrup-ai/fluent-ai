@@ -15,6 +15,6 @@ pub mod streaming;
 
 pub use client::{Client, OpenRouterCompletionBuilder};
 pub use completion::{
-    CompletionModel, CLAUDE_3_7_SONNET, GEMINI_FLASH_2_0, GPT_4_1, PERPLEXITY_SONAR_PRO,
+    CLAUDE_3_7_SONNET, CompletionModel, GEMINI_FLASH_2_0, GPT_4_1, PERPLEXITY_SONAR_PRO,
     QWEN_QWQ_32B,
 };

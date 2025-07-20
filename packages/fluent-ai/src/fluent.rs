@@ -1,7 +1,8 @@
+use termcolor::{ThemeConfig, set_global_theme};
+
 use crate::domain::CompletionModel;
 use crate::domain::*;
 use crate::{Models, memory, workflow};
-use termcolor::{ThemeConfig, set_global_theme};
 
 /// Master builder for Fluent AI - semantic entry point for all builders
 pub struct FluentAi;
@@ -25,7 +26,7 @@ impl FluentAiBuilder {
         self.theme_config = config;
         self
     }
-    
+
     /// Build and apply global configuration
     pub fn build(self) -> FluentAi {
         // Apply theme configuration globally
@@ -39,7 +40,7 @@ impl FluentAi {
     pub fn builder() -> FluentAiBuilder {
         FluentAiBuilder::default()
     }
-    
+
     /// Create an AI agent with persistent context and tools
     pub fn agent(model: Models) -> agent::AgentBuilder {
         agent::Agent::with_model(model)

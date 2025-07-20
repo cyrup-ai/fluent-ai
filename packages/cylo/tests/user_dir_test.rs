@@ -26,8 +26,8 @@ mod tests {
         use std::fs;
         use std::path::Path;
 
-        use nix::sched::{unshare, CloneFlags};
-        use libc::{mount, CLONE_NEWNS, CLONE_NEWUSER};
+        use libc::{CLONE_NEWNS, CLONE_NEWUSER, mount};
+        use nix::sched::{CloneFlags, unshare};
 
         // Check if we're running in a container environment
         let in_container = Path::new("/.dockerenv").exists()
@@ -104,12 +104,7 @@ mod tests {
             let fstype = CString::new("tmpfs").unwrap();
             let data = CString::new("size=10M").unwrap();
 
-            let mount_result = mount(
-                source.as_ptr(),
-                mp_cstr.as_ptr(),
-                0,
-                std::ptr::null_mut(),
-            );
+            let mount_result = mount(source.as_ptr(), mp_cstr.as_ptr(), 0, std::ptr::null_mut());
 
             if mount_result != 0 {
                 let err = std::io::Error::last_os_error();
