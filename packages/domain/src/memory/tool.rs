@@ -15,10 +15,10 @@ use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use smallvec::SmallVec;
 
 use super::{Memory, MemoryError, MemoryNode, MemoryType};
 use crate::async_task::{AsyncStream, AsyncTask, spawn_async};
+
 use crate::error::{
     ErrorCategory, ErrorRecoverability, ErrorSeverity, ZeroAllocError, ZeroAllocResult,
 };
@@ -108,3 +108,31 @@ pub enum MemoryToolError {
 
 /// Zero-allocation result type for memory tool operations
 pub type MemoryToolResult<T> = Result<T, MemoryToolError>;
+
+impl MemoryTool {
+    /// Create a new memory tool instance
+    pub fn new(memory: Arc<Memory>) -> Self {
+        let data = McpToolData {
+            name: "memory".to_string(),
+            description: "Memory management tool for storing and retrieving information".to_string(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "operation": {
+                        "type": "string",
+                        "enum": ["memorize", "recall", "vector_search", "get_memory", "update_memory", "delete_memory"]
+                    }
+                },
+                "required": ["operation"]
+            }),
+        };
+
+        Self { data, memory }
+    }
+
+    /// Get access to the underlying memory instance
+    #[inline]
+    pub fn memory(&self) -> &Arc<Memory> {
+        &self.memory
+    }
+}

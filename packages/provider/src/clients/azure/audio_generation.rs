@@ -17,14 +17,11 @@ use crate::{
     client::AudioGenerationClient,
     runtime::{self, AsyncTask},
 };
+use fluent_ai_domain::model::AudioGenerationModel;
 
 // ───────────────────────────── provider model ────────────────────────────
-
-#[derive(Clone)]
-pub struct AudioGenerationModel {
-    client: Client,
-    pub model: String,
-}
+// AudioGenerationModel is now imported from fluent_ai_domain::model
+// Removed duplicated AudioGenerationModel struct - use canonical domain type
 
 impl AudioGenerationModel {
     pub fn new(client: Client, model: &str) -> Self {

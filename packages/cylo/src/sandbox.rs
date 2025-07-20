@@ -33,7 +33,7 @@ fn safe_path_to_str(path: &Path) -> SandboxResult<&str> {
 /// Only allocates when UTF-8 conversion is necessary, maintaining zero-allocation
 /// characteristics for valid UTF-8 paths.
 #[inline]
-fn safe_path_to_string(path: &Path) -> SandboxResult<String> {
+pub fn safe_path_to_string(path: &Path) -> SandboxResult<String> {
     match path.to_str() {
         Some(s) => Ok(s.to_string()),
         None => Ok(path.to_string_lossy().into_owned()),

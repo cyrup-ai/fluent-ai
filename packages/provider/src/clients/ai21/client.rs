@@ -13,6 +13,7 @@
 
 use super::error::{AI21Error, Result};
 use super::completion::AI21CompletionBuilder;
+use fluent_ai_domain::model::ModelInfo;
 use super::models;
 use super::config;
 use super::endpoints;
@@ -430,18 +431,8 @@ impl AI21Client {
     }
 }
 
-/// Model information structure
-#[derive(Debug, Clone)]
-pub struct ModelInfo {
-    pub name: &'static str,
-    pub generation: &'static str,
-    pub tier: &'static str,
-    pub max_context: u32,
-    pub supports_streaming: bool,
-    pub supports_tools: bool,
-    pub temperature_range: (f32, f32),
-    pub pricing_tier: &'static str,
-}
+// ModelInfo is now imported from fluent_ai_domain::model::ModelInfo
+// Removed duplicated ModelInfo struct - use canonical domain type
 
 /// Performance metrics structure
 #[derive(Debug, Clone)]

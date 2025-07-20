@@ -109,11 +109,8 @@ pub struct Choice {
     pub finish_reason: Option<String>,
 }
 
-#[derive(Clone)]
-pub struct CompletionModel {
-    pub(crate) client: Client,
-    /// Name of the model (e.g.: deepseek-ai/DeepSeek-R1)
-    pub model: String,
+// CompletionModel is now imported from fluent_ai_domain::model
+// Removed duplicated CompletionModel struct - use canonical domain type
 }
 
 impl CompletionModel {

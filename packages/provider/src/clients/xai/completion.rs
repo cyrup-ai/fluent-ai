@@ -26,11 +26,8 @@ pub const GROK_2_IMAGE_1212: &str = "grok-2-image-1212";
 // Rig Implementation Types
 // =================================================================
 
-#[derive(Clone)]
-pub struct CompletionModel {
-    pub(crate) client: Client,
-    pub model: String,
-}
+// CompletionModel is now imported from fluent_ai_domain::model
+// Removed duplicated CompletionModel struct - use canonical domain type
 
 impl CompletionModel {
     pub(crate) fn create_completion_request(

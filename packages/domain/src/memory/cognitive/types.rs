@@ -332,7 +332,7 @@ impl TemporalContext {
             self.window_start = now;
             // Apply temporal decay to history
             for value in &mut self.history_embedding {
-                *value *= (1.0 - self.temporal_decay);
+                *value *= 1.0 - self.temporal_decay;
             }
         }
     }

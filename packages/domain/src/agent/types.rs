@@ -1,6 +1,6 @@
 //! Additional agent-related types and utilities
 
-use std::sync::Arc;
+// Removed unused Arc import
 
 use crate::MessageRole;
 use crate::ZeroOneOrMany;

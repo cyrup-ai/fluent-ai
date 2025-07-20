@@ -213,16 +213,20 @@ impl EncryptionEngine {
                 message: format!("Failed to serialize encrypted data: {}", e),
             })?;
 
-        Ok(base64::encode(&serialized))
+        use base64::Engine;
+        Ok(base64::engine::general_purpose::STANDARD.encode(&serialized))
     }
 
     /// Decrypt credential value from secure string
     pub fn decrypt_credential(&self, encrypted_string: &str) -> SecurityResult<String> {
         // Decode from base64
-        let serialized =
-            base64::decode(encrypted_string).map_err(|e| SecurityError::EncryptionError {
-                message: format!("Failed to decode base64: {}", e),
-            })?;
+        let serialized = {
+            use base64::Engine;
+            base64::engine::general_purpose::STANDARD.decode(encrypted_string)
+        }
+        .map_err(|e| SecurityError::EncryptionError {
+            message: format!("Failed to decode base64: {}", e),
+        })?;
 
         // Deserialize encrypted data
         let encrypted_data: EncryptedData =

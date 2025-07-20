@@ -230,7 +230,8 @@ impl HttpClient {
         }
 
         // Build optimized request for downloading
-        let mut req_builder = self.inner
+        let mut req_builder = self
+            .inner
             .get(url)
             .header("Accept", "*/*")
             .header("Accept-Encoding", "identity") // Disable compression for downloads
@@ -241,9 +242,12 @@ impl HttpClient {
         req_builder = req_builder.header("Accept-Ranges", "bytes");
 
         // Send request and get streaming response
-        let response = req_builder.send().await.map_err(|e| crate::HttpError::NetworkError {
-            message: format!("Failed to initiate download: {}", e),
-        })?;
+        let response = req_builder
+            .send()
+            .await
+            .map_err(|e| crate::HttpError::NetworkError {
+                message: format!("Failed to initiate download: {}", e),
+            })?;
 
         // Check for successful response status
         let status = response.status();

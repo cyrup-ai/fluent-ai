@@ -612,7 +612,9 @@ mod tests {
             let backend_result = manager.get_instance(&instance.id()).await;
 
             if let Ok(backend) = &backend_result {
-                assert_eq!(backend.backend_type(), "LandLock");
+                if let Ok(backend_arc) = backend {
+                    assert_eq!(backend_arc.backend_type(), "LandLock");
+                }
 
                 // Test release
                 let release_result = manager.release_instance(&instance.id());
@@ -631,12 +633,19 @@ mod tests {
         let manager = InstanceManager::new();
 
         let result = manager.get_instance("nonexistent").await;
-        assert!(result.is_err());
+        assert!(result.is_ok()); // JoinHandle should succeed
 
-        if let Err(CyloError::InstanceNotFound { name }) = result {
-            assert_eq!(name, "nonexistent");
-        } else {
-            panic!("Expected InstanceNotFound error");
+        match result {
+            Ok(inner_result) => {
+                if let Err(CyloError::InstanceNotFound { name }) = inner_result {
+                    assert_eq!(name, "nonexistent");
+                } else {
+                    panic!("Expected InstanceNotFound error");
+                }
+            }
+            Err(join_error) => {
+                panic!("Unexpected join error: {:?}", join_error);
+            }
         }
     }
 
@@ -671,6 +680,7 @@ mod tests {
         let health_results = manager
             .health_check_all()
             .await
+            .expect("Failed to join async task in test")
             .expect("Failed to check health of all instances in test");
         assert!(health_results.is_empty());
     }
@@ -682,6 +692,7 @@ mod tests {
         let cleaned_count = manager
             .cleanup_idle_instances()
             .await
+            .expect("Failed to join async task in test")
             .expect("Failed to cleanup idle instances in test");
         assert_eq!(cleaned_count, 0);
     }

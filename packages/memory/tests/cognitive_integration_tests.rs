@@ -5,8 +5,9 @@
 use std::time::Duration;
 
 use fluent_ai_memory::{
-    CognitiveMemoryManager, CognitiveSettings, MemoryManager, MemoryNode, MemoryType,
+    CognitiveMemoryManager, CognitiveSettings, MemoryManager, MemoryNode,
 };
+use fluent_ai_memory::memory::MemoryTypeEnum;
 
 /// Test backward compatibility with existing memory APIs
 #[tokio::test]
@@ -32,7 +33,7 @@ async fn test_backward_compatibility() {
     .expect("Failed to create cognitive manager");
 
     // Test that all existing APIs still work
-    let memory = MemoryNode::new("test content".to_string(), MemoryType::Semantic);
+    let memory = MemoryNode::new("test content".to_string(), MemoryTypeEnum::Semantic);
     let created = manager
         .create_memory(memory)
         .await
@@ -51,7 +52,7 @@ async fn test_cognitive_enhancement() {
     // Test that memories are enhanced with cognitive features
     let base_memory = MemoryNode::new(
         "Rust is a systems programming language".to_string(),
-        MemoryType::Semantic,
+        MemoryTypeEnum::Semantic,
     );
 
     let cognitive_memory = fluent_ai_memory::CognitiveMemoryNode::from(base_memory);
@@ -89,15 +90,15 @@ async fn test_cognitive_search() {
     let memories = vec![
         MemoryNode::new(
             "Rust is great for systems programming".to_string(),
-            MemoryType::Semantic,
+            MemoryTypeEnum::Semantic,
         ),
         MemoryNode::new(
             "Python is great for machine learning".to_string(),
-            MemoryType::Semantic,
+            MemoryTypeEnum::Semantic,
         ),
         MemoryNode::new(
             "JavaScript is used for web development".to_string(),
-            MemoryType::Semantic,
+            MemoryTypeEnum::Semantic,
         ),
     ];
 
@@ -138,10 +139,13 @@ async fn test_quantum_routing_performance() {
     let query = EnhancedQuery {
         original: "test query".to_string(),
         intent: QueryIntent::Retrieval,
+        context: vec!["test".to_string(), "context".to_string()],
         context_embedding: vec![0.1; 128],
+        timestamp: Some(std::time::Instant::now()),
         temporal_context: None,
         cognitive_hints: vec!["hint1".to_string(), "hint2".to_string()],
         expected_complexity: 0.5,
+        priority: 1,
     };
 
     let start = std::time::Instant::now();
@@ -301,7 +305,7 @@ async fn bench_cognitive_vs_traditional_search() {
 
     // Add test data
     for i in 0..100 {
-        let memory = MemoryNode::new(format!("Test memory content {}", i), MemoryType::Semantic);
+        let memory = MemoryNode::new(format!("Test memory content {}", i), MemoryTypeEnum::Semantic);
         cognitive_manager
             .create_memory(memory.clone())
             .await

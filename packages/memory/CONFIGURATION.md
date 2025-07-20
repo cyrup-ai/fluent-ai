@@ -41,12 +41,12 @@ The memory system automatically:
 ## Basic Usage
 
 ```rust
-use surreal_memory::{MemoryManager, MemoryNode, MemoryType};
+use surreal_memory::{MemoryManager, MemoryNode, MemoryTypeEnum};
 
 // Create a memory
 let memory = MemoryNode::new(
     "The user prefers dark mode interfaces".to_string(),
-    MemoryType::Semantic
+    MemoryTypeEnum::Semantic
 );
 manager.create_memory(memory).await?;
 

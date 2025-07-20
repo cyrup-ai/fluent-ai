@@ -10,7 +10,7 @@ use std::alloc::{GlobalAlloc, Layout};
 use std::arch::x86_64::*;
 use std::mem::{align_of, size_of};
 use std::ptr::NonNull;
-use std::simd::prelude::*;
+
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
@@ -27,7 +27,7 @@ use smallvec::SmallVec;
 use wide::f32x8 as WideF32x8;
 
 use super::{
-    MemoryError, MemoryManagerTrait as MemoryManager, MemoryNode, MemoryRelationship, MemoryType,
+    MemoryError, MemoryNode, MemoryRelationship, MemoryType,
 };
 use crate::ZeroOneOrMany;
 

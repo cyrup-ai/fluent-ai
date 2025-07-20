@@ -257,7 +257,7 @@ impl CommandExecutor {
             ));
         }
 
-        if let (Some(k), Some(v)) = (key, value) {
+        if let (Some(k), Some(v)) = (key.as_ref(), value.as_ref()) {
             let message = format!("Configuration updated: {} = {}", k, v);
             Ok(CommandOutput::success(message))
         } else if let Some(k) = key {

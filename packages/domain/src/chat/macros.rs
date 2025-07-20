@@ -16,7 +16,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::chat::commands::ChatCommand;
-use crate::chat::formatting::MessageContent;
+// Removed unused import: crate::chat::formatting::MessageContent
 
 /// Macro action representing a single recorded operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -201,9 +201,9 @@ pub struct MacroSystem {
 /// Macro execution statistics
 #[derive(Debug, Default)]
 pub struct ExecutionStats {
-    pub total_executions: AtomicCounter,
-    pub successful_executions: AtomicCounter,
-    pub failed_executions: AtomicCounter,
+    pub total_executions: ConsistentCounter,
+    pub successful_executions: ConsistentCounter,
+    pub failed_executions: ConsistentCounter,
     pub total_duration: parking_lot::Mutex<Duration>,
     pub average_duration: parking_lot::Mutex<Duration>,
     pub last_execution: parking_lot::Mutex<Option<Instant>>,
@@ -490,12 +490,13 @@ impl MacroSystem {
     }
 
     /// Execute a single macro action
-    async fn execute_action(
-        &self,
-        action: &MacroAction,
-        context: &mut MacroExecutionContext,
-    ) -> Result<ActionExecutionResult, MacroSystemError> {
-        match action {
+    fn execute_action<'a>(
+        &'a self,
+        action: &'a MacroAction,
+        context: &'a mut MacroExecutionContext,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<ActionExecutionResult, MacroSystemError>> + Send + 'a>> {
+        Box::pin(async move {
+            match action {
             MacroAction::SendMessage {
                 content,
                 message_type,
@@ -576,6 +577,7 @@ impl MacroSystem {
                 Ok(ActionExecutionResult::Success)
             }
         }
+        })
     }
 
     /// Resolve variables in a string

@@ -1,12 +1,10 @@
 //! Agent role trait and implementation
 
 use std::fmt;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::AtomicUsize;
 
 // Ultra-high-performance zero-allocation imports
-use arrayvec::ArrayVec;
-use atomic_counter::{AtomicCounter, RelaxedCounter};
+use atomic_counter::RelaxedCounter;
 use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
 use serde_json::Value;
@@ -14,8 +12,7 @@ use serde_json::Value;
 use crate::HashMap;
 use crate::MessageRole;
 use crate::ZeroOneOrMany;
-use crate::memory::{Memory, MemoryError, MemoryNode, MemoryType};
-use crate::memory::{MemoryTool, MemoryToolError};
+// Unused imports cleaned up
 
 /// Maximum number of relevant memories for context injection
 const MAX_RELEVANT_MEMORIES: usize = 10;
@@ -167,7 +164,7 @@ impl AgentRoleImpl {
     /// Zero cost abstraction with direct memory access
     #[inline]
     pub fn get_memory_tool(&self) -> Option<&dyn std::any::Any> {
-        self.memory.as_ref().map(|m| m.as_ref())
+        self.memory.as_ref().map(|m| m.as_ref() as &dyn std::any::Any)
     }
 
     /// Set memory tool for agent role

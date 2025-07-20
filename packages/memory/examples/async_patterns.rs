@@ -4,8 +4,7 @@
 //! that can be awaited, following the pattern of no async_trait or Box<dyn Future>
 
 use fluent_ai_memory::memory::{
-    memory_manager::{MemoryManager, SurrealDBMemoryManager},
-    memory_node::{MemoryNode, MemoryType},
+    MemoryManager, SurrealDBMemoryManager, MemoryNode, MemoryTypeEnum, MemoryRelationship,
 };
 use futures::StreamExt;
 use surrealdb::{
@@ -42,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let memory = MemoryNode::with_id(
         "async_demo".to_string(),
         "This is an async demo".to_string(),
-        MemoryType::Semantic,
+        MemoryTypeEnum::Semantic,
     );
 
     // create_memory returns PendingMemory, which implements Future
@@ -74,13 +73,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mem = MemoryNode::with_id(
             format!("stream_demo_{i}"),
             format!("Stream demo memory #{i}"),
-            MemoryType::Semantic,
+            MemoryTypeEnum::Semantic,
         );
         memory_manager.create_memory(mem).await?;
     }
 
     // query_by_type returns MemoryStream, which implements Stream
-    let mut stream = memory_manager.query_by_type(MemoryType::Semantic);
+    let mut stream = memory_manager.query_by_type(MemoryTypeEnum::Semantic);
 
     // We can iterate over the stream
     println!("Streaming memories:");
@@ -105,17 +104,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         memory_manager.create_memory(MemoryNode::with_id(
             "concurrent_1".to_string(),
             "First concurrent".to_string(),
-            MemoryType::Semantic
+            MemoryTypeEnum::Semantic
         )),
         memory_manager.create_memory(MemoryNode::with_id(
             "concurrent_2".to_string(),
             "Second concurrent".to_string(),
-            MemoryType::Episodic
+            MemoryTypeEnum::Episodic
         )),
         memory_manager.create_memory(MemoryNode::with_id(
             "concurrent_3".to_string(),
             "Third concurrent".to_string(),
-            MemoryType::Procedural
+            MemoryTypeEnum::Procedural
         )),
     );
 
@@ -146,7 +145,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Filter stream results
     let filtered: Vec<_> = memory_manager
-        .query_by_type(MemoryType::Semantic)
+        .query_by_type(MemoryTypeEnum::Semantic)
         .filter_map(|result| async move { result.ok().filter(|m| m.content.contains("demo")) })
         .collect()
         .await;
@@ -172,7 +171,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "=".repeat(40));
 
     // Create a relationship
-    let rel = fluent_ai_memory::memory::MemoryRelationship::new(
+    let rel = MemoryRelationship::new(
         mem1.id.clone(),
         mem2.id.clone(),
         "relates_to".to_string(),

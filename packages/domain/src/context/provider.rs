@@ -18,13 +18,13 @@ use arrayvec::ArrayVec;
 use fluent_ai_memory::memory::manager::surreal::SurrealDBMemoryManager;
 use fluent_ai_memory::memory::primitives::metadata::MemoryMetadata;
 use fluent_ai_memory::memory::primitives::types::MemoryTypeEnum;
-use fluent_ai_memory::memory::primitives::{MemoryNode, MemoryType};
+use fluent_ai_memory::memory::primitives::MemoryNode;
 use fluent_ai_memory::utils::error::Error as MemoryError;
 use fluent_ai_memory::vector::embedding_model::EmbeddingModel;
 // Additional imports for async operations
 use futures::StreamExt;
 use glob::Pattern;
-use ignore::{WalkBuilder, WalkState};
+
 use jwalk::WalkDir;
 use memmap2::MmapOptions;
 use rayon::prelude::*;
@@ -133,30 +133,23 @@ impl MemoryIntegration {
             .await
             .map_err(|e| ContextError::EmbeddingError(e.to_string()))?;
 
-        // Create memory metadata with all required fields
+        // Create memory metadata with correct fields
         let mut metadata = MemoryMetadata {
             user_id: None,
             agent_id: None,
             context: "file_context".to_string(),
-            importance: 0.5,
-            created_at: SystemTime::now(),
-            last_accessed: SystemTime::now(),
-            access_count: 0,
+            keywords: vec![],
             tags: vec!["document".to_string(), "context".to_string()],
+            category: "file".to_string(),
+            importance: 0.5,
             source: Some(path.to_string()),
-            confidence: 1.0,
-            version: 1,
-            parent_id: None,
-            children_ids: vec![],
-            associations: HashMap::new(),
-            custom_fields: HashMap::new(),
+            created_at: chrono::Utc::now(),
+            last_accessed_at: Some(chrono::Utc::now()),
+            embedding: None,
+            custom: serde_json::json!({
+                "file_path": path.to_string()
+            }),
         };
-
-        // Add path as custom field
-        metadata.custom_fields.insert(
-            "file_path".to_string(),
-            serde_json::Value::String(path.to_string()),
-        );
 
         // Create memory node
         let memory_node = MemoryNode {
@@ -307,7 +300,7 @@ impl FileContext {
 /// Production-ready FilesContext implementation
 #[derive(Debug, Clone)]
 pub struct FilesContext {
-    pattern: SmallVec<[u8; 128]>,
+    pattern: SmallVec<u8, 128>,
     memory_integration: Option<Arc<MemoryIntegration>>,
 }
 
@@ -484,7 +477,7 @@ impl DirectoryContext {
 /// Production-ready GithubContext implementation
 #[derive(Debug, Clone)]
 pub struct GithubContext {
-    pattern: SmallVec<[u8; 128]>,
+    pattern: SmallVec<u8, 128>,
     memory_integration: Option<Arc<MemoryIntegration>>,
 }
 

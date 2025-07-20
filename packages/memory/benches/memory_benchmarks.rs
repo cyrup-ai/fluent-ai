@@ -1,11 +1,13 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
-use fluent_memory::cache::{Cache, CachePolicy, MemoryCache};
-use fluent_memory::core::Memory;
-use fluent_memory::storage::{graph::GraphDB, vector::VectorStore};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use std::hint::black_box;
+use fluent_ai_memory::cache::{Cache, CachePolicy, MemoryCache};
+use fluent_ai_memory::core::Memory;
+use fluent_ai_memory::storage::{graph::GraphDB, vector::VectorStore};
 use rand::prelude::*;
+use rand::{thread_rng, Rng};
 use tokio::runtime::Runtime;
 
 fn setup_benchmark_environment() -> (Arc<GraphDB>, Arc<VectorStore>, Runtime) {
@@ -52,12 +54,14 @@ fn bench_memory_storage(c: &mut Criterion) {
     let vector = create_memory_vector(128);
 
     c.bench_function("memory_storage", |b| {
-        b.to_async(&runtime).iter(|| async {
-            graph_db.store_entity(&memory).await.unwrap();
-            vector_store
-                .store_vector(memory.id(), &vector)
-                .await
-                .unwrap();
+        b.iter(|| {
+            runtime.block_on(async {
+                graph_db.store_entity(&memory).await.unwrap();
+                vector_store
+                    .store_vector(memory.id(), &vector)
+                    .await
+                    .unwrap();
+            });
         });
     });
 }
@@ -67,12 +71,14 @@ fn bench_vector_search(c: &mut Criterion) {
     let query_vector = create_memory_vector(128);
 
     c.bench_function("vector_search", |b| {
-        b.to_async(&runtime).iter(|| async {
-            let results = vector_store
-                .search_vectors(&query_vector, 10)
-                .await
-                .unwrap();
-            black_box(results);
+        b.iter(|| {
+            runtime.block_on(async {
+                let results = vector_store
+                    .search_vectors(&query_vector, 10)
+                    .await
+                    .unwrap();
+                black_box(results);
+            });
         });
     });
 }
@@ -99,7 +105,8 @@ fn bench_memory_cache(c: &mut Criterion) {
             &policy,
             |b, _| {
                 b.iter(|| {
-                    let idx = black_box(rand::random::<usize>() % 500);
+                    let mut rng = thread_rng();
+                    let idx = black_box(rng.gen_range(0..500));
                     let id = black_box(&memories[idx].id());
                     cache.get(id)
                 });
@@ -112,7 +119,8 @@ fn bench_memory_cache(c: &mut Criterion) {
             &policy,
             |b, _| {
                 b.iter(|| {
-                    let idx = black_box(500 + rand::random::<usize>() % 500);
+                    let mut rng = thread_rng();
+                    let idx = black_box(500 + rng.gen_range(0..500));
                     let id = black_box(&memories[idx].id());
                     cache.get(id)
                 });
@@ -125,7 +133,8 @@ fn bench_memory_cache(c: &mut Criterion) {
             &policy,
             |b, _| {
                 b.iter(|| {
-                    let idx = black_box(rand::random::<usize>() % 1000);
+                    let mut rng = thread_rng();
+                    let idx = black_box(rng.gen_range(0..1000));
                     let memory = black_box(memories[idx].clone());
                     cache.put(memory)
                 });

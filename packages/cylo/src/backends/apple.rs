@@ -598,7 +598,7 @@ mod tests {
         let config = BackendConfig::new("test_apple").with_timeout(Duration::from_secs(60));
 
         // Valid image should work
-        let result = AppleBackend::new("python:3.11".to_string(), config.clone());
+        let _result = AppleBackend::new("python:3.11".to_string(), config.clone());
         // Note: Will fail on non-macOS platforms, which is expected
 
         // Invalid image should fail

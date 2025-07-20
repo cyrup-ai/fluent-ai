@@ -7,6 +7,7 @@ use super::Client;
 use super::completion::ApiResponse;
 use crate::transcription;
 use crate::transcription::TranscriptionError;
+use fluent_ai_domain::model::TranscriptionModel;
 
 pub const WHISPER_LARGE_V3: &str = "openai/whisper-large-v3";
 pub const WHISPER_LARGE_V3_TURBO: &str = "openai/whisper-large-v3-turbo";
@@ -30,11 +31,8 @@ impl TryFrom<TranscriptionResponse>
     }
 }
 
-#[derive(Clone)]
-pub struct TranscriptionModel {
-    client: Client,
-    /// Name of the model (e.g.: gpt-3.5-turbo-1106)
-    pub model: String,
+// TranscriptionModel is now imported from fluent_ai_domain::model
+// Removed duplicated TranscriptionModel struct - use canonical domain type
 }
 
 impl TranscriptionModel {

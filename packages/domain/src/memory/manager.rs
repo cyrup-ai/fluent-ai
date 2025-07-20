@@ -13,24 +13,28 @@ use std::time::Duration;
 use arrayvec::ArrayVec;
 use crossbeam_queue::SegQueue;
 use crossbeam_utils::CachePadded;
+
+use super::primitives::MemoryNode;
+use super::types_legacy::MemoryType;
+use super::MemoryError;
 // Conditional re-exports for cognitive features
 #[cfg(feature = "cognitive")]
 pub use fluent_ai_memory::{
     CognitiveMemoryManager, CognitiveMemoryNode, CognitiveSettings, CognitiveState,
     EvolutionMetadata, QuantumSignature,
 };
-// Re-export core types from fluent_ai_memory
+// Re-export core types from fluent_ai_memory (avoiding conflicts)
 pub use fluent_ai_memory::{
-    Error as MemoryError, MemoryConfig, MemoryManager as MemoryManagerTrait, MemoryMetadata,
-    MemoryNode, MemoryType, SurrealDBMemoryManager,
-    memory::{MemoryRelationship, MemoryTypeEnum, SurrealMemoryQuery},
+    MemoryConfig, MemoryManager as MemoryManagerTrait, MemoryMetadata,
+    SurrealDBMemoryManager,
+    memory::{SurrealMemoryQuery},
 };
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use smallvec::SmallVec;
 
 use crate::ZeroOneOrMany;
-use crate::async_task::{AsyncStream, AsyncTask, spawn_async};
+use crate::{AsyncTask, spawn_async};
 
 /// Memory stub that provides safe fallback for synchronous contexts
 ///
@@ -51,7 +55,7 @@ impl MemoryStub {
     #[inline]
     pub fn new() -> Self {
         let config = MemoryConfig {
-            database: fluent_ai_memory::DatabaseConfig {
+            database: fluent_ai_memory::utils::config::DatabaseConfig {
                 connection_string: "memory://stub".to_string(),
                 namespace: "stub".to_string(),
                 database: "stub".to_string(),
@@ -108,7 +112,7 @@ const TIMESTAMP_CACHE_REFRESH_INTERVAL_MICROS: u64 = 1000;
 #[inline(always)]
 pub fn initialize_memory_node_pool(initial_size: usize, embedding_dim: usize) {
     for _ in 0..initial_size {
-        let node = Box::new(MemoryNode::new(String::new(), MemoryType::Episodic));
+        let node = Box::new(MemoryNode::new(super::primitives::MemoryTypeEnum::Episodic, super::primitives::MemoryContent::text("")));
         MEMORY_NODE_POOL.push(node);
     }
     POOL_STATS.store(initial_size, Ordering::Relaxed);
@@ -127,7 +131,7 @@ pub fn get_pooled_memory_node() -> Box<MemoryNode> {
         POOL_STATS.fetch_sub(1, Ordering::Relaxed);
         node
     } else {
-        Box::new(MemoryNode::new(String::new(), MemoryType::Episodic))
+        Box::new(MemoryNode::new(super::primitives::MemoryTypeEnum::Episodic, super::primitives::MemoryContent::text("")))
     }
 }
 
@@ -258,5 +262,23 @@ impl Memory {
     pub async fn with_defaults() -> Result<Self, MemoryError> {
         let config = MemoryConfig::default();
         Self::new(config).await
+    }
+
+    /// Store a memory node in the memory system
+    ///
+    /// # Arguments
+    /// * `memory_node` - The memory node to store
+    ///
+    /// # Returns
+    /// Future that completes when the memory is stored
+    pub fn store_memory(&self, memory_node: &MemoryNode) -> Pin<Box<dyn Future<Output = Result<(), MemoryError>> + Send>> {
+        let memory = self.memory.clone();
+        let memory_node = memory_node.clone();
+        
+        Box::pin(async move {
+            use fluent_ai_memory::MemoryManager;
+            let pending = memory.create_memory(memory_node);
+            pending.await.map_err(|e| MemoryError::StorageError(e.to_string()))
+        })
     }
 }

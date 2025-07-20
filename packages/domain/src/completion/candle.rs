@@ -9,10 +9,10 @@
 
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use arrayvec::ArrayVec;
-use serde::{Deserialize, Serialize};
+
 use smallvec::SmallVec;
 use thiserror::Error;
 use tokio_stream::Stream;

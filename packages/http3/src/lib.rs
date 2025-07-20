@@ -102,10 +102,10 @@ pub use cache::CacheEntry;
 pub use client::{ClientStats, HttpClient};
 pub use config::HttpConfig;
 pub use error::{HttpError, HttpResult};
-pub use stream::{DownloadChunk, DownloadStream, HttpStream, LinesStream, SseStream};
 pub use middleware::{Middleware, MiddlewareChain};
 pub use request::{HttpMethod, HttpRequest};
 pub use response::HttpResponse;
+pub use stream::{DownloadChunk, DownloadStream, HttpStream, LinesStream, SseStream};
 
 /// Global HTTP client instance with connection pooling
 /// Uses the Default implementation which provides graceful fallback handling

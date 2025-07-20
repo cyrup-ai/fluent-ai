@@ -101,11 +101,8 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse {
     }
 }
 
-#[derive(Clone)]
-pub struct CompletionModel {
-    pub(crate) client: Client,
-    pub model: String,
-}
+// CompletionModel is now imported from fluent_ai_domain::model
+// Removed duplicated CompletionModel struct - use canonical domain type
 
 impl CompletionModel {
     pub fn new(client: Client, model: &str) -> Self {

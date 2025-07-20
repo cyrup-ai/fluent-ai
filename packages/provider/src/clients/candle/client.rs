@@ -1061,11 +1061,8 @@ impl CompletionClient for CandleCompletionClient {
 }
 
 /// Wrapper model for CompletionClient compatibility
-#[derive(Debug, Clone)]
-pub struct CandleCompletionModel {
-    /// Underlying Candle client
-    client: CandleCompletionClient,
-    /// Specific model being used
+// CandleCompletionModel is now imported from fluent_ai_domain::model
+// Removed duplicated CandleCompletionModel struct - use canonical domain type
     model: CandleModel,
 }
 

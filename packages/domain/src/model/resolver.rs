@@ -9,9 +9,12 @@ use std::sync::Arc;
 use ahash::RandomState;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
+
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use strsim::jaro_winkler;
+
+use crate::model::registry::RegisteredModel;
 
 use crate::model::error::{ModelError, Result};
 use crate::model::info::ModelInfo;
@@ -230,7 +233,7 @@ impl ModelResolver {
         model_name: &str,
         provider: Option<&str>,
     ) -> Result<ModelResolution<'a>> {
-        self.resolve_with_registry(&self.registry, model_name, provider)
+        self.resolve_with_registry::<M>(&self.registry, model_name, provider)
     }
 
     /// Resolve a model by name and optional provider using a specific registry

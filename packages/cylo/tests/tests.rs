@@ -94,7 +94,7 @@ mod tests {
         let info = String::from_utf8_lossy(&output.stdout);
         assert!(info.contains("HFS+"));
 
-        remove_ramdisk(config.mount_point.to_str().unwrap()).unwrap();
+        remove_ramdisk(&config.mount_point).unwrap();
     }
 
     #[test]

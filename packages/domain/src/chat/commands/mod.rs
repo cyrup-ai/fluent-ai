@@ -69,7 +69,9 @@ pub async fn execute_command(command: ChatCommand) -> CommandResult<CommandOutpu
 /// Parse and execute command using global executor
 pub async fn parse_and_execute_command(input: &str) -> CommandResult<CommandOutput> {
     if let Some(executor) = get_command_executor().await {
-        executor.parse_and_execute(input).await
+        executor.parse_and_execute(input).await.map_err(|e| CommandError::ExecutionFailed {
+            reason: Arc::from(format!("Task join error: {}", e))
+        })?
     } else {
         Err(CommandError::ConfigurationError {
             detail: Arc::from("Command executor not initialized"),

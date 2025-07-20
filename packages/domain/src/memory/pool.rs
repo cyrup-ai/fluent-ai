@@ -1,5 +1,5 @@
 use super::cache::get_cached_system_time;
-use super::types::{
+use super::types_legacy::{
     ImportanceContext, MemoryMetadata, MemoryNode, MemoryType, calculate_importance, next_memory_id,
 };
 

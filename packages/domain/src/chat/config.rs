@@ -12,11 +12,12 @@ use arc_swap::ArcSwap;
 use atomic_counter::{AtomicCounter, ConsistentCounter};
 use crossbeam_queue::SegQueue;
 use serde::{Deserialize, Serialize};
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use tokio::sync::{RwLock, broadcast};
 use uuid::Uuid;
 
 /// Core chat configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Archive, RkyvDeserialize, RkyvSerialize, Default)]
 pub struct ChatConfig {
     /// Maximum message length
     pub max_message_length: usize,
@@ -26,10 +27,18 @@ pub struct ChatConfig {
     pub history_retention: Duration,
     /// Enable streaming responses
     pub enable_streaming: bool,
+    /// Personality configuration
+    pub personality: PersonalityConfig,
+    /// Behavior configuration
+    pub behavior: BehaviorConfig,
+    /// UI configuration
+    pub ui: UIConfig,
+    /// Integration configuration
+    pub integration: IntegrationConfig,
 }
 
 /// Personality configuration for AI behavior
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Archive, RkyvDeserialize, RkyvSerialize)]
 pub struct PersonalityConfig {
     /// Personality type identifier
     pub personality_type: Arc<str>,
@@ -39,10 +48,20 @@ pub struct PersonalityConfig {
     pub tone: Arc<str>,
     /// Custom instructions
     pub custom_instructions: Option<Arc<str>>,
+    /// Creativity level (0.0-1.0)
+    pub creativity: f64,
+    /// Formality level (0.0-1.0)
+    pub formality: f64,
+    /// Humor level (0.0-1.0)
+    pub humor: f64,
+    /// Empathy level (0.0-1.0)
+    pub empathy: f64,
+    /// Expertise level
+    pub expertise_level: Arc<str>,
 }
 
 /// Behavior configuration for chat system
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Archive, RkyvDeserialize, RkyvSerialize)]
 pub struct BehaviorConfig {
     /// Enable auto-responses
     pub auto_response: bool,
@@ -55,7 +74,7 @@ pub struct BehaviorConfig {
 }
 
 /// User interface configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Archive, RkyvDeserialize, RkyvSerialize)]
 pub struct UIConfig {
     /// Theme settings
     pub theme: Arc<str>,
@@ -68,7 +87,7 @@ pub struct UIConfig {
 }
 
 /// Integration configuration for external services
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Archive, RkyvDeserialize, RkyvSerialize)]
 pub struct IntegrationConfig {
     /// Enabled integrations
     pub enabled_integrations: Vec<Arc<str>>,
@@ -76,6 +95,54 @@ pub struct IntegrationConfig {
     pub credentials: HashMap<Arc<str>, Arc<str>>,
     /// Webhook configuration
     pub webhooks: Vec<Arc<str>>,
+}
+
+impl Default for PersonalityConfig {
+    fn default() -> Self {
+        Self {
+            personality_type: Arc::from("balanced"),
+            response_style: Arc::from("helpful"),
+            tone: Arc::from("neutral"),
+            custom_instructions: None,
+            creativity: 0.5,
+            formality: 0.5,
+            humor: 0.3,
+            empathy: 0.7,
+            expertise_level: Arc::from("intermediate"),
+        }
+    }
+}
+
+impl Default for BehaviorConfig {
+    fn default() -> Self {
+        Self {
+            auto_response: false,
+            response_delay: Duration::from_millis(500),
+            enable_filtering: true,
+            max_concurrent_chats: 10,
+        }
+    }
+}
+
+impl Default for UIConfig {
+    fn default() -> Self {
+        Self {
+            theme: Arc::from("default"),
+            font_size: 14,
+            dark_mode: false,
+            enable_animations: true,
+        }
+    }
+}
+
+impl Default for IntegrationConfig {
+    fn default() -> Self {
+        Self {
+            enabled_integrations: Vec::new(),
+            credentials: HashMap::new(),
+            webhooks: Vec::new(),
+        }
+    }
 }
 
 /// Configuration change event with zero-allocation patterns
@@ -458,7 +525,7 @@ impl ConfigurationManager {
     pub fn new(initial_config: ChatConfig) -> Self {
         let (change_notifier, _) = broadcast::channel(1000);
 
-        let mut manager = Self {
+        let manager = Self {
             config: ArcSwap::new(Arc::new(initial_config)),
             change_events: SegQueue::new(),
             change_notifier,
@@ -470,18 +537,16 @@ impl ConfigurationManager {
             configuration_locks: Arc::new(RwLock::new(HashMap::new())),
         };
 
-        // Initialize default validators
+        // Initialize default validators using shared references
+        let validation_rules = manager.validation_rules.clone();
         tokio::spawn(async move {
-            manager
-                .register_validator(Arc::new(PersonalityValidator))
-                .await;
-            manager
-                .register_validator(Arc::new(BehaviorValidator))
-                .await;
-            manager.register_validator(Arc::new(UIValidator)).await;
-            manager
-                .register_validator(Arc::new(IntegrationValidator))
-                .await;
+            {
+                let mut rules = validation_rules.write().await;
+                rules.insert("personality".into(), Arc::new(PersonalityValidator));
+                rules.insert("behavior".into(), Arc::new(BehaviorValidator));
+                rules.insert("ui".into(), Arc::new(UIValidator));
+                rules.insert("integration".into(), Arc::new(IntegrationValidator));
+            }
         });
 
         manager
@@ -565,7 +630,7 @@ impl ConfigurationManager {
 
         // Load current config and make a copy
         let current_config = self.config.load_full();
-        let mut new_config = (**current_config).clone();
+        let mut new_config = current_config.as_ref().clone();
 
         // Apply update
         updater(&mut new_config)?;
@@ -670,15 +735,21 @@ impl ConfigurationManager {
             "yaml" => serde_yaml::to_string(&*config)?,
             "toml" => toml::to_string(&*config)?,
             "binary" => {
-                let bytes = rkyv::to_bytes::<_, 1024>(&*config)?;
-                base64::encode(&bytes)
+                let bytes = rkyv::to_bytes::<ChatConfig>(&*config)?;
+                {
+                    use base64::Engine;
+                    base64::engine::general_purpose::STANDARD.encode(&bytes)
+                }
             }
             _ => return Err("Unsupported format".into()),
         };
 
         let data = if persistence.compression {
             let compressed = lz4::block::compress(&serialized.as_bytes(), None, true)?;
-            base64::encode(&compressed)
+            {
+                use base64::Engine;
+                base64::engine::general_purpose::STANDARD.encode(&compressed)
+            }
         } else {
             serialized
         };
@@ -695,7 +766,10 @@ impl ConfigurationManager {
         let data = tokio::fs::read_to_string(&*persistence.config_file_path).await?;
 
         let content = if persistence.compression {
-            let compressed = base64::decode(&data)?;
+            let compressed = {
+                use base64::Engine;
+                base64::engine::general_purpose::STANDARD.decode(&data)?
+            };
             let decompressed = lz4::block::decompress(&compressed, None)?;
             String::from_utf8(decompressed)?
         } else {
@@ -707,9 +781,10 @@ impl ConfigurationManager {
             "yaml" => serde_yaml::from_str(&content)?,
             "toml" => toml::from_str(&content)?,
             "binary" => {
-                let bytes = base64::decode(&content)?;
-                let archived = rkyv::check_archived_root::<ChatConfig>(&bytes)?;
-                archived.deserialize(&mut rkyv::Infallible)?
+                use base64::Engine;
+                let bytes = base64::engine::general_purpose::STANDARD.decode(&content)?;
+                let archived = rkyv::from_bytes::<ChatConfig, rkyv::rancor::Error>(&bytes)?;
+                archived
             }
             _ => return Err("Unsupported format".into()),
         };
@@ -825,13 +900,13 @@ impl PersonalityConfigBuilder {
     }
 
     /// Set creativity level
-    pub fn creativity(mut self, creativity: f32) -> Self {
+    pub fn creativity(mut self, creativity: f64) -> Self {
         self.config.creativity = creativity.clamp(0.0, 1.0);
         self
     }
 
     /// Set formality level
-    pub fn formality(mut self, formality: f32) -> Self {
+    pub fn formality(mut self, formality: f64) -> Self {
         self.config.formality = formality.clamp(0.0, 1.0);
         self
     }

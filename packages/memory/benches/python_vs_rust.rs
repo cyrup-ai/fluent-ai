@@ -3,7 +3,7 @@ use std::path::Path;
 use std::process::Command;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use fluent_ai_memory::{MemoryNode, MemoryType};
+use fluent_ai_memory::{MemoryNode, MemoryTypeEnum};
 use rand::Rng;
 use rand::distr::Alphanumeric;
 
@@ -32,7 +32,7 @@ fn bench_memory_creation(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
             b.iter(|| {
                 let content = random_content(size);
-                MemoryNode::new(content, MemoryType::Semantic)
+                MemoryNode::new(content, MemoryTypeEnum::Semantic)
             });
         });
     }
@@ -49,7 +49,7 @@ fn bench_memory_with_embedding(c: &mut Criterion) {
             b.iter(|| {
                 let content = random_content(100);
                 let embedding = random_embedding(dim);
-                MemoryNode::new(content, MemoryType::Semantic).with_embedding(embedding)
+                MemoryNode::new(content, MemoryTypeEnum::Semantic).with_embedding(embedding)
             });
         });
     }

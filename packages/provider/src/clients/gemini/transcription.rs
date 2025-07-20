@@ -13,17 +13,16 @@ use crate::{
     clients::gemini::completion::gemini_api_types::{
         Blob, Content, GenerateContentRequest, GenerationConfig, Part, Role,
     },
+};
+use fluent_ai_domain::model::TranscriptionModel;
     transcription::{self, TranscriptionError},
 };
 
 const TRANSCRIPTION_PREAMBLE: &str =
     "Translate the provided audio exactly. Do not add additional information.";
 
-#[derive(Clone)]
-pub struct TranscriptionModel {
-    client: Client,
-    /// Name of the model (e.g.: gemini-1.5-flash)
-    pub model: String,
+// TranscriptionModel is now imported from fluent_ai_domain::model
+// Removed duplicated TranscriptionModel struct - use canonical domain type
 }
 
 impl TranscriptionModel {

@@ -4,7 +4,7 @@
 //! quantum-inspired cognitive computing, and SIMD-optimized operations.
 
 /// Memory primitives with zero-allocation design
-mod primitives;
+pub mod primitives;
 
 /// Quantum-inspired cognitive computing types
 mod cognitive;
@@ -70,22 +70,35 @@ pub use ops::{
 };
 pub use primitives::*;
 pub use tool::{MemoryOperation, MemoryResult, MemoryTool, MemoryToolError, MemoryToolResult};
+// Re-export commonly used primitives types
+pub use primitives::{MemoryTypeEnum, MemoryContent};
 // Legacy type aliases for backward compatibility
 pub use types_legacy::{
     Error as LegacyMemoryError, ImportanceContext, MemoryMetadata as LegacyMemoryMetadata,
     MemoryNode as LegacyMemoryNode, MemoryRelationship as LegacyMemoryRelationship,
-    MemoryType as LegacyMemoryType, VectorStoreError, VectorStoreIndex, VectorStoreIndexDyn,
+    MemoryType as LegacyMemoryType, VectorStoreIndex, VectorStoreIndexDyn,
     calculate_importance, next_memory_id,
 };
 
 pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
+
+/// Fallback trait definition for when fluent-ai-memory feature is not enabled
+#[cfg(not(feature = "fluent-ai-memory"))]
+pub trait MemoryManagerTrait: Send + Sync {
+    type Error;
+    type MemoryNode;
+    
+    fn store_memory(&self, memory: Self::MemoryNode) -> Result<(), Self::Error>;
+}
+
+// Trait is already exported as public above
 
 // Primary error type is now the new MemoryError from primitives
 pub type Error = crate::memory::primitives::MemoryError;
 
 // Legacy compatibility aliases
 pub type VectorStoreError = Error;
-pub type MemoryError = Error;
+// MemoryError alias removed to avoid conflict with fluent_ai_memory::Error
 
 /// Memory system configuration combining all subsystem configurations
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

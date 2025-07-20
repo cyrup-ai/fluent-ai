@@ -15,6 +15,7 @@ use crate::{
     providers::openai::ImageGenerationResponse,
     runtime::{self, AsyncTask},
 };
+use fluent_ai_domain::model::ImageGenerationModel;
 
 // ───────────────────────────── error handling ───────────────────────
 
@@ -31,12 +32,8 @@ enum ApiResponse<T> {
 }
 
 // ───────────────────────────── provider model ────────────────────────────
-
-#[derive(Clone)]
-pub struct ImageGenerationModel {
-    client: Client,
-    pub model: String,
-}
+// ImageGenerationModel is now imported from fluent_ai_domain::model
+// Removed duplicated ImageGenerationModel struct - use canonical domain type
 
 impl ImageGenerationModel {
     pub fn new(client: Client, model: &str) -> Self {

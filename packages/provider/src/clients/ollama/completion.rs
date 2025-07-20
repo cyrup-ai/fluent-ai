@@ -132,13 +132,8 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse {
 }
 
 // ============================================================================
-// Completion Model
-// ============================================================================
-#[derive(Clone)]
-pub struct CompletionModel {
-    client: Client,
-    pub model: String,
-}
+// CompletionModel is now imported from fluent_ai_domain::model
+// Removed duplicated CompletionModel struct - use canonical domain type
 
 impl CompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
@@ -286,18 +281,9 @@ impl completion::CompletionModel for CompletionModel {
         }
 
         task
-    }
-}
-
-// ============================================================================
 // Embedding Model
-// ============================================================================
-#[derive(Clone)]
-pub struct EmbeddingModel {
-    client: Client,
-    pub model: String,
-    ndims: usize,
-}
+// EmbeddingModel is now imported from fluent_ai_domain::model
+// Removed duplicated EmbeddingModel struct - use canonical domain type
 
 impl EmbeddingModel {
     pub fn new(client: Client, model: &str, ndims: usize) -> Self {

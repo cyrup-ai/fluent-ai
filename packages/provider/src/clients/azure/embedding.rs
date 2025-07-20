@@ -14,6 +14,7 @@ use crate::{
     embeddings::{self, EmbeddingError},
     runtime::{self as rt, AsyncTask},
 };
+use fluent_ai_domain::model::EmbeddingModel;
 
 // ───────────────────────────── public constants ──────────────────────────
 
@@ -87,13 +88,8 @@ impl From<ApiResponse<EmbeddingResponse>> for Result<EmbeddingResponse, Embeddin
 }
 
 // ───────────────────────────── provider model ────────────────────────────
-
-#[derive(Clone)]
-pub struct EmbeddingModel {
-    client: Client,
-    pub model: String,
-    ndims: usize,
-}
+// EmbeddingModel is now imported from fluent_ai_domain::model
+// Removed duplicated EmbeddingModel struct - use canonical domain type
 
 impl EmbeddingModel {
     pub fn new(client: Client, model: &str, ndims: usize) -> Self {

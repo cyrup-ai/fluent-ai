@@ -200,6 +200,34 @@ impl<T: Content + Clone> Content for ZeroOneOrMany<T> {}
 
 // High-performance, zero-allocation message types
 
+/// Chat message type for search and history functionality
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchChatMessage {
+    pub role: String,
+    pub content: String,
+    pub timestamp: u64,
+    pub tokens: usize,
+    pub metadata: Option<String>,
+}
+
+impl SearchChatMessage {
+    pub fn new(role: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            role: role.into(),
+            content: content.into(),
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+            tokens: 0,
+            metadata: None,
+        }
+    }
+}
+
+/// Type alias for chat messages 
+pub type ChatMessage = Message<256>;
+
 /// Zero-allocation message with const generics for stack allocation
 #[derive(Debug, Clone)]
 pub struct Message<const N: usize = 256> {

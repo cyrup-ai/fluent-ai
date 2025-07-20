@@ -18,6 +18,7 @@ use std::time::{Duration, Instant};
 
 use arc_swap::{ArcSwap, Guard};
 use arrayvec::{ArrayString, ArrayVec};
+use fluent_ai_domain::model::ModelInfo;
 use fluent_ai_domain::AsyncTask;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 use smallvec::{SmallVec, smallvec};
@@ -656,20 +657,8 @@ impl OpenAIClient {
     }
 }
 
-/// Model information structure
-#[derive(Debug, Clone)]
-pub struct ModelInfo {
-    pub name: &'static str,
-    pub family: &'static str,
-    pub generation: &'static str,
-    pub max_context: u32,
-    pub supports_streaming: bool,
-    pub supports_tools: bool,
-    pub supports_vision: bool,
-    pub supports_audio: bool,
-    pub temperature_range: (f32, f32),
-    pub pricing_tier: &'static str,
-}
+// ModelInfo is now imported from fluent_ai_domain::model::ModelInfo
+// Removed duplicated ModelInfo struct - use canonical domain type
 
 /// Performance metrics structure
 #[derive(Debug, Clone)]

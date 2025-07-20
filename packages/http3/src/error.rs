@@ -370,8 +370,6 @@ impl HttpError {
             HttpError::DownloadInterrupted { message } => message,
             HttpError::InvalidContentLength { message } => message,
             HttpError::ChunkProcessingError { message } => message,
-            HttpError::InvalidContentLength { message } => message,
-            HttpError::ChunkProcessingError { message } => message,
             HttpError::ConnectionError { message } => message,
             HttpError::StreamError { message } => message,
             HttpError::CacheError { message } => message,

@@ -1,13 +1,13 @@
 // src/memory/tests/schema.rs
 //! Tests for the memory schema.
 
+use crate::memory::primitives::MemoryTypeEnum;
 use crate::memory::schema::Memory;
-use crate::memory::schema::MemoryType;
 
 #[test]
 fn test_new_memory() {
     let content = "Test memory content".to_string();
-    let memory_type = MemoryType::Semantic;
+    let memory_type = MemoryTypeEnum::Semantic;
     let memory = Memory::new(content.clone(), memory_type);
 
     assert!(!memory.id.is_empty());
@@ -22,7 +22,7 @@ fn test_new_memory() {
 
 #[test]
 fn test_touch_memory() {
-    let mut memory = Memory::new("Test".to_string(), MemoryType::Generic);
+    let mut memory = Memory::new("Test".to_string(), MemoryTypeEnum::Semantic);
     let initial_accessed_at = memory.last_accessed_at;
     std::thread::sleep(std::time::Duration::from_millis(10)); // Ensure time changes
     memory.touch();
@@ -31,7 +31,7 @@ fn test_touch_memory() {
 
 #[test]
 fn test_set_embedding() {
-    let mut memory = Memory::new("Test".to_string(), MemoryType::Generic);
+    let mut memory = Memory::new("Test".to_string(), MemoryTypeEnum::Semantic);
     let embedding = vec![0.1, 0.2, 0.3];
     memory.set_embedding(embedding.clone());
     assert_eq!(memory.embedding, Some(embedding));
@@ -40,7 +40,7 @@ fn test_set_embedding() {
 
 #[test]
 fn test_metadata_operations() {
-    let mut memory = Memory::new("Test".to_string(), MemoryType::Generic);
+    let mut memory = Memory::new("Test".to_string(), MemoryTypeEnum::Semantic);
     let key = "source".to_string();
     let value = serde_json::json!("web");
 

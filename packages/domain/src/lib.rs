@@ -12,14 +12,12 @@ use atomic_counter::{AtomicCounter, RelaxedCounter};
 // Ultra-high-performance imports for zero-allocation domain initialization
 use crossbeam_queue::SegQueue;
 use crossbeam_utils::CachePadded;
-use fluent_ai_memory::cognitive::CognitiveSettings;
-use fluent_ai_memory::utils::config::{
-    CacheConfig, DatabaseConfig as LegacyDatabaseConfig, DatabaseType as LegacyDatabaseType,
-    LLMConfig as LegacyLLMConfig, LoggingConfig, VectorStoreConfig as LegacyVectorStoreConfig,
-};
+
+// Removed unused imports: CacheConfig, LoggingConfig
 use fluent_ai_memory::{
-    Error as LegacyMemoryError, MemoryConfig, MemoryManager, SurrealDBMemoryManager, initialize,
+    MemoryConfig, SurrealDBMemoryManager, initialize,
 };
+use fluent_ai_memory::utils::error::Error as MemoryError;
 use once_cell::sync::Lazy;
 
 /// Domain initialization error types with semantic error handling
@@ -52,9 +50,12 @@ static CONFIG_CACHE: Lazy<ArcSwap<MemoryConfig>> =
 /// Lock-free connection pool with ring buffer for zero-allocation connection management
 static CONNECTION_POOL: Lazy<SegQueue<Arc<SurrealDBMemoryManager>>> = Lazy::new(|| SegQueue::new());
 
+/// Type alias for circuit breaker
+pub type CircuitBreaker = crate::error::SimpleCircuitBreaker;
+
 /// Circuit breaker for error recovery with exponential backoff
 static CIRCUIT_BREAKER: Lazy<CircuitBreaker> =
-    Lazy::new(|| CircuitBreaker::new(5, Duration::from_secs(30)));
+    Lazy::new(|| CircuitBreaker::new(5, 30000)); // 30 seconds in milliseconds
 
 /// Global initialization statistics for monitoring
 static INIT_STATS: Lazy<CachePadded<RelaxedCounter>> =
@@ -76,6 +77,8 @@ thread_local! {
 /// const fn for zero-allocation configuration construction at compile time
 #[inline(always)]
 fn create_default_config() -> MemoryConfig {
+    use fluent_ai_memory::utils::config::*;
+    
     MemoryConfig {
         database: DatabaseConfig {
             db_type: DatabaseType::SurrealDB,
@@ -84,40 +87,45 @@ fn create_default_config() -> MemoryConfig {
             database: "domain".to_string(),
             username: None,
             password: None,
-            ssl: None,
             pool_size: None,
-            timeout: None,
+            options: None,
         },
         vector_store: VectorStoreConfig {
-            provider: "memory".to_string(),
+            store_type: VectorStoreType::Memory,
+            embedding_model: EmbeddingModelConfig {
+                model_type: EmbeddingModelType::OpenAI,
+                model_name: "text-embedding-ada-002".to_string(),
+                api_key: None,
+                api_base: None,
+                options: None,
+            },
             dimension: 768,
-            metric: "cosine".to_string(),
-            index_type: "hnsw".to_string(),
-            connection_params: Default::default(),
+            connection_string: None,
+            api_key: None,
+            options: None,
         },
         llm: LLMConfig {
-            provider: "openai".to_string(),
-            model: "gpt-4".to_string(),
+            provider: LLMProvider::OpenAI,
+            model_name: "gpt-4".to_string(),
             api_key: None,
-            api_url: None,
-            max_tokens: Some(4096),
+            api_base: None,
             temperature: Some(0.7),
-            timeout: Some(Duration::from_secs(30)),
+            max_tokens: Some(4096),
+            options: None,
         },
         api: None,
         cache: CacheConfig {
             enabled: true,
-            ttl: Duration::from_secs(3600),
-            max_size: 10000,
-            compression: false,
+            cache_type: CacheType::Memory,
+            size: Some(10000),
+            ttl: Some(3600),
+            options: None,
         },
         logging: LoggingConfig {
-            level: "info".to_string(),
-            format: "json".to_string(),
-            output: "stdout".to_string(),
-            file_path: None,
-            max_file_size: None,
-            max_files: None,
+            level: LogLevel::Info,
+            file: None,
+            console: true,
+            options: None,
         },
     }
 }
@@ -167,14 +175,17 @@ fn return_memory_to_pool(memory: Arc<SurrealDBMemoryManager>) {
 
 /// Execute operation with circuit breaker protection and exponential backoff
 #[inline(always)]
-async fn execute_with_circuit_breaker<F, T, E>(operation: F) -> Result<T, DomainInitError>
+async fn execute_with_circuit_breaker<F, T, E>(operation: F) -> std::result::Result<T, DomainInitError>
 where
-    F: Fn() -> Result<T, E> + Send,
+    F: Fn() -> std::result::Result<T, E> + Send,
     E: std::fmt::Display,
 {
     match CIRCUIT_BREAKER.call(operation) {
-        Ok(result) => result.map_err(|e| DomainInitError::System(e.to_string())),
-        Err(_) => Err(DomainInitError::CircuitBreakerOpen),
+        Ok(value) => Ok(value),
+        Err(circuit_error) => match circuit_error {
+            error::CircuitBreakerError::Inner(e) => Err(DomainInitError::System(e.to_string())),
+            error::CircuitBreakerError::CircuitOpen => Err(DomainInitError::CircuitBreakerOpen),
+        },
     }
 }
 
@@ -182,10 +193,10 @@ where
 #[inline(always)]
 async fn execute_async_with_circuit_breaker<F, Fut, T, E>(
     operation: F,
-) -> Result<T, DomainInitError>
+) -> std::result::Result<T, DomainInitError>
 where
     F: Fn() -> Fut + Send,
-    Fut: std::future::Future<Output = Result<T, E>> + Send,
+    Fut: std::future::Future<Output = std::result::Result<T, E>> + Send,
     T: Send,
     E: std::fmt::Display + Send,
 {
@@ -224,7 +235,7 @@ where
 /// # Performance
 /// Zero allocation initialization with lock-free connection pooling
 #[inline]
-pub async fn initialize_domain() -> Result<Arc<SurrealDBMemoryManager>, DomainInitError> {
+pub async fn initialize_domain() -> std::result::Result<Arc<SurrealDBMemoryManager>, DomainInitError> {
     // Get configuration from thread-local cache for zero-allocation access
     let memory_config = get_cached_config();
 
@@ -269,7 +280,7 @@ pub async fn initialize_domain() -> Result<Arc<SurrealDBMemoryManager>, DomainIn
 #[inline]
 pub async fn initialize_domain_with_config(
     memory_config: MemoryConfig,
-) -> Result<Arc<SurrealDBMemoryManager>, DomainInitError> {
+) -> std::result::Result<Arc<SurrealDBMemoryManager>, DomainInitError> {
     // Create shared memory instance with custom configuration
     let memory = Arc::new(initialize(&memory_config).await?);
 
@@ -302,7 +313,7 @@ pub async fn initialize_domain_production(
     database_url: &str,
     namespace: &str,
     database: &str,
-) -> Result<Arc<SurrealDBMemoryManager>, DomainInitError> {
+) -> std::result::Result<Arc<SurrealDBMemoryManager>, DomainInitError> {
     // Get base configuration from thread-local cache for zero-allocation access
     let mut memory_config = (*get_cached_config()).clone();
 
@@ -311,9 +322,10 @@ pub async fn initialize_domain_production(
     memory_config.database.namespace = namespace.to_string();
     memory_config.database.database = database.to_string();
     memory_config.vector_store.dimension = 1536; // Higher dimension for better semantic representation
-    memory_config.vector_store.metric = "cosine".to_string();
-    memory_config.vector_store.index_type = "hnsw".to_string();
-    memory_config.cache.max_size = 100000; // Larger cache for production
+    // TODO: Fix vector store configuration - these fields don't exist
+    // memory_config.vector_store.metric = "cosine".to_string();
+    // memory_config.vector_store.index_type = "hnsw".to_string();
+    memory_config.cache.size = Some(100000); // Larger cache for production
 
     // Update global cache with copy-on-write semantics
     update_config_cache(memory_config.clone());
@@ -364,15 +376,8 @@ pub fn get_default_memory_config() -> MemoryConfig {
     if config.database.database.is_empty() {
         config.database.database = "domain".to_string();
     }
-    if config.cognitive.llm_provider.is_empty() {
-        config.cognitive.llm_provider = "openai".to_string();
-    }
-    if config.vector.metric.is_empty() {
-        config.vector.metric = "cosine".to_string();
-    }
-    if config.vector.index_type.is_empty() {
-        config.vector.index_type = "hnsw".to_string();
-    }
+    // Note: cognitive and vector fields don't exist in current MemoryConfig
+    // These configurations are now handled through the actual config fields
 
     config
 }
@@ -478,7 +483,7 @@ pub fn reset_circuit_breaker() {
 pub async fn warm_up_connection_pool(
     pool_size: usize,
     config: MemoryConfig,
-) -> Result<(), DomainInitError> {
+) -> std::result::Result<(), DomainInitError> {
     // Clear existing pool
     while get_pooled_memory().is_some() {
         // Drain existing connections
@@ -533,7 +538,7 @@ pub enum ChannelError {
 }
 
 /// Channel creation for async communication
-pub fn channel<T: Send + 'static>() -> (ChannelSender<T>, AsyncTask<Result<T, ChannelError>>) {
+pub fn channel<T: Send + 'static>() -> (ChannelSender<T>, AsyncTask<std::result::Result<T, ChannelError>>) {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let task = spawn_async(async move { rx.recv().await.ok_or(ChannelError::ChannelClosed) });
     (ChannelSender { tx }, task)
@@ -658,6 +663,8 @@ pub use audio::{Audio, AudioMediaType};
 pub use completion::{CompletionBackend, CompletionModel, CompletionRequest, CompletionResponse};
 // Context module exports - consolidated from document.rs, chunk.rs, context.rs, and loader.rs
 pub use context::*;
+// Document types from context module
+pub use context::document::{ContentFormat, Document, DocumentMediaType, DocumentLoader};
 // Conversation module exports - specify types to avoid conflict with message
 pub use conversation::Conversation as ConversationTrait;
 // Conversation module exports - specify types to avoid conflict with message
@@ -675,18 +682,11 @@ pub use embedding::{Embedding, EmbeddingData, EmbeddingResponse};
 //     find_similar_above_threshold
 // };
 
-// Re-export embedding configuration types
-pub use embedding_config::{EmbeddingConfig, IntoEmbeddingConfig};
-// Re-export embedding usage types
-pub use embedding_usage::{EmbeddingUsage, TokenUsage};
 pub use image::ContentFormat as ImageContentFormat;
 // Image module exports - specify ContentFormat to avoid conflict with audio
 pub use image::{Image, ImageDetail, ImageMediaType};
 // Library module exports
 pub use library::*;
-// MCP module exports - specify Tool to avoid conflict with mcp_tool
-pub use mcp::{Client, McpClient, McpError, StdioTransport, Transport};
-pub use mcp_tool::Tool as McpToolTrait;
 // Memory module exports (consolidated with new high-performance types)
 pub use memory::{
     AlignedActivationPattern,
@@ -717,7 +717,7 @@ pub use memory::{
     IndexType,
     LLMConfig,
     LLMProvider,
-    LegacyMemoryError,
+
     LegacyMemoryMetadata,
     LegacyMemoryNode,
     LegacyMemoryRelationship,
@@ -725,7 +725,6 @@ pub use memory::{
     // Legacy types (backward compatibility)
     Memory,
     MemoryContent,
-    MemoryError,
     MemoryNode,
     MemoryNodeBuilder,
     // SIMD operations and tools
@@ -739,6 +738,7 @@ pub use memory::{
     MemoryToolError,
     MemoryToolResult,
     // New high-performance domain types
+    MemoryType,
     MemoryTypeEnum,
     ModelConfig,
     Op,
@@ -762,9 +762,9 @@ pub use memory::{
 pub use message::Conversation as MessageConversation;
 // Message module exports - specify Conversation to avoid conflict with conversation
 pub use message::{
-    AssistantContent, AssistantContentExt, Content, ContentContainer, ConversationMap, Message,
+    AssistantContent, Content, ContentContainer, Message, ChatMessage, SearchChatMessage,
     MessageChunk, MessageError, MessageRole, MimeType, Text, ToolCall, ToolFunction, ToolResult,
-    ToolResultContent, UserContent, UserContentExt,
+    ToolResultContent, UserContent,
 };
 // Model module exports
 pub use model::*;

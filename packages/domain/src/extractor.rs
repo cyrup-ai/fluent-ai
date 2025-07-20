@@ -1,7 +1,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 // Additional dependencies for the implementation
 use futures::stream::Stream;
@@ -10,7 +10,7 @@ use serde_json::Value;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::agent::Agent;
-use crate::completion::{CompletionModel, CompletionRequest, ToolDefinition};
+use crate::completion::{CompletionModel, CompletionParams, CompletionRequest, ToolDefinition};
 use crate::context::chunk::{CompletionChunk, FinishReason};
 use crate::model::Model;
 use crate::prompt::Prompt;
@@ -113,10 +113,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
             chat_history: ZeroOneOrMany::One(crate::Message {
                 role: "user".to_string(),
                 content: text.to_string(),
-                timestamp: std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_secs())
-                    .unwrap_or(0),
+                timestamp: Instant::now(),
             }),
             documents: ZeroOneOrMany::None,
             tools: ZeroOneOrMany::None,
@@ -260,7 +257,7 @@ impl AgentCompletionModel {
 }
 
 impl CompletionModel for AgentCompletionModel {
-    fn prompt(&self, prompt: Prompt) -> crate::async_task::AsyncStream<CompletionChunk> {
+    fn prompt(&self, prompt: Prompt, params: &CompletionParams) -> crate::async_task::AsyncStream<CompletionChunk> {
         use futures::stream::Stream;
         use tokio::sync::mpsc;
 

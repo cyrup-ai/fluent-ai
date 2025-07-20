@@ -3,6 +3,7 @@ use serde_json::json;
 
 use super::client::{ApiResponse, Client, Usage};
 use crate::embeddings::{self, EmbeddingError};
+use fluent_ai_domain::model::EmbeddingModel;
 
 // ================================================================
 // Mistral Embedding API
@@ -11,12 +12,8 @@ use crate::embeddings::{self, EmbeddingError};
 pub const MISTRAL_EMBED: &str = "mistral-embed";
 pub const MAX_DOCUMENTS: usize = 1024;
 
-#[derive(Clone)]
-pub struct EmbeddingModel {
-    client: Client,
-    pub model: String,
-    ndims: usize,
-}
+// EmbeddingModel is now imported from fluent_ai_domain::model
+// Removed duplicated EmbeddingModel struct - use canonical domain type
 
 impl EmbeddingModel {
     pub fn new(client: Client, model: &str, ndims: usize) -> Self {

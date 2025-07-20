@@ -61,13 +61,6 @@ pub struct Usage {
     pub total_tokens: usize,
 }
 
-#[derive(Clone)]
-pub struct EmbeddingModel {
-    client: Client,
-    pub model: String,
-    ndims: usize,
-}
-
 impl embeddings::EmbeddingModel for EmbeddingModel {
     const MAX_DOCUMENTS: usize = 1024; // This might need to be adjusted based on Together AI's actual limit
 

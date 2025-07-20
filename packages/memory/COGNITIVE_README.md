@@ -30,7 +30,7 @@ use surreal_memory::{
     CognitiveMemoryManager,
     CognitiveSettings,
     MemoryNode,
-    MemoryType,
+    MemoryTypeEnum,
 };
 
 // Configure cognitive features
@@ -53,7 +53,7 @@ let manager = CognitiveMemoryManager::new(
 // Use exactly like the standard memory manager
 let memory = MemoryNode::new(
     "Rust is a systems programming language".to_string(),
-    MemoryType::Semantic,
+    MemoryTypeEnum::Semantic,
 );
 
 let stored = manager.create_memory(memory).await?;

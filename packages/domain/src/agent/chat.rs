@@ -4,13 +4,14 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use arrayvec::ArrayVec;
-use atomic_counter::{AtomicCounter, RelaxedCounter};
+use atomic_counter::RelaxedCounter;
 use crossbeam_utils::CachePadded;
 use once_cell::sync::Lazy;
 
-use super::role::AgentRoleImpl;
-use crate::context::{ChatMessageChunk, CompletionChunk};
-use crate::memory::{Memory, MemoryError, MemoryNode, MemoryType};
+use crate::agent::role::AgentRoleImpl;
+use crate::memory::{Memory, MemoryError, MemoryNode};
+use crate::memory::primitives::{MemoryTypeEnum, MemoryContent};
+use crate::memory::primitives::node::MemoryNodeBuilder;
 use crate::memory::{MemoryTool, MemoryToolError};
 
 /// Maximum number of relevant memories for context injection
@@ -175,23 +176,19 @@ impl AgentRoleImpl {
     ) -> Result<ArrayVec<MemoryNode, MAX_RELEVANT_MEMORIES>, ChatError> {
         let mut memorized_nodes = ArrayVec::new();
 
-        // Create memory node for user message
-        let user_node_id = MEMORY_NODE_COUNTER.inc();
-        let user_memory = MemoryNode {
-            id: user_node_id.to_string(),
-            content: user_message.to_string(),
-            memory_type: MemoryType::Conversation,
-            metadata: std::collections::HashMap::new(),
-            embedding: None,
-            created_at: std::time::SystemTime::now(),
-            updated_at: std::time::SystemTime::now(),
-        };
+        // Create memory node for user message using builder pattern
+        let user_memory = MemoryNodeBuilder::new()
+            .with_memory_type(MemoryTypeEnum::Episodic)
+            .with_content(MemoryContent::text(user_message))
+            .build()
+            .map_err(|e| ChatError::Memory(e.into()))?;
 
         // Store user memory with zero-allocation error handling
         memory_tool
+            .memory()
             .store_memory(&user_memory)
             .await
-            .map_err(|e| ChatError::Memory(e.into()))?;
+            .map_err(|e| ChatError::Memory(e))?;
 
         if memorized_nodes.try_push(user_memory).is_err() {
             return Err(ChatError::System(
@@ -200,22 +197,17 @@ impl AgentRoleImpl {
         }
 
         // Create memory node for assistant response
-        let assistant_node_id = MEMORY_NODE_COUNTER.inc();
-        let assistant_memory = MemoryNode {
-            id: assistant_node_id.to_string(),
-            content: assistant_response.to_string(),
-            memory_type: MemoryType::Conversation,
-            metadata: std::collections::HashMap::new(),
-            embedding: None,
-            created_at: std::time::SystemTime::now(),
-            updated_at: std::time::SystemTime::now(),
-        };
+        let assistant_memory = MemoryNode::new(
+            MemoryTypeEnum::Episodic,
+            MemoryContent::text(assistant_response)
+        );
 
         // Store assistant memory with zero-allocation error handling
         memory_tool
+            .memory()
             .store_memory(&assistant_memory)
             .await
-            .map_err(|e| ChatError::Memory(e.into()))?;
+            .map_err(|e| ChatError::Memory(e))?;
 
         if memorized_nodes.try_push(assistant_memory).is_err() {
             return Err(ChatError::System(
@@ -224,22 +216,17 @@ impl AgentRoleImpl {
         }
 
         // Create contextual memory node linking the conversation
-        let context_node_id = MEMORY_NODE_COUNTER.inc();
-        let context_memory = MemoryNode {
-            id: context_node_id.to_string(),
-            content: format!("Conversation: {} -> {}", user_message, assistant_response),
-            memory_type: MemoryType::Context,
-            metadata: std::collections::HashMap::new(),
-            embedding: None,
-            created_at: std::time::SystemTime::now(),
-            updated_at: std::time::SystemTime::now(),
-        };
+        let context_memory = MemoryNode::new(
+            MemoryTypeEnum::Contextual,
+            MemoryContent::text(format!("Conversation: {} -> {}", user_message, assistant_response))
+        );
 
         // Store context memory with zero-allocation error handling
         memory_tool
+            .memory()
             .store_memory(&context_memory)
             .await
-            .map_err(|e| ChatError::Memory(e.into()))?;
+            .map_err(|e| ChatError::Memory(e))?;
 
         if memorized_nodes.try_push(context_memory).is_err() {
             return Err(ChatError::System(

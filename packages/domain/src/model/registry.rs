@@ -1,17 +1,13 @@
 //! Model registry for dynamic model discovery and lookup
 
 use std::any::{Any, TypeId};
-use std::borrow::Cow;
-use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, RwLock, Weak};
+use std::sync::Arc;
 
 use ahash::RandomState;
 use dashmap::{DashMap, DashSet};
 use once_cell::sync::Lazy;
-use parking_lot::RwLock as ParkingRwLock;
 
 use crate::model::error::{ModelError, Result};
 use crate::model::info::ModelInfo;
@@ -23,7 +19,6 @@ use crate::model::traits::{
 struct ModelHandle {
     model: Box<dyn Any + Send + Sync>,
     info: &'static ModelInfo,
-    ref_count: AtomicUsize,
 }
 
 impl ModelHandle {
@@ -32,7 +27,6 @@ impl ModelHandle {
         Self {
             model: Box::new(model),
             info,
-            ref_count: AtomicUsize::new(1),
         }
     }
 
@@ -48,20 +42,7 @@ impl ModelHandle {
         self.info
     }
 
-    fn clone_handle(&self) -> Self {
-        self.ref_count.fetch_add(1, Ordering::Relaxed);
-        Self {
-            model: self.model.clone(),
-            info: self.info,
-            ref_count: AtomicUsize::new(1),
-        }
-    }
-}
 
-/// A weak reference to a model handle
-struct WeakModelHandle {
-    model: Option<Weak<dyn Any + Send + Sync>>,
-    info: &'static ModelInfo,
 }
 
 /// The global model registry
@@ -72,9 +53,6 @@ struct ModelRegistryInner {
 
     // Maps model type to provider+name
     type_registry: DashMap<TypeId, DashSet<(&'static str, &'static str), RandomState>, RandomState>,
-
-    // For cleanup when the last strong reference is dropped
-    cleanup: ParkingRwLock<Vec<Box<dyn Fn() + Send + Sync>>>,
 }
 
 impl Default for ModelRegistryInner {
@@ -82,7 +60,6 @@ impl Default for ModelRegistryInner {
         Self {
             models: DashMap::with_hasher(RandomState::default()),
             type_registry: DashMap::with_hasher(RandomState::default()),
-            cleanup: ParkingRwLock::new(Vec::new()),
         }
     }
 }
@@ -144,36 +121,6 @@ impl ModelRegistry {
             .or_insert_with(|| DashSet::with_hasher(RandomState::default()));
 
         type_entries.insert((provider, model_name));
-
-        // Set up cleanup when the last strong reference is dropped
-        let provider = provider.to_owned();
-        let model_name = model_name.to_owned();
-
-        let cleanup: Box<dyn Fn() + Send + Sync> = Box::new(move || {
-            let type_id = TypeId::of::<M>();
-
-            if let Some(mut provider_models) = GLOBAL_REGISTRY.models.get_mut(provider.as_str()) {
-                provider_models.remove(model_name.as_str());
-
-                // Clean up empty provider
-                if provider_models.is_empty() {
-                    GLOBAL_REGISTRY.models.remove(provider.as_str());
-                }
-            }
-
-            // Clean up type registry
-            if let Some(mut type_entries) = GLOBAL_REGISTRY.type_registry.get_mut(&type_id) {
-                type_entries.remove(&(&provider[..], &model_name[..]));
-
-                // Clean up empty type registry
-                if type_entries.is_empty() {
-                    GLOBAL_REGISTRY.type_registry.remove(&type_id);
-                }
-            }
-        });
-
-        // Store the cleanup function
-        GLOBAL_REGISTRY.cleanup.write().push(Box::new(cleanup));
 
         // Return a registered model handle
         Ok(RegisteredModel {

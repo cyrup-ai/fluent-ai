@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use arc_swap::ArcSwap;
 use atomic_counter::{AtomicCounter, ConsistentCounter};
@@ -15,8 +15,8 @@ use crossbeam_queue::SegQueue;
 use crossbeam_skiplist::SkipMap;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, broadcast, mpsc};
-use tokio::time::{interval, sleep, timeout};
-use uuid::Uuid;
+use tokio::time::{interval, sleep};
+// Removed unused import: uuid::Uuid
 
 use crate::message::Message;
 

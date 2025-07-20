@@ -14,6 +14,7 @@ use crate::{
     runtime::{self as rt, AsyncTask},
     transcription::{self, TranscriptionError},
 };
+use fluent_ai_domain::model::TranscriptionModel;
 
 // ───────────────────────────── error handling ───────────────────────
 
@@ -30,12 +31,8 @@ enum ApiResponse<T> {
 }
 
 // ───────────────────────────── provider model ────────────────────────────
-
-#[derive(Clone)]
-pub struct TranscriptionModel {
-    client: Client,
-    pub model: String,
-}
+// TranscriptionModel is now imported from fluent_ai_domain::model
+// Removed duplicated TranscriptionModel struct - use canonical domain type
 
 impl TranscriptionModel {
     pub fn new(client: Client, model: &str) -> Self {

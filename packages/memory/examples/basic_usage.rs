@@ -8,9 +8,7 @@
 //! - Searching memories by content and vector similarity
 
 use fluent_ai_memory::memory::{
-    memory_manager::{MemoryManager, SurrealDBMemoryManager},
-    memory_node::{MemoryNode, MemoryType},
-    memory_relationship::MemoryRelationship,
+    MemoryManager, SurrealDBMemoryManager, MemoryNode, MemoryTypeEnum, MemoryRelationship,
 };
 use futures::StreamExt;
 use surrealdb::{
@@ -59,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rust_intro".to_string(),
         "Rust is a systems programming language focused on safety, speed, and concurrency."
             .to_string(),
-        MemoryType::Semantic,
+        MemoryTypeEnum::Semantic,
     );
 
     // Add metadata
@@ -87,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut meeting_memory = MemoryNode::with_id(
         "meeting_2024".to_string(),
         "Had a productive meeting about the new Rust project architecture".to_string(),
-        MemoryType::Episodic,
+        MemoryTypeEnum::Episodic,
     );
     meeting_memory.metadata.importance = 0.7;
     meeting_memory.metadata.tags = vec!["meeting".to_string(), "project".to_string()];
@@ -151,7 +149,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 9. Search memories by type
     println!("\n9. Searching by type...");
     let semantic_memories = memory_manager
-        .query_by_type(MemoryType::Semantic)
+        .query_by_type(MemoryTypeEnum::Semantic)
         .collect::<Vec<_>>()
         .await;
 

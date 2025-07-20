@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use crate::memory::primitives::types::{
+use crate::memory::primitives::{
     BaseMemory, MemoryContent, MemoryNode as NewMemoryNode, MemoryTypeEnum,
 };
 use crate::memory::types_legacy;
@@ -30,6 +30,9 @@ pub const fn convert_memory_type(legacy_type: &types_legacy::MemoryType) -> Memo
         types_legacy::MemoryType::LongTerm => MemoryTypeEnum::LongTerm,
         types_legacy::MemoryType::Semantic => MemoryTypeEnum::Semantic,
         types_legacy::MemoryType::Episodic => MemoryTypeEnum::Episodic,
+        types_legacy::MemoryType::Conversation => MemoryTypeEnum::Working,
+        types_legacy::MemoryType::Context => MemoryTypeEnum::Semantic,
+        types_legacy::MemoryType::Document => MemoryTypeEnum::LongTerm,
     }
 }
 
@@ -61,7 +64,7 @@ pub const fn convert_memory_type_back(
 /// Convert legacy MemoryNode to new MemoryNode with zero-copy content sharing
 pub fn convert_memory_node(
     legacy_node: &types_legacy::MemoryNode,
-    mode: CompatibilityMode,
+    _mode: CompatibilityMode,
 ) -> Result<NewMemoryNode, CompatibilityError> {
     let memory_type = convert_memory_type(&legacy_node.memory_type);
 
@@ -175,7 +178,7 @@ pub struct CompatibilityLayer {
 impl CompatibilityLayer {
     /// Create new compatibility layer with specified mode
     #[inline]
-    pub const fn new(mode: CompatibilityMode) -> Self {
+    pub fn new(mode: CompatibilityMode) -> Self {
         Self {
             mode,
             conversion_stats: HashMap::new(),

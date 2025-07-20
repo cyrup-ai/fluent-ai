@@ -7,21 +7,12 @@ use serde_json::json;
 
 use super::{ApiResponse, Client};
 use crate::embeddings::{self, EmbeddingError};
+use fluent_ai_domain::model::EmbeddingModel;
 
 /// `embedding-001` embedding model
 pub const EMBEDDING_001: &str = "embedding-001";
 /// `text-embedding-004` embedding model
 pub const EMBEDDING_004: &str = "text-embedding-004";
-#[derive(Clone)]
-pub struct EmbeddingModel {
-    client: Client,
-    model: String,
-    ndims: Option<usize>,
-}
-
-impl EmbeddingModel {
-    pub fn new(client: Client, model: &str, ndims: Option<usize>) -> Self {
-        Self {
             client,
             model: model.to_string(),
             ndims,

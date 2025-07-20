@@ -26,10 +26,13 @@ async fn test_quantum_router_basic() {
     let query = EnhancedQuery {
         original: "What is Rust?".to_string(),
         intent: QueryIntent::Retrieval,
+        context: vec!["programming".to_string(), "language".to_string()],
         context_embedding: vec![0.1; 64],
+        timestamp: Some(std::time::Instant::now()),
         temporal_context: None,
         cognitive_hints: vec!["programming".to_string(), "systems".to_string()],
         expected_complexity: 0.3,
+        priority: 1,
     };
 
     // Route the query
@@ -49,9 +52,9 @@ async fn test_quantum_router_basic() {
 
 #[test]
 fn test_cognitive_memory_node_creation() {
-    use fluent_ai_memory::{CognitiveMemoryNode, MemoryType};
+    use fluent_ai_memory::{CognitiveMemoryNode, MemoryTypeEnum};
 
-    let node = CognitiveMemoryNode::new("Test content".to_string(), MemoryType::Semantic);
+    let node = CognitiveMemoryNode::new("Test content".to_string(), MemoryTypeEnum::Semantic);
 
     assert_eq!(node.base.content, "Test content");
     assert!(!node.is_enhanced());
@@ -113,9 +116,9 @@ async fn test_cognitive_state_manager() {
 #[test]
 fn test_evolution_metadata() {
     use fluent_ai_memory::cognitive::evolution::EvolutionMetadata;
-    use fluent_ai_memory::{MemoryNode, MemoryType};
+    use fluent_ai_memory::{MemoryNode, MemoryTypeEnum};
 
-    let memory = MemoryNode::new("test".to_string(), MemoryType::Semantic);
+    let memory = MemoryNode::new("test".to_string(), MemoryTypeEnum::Semantic);
     let metadata = EvolutionMetadata::new(&memory);
 
     assert_eq!(metadata.generation, 0);

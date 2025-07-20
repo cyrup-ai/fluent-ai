@@ -1,12 +1,12 @@
 use std::convert::Infallible;
 use std::str::FromStr;
 
+use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, CompletionRequest};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::completion::CompletionModel;
 use crate::clients::openai::{StreamingCompletionResponse, send_compatible_streaming_request};
-use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, CompletionRequest};
 use crate::json_util::merge_inplace;
 use crate::{json_util, streaming};
 

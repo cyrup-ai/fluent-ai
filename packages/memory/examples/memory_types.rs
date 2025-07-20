@@ -6,8 +6,7 @@
 //! - Procedural memories (how-to knowledge)
 
 use fluent_ai_memory::memory::{
-    memory_manager::{MemoryManager, SurrealDBMemoryManager},
-    memory_node::{MemoryNode, MemoryType},
+    MemoryManager, SurrealDBMemoryManager, MemoryNode, MemoryTypeEnum, MemoryRelationship,
 };
 use futures::StreamExt;
 use surrealdb::{
@@ -111,7 +110,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
          3. Navigate to project: cd my_project\n\
          4. Build the project: cargo build\n\
          5. Run the project: cargo run".to_string(),
-        MemoryType::Procedural,
+        MemoryTypeEnum::Procedural,
     );
 
     // Add metadata for each step
@@ -147,7 +146,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Link semantic memory to episodic memory
     let _rel1 = memory_manager
-        .create_relationship(fluent_ai_memory::memory::MemoryRelationship::new(
+        .create_relationship(MemoryRelationship::new(
             rust_mem.id.clone(),
             episode1.id.clone(),
             "triggered".to_string(),
@@ -156,7 +155,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Link episodic memories in sequence
     let _rel2 = memory_manager
-        .create_relationship(fluent_ai_memory::memory::MemoryRelationship::new(
+        .create_relationship(MemoryRelationship::new(
             episode1.id.clone(),
             episode2.id.clone(),
             "led_to".to_string(),
@@ -165,7 +164,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Link procedural memory to semantic memory
     let _rel3 = memory_manager
-        .create_relationship(fluent_ai_memory::memory::MemoryRelationship::new(
+        .create_relationship(MemoryRelationship::new(
             stored_procedure.id.clone(),
             rust_mem.id.clone(),
             "implements".to_string(),
@@ -183,7 +182,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get all episodic memories
     let episodes = memory_manager
-        .query_by_type(MemoryType::Episodic)
+        .query_by_type(MemoryTypeEnum::Episodic)
         .collect::<Vec<_>>()
         .await;
 
@@ -198,7 +197,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get all semantic memories
     let semantics = memory_manager
-        .query_by_type(MemoryType::Semantic)
+        .query_by_type(MemoryTypeEnum::Semantic)
         .collect::<Vec<_>>()
         .await;
 
@@ -225,7 +224,7 @@ fn create_semantic_memory(
     tags: Vec<&str>,
     related: Vec<&str>,
 ) -> MemoryNode {
-    let mut memory = MemoryNode::with_id(id.to_string(), content.to_string(), MemoryType::Semantic);
+    let mut memory = MemoryNode::with_id(id.to_string(), content.to_string(), MemoryTypeEnum::Semantic);
     memory.metadata.tags = tags.into_iter().map(String::from).collect();
     memory.metadata.category = "knowledge".to_string();
     memory.metadata.importance = 0.8;
@@ -258,7 +257,7 @@ fn create_episodic_memory(
     user_id: Option<String>,
     tags: Vec<&str>,
 ) -> MemoryNode {
-    let mut memory = MemoryNode::with_id(id.to_string(), content.to_string(), MemoryType::Episodic);
+    let mut memory = MemoryNode::with_id(id.to_string(), content.to_string(), MemoryTypeEnum::Episodic);
     memory.metadata.tags = tags.into_iter().map(String::from).collect();
     memory.metadata.category = "experience".to_string();
     memory.metadata.importance = 0.7;

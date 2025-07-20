@@ -47,6 +47,9 @@ pub enum StorageError {
     #[error("Insufficient privileges: {0}")]
     InsufficientPrivileges(String),
 
+    #[error("Invalid path: {0}")]
+    PathInvalid(String),
+
     #[error("Partial operation failure: {0}")]
     PartialFailure(String),
 

@@ -19,11 +19,11 @@ pub trait CompletionModel: Send + Sync + 'static {
     ///
     /// # Returns
     /// Stream of completion chunks
-    fn prompt<'a>(
-        &'a self,
-        prompt: Prompt<'a>,
-        params: &'a CompletionParams,
-    ) -> AsyncStream<CompletionChunk<'a>>;
+    fn prompt(
+        &self,
+        prompt: Prompt,
+        params: &CompletionParams,
+    ) -> AsyncStream<CompletionChunk>;
 }
 
 /// Backend for completion processing

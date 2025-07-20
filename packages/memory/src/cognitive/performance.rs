@@ -203,8 +203,19 @@ mod tests {
     async fn test_performance_analyzer() {
         let spec = Arc::new(OptimizationSpec {
             content_type: crate::cognitive::types::ContentType {
+                category: crate::cognitive::types::ContentCategory::Code,
+                complexity: 0.7,
+                processing_hints: vec![
+                    "optimize_compilation".to_string(),
+                    "parallel_processing".to_string(),
+                ],
                 format: "rust".to_string(),
                 restrictions: crate::cognitive::types::Restrictions {
+                    max_memory_usage: Some(1024 * 1024 * 1024), // 1GB
+                    max_processing_time: Some(30000),           // 30 seconds
+                    allowed_operations: vec!["optimization".to_string(), "compilation".to_string()],
+                    forbidden_operations: vec!["network_access".to_string()],
+                    security_level: crate::cognitive::types::SecurityLevel::Internal,
                     compiler: "rustc".to_string(),
                     max_latency_increase: 20.0,
                     max_memory_increase: 30.0,

@@ -7,7 +7,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use fluent_ai_memory::{MemoryNode, MemoryType};
+use fluent_ai_memory::{MemoryNode, MemoryTypeEnum};
 use rand::Rng;
 use rand::distr::Alphanumeric;
 // No longer using gix
@@ -38,7 +38,7 @@ pub fn python_vs_rust_benchmark(c: &mut Criterion) {
                 let rust_start = Instant::now();
                 for _ in 0..10 {
                     let content = random_content(size);
-                    let _node = MemoryNode::new(content, MemoryType::Semantic);
+                    let _node = MemoryNode::new(content, MemoryTypeEnum::Semantic);
                 }
                 let rust_duration = rust_start.elapsed();
 
@@ -62,7 +62,7 @@ pub fn python_vs_rust_benchmark(c: &mut Criterion) {
                     let content = random_content(100); // Fixed content size
                     let embedding = random_embedding(dim);
                     let _node =
-                        MemoryNode::new(content, MemoryType::Semantic).with_embedding(embedding);
+                        MemoryNode::new(content, MemoryTypeEnum::Semantic).with_embedding(embedding);
                 }
                 let rust_duration = rust_start.elapsed();
 
@@ -85,7 +85,7 @@ pub fn python_vs_rust_benchmark(c: &mut Criterion) {
                 let rust_start = Instant::now();
                 for _ in 0..10 {
                     let content = random_content(1000);
-                    let node = MemoryNode::new(content, MemoryType::Semantic);
+                    let node = MemoryNode::new(content, MemoryTypeEnum::Semantic);
                     let _id = node.id;
                     let _content = node.content;
                 }

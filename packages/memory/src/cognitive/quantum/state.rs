@@ -276,8 +276,8 @@ mod tests {
 
         let (measured_state, amplitude) = state.measure().unwrap();
         assert_eq!(measured_state, "state1");
-        assert!((amplitude.re - 1.0).abs() < f64::EPSILON);
-        assert!((amplitude.im - 0.0).abs() < f64::EPSILON);
+        assert!((amplitude.real - 1.0).abs() < f64::EPSILON);
+        assert!((amplitude.imaginary - 0.0).abs() < f64::EPSILON);
 
         // Test with multiple states
         state.add_state("state2".to_string(), Complex64::new(1.0, 0.0));

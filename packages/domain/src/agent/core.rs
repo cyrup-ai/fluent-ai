@@ -1,15 +1,16 @@
 //! Core agent data structures with automatic memory tool injection
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
-use arrayvec::ArrayVec;
+use std::sync::{Arc, atomic::AtomicUsize};
+
+
 use crossbeam_utils::CachePadded;
 use serde_json::Value;
 
 use crate::ZeroOneOrMany;
+use fluent_ai_memory::MemoryConfig;
 use crate::context::Document;
-use crate::library::Library;
+
 use crate::memory::{Memory, MemoryError, MemoryTool, MemoryToolError};
 use crate::model::Model;
 use crate::tool::McpToolData;

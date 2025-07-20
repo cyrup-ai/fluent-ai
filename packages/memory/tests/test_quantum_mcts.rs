@@ -11,7 +11,7 @@ use fluent_ai_memory::cognitive::{
     performance::PerformanceAnalyzer,
     quantum_mcts::{QuantumMCTS, QuantumMCTSConfig},
     quantum_orchestrator::{QuantumOrchestrationConfig, QuantumOrchestrator},
-    types::{ContentRestrictions, ContentType, OptimizationSpec},
+    types::{ContentCategory, ContentType, OptimizationSpec, Restrictions, SecurityLevel},
 };
 use tokio::sync::mpsc;
 
@@ -33,6 +33,7 @@ fn process_data(items: Vec<i32>) -> Vec<i32> {
 }
 "#
         .to_string(),
+        code_content: "process_data function for data processing".to_string(),
         latency: 100.0,
         memory: 50.0,
         relevance: 80.0,
@@ -40,7 +41,17 @@ fn process_data(items: Vec<i32>) -> Vec<i32> {
 
     let spec = Arc::new(OptimizationSpec {
         content_type: ContentType {
-            restrictions: ContentRestrictions {
+            category: ContentCategory::Code,
+            complexity: 0.5,
+            processing_hints: vec!["optimization".to_string()],
+            format: "rust".to_string(),
+            restrictions: Restrictions {
+                max_memory_usage: Some(1024),
+                max_processing_time: Some(1000),
+                allowed_operations: vec!["loop_optimization".to_string()],
+                forbidden_operations: vec![],
+                security_level: SecurityLevel::Internal,
+                compiler: "rustc".to_string(),
                 max_latency_increase: 10.0,
                 max_memory_increase: 20.0,
                 min_relevance_improvement: 5.0,
@@ -56,23 +67,19 @@ fn process_data(items: Vec<i32>) -> Vec<i32> {
     // Create quantum MCTS
     let mut quantum_mcts = QuantumMCTS::new(
         initial_state,
-        performance_analyzer,
-        spec,
         "Optimize data processing".to_string(),
-        event_tx,
         config,
     )
-    .await
     .unwrap();
 
     // Run recursive improvement
-    quantum_mcts.recursive_improve(50).await.unwrap();
+    quantum_mcts.recursive_improve(50).unwrap();
 
     // Get results
-    let best_modification = quantum_mcts.best_quantum_modification().await;
+    let best_modification = quantum_mcts.best_quantum_modification();
     assert!(best_modification.is_some());
 
-    let stats = quantum_mcts.get_quantum_statistics().await;
+    let stats = quantum_mcts.get_quantum_statistics();
     assert!(stats.total_nodes > 1);
     assert!(stats.total_visits > 0);
 
@@ -100,6 +107,7 @@ async fn fetch_data(urls: Vec<String>) -> Vec<Result<String, Error>> {
 }
 "#
         .to_string(),
+        code_content: "async fetch_data function for parallel data fetching".to_string(),
         latency: 200.0,
         memory: 100.0,
         relevance: 75.0,
@@ -107,7 +115,17 @@ async fn fetch_data(urls: Vec<String>) -> Vec<Result<String, Error>> {
 
     let spec = Arc::new(OptimizationSpec {
         content_type: ContentType {
-            restrictions: ContentRestrictions {
+            category: ContentCategory::Code,
+            complexity: 0.7,
+            processing_hints: vec!["async".to_string(), "parallelization".to_string()],
+            format: "rust".to_string(),
+            restrictions: Restrictions {
+                max_memory_usage: Some(2048),
+                max_processing_time: Some(2000),
+                allowed_operations: vec!["async_optimization".to_string()],
+                forbidden_operations: vec![],
+                security_level: SecurityLevel::Internal,
+                compiler: "rustc".to_string(),
                 max_latency_increase: 5.0,
                 max_memory_increase: 10.0,
                 min_relevance_improvement: 10.0,
@@ -169,6 +187,7 @@ async fn test_quantum_convergence() {
 
     let initial_state = CodeState {
         code: "fn simple() -> i32 { 42 }".to_string(),
+        code_content: "simple function returning constant value".to_string(),
         latency: 10.0,
         memory: 5.0,
         relevance: 100.0,
@@ -176,7 +195,17 @@ async fn test_quantum_convergence() {
 
     let spec = Arc::new(OptimizationSpec {
         content_type: ContentType {
-            restrictions: ContentRestrictions {
+            category: ContentCategory::Code,
+            complexity: 0.1,
+            processing_hints: vec!["simple".to_string()],
+            format: "rust".to_string(),
+            restrictions: Restrictions {
+                max_memory_usage: Some(512),
+                max_processing_time: Some(100),
+                allowed_operations: vec!["basic_optimization".to_string()],
+                forbidden_operations: vec![],
+                security_level: SecurityLevel::Public,
+                compiler: "rustc".to_string(),
                 max_latency_increase: 1.0,
                 max_memory_increase: 1.0,
                 min_relevance_improvement: 0.0,
@@ -194,21 +223,13 @@ async fn test_quantum_convergence() {
     };
 
     // Create quantum MCTS
-    let mut quantum_mcts = QuantumMCTS::new(
-        initial_state,
-        performance_analyzer,
-        spec,
-        "Test convergence".to_string(),
-        event_tx,
-        config,
-    )
-    .await
-    .unwrap();
+    let mut quantum_mcts =
+        QuantumMCTS::new(initial_state, "Test convergence".to_string(), config).unwrap();
 
     // Run and expect quick convergence
     quantum_mcts.recursive_improve(20).await.unwrap();
 
-    let stats = quantum_mcts.get_quantum_statistics().await;
+    let stats = quantum_mcts.get_quantum_statistics();
     assert!(stats.total_nodes < 50); // Should converge quickly
 }
 
@@ -236,6 +257,7 @@ fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
 }
 "#
         .to_string(),
+        code_content: "matrix multiplication function with cache optimization potential".to_string(),
         latency: 500.0,
         memory: 200.0,
         relevance: 90.0,
@@ -243,7 +265,17 @@ fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
 
     let spec = Arc::new(OptimizationSpec {
         content_type: ContentType {
-            restrictions: ContentRestrictions {
+            category: ContentCategory::Code,
+            complexity: 0.9,
+            processing_hints: vec!["matrix".to_string(), "cache_optimization".to_string()],
+            format: "rust".to_string(),
+            restrictions: Restrictions {
+                max_memory_usage: Some(4096),
+                max_processing_time: Some(5000),
+                allowed_operations: vec!["matrix_optimization".to_string(), "cache_blocking".to_string()],
+                forbidden_operations: vec![],
+                security_level: SecurityLevel::Restricted,
+                compiler: "rustc".to_string(),
                 max_latency_increase: 0.0,
                 max_memory_increase: 50.0,
                 min_relevance_improvement: 0.0,
@@ -261,21 +293,13 @@ fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
     };
 
     // Create quantum MCTS
-    let mut quantum_mcts = QuantumMCTS::new(
-        initial_state,
-        performance_analyzer,
-        spec,
-        "Matrix optimization".to_string(),
-        event_tx,
-        config,
-    )
-    .await
-    .unwrap();
+    let mut quantum_mcts =
+        QuantumMCTS::new(initial_state, "Matrix optimization".to_string(), config).unwrap();
 
     // Run improvement
     quantum_mcts.recursive_improve(100).await.unwrap();
 
-    let stats = quantum_mcts.get_quantum_statistics().await;
+    let stats = quantum_mcts.get_quantum_statistics();
 
     // Verify entanglement was created
     assert!(stats.total_entanglements > 0);

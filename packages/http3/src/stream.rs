@@ -298,10 +298,8 @@ impl DownloadStream {
     /// Create a new download stream from a reqwest Response
     pub fn new(response: reqwest::Response) -> Self {
         use futures::StreamExt;
-        
-        let total_size = response
-            .content_length()
-            .filter(|&size| size > 0);
+
+        let total_size = response.content_length().filter(|&size| size > 0);
 
         // Convert the response into a stream of bytes
         let stream = response.bytes_stream().boxed();
@@ -326,16 +324,6 @@ impl DownloadStream {
         self.on_chunk_handler = Some(Box::new(handler));
         self
     }
-
-    /// Calculate current download speed in bytes per second
-    fn calculate_download_speed(&self) -> Option<f64> {
-        let elapsed = self.start_time.elapsed();
-        if elapsed.as_secs_f64() > 0.0 && self.bytes_downloaded > 0 {
-            Some(self.bytes_downloaded as f64 / elapsed.as_secs_f64())
-        } else {
-            None
-        }
-    }
 }
 
 impl Stream for DownloadStream {
@@ -343,7 +331,7 @@ impl Stream for DownloadStream {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.as_mut().project();
-        
+
         // Poll the underlying bytes stream
         match this.stream.poll_next(cx) {
             Poll::Ready(Some(Ok(chunk))) => {
@@ -353,10 +341,14 @@ impl Stream for DownloadStream {
                 *this.chunk_number += 1;
                 *this.last_chunk_time = std::time::Instant::now();
 
-                let download_speed = if this.start_time.elapsed().as_secs_f64() > 0.0 {
-                    Some(*this.bytes_downloaded as f64 / this.start_time.elapsed().as_secs_f64())
-                } else {
-                    None
+                // Calculate download speed using projected fields
+                let download_speed = {
+                    let elapsed = this.start_time.elapsed();
+                    if elapsed.as_secs_f64() > 0.0 && *this.bytes_downloaded > 0 {
+                        Some(*this.bytes_downloaded as f64 / elapsed.as_secs_f64())
+                    } else {
+                        None
+                    }
                 };
 
                 let download_chunk = DownloadChunk::new(

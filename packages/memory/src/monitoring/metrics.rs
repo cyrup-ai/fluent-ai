@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use prometheus::{self, Counter, Gauge, Histogram, HistogramOpts, Registry};
 
 /// Metric types
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MetricType {
     Counter,
     Gauge,

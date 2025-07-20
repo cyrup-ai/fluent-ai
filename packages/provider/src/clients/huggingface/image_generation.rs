@@ -3,6 +3,7 @@ use serde_json::json;
 use super::Client;
 use crate::image_generation;
 use crate::image_generation::{ImageGenerationError, ImageGenerationRequest};
+use fluent_ai_domain::model::ImageGenerationModel;
 
 pub const FLUX_1: &str = "black-forest-labs/FLUX.1-dev";
 pub const KOLORS: &str = "Kwai-Kolors/Kolors";
@@ -26,11 +27,8 @@ impl TryFrom<ImageGenerationResponse>
     }
 }
 
-#[derive(Clone)]
-pub struct ImageGenerationModel {
-    client: Client,
-    pub model: String,
-}
+// ImageGenerationModel is now imported from fluent_ai_domain::model
+// Removed duplicated ImageGenerationModel struct - use canonical domain type
 
 impl ImageGenerationModel {
     pub fn new(client: Client, model: &str) -> Self {

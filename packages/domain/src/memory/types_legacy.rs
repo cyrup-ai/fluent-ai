@@ -72,6 +72,9 @@ pub enum MemoryType {
     LongTerm,
     Semantic,
     Episodic,
+    Conversation,
+    Context,
+    Document,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -93,6 +96,9 @@ impl MemoryType {
             MemoryType::LongTerm => 0.8,  // Persistent, more important
             MemoryType::Semantic => 0.9,  // Knowledge, very important
             MemoryType::Episodic => 0.6,  // Experiences, moderately important
+            MemoryType::Conversation => 0.5, // Conversations, moderately important
+            MemoryType::Context => 0.7, // Context, important
+            MemoryType::Document => 0.8, // Documents, important
         }
     }
 }

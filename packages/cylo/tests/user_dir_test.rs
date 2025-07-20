@@ -21,13 +21,15 @@ mod tests {
     }
 
     #[test]
+    #[cfg(all(target_os = "linux", feature = "landlock"))]
     fn test_mount_tmpfs_in_namespace() {
         use std::ffi::CString;
         use std::fs;
         use std::path::Path;
 
-        use libc::{CLONE_NEWNS, CLONE_NEWUSER, mount};
-        use nix::sched::{CloneFlags, unshare};
+        use nix::sched::unshare;
+        use nix::sched::CloneFlags;
+        use libc::mount;
 
         // Check if we're running in a container environment
         let in_container = Path::new("/.dockerenv").exists()

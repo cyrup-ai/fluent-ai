@@ -242,8 +242,10 @@ impl SimdInstructionSet {
             Self::AVX512 => is_x86_feature_detected!("avx512f"),
             #[cfg(target_arch = "aarch64")]
             Self::NEON => std::arch::is_aarch64_feature_detected!("neon"),
-            #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-            _ => false,
+            #[cfg(not(target_arch = "x86_64"))]
+            Self::SSE | Self::AVX | Self::AVX2 | Self::AVX512 => false,
+            #[cfg(not(target_arch = "aarch64"))]
+            Self::NEON => false,
         }
     }
 

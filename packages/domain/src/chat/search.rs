@@ -6,18 +6,18 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Instant;
 
 use atomic_counter::{AtomicCounter, ConsistentCounter};
-use crossbeam_queue::SegQueue;
+// Removed unused import: crossbeam_queue::SegQueue
 use crossbeam_skiplist::SkipMap;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
-use wide::f32x8;
+// Removed unused import: wide::f32x8
 
-use crate::message::Message;
+use crate::message::SearchChatMessage;
 
 /// Search query with advanced filtering options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,7 +89,7 @@ pub enum SortOrder {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResult {
     /// Message that matched
-    pub message: ChatMessage,
+    pub message: SearchChatMessage,
     /// Relevance score (0.0-1.0)
     pub relevance_score: f32,
     /// Matching terms
@@ -99,7 +99,7 @@ pub struct SearchResult {
     /// Associated tags
     pub tags: Vec<Arc<str>>,
     /// Context messages (before/after)
-    pub context: Vec<ChatMessage>,
+    pub context: Vec<SearchChatMessage>,
 }
 
 /// Search statistics
@@ -155,7 +155,7 @@ pub struct ChatSearchIndex {
     /// Inverted index: term -> documents containing term
     inverted_index: SkipMap<Arc<str>, Vec<IndexEntry>>,
     /// Document store: doc_id -> message
-    document_store: SkipMap<Arc<str>, ChatMessage>,
+    document_store: SkipMap<Arc<str>, SearchChatMessage>,
     /// Term frequencies for TF-IDF calculation
     term_frequencies: SkipMap<Arc<str>, TermFrequency>,
     /// Document count
@@ -193,7 +193,7 @@ impl ChatSearchIndex {
     }
 
     /// Add message to search index
-    pub async fn add_message(&self, message: ChatMessage) -> Result<(), SearchError> {
+    pub async fn add_message(&self, message: SearchChatMessage) -> Result<(), SearchError> {
         let doc_id = Arc::from(message.timestamp.to_string());
 
         // Store the document
@@ -934,7 +934,7 @@ impl ConversationTagger {
     /// Auto-tag message based on content
     pub async fn auto_tag_message(
         &self,
-        message: &ChatMessage,
+        message: &SearchChatMessage,
     ) -> Result<Vec<Arc<str>>, SearchError> {
         let mut suggested_tags = Vec::new();
         let content = message.content.to_lowercase();
@@ -1129,7 +1129,7 @@ impl HistoryExporter {
     /// Export conversation history
     pub async fn export_history(
         &self,
-        messages: Vec<ChatMessage>,
+        messages: Vec<SearchChatMessage>,
         options: &ExportOptions,
     ) -> Result<String, SearchError> {
         let start_time = Instant::now();
@@ -1171,9 +1171,9 @@ impl HistoryExporter {
     /// Filter messages based on export options
     async fn filter_messages(
         &self,
-        mut messages: Vec<ChatMessage>,
+        mut messages: Vec<SearchChatMessage>,
         options: &ExportOptions,
-    ) -> Result<Vec<ChatMessage>, SearchError> {
+    ) -> Result<Vec<SearchChatMessage>, SearchError> {
         // Date range filter
         if let Some(date_range) = &options.date_range {
             messages.retain(|m| m.timestamp >= date_range.start && m.timestamp <= date_range.end);
@@ -1190,7 +1190,7 @@ impl HistoryExporter {
     /// Export to JSON format
     async fn export_json(
         &self,
-        messages: &[ChatMessage],
+        messages: &[SearchChatMessage],
         options: &ExportOptions,
     ) -> Result<String, SearchError> {
         let mut json_messages = Vec::new();
@@ -1235,7 +1235,7 @@ impl HistoryExporter {
     /// Export to CSV format
     async fn export_csv(
         &self,
-        messages: &[ChatMessage],
+        messages: &[SearchChatMessage],
         options: &ExportOptions,
     ) -> Result<String, SearchError> {
         let mut csv_output = String::new();
@@ -1253,18 +1253,23 @@ impl HistoryExporter {
 
         // Data rows
         for message in messages {
+            let escaped_content = message.content.replace(',', "\\,").replace('\n', "\\n");
+            let timestamp_str = message.timestamp.to_string();
+            let tokens_str = message.tokens.to_string();
+            
             let mut row = vec![
-                message.role.as_ref(),
-                &message.content.replace(',', "\\,").replace('\n', "\\n"),
-                &message.tokens.to_string(),
+                message.role.as_str(),
+                &escaped_content,
+                &tokens_str,
             ];
 
             if options.include_timestamps {
-                row.push(&message.timestamp.to_string());
+                row.push(&timestamp_str);
             }
 
             if options.include_metadata {
-                row.push(message.metadata.as_ref().map(|m| m.as_ref()).unwrap_or(""));
+                let metadata_str = message.metadata.as_ref().map(|m| m.as_str()).unwrap_or("");
+                row.push(metadata_str);
             }
 
             csv_output.push_str(&row.join(","));
@@ -1277,7 +1282,7 @@ impl HistoryExporter {
     /// Export to Markdown format
     async fn export_markdown(
         &self,
-        messages: &[ChatMessage],
+        messages: &[SearchChatMessage],
         options: &ExportOptions,
     ) -> Result<String, SearchError> {
         let mut markdown_output = String::new();
@@ -1318,7 +1323,7 @@ impl HistoryExporter {
     /// Export to HTML format
     async fn export_html(
         &self,
-        messages: &[ChatMessage],
+        messages: &[SearchChatMessage],
         options: &ExportOptions,
     ) -> Result<String, SearchError> {
         let mut html_output = String::new();
@@ -1369,7 +1374,7 @@ impl HistoryExporter {
     /// Export to XML format
     async fn export_xml(
         &self,
-        messages: &[ChatMessage],
+        messages: &[SearchChatMessage],
         options: &ExportOptions,
     ) -> Result<String, SearchError> {
         let mut xml_output = String::new();
@@ -1421,7 +1426,7 @@ impl HistoryExporter {
     /// Export to plain text format
     async fn export_plain_text(
         &self,
-        messages: &[ChatMessage],
+        messages: &[SearchChatMessage],
         options: &ExportOptions,
     ) -> Result<String, SearchError> {
         let mut text_output = String::new();
@@ -1456,7 +1461,10 @@ impl HistoryExporter {
                 reason: Arc::from(e.to_string()),
             }
         })?;
-        Ok(base64::encode(compressed))
+        {
+            use base64::Engine;
+            Ok(base64::engine::general_purpose::STANDARD.encode(compressed))
+        }
     }
 
     /// Get export statistics
@@ -1546,7 +1554,7 @@ impl EnhancedHistoryManager {
     }
 
     /// Add message to history manager
-    pub async fn add_message(&self, message: ChatMessage) -> Result<(), SearchError> {
+    pub async fn add_message(&self, message: SearchChatMessage) -> Result<(), SearchError> {
         // Add to search index
         self.search_index.add_message(message.clone()).await?;
 
@@ -1587,7 +1595,7 @@ impl EnhancedHistoryManager {
     /// Export conversation history
     pub async fn export_history(
         &self,
-        messages: Vec<ChatMessage>,
+        messages: Vec<SearchChatMessage>,
         options: &ExportOptions,
     ) -> Result<String, SearchError> {
         let result = self.exporter.export_history(messages, options).await?;

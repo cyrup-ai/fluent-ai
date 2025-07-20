@@ -47,6 +47,9 @@ pub enum MemoryTypeEnum {
     LongTerm = 14,
 }
 
+/// Type alias for backward compatibility
+pub type MemoryType = MemoryTypeEnum;
+
 impl MemoryTypeEnum {
     /// Convert from string to MemoryTypeEnum with zero allocation
     /// Uses static string matching for blazing-fast lookup
