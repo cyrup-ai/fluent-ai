@@ -4,6 +4,545 @@
 
 Zero allocation, blazing-fast, lock-free provider ecosystem implementation following strict performance and reliability constraints.
 
+## 📋 **PHASE 0: Legacy HTTP3 Migration (FOUNDATION)**
+
+### 🚀 **TASK 0A: Convert Azure Client to HTTP3**
+**Priority**: CRITICAL - Major provider using legacy `crate::http`
+**Files**: 
+- `src/clients/azure/client.rs` (lines 1-250)
+- `src/clients/azure/completion.rs` (lines 1-180)
+- `src/clients/azure/streaming.rs` (lines 1-150)
+- `src/clients/azure/transcription.rs` (lines 1-100)
+
+**Current Issues**:
+- Uses legacy `crate::http::{HttpClient, HttpRequest, HttpError}` (line 20)
+- Missing `CompletionClient` and `ProviderClient` trait implementations
+- Mixed HTTP implementation with some `reqwest` usage in transcription
+
+**Required Changes**:
+```rust
+// REPLACE legacy imports
+use crate::http::{HttpClient, HttpRequest, HttpError};
+
+// WITH fluent_ai_http3 imports
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
+use crate::client::{CompletionClient, ProviderClient};
+use fluent_ai_domain::AsyncTask;
+```
+
+**HTTP Client Creation**:
+```rust
+// Zero-allocation HTTP3 client with AI optimization
+pub struct AzureClient {
+    client: HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    endpoint: &'static str,
+    deployment_id: ArrayString<64>,
+    api_version: &'static str,
+}
+
+impl AzureClient {
+    pub fn new(api_key: String, endpoint: String, deployment_id: String) -> Result<Self, AzureError> {
+        let client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| AzureError::Configuration { 
+                message: format!("Failed to create HTTP3 client: {}", e) 
+            })?;
+            
+        Ok(Self {
+            client,
+            api_key: ArcSwap::from_pointee(ArrayString::from(&api_key)?),
+            endpoint: Box::leak(endpoint.into_boxed_str()),
+            deployment_id: ArrayString::from(&deployment_id)?,
+            api_version: "2024-06-01",
+        })
+    }
+}
+```
+
+**Trait Implementations**:
+```rust
+impl CompletionClient for AzureClient {
+    type Model = Result<AzureCompletionBuilder, AzureError>;
+    
+    fn completion_model(&self, model: &str) -> Self::Model {
+        AzureCompletionBuilder::new(
+            &self.client,
+            self.api_key.load(),
+            self.endpoint,
+            &self.deployment_id,
+            model,
+        )
+    }
+}
+
+impl ProviderClient for AzureClient {
+    fn provider_name(&self) -> &'static str {
+        "azure"
+    }
+    
+    fn test_connection(&self) -> AsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let client = self.clone();
+        AsyncTask::spawn(async move {
+            // Test connection with deployments list endpoint
+            let url = format!("{}/openai/deployments?api-version={}", 
+                client.endpoint, client.api_version);
+            
+            let request = HttpRequest::get(&url)?
+                .header("Api-Key", &client.api_key.load())
+                .timeout(Duration::from_secs(10));
+                
+            let response = client.client.send(request).await?;
+            
+            if response.status().is_success() {
+                Ok(())
+            } else {
+                Err(format!("Azure connection test failed: {}", response.status()).into())
+            }
+        })
+    }
+}
+```
+
+**Performance Optimizations**:
+- Zero-allocation header management with `SmallVec<[(&'static str, ArrayString<64>); 4]>`
+- Hot-swappable API keys using `ArcSwap<ArrayString<128>>`
+- Connection pooling with `HttpConfig::ai_optimized()`
+- Streaming-first approach with SSE support
+- Lock-free request metrics using `atomic_counter::RelaxedCounter`
+
+### 🚀 **TASK 0B: Convert Gemini Client to HTTP3**
+**Priority**: CRITICAL - Google's main offering using legacy `crate::http`
+**Files**:
+- `src/clients/gemini/client.rs` (lines 1-300)
+- `src/clients/gemini/completion.rs` (lines 1-250)
+- `src/clients/gemini/streaming.rs` (lines 1-200)
+- `src/clients/gemini/embedding.rs` (lines 1-150)
+
+**Current Issues**:
+- Uses legacy `crate::http::{HttpClient, HttpRequest, HttpError}` (line 14)
+- Missing `CompletionClient` and `ProviderClient` trait implementations
+- Complex streaming implementation needs HTTP3 SSE integration
+
+**Required Changes**:
+```rust
+// HTTP3 client with Google Cloud optimizations
+pub struct GeminiClient {
+    client: HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    project_id: Option<ArrayString<64>>,
+    location: &'static str,
+    endpoint_template: &'static str,
+}
+
+impl GeminiClient {
+    pub fn new(api_key: String, project_id: Option<String>) -> Result<Self, GeminiError> {
+        let client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| GeminiError::Configuration { 
+                message: format!("Failed to create HTTP3 client: {}", e) 
+            })?;
+            
+        let project_array = if let Some(proj) = project_id {
+            Some(ArrayString::from(&proj)?)
+        } else {
+            None
+        };
+            
+        Ok(Self {
+            client,
+            api_key: ArcSwap::from_pointee(ArrayString::from(&api_key)?),
+            project_id: project_array,
+            location: "us-central1",
+            endpoint_template: "https://generativelanguage.googleapis.com/v1beta/models/{}",
+        })
+    }
+}
+```
+
+**Streaming Integration**:
+```rust
+pub async fn stream_completion(&self, request: CompletionRequest) -> Result<GeminiStream, GeminiError> {
+    let endpoint = format!("{}:streamGenerateContent", 
+        format_args!(self.endpoint_template, request.model));
+    
+    let http_request = HttpRequest::post(&endpoint, serde_json::to_vec(&request)?)?
+        .header("Content-Type", "application/json")
+        .header("x-goog-api-key", &self.api_key.load());
+        
+    let response = self.client.send(http_request).await?;
+    let sse_stream = response.sse();
+    
+    Ok(GeminiStream::new(sse_stream))
+}
+```
+
+### 🚀 **TASK 0C: Convert Groq Client to HTTP3**
+**Priority**: CRITICAL - High-performance inference using legacy `crate::http`
+**Files**:
+- `src/clients/groq/client.rs` (lines 1-200)
+- `src/clients/groq/completion.rs` (lines 1-180)
+- `src/clients/groq/streaming.rs` (lines 1-120)
+
+**Current Issues**:
+- Uses legacy `crate::http::{HttpClient, HttpRequest, HttpError}` (line 13)
+- Missing `CompletionClient` and `ProviderClient` trait implementations
+- OpenAI-compatible API needs optimized streaming
+
+**Required Changes**:
+```rust
+pub struct GroqClient {
+    client: HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    base_url: &'static str,
+}
+
+impl GroqClient {
+    pub fn new(api_key: String) -> Result<Self, GroqError> {
+        let client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| GroqError::Configuration { 
+                message: format!("Failed to create HTTP3 client: {}", e) 
+            })?;
+            
+        Ok(Self {
+            client,
+            api_key: ArcSwap::from_pointee(ArrayString::from(&api_key)?),
+            base_url: "https://api.groq.com/openai/v1",
+        })
+    }
+}
+```
+
+### 🚀 **TASK 0D: Convert Ollama Client to HTTP3**
+**Priority**: CRITICAL - Local inference platform using legacy `crate::http`
+**Files**:
+- `src/clients/ollama/client.rs` (lines 1-250)
+- `src/clients/ollama/completion.rs` (lines 1-200)
+- `src/clients/ollama/streaming.rs` (lines 1-150)
+
+**Current Issues**:
+- Uses legacy `crate::http::{HttpClient, HttpRequest, HttpError}` (line 14)
+- Missing `CompletionClient` and `ProviderClient` trait implementations
+- Local connection needs optimized HTTP3 for low latency
+
+**Required Changes**:
+```rust
+pub struct OllamaClient {
+    client: HttpClient,
+    base_url: ArrayString<256>, // Support custom Ollama hosts
+    timeout: Duration,
+}
+
+impl OllamaClient {
+    pub fn new(base_url: Option<String>) -> Result<Self, OllamaError> {
+        let client = HttpClient::with_config(HttpConfig::streaming_optimized())
+            .map_err(|e| OllamaError::Configuration { 
+                message: format!("Failed to create HTTP3 client: {}", e) 
+            })?;
+            
+        let url = base_url.unwrap_or_else(|| "http://localhost:11434".to_string());
+        
+        Ok(Self {
+            client,
+            base_url: ArrayString::from(&url)?,
+            timeout: Duration::from_secs(120), // Long timeout for local inference
+        })
+    }
+}
+```
+
+### 🚀 **TASK 0E: Convert OpenRouter Client to HTTP3** 
+**Priority**: CRITICAL - Gateway provider using legacy `crate::http`
+**Files**:
+- `src/clients/openrouter/client.rs` (lines 1-200)
+- `src/clients/openrouter/completion.rs` (lines 1-180)
+
+**Note**: OpenRouter streaming.rs has extensive new implementation planned in PHASE 1B, but core client needs HTTP3 conversion first.
+
+**Current Issues**:
+- Uses legacy `crate::http::{HttpClient, HttpError}` (line 13)
+- Missing `CompletionClient` and `ProviderClient` trait implementations
+- Gateway to multiple providers needs reliable HTTP3
+
+**Required Changes**:
+```rust
+pub struct OpenRouterClient {
+    client: HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    base_url: &'static str,
+    app_name: Option<ArrayString<64>>,
+    site_url: Option<ArrayString<128>>,
+}
+
+impl OpenRouterClient {
+    pub fn new(api_key: String) -> Result<Self, OpenRouterError> {
+        let client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| OpenRouterError::Configuration { 
+                message: format!("Failed to create HTTP3 client: {}", e) 
+            })?;
+            
+        Ok(Self {
+            client,
+            api_key: ArcSwap::from_pointee(ArrayString::from(&api_key)?),
+            base_url: "https://openrouter.ai/api/v1",
+            app_name: None,
+            site_url: None,
+        })
+    }
+}
+```
+
+### 🚀 **TASK 0F: Convert Perplexity Client to HTTP3**
+**Priority**: CRITICAL - Search-augmented AI using legacy `crate::http`
+**Files**:
+- `src/clients/perplexity/client.rs` (lines 1-180)
+- `src/clients/perplexity/completion.rs` (lines 1-150)
+- `src/clients/perplexity/streaming.rs` (lines 1-120)
+
+**Current Issues**:
+- Uses legacy `crate::http::{HttpClient, HttpError}` (line 14)
+- Missing `CompletionClient` and `ProviderClient` trait implementations
+
+**Required Changes**:
+```rust
+pub struct PerplexityClient {
+    client: HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    base_url: &'static str,
+}
+
+impl PerplexityClient {
+    pub fn new(api_key: String) -> Result<Self, PerplexityError> {
+        let client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| PerplexityError::Configuration { 
+                message: format!("Failed to create HTTP3 client: {}", e) 
+            })?;
+            
+        Ok(Self {
+            client,
+            api_key: ArcSwap::from_pointee(ArrayString::from(&api_key)?),
+            base_url: "https://api.perplexity.ai",
+        })
+    }
+}
+```
+
+### 🚀 **TASK 0G: Convert Together Client to HTTP3**
+**Priority**: CRITICAL - Multi-model platform using legacy `crate::http`
+**Files**:
+- `src/clients/together/client.rs` (lines 1-200)
+- `src/clients/together/completion.rs` (lines 1-180)
+- `src/clients/together/streaming.rs` (lines 1-150)
+- `src/clients/together/embedding.rs` (lines 1-100)
+
+**Current Issues**:
+- Uses legacy `crate::http::{HttpClient, HttpRequest, HttpError}` (line 13)
+- Missing `CompletionClient` and `ProviderClient` trait implementations
+- Multi-endpoint client needs connection pooling
+
+**Required Changes**:
+```rust
+pub struct TogetherClient {
+    client: HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    base_url: &'static str,
+}
+
+impl TogetherClient {
+    pub fn new(api_key: String) -> Result<Self, TogetherError> {
+        let client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| TogetherError::Configuration { 
+                message: format!("Failed to create HTTP3 client: {}", e) 
+            })?;
+            
+        Ok(Self {
+            client,
+            api_key: ArcSwap::from_pointee(ArrayString::from(&api_key)?),
+            base_url: "https://api.together.xyz/v1",
+        })
+    }
+}
+```
+
+### 🚀 **TASK 0H: Convert xAI Client to HTTP3**
+**Priority**: CRITICAL - Elon's AI platform using legacy `crate::http`
+**Files**:
+- `src/clients/xai/client.rs` (lines 1-180)
+- `src/clients/xai/completion.rs` (lines 1-150)
+- `src/clients/xai/streaming.rs` (lines 1-120)
+
+**Current Issues**:
+- Uses legacy `crate::http::{HttpClient, HttpError}` (line 14)
+- Missing `CompletionClient` and `ProviderClient` trait implementations
+
+**Required Changes**:
+```rust
+pub struct XAIClient {
+    client: HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    base_url: &'static str,
+}
+
+impl XAIClient {
+    pub fn new(api_key: String) -> Result<Self, XAIError> {
+        let client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| XAIError::Configuration { 
+                message: format!("Failed to create HTTP3 client: {}", e) 
+            })?;
+            
+        Ok(Self {
+            client,
+            api_key: ArcSwap::from_pointee(ArrayString::from(&api_key)?),
+            base_url: "https://api.x.ai/v1",
+        })
+    }
+}
+```
+
+### 🚀 **TASK 0I: Add Trait Implementations to DeepSeek Client**
+**Priority**: MEDIUM - HTTP3 already correct, missing traits only
+**Files**:
+- `src/clients/deepseek/client.rs` (lines 150-200)
+
+**Current Status**: ✅ Uses `fluent_ai_http3::{HttpClient, HttpConfig}` correctly
+**Missing**: `CompletionClient` and `ProviderClient` trait implementations
+
+**Required Additions**:
+```rust
+use crate::client::{CompletionClient, ProviderClient};
+use fluent_ai_domain::AsyncTask;
+
+impl CompletionClient for DeepSeekClient {
+    type Model = Result<DeepSeekCompletionBuilder, DeepSeekError>;
+    
+    fn completion_model(&self, model: &str) -> Self::Model {
+        DeepSeekCompletionBuilder::new(
+            &self.client,
+            self.api_key.load(),
+            model,
+        )
+    }
+}
+
+impl ProviderClient for DeepSeekClient {
+    fn provider_name(&self) -> &'static str {
+        "deepseek"
+    }
+    
+    fn test_connection(&self) -> AsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let client = self.clone();
+        AsyncTask::spawn(async move {
+            let request = HttpRequest::get("https://api.deepseek.com/models")?
+                .header("Authorization", &format!("Bearer {}", client.api_key.load()))
+                .timeout(Duration::from_secs(10));
+                
+            let response = client.client.send(request).await?;
+            
+            if response.status().is_success() {
+                Ok(())
+            } else {
+                Err(format!("DeepSeek connection test failed: {}", response.status()).into())
+            }
+        })
+    }
+}
+```
+
+### 🚀 **TASK 0J: Add Trait Implementations to HuggingFace Client**
+**Priority**: MEDIUM - HTTP3 already correct, missing traits only
+**Files**:
+- `src/clients/huggingface/client.rs` (lines 180-230)
+
+**Current Status**: ✅ Uses `fluent_ai_http3::{HttpClient, HttpConfig}` correctly
+**Missing**: `CompletionClient` and `ProviderClient` trait implementations
+
+**Required Additions**:
+```rust
+use crate::client::{CompletionClient, ProviderClient};
+use fluent_ai_domain::AsyncTask;
+
+impl CompletionClient for HuggingFaceClient {
+    type Model = Result<HuggingFaceCompletionBuilder, HuggingFaceError>;
+    
+    fn completion_model(&self, model: &str) -> Self::Model {
+        HuggingFaceCompletionBuilder::new(
+            &self.client,
+            self.api_key.load(),
+            model,
+        )
+    }
+}
+
+impl ProviderClient for HuggingFaceClient {
+    fn provider_name(&self) -> &'static str {
+        "huggingface"
+    }
+    
+    fn test_connection(&self) -> AsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let client = self.clone();
+        AsyncTask::spawn(async move {
+            let request = HttpRequest::get("https://api-inference.huggingface.co/models")?
+                .header("Authorization", &format!("Bearer {}", client.api_key.load()))
+                .timeout(Duration::from_secs(10));
+                
+            let response = client.client.send(request).await?;
+            
+            if response.status().is_success() {
+                Ok(())
+            } else {
+                Err(format!("HuggingFace connection test failed: {}", response.status()).into())
+            }
+        })
+    }
+}
+```
+
+### 🚀 **TASK 0K: Universal HTTP3 Migration Validation**
+**Priority**: HIGH - Verify all conversions successful
+**Files**: All converted client files
+
+**Validation Checklist**:
+- [ ] All `crate::http` imports replaced with `fluent_ai_http3`
+- [ ] All clients use `HttpConfig::ai_optimized()` or `HttpConfig::streaming_optimized()`
+- [ ] All clients implement `CompletionClient` trait
+- [ ] All clients implement `ProviderClient` trait
+- [ ] All clients use zero-allocation patterns (ArrayString, SmallVec, ArcSwap)
+- [ ] All clients have proper error handling without unwrap/expect
+- [ ] All streaming implementations use HTTP3 SSE support
+- [ ] All clients use connection pooling and circuit breaker patterns
+- [ ] All test connections work properly
+- [ ] All compilation errors resolved
+
+**Performance Verification**:
+```rust
+// Benchmark HTTP3 vs legacy performance
+#[cfg(test)]
+mod http3_migration_benchmarks {
+    use criterion::{black_box, criterion_group, criterion_main, Criterion};
+    
+    fn benchmark_http3_vs_legacy(c: &mut Criterion) {
+        // Compare latency, throughput, memory usage
+        c.bench_function("http3_client_creation", |b| {
+            b.iter(|| {
+                let client = HttpClient::with_config(HttpConfig::ai_optimized())
+                    .expect("Failed to create HTTP3 client");
+                black_box(client);
+            })
+        });
+    }
+    
+    criterion_group!(benches, benchmark_http3_vs_legacy);
+    criterion_main!(benches);
+}
+```
+
+**Migration Success Criteria**:
+- ✅ 100% of provider clients use fluent_ai_http3
+- ✅ 100% of provider clients implement required traits  
+- ✅ Zero compilation errors across all clients
+- ✅ All test connections pass
+- ✅ Performance benchmarks show improvement over legacy HTTP
+- ✅ Memory allocation profiles show zero-allocation compliance
+- ✅ Integration tests pass for all converted clients
+
 ## 📋 **PHASE 1: Critical Infrastructure (IMMEDIATE)**
 
 ### ✅ **TASK 1: Fix Claude/Anthropic Naming Mismatch**
@@ -1156,6 +1695,963 @@ Validate build system correctly includes VertexAI in all generated enumerations,
 
 ### 🚀 **TASK 4T: Act as an Objective QA Rust developer**
 Benchmark performance optimizations against baseline implementations, validate zero-allocation claims with memory profiling, and confirm OAuth2 performance meets enterprise requirements.
+
+## 📋 **PHASE 1C: HTTP3 CONVERSION SPRINT (CRITICAL PRIORITY)**
+
+**OBJECTIVE**: Convert 10 non-compliant clients from legacy HTTP patterns to `fluent_ai_http3` with zero allocation, blazing-fast, lock-free implementations.
+
+**CONSTRAINTS**: 
+- DO NOT REWRITE working code - make ONLY surgical modifications
+- Zero allocation patterns in hot paths
+- No unsafe, no unchecked, no locking
+- No unwrap()/expect() in src/* files
+- Elegant ergonomic code following ULTRATHINK principles
+
+### 🚀 **TASK 5A: Convert Groq Client to HTTP3**
+**Priority**: CRITICAL - High-usage OpenAI-compatible API
+**Files**: 
+- `src/clients/groq/client.rs` (lines 1-180)
+- `src/clients/groq/completion.rs` (lines 1-200)
+- `src/clients/groq/streaming.rs` (lines 1-150)
+
+**Current State**: Uses `crate::http::HttpClient::for_provider("groq")`
+**Target State**: `fluent_ai_http3::HttpClient` with trait implementations
+
+**Implementation Specifications**:
+```rust
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
+use arrayvec::{ArrayVec, ArrayString};
+use smallvec::{SmallVec, smallvec};
+use arc_swap::ArcSwap;
+use atomic_counter::RelaxedCounter;
+
+// Zero-allocation Groq client with circuit breaker
+pub struct GroqClient {
+    client: &'static HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    base_url: &'static str,
+    performance_metrics: &'static GroqMetrics,
+}
+
+// Global HTTP3 client with AI optimization
+static HTTP_CLIENT: LazyLock<HttpClient> = LazyLock::new(|| {
+    HttpClient::with_config(HttpConfig::ai_optimized())
+        .unwrap_or_else(|_| HttpClient::new())
+});
+
+// Lock-free performance tracking
+static GROQ_METRICS: LazyLock<GroqMetrics> = LazyLock::new(GroqMetrics::new);
+
+impl GroqClient {
+    #[inline]
+    pub fn new(api_key: String) -> Result<Self, CompletionError> {
+        let api_key_array = ArrayString::from(&api_key)
+            .map_err(|_| CompletionError::ConfigError("API key too long".into()))?;
+            
+        Ok(Self {
+            client: &HTTP_CLIENT,
+            api_key: ArcSwap::from_pointee(api_key_array),
+            base_url: "https://api.groq.com/openai/v1",
+            performance_metrics: &GROQ_METRICS,
+        })
+    }
+    
+    #[inline]
+    async fn make_request(&self, endpoint: &str, body: Vec<u8>) -> Result<Response, HttpError> {
+        let mut headers: SmallVec<[(&str, ArrayString<180>); 4]> = smallvec![];
+        
+        // Build auth header with zero allocation
+        let mut auth_header = ArrayString::<180>::new();
+        auth_header.try_push_str("Bearer ").map_err(|_| HttpError::HeaderTooLong)?;
+        auth_header.try_push_str(&self.api_key.load()).map_err(|_| HttpError::HeaderTooLong)?;
+        
+        headers.push(("Authorization", auth_header));
+        headers.push(("Content-Type", ArrayString::from("application/json").unwrap()));
+        
+        let request = HttpRequest::post(endpoint, body)
+            .map_err(HttpError::from)?
+            .headers(headers.iter().map(|(k, v)| (*k, v.as_str())));
+            
+        self.client.send(request).await
+    }
+}
+
+// Implement required traits
+impl CompletionClient for GroqClient {
+    type Model = Result<GroqCompletionBuilder, CompletionError>;
+    
+    #[inline]
+    fn completion_model(&self, model: &str) -> Self::Model {
+        GroqCompletionBuilder::new(self.clone(), model)
+    }
+}
+
+impl ProviderClient for GroqClient {
+    #[inline]
+    fn provider_name(&self) -> &'static str {
+        "groq"
+    }
+    
+    #[inline]
+    fn test_connection(&self) -> AsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let client = self.clone();
+        AsyncTask::spawn(async move {
+            client.make_request(&format!("{}/models", client.base_url), vec![])
+                .await
+                .map(|_| ())
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        })
+    }
+}
+```
+
+**Modifications Required**:
+1. Replace `use crate::http::{HttpClient, HttpRequest, HttpError}` with `fluent_ai_http3` imports
+2. Replace `HttpClient::for_provider("groq")` with `HttpClient::with_config(HttpConfig::ai_optimized())`
+3. Update request building to use `fluent_ai_http3::HttpRequest`
+4. Add `CompletionClient` and `ProviderClient` trait implementations
+5. Implement zero-allocation header management with `SmallVec` and `ArrayString`
+
+**Performance Optimizations**:
+- Global HTTP client instance with connection pooling
+- Zero-allocation API key storage using `ArcSwap<ArrayString<128>>`
+- Lock-free metrics collection with atomic counters
+- Efficient header building with stack-allocated buffers
+- Hot-path inlining for request construction
+
+**Error Handling**:
+- Replace all `.unwrap()` with proper error propagation
+- Map HTTP errors to domain-specific error types
+- Preserve error context without additional allocations
+
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
+
+### 🚀 **TASK 5B: Act as an Objective QA Rust developer**
+Rate the Groq HTTP3 conversion for correct API usage, zero-allocation compliance, proper trait implementation, and performance optimization effectiveness.
+
+### 🚀 **TASK 5C: Convert Perplexity Client to HTTP3**
+**Priority**: CRITICAL - Popular search-enabled LLM
+**Files**: 
+- `src/clients/perplexity/client.rs` (lines 1-150)
+- `src/clients/perplexity/completion.rs` (lines 1-180)
+- `src/clients/perplexity/streaming.rs` (lines 1-120)
+
+**Current State**: Uses `crate::http::HttpClient::for_provider("perplexity")`
+**Target State**: `fluent_ai_http3::HttpClient` with optimized authentication
+
+**Implementation Specifications**:
+```rust
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
+use arrayvec::{ArrayVec, ArrayString};
+use atomic_counter::RelaxedCounter;
+
+// Zero-allocation Perplexity client with multiple auth sources
+pub struct PerplexityClient {
+    client: &'static HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    base_url: &'static str,
+    request_counter: &'static RelaxedCounter,
+}
+
+impl PerplexityClient {
+    #[inline]
+    pub fn new(api_key: Option<String>) -> Result<Self, CompletionError> {
+        // Support multiple environment variables
+        let key = api_key
+            .or_else(|| std::env::var("PERPLEXITY_API_KEY").ok())
+            .or_else(|| std::env::var("PPLX_API_KEY").ok())
+            .ok_or_else(|| CompletionError::ConfigError("No Perplexity API key found".into()))?;
+            
+        let api_key_array = ArrayString::from(&key)
+            .map_err(|_| CompletionError::ConfigError("API key too long".into()))?;
+            
+        Ok(Self {
+            client: &HTTP_CLIENT,
+            api_key: ArcSwap::from_pointee(api_key_array),
+            base_url: "https://api.perplexity.ai",
+            request_counter: &PERPLEXITY_REQUEST_COUNTER,
+        })
+    }
+}
+
+// Global optimized client and metrics
+static PERPLEXITY_REQUEST_COUNTER: RelaxedCounter = RelaxedCounter::new(0);
+```
+
+**Modifications Required**:
+1. Replace legacy HTTP client with `fluent_ai_http3`
+2. Support multiple environment variable names for API key
+3. Implement trait requirements with zero allocations
+4. Add request timing and error tracking
+
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
+
+### 🚀 **TASK 5D: Act as an Objective QA Rust developer**
+Rate the Perplexity HTTP3 conversion for environment variable handling, API compatibility, and performance optimizations.
+
+### 🚀 **TASK 5E: Convert Together AI Client to HTTP3**
+**Priority**: HIGH - Important for open-source models + embeddings
+**Files**: 
+- `src/clients/together/client.rs` (lines 1-200)
+- `src/clients/together/completion.rs` (lines 1-220)
+- `src/clients/together/embedding.rs` (lines 1-180)
+- `src/clients/together/streaming.rs` (lines 1-160)
+
+**Current State**: Uses `crate::http::HttpClient::for_provider("together")`
+**Target State**: Multi-endpoint HTTP3 client with chat + embeddings
+
+**Implementation Specifications**:
+```rust
+// Multi-endpoint Together AI client
+pub struct TogetherClient {
+    chat_client: &'static HttpClient,
+    embed_client: &'static HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    chat_base_url: &'static str,
+    embed_base_url: &'static str,
+    endpoint_metrics: &'static TogetherMetrics,
+}
+
+// Dual HTTP clients for optimization
+static CHAT_HTTP_CLIENT: LazyLock<HttpClient> = LazyLock::new(|| {
+    HttpClient::with_config(HttpConfig::ai_optimized())
+        .unwrap_or_else(|_| HttpClient::new())
+});
+
+static EMBED_HTTP_CLIENT: LazyLock<HttpClient> = LazyLock::new(|| {
+    HttpClient::with_config(HttpConfig::embedding_optimized())
+        .unwrap_or_else(|_| HttpClient::new())
+});
+
+impl TogetherClient {
+    #[inline]
+    async fn chat_request(&self, endpoint: &str, body: Vec<u8>) -> Result<Response, HttpError> {
+        let url = format!("{}/{}", self.chat_base_url, endpoint);
+        self.make_authenticated_request(&self.chat_client, &url, body).await
+    }
+    
+    #[inline]
+    async fn embedding_request(&self, body: Vec<u8>) -> Result<Response, HttpError> {
+        let url = format!("{}/embeddings", self.embed_base_url);
+        self.make_authenticated_request(&self.embed_client, &url, body).await
+    }
+}
+
+// Implement EmbeddingsClient trait
+impl EmbeddingsClient for TogetherClient {
+    type Model = Result<TogetherEmbeddingModel, CompletionError>;
+    
+    #[inline]
+    fn embedding_model(&self, model: &str) -> Self::Model {
+        TogetherEmbeddingModel::new(self.clone(), model)
+    }
+    
+    #[inline]
+    fn embedding_model_with_ndims(&self, model: &str, ndims: usize) -> Self::Model {
+        TogetherEmbeddingModel::new_with_dims(self.clone(), model, ndims)
+    }
+}
+```
+
+**Modifications Required**:
+1. Dual HTTP client architecture for chat vs embeddings optimization
+2. Implement both `CompletionClient` and `EmbeddingsClient` traits
+3. Add endpoint-specific metrics tracking
+4. Zero-allocation request routing based on operation type
+
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
+
+### 🚀 **TASK 5F: Act as an Objective QA Rust developer**
+Evaluate Together AI conversion for multi-endpoint efficiency, embedding support quality, and dual-client architecture benefits.
+
+### 🚀 **TASK 5G: Convert OpenRouter Client to HTTP3**
+**Priority**: HIGH - Model router/proxy service
+**Files**: 
+- `src/clients/openrouter/client.rs` (lines 1-180)
+- `src/clients/openrouter/completion.rs` (lines 1-200)
+- `src/clients/openrouter/streaming.rs` (lines 1-300, enhanced with Task 3 implementation)
+
+**Current State**: Uses `crate::http::HttpClient::for_provider("openrouter")`
+**Target State**: Enhanced with advanced streaming tool call integration
+
+**Implementation Specifications**:
+```rust
+// OpenRouter client with enhanced tool call support
+pub struct OpenRouterClient {
+    client: &'static HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    site_url: Option<ArcSwap<ArrayString<256>>>,
+    app_name: Option<ArcSwap<ArrayString<128>>>,
+    tool_call_processor: AdvancedToolCallProcessor, // From Task 3
+    performance_monitor: &'static OpenRouterMetrics,
+}
+
+impl OpenRouterClient {
+    #[inline]
+    pub fn with_metadata(api_key: String, site_url: Option<String>, app_name: Option<String>) -> Result<Self, CompletionError> {
+        let api_key_array = ArrayString::from(&api_key)
+            .map_err(|_| CompletionError::ConfigError("API key too long".into()))?;
+            
+        let site_url_array = site_url.map(|url| {
+            ArrayString::from(&url)
+                .map(ArcSwap::from_pointee)
+                .map_err(|_| CompletionError::ConfigError("Site URL too long".into()))
+        }).transpose()?;
+        
+        let app_name_array = app_name.map(|name| {
+            ArrayString::from(&name)
+                .map(ArcSwap::from_pointee)
+                .map_err(|_| CompletionError::ConfigError("App name too long".into()))
+        }).transpose()?;
+        
+        Ok(Self {
+            client: &HTTP_CLIENT,
+            api_key: ArcSwap::from_pointee(api_key_array),
+            site_url: site_url_array,
+            app_name: app_name_array,
+            tool_call_processor: AdvancedToolCallProcessor::new()?,
+            performance_monitor: &OPENROUTER_METRICS,
+        })
+    }
+    
+    #[inline]
+    fn build_headers(&self) -> SmallVec<[(&'static str, ArrayString<300>); 6]> {
+        let mut headers = smallvec![];
+        
+        // Authorization header
+        let mut auth_header = ArrayString::<300>::new();
+        auth_header.try_push_str("Bearer ").unwrap();
+        auth_header.try_push_str(&self.api_key.load()).unwrap();
+        headers.push(("Authorization", auth_header));
+        
+        // Optional metadata headers
+        if let Some(site_url) = &self.site_url {
+            let mut referer_header = ArrayString::<300>::new();
+            referer_header.try_push_str(&site_url.load()).unwrap();
+            headers.push(("HTTP-Referer", referer_header));
+        }
+        
+        if let Some(app_name) = &self.app_name {
+            let mut app_header = ArrayString::<300>::new();
+            app_header.try_push_str(&app_name.load()).unwrap();
+            headers.push(("X-Title", app_header));
+        }
+        
+        headers.push(("Content-Type", ArrayString::from("application/json").unwrap()));
+        headers
+    }
+}
+```
+
+**Integration with Enhanced Streaming**:
+- Connect with advanced tool call processing from Task 3A-3L
+- Leverage SIMD-optimized JSON parsing for tool call arguments
+- Implement predictive tool call classification
+- Add real-time performance monitoring
+
+**Modifications Required**:
+1. Replace legacy HTTP client with enhanced HTTP3 implementation
+2. Add optional metadata headers (HTTP-Referer, X-Title) for OpenRouter tracking
+3. Integrate advanced tool call processing engine
+4. Implement comprehensive error recovery strategies
+
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
+
+### 🚀 **TASK 5H: Act as an Objective QA Rust developer**
+Assess OpenRouter conversion for metadata header handling, tool call integration quality, and enhanced streaming performance.
+
+### 🚀 **TASK 5I: Convert xAI Client to HTTP3**
+**Priority**: HIGH - Grok models gaining popularity
+**Files**: 
+- `src/clients/xai/client.rs` (lines 1-160)
+- `src/clients/xai/completion.rs` (lines 1-180)
+- `src/clients/xai/streaming.rs` (lines 1-140)
+
+**Current State**: Uses `crate::http::HttpClient::for_provider("xai")`
+**Target State**: OpenAI-compatible with Grok-specific optimizations
+
+**Implementation Specifications**:
+```rust
+// xAI client optimized for Grok models
+pub struct XAIClient {
+    client: &'static HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    base_url: &'static str,
+    model_optimizer: GrokModelOptimizer,
+}
+
+// Grok-specific optimizations
+struct GrokModelOptimizer {
+    context_window_cache: ArrayVec<(String, u32), 8>,
+    reasoning_patterns: &'static [ReasoningPattern],
+    performance_hints: GrokPerformanceHints,
+}
+
+impl XAIClient {
+    #[inline]
+    pub fn new(api_key: String) -> Result<Self, CompletionError> {
+        let api_key_array = ArrayString::from(&api_key)
+            .map_err(|_| CompletionError::ConfigError("API key too long".into()))?;
+            
+        Ok(Self {
+            client: &HTTP_CLIENT,
+            api_key: ArcSwap::from_pointee(api_key_array),
+            base_url: "https://api.x.ai/v1",
+            model_optimizer: GrokModelOptimizer::new(),
+        })
+    }
+    
+    #[inline]
+    fn optimize_request_for_grok(&self, request: &mut CompletionRequest) -> Result<(), CompletionError> {
+        // Apply Grok-specific optimizations
+        match request.model.as_str() {
+            "grok-beta" => {
+                // High reasoning capability model optimizations
+                if request.max_tokens.is_none() {
+                    request.max_tokens = Some(8192); // Optimal for reasoning tasks
+                }
+                if request.temperature.is_none() {
+                    request.temperature = Some(0.3); // Lower temperature for better reasoning
+                }
+            },
+            "grok-vision-beta" => {
+                // Vision model optimizations
+                if request.max_tokens.is_none() {
+                    request.max_tokens = Some(4096); // Balanced for vision + text
+                }
+            },
+            _ => {}
+        }
+        Ok(())
+    }
+}
+```
+
+**Grok-Specific Features**:
+- Model-specific parameter optimization for reasoning tasks
+- Enhanced context window management
+- Reasoning pattern recognition and optimization
+- Vision model support with balanced parameter defaults
+
+**Modifications Required**:
+1. Replace legacy HTTP patterns with `fluent_ai_http3`
+2. Add Grok model-specific optimizations and parameter tuning
+3. Implement vision model support
+4. Add reasoning task performance hints
+
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
+
+### 🚀 **TASK 5J: Act as an Objective QA Rust developer**
+Review xAI conversion for Grok-specific optimizations, reasoning task handling, and vision model integration quality.
+
+### 🚀 **TASK 5K: Convert Ollama Client to HTTP3**
+**Priority**: MEDIUM - Local inference platform
+**Files**: 
+- `src/clients/ollama/client.rs` (lines 1-140)
+- `src/clients/ollama/completion.rs` (lines 1-160)
+- `src/clients/ollama/streaming.rs` (lines 1-120)
+
+**Current State**: Uses `crate::http::HttpClient::for_provider("ollama")`
+**Target State**: Local API optimized for no authentication
+
+**Implementation Specifications**:
+```rust
+// Ollama client optimized for local inference
+pub struct OllamaClient {
+    client: &'static HttpClient,
+    base_url: ArcSwap<ArrayString<128>>, // Configurable for different local instances
+    health_checker: LocalHealthChecker,
+    model_scanner: OllamaModelScanner,
+}
+
+// Local health monitoring
+struct LocalHealthChecker {
+    last_health_check: AtomicU64,
+    health_status: AtomicBool,
+    check_interval_ms: u64,
+}
+
+impl OllamaClient {
+    #[inline]
+    pub fn new(base_url: Option<String>) -> Result<Self, CompletionError> {
+        let url = base_url.unwrap_or_else(|| "http://localhost:11434".to_string());
+        let url_array = ArrayString::from(&url)
+            .map_err(|_| CompletionError::ConfigError("Base URL too long".into()))?;
+            
+        Ok(Self {
+            client: &HTTP_CLIENT,
+            base_url: ArcSwap::from_pointee(url_array),
+            health_checker: LocalHealthChecker::new(),
+            model_scanner: OllamaModelScanner::new(),
+        })
+    }
+    
+    #[inline]
+    async fn make_local_request(&self, endpoint: &str, body: Vec<u8>) -> Result<Response, HttpError> {
+        // No authentication required for local Ollama
+        let url = format!("{}/{}", self.base_url.load(), endpoint);
+        
+        let request = HttpRequest::post(&url, body)
+            .map_err(HttpError::from)?
+            .header("Content-Type", "application/json");
+            
+        self.client.send(request).await
+    }
+    
+    #[inline]
+    pub async fn health_check(&self) -> Result<bool, CompletionError> {
+        let response = self.make_local_request("api/tags", vec![]).await?;
+        Ok(response.status().is_success())
+    }
+    
+    #[inline]
+    pub async fn list_models(&self) -> Result<Vec<String>, CompletionError> {
+        let response = self.make_local_request("api/tags", vec![]).await?;
+        let body = response.bytes().await?;
+        
+        // Parse model list from Ollama API response
+        self.model_scanner.parse_model_list(&body)
+    }
+}
+```
+
+**Local Optimization Features**:
+- Configurable base URL for different local instances
+- No authentication overhead for local requests
+- Health checking for local server availability
+- Dynamic model discovery from local Ollama instance
+- Connection optimization for localhost patterns
+
+**Modifications Required**:
+1. Replace legacy HTTP client with local-optimized HTTP3
+2. Remove authentication components (no auth for local)
+3. Add health checking and model discovery capabilities
+4. Optimize for localhost connection patterns
+
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
+
+### 🚀 **TASK 5L: Act as an Objective QA Rust developer**
+Evaluate Ollama conversion for local optimization effectiveness, health checking reliability, and model discovery accuracy.
+
+### 🚀 **TASK 5M: Convert Gemini Client to HTTP3**
+**Priority**: MEDIUM - Google's flagship model
+**Files**: 
+- `src/clients/gemini/client.rs` (lines 1-200)
+- `src/clients/gemini/completion.rs` (lines 1-240)
+- `src/clients/gemini/streaming.rs` (lines 1-180)
+- `src/clients/gemini/embedding.rs` (lines 1-160)
+
+**Current State**: Uses `crate::http::HttpClient::for_provider("gemini")`
+**Target State**: Google API with query parameter authentication
+
+**Implementation Specifications**:
+```rust
+// Gemini client with query parameter auth optimization
+pub struct GeminiClient {
+    client: &'static HttpClient,
+    api_key: ArcSwap<ArrayString<128>>,
+    base_url: &'static str,
+    url_builder: OptimizedUrlBuilder,
+    request_cache: GeminiRequestCache,
+}
+
+// URL building optimization for query parameter auth
+struct OptimizedUrlBuilder {
+    template_cache: ArrayVec<(String, ArrayString<512>), 16>,
+    parameter_buffer: ArrayString<256>,
+}
+
+impl GeminiClient {
+    #[inline]
+    pub fn new(api_key: String) -> Result<Self, CompletionError> {
+        let api_key_array = ArrayString::from(&api_key)
+            .map_err(|_| CompletionError::ConfigError("API key too long".into()))?;
+            
+        Ok(Self {
+            client: &HTTP_CLIENT,
+            api_key: ArcSwap::from_pointee(api_key_array),
+            base_url: "https://generativelanguage.googleapis.com/v1beta",
+            url_builder: OptimizedUrlBuilder::new(),
+            request_cache: GeminiRequestCache::new(),
+        })
+    }
+    
+    #[inline]
+    fn build_authenticated_url(&self, endpoint: &str) -> Result<ArrayString<512>, CompletionError> {
+        let mut url = ArrayString::<512>::new();
+        url.try_push_str(self.base_url).map_err(|_| CompletionError::ConfigError("URL too long".into()))?;
+        url.try_push('/').map_err(|_| CompletionError::ConfigError("URL too long".into()))?;
+        url.try_push_str(endpoint).map_err(|_| CompletionError::ConfigError("URL too long".into()))?;
+        url.try_push_str("?key=").map_err(|_| CompletionError::ConfigError("URL too long".into()))?;
+        url.try_push_str(&self.api_key.load()).map_err(|_| CompletionError::ConfigError("URL too long".into()))?;
+        
+        Ok(url)
+    }
+    
+    #[inline]
+    async fn make_authenticated_request(&self, endpoint: &str, body: Vec<u8>) -> Result<Response, HttpError> {
+        let url = self.build_authenticated_url(endpoint)
+            .map_err(|e| HttpError::ConfigurationError(e.to_string()))?;
+            
+        let request = HttpRequest::post(url.as_str(), body)
+            .map_err(HttpError::from)?
+            .header("Content-Type", "application/json");
+            
+        self.client.send(request).await
+    }
+}
+
+// Implement both completion and embedding support
+impl CompletionClient for GeminiClient {
+    type Model = Result<GeminiCompletionBuilder, CompletionError>;
+    
+    #[inline]
+    fn completion_model(&self, model: &str) -> Self::Model {
+        GeminiCompletionBuilder::new(self.clone(), model)
+    }
+}
+
+impl EmbeddingsClient for GeminiClient {
+    type Model = Result<GeminiEmbeddingModel, CompletionError>;
+    
+    #[inline]
+    fn embedding_model(&self, model: &str) -> Self::Model {
+        GeminiEmbeddingModel::new(self.clone(), model)
+    }
+    
+    #[inline]
+    fn embedding_model_with_ndims(&self, model: &str, ndims: usize) -> Self::Model {
+        GeminiEmbeddingModel::new_with_dims(self.clone(), model, ndims)
+    }
+}
+```
+
+**Google API Optimizations**:
+- Query parameter authentication for simplified requests
+- URL building optimization with template caching
+- Support for both completion and embedding models
+- Gemini-specific response format handling
+
+**Modifications Required**:
+1. Replace legacy HTTP client with Google API optimized HTTP3
+2. Implement query parameter authentication pattern
+3. Add both `CompletionClient` and `EmbeddingsClient` trait support
+4. Optimize URL building for query parameter patterns
+
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
+
+### 🚀 **TASK 5N: Act as an Objective QA Rust developer**
+Assess Gemini conversion for query parameter auth efficiency, dual-client functionality, and Google API compatibility.
+
+### 🚀 **TASK 5O: Convert Azure Client to HTTP3**
+**Priority**: MEDIUM - Complex auth, enterprise customer base
+**Files**: 
+- `src/clients/azure/client.rs` (lines 1-300)
+- `src/clients/azure/completion.rs` (lines 1-350)
+- `src/clients/azure/streaming.rs` (lines 1-250)
+- `src/clients/azure/audio_generation.rs` (lines 1-200)
+- `src/clients/azure/embedding.rs` (lines 1-180)
+
+**Current State**: Complex typestate builder with Azure auth, already has traits
+**Target State**: Enhanced HTTP3 with preserved Azure authentication complexity
+
+**Implementation Specifications**:
+```rust
+// Azure client with complex authentication preserved
+pub struct AzureClient {
+    client: &'static HttpClient,
+    auth_strategy: AzureAuthStrategy,
+    endpoint_config: AzureEndpointConfig,
+    api_version: &'static str,
+    performance_monitor: &'static AzureMetrics,
+}
+
+// Azure authentication strategy enum
+#[derive(Clone)]
+pub enum AzureAuthStrategy {
+    ApiKey {
+        key: ArcSwap<ArrayString<128>>,
+    },
+    EntraId {
+        token_provider: Arc<EntraIdTokenProvider>,
+        token_cache: ArcSwap<ArrayString<512>>,
+    },
+    ManagedIdentity {
+        client_id: Option<ArrayString<64>>,
+        token_cache: ArcSwap<ArrayString<512>>,
+    },
+}
+
+// Azure endpoint configuration
+struct AzureEndpointConfig {
+    base_url: ArrayString<256>,
+    deployment_name: ArrayString<128>,
+    resource_name: ArrayString<128>,
+    region: ArrayString<32>,
+}
+
+impl AzureClient {
+    #[inline]
+    pub fn with_api_key(
+        endpoint: String,
+        api_key: String,
+        deployment: String,
+        api_version: Option<String>
+    ) -> Result<Self, CompletionError> {
+        let base_url = ArrayString::from(&endpoint)
+            .map_err(|_| CompletionError::ConfigError("Endpoint URL too long".into()))?;
+        let deployment_name = ArrayString::from(&deployment)
+            .map_err(|_| CompletionError::ConfigError("Deployment name too long".into()))?;
+        let api_key_array = ArrayString::from(&api_key)
+            .map_err(|_| CompletionError::ConfigError("API key too long".into()))?;
+            
+        Ok(Self {
+            client: &HTTP_CLIENT,
+            auth_strategy: AzureAuthStrategy::ApiKey {
+                key: ArcSwap::from_pointee(api_key_array),
+            },
+            endpoint_config: AzureEndpointConfig {
+                base_url,
+                deployment_name,
+                resource_name: ArrayString::new(), // Extract from endpoint
+                region: ArrayString::new(),
+            },
+            api_version: api_version.as_deref().unwrap_or("2024-02-15-preview"),
+            performance_monitor: &AZURE_METRICS,
+        })
+    }
+    
+    #[inline]
+    async fn make_azure_request(&self, operation: &str, body: Vec<u8>) -> Result<Response, HttpError> {
+        let url = self.build_azure_url(operation)?;
+        let headers = self.build_azure_headers().await?;
+        
+        let request = HttpRequest::post(&url, body)
+            .map_err(HttpError::from)?
+            .headers(headers.iter().map(|(k, v)| (*k, v.as_str())));
+            
+        self.client.send(request).await
+    }
+    
+    #[inline]
+    fn build_azure_url(&self, operation: &str) -> Result<ArrayString<512>, CompletionError> {
+        let mut url = ArrayString::<512>::new();
+        
+        // Build URL: https://{resource}.openai.azure.com/openai/deployments/{deployment}/{operation}
+        url.try_push_str(&self.endpoint_config.base_url).unwrap();
+        url.try_push_str("/openai/deployments/").unwrap();
+        url.try_push_str(&self.endpoint_config.deployment_name).unwrap();
+        url.try_push('/').unwrap();
+        url.try_push_str(operation).unwrap();
+        url.try_push_str("?api-version=").unwrap();
+        url.try_push_str(self.api_version).unwrap();
+        
+        Ok(url)
+    }
+    
+    #[inline]
+    async fn build_azure_headers(&self) -> Result<SmallVec<[(&'static str, ArrayString<600>); 4]>, CompletionError> {
+        let mut headers = smallvec![];
+        
+        match &self.auth_strategy {
+            AzureAuthStrategy::ApiKey { key } => {
+                let mut auth_header = ArrayString::<600>::new();
+                auth_header.try_push_str(&key.load()).unwrap();
+                headers.push(("api-key", auth_header));
+            },
+            AzureAuthStrategy::EntraId { token_cache, .. } => {
+                let mut auth_header = ArrayString::<600>::new();
+                auth_header.try_push_str("Bearer ").unwrap();
+                auth_header.try_push_str(&token_cache.load()).unwrap();
+                headers.push(("Authorization", auth_header));
+            },
+            AzureAuthStrategy::ManagedIdentity { token_cache, .. } => {
+                let mut auth_header = ArrayString::<600>::new();
+                auth_header.try_push_str("Bearer ").unwrap();
+                auth_header.try_push_str(&token_cache.load()).unwrap();
+                headers.push(("Authorization", auth_header));
+            },
+        }
+        
+        headers.push(("Content-Type", ArrayString::from("application/json").unwrap()));
+        Ok(headers)
+    }
+}
+```
+
+**Azure-Specific Complexities Preserved**:
+- Multiple authentication strategies (API key, Entra ID, Managed Identity)
+- Complex endpoint URL construction with deployment names
+- API versioning support
+- Resource name and region handling
+- Token caching and refresh for OAuth flows
+
+**Modifications Required**:
+1. Replace `crate::http` with `fluent_ai_http3` while preserving all auth complexity
+2. Maintain existing typestate builder patterns
+3. Preserve all Azure-specific header and URL construction logic
+4. Keep all authentication strategy variations
+5. Maintain existing trait implementations
+
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
+
+### 🚀 **TASK 5P: Act as an Objective QA Rust developer**
+Review Azure conversion for authentication complexity preservation, endpoint construction accuracy, and enterprise feature compatibility.
+
+### 🚀 **TASK 5Q: Complete HuggingFace Trait Implementation**
+**Priority**: MEDIUM - Finish partial HTTP3 implementation
+**Files**: 
+- `src/clients/huggingface/client.rs` (lines 1-150)
+
+**Current State**: Already imports `fluent_ai_http3` but missing trait implementations
+**Target State**: Complete `CompletionClient` and `ProviderClient` traits
+
+**Implementation Specifications**:
+```rust
+// Complete existing HuggingFace client with trait implementations
+impl CompletionClient for HuggingFaceClient {
+    type Model = Result<HuggingFaceCompletionBuilder, CompletionError>;
+    
+    #[inline]
+    fn completion_model(&self, model: &str) -> Self::Model {
+        HuggingFaceCompletionBuilder::new(self.clone(), model)
+    }
+}
+
+impl ProviderClient for HuggingFaceClient {
+    #[inline]
+    fn provider_name(&self) -> &'static str {
+        "huggingface"
+    }
+    
+    #[inline]
+    fn test_connection(&self) -> AsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let client = self.clone();
+        AsyncTask::spawn(async move {
+            // Test with a simple model info request
+            client.get_model_info("microsoft/DialoGPT-medium")
+                .await
+                .map(|_| ())
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        })
+    }
+}
+```
+
+**Modifications Required**:
+1. Add missing `CompletionClient` trait implementation
+2. Add missing `ProviderClient` trait implementation  
+3. Ensure zero-allocation patterns in trait methods
+4. Complete any unfinished HTTP3 integration
+
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
+
+### 🚀 **TASK 5R: Act as an Objective QA Rust developer**
+Validate HuggingFace trait implementations for completeness, API compatibility, and integration quality.
+
+### 🚀 **TASK 5S: Complete DeepSeek Trait Implementation**
+**Priority**: MEDIUM - Add missing traits to working HTTP3 client
+**Files**: 
+- `src/clients/deepseek/client.rs` (lines 1-120)
+
+**Current State**: Already uses `fluent_ai_http3` but missing trait implementations
+**Target State**: Complete trait implementations with existing HTTP3 base
+
+**Implementation Specifications**:
+```rust
+// Add traits to existing DeepSeek client
+impl CompletionClient for DeepSeekClient {
+    type Model = Result<DeepSeekCompletionBuilder, CompletionError>;
+    
+    #[inline]
+    fn completion_model(&self, model: &str) -> Self::Model {
+        DeepSeekCompletionBuilder::new(self.clone(), model)
+    }
+}
+
+impl ProviderClient for DeepSeekClient {
+    #[inline]
+    fn provider_name(&self) -> &'static str {
+        "deepseek"
+    }
+    
+    #[inline]
+    fn test_connection(&self) -> AsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let client = self.clone();
+        AsyncTask::spawn(async move {
+            client.list_models()
+                .await
+                .map(|_| ())
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        })
+    }
+}
+```
+
+**Modifications Required**:
+1. Add missing `CompletionClient` trait implementation to existing client
+2. Add missing `ProviderClient` trait implementation
+3. Ensure integration with existing HTTP3 usage
+4. Maintain current zero-allocation patterns
+
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
+
+### 🚀 **TASK 5T: Act as an Objective QA Rust developer**
+Confirm DeepSeek trait implementations integrate properly with existing HTTP3 client and follow performance patterns.
+
+### 🚀 **TASK 5U: HTTP3 Conversion Integration Testing**
+**Priority**: HIGH - Validate all conversions work together
+**Files**: 
+- `src/client_factory.rs` (updates for converted clients)
+- `build.rs` (validation of converted clients)
+
+**Validation Requirements**:
+1. All converted clients appear in generated `Provider` enum
+2. Client factory can create instances of all converted clients
+3. Trait implementations are properly exported and accessible
+4. No compilation errors or warnings from conversions
+5. Performance benchmarks show no regressions
+
+**Integration Tests**:
+```rust
+// Validate all HTTP3 conversions integrate properly
+#[cfg(test)]
+mod http3_conversion_tests {
+    use super::*;
+    
+    #[test]
+    fn test_all_converted_clients_implement_traits() {
+        // Verify each converted client implements required traits
+        assert_trait_implemented::<GroqClient, CompletionClient>();
+        assert_trait_implemented::<GroqClient, ProviderClient>();
+        assert_trait_implemented::<PerplexityClient, CompletionClient>();
+        assert_trait_implemented::<PerplexityClient, ProviderClient>();
+        // ... for all converted clients
+    }
+    
+    #[test]
+    fn test_client_factory_creates_converted_clients() {
+        // Test client factory integration
+        let groq_client = ClientFactory::create_groq_client("test-key");
+        assert!(groq_client.is_ok());
+        
+        let perplexity_client = ClientFactory::create_perplexity_client("test-key");
+        assert!(perplexity_client.is_ok());
+        // ... for all converted clients
+    }
+}
+```
+
+**Performance Validation**:
+- Benchmark HTTP3 clients against legacy clients
+- Verify zero-allocation claims with memory profiling
+- Validate lock-free operation under concurrent load
+- Confirm no performance regressions from conversion
+
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
+
+### 🚀 **TASK 5V: Act as an Objective QA Rust developer**
+Perform comprehensive integration testing of all HTTP3 conversions, validate performance improvements, and confirm ecosystem compatibility.
 
 ## 📋 **PHASE 2: Enterprise Cloud Providers (SPRINT 1)**
 

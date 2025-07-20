@@ -277,6 +277,11 @@ impl SurrealDBMemoryManager {
         Self { db }
     }
 
+    /// Get a reference to the database connection
+    pub fn database(&self) -> &Surreal<Any> {
+        &self.db
+    }
+
     /// Initialize the manager (create tables, indexes, etc.)
     pub async fn initialize(&self) -> Result<()> {
         // Create memory table - schemaless for flexibility
@@ -329,6 +334,12 @@ impl SurrealDBMemoryManager {
             embedding,
             metadata,
         }
+    }
+
+    /// Execute a raw query against the database
+    pub async fn execute_query(&self, query: &str) -> std::result::Result<surrealdb::Response, Error> {
+        self.db.query(query).await
+            .map_err(|e| Error::Database(Box::new(e)))
     }
 
     /// Health check method to verify database connectivity

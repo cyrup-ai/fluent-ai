@@ -15,6 +15,9 @@ pub enum Error {
     #[error("Vector store error: {0}")]
     VectorStore(String),
 
+    #[error("Index error: {0}")]
+    IndexError(String),
+
     #[error("Embedding model error: {0}")]
     Embedding(String),
 
@@ -48,6 +51,15 @@ pub enum Error {
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
+    #[error("Binary serialization error: {0}")]
+    BinarySerialization(String),
+
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
+
+    #[error("Database error: {0}")]
+    DatabaseError(String),
+
     #[error("HTTP request error: {0}")]
     HttpRequest(String),
 
@@ -80,6 +92,10 @@ impl axum::response::IntoResponse for Error {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Vector store error: {}", e),
             ),
+            Error::IndexError(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Index error: {}", e),
+            ),
             Error::Embedding(e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Embedding error: {}", e),
@@ -109,12 +125,24 @@ impl axum::response::IntoResponse for Error {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Serialization error: {}", e),
             ),
+            Error::BinarySerialization(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Binary serialization error: {}", e),
+            ),
             Error::HttpRequest(e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("HTTP request error: {}", e),
             ),
             Error::NotImplemented(e) => (StatusCode::NOT_IMPLEMENTED, e),
             Error::AlreadyExists(e) => (StatusCode::CONFLICT, e),
+            Error::SerializationError(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Serialization error: {}", e),
+            ),
+            Error::DatabaseError(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            ),
             Error::Internal(e) => (StatusCode::INTERNAL_SERVER_ERROR, e),
             Error::Other(e) => (StatusCode::INTERNAL_SERVER_ERROR, e),
         };

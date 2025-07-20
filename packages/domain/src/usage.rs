@@ -66,5 +66,3 @@ impl std::ops::AddAssign for Usage {
         *self = self.add(&rhs);
     }
 }
-
-

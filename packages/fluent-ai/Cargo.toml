@@ -88,6 +88,7 @@ safetensors = { version = "0.6", optional = true }
 
 # Optional acceleration dependencies
 half = { version = "2.6", optional = true }
+crossbeam-utils = "0.8.21"
 
 [lib]
 name = "fluent_ai"

@@ -3,14 +3,15 @@
 //! Provides blazing-fast command execution with concurrent processing, comprehensive error handling,
 //! and zero-allocation patterns for production-ready performance.
 
-use std::sync::Arc;
 use std::collections::HashMap;
-use tokio::sync::RwLock;
+use std::sync::Arc;
 use std::time::Instant;
 
-use crate::{AsyncTask, spawn_async};
-use super::types::*;
+use tokio::sync::RwLock;
+
 use super::parsing::CommandParser;
+use super::types::*;
+use crate::{AsyncTask, spawn_async};
 
 /// Command execution engine with concurrent processing
 #[derive(Debug, Clone)]
@@ -36,7 +37,7 @@ impl CommandExecutor {
     /// Execute a command with performance monitoring
     pub async fn execute(&self, command: ChatCommand) -> CommandResult<CommandOutput> {
         let start_time = Instant::now();
-        
+
         // Update metrics
         {
             let mut metrics = self.metrics.write().await;
@@ -47,13 +48,13 @@ impl CommandExecutor {
 
         // Execute the command
         let result = self.execute_internal(command).await;
-        
+
         // Update execution metrics
         let execution_time = start_time.elapsed().as_micros() as u64;
         {
             let mut metrics = self.metrics.write().await;
             metrics.total_execution_time += execution_time;
-            
+
             match &result {
                 Ok(_) => {
                     metrics.successful_commands += 1;
@@ -64,10 +65,11 @@ impl CommandExecutor {
                     *metrics.error_counts.entry(error_type).or_insert(0) += 1;
                 }
             }
-            
+
             // Update average execution time
             if metrics.total_commands > 0 {
-                metrics.average_execution_time = metrics.total_execution_time / metrics.total_commands;
+                metrics.average_execution_time =
+                    metrics.total_execution_time / metrics.total_commands;
             }
         }
 
@@ -81,50 +83,79 @@ impl CommandExecutor {
     /// Internal command execution logic
     async fn execute_internal(&self, command: ChatCommand) -> CommandResult<CommandOutput> {
         match command {
-            ChatCommand::Help { command, extended } => {
-                self.execute_help(command, extended).await
-            }
+            ChatCommand::Help { command, extended } => self.execute_help(command, extended).await,
             ChatCommand::Clear { confirm, keep_last } => {
                 self.execute_clear(confirm, keep_last).await
             }
-            ChatCommand::Export { format, output, include_metadata } => {
-                self.execute_export(format, output, include_metadata).await
+            ChatCommand::Export {
+                format,
+                output,
+                include_metadata,
+            } => self.execute_export(format, output, include_metadata).await,
+            ChatCommand::Config {
+                key,
+                value,
+                show,
+                reset,
+            } => self.execute_config(key, value, show, reset).await,
+            ChatCommand::Search {
+                query,
+                scope,
+                limit,
+                include_context,
+            } => {
+                self.execute_search(query, scope, limit, include_context)
+                    .await
             }
-            ChatCommand::Config { key, value, show, reset } => {
-                self.execute_config(key, value, show, reset).await
+            ChatCommand::Template {
+                action,
+                name,
+                content,
+                variables,
+            } => {
+                self.execute_template(action, name, content, variables)
+                    .await
             }
-            ChatCommand::Search { query, scope, limit, include_context } => {
-                self.execute_search(query, scope, limit, include_context).await
-            }
-            ChatCommand::Template { action, name, content, variables } => {
-                self.execute_template(action, name, content, variables).await
-            }
-            ChatCommand::Macro { action, name, auto_execute } => {
-                self.execute_macro(action, name, auto_execute).await
-            }
-            ChatCommand::Branch { action, name, source } => {
-                self.execute_branch(action, name, source).await
-            }
-            ChatCommand::Session { action, name, include_config } => {
-                self.execute_session(action, name, include_config).await
-            }
-            ChatCommand::Tool { action, name, args } => {
-                self.execute_tool(action, name, args).await
-            }
-            ChatCommand::Stats { stat_type, period, detailed } => {
-                self.execute_stats(stat_type, period, detailed).await
-            }
-            ChatCommand::Theme { action, name, properties } => {
-                self.execute_theme(action, name, properties).await
-            }
-            ChatCommand::Debug { action, level, system_info } => {
-                self.execute_debug(action, level, system_info).await
-            }
+            ChatCommand::Macro {
+                action,
+                name,
+                auto_execute,
+            } => self.execute_macro(action, name, auto_execute).await,
+            ChatCommand::Branch {
+                action,
+                name,
+                source,
+            } => self.execute_branch(action, name, source).await,
+            ChatCommand::Session {
+                action,
+                name,
+                include_config,
+            } => self.execute_session(action, name, include_config).await,
+            ChatCommand::Tool { action, name, args } => self.execute_tool(action, name, args).await,
+            ChatCommand::Stats {
+                stat_type,
+                period,
+                detailed,
+            } => self.execute_stats(stat_type, period, detailed).await,
+            ChatCommand::Theme {
+                action,
+                name,
+                properties,
+            } => self.execute_theme(action, name, properties).await,
+            ChatCommand::Debug {
+                action,
+                level,
+                system_info,
+            } => self.execute_debug(action, level, system_info).await,
         }
     }
 
     /// Execute help command
-    async fn execute_help(&self, command: Option<Arc<str>>, extended: bool) -> CommandResult<CommandOutput> {
+    async fn execute_help(
+        &self,
+        command: Option<Arc<str>>,
+        extended: bool,
+    ) -> CommandResult<CommandOutput> {
         let message = if let Some(cmd) = command {
             if let Some(info) = self.parser.get_command_info(&cmd) {
                 if extended {
@@ -134,7 +165,11 @@ impl CommandExecutor {
                         info.description,
                         info.usage,
                         info.category,
-                        info.examples.iter().map(|e| format!("  {}", e)).collect::<Vec<_>>().join("\n")
+                        info.examples
+                            .iter()
+                            .map(|e| format!("  {}", e))
+                            .collect::<Vec<_>>()
+                            .join("\n")
                     )
                 } else {
                     format!("{}: {}", info.name, info.description)
@@ -150,9 +185,15 @@ impl CommandExecutor {
     }
 
     /// Execute clear command
-    async fn execute_clear(&self, confirm: bool, keep_last: Option<usize>) -> CommandResult<CommandOutput> {
+    async fn execute_clear(
+        &self,
+        confirm: bool,
+        keep_last: Option<usize>,
+    ) -> CommandResult<CommandOutput> {
         if !confirm {
-            return Ok(CommandOutput::success("Use --confirm to clear chat history"));
+            return Ok(CommandOutput::success(
+                "Use --confirm to clear chat history",
+            ));
         }
 
         let message = if let Some(n) = keep_last {
@@ -172,7 +213,8 @@ impl CommandExecutor {
         include_metadata: bool,
     ) -> CommandResult<CommandOutput> {
         let filename = output.unwrap_or_else(|| {
-            Arc::from(format!("chat_export.{}", 
+            Arc::from(format!(
+                "chat_export.{}",
                 match format.as_ref() {
                     "json" => "json",
                     "markdown" => "md",
@@ -187,7 +229,11 @@ impl CommandExecutor {
             "Conversation exported to {} in {} format{}",
             filename,
             format,
-            if include_metadata { " with metadata" } else { "" }
+            if include_metadata {
+                " with metadata"
+            } else {
+                ""
+            }
         );
 
         Ok(CommandOutput::success(message))
@@ -206,7 +252,9 @@ impl CommandExecutor {
         }
 
         if show {
-            return Ok(CommandOutput::success("Current configuration: <config data>"));
+            return Ok(CommandOutput::success(
+                "Current configuration: <config data>",
+            ));
         }
 
         if let (Some(k), Some(v)) = (key, value) {
@@ -216,7 +264,9 @@ impl CommandExecutor {
             let message = format!("Configuration value for {}: <value>", k);
             Ok(CommandOutput::success(message))
         } else {
-            Ok(CommandOutput::success("Use --show to display current configuration"))
+            Ok(CommandOutput::success(
+                "Use --show to display current configuration",
+            ))
         }
     }
 
@@ -235,7 +285,9 @@ impl CommandExecutor {
             SearchScope::Bookmarked => "bookmarked conversations",
         };
 
-        let limit_str = limit.map(|n| format!(" (limit: {})", n)).unwrap_or_default();
+        let limit_str = limit
+            .map(|n| format!(" (limit: {})", n))
+            .unwrap_or_default();
         let context_str = if include_context { " with context" } else { "" };
 
         let message = format!(
@@ -256,20 +308,35 @@ impl CommandExecutor {
     ) -> CommandResult<CommandOutput> {
         let message = match action {
             TemplateAction::Create => {
-                format!("Template '{}' created", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Template '{}' created",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             TemplateAction::Use => {
-                format!("Template '{}' applied", name.unwrap_or_else(|| Arc::from("default")))
+                format!(
+                    "Template '{}' applied",
+                    name.unwrap_or_else(|| Arc::from("default"))
+                )
             }
             TemplateAction::List => "Available templates: <template list>".to_string(),
             TemplateAction::Delete => {
-                format!("Template '{}' deleted", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Template '{}' deleted",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             TemplateAction::Edit => {
-                format!("Template '{}' edited", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Template '{}' edited",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             TemplateAction::Share => {
-                format!("Template '{}' shared", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Template '{}' shared",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             TemplateAction::Import => "Templates imported successfully".to_string(),
             TemplateAction::Export => "Templates exported successfully".to_string(),
@@ -287,21 +354,37 @@ impl CommandExecutor {
     ) -> CommandResult<CommandOutput> {
         let message = match action {
             MacroAction::Record => {
-                format!("Recording macro '{}'", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Recording macro '{}'",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             MacroAction::Play => {
                 let auto_str = if auto_execute { " (auto-execute)" } else { "" };
-                format!("Playing macro '{}'{}", name.unwrap_or_else(|| Arc::from("default")), auto_str)
+                format!(
+                    "Playing macro '{}'{}",
+                    name.unwrap_or_else(|| Arc::from("default")),
+                    auto_str
+                )
             }
             MacroAction::List => "Available macros: <macro list>".to_string(),
             MacroAction::Delete => {
-                format!("Macro '{}' deleted", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Macro '{}' deleted",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             MacroAction::Edit => {
-                format!("Macro '{}' edited", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Macro '{}' edited",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             MacroAction::Share => {
-                format!("Macro '{}' shared", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Macro '{}' shared",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
         };
 
@@ -317,10 +400,16 @@ impl CommandExecutor {
     ) -> CommandResult<CommandOutput> {
         let message = match action {
             BranchAction::Create => {
-                format!("Branch '{}' created", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Branch '{}' created",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             BranchAction::Switch => {
-                format!("Switched to branch '{}'", name.unwrap_or_else(|| Arc::from("main")))
+                format!(
+                    "Switched to branch '{}'",
+                    name.unwrap_or_else(|| Arc::from("main"))
+                )
             }
             BranchAction::Merge => {
                 let source_name = source.unwrap_or_else(|| Arc::from("current"));
@@ -328,11 +417,17 @@ impl CommandExecutor {
                 format!("Merged branch '{}' into '{}'", source_name, target_name)
             }
             BranchAction::Delete => {
-                format!("Branch '{}' deleted", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Branch '{}' deleted",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             BranchAction::List => "Available branches: <branch list>".to_string(),
             BranchAction::Rename => {
-                format!("Branch renamed to '{}'", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Branch renamed to '{}'",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
         };
 
@@ -346,27 +441,53 @@ impl CommandExecutor {
         name: Option<Arc<str>>,
         include_config: bool,
     ) -> CommandResult<CommandOutput> {
-        let config_str = if include_config { " with configuration" } else { "" };
-        
+        let config_str = if include_config {
+            " with configuration"
+        } else {
+            ""
+        };
+
         let message = match action {
             SessionAction::Save => {
-                format!("Session saved as '{}'{}", name.unwrap_or_else(|| Arc::from("default")), config_str)
+                format!(
+                    "Session saved as '{}'{}",
+                    name.unwrap_or_else(|| Arc::from("default")),
+                    config_str
+                )
             }
             SessionAction::Load => {
-                format!("Session '{}' loaded{}", name.unwrap_or_else(|| Arc::from("default")), config_str)
+                format!(
+                    "Session '{}' loaded{}",
+                    name.unwrap_or_else(|| Arc::from("default")),
+                    config_str
+                )
             }
             SessionAction::List => "Available sessions: <session list>".to_string(),
             SessionAction::Delete => {
-                format!("Session '{}' deleted", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Session '{}' deleted",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             SessionAction::Rename => {
-                format!("Session renamed to '{}'", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Session renamed to '{}'",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             SessionAction::Export => {
-                format!("Session '{}' exported{}", name.unwrap_or_else(|| Arc::from("current")), config_str)
+                format!(
+                    "Session '{}' exported{}",
+                    name.unwrap_or_else(|| Arc::from("current")),
+                    config_str
+                )
             }
             SessionAction::Import => {
-                format!("Session '{}' imported{}", name.unwrap_or_else(|| Arc::from("imported")), config_str)
+                format!(
+                    "Session '{}' imported{}",
+                    name.unwrap_or_else(|| Arc::from("imported")),
+                    config_str
+                )
             }
         };
 
@@ -383,10 +504,16 @@ impl CommandExecutor {
         let message = match action {
             ToolAction::List => "Available tools: <tool list>".to_string(),
             ToolAction::Install => {
-                format!("Tool '{}' installed", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Tool '{}' installed",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             ToolAction::Remove => {
-                format!("Tool '{}' removed", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Tool '{}' removed",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             ToolAction::Execute => {
                 let tool_name = name.unwrap_or_else(|| Arc::from("default"));
@@ -398,10 +525,16 @@ impl CommandExecutor {
                 format!("Executing tool '{}'{}", tool_name, args_str)
             }
             ToolAction::Configure => {
-                format!("Tool '{}' configured", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Tool '{}' configured",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
             ToolAction::Update => {
-                format!("Tool '{}' updated", name.unwrap_or_else(|| Arc::from("unnamed")))
+                format!(
+                    "Tool '{}' updated",
+                    name.unwrap_or_else(|| Arc::from("unnamed"))
+                )
             }
         };
 
@@ -415,7 +548,10 @@ impl CommandExecutor {
         period: Option<Arc<str>>,
         detailed: bool,
     ) -> CommandResult<CommandOutput> {
-        let period_str = period.as_ref().map(|p| format!(" for {}", p)).unwrap_or_default();
+        let period_str = period
+            .as_ref()
+            .map(|p| format!(" for {}", p))
+            .unwrap_or_default();
         let detail_str = if detailed { " (detailed)" } else { "" };
 
         let message = match stat_type {
@@ -439,7 +575,10 @@ impl CommandExecutor {
     ) -> CommandResult<CommandOutput> {
         let message = match action {
             ThemeAction::Set => {
-                format!("Theme set to '{}'", name.unwrap_or_else(|| Arc::from("default")))
+                format!(
+                    "Theme set to '{}'",
+                    name.unwrap_or_else(|| Arc::from("default"))
+                )
             }
             ThemeAction::List => "Available themes: <theme list>".to_string(),
             ThemeAction::Create => {
@@ -448,16 +587,29 @@ impl CommandExecutor {
                 } else {
                     format!(" with {} properties", properties.len())
                 };
-                format!("Theme '{}' created{}", name.unwrap_or_else(|| Arc::from("unnamed")), prop_str)
+                format!(
+                    "Theme '{}' created{}",
+                    name.unwrap_or_else(|| Arc::from("unnamed")),
+                    prop_str
+                )
             }
             ThemeAction::Export => {
-                format!("Theme '{}' exported", name.unwrap_or_else(|| Arc::from("current")))
+                format!(
+                    "Theme '{}' exported",
+                    name.unwrap_or_else(|| Arc::from("current"))
+                )
             }
             ThemeAction::Import => {
-                format!("Theme '{}' imported", name.unwrap_or_else(|| Arc::from("imported")))
+                format!(
+                    "Theme '{}' imported",
+                    name.unwrap_or_else(|| Arc::from("imported"))
+                )
             }
             ThemeAction::Edit => {
-                format!("Theme '{}' edited", name.unwrap_or_else(|| Arc::from("current")))
+                format!(
+                    "Theme '{}' edited",
+                    name.unwrap_or_else(|| Arc::from("current"))
+                )
             }
         };
 
@@ -471,7 +623,10 @@ impl CommandExecutor {
         level: Option<Arc<str>>,
         system_info: bool,
     ) -> CommandResult<CommandOutput> {
-        let level_str = level.as_ref().map(|l| format!(" (level: {})", l)).unwrap_or_default();
+        let level_str = level
+            .as_ref()
+            .map(|l| format!(" (level: {})", l))
+            .unwrap_or_default();
         let system_str = if system_info { " with system info" } else { "" };
 
         let message = match action {
@@ -519,7 +674,7 @@ impl CommandExecutor {
     pub fn parse_and_execute(&self, input: &str) -> AsyncTask<CommandResult<CommandOutput>> {
         let parser = self.parser.clone();
         let executor = self.clone();
-        
+
         spawn_async(async move {
             let command = parser.parse(input).map_err(|e| CommandError::ParseError {
                 detail: Arc::from(e.to_string()),

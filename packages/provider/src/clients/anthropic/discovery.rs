@@ -1,0 +1,208 @@
+//! Anthropic model discovery and registration
+
+use std::sync::Arc;
+
+use async_trait::async_trait;
+use tracing::{debug, error, info, instrument, warn};
+
+use crate::model::{
+    error::ModelError,
+    info::{ModelCapability, ModelInfo, ModelInfoBuilder},
+    registry::{ModelRegistry, RegisteredModel},
+    traits::Model,
+};
+
+use super::client::AnthropicClient;
+use super::super::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
+
+/// Anthropic model discovery implementation
+#[derive(Debug, Clone)]
+pub struct AnthropicDiscovery {
+    client: Arc<AnthropicClient>,
+    supported_models: &'static [&'static str],
+}
+
+impl AnthropicDiscovery {
+    /// Create a new Anthropic model discovery instance
+    pub fn new(api_key: String) -> Result<Self, ModelError> {
+        let client = AnthropicClient::new(api_key).map_err(|e| {
+            ModelError::ProviderError(format!("Failed to create Anthropic client: {}", e))
+        })?;
+
+        // List of supported models with their capabilities
+        static SUPPORTED_MODELS: &[&str] = &[
+            // Claude 4 models (newest and most powerful)
+            "claude-opus-4-20250514",
+            "claude-sonnet-4-20250514",
+            
+            // Claude 3.7 models
+            "claude-3-7-sonnet-20250219",
+            
+            // Claude 3.5 models 
+            "claude-3-5-sonnet-20241022",    // v2 (latest)
+            "claude-3-5-sonnet-20240620",    // v1 (original)
+            "claude-3-5-haiku-20241022",
+            
+            // Claude 3 models
+            "claude-3-opus-20240229",
+            "claude-3-sonnet-20240229",
+            "claude-3-haiku-20240307",
+        ];
+
+        Ok(Self {
+            client: Arc::new(client),
+            supported_models: SUPPORTED_MODELS,
+        })
+    }
+
+    /// Get model information for a specific model
+    #[instrument(skip(self))]
+    fn get_model_info(&self, model_name: &'static str) -> Option<ModelInfo> {
+        // Determine model capabilities based on model name patterns
+        let mut capabilities = vec![ModelCapability::TextGeneration];
+        
+        // All Claude 3+ models support function calling
+        if model_name.contains("claude-3") || model_name.contains("claude-opus-4") || model_name.contains("claude-sonnet-4") {
+            capabilities.push(ModelCapability::FunctionCalling);
+        }
+        
+        // Determine context length and other model-specific properties
+        let (context_length, max_output_tokens) = if model_name.contains("opus") {
+            (200_000, 8_192) // Opus models have larger context
+        } else if model_name.contains("sonnet") {
+            (200_000, 8_192) // Sonnet models also have large context
+        } else if model_name.contains("haiku") {
+            (100_000, 4_096) // Haiku models are more limited
+        } else {
+            (100_000, 4_096) // Default values for other models
+        };
+
+        Some(
+            ModelInfoBuilder::new(model_name, "anthropic")
+                .with_display_name(model_name)
+                .with_max_input_tokens(context_length)
+                .with_max_output_tokens(max_output_tokens)
+                .with_capabilities(capabilities)
+                .with_parameter("temperature", 0.7)
+                .with_parameter("top_p", 0.9)
+                .with_metadata("supports_tools", "true")
+                .with_metadata("supports_vision", "false")
+                .with_metadata("supports_audio", "false")
+                .build()
+                .expect("Failed to build model info"),
+        )
+    }
+}
+
+#[async_trait]
+impl ProviderModelDiscovery for AnthropicDiscovery {
+    fn provider_name(&self) -> &'static str {
+        "anthropic"
+    }
+
+    async fn discover_and_register(&self) -> DiscoveryResult<()> {
+        info!("Starting Anthropic model discovery");
+        let registry = ModelRegistry::global();
+
+        for &model_name in self.supported_models {
+            if let Some(model_info) = self.get_model_info(model_name) {
+                // Create a new model instance for each model
+                let model = AnthropicModel {
+                    info: model_info,
+                    client: self.client.clone(),
+                };
+
+                // Register the model
+                if let Err(e) = registry.register("anthropic", model) {
+                    error!(
+                        "Failed to register Anthropic model {}: {}",
+                        model_name, e
+                    );
+                    return Err(DiscoveryError::RegistrationFailed(e.to_string()));
+                }
+
+                debug!("Registered Anthropic model: {}", model_name);
+            } else {
+                warn!("Skipping unsupported Anthropic model: {}", model_name);
+            }
+        }
+
+        info!("Completed Anthropic model discovery");
+        Ok(())
+    }
+
+    fn supported_models(&self) -> &'static [&'static str] {
+        self.supported_models
+    }
+}
+
+/// Anthropic model implementation
+#[derive(Debug, Clone)]
+struct AnthropicModel {
+    info: ModelInfo,
+    client: Arc<AnthropicClient>,
+}
+
+impl Model for AnthropicModel {
+    fn info(&self) -> &'static ModelInfo {
+        // SAFETY: ModelInfo is 'static and we ensure it's never dropped
+        // while references to it exist through the registry
+        unsafe { std::mem::transmute(&self.info) }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::traits::Model;
+
+    #[tokio::test]
+    async fn test_anthropic_discovery() {
+        // Create a discovery instance with a dummy API key for testing
+        let discovery = AnthropicDiscovery::new("test-api-key".to_string()).unwrap();
+        
+        // Test provider name
+        assert_eq!(discovery.provider_name(), "anthropic");
+        
+        // Test supported models
+        let supported_models = discovery.supported_models();
+        assert!(!supported_models.is_empty());
+        assert!(supported_models.contains(&&"claude-3-5-sonnet-20241022"));
+        
+        // Test model info retrieval
+        let model_info = discovery.get_model_info("claude-3-5-sonnet-20241022").unwrap();
+        assert_eq!(model_info.name(), "claude-3-5-sonnet-20241022");
+        assert_eq!(model_info.provider(), "anthropic");
+        assert!(model_info.has_capability(ModelCapability::TextGeneration));
+        assert!(model_info.has_capability(ModelCapability::FunctionCalling));
+        
+        // Test model registration (in-memory only for tests)
+        let result = discovery.discover_and_register().await;
+        assert!(result.is_ok(), "Failed to discover and register models: {:?}", result.err());
+        
+        // Verify models were registered
+        let registry = ModelRegistry::global();
+        for model_name in supported_models {
+            assert!(
+                registry.get_model::<AnthropicModel>("anthropic", model_name).is_ok(),
+                "Model {} was not registered",
+                model_name
+            );
+        }
+    }
+    
+    #[test]
+    fn test_get_model_info() {
+        let discovery = AnthropicDiscovery::new("test-api-key".to_string()).unwrap();
+        
+        // Test with supported model
+        let model_info = discovery.get_model_info("claude-3-5-sonnet-20241022").unwrap();
+        assert_eq!(model_info.name(), "claude-3-5-sonnet-20241022");
+        assert_eq!(model_info.provider(), "anthropic");
+        assert!(model_info.has_capability(ModelCapability::TextGeneration));
+        assert!(model_info.has_capability(ModelCapability::FunctionCalling));
+        
+        // Test with unsupported model
+        assert!(discovery.get_model_info("unsupported-model").is_none());
+    }
+}

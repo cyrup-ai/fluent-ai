@@ -4,11 +4,12 @@
 //! template creation, variable substitution, template management, and sharing with
 //! zero-allocation patterns and lock-free data structures.
 
-use std::sync::Arc;
 use std::collections::HashMap;
-use thiserror::Error;
-use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+
 use crossbeam_skiplist::SkipMap;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use uuid::Uuid;
 
 use crate::{AsyncTask, spawn_async};
@@ -299,7 +300,8 @@ impl TemplateValue {
                 Arc::from(format!("[{}]", values.join(", ")))
             }
             TemplateValue::Object(obj) => {
-                let pairs: Vec<String> = obj.iter()
+                let pairs: Vec<String> = obj
+                    .iter()
                     .map(|(k, v)| format!("{}: {}", k, v.to_string()))
                     .collect();
                 Arc::from(format!("{{{}}}", pairs.join(", ")))
@@ -472,7 +474,7 @@ impl ChatTemplate {
         let ast = self.parse_template()?;
         let variables = self.extract_variables(&ast);
         let dependencies = self.extract_dependencies(&ast);
-        
+
         self.compiled = Some(CompiledTemplate {
             ast,
             variables,
@@ -482,7 +484,7 @@ impl ChatTemplate {
                 .unwrap_or_default()
                 .as_secs(),
         });
-        
+
         Ok(())
     }
 
@@ -505,22 +507,22 @@ impl ChatTemplate {
         let content = &self.content;
         let mut chars = content.chars().peekable();
         let mut current_text = String::new();
-        
+
         while let Some(ch) = chars.next() {
             if ch == '{' && chars.peek() == Some(&'{') {
                 // Start of variable or block
                 chars.next(); // consume second {
-                
+
                 // Save current text
                 if !current_text.is_empty() {
                     nodes.push(TemplateAst::Text(Arc::from(current_text.clone())));
                     current_text.clear();
                 }
-                
+
                 // Parse variable or block
                 let mut expr = String::new();
                 let mut brace_count = 0;
-                
+
                 while let Some(ch) = chars.next() {
                     if ch == '{' {
                         brace_count += 1;
@@ -539,7 +541,7 @@ impl ChatTemplate {
                         expr.push(ch);
                     }
                 }
-                
+
                 // Parse expression
                 let expr = expr.trim();
                 if expr.starts_with('#') {
@@ -556,12 +558,12 @@ impl ChatTemplate {
                 current_text.push(ch);
             }
         }
-        
+
         // Save remaining text
         if !current_text.is_empty() {
             nodes.push(TemplateAst::Text(Arc::from(current_text)));
         }
-        
+
         Ok(TemplateAst::Sequence(Arc::from(nodes)))
     }
 
@@ -580,18 +582,18 @@ impl ChatTemplate {
         let content = &self.content;
         let mut chars = content.chars().peekable();
         let mut current_text = String::new();
-        
+
         while let Some(ch) = chars.next() {
             if ch == '{' {
                 if chars.peek() == Some(&'{') {
                     // Variable {{ }}
                     chars.next();
-                    
+
                     if !current_text.is_empty() {
                         nodes.push(TemplateAst::Text(Arc::from(current_text.clone())));
                         current_text.clear();
                     }
-                    
+
                     let mut expr = String::new();
                     while let Some(ch) = chars.next() {
                         if ch == '}' && chars.peek() == Some(&'}') {
@@ -600,17 +602,17 @@ impl ChatTemplate {
                         }
                         expr.push(ch);
                     }
-                    
+
                     nodes.push(self.parse_variable(expr.trim())?);
                 } else if chars.peek() == Some(&'%') {
                     // Block {% %}
                     chars.next();
-                    
+
                     if !current_text.is_empty() {
                         nodes.push(TemplateAst::Text(Arc::from(current_text.clone())));
                         current_text.clear();
                     }
-                    
+
                     let mut expr = String::new();
                     while let Some(ch) = chars.next() {
                         if ch == '%' && chars.peek() == Some(&'}') {
@@ -619,7 +621,7 @@ impl ChatTemplate {
                         }
                         expr.push(ch);
                     }
-                    
+
                     nodes.push(self.parse_jinja2_block(expr.trim())?);
                 } else {
                     current_text.push(ch);
@@ -628,11 +630,11 @@ impl ChatTemplate {
                 current_text.push(ch);
             }
         }
-        
+
         if !current_text.is_empty() {
             nodes.push(TemplateAst::Text(Arc::from(current_text)));
         }
-        
+
         Ok(TemplateAst::Sequence(Arc::from(nodes)))
     }
 
@@ -660,12 +662,12 @@ impl ChatTemplate {
                 parts[1..]
                     .iter()
                     .map(|f| Arc::from(f.trim()))
-                    .collect::<Vec<_>>()
+                    .collect::<Vec<_>>(),
             )
         } else {
             Arc::from([])
         };
-        
+
         Ok(TemplateAst::Variable {
             name,
             filters,
@@ -678,13 +680,13 @@ impl ChatTemplate {
     fn parse_block_helper(&self, expr: &str) -> TemplateResult<TemplateAst> {
         let expr = &expr[1..]; // Remove #
         let parts: Vec<&str> = expr.split_whitespace().collect();
-        
+
         if parts.is_empty() {
             return Err(TemplateError::InvalidSyntax {
                 detail: Arc::from("Empty block helper"),
             });
         }
-        
+
         match parts[0] {
             "if" => self.parse_if_block(parts),
             "each" => self.parse_each_block(parts),
@@ -703,9 +705,9 @@ impl ChatTemplate {
                 detail: Arc::from("If block requires condition"),
             });
         }
-        
+
         let condition = Arc::from(parts[1..].join(" "));
-        
+
         // For now, return a simple conditional node
         // In a full implementation, we'd parse the block content
         Ok(TemplateAst::Conditional {
@@ -723,14 +725,14 @@ impl ChatTemplate {
                 detail: Arc::from("Each block requires iterable"),
             });
         }
-        
+
         let iterable = Arc::from(parts[1]);
         let variable = if parts.len() > 3 && parts[2] == "as" {
             Arc::from(parts[3])
         } else {
             Arc::from("item")
         };
-        
+
         Ok(TemplateAst::Loop {
             variable,
             iterable,
@@ -746,9 +748,9 @@ impl ChatTemplate {
                 detail: Arc::from("With block requires context"),
             });
         }
-        
+
         let context = Arc::from(parts[1]);
-        
+
         Ok(TemplateAst::Variable {
             name: context,
             filters: Arc::from([]),
@@ -760,13 +762,13 @@ impl ChatTemplate {
     #[inline]
     fn parse_jinja2_block(&self, expr: &str) -> TemplateResult<TemplateAst> {
         let parts: Vec<&str> = expr.split_whitespace().collect();
-        
+
         if parts.is_empty() {
             return Err(TemplateError::InvalidSyntax {
                 detail: Arc::from("Empty Jinja2 block"),
             });
         }
-        
+
         match parts[0] {
             "if" => self.parse_if_block(parts),
             "for" => self.parse_for_block(parts),
@@ -786,10 +788,10 @@ impl ChatTemplate {
                 detail: Arc::from("For block requires 'variable in iterable' syntax"),
             });
         }
-        
+
         let variable = Arc::from(parts[1]);
         let iterable = Arc::from(parts[3]);
-        
+
         Ok(TemplateAst::Loop {
             variable,
             iterable,
@@ -805,11 +807,14 @@ impl ChatTemplate {
                 detail: Arc::from("Include block requires template name"),
             });
         }
-        
+
         let template = Arc::from(parts[1]);
         let variables = HashMap::new();
-        
-        Ok(TemplateAst::Include { template, variables })
+
+        Ok(TemplateAst::Include {
+            template,
+            variables,
+        })
     }
 
     /// Parse macro block
@@ -820,14 +825,19 @@ impl ChatTemplate {
                 detail: Arc::from("Macro block requires macro name"),
             });
         }
-        
+
         let name = Arc::from(parts[1]);
         let args = if parts.len() > 2 {
-            Arc::from(parts[2..].iter().map(|arg| Arc::from(*arg)).collect::<Vec<_>>())
+            Arc::from(
+                parts[2..]
+                    .iter()
+                    .map(|arg| Arc::from(*arg))
+                    .collect::<Vec<_>>(),
+            )
         } else {
             Arc::from([])
         };
-        
+
         Ok(TemplateAst::Macro { name, args })
     }
 
@@ -848,7 +858,11 @@ impl ChatTemplate {
                     variables.push(name.clone());
                 }
             }
-            TemplateAst::Conditional { condition, then_branch, else_branch } => {
+            TemplateAst::Conditional {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
                 // Extract variables from condition
                 let condition_vars = self.extract_condition_variables(condition);
                 for var in condition_vars {
@@ -856,18 +870,22 @@ impl ChatTemplate {
                         variables.push(var);
                     }
                 }
-                
+
                 self.extract_variables_recursive(then_branch, variables);
                 if let Some(else_branch) = else_branch {
                     self.extract_variables_recursive(else_branch, variables);
                 }
             }
-            TemplateAst::Loop { variable, iterable, body } => {
+            TemplateAst::Loop {
+                variable,
+                iterable,
+                body,
+            } => {
                 // Extract iterable variable
                 if !variables.contains(iterable) {
                     variables.push(iterable.clone());
                 }
-                
+
                 self.extract_variables_recursive(body, variables);
             }
             TemplateAst::Sequence(nodes) => {
@@ -883,7 +901,7 @@ impl ChatTemplate {
     #[inline]
     fn extract_condition_variables(&self, condition: &str) -> Vec<Arc<str>> {
         let mut variables = Vec::new();
-        
+
         // Simple variable extraction - look for identifiers
         let mut current_word = String::new();
         for ch in condition.chars() {
@@ -899,14 +917,14 @@ impl ChatTemplate {
                 current_word.clear();
             }
         }
-        
+
         if !current_word.is_empty() && !current_word.chars().all(|c| c.is_ascii_digit()) {
             let var = Arc::from(current_word);
             if !variables.contains(&var) {
                 variables.push(var);
             }
         }
-        
+
         variables
     }
 
@@ -927,7 +945,11 @@ impl ChatTemplate {
                     dependencies.push(template.clone());
                 }
             }
-            TemplateAst::Conditional { then_branch, else_branch, .. } => {
+            TemplateAst::Conditional {
+                then_branch,
+                else_branch,
+                ..
+            } => {
                 self.extract_dependencies_recursive(then_branch, dependencies);
                 if let Some(else_branch) = else_branch {
                     self.extract_dependencies_recursive(else_branch, dependencies);
@@ -955,7 +977,7 @@ impl ChatTemplate {
             config: self.config.clone(),
             recursion_depth: 0,
         };
-        
+
         if let Some(compiled) = &self.compiled {
             self.render_ast(&compiled.ast, &context)
         } else {
@@ -969,24 +991,34 @@ impl ChatTemplate {
     fn render_ast(&self, ast: &TemplateAst, context: &TemplateContext) -> TemplateResult<Arc<str>> {
         match ast {
             TemplateAst::Text(text) => Ok(text.clone()),
-            TemplateAst::Variable { name, filters, default } => {
-                let value = context.variables.get(name)
+            TemplateAst::Variable {
+                name,
+                filters,
+                default,
+            } => {
+                let value = context
+                    .variables
+                    .get(name)
                     .cloned()
                     .or_else(|| default.as_ref().map(|d| TemplateValue::String(d.clone())))
                     .unwrap_or(TemplateValue::Null);
-                
+
                 let mut result = value.to_string();
-                
+
                 // Apply filters
                 for filter in filters.iter() {
                     result = self.apply_filter(&result, filter)?;
                 }
-                
+
                 Ok(result)
             }
-            TemplateAst::Conditional { condition, then_branch, else_branch } => {
+            TemplateAst::Conditional {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
                 let condition_result = self.evaluate_condition(condition, context)?;
-                
+
                 if condition_result {
                     self.render_ast(then_branch, context)
                 } else if let Some(else_branch) = else_branch {
@@ -995,24 +1027,31 @@ impl ChatTemplate {
                     Ok(Arc::from(""))
                 }
             }
-            TemplateAst::Loop { variable, iterable, body } => {
-                let iterable_value = context.variables.get(iterable)
-                    .ok_or_else(|| TemplateError::SubstitutionError {
+            TemplateAst::Loop {
+                variable,
+                iterable,
+                body,
+            } => {
+                let iterable_value = context.variables.get(iterable).ok_or_else(|| {
+                    TemplateError::SubstitutionError {
                         detail: Arc::from(format!("Variable not found: {}", iterable)),
-                    })?;
-                
+                    }
+                })?;
+
                 match iterable_value {
                     TemplateValue::Array(items) => {
                         let mut result = String::new();
-                        
+
                         for item in items.iter() {
                             let mut loop_context = context.clone();
-                            loop_context.variables.insert(variable.clone(), item.clone());
-                            
+                            loop_context
+                                .variables
+                                .insert(variable.clone(), item.clone());
+
                             let rendered = self.render_ast(body, &loop_context)?;
                             result.push_str(&rendered);
                         }
-                        
+
                         Ok(Arc::from(result))
                     }
                     _ => Err(TemplateError::SubstitutionError {
@@ -1020,7 +1059,10 @@ impl ChatTemplate {
                     }),
                 }
             }
-            TemplateAst::Include { template, variables } => {
+            TemplateAst::Include {
+                template,
+                variables,
+            } => {
                 // Include template rendering (placeholder)
                 Ok(Arc::from(format!("<!-- Include: {} -->", template)))
             }
@@ -1030,12 +1072,12 @@ impl ChatTemplate {
             }
             TemplateAst::Sequence(nodes) => {
                 let mut result = String::new();
-                
+
                 for node in nodes.iter() {
                     let rendered = self.render_ast(node, context)?;
                     result.push_str(&rendered);
                 }
-                
+
                 Ok(Arc::from(result))
             }
         }
@@ -1045,7 +1087,7 @@ impl ChatTemplate {
     #[inline]
     fn render_simple(&self, context: &TemplateContext) -> TemplateResult<Arc<str>> {
         let mut result = self.content.to_string();
-        
+
         // Replace variables in the format {{variable}}
         for (name, value) in &context.variables {
             let placeholder = format!("{{{{{}}}}}", name);
@@ -1056,7 +1098,7 @@ impl ChatTemplate {
             };
             result = result.replace(&placeholder, &replacement);
         }
-        
+
         Ok(Arc::from(result))
     }
 
@@ -1070,14 +1112,18 @@ impl ChatTemplate {
                 let mut chars = value.chars();
                 match chars.next() {
                     None => Ok(Arc::from("")),
-                    Some(first) => Ok(Arc::from(first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase())),
+                    Some(first) => Ok(Arc::from(
+                        first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
+                    )),
                 }
             }
             "trim" => Ok(Arc::from(value.trim())),
             "reverse" => Ok(Arc::from(value.chars().rev().collect::<String>())),
             "length" => Ok(Arc::from(value.len().to_string())),
             "escape" => Ok(Arc::from(html_escape::encode_text(value).to_string())),
-            "unescape" => Ok(Arc::from(html_escape::decode_html_entities(value).to_string())),
+            "unescape" => Ok(Arc::from(
+                html_escape::decode_html_entities(value).to_string(),
+            )),
             _ => Err(TemplateError::SubstitutionError {
                 detail: Arc::from(format!("Unknown filter: {}", filter)),
             }),
@@ -1086,7 +1132,11 @@ impl ChatTemplate {
 
     /// Evaluate condition
     #[inline]
-    fn evaluate_condition(&self, condition: &str, context: &TemplateContext) -> TemplateResult<bool> {
+    fn evaluate_condition(
+        &self,
+        condition: &str,
+        context: &TemplateContext,
+    ) -> TemplateResult<bool> {
         // Simple condition evaluation
         if let Some(value) = context.variables.get(&Arc::from(condition)) {
             Ok(value.is_truthy())
@@ -1097,7 +1147,7 @@ impl ChatTemplate {
                 if parts.len() == 2 {
                     let left = parts[0].trim();
                     let right = parts[1].trim().trim_matches('"').trim_matches('\'');
-                    
+
                     if let Some(value) = context.variables.get(&Arc::from(left)) {
                         Ok(value.to_string() == right)
                     } else {
@@ -1111,7 +1161,7 @@ impl ChatTemplate {
                 if parts.len() == 2 {
                     let left = parts[0].trim();
                     let right = parts[1].trim().trim_matches('"').trim_matches('\'');
-                    
+
                     if let Some(value) = context.variables.get(&Arc::from(left)) {
                         Ok(value.to_string() != right)
                     } else {
@@ -1139,15 +1189,15 @@ impl ChatTemplate {
                 )),
             });
         }
-        
+
         // Check for circular dependencies
         self.check_circular_dependencies()?;
-        
+
         // Validate syntax
         if self.config.enable_validation {
             self.validate_syntax()?;
         }
-        
+
         Ok(())
     }
 
@@ -1156,9 +1206,13 @@ impl ChatTemplate {
     fn check_circular_dependencies(&self) -> TemplateResult<()> {
         let mut visited = std::collections::HashSet::new();
         let mut visiting = std::collections::HashSet::new();
-        
-        self.check_circular_dependencies_recursive(&self.metadata.name, &mut visited, &mut visiting)?;
-        
+
+        self.check_circular_dependencies_recursive(
+            &self.metadata.name,
+            &mut visited,
+            &mut visiting,
+        )?;
+
         Ok(())
     }
 
@@ -1172,24 +1226,30 @@ impl ChatTemplate {
     ) -> TemplateResult<()> {
         if visiting.contains(template_name) {
             return Err(TemplateError::CircularDependency {
-                templates: Arc::from(visiting.iter().map(|t| t.as_ref()).collect::<Vec<_>>().join(", ")),
+                templates: Arc::from(
+                    visiting
+                        .iter()
+                        .map(|t| t.as_ref())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                ),
             });
         }
-        
+
         if visited.contains(template_name) {
             return Ok(());
         }
-        
+
         visiting.insert(template_name.clone());
-        
+
         // Check dependencies
         for dependency in self.dependencies.iter() {
             self.check_circular_dependencies_recursive(dependency, visited, visiting)?;
         }
-        
+
         visiting.remove(template_name);
         visited.insert(template_name.clone());
-        
+
         Ok(())
     }
 
@@ -1221,7 +1281,7 @@ impl ChatTemplate {
         let content_size = self.content.len() as u64;
         let variable_count = self.variables.len() as u64;
         let dependency_count = self.dependencies.len() as u64;
-        
+
         // Simple estimation: base time + content size + variables + dependencies
         10 + content_size / 1000 + variable_count * 2 + dependency_count * 5
     }
@@ -1320,29 +1380,32 @@ impl TemplateManager {
                 detail: Arc::from("Template storage limit exceeded"),
             });
         }
-        
+
         // Check if template already exists
         if self.templates.contains_key(&template.metadata.name) {
             return Err(TemplateError::AlreadyExists {
                 name: template.metadata.name.clone(),
             });
         }
-        
+
         // Validate template
         if self.config.enable_validation {
             template.validate()?;
         }
-        
+
         // Store template
-        self.templates.insert(template.metadata.name.clone(), template);
-        
+        self.templates
+            .insert(template.metadata.name.clone(), template);
+
         Ok(())
     }
 
     /// Get template
     #[inline]
     pub fn get(&self, name: &str) -> Option<ChatTemplate> {
-        self.templates.get(&Arc::from(name)).map(|entry| entry.value().clone())
+        self.templates
+            .get(&Arc::from(name))
+            .map(|entry| entry.value().clone())
     }
 
     /// Update template
@@ -1354,18 +1417,19 @@ impl TemplateManager {
                 name: template.metadata.name.clone(),
             });
         }
-        
+
         // Validate template
         if self.config.enable_validation {
             template.validate()?;
         }
-        
+
         // Update template
-        self.templates.insert(template.metadata.name.clone(), template);
-        
+        self.templates
+            .insert(template.metadata.name.clone(), template);
+
         // Clear cache
         self.cache.remove(&template.metadata.name);
-        
+
         Ok(())
     }
 
@@ -1373,20 +1437,18 @@ impl TemplateManager {
     #[inline]
     pub fn delete(&self, name: &str) -> TemplateResult<()> {
         let name_arc = Arc::from(name);
-        
+
         // Remove template
         if self.templates.remove(&name_arc).is_none() {
-            return Err(TemplateError::NotFound {
-                name: name_arc,
-            });
+            return Err(TemplateError::NotFound { name: name_arc });
         }
-        
+
         // Clear cache
         self.cache.remove(&name_arc);
-        
+
         // Remove usage stats
         self.usage_stats.remove(&name_arc);
-        
+
         Ok(())
     }
 
@@ -1403,14 +1465,22 @@ impl TemplateManager {
     #[inline]
     pub fn search(&self, query: &str) -> Vec<TemplateInfo> {
         let query_lower = query.to_lowercase();
-        
+
         self.templates
             .iter()
             .filter(|entry| {
                 let template = entry.value();
-                template.metadata.name.to_lowercase().contains(&query_lower) ||
-                template.metadata.description.to_lowercase().contains(&query_lower) ||
-                template.metadata.tags.iter().any(|tag| tag.to_lowercase().contains(&query_lower))
+                template.metadata.name.to_lowercase().contains(&query_lower)
+                    || template
+                        .metadata
+                        .description
+                        .to_lowercase()
+                        .contains(&query_lower)
+                    || template
+                        .metadata
+                        .tags
+                        .iter()
+                        .any(|tag| tag.to_lowercase().contains(&query_lower))
             })
             .map(|entry| entry.value().info())
             .collect()
@@ -1418,60 +1488,70 @@ impl TemplateManager {
 
     /// Render template
     #[inline]
-    pub fn render(&self, name: &str, variables: HashMap<Arc<str>, TemplateValue>) -> TemplateResult<Arc<str>> {
+    pub fn render(
+        &self,
+        name: &str,
+        variables: HashMap<Arc<str>, TemplateValue>,
+    ) -> TemplateResult<Arc<str>> {
         let name_arc = Arc::from(name);
-        
+
         // Check cache first
         let cache_key = self.generate_cache_key(&name_arc, &variables);
         if let Some(cached) = self.cache.get(&cache_key) {
             self.record_cache_hit(&name_arc);
             return Ok(cached.clone());
         }
-        
+
         // Get template
-        let template = self.templates.get(&name_arc)
+        let template = self
+            .templates
+            .get(&name_arc)
             .ok_or_else(|| TemplateError::NotFound {
                 name: name_arc.clone(),
             })?;
-        
+
         // Record usage
         self.record_usage(&name_arc);
-        
+
         // Render template
         let start_time = std::time::Instant::now();
         let result = template.value().render(variables);
         let render_time = start_time.elapsed().as_millis() as u64;
-        
+
         // Update statistics
         self.update_render_stats(&name_arc, render_time, result.is_ok());
-        
+
         // Cache result if successful
         if let Ok(rendered) = &result {
             if self.cache.len() < self.config.max_cache_size {
                 self.cache.insert(cache_key, rendered.clone());
             }
         }
-        
+
         result
     }
 
     /// Generate cache key
     #[inline]
-    fn generate_cache_key(&self, name: &Arc<str>, variables: &HashMap<Arc<str>, TemplateValue>) -> Arc<str> {
+    fn generate_cache_key(
+        &self,
+        name: &Arc<str>,
+        variables: &HashMap<Arc<str>, TemplateValue>,
+    ) -> Arc<str> {
         let mut key = String::new();
         key.push_str(name);
         key.push('|');
-        
+
         let mut var_keys: Vec<_> = variables.keys().collect();
         var_keys.sort();
-        
+
         for var_key in var_keys {
             key.push_str(var_key);
             key.push('=');
             key.push_str(&variables[var_key].to_string());
             key.push('&');
         }
-        
+
         Arc::from(key)
     }
 
@@ -1482,16 +1562,19 @@ impl TemplateManager {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
-        self.usage_stats.insert(name.clone(), TemplateUsageStats {
-            template_name: name.clone(),
-            usage_count: 1,
-            last_used: now,
-            total_render_time: 0,
-            average_render_time: 0.0,
-            error_count: 0,
-            cache_hit_count: 0,
-        });
+
+        self.usage_stats.insert(
+            name.clone(),
+            TemplateUsageStats {
+                template_name: name.clone(),
+                usage_count: 1,
+                last_used: now,
+                total_render_time: 0,
+                average_render_time: 0.0,
+                error_count: 0,
+                cache_hit_count: 0,
+            },
+        );
     }
 
     /// Record cache hit
@@ -1510,12 +1593,13 @@ impl TemplateManager {
         if let Some(stats) = self.usage_stats.get(name) {
             let mut updated_stats = stats.value().clone();
             updated_stats.total_render_time += render_time;
-            updated_stats.average_render_time = updated_stats.total_render_time as f64 / updated_stats.usage_count as f64;
-            
+            updated_stats.average_render_time =
+                updated_stats.total_render_time as f64 / updated_stats.usage_count as f64;
+
             if !success {
                 updated_stats.error_count += 1;
             }
-            
+
             self.usage_stats.insert(name.clone(), updated_stats);
         }
     }
@@ -1523,7 +1607,9 @@ impl TemplateManager {
     /// Get template statistics
     #[inline]
     pub fn get_stats(&self, name: &str) -> Option<TemplateUsageStats> {
-        self.usage_stats.get(&Arc::from(name)).map(|entry| entry.value().clone())
+        self.usage_stats
+            .get(&Arc::from(name))
+            .map(|entry| entry.value().clone())
     }
 
     /// Clear cache
@@ -1541,27 +1627,30 @@ impl TemplateManager {
     /// Export template
     #[inline]
     pub fn export(&self, name: &str) -> TemplateResult<Arc<str>> {
-        let template = self.templates.get(&Arc::from(name))
-            .ok_or_else(|| TemplateError::NotFound {
-                name: Arc::from(name),
-            })?;
-        
-        let exported = serde_json::to_string_pretty(template.value())
-            .map_err(|e| TemplateError::StorageError {
+        let template =
+            self.templates
+                .get(&Arc::from(name))
+                .ok_or_else(|| TemplateError::NotFound {
+                    name: Arc::from(name),
+                })?;
+
+        let exported = serde_json::to_string_pretty(template.value()).map_err(|e| {
+            TemplateError::StorageError {
                 detail: Arc::from(format!("Export failed: {}", e)),
-            })?;
-        
+            }
+        })?;
+
         Ok(Arc::from(exported))
     }
 
     /// Import template
     #[inline]
     pub fn import(&self, data: &str) -> TemplateResult<()> {
-        let template: ChatTemplate = serde_json::from_str(data)
-            .map_err(|e| TemplateError::StorageError {
+        let template: ChatTemplate =
+            serde_json::from_str(data).map_err(|e| TemplateError::StorageError {
                 detail: Arc::from(format!("Import failed: {}", e)),
             })?;
-        
+
         self.store(template)
     }
 }
@@ -1573,7 +1662,7 @@ impl Default for TemplateManager {
 }
 
 /// Global template manager instance
-static TEMPLATE_MANAGER: once_cell::sync::Lazy<TemplateManager> = 
+static TEMPLATE_MANAGER: once_cell::sync::Lazy<TemplateManager> =
     once_cell::sync::Lazy::new(|| TemplateManager::new());
 
 /// Get global template manager
@@ -1596,7 +1685,10 @@ pub fn get_template(name: &str) -> Option<ChatTemplate> {
 
 /// Render template using global manager
 #[inline]
-pub fn render_template(name: &str, variables: HashMap<Arc<str>, TemplateValue>) -> TemplateResult<Arc<str>> {
+pub fn render_template(
+    name: &str,
+    variables: HashMap<Arc<str>, TemplateValue>,
+) -> TemplateResult<Arc<str>> {
     get_template_manager().render(name, variables)
 }
 

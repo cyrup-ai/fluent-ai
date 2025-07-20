@@ -1,6 +1,7 @@
 use crate::async_task::{AsyncTask, spawn_async};
 use crate::domain::completion::{CompletionBackend, CompletionRequest};
-use crate::engine::{Agent, AgentConfig, CompletionResponse, Engine, ExtractionConfig};
+use crate::engine::{Agent, CompletionResponse, Engine, ExtractionConfig};
+use fluent_ai_domain::agent_role::AgentRole;
 use crate::ZeroOneOrMany;
 use fluent_ai_provider::Models;
 use serde_json::Value;
@@ -70,18 +71,18 @@ impl FluentEngine {
 
 /// A simple agent implementation for identification and configuration storage
 pub struct FluentAgent {
-    config: AgentConfig,
+    role: Arc<dyn AgentRole>,
 }
 
 impl FluentAgent {
-    pub fn new(config: AgentConfig) -> Self {
-        Self { config }
+    pub fn new(role: Arc<dyn AgentRole>) -> Self {
+        Self { role }
     }
 }
 
 impl Agent for FluentAgent {
-    fn model(&self) -> &fluent_ai_provider::Models {
-        &self.config.model
+    fn name(&self) -> &str {
+        self.role.name()
     }
 }
 

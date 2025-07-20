@@ -8,6 +8,10 @@
 
 use serde_json::json;
 use bytes::Bytes;
+use std::time::Duration;
+use arc_swap::ArcSwap;
+use arrayvec::{ArrayVec, ArrayString};
+use smallvec::{SmallVec, smallvec};
 
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient, TranscriptionClient},
@@ -17,23 +21,104 @@ use crate::{
     message::Message,
     clients::azure::completion::{CompletionModel, GPT_4O},
     runtime::{self as rt, AsyncTask},
-    http::{HttpClient, HttpRequest, HttpError},
 };
+
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
+use fluent_ai_domain::AsyncTask as DomainAsyncTask;
 
 use super::{embedding::EmbeddingModel, transcription::TranscriptionModel};
 
-/// Azure OpenAI authentication
+/// Azure OpenAI authentication with zero-allocation patterns
 #[derive(Clone, Debug)]
 pub enum AzureOpenAIAuth {
-    ApiKey(String),
-    Token(String),
+    ApiKey(ArrayString<128>),
+    Token(ArrayString<256>),
+}
+
+impl AzureOpenAIAuth {
+    /// Create API key authentication with zero allocation validation
+    pub fn api_key(key: impl AsRef<str>) -> Result<Self, AzureError> {
+        let key_str = key.as_ref();
+        if key_str.is_empty() {
+            return Err(AzureError::Configuration {
+                field: "api_key".to_string(),
+                message: "API key cannot be empty".to_string(),
+                suggestion: "Provide a valid Azure OpenAI API key".to_string(),
+            });
+        }
+        
+        ArrayString::from(key_str)
+            .map(Self::ApiKey)
+            .map_err(|_| AzureError::Configuration {
+                field: "api_key".to_string(),
+                message: format!("API key too long: {} characters (max 128)", key_str.len()),
+                suggestion: "Use a valid Azure OpenAI API key".to_string(),
+            })
+    }
+    
+    /// Create token authentication with zero allocation validation
+    pub fn token(token: impl AsRef<str>) -> Result<Self, AzureError> {
+        let token_str = token.as_ref();
+        if token_str.is_empty() {
+            return Err(AzureError::Configuration {
+                field: "token".to_string(),
+                message: "Token cannot be empty".to_string(),
+                suggestion: "Provide a valid Azure OpenAI token".to_string(),
+            });
+        }
+        
+        ArrayString::from(token_str)
+            .map(Self::Token)
+            .map_err(|_| AzureError::Configuration {
+                field: "token".to_string(),
+                message: format!("Token too long: {} characters (max 256)", token_str.len()),
+                suggestion: "Use a valid Azure OpenAI token".to_string(),
+            })
+    }
 }
 
 impl From<String> for AzureOpenAIAuth {
     fn from(token: String) -> Self {
-        AzureOpenAIAuth::Token(token)
+        Self::token(token).unwrap_or_else(|_| {
+            // Fallback for compatibility - truncate if too long
+            if token.len() <= 256 {
+                Self::Token(ArrayString::from(&token).unwrap_or_default())
+            } else {
+                Self::Token(ArrayString::from(&token[..256]).unwrap_or_default())
+            }
+        })
     }
 }
+
+/// Azure OpenAI error types for comprehensive error handling
+#[derive(thiserror::Error, Debug)]
+pub enum AzureError {
+    #[error("HTTP request failed: {0}")]
+    Http(#[from] HttpError),
+    #[error("Configuration error in {field}: {message}")]
+    Configuration {
+        field: String,
+        message: String,
+        suggestion: String,
+    },
+    #[error("Authentication failed: {message}")]
+    Authentication {
+        message: String,
+        retry_after: Option<Duration>,
+    },
+    #[error("Model not supported: {model}")]
+    ModelNotSupported {
+        model: String,
+        supported_models: Vec<String>,
+    },
+    #[error("Deployment not found: {deployment_id}")]
+    DeploymentNotFound {
+        deployment_id: String,
+        suggestion: String,
+    },
+}
+
+pub type Result<T> = std::result::Result<T, AzureError>;
 
 /// ------------------------------------------------------------
 /// Typestate markers for builder pattern
@@ -42,60 +127,101 @@ pub struct NeedsPrompt;
 pub struct HasPrompt;
 
 /// ------------------------------------------------------------
-/// Azure OpenAI Client
+/// Azure OpenAI Client with zero-allocation HTTP3 architecture
 /// ------------------------------------------------------------
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Client {
-    pub(crate) api_version: String,
-    pub(crate) azure_endpoint: String,
+    /// Hot-swappable authentication
+    pub(crate) auth: ArcSwap<AzureOpenAIAuth>,
+    /// Zero-allocation API version storage
+    pub(crate) api_version: ArrayString<32>,
+    /// Zero-allocation endpoint storage
+    pub(crate) azure_endpoint: ArrayString<256>,
+    /// Shared HTTP3 client with connection pooling
     pub(crate) http_client: HttpClient,
-    pub(crate) auth: AzureOpenAIAuth,
+    /// Request timeout
+    timeout: Duration,
 }
 
 impl Client {
-    /// Creates a new Azure OpenAI client.
+    /// Creates a new Azure OpenAI client with HTTP3 and zero-allocation patterns.
     ///
     /// # Arguments
     ///
     /// * `auth` - Azure OpenAI API key or token required for authentication
     /// * `api_version` - API version to use (e.g., "2024-10-21" for GA, "2024-10-01-preview" for preview)
     /// * `azure_endpoint` - Azure OpenAI endpoint URL, for example: https://{your-resource-name}.openai.azure.com
-    pub fn new(auth: impl Into<AzureOpenAIAuth>, api_version: &str, azure_endpoint: &str) -> Self {
-        let http_client = HttpClient::for_provider("azure");
+    pub fn new(auth: impl Into<AzureOpenAIAuth>, api_version: &str, azure_endpoint: &str) -> Result<Self> {
+        let http_client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| AzureError::Configuration {
+                field: "http_client".to_string(),
+                message: format!("Failed to create HTTP3 client: {}", e),
+                suggestion: "Check network configuration and try again".to_string(),
+            })?;
+            
         let auth = auth.into();
+        
+        let api_version_array = ArrayString::from(api_version)
+            .map_err(|_| AzureError::Configuration {
+                field: "api_version".to_string(),
+                message: format!("API version too long: {} characters (max 32)", api_version.len()),
+                suggestion: "Use a valid Azure API version string".to_string(),
+            })?;
+            
+        let endpoint_array = ArrayString::from(azure_endpoint)
+            .map_err(|_| AzureError::Configuration {
+                field: "azure_endpoint".to_string(),
+                message: format!("Endpoint URL too long: {} characters (max 256)", azure_endpoint.len()),
+                suggestion: "Use a valid Azure OpenAI endpoint URL".to_string(),
+            })?;
 
-        Self {
-            api_version: api_version.to_string(),
-            azure_endpoint: azure_endpoint.to_string(),
+        Ok(Self {
+            auth: ArcSwap::from_pointee(auth),
+            api_version: api_version_array,
+            azure_endpoint: endpoint_array,
             http_client,
-            auth,
-        }
+            timeout: Duration::from_secs(30),
+        })
     }
 
     /// Creates a new Azure OpenAI client from an API key.
-    pub fn from_api_key(api_key: &str, api_version: &str, azure_endpoint: &str) -> Self {
-        Self::new(
-            AzureOpenAIAuth::ApiKey(api_key.to_string()),
-            api_version,
-            azure_endpoint,
-        )
+    pub fn from_api_key(api_key: &str, api_version: &str, azure_endpoint: &str) -> Result<Self> {
+        let auth = AzureOpenAIAuth::api_key(api_key)?;
+        Self::new(auth, api_version, azure_endpoint)
     }
 
     /// Creates a new Azure OpenAI client from a token.
-    pub fn from_token(token: &str, api_version: &str, azure_endpoint: &str) -> Self {
-        Self::new(
-            AzureOpenAIAuth::Token(token.to_string()),
-            api_version,
-            azure_endpoint,
-        )
+    pub fn from_token(token: &str, api_version: &str, azure_endpoint: &str) -> Result<Self> {
+        let auth = AzureOpenAIAuth::token(token)?;
+        Self::new(auth, api_version, azure_endpoint)
     }
 
-    /// Get the authentication header for requests
-    pub(crate) fn auth_header(&self) -> (&'static str, String) {
-        match &self.auth {
-            AzureOpenAIAuth::ApiKey(api_key) => ("api-key", api_key.clone()),
-            AzureOpenAIAuth::Token(token) => ("Authorization", format!("Bearer {}", token)),
+    /// Get the authentication header for requests with zero-allocation patterns
+    pub(crate) fn auth_header(&self) -> (&'static str, ArrayString<300>) {
+        let auth = self.auth.load();
+        match auth.as_ref() {
+            AzureOpenAIAuth::ApiKey(api_key) => {
+                ("api-key", ArrayString::from(api_key.as_str()).unwrap_or_default())
+            },
+            AzureOpenAIAuth::Token(token) => {
+                let mut bearer_token = ArrayString::<300>::new();
+                let _ = bearer_token.try_push_str("Bearer ");
+                let _ = bearer_token.try_push_str(token.as_str());
+                ("Authorization", bearer_token)
+            },
         }
+    }
+    
+    /// Build optimized headers with zero allocation
+    #[inline(always)]
+    fn build_headers(&self) -> SmallVec<[(&'static str, ArrayString<300>); 4]> {
+        let (auth_header_name, auth_header_value) = self.auth_header();
+        
+        smallvec![
+            (auth_header_name, auth_header_value),
+            ("Content-Type", ArrayString::from("application/json").unwrap_or_default()),
+            ("User-Agent", ArrayString::from("fluent-ai-http3/1.0").unwrap_or_default()),
+        ]
     }
 
     pub(crate) fn post_embedding(&self, deployment_id: &str) -> Result<HttpRequest, HttpError> {
@@ -103,8 +229,14 @@ impl Client {
             "{}/openai/deployments/{}/embeddings?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
-        let (header_name, header_value) = self.auth_header();
-        HttpRequest::post(url, Bytes::new())?.header(header_name, header_value)
+        let headers = self.build_headers();
+        let mut request = HttpRequest::post(url, Vec::new())?;
+        
+        for (name, value) in headers.iter() {
+            request = request.header(*name, value.as_str());
+        }
+        
+        Ok(request.timeout(self.timeout))
     }
 
     pub(crate) fn post_chat_completion(&self, deployment_id: &str) -> Result<HttpRequest, HttpError> {
@@ -112,8 +244,14 @@ impl Client {
             "{}/openai/deployments/{}/chat/completions?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
-        let (header_name, header_value) = self.auth_header();
-        HttpRequest::post(url, Bytes::new())?.header(header_name, header_value)
+        let headers = self.build_headers();
+        let mut request = HttpRequest::post(url, Vec::new())?;
+        
+        for (name, value) in headers.iter() {
+            request = request.header(*name, value.as_str());
+        }
+        
+        Ok(request.timeout(self.timeout))
     }
 
     pub(crate) fn post_transcription(&self, deployment_id: &str) -> Result<HttpRequest, HttpError> {
@@ -121,8 +259,14 @@ impl Client {
             "{}/openai/deployments/{}/audio/translations?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
-        let (header_name, header_value) = self.auth_header();
-        HttpRequest::post(url, Bytes::new())?.header(header_name, header_value)
+        let headers = self.build_headers();
+        let mut request = HttpRequest::post(url, Vec::new())?;
+        
+        for (name, value) in headers.iter() {
+            request = request.header(*name, value.as_str());
+        }
+        
+        Ok(request.timeout(self.timeout))
     }
 
     #[cfg(feature = "image")]
@@ -131,8 +275,14 @@ impl Client {
             "{}/openai/deployments/{}/images/generations?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
-        let (header_name, header_value) = self.auth_header();
-        HttpRequest::post(url, Bytes::new())?.header(header_name, header_value)
+        let headers = self.build_headers();
+        let mut request = HttpRequest::post(url, Vec::new())?;
+        
+        for (name, value) in headers.iter() {
+            request = request.header(*name, value.as_str());
+        }
+        
+        Ok(request.timeout(self.timeout))
     }
 
     #[cfg(feature = "audio")]
@@ -141,8 +291,39 @@ impl Client {
             "{}/openai/deployments/{}/audio/speech?api-version={}",
             self.azure_endpoint, deployment_id, self.api_version
         );
-        let (header_name, header_value) = self.auth_header();
-        HttpRequest::post(url, Bytes::new())?.header(header_name, header_value)
+        let headers = self.build_headers();
+        let mut request = HttpRequest::post(url, Vec::new())?;
+        
+        for (name, value) in headers.iter() {
+            request = request.header(*name, value.as_str());
+        }
+        
+        Ok(request.timeout(self.timeout))
+    }
+    
+    /// Test connection to Azure OpenAI service
+    pub async fn test_connection(&self) -> Result<()> {
+        let url = format!("{}/openai/models?api-version={}", 
+            self.azure_endpoint, self.api_version);
+        
+        let headers = self.build_headers();
+        let mut request = HttpRequest::get(&url)?;
+        
+        for (name, value) in headers.iter() {
+            request = request.header(*name, value.as_str());
+        }
+        
+        let request = request.timeout(Duration::from_secs(10));
+        let response = self.http_client.send(request).await?;
+        
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(AzureError::Authentication {
+                message: format!("Connection test failed with status: {}", response.status()),
+                retry_after: None,
+            })
+        }
     }
 }
 
@@ -309,19 +490,46 @@ pub type ClientBuilder<'a> = AzureCompletionBuilder<'a, NeedsPrompt>;
 
 /// Create a new Azure OpenAI client from environment variables.
 impl Client {
-    pub fn from_env() -> Self {
+    pub fn from_env() -> Result<Self> {
         let auth = if let Ok(api_key) = std::env::var("AZURE_API_KEY") {
-            AzureOpenAIAuth::ApiKey(api_key)
+            AzureOpenAIAuth::api_key(api_key)?
         } else if let Ok(token) = std::env::var("AZURE_TOKEN") {
-            AzureOpenAIAuth::Token(token)
+            AzureOpenAIAuth::token(token)?
         } else {
-            panic!("Neither AZURE_API_KEY nor AZURE_TOKEN is set");
+            return Err(AzureError::Configuration {
+                field: "authentication".to_string(),
+                message: "Neither AZURE_API_KEY nor AZURE_TOKEN environment variable is set".to_string(),
+                suggestion: "Set either AZURE_API_KEY or AZURE_TOKEN environment variable".to_string(),
+            });
         };
 
-        let api_version = std::env::var("AZURE_API_VERSION").expect("AZURE_API_VERSION not set");
-        let azure_endpoint = std::env::var("AZURE_ENDPOINT").expect("AZURE_ENDPOINT not set");
+        let api_version = std::env::var("AZURE_API_VERSION")
+            .map_err(|_| AzureError::Configuration {
+                field: "AZURE_API_VERSION".to_string(),
+                message: "AZURE_API_VERSION environment variable not set".to_string(),
+                suggestion: "Set AZURE_API_VERSION to your desired API version (e.g., '2024-10-21')".to_string(),
+            })?;
+            
+        let azure_endpoint = std::env::var("AZURE_ENDPOINT")
+            .map_err(|_| AzureError::Configuration {
+                field: "AZURE_ENDPOINT".to_string(),
+                message: "AZURE_ENDPOINT environment variable not set".to_string(),
+                suggestion: "Set AZURE_ENDPOINT to your Azure OpenAI endpoint URL".to_string(),
+            })?;
 
         Self::new(auth, &api_version, &azure_endpoint)
+    }
+}
+
+/// Debug implementation that doesn't expose sensitive information
+impl std::fmt::Debug for Client {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Client")
+            .field("auth", &"[REDACTED]")
+            .field("api_version", &self.api_version)
+            .field("azure_endpoint", &"[REDACTED]")
+            .field("timeout", &self.timeout)
+            .finish()
     }
 }
 
@@ -331,6 +539,14 @@ impl Client {
 impl ProviderClient for Client {
     fn provider_name(&self) -> &'static str {
         "azure"
+    }
+    
+    fn test_connection(&self) -> DomainAsyncTask<std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let client = self.clone();
+        DomainAsyncTask::spawn(async move {
+            client.test_connection().await
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        })
     }
 }
 

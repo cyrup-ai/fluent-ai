@@ -1,5 +1,4 @@
 pub mod agent;
-pub mod agent_role;
 pub mod audio;
 pub mod chunk;
 pub mod completion;
@@ -14,10 +13,7 @@ pub mod loader;
 pub mod mcp;
 pub mod mcp_tool;
 pub mod memory;
-pub mod memory_ops;
-pub mod memory_workflow;
 pub mod message;
-pub mod model_info_provider;
 pub mod prompt;
 pub mod tool;
 pub mod tool_v2;
@@ -25,7 +21,6 @@ pub mod workflow;
 
 // Re-export commonly used types
 pub use agent::*;
-pub use agent_role::*;
 pub use audio::{
     Audio, AudioMediaType,
     ContentFormat as AudioContentFormat,
@@ -46,10 +41,7 @@ pub use loader::*;
 pub use mcp::*;
 pub use mcp_tool::{McpTool, Tool};
 pub use memory::*;
-pub use memory_ops::*;
-pub use memory_workflow::{Prompt as PromptTrait, PromptError, WorkflowError};
 pub use message::*;
-pub use model_info_provider::*;
 pub use prompt::Prompt;
 pub use tool::{NamedTool, Perplexity, Tool as ToolV2};
 pub use workflow::*;

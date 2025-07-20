@@ -3,9 +3,10 @@
 //! Provides blazing-fast response formatting with streaming support and zero-allocation patterns
 //! for production-ready performance and ergonomic APIs.
 
-use std::sync::Arc;
 use std::collections::HashMap;
-use serde_json::{Value, Map};
+use std::sync::Arc;
+
+use serde_json::{Map, Value};
 use tokio::sync::mpsc;
 
 use super::types::*;
@@ -90,59 +91,77 @@ impl ResponseFormatter {
     /// Format as plain text
     fn format_text(&self, output: &CommandOutput) -> Result<String, ResponseError> {
         let mut result = String::new();
-        
+
         // Add status indicator
         if output.success {
             result.push_str("✓ ");
         } else {
             result.push_str("✗ ");
         }
-        
+
         // Add main message
         result.push_str(&output.message);
-        
+
         // Add execution time if metrics are enabled
         if self.include_metrics && output.execution_time > 0 {
             result.push_str(&format!(" ({}μs)", output.execution_time));
         }
-        
+
         // Add timestamp if enabled
         if self.include_timestamps {
             let timestamp = chrono::Utc::now().format("%H:%M:%S");
             result.push_str(&format!(" [{}]", timestamp));
         }
-        
+
         Ok(result)
     }
 
     /// Format as JSON
     fn format_json(&self, output: &CommandOutput) -> Result<String, ResponseError> {
         let mut json_output = Map::new();
-        
+
         json_output.insert("success".to_string(), Value::Bool(output.success));
-        json_output.insert("message".to_string(), Value::String(output.message.to_string()));
-        
+        json_output.insert(
+            "message".to_string(),
+            Value::String(output.message.to_string()),
+        );
+
         if let Some(data) = &output.data {
             json_output.insert("data".to_string(), data.clone());
         }
-        
+
         if self.include_metrics {
             let mut metrics = Map::new();
-            metrics.insert("execution_time_us".to_string(), Value::Number(output.execution_time.into()));
-            metrics.insert("memory_bytes".to_string(), Value::Number(output.resource_usage.memory_bytes.into()));
-            metrics.insert("cpu_time_us".to_string(), Value::Number(output.resource_usage.cpu_time_us.into()));
-            metrics.insert("network_requests".to_string(), Value::Number(output.resource_usage.network_requests.into()));
-            metrics.insert("disk_operations".to_string(), Value::Number(output.resource_usage.disk_operations.into()));
+            metrics.insert(
+                "execution_time_us".to_string(),
+                Value::Number(output.execution_time.into()),
+            );
+            metrics.insert(
+                "memory_bytes".to_string(),
+                Value::Number(output.resource_usage.memory_bytes.into()),
+            );
+            metrics.insert(
+                "cpu_time_us".to_string(),
+                Value::Number(output.resource_usage.cpu_time_us.into()),
+            );
+            metrics.insert(
+                "network_requests".to_string(),
+                Value::Number(output.resource_usage.network_requests.into()),
+            );
+            metrics.insert(
+                "disk_operations".to_string(),
+                Value::Number(output.resource_usage.disk_operations.into()),
+            );
             json_output.insert("metrics".to_string(), Value::Object(metrics));
         }
-        
+
         if self.include_timestamps {
             let timestamp = chrono::Utc::now().to_rfc3339();
             json_output.insert("timestamp".to_string(), Value::String(timestamp));
         }
-        
+
         let json_value = Value::Object(json_output);
-        
+
         if self.pretty_json {
             serde_json::to_string_pretty(&json_value)
         } else {
@@ -156,46 +175,62 @@ impl ResponseFormatter {
     /// Format as structured response
     fn format_structured(&self, output: &CommandOutput) -> Result<String, ResponseError> {
         let mut result = String::new();
-        
+
         // Header
         result.push_str("=== Command Response ===\n");
-        
+
         // Status
-        result.push_str(&format!("Status: {}\n", if output.success { "SUCCESS" } else { "FAILED" }));
-        
+        result.push_str(&format!(
+            "Status: {}\n",
+            if output.success { "SUCCESS" } else { "FAILED" }
+        ));
+
         // Message
         result.push_str(&format!("Message: {}\n", output.message));
-        
+
         // Data section
         if let Some(data) = &output.data {
             result.push_str("Data:\n");
-            let data_str = serde_json::to_string_pretty(data)
-                .map_err(|e| ResponseError::SerializationError {
+            let data_str = serde_json::to_string_pretty(data).map_err(|e| {
+                ResponseError::SerializationError {
                     detail: Arc::from(e.to_string()),
-                })?;
+                }
+            })?;
             for line in data_str.lines() {
                 result.push_str(&format!("  {}\n", line));
             }
         }
-        
+
         // Metrics section
         if self.include_metrics {
             result.push_str("Metrics:\n");
             result.push_str(&format!("  Execution Time: {}μs\n", output.execution_time));
-            result.push_str(&format!("  Memory Usage: {} bytes\n", output.resource_usage.memory_bytes));
-            result.push_str(&format!("  CPU Time: {}μs\n", output.resource_usage.cpu_time_us));
-            result.push_str(&format!("  Network Requests: {}\n", output.resource_usage.network_requests));
-            result.push_str(&format!("  Disk Operations: {}\n", output.resource_usage.disk_operations));
+            result.push_str(&format!(
+                "  Memory Usage: {} bytes\n",
+                output.resource_usage.memory_bytes
+            ));
+            result.push_str(&format!(
+                "  CPU Time: {}μs\n",
+                output.resource_usage.cpu_time_us
+            ));
+            result.push_str(&format!(
+                "  Network Requests: {}\n",
+                output.resource_usage.network_requests
+            ));
+            result.push_str(&format!(
+                "  Disk Operations: {}\n",
+                output.resource_usage.disk_operations
+            ));
         }
-        
+
         // Timestamp
         if self.include_timestamps {
             let timestamp = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
             result.push_str(&format!("Timestamp: {}\n", timestamp));
         }
-        
+
         result.push_str("========================\n");
-        
+
         Ok(result)
     }
 
@@ -203,24 +238,29 @@ impl ResponseFormatter {
     fn format_streaming(&self, output: &CommandOutput) -> Result<String, ResponseError> {
         // For streaming, we use a compact JSON format
         let mut json_output = Map::new();
-        json_output.insert("type".to_string(), Value::String("command_response".to_string()));
+        json_output.insert(
+            "type".to_string(),
+            Value::String("command_response".to_string()),
+        );
         json_output.insert("success".to_string(), Value::Bool(output.success));
-        json_output.insert("message".to_string(), Value::String(output.message.to_string()));
-        
+        json_output.insert(
+            "message".to_string(),
+            Value::String(output.message.to_string()),
+        );
+
         if let Some(data) = &output.data {
             json_output.insert("data".to_string(), data.clone());
         }
-        
+
         if self.include_timestamps {
             let timestamp = chrono::Utc::now().timestamp_millis();
             json_output.insert("timestamp".to_string(), Value::Number(timestamp.into()));
         }
-        
+
         let json_value = Value::Object(json_output);
-        serde_json::to_string(&json_value)
-            .map_err(|e| ResponseError::SerializationError {
-                detail: Arc::from(e.to_string()),
-            })
+        serde_json::to_string(&json_value).map_err(|e| ResponseError::SerializationError {
+            detail: Arc::from(e.to_string()),
+        })
     }
 
     /// Format error response
@@ -237,7 +277,7 @@ impl ResponseFormatter {
                 disk_operations: 0,
             },
         };
-        
+
         self.format_output(&output)
     }
 
@@ -253,25 +293,31 @@ impl ResponseFormatter {
     fn format_help_text(&self, commands: &[CommandInfo]) -> Result<String, ResponseError> {
         let mut result = String::new();
         result.push_str("Available Commands:\n\n");
-        
+
         // Group commands by category
         let mut categories: HashMap<Arc<str>, Vec<&CommandInfo>> = HashMap::new();
         for command in commands {
-            categories.entry(command.category.clone())
+            categories
+                .entry(command.category.clone())
                 .or_insert_with(Vec::new)
                 .push(command);
         }
-        
+
         // Format each category
         for (category, category_commands) in categories {
             result.push_str(&format!("{}:\n", category));
-            
+
             for command in category_commands {
-                result.push_str(&format!("  /{:<12} - {}\n", command.name, command.description));
-                
+                result.push_str(&format!(
+                    "  /{:<12} - {}\n",
+                    command.name, command.description
+                ));
+
                 // Add aliases if any
                 if !command.aliases.is_empty() {
-                    let aliases = command.aliases.iter()
+                    let aliases = command
+                        .aliases
+                        .iter()
                         .map(|a| format!("/{}", a))
                         .collect::<Vec<_>>()
                         .join(", ");
@@ -280,34 +326,47 @@ impl ResponseFormatter {
             }
             result.push('\n');
         }
-        
+
         Ok(result)
     }
 
     /// Format help as JSON
     fn format_help_json(&self, commands: &[CommandInfo]) -> Result<String, ResponseError> {
-        let json_commands: Vec<Value> = commands.iter().map(|cmd| {
-            let mut command_obj = Map::new();
-            command_obj.insert("name".to_string(), Value::String(cmd.name.to_string()));
-            command_obj.insert("description".to_string(), Value::String(cmd.description.to_string()));
-            command_obj.insert("usage".to_string(), Value::String(cmd.usage.to_string()));
-            command_obj.insert("category".to_string(), Value::String(cmd.category.to_string()));
-            
-            let aliases: Vec<Value> = cmd.aliases.iter()
-                .map(|a| Value::String(a.to_string()))
-                .collect();
-            command_obj.insert("aliases".to_string(), Value::Array(aliases));
-            
-            let examples: Vec<Value> = cmd.examples.iter()
-                .map(|e| Value::String(e.to_string()))
-                .collect();
-            command_obj.insert("examples".to_string(), Value::Array(examples));
-            
-            Value::Object(command_obj)
-        }).collect();
-        
+        let json_commands: Vec<Value> = commands
+            .iter()
+            .map(|cmd| {
+                let mut command_obj = Map::new();
+                command_obj.insert("name".to_string(), Value::String(cmd.name.to_string()));
+                command_obj.insert(
+                    "description".to_string(),
+                    Value::String(cmd.description.to_string()),
+                );
+                command_obj.insert("usage".to_string(), Value::String(cmd.usage.to_string()));
+                command_obj.insert(
+                    "category".to_string(),
+                    Value::String(cmd.category.to_string()),
+                );
+
+                let aliases: Vec<Value> = cmd
+                    .aliases
+                    .iter()
+                    .map(|a| Value::String(a.to_string()))
+                    .collect();
+                command_obj.insert("aliases".to_string(), Value::Array(aliases));
+
+                let examples: Vec<Value> = cmd
+                    .examples
+                    .iter()
+                    .map(|e| Value::String(e.to_string()))
+                    .collect();
+                command_obj.insert("examples".to_string(), Value::Array(examples));
+
+                Value::Object(command_obj)
+            })
+            .collect();
+
         let result = Value::Array(json_commands);
-        
+
         if self.pretty_json {
             serde_json::to_string_pretty(&result)
         } else {
@@ -338,14 +397,20 @@ impl StreamingSender {
 
     /// Send a streaming message
     pub fn send(&self, message: StreamingMessage) -> Result<(), ResponseError> {
-        self.sender.send(message)
+        self.sender
+            .send(message)
             .map_err(|_| ResponseError::StreamingError {
                 detail: Arc::from("Failed to send streaming message"),
             })
     }
 
     /// Send progress update
-    pub fn send_progress(&self, current: u64, total: u64, message: &str) -> Result<(), ResponseError> {
+    pub fn send_progress(
+        &self,
+        current: u64,
+        total: u64,
+        message: &str,
+    ) -> Result<(), ResponseError> {
         self.send(StreamingMessage::Progress {
             current,
             total,
@@ -391,13 +456,9 @@ pub enum StreamingMessage {
         message: Arc<str>,
     },
     /// Partial result
-    PartialResult {
-        data: Value,
-    },
+    PartialResult { data: Value },
     /// Command completion
-    Complete {
-        output: CommandOutput,
-    },
+    Complete { output: CommandOutput },
 }
 
 /// Response formatting errors
@@ -414,7 +475,7 @@ pub enum ResponseError {
 }
 
 /// Global response formatter
-static GLOBAL_FORMATTER: once_cell::sync::Lazy<ResponseFormatter> = 
+static GLOBAL_FORMATTER: once_cell::sync::Lazy<ResponseFormatter> =
     once_cell::sync::Lazy::new(ResponseFormatter::new);
 
 /// Get global response formatter

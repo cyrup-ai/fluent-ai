@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::cognitive::attention::{AttentionConfig, AttentionRouter};
+use crate::cognitive::attention::{AttentionConfig, AttentionRouter, CognitiveAttentionWeights};
 use crate::cognitive::evolution::EvolutionEngine;
 use crate::cognitive::quantum::{QuantumConfig, QuantumRouter};
 use crate::cognitive::quantum::types::RoutingDecision as QuantumRoutingDecision;
@@ -157,6 +157,12 @@ impl CognitiveMesh {
             hidden_dim: 512, // head_dim * num_heads = 64 * 8 = 512
             dropout_rate: 0.1,
             use_causal_mask: false,
+            attention_weights: CognitiveAttentionWeights {
+                semantic_weight: 0.4,
+                lexical_weight: 0.3,
+                structural_weight: 0.2,
+                contextual_weight: 0.1,
+            },
         };
         let attention_router = Arc::new(AttentionRouter::new(attention_config));
         let evolution_engine = Arc::new(RwLock::new(EvolutionEngine::with_state_manager(

@@ -12,8 +12,15 @@ pub use fluent_ai_domain::{
 // Provider client implementations
 pub mod clients;
 
+// Re-export Candle client for convenience
+#[cfg(feature = "candle")]
+pub use clients::candle::{CandleCompletionClient, CandleProvider, CandleModel};
+
 // Client factory for provider-to-client mapping
 pub mod client_factory;
+
+// Security and credential management
+pub mod security;
 
 // Client traits (NOT domain objects)
 pub mod client;

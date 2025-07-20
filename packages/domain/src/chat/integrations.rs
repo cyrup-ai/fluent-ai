@@ -4,6 +4,7 @@
 //! Supports multiple integration types with blazing-fast communication and ergonomic APIs.
 
 use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -61,16 +62,16 @@ impl Default for IntegrationConfig {
 pub enum IntegrationError {
     #[error("Connection error: {detail}")]
     ConnectionError { detail: Arc<str> },
-    
+
     #[error("Authentication error: {detail}")]
     AuthenticationError { detail: Arc<str> },
-    
+
     #[error("Timeout error: {detail}")]
     TimeoutError { detail: Arc<str> },
-    
+
     #[error("Configuration error: {detail}")]
     ConfigurationError { detail: Arc<str> },
-    
+
     #[error("Plugin error: {detail}")]
     PluginError { detail: Arc<str> },
 }
@@ -123,8 +124,9 @@ impl IntegrationManager {
     /// Remove an integration by name
     pub fn remove_integration(&mut self, name: &str) -> IntegrationResult<()> {
         let initial_len = self.integrations.len();
-        self.integrations.retain(|config| config.name.as_ref() != name);
-        
+        self.integrations
+            .retain(|config| config.name.as_ref() != name);
+
         if self.integrations.len() == initial_len {
             return Err(IntegrationError::ConfigurationError {
                 detail: Arc::from("Integration not found"),
@@ -136,12 +138,17 @@ impl IntegrationManager {
 
     /// Get integration by name
     pub fn get_integration(&self, name: &str) -> Option<&IntegrationConfig> {
-        self.integrations.iter().find(|config| config.name.as_ref() == name)
+        self.integrations
+            .iter()
+            .find(|config| config.name.as_ref() == name)
     }
 
     /// List all enabled integrations
     pub fn list_enabled_integrations(&self) -> Vec<&IntegrationConfig> {
-        self.integrations.iter().filter(|config| config.enabled).collect()
+        self.integrations
+            .iter()
+            .filter(|config| config.enabled)
+            .collect()
     }
 
     /// Send message to integration
@@ -150,10 +157,11 @@ impl IntegrationManager {
         integration_name: &str,
         message: &str,
     ) -> IntegrationResult<String> {
-        let integration = self.get_integration(integration_name)
-            .ok_or_else(|| IntegrationError::ConfigurationError {
+        let integration = self.get_integration(integration_name).ok_or_else(|| {
+            IntegrationError::ConfigurationError {
                 detail: Arc::from("Integration not found"),
-            })?;
+            }
+        })?;
 
         if !integration.enabled {
             return Err(IntegrationError::ConfigurationError {
@@ -165,7 +173,9 @@ impl IntegrationManager {
             IntegrationType::Webhook => self.send_webhook(integration, message).await,
             IntegrationType::RestApi => self.send_rest_api(integration, message).await,
             IntegrationType::Plugin => self.send_plugin(integration, message).await,
-            IntegrationType::ExternalService => self.send_external_service(integration, message).await,
+            IntegrationType::ExternalService => {
+                self.send_external_service(integration, message).await
+            }
         }
     }
 
@@ -177,7 +187,10 @@ impl IntegrationManager {
     ) -> IntegrationResult<String> {
         // Placeholder for webhook implementation
         // In production, this would use an HTTP client like reqwest
-        Ok(format!("Webhook sent to {}: {}", integration.endpoint, message))
+        Ok(format!(
+            "Webhook sent to {}: {}",
+            integration.endpoint, message
+        ))
     }
 
     /// Send REST API message
@@ -188,7 +201,10 @@ impl IntegrationManager {
     ) -> IntegrationResult<String> {
         // Placeholder for REST API implementation
         // In production, this would use an HTTP client like reqwest
-        Ok(format!("REST API call to {}: {}", integration.endpoint, message))
+        Ok(format!(
+            "REST API call to {}: {}",
+            integration.endpoint, message
+        ))
     }
 
     /// Send plugin message
@@ -210,7 +226,10 @@ impl IntegrationManager {
     ) -> IntegrationResult<String> {
         // Placeholder for external service implementation
         // In production, this would interface with external APIs
-        Ok(format!("External service call to {}: {}", integration.endpoint, message))
+        Ok(format!(
+            "External service call to {}: {}",
+            integration.endpoint, message
+        ))
     }
 }
 

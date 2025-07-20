@@ -4,20 +4,21 @@
 //! live message streaming, event-driven architecture, and connection management using
 //! zero-allocation patterns and lock-free operations for blazing-fast performance.
 
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
-use std::sync::atomic::{AtomicU64, AtomicBool, AtomicUsize, Ordering};
+
+use arc_swap::ArcSwap;
+use atomic_counter::{AtomicCounter, ConsistentCounter};
 use crossbeam_queue::SegQueue;
 use crossbeam_skiplist::SkipMap;
-use tokio::sync::{broadcast, mpsc, RwLock};
-use tokio::time::{interval, sleep, timeout};
-use atomic_counter::{AtomicCounter, ConsistentCounter};
 use serde::{Deserialize, Serialize};
+use tokio::sync::{RwLock, broadcast, mpsc};
+use tokio::time::{interval, sleep, timeout};
 use uuid::Uuid;
-use arc_swap::ArcSwap;
 
-use crate::chat::ChatMessage;
+use crate::message::Message;
 
 /// Real-time event types with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,7 +37,7 @@ pub enum RealTimeEvent {
     },
     /// New message received
     MessageReceived {
-        message: ChatMessage,
+        message: Message,
         session_id: Arc<str>,
         timestamp: u64,
     },
@@ -137,7 +138,7 @@ impl TypingState {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         Self {
             user_id,
             session_id,
@@ -146,51 +147,51 @@ impl TypingState {
             typing_duration: AtomicU64::new(0),
         }
     }
-    
+
     /// Start typing
     pub fn start_typing(&self) {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         self.last_activity.store(now, Ordering::Relaxed);
         self.is_typing.store(true, Ordering::Relaxed);
     }
-    
+
     /// Stop typing
     pub fn stop_typing(&self) {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         let start_time = self.last_activity.load(Ordering::Relaxed);
         if start_time > 0 {
             let duration = now.saturating_sub(start_time);
             self.typing_duration.fetch_add(duration, Ordering::Relaxed);
         }
-        
+
         self.last_activity.store(now, Ordering::Relaxed);
         self.is_typing.store(false, Ordering::Relaxed);
     }
-    
+
     /// Check if typing has expired
     pub fn is_expired(&self, expiry_seconds: u64) -> bool {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         let last_activity = self.last_activity.load(Ordering::Relaxed);
         now.saturating_sub(last_activity) > expiry_seconds
     }
-    
+
     /// Get current typing status
     pub fn is_currently_typing(&self) -> bool {
         self.is_typing.load(Ordering::Relaxed)
     }
-    
+
     /// Get total typing duration
     pub fn total_typing_duration(&self) -> u64 {
         self.typing_duration.load(Ordering::Relaxed)
@@ -219,7 +220,7 @@ impl TypingIndicator {
     /// Create a new typing indicator
     pub fn new(expiry_duration: u64, cleanup_interval: u64) -> Self {
         let (event_broadcaster, _) = broadcast::channel(1000);
-        
+
         Self {
             typing_states: SkipMap::new(),
             expiry_duration: AtomicU64::new(expiry_duration),
@@ -230,11 +231,15 @@ impl TypingIndicator {
             cleanup_task: ArcSwap::new(Arc::new(None)),
         }
     }
-    
+
     /// Start typing indicator
-    pub fn start_typing(&self, user_id: Arc<str>, session_id: Arc<str>) -> Result<(), RealTimeError> {
+    pub fn start_typing(
+        &self,
+        user_id: Arc<str>,
+        session_id: Arc<str>,
+    ) -> Result<(), RealTimeError> {
         let key = Arc::from(format!("{}:{}", user_id, session_id));
-        
+
         let typing_state = if let Some(existing) = self.typing_states.get(&key) {
             existing.value().clone()
         } else {
@@ -243,10 +248,10 @@ impl TypingIndicator {
             self.active_users.inc();
             new_state
         };
-        
+
         typing_state.start_typing();
         self.typing_events.inc();
-        
+
         // Broadcast typing started event
         let event = RealTimeEvent::TypingStarted {
             user_id,
@@ -256,20 +261,24 @@ impl TypingIndicator {
                 .unwrap_or_default()
                 .as_secs(),
         };
-        
+
         let _ = self.event_broadcaster.send(event);
-        
+
         Ok(())
     }
-    
+
     /// Stop typing indicator
-    pub fn stop_typing(&self, user_id: Arc<str>, session_id: Arc<str>) -> Result<(), RealTimeError> {
+    pub fn stop_typing(
+        &self,
+        user_id: Arc<str>,
+        session_id: Arc<str>,
+    ) -> Result<(), RealTimeError> {
         let key = Arc::from(format!("{}:{}", user_id, session_id));
-        
+
         if let Some(typing_state) = self.typing_states.get(&key) {
             typing_state.value().stop_typing();
             self.typing_events.inc();
-            
+
             // Broadcast typing stopped event
             let event = RealTimeEvent::TypingStopped {
                 user_id,
@@ -279,27 +288,28 @@ impl TypingIndicator {
                     .unwrap_or_default()
                     .as_secs(),
             };
-            
+
             let _ = self.event_broadcaster.send(event);
         }
-        
+
         Ok(())
     }
-    
+
     /// Get currently typing users
     pub fn get_typing_users(&self, session_id: &str) -> Vec<Arc<str>> {
         let mut typing_users = Vec::new();
-        
+
         for entry in self.typing_states.iter() {
             let typing_state = entry.value();
-            if typing_state.session_id.as_ref() == session_id && typing_state.is_currently_typing() {
+            if typing_state.session_id.as_ref() == session_id && typing_state.is_currently_typing()
+            {
                 typing_users.push(typing_state.user_id.clone());
             }
         }
-        
+
         typing_users
     }
-    
+
     /// Start cleanup task
     pub fn start_cleanup_task(&self) {
         let typing_states = self.typing_states.clone();
@@ -307,22 +317,24 @@ impl TypingIndicator {
         let cleanup_interval = self.cleanup_interval.clone();
         let event_broadcaster = self.event_broadcaster.clone();
         let active_users = self.active_users.clone();
-        
+
         let task = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(cleanup_interval.load(Ordering::Relaxed)));
-            
+            let mut interval = interval(Duration::from_secs(
+                cleanup_interval.load(Ordering::Relaxed),
+            ));
+
             loop {
                 interval.tick().await;
-                
+
                 let expiry_seconds = expiry_duration.load(Ordering::Relaxed);
                 let mut expired_keys = Vec::new();
-                
+
                 // Find expired typing states
                 for entry in typing_states.iter() {
                     let typing_state = entry.value();
                     if typing_state.is_expired(expiry_seconds) {
                         expired_keys.push(entry.key().clone());
-                        
+
                         // Broadcast typing stopped event for expired states
                         if typing_state.is_currently_typing() {
                             let event = RealTimeEvent::TypingStopped {
@@ -333,12 +345,12 @@ impl TypingIndicator {
                                     .unwrap_or_default()
                                     .as_secs(),
                             };
-                            
+
                             let _ = event_broadcaster.send(event);
                         }
                     }
                 }
-                
+
                 // Remove expired states
                 for key in expired_keys {
                     typing_states.remove(&key);
@@ -346,15 +358,15 @@ impl TypingIndicator {
                 }
             }
         });
-        
+
         self.cleanup_task.store(Arc::new(Some(task)));
     }
-    
+
     /// Subscribe to typing events
     pub fn subscribe(&self) -> broadcast::Receiver<RealTimeEvent> {
         self.event_broadcaster.subscribe()
     }
-    
+
     /// Get statistics
     pub fn get_statistics(&self) -> TypingStatistics {
         TypingStatistics {
@@ -444,10 +456,16 @@ pub struct LiveUpdateStatistics {
 
 impl LiveUpdateSystem {
     /// Create a new live update system
-    pub fn new(queue_size_limit: usize, backpressure_threshold: usize, processing_rate: u64) -> Self {
+    pub fn new(
+        queue_size_limit: usize,
+        backpressure_threshold: usize,
+        processing_rate: u64,
+    ) -> Self {
         let (event_broadcaster, _) = broadcast::channel(1000);
-        let rate_limiter = Arc::new(RwLock::new(interval(Duration::from_millis(1000 / processing_rate))));
-        
+        let rate_limiter = Arc::new(RwLock::new(interval(Duration::from_millis(
+            1000 / processing_rate,
+        ))));
+
         Self {
             message_queue: SegQueue::new(),
             event_broadcaster,
@@ -467,37 +485,37 @@ impl LiveUpdateSystem {
             })),
         }
     }
-    
+
     /// Send live update message
     pub async fn send_message(&self, message: LiveUpdateMessage) -> Result<(), RealTimeError> {
         let current_queue_size = self.message_counter.get();
         let queue_limit = self.queue_size_limit.load(Ordering::Relaxed);
-        
+
         // Check for backpressure
         if current_queue_size >= queue_limit {
             let mut stats = self.stats.write().await;
             stats.backpressure_events += 1;
             drop(stats);
-            
+
             return Err(RealTimeError::BackpressureExceeded {
                 current_size: current_queue_size,
                 limit: queue_limit,
             });
         }
-        
+
         // Add message to queue
         self.message_queue.push(message.clone());
         self.message_counter.inc();
-        
+
         // Broadcast real-time event
         let event = RealTimeEvent::MessageReceived {
-            message: ChatMessage::new(message.user_id.clone(), message.content.clone()),
+            message: Message::user(message.user_id.clone(), message.content.clone()),
             session_id: message.session_id.clone(),
             timestamp: message.timestamp,
         };
-        
+
         let _ = self.event_broadcaster.send(event);
-        
+
         // Update statistics
         let mut stats = self.stats.write().await;
         stats.total_messages += 1;
@@ -506,39 +524,42 @@ impl LiveUpdateSystem {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         Ok(())
     }
-    
+
     /// Subscribe to live updates
-    pub async fn subscribe(&self, subscriber_id: Arc<str>) -> Result<mpsc::UnboundedReceiver<LiveUpdateMessage>, RealTimeError> {
+    pub async fn subscribe(
+        &self,
+        subscriber_id: Arc<str>,
+    ) -> Result<mpsc::UnboundedReceiver<LiveUpdateMessage>, RealTimeError> {
         let (tx, rx) = mpsc::unbounded_channel();
-        
+
         let mut subscribers = self.subscribers.write().await;
         subscribers.insert(subscriber_id, tx);
         self.subscriber_counter.inc();
-        
+
         // Update statistics
         let mut stats = self.stats.write().await;
         stats.active_subscribers = subscribers.len();
-        
+
         Ok(rx)
     }
-    
+
     /// Unsubscribe from live updates
     pub async fn unsubscribe(&self, subscriber_id: &Arc<str>) -> Result<(), RealTimeError> {
         let mut subscribers = self.subscribers.write().await;
         if subscribers.remove(subscriber_id).is_some() {
             self.subscriber_counter.dec();
-            
+
             // Update statistics
             let mut stats = self.stats.write().await;
             stats.active_subscribers = subscribers.len();
         }
-        
+
         Ok(())
     }
-    
+
     /// Start message processing task
     pub async fn start_processing(&self) {
         let message_queue = self.message_queue.clone();
@@ -546,7 +567,7 @@ impl LiveUpdateSystem {
         let message_counter = self.message_counter.clone();
         let rate_limiter = self.rate_limiter.clone();
         let stats = self.stats.clone();
-        
+
         tokio::spawn(async move {
             loop {
                 // Rate limiting
@@ -554,50 +575,50 @@ impl LiveUpdateSystem {
                     let mut limiter = rate_limiter.write().await;
                     limiter.tick().await;
                 }
-                
+
                 // Process messages
                 if let Some(message) = message_queue.pop() {
                     message_counter.dec();
-                    
+
                     let subscribers_guard = subscribers.read().await;
                     let mut failed_subscribers = Vec::new();
-                    
+
                     for (subscriber_id, sender) in subscribers_guard.iter() {
                         if sender.send(message.clone()).is_err() {
                             failed_subscribers.push(subscriber_id.clone());
                         }
                     }
-                    
+
                     drop(subscribers_guard);
-                    
+
                     // Remove failed subscribers
                     if !failed_subscribers.is_empty() {
                         let mut subscribers_guard = subscribers.write().await;
                         for subscriber_id in failed_subscribers {
                             subscribers_guard.remove(&subscriber_id);
                         }
-                        
+
                         // Update statistics
                         let mut stats_guard = stats.write().await;
                         stats_guard.active_subscribers = subscribers_guard.len();
                     }
-                    
+
                     // Update queue size statistics
                     let mut stats_guard = stats.write().await;
                     stats_guard.queue_size = message_counter.get();
                 }
-                
+
                 // Small delay to prevent busy waiting
                 sleep(Duration::from_millis(1)).await;
             }
         });
     }
-    
+
     /// Get live update statistics
     pub async fn get_statistics(&self) -> LiveUpdateStatistics {
         self.stats.read().await.clone()
     }
-    
+
     /// Subscribe to real-time events
     pub fn subscribe_to_events(&self) -> broadcast::Receiver<RealTimeEvent> {
         self.event_broadcaster.subscribe()
@@ -632,7 +653,7 @@ impl ConnectionState {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         Self {
             user_id,
             session_id,
@@ -644,63 +665,63 @@ impl ConnectionState {
             is_healthy: AtomicBool::new(true),
         }
     }
-    
+
     /// Update heartbeat
     pub fn update_heartbeat(&self) {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         self.last_heartbeat.store(now, Ordering::Relaxed);
         self.heartbeat_count.fetch_add(1, Ordering::Relaxed);
         self.is_healthy.store(true, Ordering::Relaxed);
     }
-    
+
     /// Check if connection is healthy
     pub fn is_connection_healthy(&self, heartbeat_timeout: u64) -> bool {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         let last_heartbeat = self.last_heartbeat.load(Ordering::Relaxed);
         let is_healthy = now.saturating_sub(last_heartbeat) <= heartbeat_timeout;
-        
+
         self.is_healthy.store(is_healthy, Ordering::Relaxed);
         is_healthy
     }
-    
+
     /// Set connection status
     pub fn set_status(&self, status: ConnectionStatus) {
         self.status.store(Arc::new(status));
     }
-    
+
     /// Get connection status
     pub fn get_status(&self) -> ConnectionStatus {
         (**self.status.load()).clone()
     }
-    
+
     /// Increment reconnection attempts
     pub fn increment_reconnection_attempts(&self) {
         self.reconnection_attempts.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Reset reconnection attempts
     pub fn reset_reconnection_attempts(&self) {
         self.reconnection_attempts.store(0, Ordering::Relaxed);
     }
-    
+
     /// Get connection statistics
     pub fn get_statistics(&self) -> ConnectionStatistics {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        
+
         let connected_at = self.connected_at.load(Ordering::Relaxed);
         let connection_duration = now.saturating_sub(connected_at);
-        
+
         ConnectionStatistics {
             user_id: self.user_id.clone(),
             session_id: self.session_id.clone(),
@@ -751,7 +772,7 @@ impl ConnectionManager {
     /// Create a new connection manager
     pub fn new(heartbeat_timeout: u64, health_check_interval: u64) -> Self {
         let (event_broadcaster, _) = broadcast::channel(1000);
-        
+
         Self {
             connections: SkipMap::new(),
             event_broadcaster,
@@ -763,15 +784,19 @@ impl ConnectionManager {
             health_check_task: ArcSwap::new(Arc::new(None)),
         }
     }
-    
+
     /// Add connection
-    pub fn add_connection(&self, user_id: Arc<str>, session_id: Arc<str>) -> Result<(), RealTimeError> {
+    pub fn add_connection(
+        &self,
+        user_id: Arc<str>,
+        session_id: Arc<str>,
+    ) -> Result<(), RealTimeError> {
         let connection_key = Arc::from(format!("{}:{}", user_id, session_id));
         let connection_state = Arc::new(ConnectionState::new(user_id.clone(), session_id.clone()));
-        
+
         self.connections.insert(connection_key, connection_state);
         self.connection_counter.inc();
-        
+
         // Broadcast user joined event
         let event = RealTimeEvent::UserJoined {
             user_id,
@@ -781,19 +806,23 @@ impl ConnectionManager {
                 .unwrap_or_default()
                 .as_secs(),
         };
-        
+
         let _ = self.event_broadcaster.send(event);
-        
+
         Ok(())
     }
-    
+
     /// Remove connection
-    pub fn remove_connection(&self, user_id: &Arc<str>, session_id: &Arc<str>) -> Result<(), RealTimeError> {
+    pub fn remove_connection(
+        &self,
+        user_id: &Arc<str>,
+        session_id: &Arc<str>,
+    ) -> Result<(), RealTimeError> {
         let connection_key = Arc::from(format!("{}:{}", user_id, session_id));
-        
+
         if self.connections.remove(&connection_key).is_some() {
             self.connection_counter.dec();
-            
+
             // Broadcast user left event
             let event = RealTimeEvent::UserLeft {
                 user_id: user_id.clone(),
@@ -803,21 +832,25 @@ impl ConnectionManager {
                     .unwrap_or_default()
                     .as_secs(),
             };
-            
+
             let _ = self.event_broadcaster.send(event);
         }
-        
+
         Ok(())
     }
-    
+
     /// Update heartbeat
-    pub fn update_heartbeat(&self, user_id: &Arc<str>, session_id: &Arc<str>) -> Result<(), RealTimeError> {
+    pub fn update_heartbeat(
+        &self,
+        user_id: &Arc<str>,
+        session_id: &Arc<str>,
+    ) -> Result<(), RealTimeError> {
         let connection_key = Arc::from(format!("{}:{}", user_id, session_id));
-        
+
         if let Some(connection) = self.connections.get(&connection_key) {
             connection.value().update_heartbeat();
             self.heartbeat_counter.inc();
-            
+
             // Broadcast heartbeat event
             let event = RealTimeEvent::HeartbeatReceived {
                 user_id: user_id.clone(),
@@ -827,13 +860,13 @@ impl ConnectionManager {
                     .unwrap_or_default()
                     .as_secs(),
             };
-            
+
             let _ = self.event_broadcaster.send(event);
         }
-        
+
         Ok(())
     }
-    
+
     /// Start health check task
     pub fn start_health_check(&self) {
         let connections = self.connections.clone();
@@ -841,25 +874,27 @@ impl ConnectionManager {
         let health_check_interval = self.health_check_interval.clone();
         let event_broadcaster = self.event_broadcaster.clone();
         let failed_connection_counter = self.failed_connection_counter.clone();
-        
+
         let task = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(health_check_interval.load(Ordering::Relaxed)));
-            
+            let mut interval = interval(Duration::from_secs(
+                health_check_interval.load(Ordering::Relaxed),
+            ));
+
             loop {
                 interval.tick().await;
-                
+
                 let timeout_seconds = heartbeat_timeout.load(Ordering::Relaxed);
                 let mut unhealthy_connections = Vec::new();
-                
+
                 // Check connection health
                 for entry in connections.iter() {
                     let connection = entry.value();
                     if !connection.is_connection_healthy(timeout_seconds) {
                         unhealthy_connections.push(entry.key().clone());
-                        
+
                         // Update connection status
                         connection.set_status(ConnectionStatus::Unstable);
-                        
+
                         // Broadcast connection status change
                         let event = RealTimeEvent::ConnectionStatusChanged {
                             user_id: connection.user_id.clone(),
@@ -869,23 +904,23 @@ impl ConnectionManager {
                                 .unwrap_or_default()
                                 .as_secs(),
                         };
-                        
+
                         let _ = event_broadcaster.send(event);
                     }
                 }
-                
+
                 // Handle unhealthy connections
                 for key in unhealthy_connections {
                     if let Some(connection) = connections.get(&key) {
                         let conn_state = connection.value();
                         conn_state.increment_reconnection_attempts();
-                        
+
                         // Set as failed after multiple attempts
                         if conn_state.reconnection_attempts.load(Ordering::Relaxed) > 3 {
                             conn_state.set_status(ConnectionStatus::Failed);
                             connections.remove(&key);
                             failed_connection_counter.inc();
-                            
+
                             // Broadcast connection failed event
                             let event = RealTimeEvent::ConnectionStatusChanged {
                                 user_id: conn_state.user_id.clone(),
@@ -895,37 +930,43 @@ impl ConnectionManager {
                                     .unwrap_or_default()
                                     .as_secs(),
                             };
-                            
+
                             let _ = event_broadcaster.send(event);
                         }
                     }
                 }
             }
         });
-        
+
         self.health_check_task.store(Arc::new(Some(task)));
     }
-    
+
     /// Get connection statistics
-    pub fn get_connection_statistics(&self, user_id: &Arc<str>, session_id: &Arc<str>) -> Option<ConnectionStatistics> {
+    pub fn get_connection_statistics(
+        &self,
+        user_id: &Arc<str>,
+        session_id: &Arc<str>,
+    ) -> Option<ConnectionStatistics> {
         let connection_key = Arc::from(format!("{}:{}", user_id, session_id));
-        
-        self.connections.get(&connection_key)
+
+        self.connections
+            .get(&connection_key)
             .map(|entry| entry.value().get_statistics())
     }
-    
+
     /// Get all connections
     pub fn get_all_connections(&self) -> Vec<ConnectionStatistics> {
-        self.connections.iter()
+        self.connections
+            .iter()
             .map(|entry| entry.value().get_statistics())
             .collect()
     }
-    
+
     /// Subscribe to connection events
     pub fn subscribe(&self) -> broadcast::Receiver<RealTimeEvent> {
         self.event_broadcaster.subscribe()
     }
-    
+
     /// Get manager statistics
     pub fn get_manager_statistics(&self) -> ConnectionManagerStatistics {
         ConnectionManagerStatistics {
@@ -979,7 +1020,7 @@ impl RealTimeSystem {
         let live_update_system = Arc::new(LiveUpdateSystem::new(10000, 8000, 100)); // 10k queue, 8k threshold, 100 msg/s
         let connection_manager = Arc::new(ConnectionManager::new(60, 30)); // 60s heartbeat timeout, 30s health check
         let (event_broadcaster, _) = broadcast::channel(1000);
-        
+
         Self {
             typing_indicator,
             live_update_system,
@@ -1012,39 +1053,39 @@ impl RealTimeSystem {
             })),
         }
     }
-    
+
     /// Start all real-time services
     pub async fn start(&self) {
         // Start typing indicator cleanup
         self.typing_indicator.start_cleanup_task();
-        
+
         // Start live update processing
         self.live_update_system.start_processing().await;
-        
+
         // Start connection health checks
         self.connection_manager.start_health_check();
-        
+
         // Start statistics update task
         self.start_statistics_update().await;
     }
-    
+
     /// Start statistics update task
     async fn start_statistics_update(&self) {
         let typing_indicator = self.typing_indicator.clone();
         let live_update_system = self.live_update_system.clone();
         let connection_manager = self.connection_manager.clone();
         let statistics = self.statistics.clone();
-        
+
         tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(60)); // Update every minute
-            
+
             loop {
                 interval.tick().await;
-                
+
                 let typing_stats = typing_indicator.get_statistics();
                 let live_update_stats = live_update_system.get_statistics().await;
                 let connection_stats = connection_manager.get_manager_statistics();
-                
+
                 let mut stats = statistics.write().await;
                 stats.typing_stats = typing_stats;
                 stats.live_update_stats = live_update_stats;
@@ -1053,12 +1094,12 @@ impl RealTimeSystem {
             }
         });
     }
-    
+
     /// Get system statistics
     pub async fn get_system_statistics(&self) -> RealTimeSystemStatistics {
         self.statistics.read().await.clone()
     }
-    
+
     /// Subscribe to all real-time events
     pub fn subscribe_to_all_events(&self) -> broadcast::Receiver<RealTimeEvent> {
         self.event_broadcaster.subscribe()
@@ -1077,7 +1118,10 @@ pub enum RealTimeError {
     #[error("Backpressure exceeded: current size {current_size}, limit {limit}")]
     BackpressureExceeded { current_size: usize, limit: usize },
     #[error("Connection not found: {user_id}:{session_id}")]
-    ConnectionNotFound { user_id: Arc<str>, session_id: Arc<str> },
+    ConnectionNotFound {
+        user_id: Arc<str>,
+        session_id: Arc<str>,
+    },
     #[error("Subscription failed: {reason}")]
     SubscriptionFailed { reason: Arc<str> },
     #[error("Message delivery failed: {reason}")]
@@ -1116,52 +1160,55 @@ impl RealTimeSystemBuilder {
             health_check_interval: 30,
         }
     }
-    
+
     /// Set typing expiry duration
     pub fn typing_expiry(mut self, seconds: u64) -> Self {
         self.typing_expiry = seconds;
         self
     }
-    
+
     /// Set typing cleanup interval
     pub fn typing_cleanup_interval(mut self, seconds: u64) -> Self {
         self.typing_cleanup_interval = seconds;
         self
     }
-    
+
     /// Set queue size limit
     pub fn queue_size_limit(mut self, limit: usize) -> Self {
         self.queue_size_limit = limit;
         self
     }
-    
+
     /// Set backpressure threshold
     pub fn backpressure_threshold(mut self, threshold: usize) -> Self {
         self.backpressure_threshold = threshold;
         self
     }
-    
+
     /// Set processing rate
     pub fn processing_rate(mut self, rate: u64) -> Self {
         self.processing_rate = rate;
         self
     }
-    
+
     /// Set heartbeat timeout
     pub fn heartbeat_timeout(mut self, seconds: u64) -> Self {
         self.heartbeat_timeout = seconds;
         self
     }
-    
+
     /// Set health check interval
     pub fn health_check_interval(mut self, seconds: u64) -> Self {
         self.health_check_interval = seconds;
         self
     }
-    
+
     /// Build the real-time system
     pub fn build(self) -> RealTimeSystem {
-        let typing_indicator = Arc::new(TypingIndicator::new(self.typing_expiry, self.typing_cleanup_interval));
+        let typing_indicator = Arc::new(TypingIndicator::new(
+            self.typing_expiry,
+            self.typing_cleanup_interval,
+        ));
         let live_update_system = Arc::new(LiveUpdateSystem::new(
             self.queue_size_limit,
             self.backpressure_threshold,
@@ -1172,7 +1219,7 @@ impl RealTimeSystemBuilder {
             self.health_check_interval,
         ));
         let (event_broadcaster, _) = broadcast::channel(1000);
-        
+
         RealTimeSystem {
             typing_indicator,
             live_update_system,

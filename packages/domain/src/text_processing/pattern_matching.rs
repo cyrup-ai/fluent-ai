@@ -3,18 +3,18 @@
 //! Provides blazing-fast pattern matching using Boyer-Moore, KMP, and SIMD algorithms
 //! with production-ready performance and ergonomic APIs.
 
-use std::sync::Arc;
-use std::collections::HashMap;
-use arrayvec::ArrayVec;
-use smallvec::SmallVec;
-use atomic_counter::{AtomicCounter, RelaxedCounter};
-use crossbeam_skiplist::SkipMap;
-
+#[cfg(target_arch = "aarch64")]
+use std::arch::aarch64::*;
 // SIMD intrinsics imports
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
-#[cfg(target_arch = "aarch64")]
-use std::arch::aarch64::*;
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use arrayvec::ArrayVec;
+use atomic_counter::{AtomicCounter, RelaxedCounter};
+use crossbeam_skiplist::SkipMap;
+use smallvec::SmallVec;
 
 use super::types::*;
 
@@ -83,14 +83,15 @@ impl PatternMatcher {
         self.next_pattern_id.inc();
 
         let content_hash = self.calculate_hash(pattern);
-        
+
         // Check if pattern already exists
         if let Some(existing_id) = self.pattern_lookup.get(&content_hash) {
             return Ok(*existing_id.value());
         }
 
         let mut content = ArrayVec::new();
-        content.try_extend_from_slice(pattern)
+        content
+            .try_extend_from_slice(pattern)
             .map_err(|_| TextProcessingError::PatternTooLarge(pattern.len()))?;
 
         let algorithm = self.select_algorithm(pattern);
@@ -129,9 +130,10 @@ impl PatternMatcher {
             self.pattern_lookup.remove(&pattern.content_hash);
             Ok(())
         } else {
-            Err(TextProcessingError::InvalidInput(
-                format!("Pattern ID {} not found", pattern_id)
-            ))
+            Err(TextProcessingError::InvalidInput(format!(
+                "Pattern ID {} not found",
+                pattern_id
+            )))
         }
     }
 
@@ -150,7 +152,7 @@ impl PatternMatcher {
         for pattern_entry in self.patterns.iter() {
             let pattern = pattern_entry.value();
             let pattern_matches = self.find_pattern_matches(text, pattern)?;
-            
+
             for pattern_match in pattern_matches {
                 if matches.try_push(pattern_match).is_err() {
                     break; // Stop if we exceed capacity
@@ -162,7 +164,7 @@ impl PatternMatcher {
         matches.sort_by_key(|m| m.start_offset);
 
         // Update performance counters
-        let elapsed_nanos = start_time.elapsed().as_nanos() as u64;
+        let elapsed_nanos = start_time.elapsed().as_nanos() as usize;
         self.search_time_nanos.add(elapsed_nanos);
         self.matches_found.add(matches.len());
 
@@ -223,8 +225,9 @@ impl PatternMatcher {
     ) -> Result<SmallVec<[PatternMatch; 8]>, TextProcessingError> {
         let mut matches = SmallVec::new();
         let pattern_bytes = &pattern.content;
-        let bad_char_table = pattern.boyer_moore_table.as_ref()
-            .ok_or_else(|| TextProcessingError::ProcessingFailed("Boyer-Moore table not found".into()))?;
+        let bad_char_table = pattern.boyer_moore_table.as_ref().ok_or_else(|| {
+            TextProcessingError::ProcessingFailed("Boyer-Moore table not found".into())
+        })?;
 
         if pattern_bytes.is_empty() || text.len() < pattern_bytes.len() {
             return Ok(matches);
@@ -233,7 +236,7 @@ impl PatternMatcher {
         let mut i = 0;
         while i <= text.len() - pattern_bytes.len() {
             let mut j = pattern_bytes.len();
-            
+
             // Match from right to left
             while j > 0 && pattern_bytes[j - 1] == text[i + j - 1] {
                 j -= 1;
@@ -274,7 +277,9 @@ impl PatternMatcher {
     ) -> Result<SmallVec<[PatternMatch; 8]>, TextProcessingError> {
         let mut matches = SmallVec::new();
         let pattern_bytes = &pattern.content;
-        let lps_table = pattern.kmp_table.as_ref()
+        let lps_table = pattern
+            .kmp_table
+            .as_ref()
             .ok_or_else(|| TextProcessingError::ProcessingFailed("KMP table not found".into()))?;
 
         if pattern_bytes.is_empty() || text.len() < pattern_bytes.len() {
@@ -301,10 +306,18 @@ impl PatternMatcher {
                     1.0,
                 )?;
                 matches.push(pattern_match);
-                j = if lps_table[j - 1] >= 0 { lps_table[j - 1] as usize } else { 0 };
+                j = if lps_table[j - 1] >= 0 {
+                    lps_table[j - 1] as usize
+                } else {
+                    0
+                };
             } else if i < text.len() && pattern_bytes[j] != text[i] {
                 if j != 0 {
-                    j = if lps_table[j - 1] >= 0 { lps_table[j - 1] as usize } else { 0 };
+                    j = if lps_table[j - 1] >= 0 {
+                        lps_table[j - 1] as usize
+                    } else {
+                        0
+                    };
                 } else {
                     i += 1;
                 }
@@ -424,7 +437,7 @@ impl PatternMatcher {
     #[inline(always)]
     fn build_boyer_moore_table(&self, pattern: &[u8]) -> ArrayVec<usize, 256> {
         let mut table = ArrayVec::new();
-        
+
         // Initialize with pattern length
         for _ in 0..256 {
             table.push(pattern.len());
@@ -480,12 +493,12 @@ impl PatternMatcher {
     #[inline(always)]
     pub fn get_stats(&self) -> PerformanceStats {
         let total_ops = self.search_operations.get().max(1);
-        
+
         PerformanceStats {
-            total_operations: total_ops,
-            total_processing_time_nanos: self.search_time_nanos.get(),
+            total_operations: total_ops as u64,
+            total_processing_time_nanos: self.search_time_nanos.get() as u64,
             average_tokenization_time_nanos: 0,
-            average_pattern_matching_time_nanos: self.search_time_nanos.get() / total_ops,
+            average_pattern_matching_time_nanos: (self.search_time_nanos.get() / total_ops) as u64,
             average_analysis_time_nanos: 0,
             simd_operations_count: 0,
             cache_hits: 0,
@@ -517,7 +530,7 @@ impl PatternMatcher {
 }
 
 /// Global pattern matcher instance
-static GLOBAL_PATTERN_MATCHER: once_cell::sync::Lazy<PatternMatcher> = 
+static GLOBAL_PATTERN_MATCHER: once_cell::sync::Lazy<PatternMatcher> =
     once_cell::sync::Lazy::new(|| PatternMatcher::new());
 
 /// Get global pattern matcher instance
@@ -534,7 +547,9 @@ pub fn add_pattern(pattern: &[u8]) -> Result<usize, TextProcessingError> {
 
 /// Convenience function for finding matches
 #[inline(always)]
-pub fn find_matches(text: &[u8]) -> Result<ArrayVec<PatternMatch, MAX_PATTERNS_PER_SET>, TextProcessingError> {
+pub fn find_matches(
+    text: &[u8],
+) -> Result<ArrayVec<PatternMatch, MAX_PATTERNS_PER_SET>, TextProcessingError> {
     get_global_pattern_matcher().find_matches(text)
 }
 

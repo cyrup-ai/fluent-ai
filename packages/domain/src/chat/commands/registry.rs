@@ -3,8 +3,9 @@
 //! Provides compile-time command registration with zero-allocation patterns and blazing-fast
 //! command discovery for production-ready performance.
 
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
+
 use crossbeam_skiplist::SkipMap;
 
 use super::types::*;
@@ -76,7 +77,8 @@ impl CommandRegistry {
         }
 
         // Update category index
-        self.categories.entry(info.category.clone())
+        self.categories
+            .entry(info.category.clone())
             .or_insert_with(Vec::new)
             .value()
             .push(info.name.clone());
@@ -87,9 +89,11 @@ impl CommandRegistry {
     /// Unregister a command
     pub fn unregister(&self, name: &str) -> Result<(), CommandError> {
         let command_name = Arc::from(name);
-        
+
         // Get command info before removal
-        let info = self.commands.get(&command_name)
+        let info = self
+            .commands
+            .get(&command_name)
             .ok_or_else(|| CommandError::UnknownCommand {
                 command: command_name.clone(),
             })?
@@ -106,7 +110,9 @@ impl CommandRegistry {
 
         // Update category index
         if let Some(mut category_commands) = self.categories.get_mut(&info.category) {
-            category_commands.value_mut().retain(|cmd| cmd != &command_name);
+            category_commands
+                .value_mut()
+                .retain(|cmd| cmd != &command_name);
         }
 
         Ok(())
@@ -115,7 +121,7 @@ impl CommandRegistry {
     /// Get command information
     pub fn get_command(&self, name: &str) -> Option<CommandInfo> {
         let command_name = Arc::from(name);
-        
+
         // Try direct lookup first
         if let Some(entry) = self.commands.get(&command_name) {
             return Some(entry.value().clone());
@@ -140,7 +146,8 @@ impl CommandRegistry {
 
     /// List all registered commands
     pub fn list_commands(&self) -> Vec<CommandInfo> {
-        self.commands.iter()
+        self.commands
+            .iter()
             .map(|entry| entry.value().clone())
             .collect()
     }
@@ -148,9 +155,10 @@ impl CommandRegistry {
     /// List commands by category
     pub fn list_commands_by_category(&self, category: &str) -> Vec<CommandInfo> {
         let category_key = Arc::from(category);
-        
+
         if let Some(command_names) = self.categories.get(&category_key) {
-            command_names.value()
+            command_names
+                .value()
                 .iter()
                 .filter_map(|name| self.commands.get(name).map(|entry| entry.value().clone()))
                 .collect()
@@ -161,7 +169,8 @@ impl CommandRegistry {
 
     /// List all categories
     pub fn list_categories(&self) -> Vec<Arc<str>> {
-        self.categories.iter()
+        self.categories
+            .iter()
             .map(|entry| entry.key().clone())
             .collect()
     }
@@ -169,21 +178,21 @@ impl CommandRegistry {
     /// Get command suggestions for auto-completion
     pub fn get_suggestions(&self, prefix: &str) -> Vec<Arc<str>> {
         let mut suggestions = Vec::new();
-        
+
         // Add matching command names
         for entry in self.commands.iter() {
             if entry.key().starts_with(prefix) {
                 suggestions.push(entry.key().clone());
             }
         }
-        
+
         // Add matching aliases
         for entry in self.aliases.iter() {
             if entry.key().starts_with(prefix) {
                 suggestions.push(entry.key().clone());
             }
         }
-        
+
         // Sort suggestions
         suggestions.sort();
         suggestions.dedup();
@@ -193,13 +202,14 @@ impl CommandRegistry {
     /// Search commands by keyword
     pub fn search_commands(&self, keyword: &str) -> Vec<CommandInfo> {
         let keyword_lower = keyword.to_lowercase();
-        
-        self.commands.iter()
+
+        self.commands
+            .iter()
             .filter(|entry| {
                 let info = entry.value();
-                info.name.to_lowercase().contains(&keyword_lower) ||
-                info.description.to_lowercase().contains(&keyword_lower) ||
-                info.category.to_lowercase().contains(&keyword_lower)
+                info.name.to_lowercase().contains(&keyword_lower)
+                    || info.description.to_lowercase().contains(&keyword_lower)
+                    || info.category.to_lowercase().contains(&keyword_lower)
             })
             .map(|entry| entry.value().clone())
             .collect()
@@ -210,12 +220,12 @@ impl CommandRegistry {
         let total_commands = self.commands.len();
         let total_aliases = self.aliases.len();
         let total_categories = self.categories.len();
-        
+
         let mut category_counts = HashMap::new();
         for entry in self.categories.iter() {
             category_counts.insert(entry.key().clone(), entry.value().len());
         }
-        
+
         CommandRegistryStats {
             total_commands,
             total_aliases,
@@ -227,7 +237,7 @@ impl CommandRegistry {
     /// Validate registry consistency
     pub fn validate(&self) -> Result<(), Vec<CommandError>> {
         let mut errors = Vec::new();
-        
+
         // Check for orphaned aliases
         for alias_entry in self.aliases.iter() {
             let command_name = alias_entry.value();
@@ -241,19 +251,16 @@ impl CommandRegistry {
                 });
             }
         }
-        
+
         // Check for empty categories
         for category_entry in self.categories.iter() {
             if category_entry.value().is_empty() {
                 errors.push(CommandError::ConfigurationError {
-                    detail: Arc::from(format!(
-                        "Empty category '{}'",
-                        category_entry.key()
-                    )),
+                    detail: Arc::from(format!("Empty category '{}'", category_entry.key())),
                 });
             }
         }
-        
+
         // Check for commands with invalid parameters
         for command_entry in self.commands.iter() {
             let info = command_entry.value();
@@ -268,7 +275,7 @@ impl CommandRegistry {
                 }
             }
         }
-        
+
         if errors.is_empty() {
             Ok(())
         } else {
@@ -296,27 +303,26 @@ impl CommandRegistry {
     /// Export registry to JSON
     pub fn export_to_json(&self) -> Result<String, CommandError> {
         let commands: Vec<CommandInfo> = self.list_commands();
-        serde_json::to_string_pretty(&commands)
-            .map_err(|e| CommandError::ConfigurationError {
-                detail: Arc::from(format!("Failed to export registry: {}", e)),
-            })
+        serde_json::to_string_pretty(&commands).map_err(|e| CommandError::ConfigurationError {
+            detail: Arc::from(format!("Failed to export registry: {}", e)),
+        })
     }
 
     /// Import registry from JSON
     pub fn import_from_json(&self, json: &str) -> Result<(), CommandError> {
-        let commands: Vec<CommandInfo> = serde_json::from_str(json)
-            .map_err(|e| CommandError::ConfigurationError {
+        let commands: Vec<CommandInfo> =
+            serde_json::from_str(json).map_err(|e| CommandError::ConfigurationError {
                 detail: Arc::from(format!("Failed to import registry: {}", e)),
             })?;
-        
+
         // Clear existing registry
         self.clear();
-        
+
         // Register imported commands
         for command in commands {
             self.register(command)?;
         }
-        
+
         Ok(())
     }
 }
@@ -335,7 +341,7 @@ pub struct CommandRegistryStats {
 }
 
 /// Global command registry instance
-static GLOBAL_REGISTRY: once_cell::sync::Lazy<CommandRegistry> = 
+static GLOBAL_REGISTRY: once_cell::sync::Lazy<CommandRegistry> =
     once_cell::sync::Lazy::new(CommandRegistry::new);
 
 /// Get global command registry

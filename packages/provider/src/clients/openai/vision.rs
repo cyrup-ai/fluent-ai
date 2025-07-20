@@ -30,6 +30,84 @@ pub enum ImageFormat {
     GIF,
 }
 
+impl ImageFormat {
+    /// Convert to image crate's ImageFormat for processing
+    #[cfg(feature = "image")]
+    #[inline(always)]
+    pub fn to_image_format(self) -> Result<image::ImageFormat, OpenAIError> {
+        match self {
+            Self::PNG => Ok(image::ImageFormat::Png),
+            Self::JPEG => Ok(image::ImageFormat::Jpeg),
+            Self::WEBP => Ok(image::ImageFormat::WebP),
+            Self::GIF => Ok(image::ImageFormat::Gif),
+        }
+    }
+    
+    /// Detect image format from raw bytes using magic numbers
+    #[inline(always)]
+    pub fn from_bytes(data: &[u8]) -> Result<Self, OpenAIError> {
+        if data.len() < 4 {
+            return Err(OpenAIError::VisionError("Insufficient data to determine image format".to_string()));
+        }
+        
+        // PNG: starts with 89 50 4E 47 (PNG signature)
+        if data.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
+            return Ok(Self::PNG);
+        }
+        
+        // JPEG: starts with FF D8 FF
+        if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
+            return Ok(Self::JPEG);
+        }
+        
+        // WebP: RIFF header with WEBP
+        if data.starts_with(b"RIFF") && data.len() >= 12 && &data[8..12] == b"WEBP" {
+            return Ok(Self::WEBP);
+        }
+        
+        // GIF: starts with GIF87a or GIF89a
+        if data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a") {
+            return Ok(Self::GIF);
+        }
+        
+        Err(OpenAIError::VisionError("Unsupported or unrecognized image format".to_string()))
+    }
+    
+    /// Detect image format from file extension
+    #[inline(always)]
+    pub fn from_extension(ext: &str) -> Result<Self, OpenAIError> {
+        match ext.to_lowercase().as_str() {
+            "png" => Ok(Self::PNG),
+            "jpg" | "jpeg" => Ok(Self::JPEG),
+            "webp" => Ok(Self::WEBP),
+            "gif" => Ok(Self::GIF),
+            _ => Err(OpenAIError::VisionError(format!("Unsupported image extension: {}", ext))),
+        }
+    }
+    
+    /// Get MIME type for the format
+    #[inline(always)]
+    pub fn mime_type(self) -> &'static str {
+        match self {
+            Self::PNG => "image/png",
+            Self::JPEG => "image/jpeg", 
+            Self::WEBP => "image/webp",
+            Self::GIF => "image/gif",
+        }
+    }
+    
+    /// Get file extension for the format
+    #[inline(always)]
+    pub fn extension(self) -> &'static str {
+        match self {
+            Self::PNG => "png",
+            Self::JPEG => "jpg",
+            Self::WEBP => "webp", 
+            Self::GIF => "gif",
+        }
+    }
+}
+
 /// Image data container with format detection
 #[derive(Debug, Clone)]
 pub struct ImageData {
@@ -268,19 +346,62 @@ impl ImageData {
         }
     }
 
-    /// Resize image if needed (placeholder - would need image processing library)
+    /// Resize image if dimensions exceed the specified limits using production-grade image processing
     #[inline(always)]
     pub fn resize_if_needed(&mut self, max_width: u32, max_height: u32) -> OpenAIResult<()> {
-        // TODO: Implement actual image resizing using image processing library
-        // For now, just validate the image doesn't exceed reasonable dimensions
-        if let (Some(width), Some(height)) = (self.width, self.height) {
-            if width > max_width || height > max_height {
-                return Err(OpenAIError::VisionError(format!(
-                    "Image dimensions {}x{} exceed maximum {}x{}",
-                    width, height, max_width, max_height
-                )));
+        #[cfg(feature = "image")]
+        {
+            use image::{ImageFormat, DynamicImage, imageops::FilterType};
+            use std::io::Cursor;
+            
+            // Check if resizing is needed
+            if let (Some(width), Some(height)) = (self.width, self.height) {
+                if width > max_width || height > max_height {
+                    // Calculate new dimensions while preserving aspect ratio
+                    let width_ratio = max_width as f64 / width as f64;
+                    let height_ratio = max_height as f64 / height as f64;
+                    let scale_factor = width_ratio.min(height_ratio);
+                    
+                    let new_width = (width as f64 * scale_factor) as u32;
+                    let new_height = (height as f64 * scale_factor) as u32;
+                    
+                    // Decode image data
+                    let cursor = Cursor::new(&self.data);
+                    let img = image::load(cursor, self.format.to_image_format()?)
+                        .map_err(|e| OpenAIError::VisionError(format!("Failed to decode image: {}", e)))?;
+                    
+                    // Resize using high-quality Lanczos3 filter for optimal results
+                    let resized_img = img.resize(new_width, new_height, FilterType::Lanczos3);
+                    
+                    // Re-encode to original format with optimized quality
+                    let mut output_buffer = Vec::with_capacity(self.data.len());
+                    let mut cursor = Cursor::new(&mut output_buffer);
+                    
+                    resized_img.write_to(&mut cursor, self.format.to_image_format()?)
+                        .map_err(|e| OpenAIError::VisionError(format!("Failed to encode resized image: {}", e)))?;
+                    
+                    // Update image data and metadata
+                    self.data = output_buffer;
+                    self.width = Some(new_width);
+                    self.height = Some(new_height);
+                    self.file_size = Some(self.data.len());
+                }
             }
         }
+        
+        #[cfg(not(feature = "image"))]
+        {
+            // Fallback validation when image processing is not available
+            if let (Some(width), Some(height)) = (self.width, self.height) {
+                if width > max_width || height > max_height {
+                    return Err(OpenAIError::VisionError(format!(
+                        "Image dimensions {}x{} exceed maximum {}x{}. Enable 'image' feature for automatic resizing.",
+                        width, height, max_width, max_height
+                    )));
+                }
+            }
+        }
+        
         Ok(())
     }
 }

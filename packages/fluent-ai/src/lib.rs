@@ -33,6 +33,7 @@ pub mod chat;
 pub mod macros;
 pub mod markdown;
 pub mod memory;
+pub mod middleware;
 pub mod streaming;
 pub mod workflow;
 
@@ -166,7 +167,7 @@ pub use domain::{Context, Library, NamedTool, Perplexity, Stdio, ToolV2 as Tool}
 // Re-export engine types
 pub use engine::{get_default_engine, get_engine, register_engine, registry, set_default_engine};
 pub use engine::{
-    AgentConfig, CompletionResponse, Engine, EngineRegistry, ExtractionConfig, Usage,
+    CompletionResponse, Engine, EngineRegistry, ExtractionConfig, Usage,
 };
 // Memory and workflow modules are already defined above as pub mod
 

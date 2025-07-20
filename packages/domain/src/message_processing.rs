@@ -35,7 +35,7 @@ pub struct Message<const N: usize = 256> {
     pub id: u64,
     pub message_type: MessageType,
     pub content: ArrayVec<u8, N>,
-    pub metadata: SmallVec<[u8; 32]>,
+    pub metadata: SmallVec<u8, 32>,
     pub timestamp: Instant,
     pub priority: MessagePriority,
     pub retry_count: u8,
@@ -243,11 +243,11 @@ impl MessageProcessor {
     pub fn new_stub() -> Self {
         // Use absolute minimum configuration that should never fail
         let stub_config = ProcessingConfig {
-            max_queue_depth: 4,   // Absolute minimum - divides by 4 and 8 safely
-            worker_count: 1,      // Single worker absolute minimum
-            batch_size: 1,        // Single message processing
-            timeout_micros: 10,   // Minimal timeout
-            retry_limit: 0,       // No retries
+            max_queue_depth: 4,                // Absolute minimum - divides by 4 and 8 safely
+            worker_count: 1,                   // Single worker absolute minimum
+            batch_size: 1,                     // Single message processing
+            timeout_micros: 10,                // Minimal timeout
+            retry_limit: 0,                    // No retries
             enable_simd_classification: false, // No complex features
         };
 
@@ -255,7 +255,7 @@ impl MessageProcessor {
         let chat_queue = ArrayQueue::new(4);
         let memory_queue = ArrayQueue::new(4);
         let control_queue = ArrayQueue::new(1); // Minimal control queue
-        let health_queue = ArrayQueue::new(1);  // Minimal health queue
+        let health_queue = ArrayQueue::new(1); // Minimal health queue
 
         // Create single work-stealing deque
         let worker = Worker::new_fifo();
@@ -944,8 +944,8 @@ pub struct ProcessingResult {
     pub message_id: u64,
     pub processing_time: Duration,
     pub result_type: ResultType,
-    pub data: SmallVec<[u8; 64]>,
-    pub metadata: SmallVec<[u8; 32]>,
+    pub data: SmallVec<u8, 64>,
+    pub metadata: SmallVec<u8, 32>,
 }
 
 /// Result type enumeration
@@ -971,7 +971,7 @@ pub struct ProcessingStats {
     pub current_queue_depth: usize,
     pub throughput_per_second: f64,
     pub routing_errors: usize,
-    pub worker_stats: SmallVec<[WorkerStatsSnapshot; 16]>,
+    pub worker_stats: SmallVec<WorkerStatsSnapshot, 16>,
 }
 
 /// Snapshot of worker statistics

@@ -1176,69 +1176,7 @@ impl Context<Github> {
     }
 }
 
-/// Global performance statistics
-#[derive(Debug, Clone)]
-pub struct GlobalContextStats {
-    pub cache_hits: usize,
-    pub cache_misses: usize,
-    pub file_operations: usize,
-    pub context_switches: usize,
-    pub mmap_operations: usize,
-    pub active_contexts: usize,
-    pub cached_documents: usize,
-}
 
-/// Get comprehensive performance statistics
-#[inline(always)]
-pub fn get_context_performance_stats() -> GlobalContextStats {
-    let cached_documents = DOCUMENT_STORE.load().len();
-    let active_contexts = CONTEXT_REGISTRY.len();
-
-    GlobalContextStats {
-        cache_hits: GLOBAL_CACHE_HITS.get(),
-        cache_misses: GLOBAL_CACHE_MISSES.get(),
-        file_operations: GLOBAL_FILE_OPERATIONS.get(),
-        context_switches: GLOBAL_CONTEXT_SWITCHES.get(),
-        mmap_operations: GLOBAL_MMAP_OPERATIONS.get(),
-        active_contexts,
-        cached_documents,
-    }
-}
-
-/// Clear all caches for memory management
-#[inline(always)]
-pub fn clear_context_caches() {
-    // Clear thread-local caches
-    DOCUMENT_CACHE.with(|cache| cache.borrow_mut().clear());
-    FILE_METADATA_CACHE.with(|cache| cache.borrow_mut().clear());
-
-    // Clear global stores
-    DOCUMENT_STORE.store(Arc::new(HashMap::new()));
-    DOCUMENT_DEDUP.clear();
-    CONTEXT_REGISTRY.clear();
-}
-
-/// Health check for context system
-#[inline(always)]
-pub fn context_health_check() -> Result<(), ContextError> {
-    let stats = get_context_performance_stats();
-
-    // Check cache hit rate
-    let total_requests = stats.cache_hits + stats.cache_misses;
-    if total_requests > 0 {
-        let hit_rate = stats.cache_hits as f64 / total_requests as f64;
-        if hit_rate < 0.5 {
-            // Low cache hit rate might indicate issues
-        }
-    }
-
-    // Check for memory usage
-    if stats.cached_documents > 10000 {
-        // Consider cache cleanup
-    }
-
-    Ok(())
-}
 
 // Thread-safe implementation ensured through Arc and lock-free data structures
 // No unsafe Send/Sync needed - using proper thread-safe types throughout

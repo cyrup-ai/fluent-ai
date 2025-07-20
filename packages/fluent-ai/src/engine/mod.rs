@@ -18,13 +18,7 @@ pub trait Engine: Send + Sync {
 }
 
 /// Agent configuration for engine operations
-#[derive(Debug, Clone)]
-pub struct AgentConfig {
-    pub model: fluent_ai_provider::Models,
-    pub temperature: f64,
-    pub max_tokens: Option<u32>,
-    pub system_prompt: Option<String>,
-}
+
 
 /// Completion response from engine
 #[derive(Debug, Clone)]

@@ -4,12 +4,13 @@
 //! and statistical analysis with production-ready performance and ergonomic APIs.
 
 use std::collections::HashMap;
-use arrayvec::ArrayVec;
-use smallvec::SmallVec;
-use atomic_counter::{AtomicCounter, RelaxedCounter};
 
-use super::types::*;
+use arrayvec::ArrayVec;
+use atomic_counter::{AtomicCounter, RelaxedCounter};
+use smallvec::SmallVec;
+
 use super::tokenizer::tokenize;
+use super::types::*;
 
 /// Text analyzer with comprehensive statistics
 pub struct TextAnalyzer {
@@ -44,25 +45,29 @@ impl TextAnalyzer {
         self.analyses_performed.inc();
 
         let tokens = tokenize(text)?;
-        
+
         let character_count = text.chars().count();
-        let word_count = tokens.iter()
+        let word_count = tokens
+            .iter()
             .filter(|token| matches!(token.token_type(), TokenType::Word))
             .count();
-        
+
         let sentence_count = self.count_sentences(text);
         let paragraph_count = self.count_paragraphs(text);
-        
+
         let average_word_length = if word_count > 0 {
-            tokens.iter()
+            tokens
+                .iter()
                 .filter(|token| matches!(token.token_type(), TokenType::Word))
                 .map(|token| token.len())
-                .sum::<usize>() as f32 / word_count as f32
+                .sum::<usize>() as f32
+                / word_count as f32
         } else {
             0.0
         };
 
-        let reading_level = self.calculate_reading_level(word_count, sentence_count, character_count);
+        let reading_level =
+            self.calculate_reading_level(word_count, sentence_count, character_count);
         let complexity_score = self.calculate_complexity_score(&tokens);
 
         let stats = TextStats {
@@ -76,7 +81,7 @@ impl TextAnalyzer {
         };
 
         // Update performance counters
-        let elapsed_nanos = start_time.elapsed().as_nanos() as u64;
+        let elapsed_nanos = start_time.elapsed().as_nanos() as usize;
         self.analysis_time_nanos.add(elapsed_nanos);
 
         Ok(stats)
@@ -106,7 +111,12 @@ impl TextAnalyzer {
 
     /// Calculate reading level using Flesch-Kincaid formula
     #[inline(always)]
-    fn calculate_reading_level(&self, word_count: usize, sentence_count: usize, character_count: usize) -> f32 {
+    fn calculate_reading_level(
+        &self,
+        word_count: usize,
+        sentence_count: usize,
+        character_count: usize,
+    ) -> f32 {
         if sentence_count == 0 || word_count == 0 {
             return 0.0;
         }
@@ -189,7 +199,10 @@ impl TextAnalyzer {
 
     /// Analyze word frequency in text
     #[inline(always)]
-    pub fn analyze_word_frequency(&self, text: &str) -> Result<HashMap<String, u32>, TextProcessingError> {
+    pub fn analyze_word_frequency(
+        &self,
+        text: &str,
+    ) -> Result<HashMap<String, u32>, TextProcessingError> {
         let tokens = tokenize(text)?;
         let mut frequency_map = HashMap::new();
 
@@ -214,7 +227,7 @@ impl TextAnalyzer {
     ) -> Result<ArrayVec<(String, u32), 32>, TextProcessingError> {
         let frequency_map = self.analyze_word_frequency(text)?;
         let mut word_freq_vec: Vec<_> = frequency_map.into_iter().collect();
-        
+
         // Sort by frequency (descending)
         word_freq_vec.sort_by(|a, b| b.1.cmp(&a.1));
 
@@ -230,7 +243,11 @@ impl TextAnalyzer {
 
     /// Calculate text similarity using simple word overlap
     #[inline(always)]
-    pub fn calculate_similarity(&self, text1: &str, text2: &str) -> Result<f32, TextProcessingError> {
+    pub fn calculate_similarity(
+        &self,
+        text1: &str,
+        text2: &str,
+    ) -> Result<f32, TextProcessingError> {
         let freq1 = self.analyze_word_frequency(text1)?;
         let freq2 = self.analyze_word_frequency(text2)?;
 
@@ -331,13 +348,13 @@ impl TextAnalyzer {
     #[inline(always)]
     pub fn get_stats(&self) -> PerformanceStats {
         let total_ops = self.analyses_performed.get().max(1);
-        
+
         PerformanceStats {
-            total_operations: total_ops,
-            total_processing_time_nanos: self.analysis_time_nanos.get(),
+            total_operations: total_ops as u64,
+            total_processing_time_nanos: self.analysis_time_nanos.get() as u64,
             average_tokenization_time_nanos: 0,
             average_pattern_matching_time_nanos: 0,
-            average_analysis_time_nanos: self.analysis_time_nanos.get() / total_ops,
+            average_analysis_time_nanos: (self.analysis_time_nanos.get() / total_ops) as u64,
             simd_operations_count: 0,
             cache_hits: 0,
             cache_misses: 0,
@@ -361,7 +378,7 @@ impl TextAnalyzer {
 }
 
 /// Global text analyzer instance
-static GLOBAL_TEXT_ANALYZER: once_cell::sync::Lazy<TextAnalyzer> = 
+static GLOBAL_TEXT_ANALYZER: once_cell::sync::Lazy<TextAnalyzer> =
     once_cell::sync::Lazy::new(|| TextAnalyzer::new());
 
 /// Get global text analyzer instance

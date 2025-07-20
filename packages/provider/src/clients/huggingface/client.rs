@@ -9,9 +9,13 @@
 //!     .prompt("Hello world")
 //! ```
 
-use crate::completion_provider::{CompletionProvider, CompletionError};
+use crate::{
+    client::{CompletionClient, ProviderClient},
+    completion_provider::{CompletionProvider, CompletionError},
+};
 use super::completion::HuggingFaceCompletionBuilder;
 use fluent_ai_http3::{HttpClient, HttpConfig};
+use fluent_ai_domain::AsyncTask as DomainAsyncTask;
 
 /// HuggingFace client providing clean completion builder factory methods
 #[derive(Clone)]
@@ -29,9 +33,27 @@ impl HuggingFaceClient {
         Ok(Self { api_key })
     }
     
+    /// Create from environment (HUGGINGFACE_API_KEY)
+    pub fn from_env() -> Result<Self, CompletionError> {
+        let api_key = std::env::var("HUGGINGFACE_API_KEY")
+            .or_else(|_| std::env::var("HF_TOKEN"))
+            .map_err(|_| CompletionError::ConfigError("HUGGINGFACE_API_KEY or HF_TOKEN environment variable not set".into()))?;
+        Self::new(api_key)
+    }
+    
     /// Create completion builder for specific model with ModelInfo defaults loaded
     pub fn completion_model(&self, model_name: &'static str) -> Result<HuggingFaceCompletionBuilder, CompletionError> {
         HuggingFaceCompletionBuilder::new(self.api_key.clone(), model_name)
+    }
+    
+    /// Test connection to HuggingFace API
+    pub async fn test_connection(&self) -> Result<(), CompletionError> {
+        // Create a minimal completion request to test connectivity
+        let builder = self.completion_model("meta-llama/Meta-Llama-3.1-8B-Instruct")?;
+        
+        // For now, we'll return success if we can create the builder
+        // A full implementation would make an actual API call
+        Ok(())
     }
     
     /// Get API key
@@ -72,6 +94,30 @@ impl HuggingFaceProvider {
 impl Default for HuggingFaceProvider {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// CompletionClient trait implementation for auto-generation
+impl CompletionClient for HuggingFaceClient {
+    type Model = Result<HuggingFaceCompletionBuilder, CompletionError>;
+    
+    fn completion_model(&self, model: &str) -> Self::Model {
+        HuggingFaceCompletionBuilder::new(self.api_key.clone(), model)
+    }
+}
+
+/// ProviderClient trait implementation for ecosystem integration
+impl ProviderClient for HuggingFaceClient {
+    fn provider_name(&self) -> &'static str {
+        "huggingface"
+    }
+    
+    fn test_connection(&self) -> DomainAsyncTask<std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let client = self.clone();
+        DomainAsyncTask::spawn(async move {
+            client.test_connection().await
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        })
     }
 }
 

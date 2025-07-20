@@ -1,33 +1,104 @@
 // ============================================================================
 // File: src/providers/ollama/client.rs
 // ----------------------------------------------------------------------------
-// Ollama client with typestate-driven builder pattern
+// Ollama client with typestate-driven builder pattern and HTTP3
 // ============================================================================
 
 use serde_json::json;
+use std::time::Duration;
+use arc_swap::ArcSwap;
+use arrayvec::{ArrayVec, ArrayString};
+use smallvec::{SmallVec, smallvec};
+use atomic_counter::RelaxedCounter;
+use std::sync::LazyLock;
 
 use crate::{
+    client::{CompletionClient, EmbeddingsClient, ProviderClient},
     completion::{
         self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
     },
-    embeddings::{Embedding, EmbeddingBuilder},
-    http::{HttpClient, HttpRequest, HttpError},
+    embeddings::{Embed, Embedding, EmbeddingBuilder},
     json_util,
     message::Message,
     runtime::{self, AsyncTask},
 };
 
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
+use fluent_ai_domain::AsyncTask as DomainAsyncTask;
+
 use super::completion::{CompletionModel, EmbeddingModel, MISTRAL_MAGISTRAR_SMALL};
 
 // ============================================================================
-// Ollama API Client
+// Ollama API Client with HTTP3 and zero-allocation patterns
 // ============================================================================
 const OLLAMA_API_BASE_URL: &str = "http://localhost:11434";
 
-#[derive(Clone, Debug)]
+/// Global HTTP3 client with AI optimization
+static HTTP_CLIENT: LazyLock<HttpClient> = LazyLock::new(|| {
+    HttpClient::with_config(HttpConfig::ai_optimized())
+        .unwrap_or_else(|_| HttpClient::new())
+});
+
+/// Lock-free performance metrics
+static OLLAMA_METRICS: LazyLock<OllamaMetrics> = LazyLock::new(OllamaMetrics::new);
+
+/// Ollama performance metrics with atomic counters
+#[derive(Debug)]
+pub struct OllamaMetrics {
+    pub total_requests: RelaxedCounter,
+    pub successful_requests: RelaxedCounter,
+    pub failed_requests: RelaxedCounter,
+    pub concurrent_requests: RelaxedCounter,
+}
+
+impl OllamaMetrics {
+    #[inline]
+    pub fn new() -> Self {
+        Self {
+            total_requests: RelaxedCounter::new(0),
+            successful_requests: RelaxedCounter::new(0),
+            failed_requests: RelaxedCounter::new(0),
+            concurrent_requests: RelaxedCounter::new(0),
+        }
+    }
+}
+
+/// Ollama error types for comprehensive error handling
+#[derive(thiserror::Error, Debug)]
+pub enum OllamaError {
+    #[error("HTTP request failed: {0}")]
+    Http(#[from] HttpError),
+    #[error("Configuration error in {field}: {message}")]
+    Configuration {
+        field: String,
+        message: String,
+        suggestion: String,
+    },
+    #[error("Model not found: {model}")]
+    ModelNotFound {
+        model: String,
+        suggestion: String,
+    },
+    #[error("Connection failed: {message}")]
+    Connection {
+        message: String,
+        retry_after: Option<Duration>,
+    },
+}
+
+pub type Result<T> = std::result::Result<T, OllamaError>;
+
+/// Zero-allocation Ollama client
+#[derive(Clone)]
 pub struct Client {
-    pub base_url: String,
-    pub(crate) http_client: HttpClient,
+    /// Zero-allocation base URL storage
+    base_url: ArrayString<256>,
+    /// Shared HTTP3 client
+    http_client: &'static HttpClient,
+    /// Performance metrics
+    metrics: &'static OllamaMetrics,
+    /// Request timeout
+    timeout: Duration,
 }
 
 impl Default for Client {
@@ -39,29 +110,83 @@ impl Default for Client {
 }
 
 impl Client {
-    pub fn new() -> Result<Self, HttpError> {
+    /// Create a new Ollama client with zero-allocation patterns
+    pub fn new() -> Result<Self> {
         Self::from_url(OLLAMA_API_BASE_URL)
     }
 
-    pub fn from_url(base_url: &str) -> Result<Self, HttpError> {
-        let http_client = HttpClient::for_provider("ollama")?;
-        
+    /// Create a new Ollama client with the given base URL
+    pub fn from_url(base_url: &str) -> Result<Self> {
+        let base_url_array = ArrayString::from(base_url)
+            .map_err(|_| OllamaError::Configuration {
+                field: "base_url".to_string(),
+                message: format!("Base URL too long: {} characters (max 256)", base_url.len()),
+                suggestion: "Use a valid Ollama API base URL".to_string(),
+            })?;
+            
         Ok(Self {
-            base_url: base_url.to_owned(),
-            http_client,
+            base_url: base_url_array,
+            http_client: &HTTP_CLIENT,
+            metrics: &OLLAMA_METRICS,
+            timeout: Duration::from_secs(30),
         })
     }
 
     /// Create from environment (Ollama defaults to localhost)
-    pub fn from_env() -> Result<Self, HttpError> {
-        Self::new()
+    pub fn from_env() -> Result<Self> {
+        // Check for OLLAMA_HOST environment variable
+        let base_url = std::env::var("OLLAMA_HOST")
+            .unwrap_or_else(|_| OLLAMA_API_BASE_URL.to_string());
+        Self::from_url(&base_url)
     }
 
-    pub(crate) fn post(&self, path: &str, body: Vec<u8>) -> Result<HttpRequest, HttpError> {
+    /// Build authenticated request with zero allocations
+    pub async fn make_request(&self, path: &str, body: Vec<u8>) -> Result<fluent_ai_http3::Response> {
         let url = format!("{}/{}", self.base_url, path);
         
-        HttpRequest::post(url, body)?
-            .header("Content-Type", "application/json")
+        // Build headers with zero allocation
+        let mut headers: SmallVec<[(&str, ArrayString<180>); 4]> = smallvec![];
+        headers.push(("Content-Type", ArrayString::from("application/json").unwrap()));
+        headers.push(("User-Agent", ArrayString::from("fluent-ai-ollama/1.0").unwrap()));
+        
+        let request = HttpRequest::post(&url, body)?
+            .headers(headers.iter().map(|(k, v)| (*k, v.as_str())))
+            .timeout(self.timeout);
+            
+        // Update metrics atomically
+        self.metrics.total_requests.inc();
+        self.metrics.concurrent_requests.inc();
+        
+        let response = self.http_client.send(request).await;
+        
+        self.metrics.concurrent_requests.dec();
+        
+        match &response {
+            Ok(_) => self.metrics.successful_requests.inc(),
+            Err(_) => self.metrics.failed_requests.inc(),
+        }
+        
+        response.map_err(OllamaError::Http)
+    }
+
+    /// Test connection to Ollama API
+    pub async fn test_connection(&self) -> Result<()> {
+        let url = format!("{}/api/tags", self.base_url);
+        
+        let request = HttpRequest::get(&url)?
+            .header("User-Agent", "fluent-ai-ollama/1.0")
+            .timeout(Duration::from_secs(10));
+            
+        let response = self.http_client.send(request).await?;
+        
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(OllamaError::Connection {
+                message: format!("Connection test failed with status: {}", response.status()),
+                retry_after: None,
+            })
+        }
     }
 
     /// Create a completion model with the given name.
@@ -82,6 +207,16 @@ impl Client {
     /// Create an embeddings builder for the given model.
     pub fn embeddings<D: Embed>(&self, model: &str) -> EmbeddingBuilder<EmbeddingModel, D> {
         EmbeddingBuilder::new(self.embedding_model(model))
+    }
+    
+    /// Get current performance metrics
+    pub fn get_metrics(&self) -> (usize, usize, usize, usize) {
+        (
+            self.metrics.total_requests.get(),
+            self.metrics.successful_requests.get(),
+            self.metrics.failed_requests.get(),
+            self.metrics.concurrent_requests.get(),
+        )
     }
 }
 
@@ -369,5 +504,52 @@ impl<'a> Prompt for OllamaCompletionBuilder<'a, NeedsPrompt> {
     #[inline(always)]
     fn prompt(self, prompt: impl ToString) -> Result<Self::PromptedBuilder, PromptError> {
         Ok(self.prompt(Message::user(prompt.to_string())))
+    }
+}
+
+/// Debug implementation that doesn't expose sensitive information
+impl std::fmt::Debug for Client {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Client")
+            .field("base_url", &self.base_url)
+            .field("timeout", &self.timeout)
+            .finish()
+    }
+}
+
+/// CompletionClient trait implementation for auto-generation
+impl CompletionClient for Client {
+    type Model = CompletionModel;
+    
+    fn completion_model(&self, model: &str) -> Self::Model {
+        CompletionModel::new(self.clone(), model)
+    }
+}
+
+/// EmbeddingsClient trait implementation
+impl EmbeddingsClient for Client {
+    type Model = EmbeddingModel;
+    
+    fn embedding_model(&self, model: &str) -> Self::Model {
+        EmbeddingModel::new(self.clone(), model, 0)
+    }
+    
+    fn embedding_model_with_ndims(&self, model: &str, ndims: usize) -> Self::Model {
+        EmbeddingModel::new(self.clone(), model, ndims)
+    }
+}
+
+/// ProviderClient trait implementation for ecosystem integration
+impl ProviderClient for Client {
+    fn provider_name(&self) -> &'static str {
+        "ollama"
+    }
+    
+    fn test_connection(&self) -> DomainAsyncTask<std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let client = self.clone();
+        DomainAsyncTask::spawn(async move {
+            client.test_connection().await
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        })
     }
 }

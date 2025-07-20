@@ -4,7 +4,6 @@
 //! error handling. The engine routes requests to appropriate AI providers and manages
 //! completion and streaming operations.
 
-use crate::{AsyncTask, spawn_async};
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::Duration;
@@ -12,35 +11,36 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::completion::{CompletionResponse, CompactCompletionResponse};
+use crate::completion::{CompactCompletionResponse, CompletionResponse};
+use crate::{AsyncTask, spawn_async};
 
 /// Engine-specific error types with zero-allocation string sharing
 #[derive(Error, Debug, Clone)]
 pub enum EngineError {
     #[error("Provider not available: {provider}")]
     ProviderNotAvailable { provider: Arc<str> },
-    
+
     #[error("Model not found: {model}")]
     ModelNotFound { model: Arc<str> },
-    
+
     #[error("Configuration error: {detail}")]
     ConfigurationError { detail: Arc<str> },
-    
+
     #[error("Authentication failed: {reason}")]
     AuthenticationFailed { reason: Arc<str> },
-    
+
     #[error("Rate limit exceeded: {retry_after_seconds}s")]
     RateLimitExceeded { retry_after_seconds: u64 },
-    
+
     #[error("Request timeout: {timeout_seconds}s")]
     RequestTimeout { timeout_seconds: u64 },
-    
+
     #[error("Network error: {detail}")]
     NetworkError { detail: Arc<str> },
-    
+
     #[error("Invalid input: {reason}")]
     InvalidInput { reason: Arc<str> },
-    
+
     #[error("Service unavailable: {service}")]
     ServiceUnavailable { service: Arc<str> },
 }
@@ -248,8 +248,8 @@ impl Engine {
     async fn create_provider_client(&self, config: &EngineConfig) -> EngineResult<()> {
         // Validate provider availability
         match config.provider.as_ref() {
-            "openai" | "anthropic" | "gemini" | "azure" | "bedrock" | "cohere" 
-            | "groq" | "mistral" | "ollama" | "perplexity" | "together" | "xai" => {
+            "openai" | "anthropic" | "gemini" | "azure" | "bedrock" | "cohere" | "groq"
+            | "mistral" | "ollama" | "perplexity" | "together" | "xai" => {
                 // Provider is supported
             }
             _ => {
@@ -288,9 +288,7 @@ impl Engine {
         // In a real implementation, this would call the appropriate provider
         let response_content = format!(
             "Processed by {} ({}): {}",
-            config.provider,
-            config.model_name,
-            request.prompt
+            config.provider, config.model_name, request.prompt
         );
 
         let response_time = start_time.elapsed().as_millis();
@@ -340,7 +338,9 @@ pub fn stream_with_engine(config: &EngineConfig, input: &str) -> AsyncTask<Engin
         let request = CompletionRequest::new(input);
 
         // Process streaming completion
-        let response = engine.process_completion_internal(&request, &config).await?;
+        let response = engine
+            .process_completion_internal(&request, &config)
+            .await?;
 
         Ok(response.content.to_string())
     })

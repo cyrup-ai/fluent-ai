@@ -13,27 +13,25 @@ pub use types::*;
 // SIMD-optimized tokenizer
 pub mod tokenizer;
 pub use tokenizer::{
-    SIMDTokenizer, get_global_tokenizer, tokenize, 
-    get_tokenizer_stats, reset_tokenizer_stats
+    SIMDTokenizer, get_global_tokenizer, get_tokenizer_stats, reset_tokenizer_stats, tokenize,
 };
 
 // Pattern matching engine
 pub mod pattern_matching;
 pub use pattern_matching::{
-    PatternMatcher, get_global_pattern_matcher, add_pattern, 
-    find_matches, get_pattern_matcher_stats
+    PatternMatcher, add_pattern, find_matches, get_global_pattern_matcher,
+    get_pattern_matcher_stats,
 };
 
 // Text analysis and statistics
 pub mod analysis;
-pub use analysis::{
-    TextAnalyzer, get_global_text_analyzer, analyze_text,
-    analyze_word_frequency, get_most_common_words, calculate_similarity,
-    extract_key_phrases, get_analyzer_stats
-};
-
 use std::sync::Arc;
 use std::time::Instant;
+
+pub use analysis::{
+    TextAnalyzer, analyze_text, analyze_word_frequency, calculate_similarity, extract_key_phrases,
+    get_analyzer_stats, get_global_text_analyzer, get_most_common_words,
+};
 use arrayvec::ArrayVec;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 
@@ -65,7 +63,10 @@ impl TextProcessor {
 
     /// Tokenize text using SIMD optimization
     #[inline(always)]
-    pub fn tokenize(&self, text: &str) -> Result<ArrayVec<Token, MAX_TOKENS_PER_BATCH>, TextProcessingError> {
+    pub fn tokenize(
+        &self,
+        text: &str,
+    ) -> Result<ArrayVec<Token, MAX_TOKENS_PER_BATCH>, TextProcessingError> {
         self.operations_count.inc();
         self.tokenizer.tokenize(text)
     }
@@ -78,7 +79,10 @@ impl TextProcessor {
 
     /// Find pattern matches in text
     #[inline(always)]
-    pub fn find_matches(&self, text: &[u8]) -> Result<ArrayVec<PatternMatch, MAX_PATTERNS_PER_SET>, TextProcessingError> {
+    pub fn find_matches(
+        &self,
+        text: &[u8],
+    ) -> Result<ArrayVec<PatternMatch, MAX_PATTERNS_PER_SET>, TextProcessingError> {
         self.operations_count.inc();
         self.pattern_matcher.find_matches(text)
     }
@@ -98,7 +102,7 @@ impl TextProcessor {
         let analyzer_stats = self.analyzer.get_stats();
 
         PerformanceStats {
-            total_operations: self.operations_count.get(),
+            total_operations: self.operations_count.get() as u64,
             total_processing_time_nanos: tokenizer_stats.total_processing_time_nanos
                 + matcher_stats.total_processing_time_nanos
                 + analyzer_stats.total_processing_time_nanos,
@@ -106,8 +110,12 @@ impl TextProcessor {
             average_pattern_matching_time_nanos: matcher_stats.average_pattern_matching_time_nanos,
             average_analysis_time_nanos: analyzer_stats.average_analysis_time_nanos,
             simd_operations_count: tokenizer_stats.simd_operations_count,
-            cache_hits: tokenizer_stats.cache_hits + matcher_stats.cache_hits + analyzer_stats.cache_hits,
-            cache_misses: tokenizer_stats.cache_misses + matcher_stats.cache_misses + analyzer_stats.cache_misses,
+            cache_hits: tokenizer_stats.cache_hits
+                + matcher_stats.cache_hits
+                + analyzer_stats.cache_hits,
+            cache_misses: tokenizer_stats.cache_misses
+                + matcher_stats.cache_misses
+                + analyzer_stats.cache_misses,
         }
     }
 
@@ -125,8 +133,15 @@ impl TextProcessor {
     pub fn process_text_full(
         &self,
         text: &str,
-    ) -> Result<(ArrayVec<Token, MAX_TOKENS_PER_BATCH>, ArrayVec<PatternMatch, MAX_PATTERNS_PER_SET>, TextStats), TextProcessingError> {
-        let start_time = Instant::now();
+    ) -> Result<
+        (
+            ArrayVec<Token, MAX_TOKENS_PER_BATCH>,
+            ArrayVec<PatternMatch, MAX_PATTERNS_PER_SET>,
+            TextStats,
+        ),
+        TextProcessingError,
+    > {
+        let _start_time = Instant::now();
         self.operations_count.inc();
 
         let tokens = self.tokenizer.tokenize(text)?;
@@ -138,7 +153,7 @@ impl TextProcessor {
 }
 
 /// Global text processor instance for efficient reuse
-static GLOBAL_TEXT_PROCESSOR: once_cell::sync::Lazy<TextProcessor> = 
+static GLOBAL_TEXT_PROCESSOR: once_cell::sync::Lazy<TextProcessor> =
     once_cell::sync::Lazy::new(|| TextProcessor::new());
 
 /// Get global text processor instance
@@ -151,7 +166,14 @@ pub fn get_global_text_processor() -> &'static TextProcessor {
 #[inline(always)]
 pub fn process_text_full(
     text: &str,
-) -> Result<(ArrayVec<Token, MAX_TOKENS_PER_BATCH>, ArrayVec<PatternMatch, MAX_PATTERNS_PER_SET>, TextStats), TextProcessingError> {
+) -> Result<
+    (
+        ArrayVec<Token, MAX_TOKENS_PER_BATCH>,
+        ArrayVec<PatternMatch, MAX_PATTERNS_PER_SET>,
+        TextStats,
+    ),
+    TextProcessingError,
+> {
     get_global_text_processor().process_text_full(text)
 }
 
@@ -238,7 +260,14 @@ pub fn health_check() -> Result<(), TextProcessingError> {
 #[inline(always)]
 pub fn process_text_batch(
     texts: &[&str],
-) -> Result<Vec<(ArrayVec<Token, MAX_TOKENS_PER_BATCH>, ArrayVec<PatternMatch, MAX_PATTERNS_PER_SET>, TextStats)>, TextProcessingError> {
+) -> Result<
+    Vec<(
+        ArrayVec<Token, MAX_TOKENS_PER_BATCH>,
+        ArrayVec<PatternMatch, MAX_PATTERNS_PER_SET>,
+        TextStats,
+    )>,
+    TextProcessingError,
+> {
     let processor = get_global_text_processor();
     let mut results = Vec::with_capacity(texts.len());
 

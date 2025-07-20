@@ -3,10 +3,11 @@
 //! Provides comprehensive input validation with zero-allocation patterns and blazing-fast
 //! validation algorithms for production-ready security and error handling.
 
-use std::sync::Arc;
 use std::collections::HashMap;
-use regex::Regex;
+use std::sync::Arc;
+
 use once_cell::sync::Lazy;
+use regex::Regex;
 
 use super::types::*;
 
@@ -39,8 +40,12 @@ impl CommandValidator {
             max_parameter_count: 50,
             max_parameter_value_length: 512,
             allowed_extensions: vec![
-                Arc::from("txt"), Arc::from("md"), Arc::from("json"),
-                Arc::from("csv"), Arc::from("html"), Arc::from("pdf"),
+                Arc::from("txt"),
+                Arc::from("md"),
+                Arc::from("json"),
+                Arc::from("csv"),
+                Arc::from("html"),
+                Arc::from("pdf"),
             ],
             blocked_patterns: vec![
                 // Prevent command injection
@@ -67,7 +72,11 @@ impl CommandValidator {
                 }
             }
             ChatCommand::Export { format, output, .. } => {
-                self.validate_enum_parameter("format", format, &["json", "markdown", "pdf", "html"])?;
+                self.validate_enum_parameter(
+                    "format",
+                    format,
+                    &["json", "markdown", "pdf", "html"],
+                )?;
                 if let Some(path) = output {
                     self.validate_path_parameter("output", path)?;
                 }
@@ -86,7 +95,12 @@ impl CommandValidator {
                     self.validate_integer_parameter("limit", *n as i64, Some(1), Some(100))?;
                 }
             }
-            ChatCommand::Template { name, content, variables, .. } => {
+            ChatCommand::Template {
+                name,
+                content,
+                variables,
+                ..
+            } => {
                 if let Some(n) = name {
                     self.validate_name_parameter("name", n)?;
                 }
@@ -124,7 +138,9 @@ impl CommandValidator {
                     self.validate_enum_parameter("period", p, &["day", "week", "month", "all"])?;
                 }
             }
-            ChatCommand::Theme { name, properties, .. } => {
+            ChatCommand::Theme {
+                name, properties, ..
+            } => {
                 if let Some(n) = name {
                     self.validate_name_parameter("name", n)?;
                 }
@@ -132,7 +148,11 @@ impl CommandValidator {
             }
             ChatCommand::Debug { level, .. } => {
                 if let Some(l) = level {
-                    self.validate_enum_parameter("level", l, &["error", "warn", "info", "debug", "trace"])?;
+                    self.validate_enum_parameter(
+                        "level",
+                        l,
+                        &["error", "warn", "info", "debug", "trace"],
+                    )?;
                 }
             }
         }
@@ -141,7 +161,12 @@ impl CommandValidator {
     }
 
     /// Validate string parameter
-    fn validate_string_parameter(&self, name: &str, value: &str, allow_empty: bool) -> Result<(), ValidationError> {
+    fn validate_string_parameter(
+        &self,
+        name: &str,
+        value: &str,
+        allow_empty: bool,
+    ) -> Result<(), ValidationError> {
         if !allow_empty && value.is_empty() {
             return Err(ValidationError::EmptyParameter {
                 parameter: Arc::from(name),
@@ -203,7 +228,12 @@ impl CommandValidator {
     }
 
     /// Validate enum parameter
-    fn validate_enum_parameter(&self, name: &str, value: &str, allowed: &[&str]) -> Result<(), ValidationError> {
+    fn validate_enum_parameter(
+        &self,
+        name: &str,
+        value: &str,
+        allowed: &[&str],
+    ) -> Result<(), ValidationError> {
         if !allowed.contains(&value) {
             return Err(ValidationError::InvalidEnumValue {
                 parameter: Arc::from(name),
@@ -230,7 +260,11 @@ impl CommandValidator {
         // Validate file extension if present
         if let Some(ext_pos) = path.rfind('.') {
             let extension = &path[ext_pos + 1..];
-            if !self.allowed_extensions.iter().any(|ext| ext.as_ref() == extension) {
+            if !self
+                .allowed_extensions
+                .iter()
+                .any(|ext| ext.as_ref() == extension)
+            {
                 return Err(ValidationError::InvalidFileExtension {
                     parameter: Arc::from(name),
                     extension: Arc::from(extension),
@@ -306,7 +340,10 @@ impl CommandValidator {
     }
 
     /// Validate template/macro variables
-    fn validate_variables(&self, variables: &HashMap<Arc<str>, Arc<str>>) -> Result<(), ValidationError> {
+    fn validate_variables(
+        &self,
+        variables: &HashMap<Arc<str>, Arc<str>>,
+    ) -> Result<(), ValidationError> {
         if variables.len() > self.max_parameter_count {
             return Err(ValidationError::TooManyParameters {
                 max_count: self.max_parameter_count,
@@ -323,7 +360,10 @@ impl CommandValidator {
     }
 
     /// Validate tool arguments
-    fn validate_tool_args(&self, args: &HashMap<Arc<str>, Arc<str>>) -> Result<(), ValidationError> {
+    fn validate_tool_args(
+        &self,
+        args: &HashMap<Arc<str>, Arc<str>>,
+    ) -> Result<(), ValidationError> {
         if args.len() > self.max_parameter_count {
             return Err(ValidationError::TooManyParameters {
                 max_count: self.max_parameter_count,
@@ -340,7 +380,10 @@ impl CommandValidator {
     }
 
     /// Validate theme properties
-    fn validate_theme_properties(&self, properties: &HashMap<Arc<str>, Arc<str>>) -> Result<(), ValidationError> {
+    fn validate_theme_properties(
+        &self,
+        properties: &HashMap<Arc<str>, Arc<str>>,
+    ) -> Result<(), ValidationError> {
         if properties.len() > self.max_parameter_count {
             return Err(ValidationError::TooManyParameters {
                 max_count: self.max_parameter_count,
@@ -360,7 +403,7 @@ impl CommandValidator {
     pub fn sanitize_input(&self, input: &str) -> String {
         // Remove null bytes
         let sanitized = input.replace('\0', "");
-        
+
         // Limit length
         if sanitized.len() > self.max_command_length {
             sanitized[..self.max_command_length].to_string()
@@ -422,7 +465,9 @@ pub enum ValidationError {
         expected_format: Arc<str>,
     },
 
-    #[error("Parameter '{parameter}' has invalid file extension '{extension}', allowed: {allowed_extensions:?}")]
+    #[error(
+        "Parameter '{parameter}' has invalid file extension '{extension}', allowed: {allowed_extensions:?}"
+    )]
     InvalidFileExtension {
         parameter: Arc<str>,
         extension: Arc<str>,

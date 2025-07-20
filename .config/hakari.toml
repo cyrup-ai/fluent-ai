@@ -1,16 +1,50 @@
-# Hakari configuration for fluent-ai workspace
-hakari-package = "workspace-hack"
+hakari-package = "fluent-ai-workspace-hack"
+dep-format-version = 4
 resolver = "2"
-dep-format-version = "4"
+platforms = []
+exact-versions = false
+workspace_members = []
 
-# Platform optimization - target common development platforms
-platforms = [
-    "x86_64-unknown-linux-gnu",
-    "x86_64-apple-darwin", 
-    "aarch64-apple-darwin",
-    "x86_64-pc-windows-msvc",
-]
+[[omitted-deps]]
+name = "candle-core"
+features = []
 
-# Optimization settings
-unify-target-host = "auto"
-output-single-feature = false
+[[omitted-deps]]
+name = "candle-nn"
+features = []
+
+[[omitted-deps]]
+name = "candle-transformers"
+features = []
+
+[[omitted-deps]]
+name = "candle-flash-attn"
+features = []
+
+[[omitted-deps]]
+name = "candle-onnx"
+features = []
+
+[[omitted-deps]]
+name = "candle-datasets"
+features = []
+
+[[omitted-deps]]
+name = "cudarc"
+features = []
+
+[[omitted-deps]]
+name = "half"
+features = []
+
+[[omitted-deps]]
+name = "bindgen_cuda"
+features = []
+
+[[omitted-deps]]
+name = "intel-mkl-src"
+features = []
+
+[[omitted-deps]]
+name = "accelerate-src"
+features = []

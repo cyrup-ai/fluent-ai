@@ -3,10 +3,11 @@
 //! Provides zero-allocation command parsing with comprehensive validation and error handling.
 //! Uses blazing-fast parsing algorithms with ergonomic APIs and production-ready error messages.
 
-use std::sync::Arc;
 use std::collections::HashMap;
-use thiserror::Error;
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use super::types::*;
 
@@ -15,18 +16,24 @@ use super::types::*;
 pub enum ParseError {
     #[error("Invalid command syntax: {detail}")]
     InvalidSyntax { detail: Arc<str> },
-    
+
     #[error("Missing required parameter: {parameter}")]
     MissingParameter { parameter: Arc<str> },
-    
+
     #[error("Invalid parameter value: {parameter} = {value}")]
-    InvalidParameterValue { parameter: Arc<str>, value: Arc<str> },
-    
+    InvalidParameterValue {
+        parameter: Arc<str>,
+        value: Arc<str>,
+    },
+
     #[error("Unknown parameter: {parameter}")]
     UnknownParameter { parameter: Arc<str> },
-    
+
     #[error("Parameter type mismatch: expected {expected}, got {actual}")]
-    TypeMismatch { expected: Arc<str>, actual: Arc<str> },
+    TypeMismatch {
+        expected: Arc<str>,
+        actual: Arc<str>,
+    },
 }
 
 /// Result type for parsing operations
@@ -253,7 +260,7 @@ impl CommandParser {
     pub fn register_command(&mut self, info: CommandInfo) {
         // Register main command name
         self.commands.insert(info.name.clone(), info.clone());
-        
+
         // Register aliases
         for alias in &info.aliases {
             self.aliases.insert(alias.clone(), info.name.clone());
@@ -263,7 +270,7 @@ impl CommandParser {
     /// Parse a command string with zero-allocation patterns
     pub fn parse(&self, input: &str) -> ParseResult<ChatCommand> {
         let input = input.trim();
-        
+
         // Check if it's a command (starts with /)
         if !input.starts_with('/') {
             return Err(ParseError::InvalidSyntax {
@@ -273,7 +280,7 @@ impl CommandParser {
 
         // Remove the leading slash
         let input = &input[1..];
-        
+
         // Split into command and arguments
         let parts: Vec<&str> = input.split_whitespace().collect();
         if parts.is_empty() {
@@ -286,7 +293,9 @@ impl CommandParser {
         let args = &parts[1..];
 
         // Resolve aliases
-        let resolved_name = self.aliases.get(command_name)
+        let resolved_name = self
+            .aliases
+            .get(command_name)
             .unwrap_or(&Arc::from(command_name));
 
         // Parse based on command type
@@ -312,9 +321,11 @@ impl CommandParser {
             match args[i] {
                 "--extended" => extended = true,
                 arg if !arg.starts_with('-') => command = Some(Arc::from(arg)),
-                _ => return Err(ParseError::UnknownParameter {
-                    parameter: Arc::from(args[i]),
-                }),
+                _ => {
+                    return Err(ParseError::UnknownParameter {
+                        parameter: Arc::from(args[i]),
+                    });
+                }
             }
             i += 1;
         }
@@ -338,14 +349,21 @@ impl CommandParser {
                             parameter: Arc::from("keep-last"),
                         });
                     }
-                    keep_last = Some(args[i].parse().map_err(|_| ParseError::InvalidParameterValue {
-                        parameter: Arc::from("keep-last"),
-                        value: Arc::from(args[i]),
-                    })?);
+                    keep_last =
+                        Some(
+                            args[i]
+                                .parse()
+                                .map_err(|_| ParseError::InvalidParameterValue {
+                                    parameter: Arc::from("keep-last"),
+                                    value: Arc::from(args[i]),
+                                })?,
+                        );
                 }
-                _ => return Err(ParseError::UnknownParameter {
-                    parameter: Arc::from(args[i]),
-                }),
+                _ => {
+                    return Err(ParseError::UnknownParameter {
+                        parameter: Arc::from(args[i]),
+                    });
+                }
             }
             i += 1;
         }
@@ -381,9 +399,11 @@ impl CommandParser {
                     output = Some(Arc::from(args[i]));
                 }
                 "--include-metadata" => include_metadata = true,
-                _ => return Err(ParseError::UnknownParameter {
-                    parameter: Arc::from(args[i]),
-                }),
+                _ => {
+                    return Err(ParseError::UnknownParameter {
+                        parameter: Arc::from(args[i]),
+                    });
+                }
             }
             i += 1;
         }
@@ -392,7 +412,11 @@ impl CommandParser {
             parameter: Arc::from("format"),
         })?;
 
-        Ok(ChatCommand::Export { format, output, include_metadata })
+        Ok(ChatCommand::Export {
+            format,
+            output,
+            include_metadata,
+        })
     }
 
     /// Parse config command
@@ -418,14 +442,21 @@ impl CommandParser {
                         });
                     }
                 }
-                _ => return Err(ParseError::UnknownParameter {
-                    parameter: Arc::from(args[i]),
-                }),
+                _ => {
+                    return Err(ParseError::UnknownParameter {
+                        parameter: Arc::from(args[i]),
+                    });
+                }
             }
             i += 1;
         }
 
-        Ok(ChatCommand::Config { key, value, show, reset })
+        Ok(ChatCommand::Config {
+            key,
+            value,
+            show,
+            reset,
+        })
     }
 
     /// Parse search command
@@ -449,10 +480,12 @@ impl CommandParser {
                         "all" => SearchScope::All,
                         "current" => SearchScope::Current,
                         "recent" => SearchScope::Recent,
-                        _ => return Err(ParseError::InvalidParameterValue {
-                            parameter: Arc::from("scope"),
-                            value: Arc::from(args[i]),
-                        }),
+                        _ => {
+                            return Err(ParseError::InvalidParameterValue {
+                                parameter: Arc::from("scope"),
+                                value: Arc::from(args[i]),
+                            });
+                        }
                     };
                 }
                 "--limit" => {
@@ -462,10 +495,15 @@ impl CommandParser {
                             parameter: Arc::from("limit"),
                         });
                     }
-                    limit = Some(args[i].parse().map_err(|_| ParseError::InvalidParameterValue {
-                        parameter: Arc::from("limit"),
-                        value: Arc::from(args[i]),
-                    })?);
+                    limit =
+                        Some(
+                            args[i]
+                                .parse()
+                                .map_err(|_| ParseError::InvalidParameterValue {
+                                    parameter: Arc::from("limit"),
+                                    value: Arc::from(args[i]),
+                                })?,
+                        );
                 }
                 "--include-context" => include_context = true,
                 arg if !arg.starts_with('-') => {
@@ -477,9 +515,11 @@ impl CommandParser {
                         });
                     }
                 }
-                _ => return Err(ParseError::UnknownParameter {
-                    parameter: Arc::from(args[i]),
-                }),
+                _ => {
+                    return Err(ParseError::UnknownParameter {
+                        parameter: Arc::from(args[i]),
+                    });
+                }
             }
             i += 1;
         }
@@ -488,7 +528,12 @@ impl CommandParser {
             parameter: Arc::from("query"),
         })?;
 
-        Ok(ChatCommand::Search { query, scope, limit, include_context })
+        Ok(ChatCommand::Search {
+            query,
+            scope,
+            limit,
+            include_context,
+        })
     }
 
     /// Validate command parameters
@@ -503,7 +548,9 @@ impl CommandParser {
                     });
                 }
             }
-            ChatCommand::Clear { keep_last: Some(n), .. } => {
+            ChatCommand::Clear {
+                keep_last: Some(n), ..
+            } => {
                 if *n == 0 {
                     return Err(ParseError::InvalidParameterValue {
                         parameter: Arc::from("keep-last"),
@@ -519,32 +566,32 @@ impl CommandParser {
     /// Get command suggestions for auto-completion
     pub fn get_suggestions(&self, prefix: &str) -> Vec<Arc<str>> {
         let mut suggestions = Vec::new();
-        
+
         // Add command names
         for name in self.commands.keys() {
             if name.starts_with(prefix) {
                 suggestions.push(name.clone());
             }
         }
-        
+
         // Add aliases
         for alias in self.aliases.keys() {
             if alias.starts_with(prefix) {
                 suggestions.push(alias.clone());
             }
         }
-        
+
         suggestions.sort();
         suggestions
     }
 
     /// Get command information
     pub fn get_command_info(&self, command: &str) -> Option<CommandInfo> {
-        self.commands.get(command).cloned()
-            .or_else(|| {
-                self.aliases.get(command)
-                    .and_then(|name| self.commands.get(name).cloned())
-            })
+        self.commands.get(command).cloned().or_else(|| {
+            self.aliases
+                .get(command)
+                .and_then(|name| self.commands.get(name).cloned())
+        })
     }
 
     /// Get command history

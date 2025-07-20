@@ -18,23 +18,23 @@
 //! crossbeam-skiplist for lock-free data structures, and atomic operations
 //! for thread-safe state management.
 
-pub mod formatting;
 pub mod commands;
-pub mod templates;
-pub mod macros;
 pub mod config;
+pub mod export;
+pub mod formatting;
+pub mod integrations;
+pub mod macros;
 pub mod realtime;
 pub mod search;
-pub mod export;
-pub mod integrations;
+pub mod templates;
 
 // Re-export all public types for convenience
-pub use formatting::*;
 pub use commands::*;
-pub use templates::*;
-pub use macros::*;
 pub use config::*;
+pub use export::*;
+pub use formatting::*;
+pub use integrations::*;
+pub use macros::*;
 pub use realtime::*;
 pub use search::*;
-pub use export::*;
-pub use integrations::*;
+pub use templates::*;

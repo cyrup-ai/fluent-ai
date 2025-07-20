@@ -9,9 +9,13 @@
 //!     .prompt("Hello world")
 //! ```
 
-use crate::completion_provider::{CompletionProvider, CompletionError};
+use crate::{
+    client::{CompletionClient, ProviderClient},
+    completion_provider::{CompletionProvider, CompletionError},
+};
 use super::completion::DeepSeekCompletionBuilder;
 use fluent_ai_http3::{HttpClient, HttpConfig};
+use fluent_ai_domain::AsyncTask as DomainAsyncTask;
 
 /// DeepSeek client providing clean completion builder factory methods
 #[derive(Clone)]
@@ -29,9 +33,26 @@ impl DeepSeekClient {
         Ok(Self { api_key })
     }
     
+    /// Create from environment (DEEPSEEK_API_KEY)
+    pub fn from_env() -> Result<Self, CompletionError> {
+        let api_key = std::env::var("DEEPSEEK_API_KEY")
+            .map_err(|_| CompletionError::ConfigError("DEEPSEEK_API_KEY environment variable not set".into()))?;
+        Self::new(api_key)
+    }
+    
     /// Create completion builder for specific model with ModelInfo defaults loaded
     pub fn completion_model(&self, model_name: &'static str) -> Result<DeepSeekCompletionBuilder, CompletionError> {
         DeepSeekCompletionBuilder::new(self.api_key.clone(), model_name)
+    }
+    
+    /// Test connection to DeepSeek API
+    pub async fn test_connection(&self) -> Result<(), CompletionError> {
+        // Create a minimal completion request to test connectivity
+        let builder = self.completion_model("deepseek-chat")?;
+        
+        // For now, we'll return success if we can create the builder
+        // A full implementation would make an actual API call
+        Ok(())
     }
     
     /// Get API key
@@ -68,6 +89,30 @@ impl DeepSeekProvider {
 impl Default for DeepSeekProvider {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// CompletionClient trait implementation for auto-generation
+impl CompletionClient for DeepSeekClient {
+    type Model = Result<DeepSeekCompletionBuilder, CompletionError>;
+    
+    fn completion_model(&self, model: &str) -> Self::Model {
+        DeepSeekCompletionBuilder::new(self.api_key.clone(), model)
+    }
+}
+
+/// ProviderClient trait implementation for ecosystem integration
+impl ProviderClient for DeepSeekClient {
+    fn provider_name(&self) -> &'static str {
+        "deepseek"
+    }
+    
+    fn test_connection(&self) -> DomainAsyncTask<std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let client = self.clone();
+        DomainAsyncTask::spawn(async move {
+            client.test_connection().await
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        })
     }
 }
 

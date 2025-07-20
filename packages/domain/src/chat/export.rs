@@ -4,6 +4,7 @@
 //! Supports multiple formats with blazing-fast serialization and ergonomic APIs.
 
 use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -52,10 +53,10 @@ impl Default for ExportConfig {
 pub enum ExportError {
     #[error("Serialization error: {detail}")]
     SerializationError { detail: Arc<str> },
-    
+
     #[error("IO error: {detail}")]
     IoError { detail: Arc<str> },
-    
+
     #[error("Format error: {detail}")]
     FormatError { detail: Arc<str> },
 }
@@ -87,10 +88,9 @@ fn export_to_json(
         messages
     };
 
-    serde_json::to_string_pretty(limited_messages)
-        .map_err(|e| ExportError::SerializationError {
-            detail: Arc::from(e.to_string()),
-        })
+    serde_json::to_string_pretty(limited_messages).map_err(|e| ExportError::SerializationError {
+        detail: Arc::from(e.to_string()),
+    })
 }
 
 /// Export to Markdown format
@@ -151,7 +151,7 @@ fn export_to_csv(
     config: &ExportConfig,
 ) -> ExportResult<String> {
     let mut output = String::with_capacity(messages.len() * 100);
-    
+
     // CSV header
     if config.include_timestamps {
         output.push_str("role,content,timestamp\n");
@@ -168,11 +168,12 @@ fn export_to_csv(
     for message in limited_messages {
         let escaped_content = message.content.replace('"', "\"\"");
         if config.include_timestamps {
-            output.push_str(&format!("\"{}\",\"{}\",{}\n", 
-                message.role, escaped_content, message.timestamp));
+            output.push_str(&format!(
+                "\"{}\",\"{}\",{}\n",
+                message.role, escaped_content, message.timestamp
+            ));
         } else {
-            output.push_str(&format!("\"{}\",\"{}\"\n", 
-                message.role, escaped_content));
+            output.push_str(&format!("\"{}\",\"{}\"\n", message.role, escaped_content));
         }
     }
 

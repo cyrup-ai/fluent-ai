@@ -7,12 +7,18 @@ use once_cell::sync::Lazy;
 pub static PROVIDER_CLIENT_MAP: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     let mut map = HashMap::new();
     map.insert("openai", "openai");
+    map.insert("gemini", "gemini");
     map.insert("claude", "claude");
     map.insert("mistral", "mistral");
     map.insert("ai21", "ai21");
     map.insert("cohere", "cohere");
+    map.insert("xai", "xai");
+    map.insert("perplexity", "perplexity");
+    map.insert("groq", "groq");
     map.insert("vertexai", "vertexai");
     map.insert("bedrock", "bedrock");
+    map.insert("deepseek", "deepseek");
+    map.insert("openrouter", "openrouter");
     map
 });
 

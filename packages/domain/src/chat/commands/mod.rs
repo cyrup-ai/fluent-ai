@@ -4,30 +4,28 @@
 //! slash commands, command parsing, execution, and auto-completion with zero-allocation
 //! patterns and blazing-fast performance.
 
-pub mod types;
-pub mod parsing;
 pub mod execution;
+pub mod parsing;
 pub mod registry;
-pub mod validation;
 pub mod response;
-pub mod middleware;
+pub mod types;
+pub mod validation;
 
 // Re-export main types and functions for convenience
-pub use types::*;
-pub use parsing::{CommandParser, ParseError, ParseResult};
-pub use execution::CommandExecutor;
-pub use registry::CommandRegistry;
-pub use validation::CommandValidator;
-pub use response::ResponseFormatter;
-pub use middleware::CommandMiddleware;
-
 // Global command executor functionality
 use std::sync::Arc;
-use tokio::sync::RwLock;
+
+pub use execution::CommandExecutor;
 use once_cell::sync::Lazy;
+pub use parsing::{CommandParser, ParseError, ParseResult};
+pub use registry::CommandRegistry;
+pub use response::ResponseFormatter;
+use tokio::sync::RwLock;
+pub use types::*;
+pub use validation::CommandValidator;
 
 /// Global command executor instance
-static COMMAND_EXECUTOR: Lazy<Arc<RwLock<Option<CommandExecutor>>>> = 
+static COMMAND_EXECUTOR: Lazy<Arc<RwLock<Option<CommandExecutor>>>> =
     Lazy::new(|| Arc::new(RwLock::new(None)));
 
 /// Initialize global command executor
@@ -44,9 +42,12 @@ pub async fn get_command_executor() -> Option<CommandExecutor> {
 /// Parse command using global executor
 pub async fn parse_command(input: &str) -> CommandResult<ChatCommand> {
     if let Some(executor) = get_command_executor().await {
-        executor.parser().parse(input).map_err(|e| CommandError::ParseError {
-            detail: Arc::from(e.to_string()),
-        })
+        executor
+            .parser()
+            .parse(input)
+            .map_err(|e| CommandError::ParseError {
+                detail: Arc::from(e.to_string()),
+            })
     } else {
         Err(CommandError::ConfigurationError {
             detail: Arc::from("Command executor not initialized"),

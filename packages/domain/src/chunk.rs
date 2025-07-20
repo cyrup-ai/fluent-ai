@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
 use crate::usage::Usage;
 
 /// Chunk of document content for streaming file operations

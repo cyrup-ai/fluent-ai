@@ -9,11 +9,122 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use atomic_counter::{AtomicCounter, RelaxedCounter};
-use circuit_breaker::CircuitBreaker;
-use const_str::const_str;
 
 /// Maximum length for error messages to ensure zero allocation
 pub const MAX_ERROR_MESSAGE_LEN: usize = 256;
+
+/// Circuit breaker state for error handling
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CircuitBreakerState {
+    /// Circuit is closed, allowing operations
+    Closed,
+    /// Circuit is open, rejecting operations
+    Open,
+    /// Circuit is half-open, testing if service has recovered
+    HalfOpen,
+}
+
+/// Simple production-quality circuit breaker implementation
+#[derive(Debug)]
+pub struct SimpleCircuitBreaker {
+    /// Current state
+    state: AtomicU64, // 0=Closed, 1=Open, 2=HalfOpen
+    /// Failure count
+    failure_count: AtomicU64,
+    /// Last failure time
+    last_failure_time: AtomicU64,
+    /// Failure threshold
+    failure_threshold: u64,
+    /// Recovery timeout in milliseconds
+    recovery_timeout_ms: u64,
+}
+
+impl SimpleCircuitBreaker {
+    /// Create new circuit breaker
+    pub fn new(failure_threshold: u64, recovery_timeout_ms: u64) -> Self {
+        Self {
+            state: AtomicU64::new(0), // Closed
+            failure_count: AtomicU64::new(0),
+            last_failure_time: AtomicU64::new(0),
+            failure_threshold,
+            recovery_timeout_ms,
+        }
+    }
+
+    /// Execute operation with circuit breaker protection
+    pub fn call<F, T, E>(&self, operation: F) -> Result<T, CircuitBreakerError<E>>
+    where
+        F: FnOnce() -> Result<T, E>,
+    {
+        match self.get_state() {
+            CircuitBreakerState::Open => {
+                // Check if we should transition to half-open
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis() as u64;
+                let last_failure = self.last_failure_time.load(Ordering::Relaxed);
+
+                if now - last_failure > self.recovery_timeout_ms {
+                    self.state.store(2, Ordering::Relaxed); // HalfOpen
+                    self.execute_operation(operation)
+                } else {
+                    Err(CircuitBreakerError::CircuitOpen)
+                }
+            }
+            CircuitBreakerState::HalfOpen | CircuitBreakerState::Closed => {
+                self.execute_operation(operation)
+            }
+        }
+    }
+
+    fn execute_operation<F, T, E>(&self, operation: F) -> Result<T, CircuitBreakerError<E>>
+    where
+        F: FnOnce() -> Result<T, E>,
+    {
+        match operation() {
+            Ok(result) => {
+                // Success - reset failure count and close circuit
+                self.failure_count.store(0, Ordering::Relaxed);
+                self.state.store(0, Ordering::Relaxed); // Closed
+                Ok(result)
+            }
+            Err(error) => {
+                // Failure - increment count and potentially open circuit
+                let failures = self.failure_count.fetch_add(1, Ordering::Relaxed) + 1;
+
+                if failures >= self.failure_threshold {
+                    self.state.store(1, Ordering::Relaxed); // Open
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_millis() as u64;
+                    self.last_failure_time.store(now, Ordering::Relaxed);
+                }
+
+                Err(CircuitBreakerError::Inner(error))
+            }
+        }
+    }
+
+    pub fn get_state(&self) -> CircuitBreakerState {
+        match self.state.load(Ordering::Relaxed) {
+            0 => CircuitBreakerState::Closed,
+            1 => CircuitBreakerState::Open,
+            2 => CircuitBreakerState::HalfOpen,
+            _ => CircuitBreakerState::Closed, // Default fallback
+        }
+    }
+}
+
+/// Circuit breaker error wrapper
+#[derive(Debug)]
+pub enum CircuitBreakerError<E> {
+    /// Inner operation error
+    Inner(E),
+    /// Circuit breaker is open
+    CircuitOpen,
+}
 
 /// Error category for structured error handling
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -179,7 +290,7 @@ impl ZeroAllocError {
     /// Add location information
     #[inline(always)]
     pub fn with_location(mut self, file: &str, line: u32) -> Self {
-        let location = const_str::format!("{}:{}", file, line);
+        let location = format!("{}:{}", file, line);
         self.location = Some(ErrorMessage::new(&location));
         self
     }
@@ -380,7 +491,7 @@ impl Default for ErrorCounter {
 #[derive(Debug)]
 pub struct ErrorCircuitBreaker {
     /// Circuit breaker instance
-    breaker: CircuitBreaker,
+    breaker: SimpleCircuitBreaker,
     /// Error counter for statistics
     counter: ErrorCounter,
     /// Failure threshold
@@ -395,10 +506,10 @@ impl ErrorCircuitBreaker {
     /// Create new circuit breaker
     #[inline(always)]
     pub fn new(failure_threshold: usize, recovery_timeout: Duration) -> Self {
-        let breaker = CircuitBreakerBuilder::new()
-            .failure_threshold(failure_threshold)
-            .recovery_timeout(recovery_timeout)
-            .build();
+        let breaker = SimpleCircuitBreaker::new(
+            failure_threshold as u64,
+            recovery_timeout.as_millis() as u64,
+        );
 
         Self {
             breaker,
@@ -418,12 +529,12 @@ impl ErrorCircuitBreaker {
     {
         match self.breaker.call(operation) {
             Ok(result) => Ok(result),
-            Err(circuit_breaker::Error::Inner(e)) => {
+            Err(CircuitBreakerError::Inner(e)) => {
                 let error = e.into();
                 self.counter.record(&error);
                 Err(error)
             }
-            Err(circuit_breaker::Error::CircuitBreakerOpen) => {
+            Err(CircuitBreakerError::CircuitOpen) => {
                 let error = ZeroAllocError::new(
                     ErrorCategory::System,
                     ErrorSeverity::Error,
@@ -440,13 +551,13 @@ impl ErrorCircuitBreaker {
     /// Check if circuit breaker is open
     #[inline(always)]
     pub fn is_open(&self) -> bool {
-        matches!(self.breaker.state(), circuit_breaker::State::Open)
+        matches!(self.breaker.get_state(), CircuitBreakerState::Open)
     }
 
     /// Check if circuit breaker is half-open
     #[inline(always)]
     pub fn is_half_open(&self) -> bool {
-        matches!(self.breaker.state(), circuit_breaker::State::HalfOpen)
+        matches!(self.breaker.get_state(), CircuitBreakerState::HalfOpen)
     }
 
     /// Get error statistics

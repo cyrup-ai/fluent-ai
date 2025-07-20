@@ -39,6 +39,7 @@ pub use audio::OpenAIAudioClient;
 pub use vision::OpenAIVisionClient;
 pub use streaming::OpenAIStream;
 pub use error::{OpenAIError, Result};
+pub use discovery::OpenAIDiscovery;
 
 // Internal modules
 mod client;
@@ -48,6 +49,7 @@ mod audio;
 mod vision;
 mod streaming;
 mod error;
+mod discovery;
 
 /// OpenAI model constants using &'static str for zero allocation
 pub mod models {

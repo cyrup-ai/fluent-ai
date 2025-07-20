@@ -221,7 +221,9 @@ impl SandboxManager {
             )));
         }
 
-        let python = python_cmd?;
+        let python = python_cmd.ok_or_else(|| ExecError::RuntimeError(
+            "Python interpreter not found despite validation".to_string()
+        ))?;
 
         // Try to create a virtual environment
         let env_path_str = env_path.to_str()
@@ -246,7 +248,8 @@ impl SandboxManager {
                         ))?;
                     env.add_env_var("VIRTUAL_ENV", virtual_env_path);
                     
-                    let bin_path = env_path.join("bin").to_str()
+                    let bin_path_buf = env_path.join("bin");
+                    let bin_path = bin_path_buf.to_str()
                         .ok_or_else(|| ExecError::RuntimeError(
                             "Invalid bin path for virtual environment".to_string()
                         ))?;
@@ -283,7 +286,8 @@ impl SandboxManager {
 
                 // Create an activation script that sets PATH
                 let env_path_str = safe_path_to_str(&env_path)?;
-                let bin_path_str = safe_path_to_str(&env_path.join("bin"))?;
+                let bin_path = env_path.join("bin");
+                let bin_path_str = safe_path_to_str(&bin_path)?;
                 let activate_script = format!(
                     "#!/bin/sh\nexport VIRTUAL_ENV=\"{}\"\nexport PATH=\"{}:$PATH\"\n",
                     env_path_str,
@@ -318,7 +322,8 @@ impl SandboxManager {
 
                     // Add environment variables
                     let env_path_str = safe_path_to_str(&env_path)?;
-                    let bin_path_str = safe_path_to_str(&env_path.join("bin"))?;
+                    let bin_path = env_path.join("bin");
+                    let bin_path_str = safe_path_to_str(&bin_path)?;
                     env.add_env_var("VIRTUAL_ENV", env_path_str);
                     env.add_env_var("PYTHONUSERBASE", env_path_str);
                     env.add_env_var(
@@ -379,7 +384,8 @@ impl SandboxManager {
 
                         // Add environment variables
                         let env_path_str = safe_path_to_str(&env_path)?;
-                        let bin_path_str = safe_path_to_str(&env_path.join("bin"))?;
+                        let bin_path = env_path.join("bin");
+                        let bin_path_str = safe_path_to_str(&bin_path)?;
                         env.add_env_var("FNM_DIR", env_path_str);
                         env.add_env_var(
                             "PATH",
@@ -441,7 +447,8 @@ impl SandboxManager {
         ))?;
 
         // Create a wrapper script for node
-        let node_modules_path_str = safe_path_to_str(&env_path.join("node_modules"))?;
+        let node_modules_path = env_path.join("node_modules");
+        let node_modules_path_str = safe_path_to_str(&node_modules_path)?;
         let node_wrapper = format!(
             "#!/bin/sh\nexport NODE_PATH=\"{}:$NODE_PATH\"\n{} \"$@\"\n",
             node_modules_path_str,
@@ -475,8 +482,10 @@ impl SandboxManager {
         env.is_valid = true;
 
         // Add environment variables
-        let node_modules_path_str = safe_path_to_str(&env_path.join("node_modules"))?;
-        let bin_path_str = safe_path_to_str(&env_path.join("bin"))?;
+        let node_modules_path = env_path.join("node_modules");
+        let node_modules_path_str = safe_path_to_str(&node_modules_path)?;
+        let bin_path = env_path.join("bin");
+        let bin_path_str = safe_path_to_str(&bin_path)?;
         env.add_env_var(
             "NODE_PATH",
             &format!(
@@ -638,7 +647,8 @@ edition = "2021"
 
         // Add environment variables
         let env_path_str = safe_path_to_str(&env_path)?;
-        let bin_path_str = safe_path_to_str(&env_path.join("bin"))?;
+        let bin_path = env_path.join("bin");
+        let bin_path_str = safe_path_to_str(&bin_path)?;
         env.add_env_var("CARGO_HOME", env_path_str);
         env.add_env_var("RUSTUP_HOME", env_path_str);
         env.add_env_var(
@@ -719,8 +729,10 @@ edition = "2021"
 
         // Create a wrapper script for Go
         let env_path_str = safe_path_to_str(&env_path)?;
-        let pkg_path_str = safe_path_to_str(&env_path.join("pkg"))?;
-        let tmp_path_str = safe_path_to_str(&env_path.join("tmp"))?;
+        let pkg_path = env_path.join("pkg");
+        let pkg_path_str = safe_path_to_str(&pkg_path)?;
+        let tmp_path = env_path.join("tmp");
+        let tmp_path_str = safe_path_to_str(&tmp_path)?;
         let go_wrapper = format!(
             "#!/bin/sh\nexport GOPATH=\"{}\"\nexport GOCACHE=\"{}\"\nexport GOTMPDIR=\"{}\"\n{} \"$@\"\n",
             env_path_str,
@@ -772,9 +784,12 @@ func main() {
 
         // Add environment variables
         let env_path_str = safe_path_to_str(&env_path)?;
-        let pkg_path_str = safe_path_to_str(&env_path.join("pkg"))?;
-        let tmp_path_str = safe_path_to_str(&env_path.join("tmp"))?;
-        let bin_path_str = safe_path_to_str(&env_path.join("bin"))?;
+        let pkg_path = env_path.join("pkg");
+        let pkg_path_str = safe_path_to_str(&pkg_path)?;
+        let tmp_path = env_path.join("tmp");
+        let tmp_path_str = safe_path_to_str(&tmp_path)?;
+        let bin_path = env_path.join("bin");
+        let bin_path_str = safe_path_to_str(&bin_path)?;
         env.add_env_var("GOPATH", env_path_str);
         env.add_env_var("GOCACHE", pkg_path_str);
         env.add_env_var("GOTMPDIR", tmp_path_str);

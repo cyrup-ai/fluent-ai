@@ -609,7 +609,7 @@ mod tests {
             // If registration succeeded, test retrieval
             let backend_result = manager.get_instance(&instance.id()).await;
 
-            if let Ok(backend) = backend_result {
+            if let Ok(backend) = &backend_result {
                 assert_eq!(backend.backend_type(), "LandLock");
 
                 // Test release

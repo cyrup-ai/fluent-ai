@@ -1,95 +1,253 @@
 // ============================================================================
 // File: src/providers/xai/client.rs
 // ----------------------------------------------------------------------------
-// xAI client with typestate-driven builder pattern
+// xAI client with typestate-driven builder pattern and HTTP3
 // ============================================================================
 
 use serde_json::json;
-use bytes::Bytes;
+use std::time::Duration;
+use arc_swap::ArcSwap;
+use arrayvec::{ArrayVec, ArrayString};
+use smallvec::{SmallVec, smallvec};
+use atomic_counter::RelaxedCounter;
+use std::sync::LazyLock;
 
 use crate::{
+    client::{CompletionClient, ProviderClient},
     completion::{
         self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
     },
-    http::{HttpClient, HttpError},
     json_util,
     message::Message,
     runtime::{self, AsyncTask},
 };
 
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
+use fluent_ai_domain::AsyncTask as DomainAsyncTask;
+
 use super::completion::{CompletionModel, GROK_3};
 
 // ============================================================================
-// xAI API Client
+// xAI API Client with HTTP3 and zero-allocation patterns
 // ============================================================================
 const XAI_BASE_URL: &str = "https://api.x.ai";
 
-#[derive(Clone, Debug)]
+/// Global HTTP3 client with AI optimization
+static HTTP_CLIENT: LazyLock<HttpClient> = LazyLock::new(|| {
+    HttpClient::with_config(HttpConfig::ai_optimized())
+        .unwrap_or_else(|_| HttpClient::new())
+});
+
+/// Lock-free performance metrics
+static XAI_METRICS: LazyLock<XAIMetrics> = LazyLock::new(XAIMetrics::new);
+
+/// xAI performance metrics with atomic counters
+#[derive(Debug)]
+pub struct XAIMetrics {
+    pub total_requests: RelaxedCounter,
+    pub successful_requests: RelaxedCounter,
+    pub failed_requests: RelaxedCounter,
+    pub concurrent_requests: RelaxedCounter,
+}
+
+impl XAIMetrics {
+    #[inline]
+    pub fn new() -> Self {
+        Self {
+            total_requests: RelaxedCounter::new(0),
+            successful_requests: RelaxedCounter::new(0),
+            failed_requests: RelaxedCounter::new(0),
+            concurrent_requests: RelaxedCounter::new(0),
+        }
+    }
+}
+
+/// xAI error types for comprehensive error handling
+#[derive(thiserror::Error, Debug)]
+pub enum XAIError {
+    #[error("HTTP request failed: {0}")]
+    Http(#[from] HttpError),
+    #[error("Configuration error in {field}: {message}")]
+    Configuration {
+        field: String,
+        message: String,
+        suggestion: String,
+    },
+    #[error("Authentication failed: {message}")]
+    Authentication {
+        message: String,
+        retry_after: Option<Duration>,
+    },
+    #[error("Model not supported: {model}")]
+    ModelNotSupported {
+        model: String,
+        supported_models: Vec<String>,
+    },
+}
+
+pub type Result<T> = std::result::Result<T, XAIError>;
+
+/// Zero-allocation xAI client
+#[derive(Clone)]
 pub struct Client {
-    pub base_url: String,
-    pub(crate) http_client: HttpClient,
-    pub(crate) api_key: String,
-    pub(crate) explicit_api_key: Option<String>,
+    /// Hot-swappable API key
+    api_key: ArcSwap<ArrayString<128>>,
+    /// Zero-allocation base URL storage
+    base_url: ArrayString<256>,
+    /// Shared HTTP3 client
+    http_client: &'static HttpClient,
+    /// Performance metrics
+    metrics: &'static XAIMetrics,
+    /// Request timeout
+    timeout: Duration,
 }
 
 impl Client {
-    /// Create a new xAI client with the given API key.
-    pub fn new(api_key: &str) -> Result<Self, HttpError> {
+    /// Create a new xAI client with zero-allocation API key validation
+    pub fn new(api_key: &str) -> Result<Self> {
         Self::from_url(api_key, XAI_BASE_URL)
     }
 
     /// Environment variable names to search for xAI API keys (ordered by priority)
-    pub fn env_api_keys() -> Vec<String> {
-        vec![
-            "XAI_API_KEY".to_string(),         // Primary xAI key
-            "X_AI_API_KEY".to_string(),        // Alternative with underscore
-            "GROK_API_KEY".to_string(),        // Grok-specific key
+    pub fn env_api_keys() -> &'static [&'static str] {
+        &[
+            "XAI_API_KEY",         // Primary xAI key
+            "X_AI_API_KEY",        // Alternative with underscore
+            "GROK_API_KEY",        // Grok-specific key
         ]
     }
 
-    /// Set explicit API key (takes priority over environment variables)
-    pub fn api_key(mut self, key: impl Into<String>) -> Self {
-        self.explicit_api_key = Some(key.into());
-        self
-    }
-
-    /// Create a new xAI client with the given API key and base URL.
-    pub fn from_url(api_key: &str, base_url: &str) -> Result<Self, HttpError> {
-        let http_client = HttpClient::for_provider("xai")?;
+    /// Create a new xAI client with the given API key and base URL
+    pub fn from_url(api_key: &str, base_url: &str) -> Result<Self> {
+        if api_key.is_empty() {
+            return Err(XAIError::Configuration {
+                field: "api_key".to_string(),
+                message: "API key cannot be empty".to_string(),
+                suggestion: "Provide a valid xAI API key".to_string(),
+            });
+        }
+        
+        let api_key_array = ArrayString::from(api_key)
+            .map_err(|_| XAIError::Configuration {
+                field: "api_key".to_string(),
+                message: format!("API key too long: {} characters (max 128)", api_key.len()),
+                suggestion: "Use a valid xAI API key".to_string(),
+            })?;
+            
+        let base_url_array = ArrayString::from(base_url)
+            .map_err(|_| XAIError::Configuration {
+                field: "base_url".to_string(),
+                message: format!("Base URL too long: {} characters (max 256)", base_url.len()),
+                suggestion: "Use a valid xAI API base URL".to_string(),
+            })?;
         
         Ok(Self {
-            base_url: base_url.to_string(),
-            http_client,
-            api_key: api_key.to_string(),
-            explicit_api_key: None,
+            api_key: ArcSwap::from_pointee(api_key_array),
+            base_url: base_url_array,
+            http_client: &HTTP_CLIENT,
+            metrics: &XAI_METRICS,
+            timeout: Duration::from_secs(30),
         })
     }
 
     /// Create from environment variables (tries multiple variable names)
-    pub fn from_env() -> Result<Self, HttpError> {
+    pub fn from_env() -> Result<Self> {
         for env_var in Self::env_api_keys() {
-            if let Ok(api_key) = std::env::var(&env_var) {
-                return Self::new(&api_key);
+            if let Ok(api_key) = std::env::var(env_var) {
+                if !api_key.is_empty() {
+                    return Self::new(&api_key);
+                }
             }
         }
-        Err(HttpError::ConfigurationError(format!(
-            "No xAI API key found. Set one of: {}", 
-            Self::env_api_keys().join(", ")
-        )))
+        Err(XAIError::Configuration {
+            field: "api_key".to_string(),
+            message: format!("No xAI API key found. Set one of: {}", Self::env_api_keys().join(", ")),
+            suggestion: "Set one of the environment variables with your xAI API key".to_string(),
+        })
     }
 
-    pub(crate) fn post(&self, path: &str, body: Vec<u8>) -> Result<crate::http::HttpRequest, HttpError> {
-        let url = format!("{}/{}", self.base_url, path).replace("//", "/");
-        tracing::debug!("POST {}", url);
+    /// Build authenticated request with zero allocations
+    pub async fn make_request(&self, path: &str, body: Vec<u8>) -> Result<fluent_ai_http3::Response> {
+        let url = format!("{}/{}", self.base_url, path);
         
-        crate::http::HttpRequest::post(url, Bytes::from(body))?
-            .header("Content-Type", "application/json")?
-            .header("Authorization", &format!("Bearer {}", self.api_key))
+        // Build headers with zero allocation
+        let mut headers: SmallVec<[(&str, ArrayString<180>); 4]> = smallvec![];
+        
+        // Build auth header
+        let mut auth_header = ArrayString::<180>::new();
+        auth_header.try_push_str("Bearer ").map_err(|_| XAIError::Configuration {
+            field: "auth_header".to_string(),
+            message: "Failed to build auth header".to_string(),
+            suggestion: "Check API key length".to_string(),
+        })?;
+        auth_header.try_push_str(&self.api_key.load()).map_err(|_| XAIError::Configuration {
+            field: "auth_header".to_string(),
+            message: "Failed to build auth header".to_string(),
+            suggestion: "Check API key length".to_string(),
+        })?;
+        
+        headers.push(("Authorization", auth_header));
+        headers.push(("Content-Type", ArrayString::from("application/json").unwrap()));
+        headers.push(("User-Agent", ArrayString::from("fluent-ai-xai/1.0").unwrap()));
+        
+        let request = HttpRequest::post(&url, body)?
+            .headers(headers.iter().map(|(k, v)| (*k, v.as_str())))
+            .timeout(self.timeout);
+            
+        // Update metrics atomically
+        self.metrics.total_requests.inc();
+        self.metrics.concurrent_requests.inc();
+        
+        let response = self.http_client.send(request).await;
+        
+        self.metrics.concurrent_requests.dec();
+        
+        match &response {
+            Ok(_) => self.metrics.successful_requests.inc(),
+            Err(_) => self.metrics.failed_requests.inc(),
+        }
+        
+        response.map_err(XAIError::Http)
+    }
+
+    /// Test connection to xAI API
+    pub async fn test_connection(&self) -> Result<()> {
+        let url = format!("{}/v1/models", self.base_url);
+        
+        let mut auth_header = ArrayString::<180>::new();
+        let _ = auth_header.try_push_str("Bearer ");
+        let _ = auth_header.try_push_str(&self.api_key.load());
+        
+        let request = HttpRequest::get(&url)?
+            .header("Authorization", auth_header.as_str())
+            .header("User-Agent", "fluent-ai-xai/1.0")
+            .timeout(Duration::from_secs(10));
+            
+        let response = self.http_client.send(request).await?;
+        
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(XAIError::Authentication {
+                message: format!("Connection test failed with status: {}", response.status()),
+                retry_after: None,
+            })
+        }
     }
 
     /// Create a completion model with the given name.
     pub fn completion_model(&self, model: &str) -> CompletionModel {
         CompletionModel::new(self.clone(), model)
+    }
+    
+    /// Get current performance metrics
+    pub fn get_metrics(&self) -> (usize, usize, usize, usize) {
+        (
+            self.metrics.total_requests.get(),
+            self.metrics.successful_requests.get(),
+            self.metrics.failed_requests.get(),
+            self.metrics.concurrent_requests.get(),
+        )
     }
 }
 
@@ -397,5 +555,40 @@ pub mod xai_api_types {
         pub fn message(&self) -> String {
             format!("Code `{}`: {}", self.code, self.error)
         }
+    }
+}
+
+/// Debug implementation that doesn't expose sensitive information
+impl std::fmt::Debug for Client {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Client")
+            .field("api_key", &"[REDACTED]")
+            .field("base_url", &self.base_url)
+            .field("timeout", &self.timeout)
+            .finish()
+    }
+}
+
+/// CompletionClient trait implementation for auto-generation
+impl CompletionClient for Client {
+    type Model = CompletionModel;
+    
+    fn completion_model(&self, model: &str) -> Self::Model {
+        CompletionModel::new(self.clone(), model)
+    }
+}
+
+/// ProviderClient trait implementation for ecosystem integration
+impl ProviderClient for Client {
+    fn provider_name(&self) -> &'static str {
+        "xai"
+    }
+    
+    fn test_connection(&self) -> DomainAsyncTask<std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let client = self.clone();
+        DomainAsyncTask::spawn(async move {
+            client.test_connection().await
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        })
     }
 }

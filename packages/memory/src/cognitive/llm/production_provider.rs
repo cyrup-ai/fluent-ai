@@ -61,6 +61,7 @@ pub struct CircuitBreaker {
     success_threshold: usize,
     timeout: Duration,
     failure_count: CachePadded<std::sync::atomic::AtomicUsize>,
+    success_count: CachePadded<std::sync::atomic::AtomicUsize>,
     last_failure: CachePadded<std::sync::atomic::AtomicU64>,
 }
 
@@ -128,67 +129,67 @@ impl Clone for CachedEmbedding {
 #[derive(Debug, Clone)]
 pub struct ProviderConfig {
     /// Primary provider (OpenAI, Anthropic, etc.)
-    primary_provider: String,
+    pub primary_provider: String,
     /// Fallback providers in order of preference
-    fallback_providers: Vec<String>,
+    pub fallback_providers: Vec<String>,
     /// API keys for providers
-    api_keys: std::collections::HashMap<String, String>,
+    pub api_keys: std::collections::HashMap<String, String>,
     /// Model configurations
-    models: ModelConfig,
+    pub models: ModelConfig,
     /// Performance settings
-    performance: PerformanceConfig,
+    pub performance: PerformanceConfig,
 }
 
 /// Model configuration
 #[derive(Debug, Clone)]
 pub struct ModelConfig {
     /// Primary language model
-    language_model: String,
+    pub language_model: String,
     /// Embedding model
-    embedding_model: String,
+    pub embedding_model: String,
     /// Model-specific parameters
-    parameters: ModelParameters,
+    pub parameters: ModelParameters,
 }
 
 /// Model parameters
 #[derive(Debug, Clone)]
 pub struct ModelParameters {
     /// Temperature for text generation
-    temperature: f32,
+    pub temperature: f32,
     /// Maximum tokens
-    max_tokens: usize,
+    pub max_tokens: usize,
     /// Top-p parameter
-    top_p: f32,
+    pub top_p: f32,
     /// Frequency penalty
-    frequency_penalty: f32,
+    pub frequency_penalty: f32,
     /// Presence penalty
-    presence_penalty: f32,
+    pub presence_penalty: f32,
 }
 
 /// Performance configuration
 #[derive(Debug, Clone)]
 pub struct PerformanceConfig {
     /// Request timeout
-    timeout: Duration,
+    pub timeout: Duration,
     /// Max concurrent requests
-    max_concurrent_requests: usize,
+    pub max_concurrent_requests: usize,
     /// Cache TTL
-    cache_ttl: Duration,
+    pub cache_ttl: Duration,
     /// Retry configuration
-    retry_config: RetryConfig,
+    pub retry_config: RetryConfig,
 }
 
 /// Retry configuration
 #[derive(Debug, Clone)]
 pub struct RetryConfig {
     /// Maximum retries
-    max_retries: usize,
+    pub max_retries: usize,
     /// Base delay between retries
-    base_delay: Duration,
+    pub base_delay: Duration,
     /// Maximum delay between retries
-    max_delay: Duration,
+    pub max_delay: Duration,
     /// Exponential backoff multiplier
-    backoff_multiplier: f32,
+    pub backoff_multiplier: f32,
 }
 
 /// Request metrics for monitoring
@@ -258,6 +259,8 @@ impl ProductionLLMProvider {
         // Check cache first
         let cache_key = format!("intent:{}", query);
         if let Some(cached) = self.response_cache.get(&cache_key) {
+            // Record cache hit in metrics
+            self.provider_client.metrics.cache_hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let intent = self.parse_intent_from_cached_response(&cached)?;
             return Ok(intent);
         }
@@ -276,7 +279,7 @@ impl ProductionLLMProvider {
                 self.circuit_breaker.record_success().await;
                 Ok(intent)
             }
-            Err(e) => {
+            Err(_e) => {
                 self.circuit_breaker.record_failure().await;
                 
                 // Try fallback analysis
@@ -319,6 +322,8 @@ impl ProductionLLMProvider {
         // Check embedding cache first
         let cache_key = format!("embed:{}", text);
         if let Some(cached) = self.embedding_cache.get(&cache_key) {
+            // Record cache hit in metrics
+            self.provider_client.metrics.cache_hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             return Ok(cached.embedding.clone());
         }
 
@@ -336,7 +341,7 @@ impl ProductionLLMProvider {
                 self.circuit_breaker.record_success().await;
                 Ok(embedding)
             }
-            Err(e) => {
+            Err(_e) => {
                 self.circuit_breaker.record_failure().await;
                 
                 // Try fallback embedding
@@ -372,6 +377,8 @@ impl ProductionLLMProvider {
         // Check cache first
         let cache_key = format!("hints:{}", query);
         if let Some(cached) = self.response_cache.get(&cache_key) {
+            // Record cache hit in metrics
+            self.provider_client.metrics.cache_hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let hints = self.parse_hints_from_cached_response(&cached)?;
             return Ok(hints);
         }
@@ -637,21 +644,21 @@ impl ProductionLLMProvider {
 }
 
 impl LLMProvider for ProductionLLMProvider {
-    fn analyze_intent(
-        &self,
-        query: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<QueryIntent>> + Send + '_>> {
+    fn analyze_intent<'a>(
+        &'a self,
+        query: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<QueryIntent>> + Send + 'a>> {
         Box::pin(self.analyze_intent_impl(query))
     }
 
-    fn embed(&self, text: &str) -> Pin<Box<dyn Future<Output = Result<Vec<f32>>> + Send + '_>> {
+    fn embed<'a>(&'a self, text: &'a str) -> Pin<Box<dyn Future<Output = Result<Vec<f32>>> + Send + 'a>> {
         Box::pin(self.embed_impl(text))
     }
 
-    fn generate_hints(
-        &self,
-        query: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<String>>> + Send + '_>> {
+    fn generate_hints<'a>(
+        &'a self,
+        query: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<String>>> + Send + 'a>> {
         Box::pin(self.generate_hints_impl(query))
     }
 }
@@ -671,33 +678,40 @@ impl ProviderClient {
         let request_body = serde_json::to_vec(body)?;
         
         // Create HTTP request
-        let mut request = fluent_ai_http3::HttpRequest::new(
-            fluent_ai_http3::HttpMethod::POST, 
+        let request = fluent_ai_http3::HttpRequest::new(
+            fluent_ai_http3::HttpMethod::Post, 
             url
-        );
-        request = request.header("Content-Type", "application/json")
-            .header("Authorization", &format!("Bearer {}", 
-                self.config.api_keys.get(&self.config.primary_provider)
-                    .ok_or_else(|| anyhow::anyhow!("API key not found"))?))
-            .body(request_body)?;
+        ).header("Content-Type", "application/json")
+        .header("Authorization", &format!("Bearer {}", 
+            self.config.api_keys.get(&self.config.primary_provider)
+                .ok_or_else(|| anyhow::anyhow!("API key not found"))?))
+        .with_body(request_body);
         
         // Send request with timeout
-        let response = tokio::time::timeout(
+        let result = tokio::time::timeout(
             self.config.performance.timeout,
             self.http_client.send(request)
-        ).await??;
+        ).await;
         
-        // Collect response
-        let mut stream = response.into_stream();
-        let response_body = stream.collect().await?;
-        let response_text = String::from_utf8(response_body)?;
-        
-        // Record metrics
-        let latency = start_time.elapsed().as_millis() as u64;
-        self.metrics.average_latency_ms.store(latency, std::sync::atomic::Ordering::Relaxed);
-        self.metrics.successful_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        
-        Ok(response_text)
+        match result {
+            Ok(Ok(response)) => {
+                // Collect response - simplified approach
+                let response_body = response.body().to_vec();
+                let response_text = String::from_utf8(response_body)?;
+                
+                // Record success metrics
+                let latency = start_time.elapsed().as_millis() as u64;
+                self.metrics.average_latency_ms.store(latency, std::sync::atomic::Ordering::Relaxed);
+                self.metrics.successful_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                
+                Ok(response_text)
+            }
+            Ok(Err(_)) | Err(_) => {
+                // Record failure metrics
+                self.metrics.failed_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                Err(anyhow::anyhow!("HTTP request failed"))
+            }
+        }
     }
 }
 
@@ -709,12 +723,13 @@ impl CircuitBreaker {
             success_threshold,
             timeout,
             failure_count: CachePadded::new(std::sync::atomic::AtomicUsize::new(0)),
+            success_count: CachePadded::new(std::sync::atomic::AtomicUsize::new(0)),
             last_failure: CachePadded::new(std::sync::atomic::AtomicU64::new(0)),
         }
     }
 
     async fn can_proceed(&self) -> bool {
-        let state = self.state.read();
+        let state = self.state.read().await;
         match *state {
             CircuitState::Closed => true,
             CircuitState::Open => {
@@ -727,7 +742,7 @@ impl CircuitBreaker {
                 
                 if now - last_failure > self.timeout.as_secs() {
                     drop(state);
-                    *self.state.write() = CircuitState::HalfOpen;
+                    *self.state.write().await = CircuitState::HalfOpen;
                     true
                 } else {
                     false
@@ -738,10 +753,18 @@ impl CircuitBreaker {
     }
 
     async fn record_success(&self) {
-        let mut state = self.state.write();
+        let mut state = self.state.write().await;
         match *state {
             CircuitState::HalfOpen => {
-                *state = CircuitState::Closed;
+                let success_count = self.success_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                if success_count >= self.success_threshold {
+                    *state = CircuitState::Closed;
+                    self.failure_count.store(0, std::sync::atomic::Ordering::Relaxed);
+                    self.success_count.store(0, std::sync::atomic::Ordering::Relaxed);
+                }
+            }
+            CircuitState::Closed => {
+                // Reset failure count on successful operation
                 self.failure_count.store(0, std::sync::atomic::Ordering::Relaxed);
             }
             _ => {}
@@ -752,7 +775,7 @@ impl CircuitBreaker {
         let failure_count = self.failure_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
         
         if failure_count >= self.failure_threshold {
-            *self.state.write() = CircuitState::Open;
+            *self.state.write().await = CircuitState::Open;
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()

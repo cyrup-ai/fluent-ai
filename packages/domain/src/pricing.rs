@@ -1,12 +1,12 @@
 //! Model pricing tier classification and analysis
-//! 
+//!
 //! This module provides types and functionality for classifying and analyzing
 //! AI model pricing tiers based on cost per token.
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Pricing tier classification for cost analysis
-/// 
+///
 /// Models are classified into tiers based on their cost per 1M tokens
 /// for both input and output. This helps in quickly identifying the
 /// cost-effectiveness of different models.
@@ -14,28 +14,28 @@ use serde::{Serialize, Deserialize};
 #[serde(rename_all = "camelCase")]
 pub enum PricingTier {
     /// Ultra-low cost models (< $0.50 input, < $1.50 output per 1M tokens)
-    /// 
+    ///
     /// These are the most cost-effective models, typically smaller models
     /// with good performance for simple tasks.
     UltraLow,
-    
+
     /// Low cost models (< $1.00 input, < $3.00 output per 1M tokens)
-    /// 
+    ///
     /// Good balance of cost and capability, suitable for most production workloads.
     Low,
-    
+
     /// Medium cost models (< $5.00 input, < $15.00 output per 1M tokens)
-    /// 
+    ///
     /// More capable models with higher quality outputs, at a moderate cost.
     Medium,
-    
+
     /// High cost models (< $20.00 input, < $60.00 output per 1M tokens)
-    /// 
+    ///
     /// High-performance models for complex tasks, with correspondingly higher costs.
     High,
-    
+
     /// Premium cost models (>= $20.00 input or >= $60.00 output per 1M tokens)
-    /// 
+    ///
     /// Top-tier models with the highest capabilities and costs.
     Premium,
 }
@@ -60,11 +60,11 @@ impl std::fmt::Display for PricingTier {
 
 impl PricingTier {
     /// Classify model into pricing tier based on costs
-    /// 
+    ///
     /// # Arguments
     /// * `input_cost` - Cost per 1M input tokens in USD
     /// * `output_cost` - Cost per 1M output tokens in USD
-    /// 
+    ///
     /// # Returns
     /// * The appropriate `PricingTier` for the given costs
     pub fn classify(input_cost: f64, output_cost: f64) -> Self {
@@ -80,9 +80,9 @@ impl PricingTier {
             Self::Premium
         }
     }
-    
+
     /// Get the typical cost range for this tier
-    /// 
+    ///
     /// Returns a tuple of (min_input_cost, max_input_cost, min_output_cost, max_output_cost)
     pub fn cost_range(&self) -> (f64, f64, f64, f64) {
         match self {
@@ -93,13 +93,13 @@ impl PricingTier {
             Self::Premium => (20.0, f64::MAX, 60.0, f64::MAX),
         }
     }
-    
+
     /// Check if this tier is considered cost-effective for the given requirements
-    /// 
+    ///
     /// # Arguments
     /// * `requires_high_quality` - Whether the task requires high-quality outputs
     /// * `budget_constrained` - Whether the usage is budget-constrained
-    /// 
+    ///
     /// # Returns
     /// * `true` if this tier is recommended for the given requirements
     pub fn is_recommended(&self, requires_high_quality: bool, budget_constrained: bool) -> bool {
@@ -110,5 +110,3 @@ impl PricingTier {
         }
     }
 }
-
-

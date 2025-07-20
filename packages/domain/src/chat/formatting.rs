@@ -4,10 +4,11 @@
 //! markdown parsing, syntax highlighting, and inline formatting with SIMD-optimized
 //! performance and zero-allocation string sharing.
 
-use std::sync::Arc;
 use std::collections::HashMap;
-use thiserror::Error;
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// Message content types with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -15,22 +16,23 @@ pub enum MessageContent {
     /// Plain text content
     Plain { text: Arc<str> },
     /// Markdown formatted content
-    Markdown { content: Arc<str>, rendered_html: Option<Arc<str>> },
+    Markdown {
+        content: Arc<str>,
+        rendered_html: Option<Arc<str>>,
+    },
     /// Code block with syntax highlighting
-    Code { 
-        content: Arc<str>, 
-        language: Arc<str>, 
-        highlighted: Option<Arc<str>> 
+    Code {
+        content: Arc<str>,
+        language: Arc<str>,
+        highlighted: Option<Arc<str>>,
     },
     /// Formatted content with inline styling
-    Formatted { 
-        content: Arc<str>, 
-        styles: Arc<[FormatStyle]> 
+    Formatted {
+        content: Arc<str>,
+        styles: Arc<[FormatStyle]>,
     },
     /// Composite content with multiple parts
-    Composite { 
-        parts: Arc<[MessageContent]> 
-    },
+    Composite { parts: Arc<[MessageContent]> },
 }
 
 /// Formatting styles for inline text
@@ -92,7 +94,7 @@ impl MarkdownParser {
     #[inline]
     pub fn parse_to_html(&self, content: &str) -> FormatResult<Arc<str>> {
         let content_arc = Arc::from(content);
-        
+
         // Check cache first
         if let Some(cached) = self.cache.get(&content_arc) {
             return Ok(cached.clone());
@@ -101,10 +103,10 @@ impl MarkdownParser {
         // Parse markdown using SIMD-optimized patterns
         let html = self.parse_markdown_simd(&content_arc)?;
         let html_arc = Arc::from(html);
-        
+
         // Cache the result
         self.cache.insert(content_arc, html_arc.clone());
-        
+
         Ok(html_arc)
     }
 
@@ -114,14 +116,17 @@ impl MarkdownParser {
         let mut html = String::with_capacity(content.len() * 2);
         let bytes = content.as_bytes();
         let mut i = 0;
-        
+
         while i < bytes.len() {
             match bytes[i] {
                 b'#' => {
                     let (header_level, end) = self.parse_header(&bytes[i..]);
                     if header_level > 0 {
                         let content = self.extract_header_content(&bytes[i..end]);
-                        html.push_str(&format!("<h{}>{}</h{}>", header_level, content, header_level));
+                        html.push_str(&format!(
+                            "<h{}>{}</h{}>",
+                            header_level, content, header_level
+                        ));
                         i += end;
                     } else {
                         html.push(bytes[i] as char);
@@ -152,7 +157,10 @@ impl MarkdownParser {
                     if is_code_block {
                         let (language, content) = self.extract_code_block_content(&bytes[i..end]);
                         let highlighted = self.highlight_code(&content, &language)?;
-                        html.push_str(&format!("<pre><code class=\"language-{}\">{}</code></pre>", language, highlighted));
+                        html.push_str(&format!(
+                            "<pre><code class=\"language-{}\">{}</code></pre>",
+                            language, highlighted
+                        ));
                         i += end;
                     } else {
                         let (is_inline, end) = self.parse_inline_code(&bytes[i..]);
@@ -202,12 +210,12 @@ impl MarkdownParser {
     fn parse_header(&self, bytes: &[u8]) -> (usize, usize) {
         let mut level = 0;
         let mut i = 0;
-        
+
         while i < bytes.len() && i < 6 && bytes[i] == b'#' {
             level += 1;
             i += 1;
         }
-        
+
         if i < bytes.len() && bytes[i] == b' ' {
             // Find end of line
             while i < bytes.len() && bytes[i] != b'\n' {
@@ -229,12 +237,12 @@ impl MarkdownParser {
         if start < bytes.len() && bytes[start] == b' ' {
             start += 1;
         }
-        
+
         let mut end = start;
         while end < bytes.len() && bytes[end] != b'\n' {
             end += 1;
         }
-        
+
         String::from_utf8_lossy(&bytes[start..end]).to_string()
     }
 
@@ -264,20 +272,24 @@ impl MarkdownParser {
                 i += 1;
             }
         }
-        
+
         (EmphasisType::None, 0)
     }
 
     /// Extract emphasis content
     #[inline]
     fn extract_emphasis_content(&self, bytes: &[u8]) -> String {
-        let start = if bytes.len() > 1 && bytes[1] == b'*' { 2 } else { 1 };
-        let end = if bytes.len() > start + 1 && bytes[bytes.len() - 2] == b'*' { 
-            bytes.len() - 2 
-        } else { 
-            bytes.len() - 1 
+        let start = if bytes.len() > 1 && bytes[1] == b'*' {
+            2
+        } else {
+            1
         };
-        
+        let end = if bytes.len() > start + 1 && bytes[bytes.len() - 2] == b'*' {
+            bytes.len() - 2
+        } else {
+            bytes.len() - 1
+        };
+
         String::from_utf8_lossy(&bytes[start..end]).to_string()
     }
 
@@ -287,7 +299,7 @@ impl MarkdownParser {
         if bytes.len() < 6 {
             return (false, 0);
         }
-        
+
         if bytes[0] == b'`' && bytes[1] == b'`' && bytes[2] == b'`' {
             // Look for closing ```
             let mut i = 3;
@@ -298,7 +310,7 @@ impl MarkdownParser {
                 i += 1;
             }
         }
-        
+
         (false, 0)
     }
 
@@ -308,7 +320,7 @@ impl MarkdownParser {
         if bytes.len() < 2 {
             return (false, 0);
         }
-        
+
         if bytes[0] == b'`' {
             // Look for closing `
             let mut i = 1;
@@ -319,7 +331,7 @@ impl MarkdownParser {
                 i += 1;
             }
         }
-        
+
         (false, 0)
     }
 
@@ -328,21 +340,21 @@ impl MarkdownParser {
     fn extract_code_block_content(&self, bytes: &[u8]) -> (String, String) {
         let mut start = 3; // Skip ```
         let mut lang_end = start;
-        
+
         // Find language specification
         while lang_end < bytes.len() && bytes[lang_end] != b'\n' {
             lang_end += 1;
         }
-        
+
         let language = if lang_end > start {
             String::from_utf8_lossy(&bytes[start..lang_end]).to_string()
         } else {
             String::new()
         };
-        
+
         start = lang_end + 1; // Skip newline
         let end = bytes.len() - 3; // Skip closing ```
-        
+
         let content = String::from_utf8_lossy(&bytes[start..end]).to_string();
         (language, content)
     }
@@ -361,11 +373,11 @@ impl MarkdownParser {
         if bytes.len() < 4 {
             return (false, 0);
         }
-        
+
         // Look for [text](url) pattern
         let mut i = 1;
         let mut text_end = 0;
-        
+
         // Find closing ]
         while i < bytes.len() {
             if bytes[i] == b']' {
@@ -374,11 +386,11 @@ impl MarkdownParser {
             }
             i += 1;
         }
-        
+
         if text_end == 0 || text_end + 1 >= bytes.len() || bytes[text_end + 1] != b'(' {
             return (false, 0);
         }
-        
+
         // Find closing )
         i = text_end + 2;
         while i < bytes.len() {
@@ -387,7 +399,7 @@ impl MarkdownParser {
             }
             i += 1;
         }
-        
+
         (false, 0)
     }
 
@@ -398,17 +410,17 @@ impl MarkdownParser {
         while text_end < bytes.len() && bytes[text_end] != b']' {
             text_end += 1;
         }
-        
+
         let text = String::from_utf8_lossy(&bytes[1..text_end]).to_string();
-        
+
         let url_start = text_end + 2; // Skip ](
         let mut url_end = url_start;
         while url_end < bytes.len() && bytes[url_end] != b')' {
             url_end += 1;
         }
-        
+
         let url = String::from_utf8_lossy(&bytes[url_start..url_end]).to_string();
-        
+
         (text, url)
     }
 
@@ -437,13 +449,13 @@ impl MarkdownParser {
             "break", "continue", "return", "struct", "enum", "impl", "trait", "pub", "use", "mod",
             "crate", "self", "Self", "super", "async", "await", "move", "ref", "unsafe", "extern",
         ];
-        
+
         let types = &[
             "i8", "i16", "i32", "i64", "i128", "isize", "u8", "u16", "u32", "u64", "u128", "usize",
             "f32", "f64", "bool", "char", "str", "String", "Vec", "HashMap", "Option", "Result",
             "Box", "Arc", "Rc", "RefCell", "Cell", "Mutex", "RwLock",
         ];
-        
+
         self.highlight_with_keywords(content, keywords, types)
     }
 
@@ -451,16 +463,42 @@ impl MarkdownParser {
     #[inline]
     fn highlight_javascript(&self, content: &str) -> String {
         let keywords = &[
-            "function", "var", "let", "const", "if", "else", "for", "while", "do", "break", "continue",
-            "return", "try", "catch", "finally", "throw", "new", "this", "super", "class", "extends",
-            "import", "export", "default", "async", "await", "yield", "typeof", "instanceof",
+            "function",
+            "var",
+            "let",
+            "const",
+            "if",
+            "else",
+            "for",
+            "while",
+            "do",
+            "break",
+            "continue",
+            "return",
+            "try",
+            "catch",
+            "finally",
+            "throw",
+            "new",
+            "this",
+            "super",
+            "class",
+            "extends",
+            "import",
+            "export",
+            "default",
+            "async",
+            "await",
+            "yield",
+            "typeof",
+            "instanceof",
         ];
-        
+
         let types = &[
-            "Object", "Array", "String", "Number", "Boolean", "Function", "Date", "RegExp", "Error",
-            "Promise", "Map", "Set", "WeakMap", "WeakSet", "Symbol", "BigInt",
+            "Object", "Array", "String", "Number", "Boolean", "Function", "Date", "RegExp",
+            "Error", "Promise", "Map", "Set", "WeakMap", "WeakSet", "Symbol", "BigInt",
         ];
-        
+
         self.highlight_with_keywords(content, keywords, types)
     }
 
@@ -469,15 +507,33 @@ impl MarkdownParser {
     fn highlight_python(&self, content: &str) -> String {
         let keywords = &[
             "def", "class", "if", "elif", "else", "for", "while", "break", "continue", "return",
-            "try", "except", "finally", "raise", "with", "as", "import", "from", "global", "nonlocal",
-            "lambda", "yield", "assert", "del", "pass", "async", "await", "and", "or", "not", "in", "is",
+            "try", "except", "finally", "raise", "with", "as", "import", "from", "global",
+            "nonlocal", "lambda", "yield", "assert", "del", "pass", "async", "await", "and", "or",
+            "not", "in", "is",
         ];
-        
+
         let types = &[
-            "int", "float", "str", "bool", "list", "dict", "set", "tuple", "bytes", "bytearray",
-            "frozenset", "range", "enumerate", "zip", "filter", "map", "reduce", "len", "type",
+            "int",
+            "float",
+            "str",
+            "bool",
+            "list",
+            "dict",
+            "set",
+            "tuple",
+            "bytes",
+            "bytearray",
+            "frozenset",
+            "range",
+            "enumerate",
+            "zip",
+            "filter",
+            "map",
+            "reduce",
+            "len",
+            "type",
         ];
-        
+
         self.highlight_with_keywords(content, keywords, types)
     }
 
@@ -485,20 +541,90 @@ impl MarkdownParser {
     #[inline]
     fn highlight_sql(&self, content: &str) -> String {
         let keywords = &[
-            "SELECT", "FROM", "WHERE", "JOIN", "INNER", "LEFT", "RIGHT", "FULL", "OUTER", "ON",
-            "GROUP", "BY", "HAVING", "ORDER", "ASC", "DESC", "LIMIT", "OFFSET", "UNION", "ALL",
-            "INSERT", "INTO", "VALUES", "UPDATE", "SET", "DELETE", "CREATE", "TABLE", "DROP",
-            "ALTER", "INDEX", "PRIMARY", "KEY", "FOREIGN", "REFERENCES", "NOT", "NULL", "UNIQUE",
-            "DEFAULT", "CHECK", "CONSTRAINT", "AUTO_INCREMENT", "SERIAL", "TIMESTAMP", "DATE",
-            "TIME", "DATETIME", "VARCHAR", "CHAR", "TEXT", "INT", "INTEGER", "BIGINT", "DECIMAL",
-            "FLOAT", "DOUBLE", "BOOLEAN", "BOOL", "BINARY", "VARBINARY", "BLOB", "CLOB",
+            "SELECT",
+            "FROM",
+            "WHERE",
+            "JOIN",
+            "INNER",
+            "LEFT",
+            "RIGHT",
+            "FULL",
+            "OUTER",
+            "ON",
+            "GROUP",
+            "BY",
+            "HAVING",
+            "ORDER",
+            "ASC",
+            "DESC",
+            "LIMIT",
+            "OFFSET",
+            "UNION",
+            "ALL",
+            "INSERT",
+            "INTO",
+            "VALUES",
+            "UPDATE",
+            "SET",
+            "DELETE",
+            "CREATE",
+            "TABLE",
+            "DROP",
+            "ALTER",
+            "INDEX",
+            "PRIMARY",
+            "KEY",
+            "FOREIGN",
+            "REFERENCES",
+            "NOT",
+            "NULL",
+            "UNIQUE",
+            "DEFAULT",
+            "CHECK",
+            "CONSTRAINT",
+            "AUTO_INCREMENT",
+            "SERIAL",
+            "TIMESTAMP",
+            "DATE",
+            "TIME",
+            "DATETIME",
+            "VARCHAR",
+            "CHAR",
+            "TEXT",
+            "INT",
+            "INTEGER",
+            "BIGINT",
+            "DECIMAL",
+            "FLOAT",
+            "DOUBLE",
+            "BOOLEAN",
+            "BOOL",
+            "BINARY",
+            "VARBINARY",
+            "BLOB",
+            "CLOB",
         ];
-        
+
         let types = &[
-            "VARCHAR", "CHAR", "TEXT", "INT", "INTEGER", "BIGINT", "DECIMAL", "FLOAT", "DOUBLE",
-            "BOOLEAN", "BOOL", "DATE", "TIME", "DATETIME", "TIMESTAMP", "BINARY", "VARBINARY",
+            "VARCHAR",
+            "CHAR",
+            "TEXT",
+            "INT",
+            "INTEGER",
+            "BIGINT",
+            "DECIMAL",
+            "FLOAT",
+            "DOUBLE",
+            "BOOLEAN",
+            "BOOL",
+            "DATE",
+            "TIME",
+            "DATETIME",
+            "TIMESTAMP",
+            "BINARY",
+            "VARBINARY",
         ];
-        
+
         self.highlight_with_keywords(content, keywords, types)
     }
 
@@ -509,14 +635,14 @@ impl MarkdownParser {
         let mut in_string = false;
         let mut escape_next = false;
         let chars: Vec<char> = content.chars().collect();
-        
+
         for &ch in &chars {
             if escape_next {
                 result.push(ch);
                 escape_next = false;
                 continue;
             }
-            
+
             match ch {
                 '"' => {
                     if !in_string {
@@ -541,7 +667,9 @@ impl MarkdownParser {
                     result.push_str("<span class=\"json-comma\">,</span>");
                 }
                 _ => {
-                    if !in_string && (ch.is_ascii_digit() || ch == '-' || ch == '.' || ch == 'e' || ch == 'E') {
+                    if !in_string
+                        && (ch.is_ascii_digit() || ch == '-' || ch == '.' || ch == 'e' || ch == 'E')
+                    {
                         result.push_str(&format!("<span class=\"json-number\">{}</span>", ch));
                     } else if !in_string && (ch == 't' || ch == 'f' || ch == 'n') {
                         // Handle true, false, null
@@ -552,7 +680,7 @@ impl MarkdownParser {
                 }
             }
         }
-        
+
         result
     }
 
@@ -561,16 +689,22 @@ impl MarkdownParser {
     fn highlight_yaml(&self, content: &str) -> String {
         let mut result = String::with_capacity(content.len() * 2);
         let lines = content.lines();
-        
+
         for line in lines {
             let trimmed = line.trim_start();
             if trimmed.starts_with('#') {
-                result.push_str(&format!("<span class=\"yaml-comment\">{}</span>\n", html_escape::encode_text(line)));
+                result.push_str(&format!(
+                    "<span class=\"yaml-comment\">{}</span>\n",
+                    html_escape::encode_text(line)
+                ));
             } else if trimmed.contains(':') {
                 let parts: Vec<&str> = line.splitn(2, ':').collect();
                 if parts.len() == 2 {
-                    result.push_str(&format!("<span class=\"yaml-key\">{}</span>:<span class=\"yaml-value\">{}</span>\n", 
-                        html_escape::encode_text(parts[0]), html_escape::encode_text(parts[1])));
+                    result.push_str(&format!(
+                        "<span class=\"yaml-key\">{}</span>:<span class=\"yaml-value\">{}</span>\n",
+                        html_escape::encode_text(parts[0]),
+                        html_escape::encode_text(parts[1])
+                    ));
                 } else {
                     result.push_str(&format!("{}\n", html_escape::encode_text(line)));
                 }
@@ -578,7 +712,7 @@ impl MarkdownParser {
                 result.push_str(&format!("{}\n", html_escape::encode_text(line)));
             }
         }
-        
+
         result
     }
 
@@ -587,18 +721,27 @@ impl MarkdownParser {
     fn highlight_toml(&self, content: &str) -> String {
         let mut result = String::with_capacity(content.len() * 2);
         let lines = content.lines();
-        
+
         for line in lines {
             let trimmed = line.trim_start();
             if trimmed.starts_with('#') {
-                result.push_str(&format!("<span class=\"toml-comment\">{}</span>\n", html_escape::encode_text(line)));
+                result.push_str(&format!(
+                    "<span class=\"toml-comment\">{}</span>\n",
+                    html_escape::encode_text(line)
+                ));
             } else if trimmed.starts_with('[') && trimmed.ends_with(']') {
-                result.push_str(&format!("<span class=\"toml-section\">{}</span>\n", html_escape::encode_text(line)));
+                result.push_str(&format!(
+                    "<span class=\"toml-section\">{}</span>\n",
+                    html_escape::encode_text(line)
+                ));
             } else if trimmed.contains('=') {
                 let parts: Vec<&str> = line.splitn(2, '=').collect();
                 if parts.len() == 2 {
-                    result.push_str(&format!("<span class=\"toml-key\">{}</span>=<span class=\"toml-value\">{}</span>\n", 
-                        html_escape::encode_text(parts[0]), html_escape::encode_text(parts[1])));
+                    result.push_str(&format!(
+                        "<span class=\"toml-key\">{}</span>=<span class=\"toml-value\">{}</span>\n",
+                        html_escape::encode_text(parts[0]),
+                        html_escape::encode_text(parts[1])
+                    ));
                 } else {
                     result.push_str(&format!("{}\n", html_escape::encode_text(line)));
                 }
@@ -606,7 +749,7 @@ impl MarkdownParser {
                 result.push_str(&format!("{}\n", html_escape::encode_text(line)));
             }
         }
-        
+
         result
     }
 
@@ -626,7 +769,7 @@ impl MarkdownParser {
         let mut in_string = false;
         let mut in_comment = false;
         let mut string_char = '"';
-        
+
         while let Some(ch) = chars.next() {
             match ch {
                 '"' | '\'' if !in_comment => {
@@ -664,9 +807,13 @@ impl MarkdownParser {
                 _ => {
                     if !current_word.is_empty() && !in_string && !in_comment {
                         if keywords.contains(&current_word.as_str()) {
-                            result.push_str(&format!("<span class=\"keyword\">{}</span>", current_word));
+                            result.push_str(&format!(
+                                "<span class=\"keyword\">{}</span>",
+                                current_word
+                            ));
                         } else if types.contains(&current_word.as_str()) {
-                            result.push_str(&format!("<span class=\"type\">{}</span>", current_word));
+                            result
+                                .push_str(&format!("<span class=\"type\">{}</span>", current_word));
                         } else {
                             result.push_str(&current_word);
                         }
@@ -676,7 +823,7 @@ impl MarkdownParser {
                 }
             }
         }
-        
+
         // Handle any remaining word
         if !current_word.is_empty() {
             if keywords.contains(&current_word.as_str()) {
@@ -687,7 +834,7 @@ impl MarkdownParser {
                 result.push_str(&current_word);
             }
         }
-        
+
         result
     }
 }
@@ -717,13 +864,13 @@ impl SyntaxHighlighter {
     #[inline]
     pub fn new() -> Self {
         let mut parsers: HashMap<Arc<str>, Box<dyn LanguageParser + Send + Sync>> = HashMap::new();
-        
+
         // Register built-in language parsers
         parsers.insert(Arc::from("rust"), Box::new(RustParser::new()));
         parsers.insert(Arc::from("javascript"), Box::new(JavaScriptParser::new()));
         parsers.insert(Arc::from("python"), Box::new(PythonParser::new()));
         parsers.insert(Arc::from("sql"), Box::new(SqlParser::new()));
-        
+
         Self { parsers }
     }
 
@@ -731,7 +878,7 @@ impl SyntaxHighlighter {
     #[inline]
     pub fn highlight(&self, content: &str, language: &str) -> FormatResult<Arc<str>> {
         let language_arc = Arc::from(language);
-        
+
         if let Some(parser) = self.parsers.get(&language_arc) {
             let highlighted = parser.highlight(content)?;
             Ok(Arc::from(highlighted))
@@ -743,7 +890,11 @@ impl SyntaxHighlighter {
 
     /// Register a new language parser
     #[inline]
-    pub fn register_parser(&mut self, language: Arc<str>, parser: Box<dyn LanguageParser + Send + Sync>) {
+    pub fn register_parser(
+        &mut self,
+        language: Arc<str>,
+        parser: Box<dyn LanguageParser + Send + Sync>,
+    ) {
         self.parsers.insert(language, parser);
     }
 }
@@ -847,14 +998,21 @@ impl MessageFormatter {
     pub fn format(&self, content: &MessageContent) -> FormatResult<Arc<str>> {
         match content {
             MessageContent::Plain { text } => Ok(text.clone()),
-            MessageContent::Markdown { content, rendered_html } => {
+            MessageContent::Markdown {
+                content,
+                rendered_html,
+            } => {
                 if let Some(html) = rendered_html {
                     Ok(html.clone())
                 } else {
                     self.markdown_parser.parse_to_html(content)
                 }
             }
-            MessageContent::Code { content, language, highlighted } => {
+            MessageContent::Code {
+                content,
+                language,
+                highlighted,
+            } => {
                 if let Some(html) = highlighted {
                     Ok(html.clone())
                 } else {
@@ -864,26 +1022,28 @@ impl MessageFormatter {
             MessageContent::Formatted { content, styles } => {
                 self.apply_inline_styles(content, styles)
             }
-            MessageContent::Composite { parts } => {
-                self.format_composite(parts)
-            }
+            MessageContent::Composite { parts } => self.format_composite(parts),
         }
     }
 
     /// Apply inline styles to content
     #[inline]
-    fn apply_inline_styles(&self, content: &Arc<str>, styles: &[FormatStyle]) -> FormatResult<Arc<str>> {
+    fn apply_inline_styles(
+        &self,
+        content: &Arc<str>,
+        styles: &[FormatStyle],
+    ) -> FormatResult<Arc<str>> {
         let mut result = String::with_capacity(content.len() * 2);
         let mut last_end = 0;
-        
+
         // Sort styles by start position
         let mut sorted_styles = styles.to_vec();
         sorted_styles.sort_by_key(|s| s.start);
-        
+
         for style in sorted_styles {
             // Add content before this style
             result.push_str(&content[last_end..style.start]);
-            
+
             // Add opening tag
             match &style.style {
                 StyleType::Bold => result.push_str("<strong>"),
@@ -892,13 +1052,17 @@ impl MessageFormatter {
                 StyleType::Strikethrough => result.push_str("<del>"),
                 StyleType::Code => result.push_str("<code>"),
                 StyleType::Link { url } => result.push_str(&format!("<a href=\"{}\">", url)),
-                StyleType::Color { rgb } => result.push_str(&format!("<span style=\"color: #{:06x}\">", rgb)),
-                StyleType::Background { rgb } => result.push_str(&format!("<span style=\"background-color: #{:06x}\">", rgb)),
+                StyleType::Color { rgb } => {
+                    result.push_str(&format!("<span style=\"color: #{:06x}\">", rgb))
+                }
+                StyleType::Background { rgb } => {
+                    result.push_str(&format!("<span style=\"background-color: #{:06x}\">", rgb))
+                }
             }
-            
+
             // Add styled content
             result.push_str(&content[style.start..style.end]);
-            
+
             // Add closing tag
             match &style.style {
                 StyleType::Bold => result.push_str("</strong>"),
@@ -907,15 +1071,17 @@ impl MessageFormatter {
                 StyleType::Strikethrough => result.push_str("</del>"),
                 StyleType::Code => result.push_str("</code>"),
                 StyleType::Link { .. } => result.push_str("</a>"),
-                StyleType::Color { .. } | StyleType::Background { .. } => result.push_str("</span>"),
+                StyleType::Color { .. } | StyleType::Background { .. } => {
+                    result.push_str("</span>")
+                }
             }
-            
+
             last_end = style.end;
         }
-        
+
         // Add remaining content
         result.push_str(&content[last_end..]);
-        
+
         Ok(Arc::from(result))
     }
 
@@ -923,12 +1089,12 @@ impl MessageFormatter {
     #[inline]
     fn format_composite(&self, parts: &[MessageContent]) -> FormatResult<Arc<str>> {
         let mut result = String::new();
-        
+
         for part in parts {
             let formatted = self.format(part)?;
             result.push_str(&formatted);
         }
-        
+
         Ok(Arc::from(result))
     }
 }
@@ -949,28 +1115,28 @@ impl MessageContent {
     /// Create markdown content
     #[inline]
     pub fn markdown(content: impl Into<Arc<str>>) -> Self {
-        Self::Markdown { 
-            content: content.into(), 
-            rendered_html: None 
+        Self::Markdown {
+            content: content.into(),
+            rendered_html: None,
         }
     }
 
     /// Create code content
     #[inline]
     pub fn code(content: impl Into<Arc<str>>, language: impl Into<Arc<str>>) -> Self {
-        Self::Code { 
-            content: content.into(), 
-            language: language.into(), 
-            highlighted: None 
+        Self::Code {
+            content: content.into(),
+            language: language.into(),
+            highlighted: None,
         }
     }
 
     /// Create formatted content
     #[inline]
     pub fn formatted(content: impl Into<Arc<str>>, styles: Arc<[FormatStyle]>) -> Self {
-        Self::Formatted { 
-            content: content.into(), 
-            styles 
+        Self::Formatted {
+            content: content.into(),
+            styles,
         }
     }
 
@@ -1046,13 +1212,13 @@ impl MessageContentBuilder {
         let start = self.content.len();
         self.content.push_str(text);
         let end = self.content.len();
-        
+
         self.styles.push(FormatStyle {
             start,
             end,
             style: StyleType::Bold,
         });
-        
+
         self
     }
 
@@ -1062,13 +1228,13 @@ impl MessageContentBuilder {
         let start = self.content.len();
         self.content.push_str(text);
         let end = self.content.len();
-        
+
         self.styles.push(FormatStyle {
             start,
             end,
             style: StyleType::Italic,
         });
-        
+
         self
     }
 
@@ -1078,13 +1244,13 @@ impl MessageContentBuilder {
         let start = self.content.len();
         self.content.push_str(text);
         let end = self.content.len();
-        
+
         self.styles.push(FormatStyle {
             start,
             end,
             style: StyleType::Underline,
         });
-        
+
         self
     }
 
@@ -1094,13 +1260,13 @@ impl MessageContentBuilder {
         let start = self.content.len();
         self.content.push_str(text);
         let end = self.content.len();
-        
+
         self.styles.push(FormatStyle {
             start,
             end,
             style: StyleType::Strikethrough,
         });
-        
+
         self
     }
 
@@ -1110,13 +1276,13 @@ impl MessageContentBuilder {
         let start = self.content.len();
         self.content.push_str(text);
         let end = self.content.len();
-        
+
         self.styles.push(FormatStyle {
             start,
             end,
             style: StyleType::Code,
         });
-        
+
         self
     }
 
@@ -1126,13 +1292,13 @@ impl MessageContentBuilder {
         let start = self.content.len();
         self.content.push_str(text);
         let end = self.content.len();
-        
+
         self.styles.push(FormatStyle {
             start,
             end,
             style: StyleType::Link { url: url.into() },
         });
-        
+
         self
     }
 
@@ -1142,13 +1308,13 @@ impl MessageContentBuilder {
         let start = self.content.len();
         self.content.push_str(text);
         let end = self.content.len();
-        
+
         self.styles.push(FormatStyle {
             start,
             end,
             style: StyleType::Color { rgb },
         });
-        
+
         self
     }
 
@@ -1158,23 +1324,20 @@ impl MessageContentBuilder {
         let start = self.content.len();
         self.content.push_str(text);
         let end = self.content.len();
-        
+
         self.styles.push(FormatStyle {
             start,
             end,
             style: StyleType::Background { rgb },
         });
-        
+
         self
     }
 
     /// Build the formatted message content
     #[inline]
     pub fn build(self) -> MessageContent {
-        MessageContent::formatted(
-            Arc::from(self.content),
-            Arc::from(self.styles),
-        )
+        MessageContent::formatted(Arc::from(self.content), Arc::from(self.styles))
     }
 }
 
@@ -1185,7 +1348,7 @@ impl Default for MessageContentBuilder {
 }
 
 /// Global message formatter instance
-static MESSAGE_FORMATTER: once_cell::sync::Lazy<MessageFormatter> = 
+static MESSAGE_FORMATTER: once_cell::sync::Lazy<MessageFormatter> =
     once_cell::sync::Lazy::new(|| MessageFormatter::new());
 
 /// Format message content using the global formatter
@@ -1203,5 +1366,7 @@ pub fn parse_markdown(content: &str) -> FormatResult<Arc<str>> {
 /// Highlight code using the global formatter
 #[inline]
 pub fn highlight_code(content: &str, language: &str) -> FormatResult<Arc<str>> {
-    MESSAGE_FORMATTER.syntax_highlighter.highlight(content, language)
+    MESSAGE_FORMATTER
+        .syntax_highlighter
+        .highlight(content, language)
 }

@@ -84,6 +84,48 @@ pub use platform::{
 };
 
 // ============================================================================
+// Error handling
+// ============================================================================
+
+pub mod error;
+pub use error::{ExecError, StorageError};
+
+// ============================================================================
+// Configuration and utilities
+// ============================================================================
+
+pub mod config;
+pub use config::{FileSystem, RamdiskConfig};
+
+pub mod exec;
+pub use exec::{exec_go, exec_js, exec_python, exec_rust, exec_bash};
+
+pub mod ramdisk;
+pub use ramdisk::{create_ramdisk, remove_ramdisk, get_watched_dir, create_secure_ramdisk};
+
+pub mod metadata;
+pub use metadata::MetadataManager;
+
+pub mod sandbox;
+
+pub mod jail;
+
+pub mod state;
+pub use state::PipelineEvent;
+
+pub mod firecracker;
+pub use firecracker::{FirecrackerVM, create_firecracker_environment, is_firecracker_available};
+
+pub mod task;
+pub use task::{ExecutionPool, ExecutionTask};
+
+// Platform-specific modules
+#[cfg(target_os = "macos")]
+pub mod macos;
+#[cfg(target_os = "macos")]
+pub use macos::MacosRamdisk;
+
+// ============================================================================
 // Global instance manager
 // ============================================================================
 

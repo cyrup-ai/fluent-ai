@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use tracing::{error, info, warn};
 
+use crate::sandbox::safe_path_to_string;
+
 pub struct LinuxRamdisk;
 
 impl LinuxRamdisk {
@@ -803,8 +805,8 @@ impl crate::platform::RamdiskPlatform for LinuxRamdisk {
             return Ok(false);
         }
         let mounts = self.get_mounted_filesystems()?;
-        let mount_point_str = mount_point.to_string_lossy();
-        Ok(mounts.iter().any(|m| m.contains(mount_point_str.as_ref()))
+        let mount_point_str = safe_path_to_string(mount_point).map_err(|e| StorageError::PathInvalid(e.to_string()))?;
+        Ok(mounts.iter().any(|m| m.contains(&mount_point_str))
             || self.is_mount_point(mount_point)?)
     }
 
@@ -813,7 +815,7 @@ impl crate::platform::RamdiskPlatform for LinuxRamdisk {
     }
 
     fn remove(&self, mount_point: &Path) -> Result<(), StorageError> {
-        let mount_point_str = mount_point.to_string_lossy();
+        let mount_point_str = safe_path_to_string(mount_point).map_err(|e| StorageError::PathInvalid(e.to_string()))?;
         info!("Attempting to unmount {}", mount_point_str);
 
         // First try without sudo
@@ -827,7 +829,7 @@ impl crate::platform::RamdiskPlatform for LinuxRamdisk {
         // If that fails, try with sudo
         if !unmount_success {
             info!("Regular unmount failed, trying with sudo");
-            let sudo_result = Self::run_with_sudo("umount", &[mount_point_str.as_ref()])?;
+            let sudo_result = Self::run_with_sudo("umount", &[&mount_point_str])?;
 
             if !sudo_result {
                 error!("Unmount command failed even with sudo");

@@ -102,6 +102,129 @@ impl CognitiveMemoryNode {
             || self.evolution_metadata.is_some()
             || !self.attention_weights.is_empty()
     }
+
+    /// Get the enhancement level of this cognitive memory node
+    pub fn enhancement_level(&self) -> Option<f32> {
+        if !self.is_enhanced() {
+            return None;
+        }
+
+        let mut enhancement_score = 0.0f32;
+        
+        // Quantum signature contributes to enhancement
+        if let Some(ref signature) = self.quantum_signature {
+            enhancement_score += signature.collapse_probability * 0.4;
+        }
+        
+        // Evolution metadata contributes to enhancement  
+        if let Some(ref evolution) = self.evolution_metadata {
+            enhancement_score += evolution.fitness_score * 0.3;
+        }
+        
+        // Attention weights contribute to enhancement
+        if !self.attention_weights.is_empty() {
+            let avg_attention = self.attention_weights.iter().sum::<f32>() / self.attention_weights.len() as f32;
+            enhancement_score += avg_attention * 0.3;
+        }
+        
+        Some(enhancement_score.clamp(0.0, 1.0))
+    }
+
+    /// Get the confidence score of this cognitive memory node
+    pub fn confidence_score(&self) -> Option<f32> {
+        // Base confidence from cognitive state
+        let base_confidence = self.cognitive_state.confidence;
+        
+        // Adjust based on quantum coherence
+        let quantum_adjustment = if let Some(ref signature) = self.quantum_signature {
+            signature.collapse_probability * 0.2
+        } else {
+            0.0
+        };
+        
+        // Adjust based on evolution fitness
+        let evolution_adjustment = if let Some(ref evolution) = self.evolution_metadata {
+            evolution.fitness_score * 0.1
+        } else {
+            0.0
+        };
+        
+        Some((base_confidence + quantum_adjustment + evolution_adjustment).clamp(0.0, 1.0))
+    }
+
+    /// Get the complexity estimate of this cognitive memory node
+    pub fn complexity_estimate(&self) -> Option<f32> {
+        let mut complexity = 0.0f32;
+        
+        // Base complexity from semantic relationships
+        complexity += self.semantic_relationships.len() as f32 * 0.1;
+        
+        // Quantum signature adds complexity
+        if let Some(ref signature) = self.quantum_signature {
+            complexity += signature.coherence_fingerprint.len() as f32 * 0.05;
+        }
+        
+        // Attention weights dimension adds complexity
+        complexity += self.attention_weights.len() as f32 * 0.02;
+        
+        // Evolution metadata adds complexity
+        if self.evolution_metadata.is_some() {
+            complexity += 0.3;
+        }
+        
+        Some(complexity.clamp(0.0, 1.0))
+    }
+
+    /// Get cognitive embedding from this memory node
+    pub fn get_cognitive_embedding(&self) -> Option<Vec<f32>> {
+        if !self.is_enhanced() {
+            return None;
+        }
+        
+        let mut embedding = Vec::with_capacity(512);
+        
+        // Start with cognitive state activation pattern
+        embedding.extend_from_slice(&self.cognitive_state.activation_pattern);
+        
+        // Add quantum signature if available
+        if let Some(ref signature) = self.quantum_signature {
+            embedding.extend_from_slice(&signature.coherence_fingerprint);
+        }
+        
+        // Add attention weights
+        embedding.extend_from_slice(&self.attention_weights);
+        
+        // Pad or truncate to standard size
+        embedding.resize(512, 0.0);
+        
+        Some(embedding)
+    }
+
+    /// Get attention patterns from this memory node
+    pub fn get_attention_patterns(&self) -> Option<HashMap<String, f32>> {
+        if self.attention_weights.is_empty() {
+            return None;
+        }
+        
+        let mut patterns = HashMap::new();
+        
+        // Create attention pattern map from weights
+        for (i, &weight) in self.attention_weights.iter().enumerate() {
+            patterns.insert(format!("attention_head_{}", i), weight);
+        }
+        
+        // Add cognitive state attention weights
+        for (i, &weight) in self.cognitive_state.attention_weights.iter().enumerate() {
+            patterns.insert(format!("cognitive_attention_{}", i), weight);
+        }
+        
+        // Add meta-information
+        patterns.insert("meta_awareness".to_string(), self.cognitive_state.meta_awareness);
+        patterns.insert("confidence".to_string(), self.cognitive_state.confidence);
+        patterns.insert("uncertainty".to_string(), self.cognitive_state.uncertainty);
+        
+        Some(patterns)
+    }
 }
 
 impl From<crate::memory::MemoryNode> for CognitiveMemoryNode {

@@ -3,8 +3,9 @@
 //! Provides comprehensive type definitions for the command system with zero-allocation patterns
 //! and blazing-fast serialization/deserialization.
 
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -36,21 +37,21 @@ pub type CommandResult<T> = Result<T, CommandError>;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ChatCommand {
     /// Show help information
-    Help { 
+    Help {
         /// Optional command to get help for
         command: Option<Arc<str>>,
         /// Show extended help
         extended: bool,
     },
     /// Clear chat history
-    Clear { 
+    Clear {
         /// Confirm the action
         confirm: bool,
         /// Keep last N messages
         keep_last: Option<usize>,
     },
     /// Export conversation
-    Export { 
+    Export {
         /// Export format (json, markdown, pdf, html)
         format: Arc<str>,
         /// Output file path
@@ -59,7 +60,7 @@ pub enum ChatCommand {
         include_metadata: bool,
     },
     /// Modify configuration
-    Config { 
+    Config {
         /// Configuration key
         key: Option<Arc<str>>,
         /// Configuration value
@@ -70,7 +71,7 @@ pub enum ChatCommand {
         reset: bool,
     },
     /// Template operations
-    Template { 
+    Template {
         /// Template action (create, use, list, delete)
         action: TemplateAction,
         /// Template name
@@ -81,7 +82,7 @@ pub enum ChatCommand {
         variables: HashMap<Arc<str>, Arc<str>>,
     },
     /// Macro operations
-    Macro { 
+    Macro {
         /// Macro action (record, play, list, delete)
         action: MacroAction,
         /// Macro name
@@ -90,7 +91,7 @@ pub enum ChatCommand {
         auto_execute: bool,
     },
     /// Search chat history
-    Search { 
+    Search {
         /// Search query
         query: Arc<str>,
         /// Search scope (all, current, recent)
@@ -101,7 +102,7 @@ pub enum ChatCommand {
         include_context: bool,
     },
     /// Branch conversation
-    Branch { 
+    Branch {
         /// Branch action (create, switch, merge, delete)
         action: BranchAction,
         /// Branch name
@@ -110,7 +111,7 @@ pub enum ChatCommand {
         source: Option<Arc<str>>,
     },
     /// Session management
-    Session { 
+    Session {
         /// Session action (save, load, list, delete)
         action: SessionAction,
         /// Session name
@@ -119,7 +120,7 @@ pub enum ChatCommand {
         include_config: bool,
     },
     /// Tool integration
-    Tool { 
+    Tool {
         /// Tool action (list, install, remove, execute)
         action: ToolAction,
         /// Tool name
@@ -128,7 +129,7 @@ pub enum ChatCommand {
         args: HashMap<Arc<str>, Arc<str>>,
     },
     /// Statistics and analytics
-    Stats { 
+    Stats {
         /// Statistics type (usage, performance, history, tokens, costs, errors)
         stat_type: StatsType,
         /// Time period (day, week, month, all)
@@ -137,7 +138,7 @@ pub enum ChatCommand {
         detailed: bool,
     },
     /// Theme and appearance
-    Theme { 
+    Theme {
         /// Theme action (set, list, create, export)
         action: ThemeAction,
         /// Theme name
@@ -146,7 +147,7 @@ pub enum ChatCommand {
         properties: HashMap<Arc<str>, Arc<str>>,
     },
     /// Debugging and diagnostics
-    Debug { 
+    Debug {
         /// Debug action (info, logs, performance, memory)
         action: DebugAction,
         /// Debug level

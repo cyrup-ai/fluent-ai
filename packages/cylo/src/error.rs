@@ -87,25 +87,6 @@ pub enum SandboxError {
     RuntimeNotFound { runtime: Arc<str> },
 }
 
-impl std::fmt::Display for SandboxError {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SandboxError::ConfigurationFailed { detail } => write!(f, "Configuration failed: {}", detail),
-            SandboxError::EnvironmentSetup { detail } => write!(f, "Environment setup failed: {}", detail),
-            SandboxError::ProcessLaunch { detail } => write!(f, "Process launch failed: {}", detail),
-            SandboxError::ResourceExhausted { resource } => write!(f, "Resource exhausted: {}", resource),
-            SandboxError::PermissionDenied { operation } => write!(f, "Permission denied: {}", operation),
-            SandboxError::IoError { kind, detail } => write!(f, "IO error ({:?}): {}", kind, detail),
-            SandboxError::CommandNotFound { command } => write!(f, "Command not found: {}", command),
-            SandboxError::EnvironmentInvalid { detail } => write!(f, "Environment invalid: {}", detail),
-            SandboxError::PathInvalid { detail } => write!(f, "Path invalid: {}", detail),
-            SandboxError::RuntimeNotFound { runtime } => write!(f, "Runtime not found: {}", runtime),
-        }
-    }
-}
-
-impl std::error::Error for SandboxError {}
 
 /// Zero-allocation error conversion from std::io::Error
 impl From<io::Error> for SandboxError {

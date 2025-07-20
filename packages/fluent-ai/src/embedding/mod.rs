@@ -12,6 +12,7 @@
 //! - Streaming embeddings for large datasets
 
 pub mod providers;
+pub mod cognitive_embedder;
 pub mod batch;
 pub mod builder;
 pub mod distance;
@@ -21,11 +22,19 @@ pub mod image;
 pub mod similarity;
 pub mod normalization;
 pub mod tool;
+pub mod metrics;
+pub mod resilience;
 
 // Re-export core types
 pub use providers::{
-    EnhancedEmbeddingModel, EmbeddingConfig, OpenAIEmbeddingProvider, CohereEmbeddingProvider,
+    EnhancedEmbeddingModel, EmbeddingConfig, EmbeddingError, 
+    OpenAIEmbeddingProvider, CohereEmbeddingProvider,
+    CognitiveEmbeddingProvider, QueryIntent, CognitivePerformanceMetrics,
     openai_from_env, cohere_from_env
+};
+pub use cognitive_embedder::{
+    CognitiveEmbedder, CognitiveEmbedderConfig, CognitiveEmbedderPerformanceMetrics,
+    QuantumRouterTrait, SuperpositionState, Complex64, CoherenceTracker, QuantumMemory
 };
 pub use batch::{EmbeddingBatch, BatchConfig, BatchResult, BatchProcessor};
 pub use builder::*;
@@ -44,3 +53,12 @@ pub use normalization::{
     normalize_vector, l2_norm, l1_norm, max_norm, NormalizationMethod, apply_normalization
 };
 pub use tool::*;
+pub use metrics::{
+    QualityAnalyzer, QualityDataPoint, QualityAnalysisMetrics, QualityAnalysisError,
+    PerformanceMonitor, PerformanceMetric, LatencyHistogram, GlobalMetrics,
+    PerformanceAlert, AlertSeverity, AlertConfig
+};
+pub use resilience::{
+    CircuitBreaker, CircuitBreakerRegistry, CircuitBreakerConfig, CircuitBreakerError,
+    CircuitState, FailureType, ErrorCategory, CircuitStateChange
+};

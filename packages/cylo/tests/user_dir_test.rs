@@ -26,7 +26,8 @@ mod tests {
         use std::fs;
         use std::path::Path;
 
-        use nix::libc::{mount, unshare, CLONE_NEWNS, CLONE_NEWUSER};
+        use nix::sched::{unshare, CloneFlags};
+        use libc::{mount, CLONE_NEWNS, CLONE_NEWUSER};
 
         // Check if we're running in a container environment
         let in_container = Path::new("/.dockerenv").exists()
@@ -51,7 +52,7 @@ mod tests {
         // Try unsharing namespaces but don't panic if it fails
         unsafe {
             println!("Attempting to unshare namespaces...");
-            let result = unshare(CLONE_NEWUSER | CLONE_NEWNS);
+            let result = unshare(CloneFlags::CLONE_NEWUSER | CloneFlags::CLONE_NEWNS);
             if result != 0 {
                 let err = std::io::Error::last_os_error();
                 println!("Unshare failed (expected in containers): {}", err);
@@ -106,9 +107,8 @@ mod tests {
             let mount_result = mount(
                 source.as_ptr(),
                 mp_cstr.as_ptr(),
-                fstype.as_ptr(),
                 0,
-                data.as_ptr() as *const _,
+                std::ptr::null_mut(),
             );
 
             if mount_result != 0 {

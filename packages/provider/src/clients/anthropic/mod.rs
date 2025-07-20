@@ -16,6 +16,7 @@
 pub mod client;
 pub mod completion;
 pub mod config;
+pub mod discovery;
 pub mod expression_evaluator;
 pub mod messages;
 pub mod requests;
@@ -27,6 +28,7 @@ pub mod error;
 pub use client::*;
 pub use completion::*;
 pub use config::*;
+pub use discovery::AnthropicDiscovery;
 pub use messages::*;
 pub use requests::*;
 pub use responses::*;

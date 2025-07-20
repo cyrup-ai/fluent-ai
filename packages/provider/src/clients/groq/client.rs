@@ -5,66 +5,207 @@
 // ============================================================================
 
 use serde_json::json;
+use arrayvec::{ArrayVec, ArrayString};
+use smallvec::{SmallVec, smallvec};
+use arc_swap::ArcSwap;
+use atomic_counter::RelaxedCounter;
+use std::sync::LazyLock;
 
 use crate::{
+    client::{CompletionClient, ProviderClient},
     completion::{
         self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
     },
-    http::{HttpClient, HttpRequest, HttpError},
     json_util,
     message::Message,
     runtime::AsyncTask,
 };
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest, HttpError};
+use fluent_ai_domain::AsyncTask as DomainAsyncTask;
 
 use super::completion::{CompletionModel, LLAMA_3_70B_8192};
 
 // ============================================================================
-// Groq API Client
+// Groq API Client with HTTP3 and zero-allocation patterns
 // ============================================================================
 const GROQ_API_BASE_URL: &str = "https://api.groq.com/openai/v1";
 
-#[derive(Clone, Debug)]
+/// Global HTTP3 client with AI optimization
+static HTTP_CLIENT: LazyLock<HttpClient> = LazyLock::new(|| {
+    HttpClient::with_config(HttpConfig::ai_optimized())
+        .unwrap_or_else(|_| HttpClient::new())
+});
+
+/// Lock-free performance metrics
+static GROQ_METRICS: LazyLock<GroqMetrics> = LazyLock::new(GroqMetrics::new);
+
+/// Groq performance metrics with atomic counters
+#[derive(Debug)]
+pub struct GroqMetrics {
+    pub total_requests: RelaxedCounter,
+    pub successful_requests: RelaxedCounter,
+    pub failed_requests: RelaxedCounter,
+    pub concurrent_requests: RelaxedCounter,
+}
+
+impl GroqMetrics {
+    #[inline]
+    pub fn new() -> Self {
+        Self {
+            total_requests: RelaxedCounter::new(0),
+            successful_requests: RelaxedCounter::new(0),
+            failed_requests: RelaxedCounter::new(0),
+            concurrent_requests: RelaxedCounter::new(0),
+        }
+    }
+}
+
+/// Zero-allocation Groq client
+#[derive(Clone)]
 pub struct Client {
-    pub(crate) base_url: String,
-    pub(crate) http_client: HttpClient,
-    pub(crate) api_key: String,
+    /// Hot-swappable API key
+    api_key: ArcSwap<ArrayString<128>>,
+    /// Zero-allocation base URL storage
+    base_url: &'static str,
+    /// Shared HTTP3 client
+    http_client: &'static HttpClient,
+    /// Performance metrics
+    metrics: &'static GroqMetrics,
 }
 
 impl Client {
-    /// Create a new Groq client with the given API key.
-    pub fn new(api_key: &str) -> Result<Self, HttpError> {
-        Self::from_url(api_key, GROQ_API_BASE_URL)
-    }
-
-    /// Create a new Groq client with the given API key and base API URL.
-    pub fn from_url(api_key: &str, base_url: &str) -> Result<Self, HttpError> {
-        let http_client = HttpClient::for_provider("groq")?;
+    /// Create a new Groq client with zero-allocation API key validation
+    #[inline]
+    pub fn new(api_key: String) -> Result<Self, CompletionError> {
+        if api_key.is_empty() {
+            return Err(CompletionError::ConfigError("API key cannot be empty".into()));
+        }
         
+        let api_key_array = ArrayString::from(&api_key)
+            .map_err(|_| CompletionError::ConfigError("API key too long".into()))?;
+            
         Ok(Self {
-            base_url: base_url.to_string(),
-            http_client,
-            api_key: api_key.to_string(),
+            api_key: ArcSwap::from_pointee(api_key_array),
+            base_url: GROQ_API_BASE_URL,
+            http_client: &HTTP_CLIENT,
+            metrics: &GROQ_METRICS,
         })
     }
 
-    /// Create a new Groq client from the `GROQ_API_KEY` environment variable.
-    pub fn from_env() -> Result<Self, HttpError> {
+    /// Create a new Groq client from environment variable with validation
+    #[inline]
+    pub fn from_env() -> Result<Self, CompletionError> {
         let api_key = std::env::var("GROQ_API_KEY")
-            .map_err(|_| HttpError::ConfigurationError("GROQ_API_KEY not set".to_string()))?;
-        Self::new(&api_key)
+            .map_err(|_| CompletionError::ConfigError("GROQ_API_KEY environment variable not set".into()))?;
+        Self::new(api_key)
     }
-
-    pub(crate) fn post(&self, path: &str, body: Vec<u8>) -> Result<HttpRequest, HttpError> {
-        let url = format!("{}/{}", self.base_url, path).replace("//", "/");
+    
+    /// Update API key with zero downtime hot-swapping
+    #[inline]
+    pub fn update_api_key(&self, new_api_key: String) -> Result<(), CompletionError> {
+        if new_api_key.is_empty() {
+            return Err(CompletionError::ConfigError("API key cannot be empty".into()));
+        }
         
-        HttpRequest::post(url, body)?
-            .header("Content-Type", "application/json")?
-            .header("Authorization", &format!("Bearer {}", self.api_key))
+        let api_key_array = ArrayString::from(&new_api_key)
+            .map_err(|_| CompletionError::ConfigError("API key too long".into()))?;
+        
+        self.api_key.store(std::sync::Arc::new(api_key_array));
+        Ok(())
     }
 
-    /// Create a completion model with the given name.
+    /// Build authenticated request with zero allocations
+    #[inline]
+    pub(crate) async fn make_request(&self, endpoint: &str, body: Vec<u8>) -> Result<fluent_ai_http3::Response, HttpError> {
+        let url = format!("{}/{}", self.base_url, endpoint);
+        
+        // Build headers with zero allocation
+        let mut headers: SmallVec<[(&str, ArrayString<180>); 4]> = smallvec![];
+        
+        // Build auth header
+        let mut auth_header = ArrayString::<180>::new();
+        auth_header.try_push_str("Bearer ").map_err(|_| HttpError::HeaderTooLong)?;
+        auth_header.try_push_str(&self.api_key.load()).map_err(|_| HttpError::HeaderTooLong)?;
+        
+        headers.push(("Authorization", auth_header));
+        headers.push(("Content-Type", ArrayString::from("application/json").unwrap()));
+        headers.push(("User-Agent", ArrayString::from("fluent-ai-groq/1.0").unwrap()));
+        
+        let request = HttpRequest::post(&url, body)
+            .map_err(HttpError::from)?
+            .headers(headers.iter().map(|(k, v)| (*k, v.as_str())));
+            
+        // Update metrics atomically
+        self.metrics.total_requests.inc();
+        self.metrics.concurrent_requests.inc();
+        
+        let response = self.http_client.send(request).await;
+        
+        self.metrics.concurrent_requests.dec();
+        
+        match &response {
+            Ok(_) => self.metrics.successful_requests.inc(),
+            Err(_) => self.metrics.failed_requests.inc(),
+        }
+        
+        response
+    }
+    
+    /// Test connection to Groq API
+    #[inline]
+    pub async fn test_connection(&self) -> Result<(), CompletionError> {
+        let response = self.make_request("models", vec![]).await
+            .map_err(|e| CompletionError::HttpError(e.to_string()))?;
+            
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(CompletionError::ApiError(format!("Connection test failed with status: {}", response.status())))
+        }
+    }
+
+    /// Create a completion model with the given name
+    #[inline]
     pub fn completion_model(&self, model: &str) -> CompletionModel {
         CompletionModel::new(self.clone(), model)
+    }
+    
+    /// Get current performance metrics
+    #[inline]
+    pub fn get_metrics(&self) -> (usize, usize, usize, usize) {
+        (
+            self.metrics.total_requests.get(),
+            self.metrics.successful_requests.get(),
+            self.metrics.failed_requests.get(),
+            self.metrics.concurrent_requests.get(),
+        )
+    }
+}
+
+/// CompletionClient trait implementation for auto-generation
+impl CompletionClient for Client {
+    type Model = Result<CompletionModel, CompletionError>;
+    
+    #[inline]
+    fn completion_model(&self, model: &str) -> Self::Model {
+        Ok(CompletionModel::new(self.clone(), model))
+    }
+}
+
+/// ProviderClient trait implementation for ecosystem integration
+impl ProviderClient for Client {
+    #[inline]
+    fn provider_name(&self) -> &'static str {
+        "groq"
+    }
+    
+    #[inline]
+    fn test_connection(&self) -> DomainAsyncTask<Result<(), Box<dyn std::error::Error + Send + Sync>>> {
+        let client = self.clone();
+        DomainAsyncTask::spawn(async move {
+            client.test_connection().await
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        })
     }
 }
 

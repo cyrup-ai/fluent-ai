@@ -752,6 +752,7 @@ fn write_lossy_utf8<W: io::Write>(mut w: W, buf: &[u8]) -> io::Result<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ColorChoiceExt;
 
     #[test]
     fn test_standard_stream_creation() {

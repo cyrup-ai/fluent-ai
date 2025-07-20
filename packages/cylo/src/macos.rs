@@ -1,6 +1,6 @@
 use std::{fs, path::Path, process::Command};
 
-use crate::{
+use crate::{sandbox::safe_path_to_string,
     config::{FileSystem, RamdiskConfig},
     error::StorageError,
     platform::RamdiskPlatform,
@@ -101,9 +101,9 @@ impl RamdiskPlatform for MacosRamdisk {
 
     /// Checks if a mount point is currently in use
     fn is_mounted(&self, mount_point: &Path) -> Result<bool, StorageError> {
-        let mount_point_str = mount_point.to_string_lossy();
+        let mount_point_str = safe_path_to_string(mount_point).map_err(|e| StorageError::PathInvalid(e.to_string()))?;
         let volumes = self.get_mounted_volumes()?;
-        Ok(volumes.iter().any(|v| v.contains(mount_point_str.as_ref())))
+        Ok(volumes.iter().any(|v| v.contains(&mount_point_str)))
     }
 
     /// Creates a new ramdisk with the specified configuration
@@ -135,13 +135,12 @@ impl RamdiskPlatform for MacosRamdisk {
     /// 2. Detaches the device
     /// 3. Optionally removes the empty mount point directory
     fn remove(&self, mount_point: &Path) -> Result<(), StorageError> {
-        let mount_point_str = mount_point.to_string_lossy();
-
         if !self.is_mounted(mount_point)? {
             return Ok(());
         }
 
-        let device = self.get_device_for_mount(mount_point_str.as_ref())?;
+        let mount_point_str = safe_path_to_string(mount_point).map_err(|e| StorageError::PathInvalid(e.to_string()))?;
+        let device = self.get_device_for_mount(&mount_point_str)?;
 
         // First unmount
         let unmount_output = Command::new("diskutil")
