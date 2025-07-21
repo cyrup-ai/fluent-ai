@@ -1839,3 +1839,272 @@ fn validate_package_name(&self) -> Result<(), HakariError> {
 5. **Document any issues** encountered during implementation
 
 This completes the specific technical requirements for fixing the hakari workspace-hack generation issue while adhering to all architectural constraints and performance requirements.
+## PHASE 5: CODEBASE HYGIENE AND PRODUCTION ARTIFACTS CLEANUP
+
+### CRITICAL: Development Artifact Removal (Production Blocker)
+
+#### 5.1 Backup File Cleanup (24 files - Immediate Deletion Required)
+**Files to Remove**:
+- `/Volumes/samsung_t9/fluent-ai/.config/hakari.toml.bak` - Line 1-63: Hakari config backup
+- `/Volumes/samsung_t9/fluent-ai/.config/hakari.toml.bk` - Line 1-63: Hakari config backup  
+- Cargo.toml backups across ALL packages (22 files):
+  - `packages/cargo-hakari-regenerate/Cargo.toml.bak` & `.bak2`
+  - `packages/cylo/Cargo.toml.bak` & `.bak2` 
+  - `packages/cylo/watched_dir/Cargo.toml.bak` & `.bak2`
+  - `packages/domain/Cargo.toml.bak` & `.bak2`
+  - `packages/fluent-ai-candle/Cargo.toml.bak` & `.bak2`
+  - `packages/fluent-ai/Cargo.toml.bak` & `.bak2`
+  - `packages/http3/Cargo.toml.bak` & `.bak2`
+  - `packages/memory/Cargo.toml.bak` & `.bak2`
+  - `packages/provider/Cargo.toml.bak` & `.bak2`
+  - `packages/termcolor/Cargo.toml.bak` & `.bak2`
+  - `packages/termcolor/wincolor/Cargo.toml.bak` & `.bak2`
+
+**Implementation**: Use `find` command with atomic removal and verification
+**Architecture Notes**: Backup files create confusion and should be handled by git version control
+**Technical Requirements**: Verify corresponding source files exist before deletion
+
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### 5.2 QA: Act as an Objective QA Rust developer and verify backup file cleanup
+Rate the backup file removal work performed previously. Confirm all specified backup files have been removed. Verify no backup files remain that could confuse developers or automated tools. Check git status to ensure no tracked backup files exist.
+
+#### 5.3 Source Code Backup Removal (2 files)
+**Files to Remove**:
+- `/Volumes/samsung_t9/fluent-ai/packages/memory/src/monitoring/mod.rs.backup`
+- `/Volumes/samsung_t9/fluent-ai/packages/termcolor/src/lib.rs.backup`
+
+**Implementation**: Remove backup source files after confirming corresponding source files compile
+**Architecture Notes**: Source backups indicate manual editing artifacts that should be handled by version control
+**Technical Requirements**: Ensure no functionality loss, verify compilation after removal
+
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### 5.4 QA: Act as an Objective QA Rust developer and verify source backup cleanup
+Rate the source backup file removal. Verify corresponding source files compile correctly and backup artifacts are completely removed. Confirm no functionality is lost.
+
+#### 5.5 macOS System Artifact Cleanup (5 files)
+**Files to Remove**:
+- `/Volumes/samsung_t9/fluent-ai/packages/memory/.DS_Store`
+- `/Volumes/samsung_t9/fluent-ai/packages/memory/src/.DS_Store`
+- `/Volumes/samsung_t9/fluent-ai/packages/memory/target/.DS_Store`
+- `/Volumes/samsung_t9/fluent-ai/packages/memory/target/debug/.DS_Store`
+- `/Volumes/samsung_t9/fluent-ai/tmp/cyrup-agent/.DS_Store`
+
+**Implementation**: Use `find` command to locate and remove all .DS_Store files recursively
+**Architecture Notes**: macOS system artifacts should never be in version control
+**Technical Requirements**: Update .gitignore to prevent future .DS_Store inclusion
+
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### 5.6 QA: Act as an Objective QA Rust developer and verify .DS_Store cleanup
+Rate the .DS_Store file removal work. Confirm all system files are removed and .gitignore is properly configured to prevent future inclusion. Verify no macOS artifacts remain.
+
+#### 5.7 IDE History Directory Cleanup (6 directories, 436KB)
+**Directories to Remove**:
+- `/Volumes/samsung_t9/fluent-ai/.history/`
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/.history/`
+- `/Volumes/samsung_t9/fluent-ai/packages/memory/.history/`
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/.history/`
+- `/Volumes/samsung_t9/fluent-ai/packages/provider/.history/`
+- `/Volumes/samsung_t9/fluent-ai/packages/domain/.history/`
+
+**Implementation**: Remove entire .history directories recursively with `rm -rf`
+**Architecture Notes**: IDE history files are editor-specific artifacts that contain development history
+**Technical Requirements**: Update .gitignore to exclude .history/ patterns
+
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### 5.8 QA: Act as an Objective QA Rust developer and verify history directory cleanup
+Rate the .history directory removal. Confirm all IDE artifacts are removed, git repository size is reduced, and .gitignore prevents future inclusion. Verify no development history remains.
+
+### CRITICAL: Misplaced Test File Organization
+
+#### 5.9 Memory Package Test File Reorganization (5 files)
+**Files to Move**:
+- `packages/memory/src/monitoring/metrics_test.rs` → `tests/memory/monitoring/metrics_test.rs`
+- `packages/memory/src/monitoring/tests.rs` → `tests/memory/monitoring/mod.rs`  
+- `packages/memory/src/monitoring/tests/metrics_tests.rs` → `tests/memory/monitoring/metrics_tests.rs`
+- `packages/memory/src/transaction/tests.rs` → `tests/memory/transaction/mod.rs`
+- `packages/memory/src/transaction/tests/transaction_tests.rs` → `tests/memory/transaction/transaction_tests.rs`
+
+**Implementation**: 
+1. Create proper tests/ directory structure in memory package
+2. Move files maintaining test functionality
+3. Update module declarations and imports
+4. Ensure all test functions use expect() instead of unwrap()
+5. Update imports to use absolute paths from crate root
+
+**Architecture Notes**: Rust convention places integration tests in tests/ directory at package root
+**Technical Requirements**: Maintain test functionality, improve compilation performance
+
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### 5.10 QA: Act as an Objective QA Rust developer and verify test file organization
+Rate the test file reorganization work. Confirm all tests still compile and run successfully. Verify proper Rust test conventions are followed. Check that expect() is used instead of unwrap() in test code.
+
+#### 5.11 Update Module Declarations After Test Moves
+**Files to Modify**:
+- `packages/memory/src/monitoring/mod.rs` - Remove test module declarations at lines referencing moved tests
+- `packages/memory/src/transaction/mod.rs` - Remove test module declarations at lines referencing moved tests
+- Create `packages/memory/tests/lib.rs` for integration test organization
+
+**Implementation**: Remove mod declarations for moved test files, ensure remaining code compiles
+**Architecture Notes**: Clean module structure improves compilation efficiency
+**Technical Requirements**: Zero compilation errors after module declaration cleanup
+
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### 5.12 QA: Act as an Objective QA Rust developer and verify module declaration updates  
+Rate the module declaration cleanup. Confirm source modules no longer reference moved test files. Verify all code compiles correctly and test discovery works properly.
+
+### CRITICAL: Temporary Development Directory Cleanup
+
+#### 5.13 Temporary Directory Evaluation and Cleanup (817MB)
+**Directory to Process**: `/Volumes/samsung_t9/fluent-ai/tmp/` containing:
+- `candle/` - Candle ML framework fork experiments
+- `cyrup-agent/` - Agent development prototypes  
+- `cyrup-sugars/` - Syntax sugar experiments
+- `reqwest/` - HTTP client experiments
+- `rig/` - LLM framework fork experiments
+
+**Implementation**: 
+1. Review each subdirectory for production-relevant code
+2. Extract any useful patterns or implementations to proper locations
+3. Document findings in extraction report
+4. Remove entire tmp/ directory after extraction
+5. Verify no production code depends on tmp/ contents
+
+**Architecture Notes**: Temporary directories should not exist in production repositories  
+**Technical Requirements**: Ensure no build dependencies on tmp/ before deletion
+**Space Recovery**: ~817MB of disk space reclaimed
+
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### 5.14 QA: Act as an Objective QA Rust developer and verify tmp directory cleanup
+Rate the tmp directory processing. Confirm valuable code is preserved in proper locations. Verify tmp/ directory is completely removed and no dependencies exist on tmp/ contents.
+
+#### 5.15 Legacy Code File Cleanup (1 file)
+**File to Review**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/memory/types_legacy.rs`
+
+**Implementation**:
+1. Review file contents and current usage
+2. If types are still used: remove TODO comments and complete implementation  
+3. If unused: delete file entirely and update module declarations
+4. Ensure no unwrap() calls exist in any remaining code
+5. Update related imports and dependencies
+
+**Architecture Notes**: Legacy code creates confusion and technical debt
+**Technical Requirements**: Either complete implementation or clean removal
+
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### 5.16 QA: Act as an Objective QA Rust developer and verify legacy code cleanup
+Rate the legacy types file handling. Confirm either proper implementation or complete removal. Verify no broken references remain and no unwrap() calls are present.
+
+### CRITICAL: TODO File Consolidation and Documentation Cleanup
+
+#### 5.17 TODO File Consolidation (5 files)
+**Files to Process**:
+- `/Volumes/samsung_t9/fluent-ai/TODO.md` (keep as main)
+- `/Volumes/samsung_t9/fluent-ai/packages/domain/TODO.md`
+- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/TODO.md`  
+- `/Volumes/samsung_t9/fluent-ai/packages/memory/TODO.md`
+- `/Volumes/samsung_t9/fluent-ai/packages/provider/TODO.md`
+
+**Implementation**:
+1. Review each package-specific TODO file for relevant items
+2. Merge important tasks into main TODO.md with package prefixes
+3. Remove duplicate or obsolete items
+4. Delete individual package TODO files after consolidation
+5. Maintain this main TODO.md as single source of truth
+
+**Architecture Notes**: Centralized TODO management improves project visibility
+**Technical Requirements**: Preserve all important development tasks
+
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### 5.18 QA: Act as an Objective QA Rust developer and verify TODO consolidation
+Rate the TODO file consolidation work. Confirm important tasks are preserved in main TODO.md. Verify package-specific files are removed and no duplicate tasks exist.
+
+#### 5.19 Production .gitignore Enhancement
+**File to Modify**: `/Volumes/samsung_t9/fluent-ai/.gitignore`
+
+**Implementation**: Add comprehensive ignore patterns:
+```gitignore
+# Development artifacts
+.DS_Store
+.history/
+*.bak
+*.bak2  
+*.bk
+*.backup
+tmp/
+
+# IDE artifacts
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS artifacts  
+Thumbs.db
+.Spotlight-V100
+.Trashes
+```
+
+**Architecture Notes**: Comprehensive .gitignore prevents future artifact inclusion
+**Technical Requirements**: Ensure all cleanup patterns are properly ignored
+
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### 5.20 QA: Act as an Objective QA Rust developer and verify .gitignore updates
+Rate the .gitignore configuration. Confirm all cleanup artifact patterns are properly excluded. Verify no ignored files currently exist in the repository.
+
+### CRITICAL: Final Workspace Validation
+
+#### 5.21 Post-Cleanup Workspace Compilation Verification
+**Implementation**:
+1. Run `cargo check --workspace` to verify compilation
+2. Run `cargo test --workspace` to verify test functionality  
+3. Run `cargo clippy --all-targets --all-features` to verify linting
+4. Fix any compilation issues caused by cleanup operations
+5. Ensure no unwrap() calls exist in source code after cleanup
+6. Verify all moved tests still pass with nextest
+
+**Architecture Notes**: Cleanup should never break functionality
+**Technical Requirements**: 100% compilation success, all tests passing
+**Performance Validation**: Ensure cleanup improves build times and repository size
+
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+#### 5.22 QA: Act as an Objective QA Rust developer and verify final workspace state  
+Rate the overall cleanup work. Confirm workspace compiles successfully, all tests pass, and no production-inappropriate artifacts remain. Verify adherence to Rust conventions and error handling best practices.
+
+## PHASE 5 SUCCESS CRITERIA
+
+### ✅ Development Artifact Elimination
+- Zero backup files (.bak, .bak2, .bk, .backup) in repository
+- Zero macOS system files (.DS_Store) in version control
+- Zero IDE history directories (.history/) in repository
+- Zero temporary development directories (tmp/) in production
+
+### ✅ Test Organization Compliance
+- All test files properly located in tests/ directories
+- Zero embedded tests in src/ directories (following existing plan for phases 1-4)
+- Proper nextest configuration and execution
+- All test code uses expect() instead of unwrap()
+
+### ✅ Codebase Hygiene Standards
+- Single consolidated TODO.md for project management
+- Comprehensive .gitignore preventing future artifacts
+- Zero legacy placeholder files
+- Clean module structure without test dependencies
+
+### ✅ Production Quality Validation
+- 100% workspace compilation success after cleanup
+- All tests passing with proper organization
+- Reduced repository size (~818MB space recovery)
+- Improved build performance through cleanup
+
+This phase complements the existing production quality improvement phases (1-4) by ensuring clean development environment and proper artifact management while maintaining all functionality and performance requirements.
