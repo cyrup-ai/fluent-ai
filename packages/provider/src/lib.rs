@@ -13,6 +13,12 @@ pub use fluent_ai_domain::model::ModelInfo;
 // Provider client implementations
 pub mod clients;
 
+// Image processing implementations
+pub mod image_processing;
+
+// Model discovery and registration
+pub mod discovery;
+
 // Re-export Candle client for convenience
 #[cfg(feature = "candle")]
 pub use clients::candle::{CandleCompletionClient, CandleModel, CandleProvider};
