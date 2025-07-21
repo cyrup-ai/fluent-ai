@@ -8,7 +8,9 @@ use serde_json::Value;
 use crate::ZeroOneOrMany;
 use crate::async_task::AsyncTask;
 
-#[allow(dead_code)] // TODO: Implement boxed future type for legacy compatibility
+/// Boxed future type alias for legacy compatibility with older memory system APIs.
+/// This provides a type-erased future that can be used across API boundaries
+/// where concrete future types would create compilation issues.
 #[allow(dead_code)]
 pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 

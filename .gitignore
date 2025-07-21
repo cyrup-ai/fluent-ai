@@ -297,3 +297,25 @@ Cache*/
 **/target/
 
 # ============== </cyrup> ==============
+
+# ==============================
+# Development Artifacts (Cleanup Prevention)
+# ==============================
+# Backup files from manual editing
+*.bak
+*.bak2
+*.bk
+*.backup
+
+# IDE-specific settings that shouldn't be shared
+.vscode/settings.json
+*.swp
+*.swo
+
+# Additional OS artifacts
+.Spotlight-V100
+.Trashes
+
+# Temporary development directories
+tmp/
+temp/

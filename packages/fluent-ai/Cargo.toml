@@ -72,13 +72,7 @@ crossbeam-deque = "0.8.6"
 anyhow = "1.0.98"
 futures-executor = "0.3.31"
 
-# Candle ML framework dependencies (from GitHub main)
-candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
-candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
-candle-transformers = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
-candle-flash-attn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
-candle-onnx = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
-candle-datasets = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
+# Candle ML framework dependencies moved to fluent-ai-candle package
 
 # ML/AI dependencies
 image = { version = "0.25.6", optional = true }
