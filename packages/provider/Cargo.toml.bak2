@@ -7,11 +7,11 @@ build = "build.rs"
 
 [dependencies]
 progresshub = { path = "../../../progresshub/tui" }
-fluent-ai-workspace-hack = { path = "../../workspace-hack" }
+#fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 yyaml = { git = "https://github.com/cyrup-ai/yyaml", branch = "main"}
 serde = { version = "1.0.219", features = ["derive"] }
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["all"] }
-fluent_ai_domain = { version = "0.1.0", path = "../domain", default-features = false }
+fluent_ai_domain = { version = "0.1.0", path = "../domain" }
 fluent_ai_http3 = { path = "../http3" }
 tokio = { version = "1.46.1", features = ["full"] }
 tokio-stream = "0.1.17"
@@ -36,13 +36,13 @@ dashmap = "7.0.0-rc2"
 num_cpus = "1.16.0"
 termcolor = { path = "../termcolor" }
 
-# Candle dependencies (optional, enabled by features) - TEMPORARILY DISABLED FOR COMPILATION TEST
-# candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
-# candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
-# candle-transformers = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
-# candle-flash-attn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
-# candle-onnx = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
-# candle-datasets = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
+# Candle dependencies (optional, enabled by features)
+candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
+candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
+candle-transformers = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
+candle-flash-attn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
+candle-onnx = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
+candle-datasets = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
 
 # — Optional acceleration dependencies —
 half = { version = "2.6.0", optional = true }
@@ -59,7 +59,7 @@ safetensors = { version = "0.6.0", optional = true }
 
 # Build system dependencies
 [build-dependencies]
-fluent_ai_domain = { path = "../domain", default-features = false }
+fluent_ai_domain = { path = "../domain" }
 fluent_ai_http3 = { path = "../http3" }
 # For async build script
 tokio = { version = "1.46.1", features = ["full"] }
@@ -109,25 +109,25 @@ gloo-timers = { version = "0.3", optional = true, features = ["futures"] }
 
 
 [features]
-default = []  # Temporarily disabled candle features for testing
-# --- Candle backend features (required for all candle crates) ----- TEMPORARILY DISABLED
-# cuda = ["candle-core/cuda", "candle-nn/cuda", "dep:cudarc", "dep:half", "dep:bindgen_cuda", "candle-transformers/cuda"]
-# cudnn = ["candle-core/cudnn", "candle-nn/cudnn", "candle-transformers/cudnn"]
-# metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
-# accelerate = ["dep:accelerate-src", "candle-core/accelerate", "candle-nn/accelerate", "candle-transformers/accelerate"]
-# mkl = ["dep:intel-mkl-src", "candle-core/mkl", "candle-nn/mkl", "candle-transformers/mkl"]
-# flash-attn = ["cuda", "dep:candle-flash-attn", "candle-transformers/flash-attn"]
-# nccl = ["cuda", "cudarc/nccl", "dep:half"]
-# onnx = ["dep:candle-onnx"]
+default = ["microphone", "metal"]  # macOS-optimized defaults with Metal acceleration
+# --- Candle backend features (required for all candle crates) -----
+cuda = ["candle-core/cuda", "candle-nn/cuda", "dep:cudarc", "dep:half", "dep:bindgen_cuda", "candle-transformers/cuda"]
+cudnn = ["candle-core/cudnn", "candle-nn/cudnn", "candle-transformers/cudnn"]
+metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
+accelerate = ["dep:accelerate-src", "candle-core/accelerate", "candle-nn/accelerate", "candle-transformers/accelerate"]
+mkl = ["dep:intel-mkl-src", "candle-core/mkl", "candle-nn/mkl", "candle-transformers/mkl"]
+flash-attn = ["cuda", "dep:candle-flash-attn", "candle-transformers/flash-attn"]
+nccl = ["cuda", "cudarc/nccl", "dep:half"]
+onnx = ["dep:candle-onnx"]
 # UI features
 ui = ["dioxus", "js-sys", "wasm-bindgen", "gloo-timers"]
 
-# Audio processing features - TEMPORARILY DISABLED
-# microphone = ["dep:cpal", "dep:rubato"]
-# encodec = ["dep:cpal", "dep:symphonia", "dep:rubato"]
-# mimi = ["dep:cpal", "dep:symphonia", "dep:rubato"]
-# snac = ["dep:cpal", "dep:symphonia", "dep:rubato"]
-# depth_anything_v2 = ["dep:palette", "dep:enterpolation"]
+# Audio processing features
+microphone = ["dep:cpal", "dep:rubato"]
+encodec = ["dep:cpal", "dep:symphonia", "dep:rubato"]
+mimi = ["dep:cpal", "dep:symphonia", "dep:rubato"]
+snac = ["dep:cpal", "dep:symphonia", "dep:rubato"]
+depth_anything_v2 = ["dep:palette", "dep:enterpolation"]
 
 # OS-specific acceleration dependencies
 [target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]

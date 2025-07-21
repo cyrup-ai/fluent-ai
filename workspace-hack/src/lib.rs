@@ -1,1 +1,1 @@
-//! Workspace hack to speed up builds
+// This is a stub lib.rs.

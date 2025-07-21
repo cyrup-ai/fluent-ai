@@ -8,7 +8,7 @@ use std::convert::Infallible;
 use std::error::Error as StdError;
 use std::fmt;
 
-use crate::image_processing::generation::models::ModelError;
+use fluent_ai_domain::model::error::ModelError;
 
 /// Type alias for build results with our custom error type
 pub type BuildResult<T> = Result<T, BuildError>;

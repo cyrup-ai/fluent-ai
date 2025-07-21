@@ -43,7 +43,7 @@ pub use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
 pub use fluent_ai_domain as domain;
 pub use fluent_ai_domain::AsyncTask;
 pub use fluent_ai_domain::spawn_async;
-pub use crate::Provider;
+// pub use crate::Provider; // TODO: Define Provider trait
 
 // Create our own AsyncStream type for provider compatibility
 pub type AsyncStream<T> = tokio_stream::wrappers::UnboundedReceiverStream<T>;

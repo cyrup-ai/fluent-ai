@@ -379,8 +379,8 @@ impl ChangeDetector {
 
         Ok(YamlModelInfo {
             name: model.name.clone().into(),
-            max_input_tokens: model.max_input_tokens,
-            max_output_tokens: model.max_output_tokens,
+            max_input_tokens: model.max_input_tokens.map(|nz| nz.get() as u64),
+            max_output_tokens: model.max_output_tokens.map(|nz| nz.get() as u64),
             input_price: None, // Not available in ModelInfo
             output_price: None, // Not available in ModelInfo
             supports_vision: model.to_capabilities().supports_vision,

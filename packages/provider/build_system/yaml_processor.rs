@@ -148,8 +148,8 @@ impl YamlProcessor {
                     }
                     
                     // Convert String to &'static str for build script context
-                    let static_name: &'static str = Box::leak(name.clone().into_boxed_str());
-                    let static_provider: &'static str = Box::leak(provider_name.clone().into_boxed_str());
+                    let static_name: &'static str = Box::leak(name.to_string().into_boxed_str());
+                    let static_provider: &'static str = Box::leak(provider_name.to_string().into_boxed_str());
                     
                     let mut builder = ModelInfo::builder()
                         .provider_name(static_provider)
