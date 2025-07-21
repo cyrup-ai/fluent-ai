@@ -183,6 +183,41 @@ impl ModelCapabilities {
     pub fn has_any_capability(&self, capabilities: &[Capability]) -> bool {
         capabilities.iter().any(|&cap| self.has_capability(cap))
     }
+
+    /// Get an iterator over all enabled capabilities
+    pub fn enabled_capabilities(&self) -> impl Iterator<Item = Capability> + '_ {
+        use Capability::*;
+        [
+            Vision,
+            FunctionCalling,
+            Streaming,
+            FineTuning,
+            BatchProcessing,
+            Realtime,
+            Multimodal,
+            Thinking,
+            Embedding,
+            CodeCompletion,
+            Chat,
+            InstructionFollowing,
+            FewShotLearning,
+            ZeroShotLearning,
+            LongContext,
+            LowLatency,
+            HighThroughput,
+            Quantization,
+            Distillation,
+            Pruning,
+        ]
+        .iter()
+        .filter(move |&&capability| self.has_capability(capability))
+        .copied()
+    }
+
+    /// Get all enabled capabilities as a vector
+    pub fn to_vec(&self) -> Vec<Capability> {
+        self.enabled_capabilities().collect()
+    }
 }
 
 /// Model performance characteristics

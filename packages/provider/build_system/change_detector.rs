@@ -371,7 +371,7 @@ impl ChangeDetector {
         &self,
         model: &fluent_ai_domain::model::ModelInfo,
     ) -> BuildResult<YamlModelInfo> {
-        let capabilities = model.to_capabilities().iter()
+        let capabilities = model.to_capabilities().enabled_capabilities()
             .map(|cap| format!("{:?}", cap).to_lowercase().into())
             .collect();
 
@@ -383,10 +383,8 @@ impl ChangeDetector {
             max_output_tokens: model.max_output_tokens,
             input_price: None, // Not available in ModelInfo
             output_price: None, // Not available in ModelInfo
-            supports_vision: model.to_capabilities().iter()
-                .any(|cap| format!("{:?}", cap).to_lowercase().contains("vision")),
-            supports_function_calling: model.to_capabilities().iter()
-                .any(|cap| format!("{:?}", cap).to_lowercase().contains("function")),
+            supports_vision: model.to_capabilities().supports_vision,
+            supports_function_calling: model.to_capabilities().supports_function_calling,
             capabilities,
             parameters,
         })
@@ -433,8 +431,10 @@ impl ChangeDetector {
         // Compare parameters (if deep comparison is enabled)
         if self.deep_comparison {
             let param_changes = self.compare_parameters(&existing.parameters, &yaml_model.parameters);
-            if param_changes.added.len() > 0 || param_changes.modified.len() > 0 || param_changes.removed.len() > 0 {
-                changes.push(param_changes);
+            if let ModelChange::Parameters { ref added, ref modified, ref removed } = param_changes {
+                if !added.is_empty() || !modified.is_empty() || !removed.is_empty() {
+                    changes.push(param_changes);
+                }
             }
         }
 

@@ -32,13 +32,25 @@ struct CommentPatterns {
 
 impl CommentPatterns {
     /// Create new comment patterns
-    fn new() -> Self {
-        Self {
-            workspace_hack_member: Regex::new(r#"^\s*"workspace-hack",?\s*$"#).unwrap(),
-            workspace_hack_dep: Regex::new(r#"^fluent-ai-workspace-hack\s*="#).unwrap(),
-            commented_workspace_hack_member: Regex::new(r#"^\s*#\s*"workspace-hack",?\s*$"#).unwrap(),
-            commented_workspace_hack_dep: Regex::new(r#"^#\s*fluent-voice-workspace-hack\s*="#).unwrap(),
-        }
+    fn new() -> Result<Self, crate::error::WorkspaceError> {
+        Ok(Self {
+            workspace_hack_member: Regex::new(r#"^\s*"workspace-hack",?\s*$"#)
+                .map_err(|e| crate::error::WorkspaceError::InvalidStructure { 
+                    reason: format!("Invalid regex pattern: {}", e) 
+                })?,
+            workspace_hack_dep: Regex::new(r#"^fluent-ai-workspace-hack\s*="#)
+                .map_err(|e| crate::error::WorkspaceError::InvalidStructure { 
+                    reason: format!("Invalid regex pattern: {}", e) 
+                })?,
+            commented_workspace_hack_member: Regex::new(r#"^\s*#\s*"workspace-hack",?\s*$"#)
+                .map_err(|e| crate::error::WorkspaceError::InvalidStructure { 
+                    reason: format!("Invalid regex pattern: {}", e) 
+                })?,
+            commented_workspace_hack_dep: Regex::new(r#"^#\s*fluent-ai-workspace-hack\s*="#)
+                .map_err(|e| crate::error::WorkspaceError::InvalidStructure { 
+                    reason: format!("Invalid regex pattern: {}", e) 
+                })?,
+        })
     }
 }
 
@@ -52,7 +64,7 @@ impl WorkspaceManager {
         Ok(Self {
             root_path,
             config,
-            comment_patterns: CommentPatterns::new(),
+            comment_patterns: CommentPatterns::new()?,
         })
     }
     
@@ -158,7 +170,7 @@ impl WorkspaceManager {
             .with_path(cargo_toml_path.to_path_buf())?;
         
         let modified_content = self.comment_patterns.workspace_hack_dep
-            .replace_all(&content, "# fluent-voice-workspace-hack =");
+            .replace_all(&content, "# fluent-ai-workspace-hack =");
         
         transaction.atomic_write(cargo_toml_path, modified_content.as_bytes()).await?;
         
@@ -183,7 +195,7 @@ impl WorkspaceManager {
             .with_path(cargo_toml_path.to_path_buf())?;
         
         let modified_content = self.comment_patterns.commented_workspace_hack_dep
-            .replace_all(&content, "fluent-voice-workspace-hack =");
+            .replace_all(&content, "fluent-ai-workspace-hack =");
         
         transaction.atomic_write(cargo_toml_path, modified_content.as_bytes()).await?;
         
@@ -531,7 +543,7 @@ impl PackageDiscovery {
             .await
             .with_path(cargo_toml_path.to_path_buf())?;
         
-        Ok(content.contains("fluent-voice-workspace-hack"))
+        Ok(content.contains("fluent-ai-workspace-hack"))
     }
     
     /// Invalidate cache

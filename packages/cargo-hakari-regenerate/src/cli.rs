@@ -373,14 +373,18 @@ impl CliRunner {
                 if !yes {
                     self.output_message("This will reset configuration to defaults. Continue? [y/N]", MessageType::Warning);
                     let mut input = String::new();
-                    std::io::stdin().read_line(&mut input).unwrap();
+                    std::io::stdin().read_line(&mut input)
+                        .map_err(|e| crate::error::HakariRegenerateError::Io(crate::error::IoError::FileOperation { 
+                            path: std::path::PathBuf::from("stdin"), 
+                            source: e 
+                        }))?;
                     if !input.trim().eq_ignore_ascii_case("y") {
                         self.output_message("Cancelled", MessageType::Info);
                         return Ok(());
                     }
                 }
                 
-                let config = HakariConfig::for_fluent_voice();
+                let config = HakariConfig::for_fluent_ai();
                 config_manager.save(&config).await?;
                 self.output_message("Configuration reset to defaults", MessageType::Success);
             }

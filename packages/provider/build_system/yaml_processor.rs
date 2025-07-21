@@ -227,22 +227,22 @@ impl YamlProcessor {
 
     /// Validate a model definition
     fn validate_model(&self, model: &ModelInfo) -> BuildResult<()> {
-        if model.id.is_empty() {
+        if model.id().is_empty() {
             return Err(BuildError::YamlError(YamlError::new(
                 "Model ID cannot be empty",
             )));
         }
 
-        if sanitize_identifier(&model.id) != model.id {
+        if sanitize_identifier(model.id()) != model.id() {
             return Err(BuildError::YamlError(YamlError::new(format!(
                 "Model ID '{}' contains invalid characters. Use alphanumeric and underscores only.",
-                model.id
+                model.id()
             ))));
         }
 
-        if model.max_tokens == 0 {
+        if model.max_input_tokens.map_or(true, |tokens| tokens.get() == 0) {
             return Err(BuildError::YamlError(YamlError::new(
-                "Max tokens must be greater than 0",
+                "Max input tokens must be greater than 0",
             )));
         }
 

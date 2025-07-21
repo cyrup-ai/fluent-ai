@@ -172,7 +172,7 @@ impl HakariManager {
         })
     }
     
-    /// Rename workspace-hack package to fluent-voice-workspace-hack
+    /// Rename workspace-hack package to fluent-ai-workspace-hack
     async fn rename_workspace_hack_package(&self, transaction: &mut Transaction) -> Result<()> {
         let cargo_toml_path = self.workspace_hack_path.join("Cargo.toml");
         
@@ -190,7 +190,7 @@ impl HakariManager {
         
         let modified_content = content.replace(
             r#"name = "workspace-hack""#,
-            r#"name = "fluent-voice-workspace-hack""#,
+            r#"name = "fluent-ai-workspace-hack""#,
         );
         
         transaction.atomic_write(&cargo_toml_path, modified_content.as_bytes()).await?;
@@ -198,7 +198,7 @@ impl HakariManager {
         transaction.record_package_renamed(
             cargo_toml_path,
             "workspace-hack".to_string(),
-            "fluent-voice-workspace-hack".to_string(),
+            "fluent-ai-workspace-hack".to_string(),
         )?;
         
         Ok(())
@@ -399,7 +399,7 @@ impl HakariManager {
             .with_path(cargo_toml_path)?;
         
         // Check if it's a valid workspace-hack
-        let is_valid = content.contains("fluent-voice-workspace-hack") &&
+        let is_valid = content.contains("fluent-ai-workspace-hack") &&
                       content.contains("workspace-hack package, managed by hakari");
         
         Ok(is_valid)
@@ -531,8 +531,8 @@ impl ConfigValidator {
     
     /// Validate package name
     fn validate_package_name(&self, report: &mut ValidationReport) {
-        if self.config.hakari_package != "fluent-voice-workspace-hack" {
-            report.add_warning(format!("Package name is not 'fluent-voice-workspace-hack': {}", self.config.hakari_package));
+        if self.config.hakari_package != "fluent-ai-workspace-hack" {
+            report.add_warning(format!("Package name is not 'fluent-ai-workspace-hack': {}", self.config.hakari_package));
         }
     }
 }

@@ -8,6 +8,8 @@ use std::convert::Infallible;
 use std::error::Error as StdError;
 use std::fmt;
 
+use crate::image_processing::generation::models::ModelError;
+
 /// Type alias for build results with our custom error type
 pub type BuildResult<T> = Result<T, BuildError>;
 
@@ -48,6 +50,9 @@ pub enum BuildError {
 
     /// Bincode serialization/deserialization error
     BincodeError(bincode::error::EncodeError),
+
+    /// Model operation error
+    ModelError(String),
 }
 
 impl fmt::Display for BuildError {
@@ -63,6 +68,7 @@ impl fmt::Display for BuildError {
             BuildError::HttpError(msg) => write!(f, "HTTP error: {}", msg),
             BuildError::ValidationError(msg) => write!(f, "Validation error: {}", msg),
             BuildError::BincodeError(e) => write!(f, "Bincode error: {}", e),
+            BuildError::ModelError(msg) => write!(f, "Model error: {}", msg),
         }
     }
 }
@@ -112,6 +118,12 @@ impl From<CacheError> for BuildError {
 impl From<HttpClientError> for BuildError {
     fn from(e: HttpClientError) -> Self {
         BuildError::HttpClientError(e)
+    }
+}
+
+impl From<ModelError> for BuildError {
+    fn from(e: ModelError) -> Self {
+        BuildError::ModelError(e.to_string())
     }
 }
 

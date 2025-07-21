@@ -1707,3 +1707,135 @@ This execution plan provides the exact steps, file paths, line numbers, and tech
 - Implement graceful handling of permission errors and missing directories
 
 This incremental model generation system will provide zero-allocation, lock-free, blazing-fast model discovery and generation while maintaining elegant ergonomic APIs and comprehensive error handling throughout the entire pipeline.
+## HAKARI WORKSPACE-HACK GENERATION FIX (IMMEDIATE PRIORITY)
+
+### CRITICAL: Complete fluent-voice to fluent-ai Migration in cargo-hakari-regenerate
+
+**Issue**: Hakari workspace-hack generation failing due to remaining "fluent-voice" references that should be "fluent-ai"
+**Impact**: Cannot generate workspace-hack, blocking build optimization
+**Priority**: IMMEDIATE - Blocking other development work
+
+#### Task 1: Fix workspace.rs Regex Patterns and String References
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/cargo-hakari-regenerate/src/workspace.rs`
+**Lines Impacted**: 
+- Line 40: `commented_workspace_hack_dep` regex pattern
+- Line 161: String replacement in comment_workspace_hack_dependency_in_package
+- Line 186: String replacement in uncomment_workspace_hack_dependency_in_package  
+- Line 534: String check in check_workspace_hack_dependency
+
+**Technical Specifications**:
+- Replace all instances of "fluent-voice-workspace-hack" with "fluent-ai-workspace-hack"
+- Maintain regex pattern structure and escaping
+- Preserve function logic and error handling
+- Ensure zero-allocation string operations using Cow<str> where appropriate
+- Follow no-unwrap() constraint - all regex operations must handle potential errors
+
+**Detailed Changes Required**:
+```rust
+// Line 40: Fix regex pattern
+commented_workspace_hack_dep: Regex::new(r#"^#\s*fluent-ai-workspace-hack\s*="#)
+    .map_err(|e| WorkspaceError::InvalidPattern { source: e })?
+
+// Line 161: Fix comment replacement  
+.replace_all(&content, "# fluent-ai-workspace-hack =")
+
+// Line 186: Fix uncomment replacement
+.replace_all(&content, "fluent-ai-workspace-hack =")
+
+// Line 534: Fix dependency check
+Ok(content.contains("fluent-ai-workspace-hack"))
+```
+
+#### Task 2: Fix hakari.rs Package References and Validation Logic
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/cargo-hakari-regenerate/src/hakari.rs`
+**Lines Impacted**:
+- Package name replacement logic
+- Validation functions checking package names
+- Error messages and warnings
+
+**Technical Specifications**:
+- Update all package name references from "fluent-voice-workspace-hack" to "fluent-ai-workspace-hack"
+- Maintain validation logic structure
+- Preserve error handling patterns
+- Use Result<T, E> for all operations, no unwrap() calls
+- Implement zero-allocation string comparisons using &str
+
+**Expected Changes**:
+```rust
+// Update package name constant
+const WORKSPACE_HACK_NAME: &str = "fluent-ai-workspace-hack";
+
+// Update validation logic to use constant
+fn validate_package_name(&self) -> Result<(), HakariError> {
+    if self.config.hakari_package != WORKSPACE_HACK_NAME {
+        return Err(HakariError::InvalidPackageName {
+            expected: WORKSPACE_HACK_NAME,
+            found: self.config.hakari_package.clone(),
+        });
+    }
+    Ok(())
+}
+```
+
+#### Task 3: Fix cli.rs Function References  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/cargo-hakari-regenerate/src/cli.rs`
+**Lines Impacted**: Function call using old naming
+
+**Technical Specifications**:
+- Update function calls from for_fluent_voice to for_fluent_ai
+- Maintain CLI argument structure
+- Preserve async patterns and error propagation
+- Ensure all Result types are properly handled with ? operator
+
+#### Task 4: Verify and Complete Workspace-Hack Generation
+**Command**: `just hakari-regenerate`
+**Dependencies**: Tasks 1-3 must be completed first
+
+**Technical Specifications**:
+- Verify all packages have fluent-ai-workspace-hack dependency
+- Ensure .config/hakari.toml uses correct package name  
+- Validate workspace-hack directory structure
+- Confirm cargo-hakari generates dependencies successfully
+- Test compilation with workspace-hack enabled
+
+**Success Criteria**:
+- `just hakari-regenerate` completes without errors
+- workspace-hack/Cargo.toml contains generated dependencies
+- All packages compile successfully with workspace-hack
+- Build time optimization is measurable
+
+### ARCHITECTURAL CONSTRAINTS FOR ALL TASKS
+
+#### Zero Allocation Requirements:
+- Use `&str` and `Cow<str>` instead of `String` where possible
+- Implement streaming patterns for file processing
+- Use Arc<str> for shared string data across threads
+- Avoid unnecessary cloning or copying of data
+
+#### No Unsafe/No Locking Requirements:
+- All operations must be memory-safe
+- Use atomic operations instead of mutexes where concurrency needed
+- Implement lock-free algorithms using crossbeam primitives
+- Never use unsafe blocks or raw pointer manipulation
+
+#### Error Handling Requirements:
+- NO unwrap() or expect() calls in source code (tests only)
+- Use ? operator for error propagation
+- Define semantic error types with thiserror
+- Implement graceful degradation for non-critical failures
+
+#### Elegant Ergonomic Requirements:
+- Fluent APIs with method chaining where appropriate
+- Builder patterns for complex type construction  
+- Comprehensive error messages with context
+- Zero-cost abstractions using const generics
+
+### IMPLEMENTATION NOTES
+
+1. **Read each file completely** before making changes to understand context
+2. **Test after each change** to ensure functionality is preserved
+3. **Verify compilation** after all changes are complete
+4. **Run hakari-regenerate** as final validation step
+5. **Document any issues** encountered during implementation
+
+This completes the specific technical requirements for fixing the hakari workspace-hack generation issue while adhering to all architectural constraints and performance requirements.
