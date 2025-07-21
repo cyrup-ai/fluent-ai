@@ -427,7 +427,7 @@ pub trait CompletionCoreClient: Send + Sync + 'static {
     /// Generate streaming completion
     fn complete_stream<'a>(
         &'a self,
-        request: CompletionRequest<'_>,
+        request: CompletionRequest<'a>,
     ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<StreamingResponse>> + Send + 'a>>;
 
     /// Get the model name/identifier for this client

@@ -59,10 +59,9 @@ mod simd_ops {
         }
         
         // Fallback optimized scalar with manual unrolling for ILP
-        let mut chunks = logits.chunks_exact_mut(4);
-        let remainder = chunks.into_remainder();
+        let (chunks_4, remainder) = logits.split_at_mut(logits.len() - (logits.len() % 4));
         
-        for chunk in chunks {
+        for chunk in chunks_4.chunks_exact_mut(4) {
             chunk[0] *= inv_temp;
             chunk[1] *= inv_temp; 
             chunk[2] *= inv_temp;

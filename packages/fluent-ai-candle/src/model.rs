@@ -30,6 +30,54 @@ impl Module for LlamaWrapper {
     }
 }
 
+/// Wrapper for Mistral model to implement Module trait
+struct MistralWrapper {
+    model: candle_transformers::models::mistral::Model,
+}
+
+impl Module for MistralWrapper {
+    fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
+        // Mistral models have similar issues with forward signature
+        self.model.forward(xs, 0, &mut candle_nn::kv_cache::KvCache::new(candle_core::DType::F16, &xs.device()?))
+    }
+}
+
+/// Wrapper for Gemma model to implement Module trait
+struct GemmaWrapper {
+    model: candle_transformers::models::gemma::Model,
+}
+
+impl Module for GemmaWrapper {
+    fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
+        // Gemma models have similar issues with forward signature
+        self.model.forward(xs, 0, &mut candle_nn::kv_cache::KvCache::new(candle_core::DType::F16, &xs.device()?))
+    }
+}
+
+/// Wrapper for Phi model to implement Module trait
+struct PhiWrapper {
+    model: candle_transformers::models::phi::Model,
+}
+
+impl Module for PhiWrapper {
+    fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
+        // Phi models have similar issues with forward signature
+        self.model.forward(xs, 0)
+    }
+}
+
+/// Wrapper for Qwen model to implement Module trait
+struct QwenWrapper {
+    model: candle_transformers::models::qwen2::Model,
+}
+
+impl Module for QwenWrapper {
+    fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
+        // Qwen models have similar issues with forward signature
+        self.model.forward(xs, 0, &mut candle_nn::kv_cache::KvCache::new(candle_core::DType::F16, &xs.device()?))
+    }
+}
+
 /// Supported model types
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -163,8 +211,8 @@ impl KVCacheEntry {
             last_access: AtomicU64::new(
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs(),
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0),
             ),
         }
     }
@@ -174,8 +222,8 @@ impl KVCacheEntry {
         self.last_access.store(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs(),
+                .map(|d| d.as_secs())
+                .unwrap_or(0),
             Ordering::Relaxed,
         );
     }
@@ -608,7 +656,9 @@ impl CandleModel {
             ..Default::default()
         };
 
-        Ok((Box::new(mistral_model), model_config))
+        // Create a wrapper since Mistral doesn't implement Module directly
+        let model_wrapper = MistralWrapper { model: mistral_model };
+        Ok((Box::new(model_wrapper), model_config))
     }
 
     async fn load_gemma_model(
@@ -692,7 +742,8 @@ impl CandleModel {
                     rms_norm_eps: 1e-6,
                     rope_theta: 10000.0,
                     attention_bias: false,
-
+                    hidden_act: Some(candle_nn::Activation::Gelu),
+                    hidden_activation: None,
                 }
             };
 
@@ -715,7 +766,9 @@ impl CandleModel {
             ..Default::default()
         };
 
-        Ok((Box::new(gemma_model), model_config))
+        // Create a wrapper since Gemma doesn't implement Module directly
+        let model_wrapper = GemmaWrapper { model: gemma_model };
+        Ok((Box::new(model_wrapper), model_config))
     }
 
     async fn load_phi_model(
@@ -817,7 +870,9 @@ impl CandleModel {
             ..Default::default()
         };
 
-        Ok((Box::new(phi_model), model_config))
+        // Create a wrapper since Phi doesn't implement Module directly
+        let model_wrapper = PhiWrapper { model: phi_model };
+        Ok((Box::new(model_wrapper), model_config))
     }
 
     async fn load_qwen_model(
@@ -934,7 +989,9 @@ impl CandleModel {
             ..Default::default()
         };
 
-        Ok((Box::new(qwen_model), model_config))
+        // Create a wrapper since Qwen doesn't implement Module directly
+        let model_wrapper = QwenWrapper { model: qwen_model };
+        Ok((Box::new(model_wrapper), model_config))
     }
 }
 

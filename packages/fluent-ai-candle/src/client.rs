@@ -18,7 +18,7 @@ use fluent_ai_domain::completion::{
 };
 use fluent_ai_domain::message::Message;
 use fluent_ai_domain::tool::ToolDefinition;
-use fluent_ai_domain::Document;
+use fluent_ai_domain::context::Document;
 
 use crate::error::{CandleError, CandleResult};
 use crate::generator::{CandleGenerator, GenerationConfig};
@@ -199,7 +199,6 @@ impl CandleMetrics {
 static CANDLE_METRICS: LazyLock<CandleMetrics> = LazyLock::new(CandleMetrics::new);
 
 /// Zero-allocation Candle completion client with provider pattern alignment
-#[derive(Clone)]
 pub struct CandleCompletionClient {
     /// Client configuration
     config: CandleClientConfig,
@@ -217,6 +216,21 @@ pub struct CandleCompletionClient {
     is_initialized: AtomicBool,
     /// Concurrent request semaphore
     request_semaphore: Arc<tokio::sync::Semaphore>,
+}
+
+impl Clone for CandleCompletionClient {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            model: Arc::clone(&self.model),
+            tokenizer: Arc::clone(&self.tokenizer),
+            generator: ArcSwap::new(Arc::clone(&self.generator.load())),
+            device: Arc::clone(&self.device),
+            metrics: self.metrics,
+            is_initialized: AtomicBool::new(self.is_initialized.load(Ordering::Acquire)),
+            request_semaphore: Arc::clone(&self.request_semaphore),
+        }
+    }
 }
 
 // ============================================================================
@@ -478,14 +492,14 @@ impl CompletionCoreClient for CandleCompletionClient {
 
             // Check if client is initialized
             if !self.is_initialized() {
-                return Err(CompletionCoreError::ConfigurationError(
+                return Err(CompletionCoreError::InvalidRequest(
                     "Client not initialized".to_string(),
                 ));
             }
 
             // Acquire semaphore permit for rate limiting
             let _permit = self.request_semaphore.acquire().await.map_err(|_| {
-                CompletionCoreError::ConfigurationError("Request semaphore error".to_string())
+                CompletionCoreError::InvalidRequest("Request semaphore error".to_string())
             })?;
 
             // Update concurrent request counter
@@ -496,7 +510,7 @@ impl CompletionCoreClient for CandleCompletionClient {
             let result = generator.generate(&request).await;
 
             // Decrement concurrent counter
-            self.metrics.concurrent_requests.dec();
+            self.metrics.concurrent_requests.sub(1);
 
             match result {
                 Ok(response) => {
@@ -525,14 +539,14 @@ impl CompletionCoreClient for CandleCompletionClient {
 
             // Check if client is initialized
             if !self.is_initialized() {
-                return Err(CompletionCoreError::ConfigurationError(
+                return Err(CompletionCoreError::InvalidRequest(
                     "Client not initialized".to_string(),
                 ));
             }
 
             // Acquire semaphore permit for rate limiting
             let _permit = self.request_semaphore.acquire().await.map_err(|_| {
-                CompletionCoreError::ConfigurationError("Request semaphore error".to_string())
+                CompletionCoreError::InvalidRequest("Request semaphore error".to_string())
             })?;
 
             // Update concurrent request counter
@@ -543,7 +557,7 @@ impl CompletionCoreClient for CandleCompletionClient {
             let result = generator.generate_stream(&request).await;
 
             // Decrement concurrent counter  
-            self.metrics.concurrent_requests.dec();
+            self.metrics.concurrent_requests.sub(1);
 
             match result {
                 Ok(stream) => {
@@ -770,18 +784,18 @@ impl<'a> CandleCompletionBuilder<'a, HasPrompt> {
     }
 
     /// Execute the completion request with zero allocation patterns
-    pub async fn execute(self) -> Result<CompletionResponse, CandleError> {
+    pub async fn execute(self) -> Result<CompletionResponse<'static>, CandleError> {
         let request = self.build_request()?;
         match self.client.complete(request).await {
             Ok(response) => Ok(response),
-            Err(CompletionCoreError::InvalidRequest(msg)) => {
-                Err(CandleError::configuration(&msg))
+            Err(CompletionCoreError::InvalidRequest(_msg)) => {
+                Err(CandleError::configuration("Invalid completion request"))
             }
-            Err(CompletionCoreError::GenerationFailed(msg)) => {
-                Err(CandleError::generation_failed(&msg))
+            Err(CompletionCoreError::GenerationFailed(_msg)) => {
+                Err(CandleError::generation_failed("Generation failed"))
             }
-            Err(e) => {
-                Err(CandleError::generation_failed(&e.to_string()))
+            Err(_e) => {
+                Err(CandleError::generation_failed("Completion execution failed"))
             }
         }
     }
@@ -791,14 +805,14 @@ impl<'a> CandleCompletionBuilder<'a, HasPrompt> {
         let request = self.build_request()?;
         match self.client.complete_stream(request).await {
             Ok(stream) => Ok(stream),
-            Err(CompletionCoreError::InvalidRequest(msg)) => {
-                Err(CandleError::configuration(&msg))
+            Err(CompletionCoreError::InvalidRequest(_msg)) => {
+                Err(CandleError::configuration("Invalid completion request"))
             }
-            Err(CompletionCoreError::GenerationFailed(msg)) => {
-                Err(CandleError::generation_failed(&msg))
+            Err(CompletionCoreError::GenerationFailed(_msg)) => {
+                Err(CandleError::generation_failed("Generation failed"))
             }
-            Err(e) => {
-                Err(CandleError::generation_failed(&e.to_string()))
+            Err(_e) => {
+                Err(CandleError::generation_failed("Completion failed"))
             }
         }
     }

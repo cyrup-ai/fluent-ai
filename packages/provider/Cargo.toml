@@ -49,6 +49,15 @@ hmac = "0.12.1"
 sha2 = "0.10.8"
 rand = "0.8.5"
 
+# Additional missing dependencies for compilation
+reqwest = { version = "0.12.11", features = ["json", "stream", "multipart"] }
+atomic_counter = "1.0.2"
+rand_pcg = "0.3.1"
+rayon = "1.10.0"
+memmap2 = "0.9.7"
+bincode = "2.0.1"
+hostname = "0.4.0"
+
 # Candle dependencies (optional, enabled by features) - TEMPORARILY DISABLED FOR COMPILATION TEST
 # candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
 # candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }

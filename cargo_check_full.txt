@@ -3,413 +3,48 @@
 warning: fluent_ai_provider@0.1.0: Starting provider generation...
 warning: fluent_ai_provider@0.1.0: Generated providers.rs and models.rs with 6 providers
 warning: fluent_ai_provider@0.1.0: Provider generation completed successfully
-error[E0422]: cannot find struct, variant or union type `LlamaWrapper` in this scope
-   --> packages/fluent-ai-candle/src/model.rs:485:29
-    |
-485 |         let model_wrapper = LlamaWrapper { model: llama_model };
-    |                             ^^^^^^^^^^^^ not found in this scope
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `domain`
+  --> packages/fluent-ai-candle/src/client.rs:15:5
+   |
+15 | use domain::completion::{
+   |     ^^^^^^ use of unresolved module or unlinked crate `domain`
+   |
+   = help: if you wanted to use a crate named `domain`, use `cargo add domain` to add it to your `Cargo.toml`
 
-error[E0599]: no method named `argsort` found for struct `candle_core::Tensor` in the current scope
-   --> packages/fluent-ai-candle/src/generator.rs:924:14
-    |
-923 |           let indices = probs
-    |  _______________________-
-924 | |             .argsort(candle_core::D::Minus1, true)  // true for descending
-    | |             -^^^^^^^ method not found in `candle_core::Tensor`
-    | |_____________|
-    |
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `domain`
+  --> packages/fluent-ai-candle/src/client.rs:19:5
+   |
+19 | use domain::message::Message;
+   |     ^^^^^^ use of unresolved module or unlinked crate `domain`
+   |
+   = help: if you wanted to use a crate named `domain`, use `cargo add domain` to add it to your `Cargo.toml`
 
-error[E0308]: mismatched types
-   --> packages/fluent-ai-candle/src/model.rs:440:35
-    |
-440 |                       eos_token_id: parsed_config
-    |  ___________________________________^
-441 | |                         .get("eos_token_id")
-442 | |                         .and_then(|v| v.as_u64())
-443 | |                         .map(|v| v as u32),
-    | |__________________________________________^ expected `Option<LlamaEosToks>`, found `Option<u32>`
-    |
-    = note: expected enum `Option<LlamaEosToks>`
-               found enum `Option<u32>`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `domain`
+  --> packages/fluent-ai-candle/src/client.rs:20:5
+   |
+20 | use domain::tool::ToolDefinition;
+   |     ^^^^^^ use of unresolved module or unlinked crate `domain`
+   |
+   = help: if you wanted to use a crate named `domain`, use `cargo add domain` to add it to your `Cargo.toml`
 
-error[E0063]: missing field `tie_word_embeddings` in initializer of `candle_transformers::models::llama::Config`
-   --> packages/fluent-ai-candle/src/model.rs:398:17
-    |
-398 |                 llama_models::Config {
-    |                 ^^^^^^^^^^^^^^^^^^^^ missing `tie_word_embeddings`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `domain`
+  --> packages/fluent-ai-candle/src/client.rs:21:5
+   |
+21 | use domain::context::Document;
+   |     ^^^^^^ use of unresolved module or unlinked crate `domain`
+   |
+   = help: if you wanted to use a crate named `domain`, use `cargo add domain` to add it to your `Cargo.toml`
 
-error[E0308]: mismatched types
-   --> packages/fluent-ai-candle/src/model.rs:460:40
-    |
-460 |                     eos_token_id: Some(2),
-    |                                   ---- ^ expected `LlamaEosToks`, found integer
-    |                                   |
-    |                                   arguments to this enum variant are incorrect
-    |
-help: the type constructed contains `{integer}` due to the type of the argument passed
-   --> packages/fluent-ai-candle/src/model.rs:460:35
-    |
-460 |                     eos_token_id: Some(2),
-    |                                   ^^^^^-^
-    |                                        |
-    |                                        this argument influences the type of `Some`
-note: tuple variant defined here
-   --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:599:5
-    |
-599 |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
-    |     ^^^^
-help: try wrapping the expression in `candle_transformers::models::llama::LlamaEosToks::Single`
-    |
-460 |                     eos_token_id: Some(candle_transformers::models::llama::LlamaEosToks::Single(2)),
-    |                                        +++++++++++++++++++++++++++++++++++++++++++++++++++++++++ +
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `domain`
+  --> packages/fluent-ai-candle/src/generator.rs:11:5
+   |
+11 | use domain::completion::{
+   |     ^^^^^^ use of unresolved module or unlinked crate `domain`
+   |
+   = help: if you wanted to use a crate named `domain`, use `cargo add domain` to add it to your `Cargo.toml`
 
-error[E0063]: missing field `tie_word_embeddings` in initializer of `candle_transformers::models::llama::Config`
-   --> packages/fluent-ai-candle/src/model.rs:448:17
-    |
-448 |                 llama_models::Config {
-    |                 ^^^^^^^^^^^^^^^^^^^^ missing `tie_word_embeddings`
-
-error[E0308]: mismatched types
-   --> packages/fluent-ai-candle/src/model.rs:541:33
-    |
-541 |                       rope_theta: parsed_config
-    |  _________________________________^
-542 | |                         .get("rope_theta")
-543 | |                         .and_then(|v| v.as_f64())
-544 | |                         .unwrap_or(10000.0) as f32,
-    | |__________________________________________________^ expected `f64`, found `f32`
-
-error[E0063]: missing fields `head_dim`, `hidden_act` and `use_flash_attn` in initializer of `candle_transformers::models::mistral::Config`
-   --> packages/fluent-ai-candle/src/model.rs:508:17
-    |
-508 |                 mistral_models::Config {
-    |                 ^^^^^^^^^^^^^^^^^^^^^^ missing `head_dim`, `hidden_act` and `use_flash_attn`
-
-error[E0063]: missing fields `head_dim`, `hidden_act` and `use_flash_attn` in initializer of `candle_transformers::models::mistral::Config`
-   --> packages/fluent-ai-candle/src/model.rs:552:17
-    |
-552 |                 mistral_models::Config {
-    |                 ^^^^^^^^^^^^^^^^^^^^^^ missing `head_dim`, `hidden_act` and `use_flash_attn`
-
-error[E0599]: no function or associated item named `load` found for struct `candle_transformers::models::mistral::Model` in the current scope
-   --> packages/fluent-ai-candle/src/model.rs:570:52
-    |
-570 |         let mistral_model = mistral_models::Model::load(&vs, &mistral_config).map_err(|e| {
-    |                                                    ^^^^ function or associated item not found in `candle_transformers::models::mistral::Model`
-    |
-note: if you're trying to build a new `candle_transformers::models::mistral::Model`, consider using `candle_transformers::models::mistral::Model::new` which returns `Result<candle_transformers::models::mistral::Model, candle_core::Error>`
-   --> /Users/davidmaple/.cargo/git/checkouts/candle-5b4d092929d18d36/1ef1341/candle-transformers/src/models/mistral.rs:373:5
-    |
-373 |     pub fn new(cfg: &Config, vb: VarBuilder) -> Result<Self> {
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0560]: struct `model::ModelConfig` has no field named `num_attention_heads`
-   --> packages/fluent-ai-candle/src/model.rs:581:13
-    |
-581 |             num_attention_heads: mistral_config.num_attention_heads as u32,
-    |             ^^^^^^^^^^^^^^^^^^^ `model::ModelConfig` does not have this field
-    |
-    = note: available fields are: `num_heads`, `rope_theta`, `rope_freq_base`, `use_flash_attn`, `quantization`
-
-error[E0308]: mismatched types
-   --> packages/fluent-ai-candle/src/model.rs:644:33
-    |
-644 |                       rope_theta: parsed_config
-    |  _________________________________^
-645 | |                         .get("rope_theta")
-646 | |                         .and_then(|v| v.as_f64())
-647 | |                         .unwrap_or(10000.0) as f32,
-    | |__________________________________________________^ expected `f64`, found `f32`
-
-error[E0560]: struct `candle_transformers::models::gemma::Config` has no field named `mlp_bias`
-   --> packages/fluent-ai-candle/src/model.rs:652:21
-    |
-652 |                     mlp_bias: parsed_config
-    |                     ^^^^^^^^ `candle_transformers::models::gemma::Config` does not have this field
-    |
-    = note: available fields are: `hidden_act`, `hidden_activation`
-
-error[E0560]: struct `candle_transformers::models::gemma::Config` has no field named `mlp_bias`
-   --> packages/fluent-ai-candle/src/model.rs:671:21
-    |
-671 |                     mlp_bias: false,
-    |                     ^^^^^^^^ `candle_transformers::models::gemma::Config` does not have this field
-    |
-    = note: available fields are: `hidden_act`, `hidden_activation`
-
-error[E0599]: no function or associated item named `load` found for struct `candle_transformers::models::gemma::Model` in the current scope
-   --> packages/fluent-ai-candle/src/model.rs:679:48
-    |
-679 |         let gemma_model = gemma_models::Model::load(&vs, &gemma_config).map_err(|e| {
-    |                                                ^^^^ function or associated item not found in `candle_transformers::models::gemma::Model`
-    |
-note: if you're trying to build a new `candle_transformers::models::gemma::Model`, consider using `candle_transformers::models::gemma::Model::new` which returns `Result<candle_transformers::models::gemma::Model, candle_core::Error>`
-   --> /Users/davidmaple/.cargo/git/checkouts/candle-5b4d092929d18d36/1ef1341/candle-transformers/src/models/gemma.rs:346:5
-    |
-346 |     pub fn new(use_flash_attn: bool, cfg: &Config, vb: VarBuilder) -> Result<Self> {
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0560]: struct `model::ModelConfig` has no field named `num_attention_heads`
-   --> packages/fluent-ai-candle/src/model.rs:690:13
-    |
-690 |             num_attention_heads: gemma_config.num_attention_heads as u32,
-    |             ^^^^^^^^^^^^^^^^^^^ `model::ModelConfig` does not have this field
-    |
-    = note: available fields are: `num_heads`, `rope_theta`, `rope_freq_base`, `use_flash_attn`, `quantization`
-
-error[E0308]: mismatched types
-   --> packages/fluent-ai-candle/src/model.rs:737:42
-    |
-737 |                       num_key_value_heads: parsed_config
-    |  __________________________________________^
-738 | |                         .get("num_key_value_heads")
-739 | |                         .and_then(|v| v.as_u64()),
-    | |_________________________________________________^ expected `Option<usize>`, found `Option<u64>`
-    |
-    = note: expected enum `Option<usize>`
-               found enum `Option<u64>`
-
-error: cannot construct `candle_transformers::models::phi::Config` with struct literal syntax due to private fields
-   --> packages/fluent-ai-candle/src/model.rs:716:17
-    |
-716 |                   phi_models::Config {
-    |                   ^^^^^^^^^^^^^^^^^^
-717 | /                     vocab_size: parsed_config
-718 | |                         .get("vocab_size")
-719 | |                         .and_then(|v| v.as_u64())
-720 | |                         .unwrap_or(51200) as usize,
-    | |__________________________________________________- private field
-721 | /                     hidden_size: parsed_config
-722 | |                         .get("hidden_size")
-723 | |                         .and_then(|v| v.as_u64())
-724 | |                         .unwrap_or(2560) as usize,
-    | |_________________________________________________- private field
-725 | /                     intermediate_size: parsed_config
-726 | |                         .get("intermediate_size")
-727 | |                         .and_then(|v| v.as_u64())
-728 | |                         .unwrap_or(10240) as usize,
-    | |__________________________________________________- private field
-729 | /                     num_hidden_layers: parsed_config
-730 | |                         .get("num_hidden_layers")
-731 | |                         .and_then(|v| v.as_u64())
-732 | |                         .unwrap_or(32) as usize,
-    | |_______________________________________________- private field
-733 | /                     num_attention_heads: parsed_config
-734 | |                         .get("num_attention_heads")
-735 | |                         .and_then(|v| v.as_u64())
-736 | |                         .unwrap_or(32) as usize,
-    | |_______________________________________________- private field
-737 | /                     num_key_value_heads: parsed_config
-738 | |                         .get("num_key_value_heads")
-739 | |                         .and_then(|v| v.as_u64()),
-    | |_________________________________________________- private field
-740 | /                     max_position_embeddings: parsed_config
-741 | |                         .get("max_position_embeddings")
-742 | |                         .and_then(|v| v.as_u64())
-743 | |                         .unwrap_or(2048) as usize,
-    | |_________________________________________________- private field
-744 | /                     layer_norm_eps: parsed_config
-745 | |                         .get("layer_norm_eps")
-746 | |                         .and_then(|v| v.as_f64())
-747 | |                         .unwrap_or(1e-5) as f64,
-    | |_______________________________________________- private field
-748 | /                     rope_theta: parsed_config
-749 | |                         .get("rope_theta")
-750 | |                         .and_then(|v| v.as_f64())
-751 | |                         .unwrap_or(10000.0) as f32,
-    | |__________________________________________________- private field
-752 | /                     partial_rotary_factor: parsed_config
-753 | |                         .get("partial_rotary_factor")
-754 | |                         .and_then(|v| v.as_f64())
-755 | |                         .unwrap_or(0.5) as f64,
-    | |______________________________________________- private field
-756 | /                     qk_layernorm: parsed_config
-757 | |                         .get("qk_layernorm")
-758 | |                         .and_then(|v| v.as_bool())
-759 | |                         .unwrap_or(false),
-    | |_________________________________________- private field
-    |
-    = note: ...and other private fields `hidden_act` and `tie_word_embeddings` that were not provided
-
-error: cannot construct `candle_transformers::models::phi::Config` with struct literal syntax due to private fields
-   --> packages/fluent-ai-candle/src/model.rs:763:17
-    |
-763 |                 phi_models::Config {
-    |                 ^^^^^^^^^^^^^^^^^^
-764 |                     vocab_size: 32064,
-    |                     ----------------- private field
-765 |                     hidden_size: 3072,
-    |                     ----------------- private field
-766 |                     intermediate_size: 8192,
-    |                     ----------------------- private field
-767 |                     num_hidden_layers: 32,
-    |                     --------------------- private field
-768 |                     num_attention_heads: 32,
-    |                     ----------------------- private field
-769 |                     num_key_value_heads: Some(32),
-    |                     ----------------------------- private field
-770 |                     max_position_embeddings: 4096,
-    |                     ----------------------------- private field
-771 |                     layer_norm_eps: 1e-5,
-    |                     -------------------- private field
-772 |                     rope_theta: 10000.0,
-    |                     ------------------- private field
-773 |                     partial_rotary_factor: 0.5,
-    |                     -------------------------- private field
-774 |                     qk_layernorm: false,
-    |                     ------------------- private field
-    |
-    = note: ...and other private fields `hidden_act` and `tie_word_embeddings` that were not provided
-
-error[E0599]: no function or associated item named `load` found for struct `candle_transformers::models::phi::Model` in the current scope
-   --> packages/fluent-ai-candle/src/model.rs:782:44
-    |
-782 |         let phi_model = phi_models::Model::load(&vs, &phi_config)
-    |                                            ^^^^ function or associated item not found in `candle_transformers::models::phi::Model`
-    |
-note: if you're trying to build a new `candle_transformers::models::phi::Model`, consider using `candle_transformers::models::phi::Model::new` which returns `Result<candle_transformers::models::phi::Model, candle_core::Error>`
-   --> /Users/davidmaple/.cargo/git/checkouts/candle-5b4d092929d18d36/1ef1341/candle-transformers/src/models/phi.rs:319:5
-    |
-319 |     pub fn new(cfg: &Config, vb: VarBuilder) -> Result<Self> {
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0616]: field `max_position_embeddings` of struct `candle_transformers::models::phi::Config` is private
-   --> packages/fluent-ai-candle/src/model.rs:788:40
-    |
-788 |             context_length: phi_config.max_position_embeddings as u32,
-    |                                        ^^^^^^^^^^^^^^^^^^^^^^^ private field
-
-error[E0616]: field `vocab_size` of struct `candle_transformers::models::phi::Config` is private
-   --> packages/fluent-ai-candle/src/model.rs:789:36
-    |
-789 |             vocab_size: phi_config.vocab_size as u32,
-    |                                    ^^^^^^^^^^ private field
-
-error[E0616]: field `hidden_size` of struct `candle_transformers::models::phi::Config` is private
-   --> packages/fluent-ai-candle/src/model.rs:790:37
-    |
-790 |             hidden_size: phi_config.hidden_size as u32,
-    |                                     ^^^^^^^^^^^ private field
-
-error[E0616]: field `num_hidden_layers` of struct `candle_transformers::models::phi::Config` is private
-   --> packages/fluent-ai-candle/src/model.rs:791:36
-    |
-791 |             num_layers: phi_config.num_hidden_layers as u32,
-    |                                    ^^^^^^^^^^^^^^^^^ private field
-
-error[E0560]: struct `model::ModelConfig` has no field named `num_attention_heads`
-   --> packages/fluent-ai-candle/src/model.rs:792:13
-    |
-792 |             num_attention_heads: phi_config.num_attention_heads as u32,
-    |             ^^^^^^^^^^^^^^^^^^^ `model::ModelConfig` does not have this field
-    |
-    = note: available fields are: `num_heads`, `rope_theta`, `rope_freq_base`, `use_flash_attn`, `quantization`
-
-error[E0616]: field `num_attention_heads` of struct `candle_transformers::models::phi::Config` is private
-   --> packages/fluent-ai-candle/src/model.rs:792:45
-    |
-792 |             num_attention_heads: phi_config.num_attention_heads as u32,
-    |                                             ^^^^^^^^^^^^^^^^^^^ private field
-
-error[E0277]: the trait bound `candle_transformers::models::qwen2::Model: Module` is not satisfied
-   --> packages/fluent-ai-candle/src/model.rs:913:13
-    |
-913 |         Ok((Box::new(qwen_model), model_config))
-    |             ^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Fn(&'a candle_core::Tensor)` is not implemented for `candle_transformers::models::qwen2::Model`
-    |
-    = help: the following other types implement trait `Module`:
-              AttentionBlock
-              AutoEncoder
-              BeitVisionTransformer
-              BertLMPredictionHead
-              BertOnlyMLMHead
-              ChineseClipVisionEmbeddings
-              ChineseClipVisionTransformer
-              ClipVisionTransformer
-            and 119 others
-    = note: required for `candle_transformers::models::qwen2::Model` to implement `Module`
-    = note: required for the cast from `Box<candle_transformers::models::qwen2::Model>` to `Box<dyn Module + std::marker::Send + Sync>`
-
-error[E0271]: expected `{async block@packages/fluent-ai-candle/src/client.rs:421:18: 421:28}` to be a future that resolves to `Result<CompletionResponse<'a>, CompletionCoreError>`, but it resolves to `Result<CompletionResponse<'_>, ExtractionError>`
-   --> packages/fluent-ai-candle/src/client.rs:421:9
-    |
-421 | /         Box::pin(async move {
-422 | |             let start_time = Instant::now();
-...   |
-456 | |         })
-    | |__________^ expected `CompletionCoreError`, found `ExtractionError`
-    |
-    = note: expected enum `Result<CompletionResponse<'a>, CompletionCoreError>`
-               found enum `Result<CompletionResponse<'_>, ExtractionError>`
-    = note: required for the cast from `Pin<Box<{async block@packages/fluent-ai-candle/src/client.rs:421:18: 421:28}>>` to `Pin<Box<dyn Future<Output = Result<..., ...>> + Send>>`
-    = note: the full name for the type has been written to '/Volumes/samsung_t9/fluent-ai/target/debug/deps/fluent_ai_candle-11e45490bb72085c.long-type-18004080973305981134.txt'
-    = note: consider using `--verbose` to print the full type name to the console
-
-error[E0271]: expected `{async block@packages/fluent-ai-candle/src/client.rs:464:18: 464:28}` to be a future that resolves to `Result<StreamingCoreResponse, CompletionCoreError>`, but it resolves to `Result<StreamingCoreResponse, ExtractionError>`
-   --> packages/fluent-ai-candle/src/client.rs:464:9
-    |
-464 | /         Box::pin(async move {
-465 | |             let start_time = Instant::now();
-...   |
-496 | |         })
-    | |__________^ expected `CompletionCoreError`, found `ExtractionError`
-    |
-    = note: expected enum `Result<_, CompletionCoreError>`
-               found enum `Result<_, ExtractionError>`
-    = note: required for the cast from `Pin<Box<{async block@packages/fluent-ai-candle/src/client.rs:464:18: 464:28}>>` to `Pin<Box<dyn Future<Output = Result<..., ...>> + Send>>`
-    = note: the full name for the type has been written to '/Volumes/samsung_t9/fluent-ai/target/debug/deps/fluent_ai_candle-11e45490bb72085c.long-type-9879986729600483810.txt'
-    = note: consider using `--verbose` to print the full type name to the console
-
-error[E0004]: non-exhaustive patterns: `CandleError::DeviceAllocation(_)`, `CandleError::HuggingFaceHub(_)`, `CandleError::CacheOverflow` and 1 more not covered
-   --> packages/fluent-ai-candle/src/error.rs:428:15
-    |
-428 |         match err {
-    |               ^^^ patterns `CandleError::DeviceAllocation(_)`, `CandleError::HuggingFaceHub(_)`, `CandleError::CacheOverflow` and 1 more not covered
-    |
-note: `CandleError` defined here
-   --> packages/fluent-ai-candle/src/error.rs:13:10
-    |
-13  | pub enum CandleError {
-    |          ^^^^^^^^^^^
-...
-23  |     DeviceAllocation(&'static str),
-    |     ---------------- not covered
-...
-37  |     HuggingFaceHub(String),
-    |     -------------- not covered
-...
-47  |     CacheOverflow,
-    |     ------------- not covered
-48  |     /// Invalid input data
-49  |     InvalidInput(&'static str),
-    |     ------------ not covered
-    = note: the matched value is of type `CandleError`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
-    |
-454 ~             CandleError::Configuration(msg) => CompletionCoreError::InvalidRequest(msg.to_string()),
-455 ~             _ => todo!(),
-    |
-
-error[E0382]: use of moved value: `chunks`
-    --> packages/fluent-ai-candle/src/generator.rs:65:22
-     |
-62   |         let chunks = logits.chunks_exact_mut(4);
-     |             ------ move occurs because `chunks` has type `ChunksExactMut<'_, f32>`, which does not implement the `Copy` trait
-63   |         let remainder = chunks.into_remainder();
-     |                                ---------------- `chunks` moved due to this method call
-64   |         
-65   |         for chunk in chunks {
-     |                      ^^^^^^ value used here after move
-     |
-note: `ChunksExactMut::<'a, T>::into_remainder` takes ownership of the receiver `self`, which moves `chunks`
-    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter.rs:2059:27
-     |
-2059 |     pub fn into_remainder(self) -> &'a mut [T] {
-     |                           ^^^^
-
-Some errors have detailed explanations: E0004, E0063, E0271, E0277, E0308, E0382, E0422, E0560, E0599...
-For more information about an error, try `rustc --explain E0004`.
-error: could not compile `fluent_ai_candle` (lib) due to 31 previous errors
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `fluent_ai_candle` (lib) due to 5 previous errors
 warning: build failed, waiting for other jobs to finish...
 error[E0432]: unresolved import `super::super::discovery`
   --> packages/provider/src/clients/openai/discovery.rs:12:19
