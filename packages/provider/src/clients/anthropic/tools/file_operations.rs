@@ -10,9 +10,10 @@ use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tokio::fs;
+use fluent_ai_domain::tool::Tool;
 
 use super::{
-    core::{AnthropicError, AnthropicResult, Tool},
+    core::{AnthropicError, AnthropicResult},
     function_calling::{ToolExecutionContext, ToolExecutor, ToolOutput},
 };
 

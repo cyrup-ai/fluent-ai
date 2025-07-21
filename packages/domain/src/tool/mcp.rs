@@ -193,18 +193,15 @@ impl<T: Transport> Client<T> {
     pub async fn list_tools(&self) -> Result<Vec<super::types::Tool>, McpError> {
         let result = self.call_tool_internal("tools/list", Value::Null).await?;
 
-        if let Value::Object(obj) = result {
-            if let Some(Value::Array(tools)) = obj.get("tools") {
-                let mut parsed_tools = Vec::with_capacity(tools.len());
-                for tool in tools {
-                    if let Ok(parsed) = serde_json::from_value::<super::types::Tool>(tool.clone()) {
-                        parsed_tools.push(parsed);
-                    }
+        if let Value::Object(obj) = result && let Some(Value::Array(tools)) = obj.get("tools") {
+            let mut parsed_tools = Vec::with_capacity(tools.len());
+            for tool in tools {
+                if let Ok(parsed) = serde_json::from_value::<super::types::Tool>(tool.clone()) {
+                    parsed_tools.push(parsed);
                 }
-                return Ok(parsed_tools);
             }
+            return Ok(parsed_tools);
         }
-
         Ok(Vec::new())
     }
 

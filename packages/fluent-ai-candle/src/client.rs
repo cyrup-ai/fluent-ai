@@ -4,28 +4,30 @@
 use std::future::Future;
 use std::num::NonZeroU64;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, LazyLock};
-use std::time::Instant;
 
 use arc_swap::ArcSwap;
 use arrayvec::{ArrayString, ArrayVec};
-use atomic_counter::{AtomicCounter, RelaxedCounter};
+
 use candle_core::Device;
 use fluent_ai_domain::completion::{
     CompletionCoreClient, CompletionCoreResult, CompletionRequest,
     CompletionResponse, StreamingResponse, CompletionCoreError,
 };
-use fluent_ai_domain::message::Message;
-use fluent_ai_domain::tool::ToolDefinition;
-use fluent_ai_domain::context::Document;
+use fluent_ai_domain::{FinishReason, message::Message, tool::ToolDefinition, context::Document};
 
 use crate::error::{CandleError, CandleResult};
 use crate::generator::{CandleGenerator, GenerationConfig};
 use crate::model::CandleModel;
 use crate::tokenizer::{CandleTokenizer, TokenizerConfig};
+use crate::sampling::Sampling;
+use crate::streaming::{TokenOutputStream, TokenStreamSender, StreamingConfig};
+use crate::var_builder::VarBuilderConfig;
+use crate::kv_cache::KVCacheConfig;
+use crate::hub::HubConfig;
 
-/// Configuration for CandleCompletionClient
+/// Configuration for CandleCompletionClient with sophisticated features
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct CandleClientConfig {
@@ -41,6 +43,16 @@ pub struct CandleClientConfig {
     pub tokenizer_config: TokenizerConfig,
     /// Generation configuration
     pub generation_config: GenerationConfig,
+    /// Sampling configuration for sophisticated sampling
+    pub sampling_config: Sampling,
+    /// Streaming configuration for real-time output
+    pub streaming_config: StreamingConfig,
+    /// VarBuilder configuration for weight loading
+    pub var_builder_config: VarBuilderConfig,
+    /// KV cache configuration for efficient generation
+    pub kv_cache_config: KVCacheConfig,
+    /// Hub configuration for model downloading
+    pub hub_config: HubConfig,
     /// Enable model quantization
     pub enable_quantization: bool,
     /// Quantization type
@@ -53,6 +65,14 @@ pub struct CandleClientConfig {
     pub enable_caching: bool,
     /// Cache size in MB
     pub cache_size_mb: u32,
+    /// Enable sophisticated sampling
+    pub enable_sophisticated_sampling: bool,
+    /// Enable real-time streaming
+    pub enable_streaming_optimization: bool,
+    /// Enable KV caching
+    pub enable_kv_cache: bool,
+    /// Enable Hub integration
+    pub enable_hub_integration: bool,
 }
 
 impl Default for CandleClientConfig {
@@ -65,12 +85,21 @@ impl Default for CandleClientConfig {
             model_config: ModelConfig::default(),
             tokenizer_config: TokenizerConfig::default(),
             generation_config: GenerationConfig::default(),
+            sampling_config: Sampling::default(),
+            streaming_config: StreamingConfig::default(),
+            var_builder_config: VarBuilderConfig::default(),
+            kv_cache_config: KVCacheConfig::default(),
+            hub_config: HubConfig::default(),
             enable_quantization: false,
             quantization_type: QuantizationType::Q8_0,
             max_concurrent_requests: 4,
             request_timeout_seconds: 300,
             enable_caching: true,
             cache_size_mb: 512,
+            enable_sophisticated_sampling: true,
+            enable_streaming_optimization: true,
+            enable_kv_cache: true,
+            enable_hub_integration: true,
         }
     }
 }
@@ -169,28 +198,28 @@ const MAX_DOCUMENTS: usize = 64;
 /// Lock-free performance metrics aligned with provider patterns
 #[derive(Debug)]
 pub struct CandleMetrics {
-    pub total_requests: RelaxedCounter,
-    pub successful_requests: RelaxedCounter,
-    pub failed_requests: RelaxedCounter,
-    pub concurrent_requests: RelaxedCounter,
-    pub total_tokens_generated: RelaxedCounter,
-    pub streaming_requests: RelaxedCounter,
-    pub batch_requests: RelaxedCounter,
-    pub cache_hit_rate: RelaxedCounter,
+    pub total_requests: AtomicUsize,
+    pub successful_requests: AtomicUsize,
+    pub failed_requests: AtomicUsize,
+    pub concurrent_requests: AtomicUsize,
+    pub total_tokens_generated: AtomicUsize,
+    pub streaming_requests: AtomicUsize,
+    pub batch_requests: AtomicUsize,
+    pub cache_hit_rate: AtomicUsize,
 }
 
 impl CandleMetrics {
     #[inline]
     pub fn new() -> Self {
         Self {
-            total_requests: RelaxedCounter::new(0),
-            successful_requests: RelaxedCounter::new(0),
-            failed_requests: RelaxedCounter::new(0),
-            concurrent_requests: RelaxedCounter::new(0),
-            total_tokens_generated: RelaxedCounter::new(0),
-            streaming_requests: RelaxedCounter::new(0),
-            batch_requests: RelaxedCounter::new(0),
-            cache_hit_rate: RelaxedCounter::new(0),
+            total_requests: AtomicUsize::new(0),
+            successful_requests: AtomicUsize::new(0),
+            failed_requests: AtomicUsize::new(0),
+            concurrent_requests: AtomicUsize::new(0),
+            total_tokens_generated: AtomicUsize::new(0),
+            streaming_requests: AtomicUsize::new(0),
+            batch_requests: AtomicUsize::new(0),
+            cache_hit_rate: AtomicUsize::new(0),
         }
     }
 }
@@ -279,13 +308,31 @@ impl CandleCompletionClient {
             config.tokenizer_config.clone(),
         )?);
 
-        // Create generator
-        let generator = CandleGenerator::new(
-            Arc::clone(&model),
-            Arc::clone(&tokenizer),
-            config.generation_config.clone(),
-            (*device).clone(),
-        );
+        // Create generator with sophisticated features if enabled
+        let generator = if config.enable_sophisticated_sampling 
+            || config.enable_streaming_optimization 
+            || config.enable_kv_cache {
+            CandleGenerator::with_sophisticated_features(
+                Arc::clone(&model),
+                Arc::clone(&tokenizer),
+                config.generation_config.clone(),
+                (*device).clone(),
+                config.sampling_config.clone(),
+                config.streaming_config.clone(),
+                if config.enable_kv_cache { 
+                    Some(config.kv_cache_config.clone()) 
+                } else { 
+                    None 
+                },
+            )?
+        } else {
+            CandleGenerator::new(
+                Arc::clone(&model),
+                Arc::clone(&tokenizer),
+                config.generation_config.clone(),
+                (*device).clone(),
+            )
+        };
 
         let client = Self {
             config: config.clone(),
@@ -299,6 +346,109 @@ impl CandleCompletionClient {
         };
 
         Ok(client)
+    }
+
+    /// Create TokenOutputStream for advanced streaming (new enhanced method)
+    #[inline(always)]
+    pub async fn complete_token_stream(
+        &self,
+        request: CompletionRequest<'_>,
+    ) -> CandleResult<TokenOutputStream> {
+        // Check if client is initialized
+        if !self.is_initialized() {
+            return Err(CandleError::configuration("Client not initialized"));
+        }
+
+        // Acquire semaphore permit for rate limiting
+        let _permit = self.request_semaphore.acquire().await
+            .map_err(|_| CandleError::configuration("Request semaphore error"))?;
+
+        // Update concurrent request counter
+        self.metrics.concurrent_requests.fetch_add(1, Ordering::Relaxed);
+
+        // Create TokenOutputStream with client configuration
+        let (token_stream, sender) = TokenOutputStream::new(self.config.streaming_config.clone())?;
+
+        // Start generation in a separate function to avoid lifetime issues
+        self.spawn_generation_task(request, sender).await?;
+        
+        Ok(token_stream)
+    }
+    
+    /// Spawn generation task with proper lifetime handling
+    async fn spawn_generation_task(
+        &self,
+        request: CompletionRequest<'_>,
+        sender: TokenStreamSender,
+    ) -> CandleResult<()> {
+        // Clone data needed for the background task before spawning
+        let generator = Arc::clone(&self.generator.load());
+        let metrics = self.metrics;
+        // Convert to fully owned request with static lifetime
+        let owned_request = request.clone().into_static();
+        
+        // Spawn background task with owned data
+        tokio::spawn(async move {
+            let generation_result = generator.generate_stream(&owned_request).await;
+            
+            match generation_result {
+                Ok(mut stream) => {
+                    let mut position = 0u32;
+                    let _sequence_id = 0u64;
+                    
+                    // Process stream and convert to token chunks
+                    use futures::StreamExt;
+                    while let Some(response_result) = stream.next().await {
+                        match response_result {
+                            Ok(response) => {
+                                // Extract text from response
+                                match response.text() {
+                                    Ok(text) => {
+                                        // Create metadata for this token
+                                        let metadata = crate::streaming::TokenMetadata::new(position, 0.0);
+                                        
+                                        // Send token chunk
+                                        if let Err(e) = sender.send_token(text, metadata) {
+                                            tracing::warn!("Failed to send token chunk: {}", e);
+                                            break;
+                                        }
+                                        
+                                        position += 1;
+                                        
+                                        // Update metrics
+                                        metrics.total_tokens_generated.fetch_add(1, Ordering::Relaxed);
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("Failed to extract text from response: {}", e);
+                                        let _ = sender.terminate(FinishReason::Error);
+                                        break;
+                                    }
+                                }
+                            }
+                            Err(error) => {
+                                tracing::error!("Stream generation error: {}", error);
+                                let _ = sender.terminate(FinishReason::Error);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Terminate stream gracefully
+                    let _ = sender.terminate(FinishReason::Stop);
+                    metrics.successful_requests.fetch_add(1, Ordering::Relaxed);
+                }
+                Err(e) => {
+                    tracing::error!("Failed to generate stream: {}", e);
+                    let _ = sender.terminate(FinishReason::Error);
+                    metrics.failed_requests.fetch_add(1, Ordering::Relaxed);
+                }
+            }
+            
+            // Decrement concurrent counter
+            metrics.concurrent_requests.fetch_sub(1, Ordering::Relaxed);
+        });
+
+        Ok(())
     }
 
     /// Create a completion builder with typestate pattern (aligned with providers)
@@ -328,14 +478,14 @@ impl CandleCompletionClient {
     #[inline(always)]
     pub fn get_metrics(&self) -> (usize, usize, usize, usize, usize, usize, usize, usize) {
         (
-            self.metrics.total_requests.get(),
-            self.metrics.successful_requests.get(),
-            self.metrics.failed_requests.get(),
-            self.metrics.concurrent_requests.get(),
-            self.metrics.total_tokens_generated.get(),
-            self.metrics.streaming_requests.get(),
-            self.metrics.batch_requests.get(),
-            self.metrics.cache_hit_rate.get(),
+            self.metrics.total_requests.load(Ordering::Relaxed),
+            self.metrics.successful_requests.load(Ordering::Relaxed),
+            self.metrics.failed_requests.load(Ordering::Relaxed),
+            self.metrics.concurrent_requests.load(Ordering::Relaxed),
+            self.metrics.total_tokens_generated.load(Ordering::Relaxed),
+            self.metrics.streaming_requests.load(Ordering::Relaxed),
+            self.metrics.batch_requests.load(Ordering::Relaxed),
+            self.metrics.cache_hit_rate.load(Ordering::Relaxed),
         )
     }
 
@@ -352,13 +502,31 @@ impl CandleCompletionClient {
         let tokenizer =
             Arc::new(CandleTokenizer::from_hub(repo_id, config.tokenizer_config.clone()).await?);
 
-        // Create generator
-        let generator = CandleGenerator::new(
-            Arc::clone(&model),
-            Arc::clone(&tokenizer),
-            config.generation_config.clone(),
-            (*device).clone(),
-        );
+        // Create generator with sophisticated features if enabled
+        let generator = if config.enable_sophisticated_sampling 
+            || config.enable_streaming_optimization 
+            || config.enable_kv_cache {
+            CandleGenerator::with_sophisticated_features(
+                Arc::clone(&model),
+                Arc::clone(&tokenizer),
+                config.generation_config.clone(),
+                (*device).clone(),
+                config.sampling_config.clone(),
+                config.streaming_config.clone(),
+                if config.enable_kv_cache { 
+                    Some(config.kv_cache_config.clone()) 
+                } else { 
+                    None 
+                },
+            )?
+        } else {
+            CandleGenerator::new(
+                Arc::clone(&model),
+                Arc::clone(&tokenizer),
+                config.generation_config.clone(),
+                (*device).clone(),
+            )
+        };
 
         let client = Self {
             config: config.clone(),
@@ -464,19 +632,19 @@ impl CandleCompletionClient {
     /// Record request statistics with lock-free atomic counters
     #[inline(always)]
     fn record_request_stats(&self, success: bool, tokens_generated: u32, is_streaming: bool) {
-        self.metrics.total_requests.inc();
+        self.metrics.total_requests.fetch_add(1, Ordering::Relaxed);
 
         if success {
-            self.metrics.successful_requests.inc();
-            self.metrics.total_tokens_generated.add(tokens_generated as usize);
+            self.metrics.successful_requests.fetch_add(1, Ordering::Relaxed);
+            self.metrics.total_tokens_generated.fetch_add(tokens_generated as usize, Ordering::Relaxed);
             
             if is_streaming {
-                self.metrics.streaming_requests.inc();
+                self.metrics.streaming_requests.fetch_add(1, Ordering::Relaxed);
             } else {
-                self.metrics.batch_requests.inc();
+                self.metrics.batch_requests.fetch_add(1, Ordering::Relaxed);
             }
         } else {
-            self.metrics.failed_requests.inc();
+            self.metrics.failed_requests.fetch_add(1, Ordering::Relaxed);
         }
     }
 }
@@ -485,10 +653,9 @@ impl CompletionCoreClient for CandleCompletionClient {
     #[inline(always)]
     fn complete<'a>(
         &'a self,
-        request: CompletionRequest<'_>,
-    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<CompletionResponse<'_>>> + Send + 'a>> {
+        request: CompletionRequest<'a>,
+    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<CompletionResponse<'a>>> + Send + 'a>> {
         Box::pin(async move {
-            let start_time = Instant::now();
 
             // Check if client is initialized
             if !self.is_initialized() {
@@ -503,14 +670,14 @@ impl CompletionCoreClient for CandleCompletionClient {
             })?;
 
             // Update concurrent request counter
-            self.metrics.concurrent_requests.inc();
+            self.metrics.concurrent_requests.fetch_add(1, Ordering::Relaxed);
 
-            // Generate completion
-            let generator = self.generator.load();
+            // Generate completion - clone Arc to avoid borrow issues
+            let generator = Arc::clone(&self.generator.load());
             let result = generator.generate(&request).await;
 
             // Decrement concurrent counter
-            self.metrics.concurrent_requests.sub(1);
+            self.metrics.concurrent_requests.fetch_sub(1, Ordering::Relaxed);
 
             match result {
                 Ok(response) => {
@@ -519,7 +686,18 @@ impl CompletionCoreClient for CandleCompletionClient {
                         response.tokens_generated().unwrap_or(0),
                         false, // Not streaming
                     );
-                    Ok(response)
+                    // Ensure response is owned by converting to owned Cow
+                    let owned_response = CompletionResponse {
+                        text: std::borrow::Cow::Owned(response.text().to_string()),
+                        model: std::borrow::Cow::Owned(response.model().to_string()),
+                        provider: response.provider().map(|p| std::borrow::Cow::Owned(p.to_string())),
+                        usage: response.usage().cloned(),
+                        finish_reason: response.finish_reason().map(|f| std::borrow::Cow::Owned(f.to_string())),
+                        response_time_ms: response.response_time_ms(),
+                        generation_time_ms: response.generation_time_ms(),
+                        tokens_per_second: response.tokens_per_second(),
+                    };
+                    Ok(owned_response)
                 }
                 Err(e) => {
                     self.record_request_stats(false, 0, false);
@@ -532,41 +710,17 @@ impl CompletionCoreClient for CandleCompletionClient {
     #[inline(always)]
     fn complete_stream<'a>(
         &'a self,
-        request: CompletionRequest<'_>,
+        request: CompletionRequest<'a>,
     ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<StreamingResponse>> + Send + 'a>> {
         Box::pin(async move {
-            let start_time = Instant::now();
-
-            // Check if client is initialized
-            if !self.is_initialized() {
-                return Err(CompletionCoreError::InvalidRequest(
-                    "Client not initialized".to_string(),
-                ));
-            }
-
-            // Acquire semaphore permit for rate limiting
-            let _permit = self.request_semaphore.acquire().await.map_err(|_| {
-                CompletionCoreError::InvalidRequest("Request semaphore error".to_string())
-            })?;
-
-            // Update concurrent request counter
-            self.metrics.concurrent_requests.inc();
-
-            // Generate streaming completion
-            let generator = self.generator.load();
-            let result = generator.generate_stream(&request).await;
-
-            // Decrement concurrent counter  
-            self.metrics.concurrent_requests.sub(1);
-
-            match result {
-                Ok(stream) => {
-                    // Note: We can't easily track tokens for streaming here
-                    self.record_request_stats(true, 0, true); // Streaming
-                    Ok(stream)
+            // Use the new enhanced TokenOutputStream method and convert for backward compatibility
+            match self.complete_token_stream(request).await {
+                Ok(token_stream) => {
+                    // Convert TokenOutputStream to StreamingResponse for compatibility
+                    let streaming_response: StreamingResponse = token_stream.into();
+                    Ok(streaming_response)
                 }
                 Err(e) => {
-                    self.record_request_stats(false, 0, true);
                     Err(CompletionCoreError::GenerationFailed(e.to_string()))
                 }
             }
@@ -759,6 +913,7 @@ impl<'a> CandleCompletionBuilder<'a, NeedsPrompt> {
 // ============================================================================
 impl<'a> CandleCompletionBuilder<'a, HasPrompt> {
     /// Build the completion request with zero allocation where possible
+    #[allow(dead_code)]
     fn build_request(&self) -> Result<CompletionRequest, CandleError> {
         let prompt_text = self.prompt.as_ref()
             .ok_or_else(|| CandleError::configuration("Prompt is required"))?;
@@ -766,7 +921,7 @@ impl<'a> CandleCompletionBuilder<'a, HasPrompt> {
         let max_tokens = self.max_tokens.and_then(|t| NonZeroU64::new(t as u64));
         
         let mut builder = CompletionRequest::builder()
-            .system_prompt(prompt_text.as_str());
+            .system_prompt(prompt_text.to_string());
 
         if let Some(temp) = self.temperature {
             builder = builder.temperature(temp)
@@ -785,9 +940,44 @@ impl<'a> CandleCompletionBuilder<'a, HasPrompt> {
 
     /// Execute the completion request with zero allocation patterns
     pub async fn execute(self) -> Result<CompletionResponse<'static>, CandleError> {
-        let request = self.build_request()?;
-        match self.client.complete(request).await {
-            Ok(response) => Ok(response),
+        let prompt_text = self.prompt.as_ref()
+            .ok_or_else(|| CandleError::configuration("Prompt is required"))?
+            .as_str()
+            .to_string();
+
+        let max_tokens = self.max_tokens.and_then(|t| NonZeroU64::new(t as u64));
+        
+        let mut builder = CompletionRequest::builder()
+            .system_prompt(prompt_text);
+
+        if let Some(temp) = self.temperature {
+            builder = builder.temperature(temp)
+                .map_err(|_| CandleError::configuration("Invalid temperature"))?;
+        }
+
+        if let Some(tokens) = max_tokens {
+            builder = builder.max_tokens(Some(tokens));
+        }
+
+        let request = builder.build()
+            .map_err(|_| CandleError::configuration("Failed to build completion request"))?;
+
+        let client = self.client;
+        match client.complete(request).await {
+            Ok(response) => {
+                // Convert to owned response to avoid lifetime issues
+                let owned_response = CompletionResponse {
+                    text: std::borrow::Cow::Owned(response.text.into_owned()),
+                    model: std::borrow::Cow::Owned(response.model.into_owned()),
+                    provider: response.provider.map(|p| std::borrow::Cow::Owned(p.into_owned())),
+                    usage: response.usage,
+                    finish_reason: response.finish_reason.map(|f| std::borrow::Cow::Owned(f.into_owned())),
+                    response_time_ms: response.response_time_ms,
+                    generation_time_ms: response.generation_time_ms,
+                    tokens_per_second: response.tokens_per_second,
+                };
+                Ok(owned_response)
+            },
             Err(CompletionCoreError::InvalidRequest(_msg)) => {
                 Err(CandleError::configuration("Invalid completion request"))
             }
@@ -802,7 +992,28 @@ impl<'a> CandleCompletionBuilder<'a, HasPrompt> {
 
     /// Stream the completion response with zero allocation patterns  
     pub async fn stream(self) -> Result<StreamingResponse, CandleError> {
-        let request = self.build_request()?;
+        let prompt_text = self.prompt.as_ref()
+            .ok_or_else(|| CandleError::configuration("Prompt is required"))?
+            .as_str()
+            .to_string();
+
+        let max_tokens = self.max_tokens.and_then(|t| NonZeroU64::new(t as u64));
+        
+        let mut builder = CompletionRequest::builder()
+            .system_prompt(prompt_text);
+
+        if let Some(temp) = self.temperature {
+            builder = builder.temperature(temp)
+                .map_err(|_| CandleError::configuration("Invalid temperature"))?;
+        }
+
+        if let Some(tokens) = max_tokens {
+            builder = builder.max_tokens(Some(tokens));
+        }
+
+        let request = builder.build()
+            .map_err(|_| CandleError::configuration("Failed to build completion request"))?;
+
         match self.client.complete_stream(request).await {
             Ok(stream) => Ok(stream),
             Err(CompletionCoreError::InvalidRequest(_msg)) => {

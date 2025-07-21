@@ -724,3 +724,13 @@ pub const fn available_models() -> &'static [&'static str] {
         "Qwen/QVQ-72B-Preview",
     ]
 }
+
+// Model constants for exports
+pub const GEMMA_2: &str = "google/gemma-2-2b-it";
+pub const META_LLAMA_3_1: &str = "meta-llama/Meta-Llama-3.1-8B-Instruct";
+pub const PHI_4: &str = "microsoft/phi-4";
+pub const QWEN_QVQ_PREVIEW: &str = "Qwen/QVQ-72B-Preview";
+pub const QWEN2_5: &str = "Qwen/Qwen2.5-7B-Instruct";
+pub const QWEN2_5_CODER: &str = "Qwen/Qwen2.5-Coder-32B-Instruct";
+pub const QWEN2_VL: &str = "Qwen/Qwen2-VL-7B-Instruct";
+pub const SMALLTHINKER_PREVIEW: &str = "PowerInfer/SmallThinker-3B-Preview";

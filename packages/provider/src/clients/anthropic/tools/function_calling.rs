@@ -11,8 +11,10 @@ use serde_json::Value;
 
 use super::core::{
     AnthropicError, AnthropicResult, ChainControl, Emitter, ErrorHandler, InvocationHandler,
-    Message, ResultHandler, SchemaType, Tool, ToolError,
+    Message, ResultHandler, SchemaType,
 };
+use fluent_ai_domain::tool::{Tool};
+// Note: ToolError not available in fluent_ai_domain - using anyhow::Error
 #[cfg(feature = "cylo")]
 use crate::execution::{CyloExecutor, CyloInstance, ExecutionRequest};
 

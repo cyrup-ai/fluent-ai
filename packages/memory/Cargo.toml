@@ -48,6 +48,9 @@ walkdir = { version = "2.5.0" }
 num_cpus = { version = "1.17.0" }
 num-complex = { version = "0.4.6" }
 
+# Shared SIMD operations - temporarily disabled due to compilation issues
+# fluent-ai-simd = { path = "../fluent-ai-simd" }
+
 # Zero-allocation and lock-free operations
 arc-swap = { version = "1.7.1" }
 crossbeam = { version = "0.8.4" }

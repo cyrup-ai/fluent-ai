@@ -23,8 +23,8 @@ use crate::{
     },
     json_util,
     message::Message,
-    runtime::{self, AsyncTask},
 };
+use fluent_ai_domain::{AsyncTask, spawn_async, channel};
 
 // ============================================================================
 // OpenRouter API Client with HTTP3 and zero-allocation patterns
@@ -478,12 +478,12 @@ impl<'a> OpenRouterCompletionBuilder<'a, HasPrompt> {
             CompletionError,
         >,
     > {
-        let (tx, task) = runtime::channel();
+        let (tx, task) = channel();
         let model = CompletionModel::new(self.client.clone(), self.model_name);
 
         match self.build_request() {
             Ok(request) => {
-                runtime::spawn_async(async move {
+                spawn_async(async move {
                     let result = model.completion(request).await;
                     tx.finish(result);
                 });
@@ -507,12 +507,12 @@ impl<'a> OpenRouterCompletionBuilder<'a, HasPrompt> {
             CompletionError,
         >,
     > {
-        let (tx, task) = runtime::channel();
+        let (tx, task) = channel();
         let model = CompletionModel::new(self.client.clone(), self.model_name);
 
         match self.build_request() {
             Ok(request) => {
-                runtime::spawn_async(async move {
+                spawn_async(async move {
                     let result = model.stream(request).await;
                     tx.finish(result);
                 });

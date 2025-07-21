@@ -11,11 +11,11 @@ use serde_json::json;
 use super::completion::CompletionModel;
 use crate::{
     clients::openai::{self, send_compatible_streaming_request},
-    completion::{CompletionError, CompletionRequest},
-    json_util::merge,
-    runtime::{self as rt, AsyncTask},
-    streaming::StreamingCompletionResponse as RigStreaming,
 };
+use fluent_ai_domain::completion::{CompletionCoreError, CompletionRequest};
+use serde_json; // Note: merge function needs to be implemented if needed
+use tokio::{self as rt, task::spawn as AsyncTask};
+use fluent_ai_domain::completion::StreamingCoreResponse as RigStreaming;
 
 // ─────────────────────────── streaming response type ───────────────────
 

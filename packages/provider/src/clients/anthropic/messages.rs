@@ -7,6 +7,16 @@ use fluent_ai_domain::message::MessageRole;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// Helper function to merge two JSON values
+fn merge_json_values(mut base: Value, other: Value) -> Value {
+    if let (Value::Object(ref mut base_map), Value::Object(other_map)) = (&mut base, other) {
+        base_map.extend(other_map);
+        base
+    } else {
+        other
+    }
+}
+
 /// Message role in conversation
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -347,7 +357,7 @@ impl Tool {
 
     /// Convert from fluent-ai ToolDefinition
     #[inline(always)]
-    pub fn from_definition(def: &crate::completion::ToolDefinition) -> Self {
+    pub fn from_definition(def: &fluent_ai_domain::tool::ToolDefinition) -> Self {
         Self::new(
             def.name.clone(),
             def.description.clone(),
@@ -357,7 +367,7 @@ impl Tool {
 }
 
 /// Convert fluent-ai Message to Anthropic Message
-impl From<&crate::message::Message> for Message {
+impl From<&fluent_ai_domain::message::Message> for Message {
     #[inline(always)]
     fn from(msg: &crate::domain::Message) -> Self {
         match msg.role {
@@ -376,7 +386,7 @@ impl MessageConverter {
     /// Convert fluent-ai messages to Anthropic format with zero allocation where possible
     #[inline(always)]
     pub fn convert_messages(
-        messages: &crate::ZeroOneOrMany<crate::message::Message>,
+        messages: &crate::ZeroOneOrMany<fluent_ai_domain::message::Message>,
     ) -> Vec<Message> {
         match messages {
             crate::ZeroOneOrMany::None => Vec::new(),
@@ -388,7 +398,7 @@ impl MessageConverter {
     /// Convert fluent-ai tools to Anthropic format
     #[inline(always)]
     pub fn convert_tools(
-        tools: &crate::ZeroOneOrMany<crate::completion::ToolDefinition>,
+        tools: &crate::ZeroOneOrMany<fluent_ai_domain::tool::ToolDefinition>,
     ) -> Vec<Tool> {
         match tools {
             crate::ZeroOneOrMany::None => Vec::new(),
@@ -401,7 +411,7 @@ impl MessageConverter {
     #[inline(always)]
     pub fn merge_additional_params(mut request: Value, additional: Option<Value>) -> Value {
         if let Some(params) = additional {
-            request = crate::json_util::merge(request, params);
+            request = merge_json_values(request, params);
         }
         request
     }
@@ -409,7 +419,7 @@ impl MessageConverter {
     /// Convert documents to message content blocks
     #[inline(always)]
     pub fn convert_documents_to_blocks(
-        documents: &crate::ZeroOneOrMany<crate::completion::Document>,
+        documents: &crate::ZeroOneOrMany<fluent_ai_domain::Document>,
     ) -> Vec<ContentBlock> {
         let mut blocks = Vec::new();
 

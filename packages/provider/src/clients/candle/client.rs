@@ -194,6 +194,17 @@ impl Default for CandleClientState {
     }
 }
 
+impl Clone for CandleCompletionClient {
+    fn clone(&self) -> Self {
+        Self {
+            config: Arc::clone(&self.config),
+            model_info: self.model_info.clone(),
+            components: OnceCell::new(), // Components will be lazy-initialized
+            state: ArcSwap::new(Arc::clone(&self.state.load())),
+        }
+    }
+}
+
 impl CandleCompletionClient {
     /// Create a new Candle completion client with validation
     pub fn new(config: CandleConfig) -> CandleResult<Self> {

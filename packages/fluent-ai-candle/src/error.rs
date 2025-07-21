@@ -33,8 +33,8 @@ pub enum CandleError {
     UnsupportedArchitecture(&'static str),
     /// Configuration error
     Configuration(&'static str),
-    /// HuggingFace Hub error
-    HuggingFaceHub(String),
+    /// Tokenization error with dynamic message
+    TokenizationError(String),
     /// SafeTensors format error
     SafeTensors(&'static str),
     /// Context length exceeded
@@ -49,6 +49,12 @@ pub enum CandleError {
     InvalidInput(&'static str),
     /// Device operation failed
     DeviceOperation(&'static str),
+    /// Processing error
+    ProcessingError(&'static str),
+    /// Invalid configuration  
+    InvalidConfiguration(&'static str),
+    /// Tokenization error
+    Tokenization(&'static str),
     /// Memory allocation failed
     MemoryAllocation(&'static str),
     /// Tokenizer error with dynamic message
@@ -59,6 +65,10 @@ pub enum CandleError {
     UnsupportedOperation(&'static str),
     /// Incompatible tokenizer
     IncompatibleTokenizer(&'static str),
+    /// Progress tracking error
+    Progress(String),
+    /// Cache-related error
+    Cache(String),
 }
 
 impl fmt::Display for CandleError {
@@ -75,7 +85,7 @@ impl fmt::Display for CandleError {
             Self::LoadingTimeout => write!(f, "Model loading timeout"),
             Self::UnsupportedArchitecture(arch) => write!(f, "Unsupported architecture: {}", arch),
             Self::Configuration(msg) => write!(f, "Configuration error: {}", msg),
-            Self::HuggingFaceHub(msg) => write!(f, "HuggingFace Hub error: {}", msg),
+            Self::TokenizationError(msg) => write!(f, "Tokenization error: {}", msg),
             Self::SafeTensors(msg) => write!(f, "SafeTensors error: {}", msg),
             Self::ContextLengthExceeded { current, max } => {
                 write!(f, "Context length exceeded: {} > {}", current, max)
@@ -96,6 +106,8 @@ impl fmt::Display for CandleError {
             Self::ConfigurationError(msg) => write!(f, "Configuration error: {}", msg),
             Self::UnsupportedOperation(msg) => write!(f, "Unsupported operation: {}", msg),
             Self::IncompatibleTokenizer(msg) => write!(f, "Incompatible tokenizer: {}", msg),
+            Self::Progress(msg) => write!(f, "Progress tracking error: {}", msg),
+            Self::Cache(msg) => write!(f, "Cache error: {}", msg),
         }
     }
 }
@@ -142,13 +154,7 @@ impl From<tokenizers::Error> for CandleError {
     }
 }
 
-// Conversion from HuggingFace Hub errors
-impl From<hf_hub::api::tokio::ApiError> for CandleError {
-    #[inline(always)]
-    fn from(err: hf_hub::api::tokio::ApiError) -> Self {
-        Self::HuggingFaceHub(format!("HF Hub API error: {}", err))
-    }
-}
+// HuggingFace Hub errors are no longer used - replaced with direct HTTP3 implementation
 
 // Conversion from domain completion request errors
 impl From<CompletionRequestError> for CandleError {
@@ -195,6 +201,12 @@ impl CandleError {
     pub fn model_load_error<S: Into<String>>(msg: S) -> Self {
         Self::ModelLoadError(msg.into())
     }
+    
+    /// Create a model loading error (alias for model_load_error)
+    #[inline(always)]
+    pub fn model_loading<S: Into<String>>(msg: S) -> Self {
+        Self::ModelLoadError(msg.into())
+    }
 
     /// Create an invalid model format error
     #[inline(always)]
@@ -224,6 +236,12 @@ impl CandleError {
     #[inline(always)]
     pub fn tokenizer(msg: &'static str) -> Self {
         Self::Tokenizer(msg)
+    }
+
+    /// Create a tokenization error
+    #[inline(always)]
+    pub fn tokenization<S: Into<String>>(msg: S) -> Self {
+        Self::TokenizationError(msg.into())
     }
 
     /// Create a memory mapping error
@@ -286,13 +304,31 @@ impl CandleError {
         Self::InvalidInput(msg)
     }
 
+    /// Create a streaming error
+    #[inline(always)]
+    pub fn streaming_error(msg: &'static str) -> Self {
+        Self::GenerationFailed(msg)
+    }
+
+    /// Create a progress tracking error
+    #[inline(always)]
+    pub fn progress_error<S: Into<String>>(msg: S) -> Self {
+        Self::Progress(msg.into())
+    }
+
+    /// Create a cache error
+    #[inline(always)]
+    pub fn cache_error<S: Into<String>>(msg: S) -> Self {
+        Self::Cache(msg.into())
+    }
+
     /// Check if this error is retryable
     #[inline(always)]
     pub fn is_retryable(&self) -> bool {
         match self {
             Self::LoadingTimeout => true,
             Self::DeviceAllocation(_) => true,
-            Self::HuggingFaceHub(_) => true,
+            Self::TokenizationError(_) => true,
             Self::CacheOverflow => true,
             _ => false,
         }
@@ -304,7 +340,7 @@ impl CandleError {
         match self {
             Self::LoadingTimeout => Some(5),
             Self::DeviceAllocation(_) => Some(1),
-            Self::HuggingFaceHub(_) => Some(2),
+            Self::TokenizationError(_) => Some(2),
             Self::CacheOverflow => Some(1),
             _ => None,
         }
@@ -454,9 +490,11 @@ impl From<CandleError> for CompletionCoreError {
             CandleError::Configuration(msg) => CompletionCoreError::InvalidRequest(msg.to_string()),
             // Handle missing patterns
             CandleError::DeviceAllocation(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
-            CandleError::HuggingFaceHub(msg) => CompletionCoreError::ModelLoadingFailed(msg),
+            CandleError::TokenizationError(msg) => CompletionCoreError::TokenizationFailed(msg),
             CandleError::CacheOverflow => CompletionCoreError::GenerationFailed("Cache overflow".to_string()),
             CandleError::InvalidInput(msg) => CompletionCoreError::InvalidRequest(msg.to_string()),
+            CandleError::Progress(msg) => CompletionCoreError::Internal(msg),
+            CandleError::Cache(msg) => CompletionCoreError::GenerationFailed(msg),
         }
     }
 }

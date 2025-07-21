@@ -11,10 +11,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use super::client::Client;
-use crate::{
-    embeddings::{self, EmbeddingError},
-    runtime::{self as rt, AsyncTask},
-};
+use fluent_ai_domain::embedding::{self}; 
+// Note: EmbeddingError not available - needs custom error type
+// Note: runtime and AsyncTask need to be replaced with tokio equivalents
+use tokio::{self as rt, task::spawn as AsyncTask};
 
 // ───────────────────────────── public constants ──────────────────────────
 
@@ -103,7 +103,7 @@ impl EmbeddingModel {
 
 // ───────────────────────────── impl EmbeddingModel ─────────────────────
 
-impl crate::client::EmbeddingModel for EmbeddingModel {
+impl super::super::client::EmbeddingModel for EmbeddingModel {
     const MAX_DOCUMENTS: usize = 1024;
 
     #[inline(always)]
@@ -115,7 +115,7 @@ impl crate::client::EmbeddingModel for EmbeddingModel {
     fn embed_texts(
         &self,
         documents: impl IntoIterator<Item = String>,
-    ) -> AsyncTask<Result<Vec<crate::embeddings::Embedding>, crate::embeddings::EmbeddingError>>
+    ) -> AsyncTask<Result<Vec<fluent_ai_domain::embedding::Embedding>, anyhow::Error /* was fluent_ai_domain::embedding::EmbeddingError */>>
     {
         let documents: Vec<String> = documents.into_iter().collect();
         let this = self.clone();
@@ -179,9 +179,9 @@ impl EmbeddingModel {
     async fn perform_single_embedding(
         &self,
         text: String,
-    ) -> Result<Vec<f64>, crate::embeddings::EmbeddingError> {
-        use crate::embeddings::EmbeddingError;
-        use crate::http::{HttpClient, HttpRequest};
+    ) -> Result<Vec<f64>, anyhow::Error /* was fluent_ai_domain::embedding::EmbeddingError */> {
+        use anyhow::Error /* was fluent_ai_domain::embedding::EmbeddingError */;
+        use fluent_ai_http3::{HttpClient, HttpRequest};
 
         // Pre-allocate request body to avoid reallocation
         let request_body = serde_json::json!({
@@ -241,9 +241,9 @@ impl EmbeddingModel {
     async fn perform_embedding_batch(
         &self,
         documents: Vec<String>,
-    ) -> Result<Vec<crate::embeddings::Embedding>, crate::embeddings::EmbeddingError> {
-        use crate::embeddings::EmbeddingError;
-        use crate::http::{HttpClient, HttpRequest};
+    ) -> Result<Vec<fluent_ai_domain::embedding::Embedding>, anyhow::Error /* was fluent_ai_domain::embedding::EmbeddingError */> {
+        use anyhow::Error /* was fluent_ai_domain::embedding::EmbeddingError */;
+        use fluent_ai_http3::{HttpClient, HttpRequest};
 
         if documents.is_empty() {
             return Ok(Vec::new());
@@ -314,7 +314,7 @@ impl EmbeddingModel {
 
         for (embedding_data, document) in response_body.data.into_iter().zip(documents.into_iter())
         {
-            results.push(crate::embeddings::Embedding {
+            results.push(fluent_ai_domain::embedding::Embedding {
                 document,
                 vec: cyrup_sugars::ZeroOneOrMany::from_iter(embedding_data.embedding.into_iter()),
             });

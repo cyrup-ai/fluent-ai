@@ -17,13 +17,24 @@ use smallvec::{SmallVec, smallvec};
 use super::completion::{CompletionModel, LLAMA_3_70B_8192};
 use crate::{
     client::{CompletionClient, ProviderClient},
-    completion::{
-        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
-    },
-    json_util,
-    message::Message,
-    runtime::AsyncTask,
 };
+use fluent_ai_domain::completion::{
+    self, CompletionCoreError as CompletionError, CompletionRequest, CompletionRequestBuilder,
+};
+use fluent_ai_domain::PromptStruct as Prompt;
+use fluent_ai_domain::memory::workflow::PromptError;
+use fluent_ai_domain::message::Message;
+
+/// Helper function to merge two JSON values
+fn merge_json_values(mut base: serde_json::Value, other: serde_json::Value) -> serde_json::Value {
+    if let (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) = (&mut base, other) {
+        base_map.extend(other_map);
+        base
+    } else {
+        other
+    }
+}
+use fluent_ai_domain::{AsyncTask, spawn_async, channel};
 
 // ============================================================================
 // Groq API Client with HTTP3 and zero-allocation patterns
@@ -332,7 +343,7 @@ impl<'a, S> GroqCompletionBuilder<'a, S> {
 
     #[inline(always)]
     pub fn additional_params(mut self, params: serde_json::Value) -> Self {
-        self.additional_params = json_util::merge(self.additional_params, params);
+        self.additional_params = merge_json_values(self.additional_params, params);
         self
     }
 }
@@ -410,18 +421,18 @@ impl<'a> GroqCompletionBuilder<'a, HasPrompt> {
             CompletionError,
         >,
     > {
-        let (tx, task) = runtime::channel();
+        let (tx, task) = channel();
         let model = CompletionModel::new(self.client.clone(), self.model_name);
 
         match self.build_request() {
             Ok(request) => {
-                runtime::spawn_async(async move {
+                spawn_async(async move {
                     let result = model.completion(request).await;
-                    tx.send(result);
+                    tx.finish(result);
                 });
             }
             Err(e) => {
-                tx.send(Err(e.into()));
+                tx.finish(Err(e.into()));
             }
         }
 
@@ -439,18 +450,18 @@ impl<'a> GroqCompletionBuilder<'a, HasPrompt> {
             CompletionError,
         >,
     > {
-        let (tx, task) = runtime::channel();
+        let (tx, task) = channel();
         let model = CompletionModel::new(self.client.clone(), self.model_name);
 
         match self.build_request() {
             Ok(request) => {
-                runtime::spawn_async(async move {
+                spawn_async(async move {
                     let result = model.stream(request).await;
-                    tx.send(result);
+                    tx.finish(result);
                 });
             }
             Err(e) => {
-                tx.send(Err(e.into()));
+                tx.finish(Err(e.into()));
             }
         }
 

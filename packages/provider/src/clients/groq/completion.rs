@@ -19,15 +19,25 @@ use super::client::Client;
 use super::streaming;
 use crate::{
     AsyncStream, OneOrMany,
-    completion::{self, CompletionError, CompletionRequest},
     completion_provider::{
         ChunkHandler, CompletionError as ProviderCompletionError, CompletionProvider, ModelConfig,
     },
-    json_util,
-    message::{self, MessageError},
-    runtime::{self, AsyncTask},
     streaming::StreamingCompletionResponse,
 };
+use fluent_ai_domain::completion::{self, CompletionCoreError as CompletionError, CompletionRequest};
+use fluent_ai_domain::message::{self, MessageError};
+use fluent_ai_domain::AsyncTask;
+use tokio::task;
+
+/// Helper function to merge two JSON values
+fn merge_json_values(mut base: serde_json::Value, other: serde_json::Value) -> serde_json::Value {
+    if let (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) = (&mut base, other) {
+        base_map.extend(other_map);
+        base
+    } else {
+        other
+    }
+}
 
 // ============================================================================
 // Model Constants
@@ -171,8 +181,13 @@ pub use crate::clients::openai::CompletionResponse;
 // ============================================================================
 // Completion Model
 // ============================================================================
-// CompletionModel is now imported from fluent_ai_domain::model
-// Removed duplicated CompletionModel struct - use canonical domain type
+
+/// Groq completion model with zero-allocation performance optimizations
+#[derive(Clone)]
+pub struct CompletionModel {
+    client: Client,
+    model: String,
+}
 
 impl CompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
@@ -245,7 +260,7 @@ impl CompletionModel {
         };
 
         let request = if let Some(params) = completion_request.additional_params {
-            json_util::merge(request, params)
+            merge_json_values(request, params)
         } else {
             request
         };
@@ -263,13 +278,13 @@ impl completion::CompletionModel for CompletionModel {
         completion_request: CompletionRequest,
     ) -> AsyncTask<Result<completion::CompletionResponse<CompletionResponse>, CompletionError>>
     {
-        let (tx, task) = runtime::channel();
+        let (tx, rx) = tokio::sync::oneshot::channel();
         let client = self.client.clone();
         let model_name = self.model.clone();
 
         match self.create_completion_request(completion_request) {
             Ok(request) => {
-                runtime::spawn_async(async move {
+                tokio::spawn(async move {
                     let request_body = match serde_json::to_vec(&request) {
                         Ok(body) => body,
                         Err(e) => {
@@ -328,7 +343,7 @@ impl completion::CompletionModel for CompletionModel {
             }
         }
 
-        task
+        AsyncTask::from_receiver(rx)
     }
 
     fn stream(
@@ -336,17 +351,17 @@ impl completion::CompletionModel for CompletionModel {
         request: CompletionRequest,
     ) -> AsyncTask<Result<StreamingCompletionResponse<Self::StreamingResponse>, CompletionError>>
     {
-        let (tx, task) = runtime::channel();
+        let (tx, rx) = tokio::sync::oneshot::channel();
         let client = self.client.clone();
 
         match self.create_completion_request(request) {
             Ok(mut request) => {
-                request = json_util::merge(
+                request = merge_json_values(
                     request,
                     json!({"stream": true, "stream_options": {"include_usage": true}}),
                 );
 
-                runtime::spawn_async(async move {
+                tokio::spawn(async move {
                     let request_body = match serde_json::to_vec(&request) {
                         Ok(body) => body,
                         Err(e) => {
@@ -380,7 +395,7 @@ impl completion::CompletionModel for CompletionModel {
             }
         }
 
-        task
+        AsyncTask::from_receiver(rx)
     }
 }
 

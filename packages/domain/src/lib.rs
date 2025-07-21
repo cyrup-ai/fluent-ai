@@ -3,6 +3,24 @@
 //! This crate provides core domain types and traits for AI services.
 //! All domain logic, message types, and business objects are defined here.
 
+pub mod async_task;
+
+// Re-export commonly used types from async_task
+pub use async_task::{
+    AsyncStream,
+    AsyncStreamSender,
+    AsyncTask,
+    NotResult,
+    spawn_async,
+    error_handlers,
+    emitter_builder,
+};
+
+// Re-export commonly used types from model and validation modules
+pub use model::{Capability, Model, ModelCapabilities, ModelInfo, ModelPerformance, UseCase};
+pub use validation::{
+    ValidationError, ValidationIssue, ValidationReport, ValidationResult, ValidationSeverity,
+};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
@@ -531,22 +549,8 @@ impl<T> ZeroOneOrManyExt<T> for ZeroOneOrMany<T> {
         }
     }
 }
-// Re-export commonly used types for convenience
-pub use model::{Capability, Model, ModelCapabilities, ModelInfo, ModelPerformance, UseCase};
-pub use validation::{
-    ValidationError, ValidationIssue, ValidationReport, ValidationResult, ValidationSeverity,
-};
 
-// Define our own async task types
-pub type AsyncTask<T> = tokio::task::JoinHandle<T>;
-
-pub fn spawn_async<F, T>(future: F) -> AsyncTask<T>
-where
-    F: std::future::Future<Output = T> + Send + 'static,
-    T: Send + 'static,
-{
-    tokio::spawn(future)
-}
+// Use spawn_async from the async_task module
 
 /// Channel error type for proper error handling
 #[derive(Debug, thiserror::Error)]
@@ -577,74 +581,8 @@ impl<T> ChannelSender<T> {
     }
 }
 
-// Create async_task module for compatibility
-pub mod async_task {
-    // Use the actual AsyncStream implementation from fluent-ai
-    pub use futures::stream::Stream;
-    use tokio::sync::mpsc::UnboundedReceiver;
-
-    pub use super::{AsyncTask, spawn_async};
-
-    /// Zero-allocation async stream implementation
-    pub struct AsyncStream<T> {
-        receiver: UnboundedReceiver<T>,
-    }
-
-    impl<T> AsyncStream<T> {
-        /// Create a new AsyncStream from a tokio mpsc receiver
-        #[inline(always)]
-        pub fn new(receiver: UnboundedReceiver<T>) -> Self {
-            Self { receiver }
-        }
-
-        /// Create an empty stream
-        #[inline(always)]
-        pub fn empty() -> Self {
-            let (_tx, rx) = tokio::sync::mpsc::unbounded_channel();
-            Self::new(rx)
-        }
-
-        /// Create a stream from a single item
-        #[inline(always)]
-        pub fn from_single(item: T) -> Self {
-            let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-            let _ = tx.send(item);
-            Self::new(rx)
-        }
-    }
-
-    impl<T> Stream for AsyncStream<T> {
-        type Item = T;
-
-        fn poll_next(
-            mut self: std::pin::Pin<&mut Self>,
-            cx: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<Option<Self::Item>> {
-            use std::pin::Pin;
-            Pin::new(&mut self.receiver).poll_recv(cx)
-        }
-    }
-
-    // Define NotResult trait for compatibility
-    pub trait NotResult {}
-    impl<T> NotResult for T where T: Send + 'static {}
-
-    // Error handlers module
-    pub mod error_handlers {
-        pub fn default_error_handler<T: std::fmt::Debug>(_error: T) {
-            // Default error handler implementation
-        }
-
-        /// Trait for implementing fallback behavior when operations fail
-        pub trait BadTraitImpl {
-            fn bad_impl(error: &str) -> Self;
-        }
-    }
-}
-
-// Re-export AsyncTaskExt for AsyncTask::new(rx) pattern (removed as it's not needed)
-// AsyncStream trait from futures
-pub use futures::stream::Stream as AsyncStream;
+// Re-export Stream trait for convenience
+pub use futures::stream::Stream;
 
 // Domain modules
 pub mod agent;
@@ -669,6 +607,9 @@ pub mod provider;
 
 pub mod tool;
 pub mod usage;
+pub mod workflow;
+
+pub use workflow::*;
 
 // Re-export all types for convenience
 // Handle conflicting types by using specific imports to avoid ambiguity
@@ -777,3 +718,7 @@ pub use tool::{
 // Pricing module exports
 pub mod pricing;
 pub use pricing::PricingTier;
+
+// Utility modules
+pub mod util;
+pub use util::json_util;

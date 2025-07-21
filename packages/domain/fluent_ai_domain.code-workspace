@@ -26,6 +26,9 @@
 		},
 		{
 			"path": "../../../fluent-voice"
+		},
+		{
+			"path": "../fluent-ai-simd"
 		}
 	],
 	"settings": {}

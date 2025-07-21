@@ -18,13 +18,19 @@ use smallvec::{SmallVec, smallvec};
 use super::completion::{CompletionModel, GROK_3};
 use crate::{
     client::{CompletionClient, ProviderClient},
-    completion::{
-        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
-    },
     json_util,
-    message::Message,
-    runtime::{self, AsyncTask},
 };
+use fluent_ai_domain::completion::{
+    self, CompletionCoreError as CompletionError, CompletionRequest, CompletionRequestBuilder,
+};
+use fluent_ai_domain::PromptStruct as Prompt;
+use fluent_ai_domain::memory::workflow::PromptError;
+use fluent_ai_domain::message::Message;
+use fluent_ai_domain::AsyncTask;
+
+// Note: AsyncTask, spawn_async, channel from fluent_ai_domain may not exist - using tokio
+use tokio::{task::JoinHandle as AsyncTaskHandle, task::spawn as spawn_async};
+use tokio::sync::mpsc::channel;
 
 // ============================================================================
 // xAI API Client with HTTP3 and zero-allocation patterns
@@ -493,22 +499,24 @@ impl<'a> XAICompletionBuilder<'a, HasPrompt> {
             CompletionError,
         >,
     > {
-        let (tx, task) = runtime::channel();
+        let (tx, mut rx) = channel(1);
         let model = CompletionModel::new(self.client.clone(), self.model_name);
 
         match self.build_request() {
             Ok(request) => {
-                runtime::spawn_async(async move {
+                spawn_async(async move {
                     let result = model.completion(request).await;
-                    tx.finish(result);
+                    let _ = tx.send(result).await;
                 });
             }
             Err(e) => {
-                tx.finish(Err(e.into()));
+                let _ = tx.send(Err(e.into()));
             }
         }
 
-        task
+        AsyncTask::spawn(async move {
+            rx.recv().await.unwrap_or_else(|| Err(CompletionError::ResponseError("Channel closed".to_string())))
+        })
     }
 
     /// Stream the completion response
@@ -522,22 +530,24 @@ impl<'a> XAICompletionBuilder<'a, HasPrompt> {
             CompletionError,
         >,
     > {
-        let (tx, task) = runtime::channel();
+        let (tx, mut rx) = channel(1);
         let model = CompletionModel::new(self.client.clone(), self.model_name);
 
         match self.build_request() {
             Ok(request) => {
-                runtime::spawn_async(async move {
+                spawn_async(async move {
                     let result = model.stream(request).await;
-                    tx.finish(result);
+                    let _ = tx.send(result).await;
                 });
             }
             Err(e) => {
-                tx.finish(Err(e.into()));
+                let _ = tx.send(Err(e.into()));
             }
         }
 
-        task
+        AsyncTask::spawn(async move {
+            rx.recv().await.unwrap_or_else(|| Err(CompletionError::ResponseError("Channel closed".to_string())))
+        })
     }
 }
 
@@ -585,10 +595,10 @@ impl std::fmt::Debug for Client {
 
 /// CompletionClient trait implementation for auto-generation
 impl CompletionClient for Client {
-    type Model = CompletionModel;
+    type Model = completion::XaiCompletionModel;
 
     fn completion_model(&self, model: &str) -> Self::Model {
-        CompletionModel::new(self.clone(), model)
+        completion::XaiCompletionModel::new(self.clone(), model)
     }
 }
 

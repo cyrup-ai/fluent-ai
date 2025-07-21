@@ -30,8 +30,8 @@
 
 pub use audio::{OpenAIAudioClient, TranscriptionResponse};
 // Re-export all public types with zero allocation
-pub use client::OpenAIClient;
-pub use completion::{OpenAICompletionBuilder, CompletionResponse};
+pub use client::{OpenAIClient, OpenAIProvider};
+pub use completion::{OpenAICompletionBuilder, CompletionResponse, OpenAICompletionRequest, OpenAICompletionResponse};
 pub use discovery::OpenAIDiscovery;
 pub use embeddings::OpenAIEmbeddingClient;
 pub use error::{OpenAIError, Result as OpenAIResult};

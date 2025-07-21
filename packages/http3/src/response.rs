@@ -1,8 +1,11 @@
 //! HTTP response types and utilities
 
 use std::collections::HashMap;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 use bytes::Bytes;
+use futures::Stream;
 use http::StatusCode;
 
 /// HTTP response structure with zero-allocation design
@@ -91,6 +94,12 @@ impl HttpResponse {
     #[inline(always)]
     pub fn is_client_error(&self) -> bool {
         self.status.is_client_error()
+    }
+
+    /// Get the response body as a stream of bytes
+    /// This creates a stream from the already-loaded body data  
+    pub fn stream(&self) -> impl futures::Stream<Item = crate::HttpResult<u8>> {
+        futures::stream::iter(self.body.clone().into_iter().map(Ok))
     }
 
     /// Check if the response is a server error (5xx status)
@@ -342,3 +351,5 @@ impl HttpResponse {
         }
     }
 }
+
+

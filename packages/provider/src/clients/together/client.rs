@@ -25,8 +25,8 @@ use crate::{
     },
     json_util,
     message::Message,
-    runtime::{self, AsyncTask},
 };
+use fluent_ai_domain::{AsyncTask, spawn_async, channel};
 
 // ============================================================================
 // Together AI API Client with HTTP3 and dual-endpoint optimization
@@ -284,11 +284,11 @@ impl Client {
 
 /// CompletionClient trait implementation for auto-generation
 impl CompletionClient for Client {
-    type Model = Result<CompletionModel, CompletionError>;
+    type Model = Result<completion::TogetherCompletionModel, CompletionError>;
 
     #[inline]
     fn completion_model(&self, model: &str) -> Self::Model {
-        Ok(CompletionModel::new(self.clone(), model))
+        Ok(completion::TogetherCompletionModel::new(self.clone(), model))
     }
 }
 
@@ -562,12 +562,12 @@ impl<'a> TogetherCompletionBuilder<'a, HasPrompt> {
             CompletionError,
         >,
     > {
-        let (tx, task) = runtime::channel();
+        let (tx, task) = channel();
         let model = CompletionModel::new(self.client.clone(), self.model_name);
 
         match self.build_request() {
             Ok(request) => {
-                runtime::spawn_async(async move {
+                spawn_async(async move {
                     let result = model.completion(request).await;
                     tx.finish(result);
                 });
@@ -589,12 +589,12 @@ impl<'a> TogetherCompletionBuilder<'a, HasPrompt> {
             CompletionError,
         >,
     > {
-        let (tx, task) = runtime::channel();
+        let (tx, task) = channel();
         let model = CompletionModel::new(self.client.clone(), self.model_name);
 
         match self.build_request() {
             Ok(request) => {
-                runtime::spawn_async(async move {
+                spawn_async(async move {
                     let result = model.stream(request).await;
                     tx.finish(result);
                 });

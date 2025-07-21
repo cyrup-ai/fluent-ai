@@ -14,6 +14,9 @@ use crate::{clients::openai, json_util};
 // Together Completion Models
 // ================================================================
 
+// Re-export the domain CompletionModel trait
+pub use fluent_ai_domain::CompletionModel;
+
 pub const YI_34B_CHAT: &str = "zero-one-ai/Yi-34B-Chat";
 pub const OLMO_7B_INSTRUCT: &str = "allenai/OLMo-7B-Instruct";
 pub const CHRONOS_HERMES_13B: &str = "Austism/chronos-hermes-13b";
@@ -124,10 +127,14 @@ pub const WIZARDLM_13B_V1_2: &str = "WizardLM/WizardLM-13B-V1.2";
 // Rig Implementation Types
 // =================================================================
 
-// CompletionModel is now imported from fluent_ai_domain::model
-// Removed duplicated CompletionModel struct - use canonical domain type
+/// Together AI completion model implementation
+#[derive(Clone)]
+pub struct TogetherCompletionModel {
+    client: Client,
+    model: String,
+}
 
-impl CompletionModel {
+impl TogetherCompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
@@ -182,7 +189,7 @@ impl CompletionModel {
     }
 }
 
-impl completion::CompletionModel for CompletionModel {
+impl completion::CompletionModel for TogetherCompletionModel {
     type Response = openai::CompletionResponse;
     type StreamingResponse = openai::StreamingCompletionResponse;
 

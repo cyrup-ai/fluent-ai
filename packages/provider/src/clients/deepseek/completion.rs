@@ -706,12 +706,18 @@ pub fn completion_builder(
 }
 
 /// Get available DeepSeek models (compile-time constant)
+// Model constants for easy import
+pub const DEEPSEEK_CHAT: &str = "deepseek-chat";
+pub const DEEPSEEK_REASONER: &str = "deepseek-reasoner";
+pub const DEEPSEEK_V3: &str = "deepseek-v3";
+pub const DEEPSEEK_R1: &str = "deepseek-r1";
+
 #[inline(always)]
 pub const fn available_models() -> &'static [&'static str] {
     &[
-        "deepseek-chat",
-        "deepseek-reasoner",
-        "deepseek-v3",
-        "deepseek-r1",
+        DEEPSEEK_CHAT,
+        DEEPSEEK_REASONER,
+        DEEPSEEK_V3,
+        DEEPSEEK_R1,
     ]
 }

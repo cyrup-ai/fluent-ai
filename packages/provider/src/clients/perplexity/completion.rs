@@ -160,7 +160,7 @@ impl CompletionModel {
 }
 
 impl TryFrom<message::Message> for Message {
-    type Error = crate::completion::MessageError;
+    type Error = fluent_ai_domain::message::MessageError;
 
     fn try_from(message: message::Message) -> Result<Self, Self::Error> {
         Ok(match message {
@@ -169,7 +169,7 @@ impl TryFrom<message::Message> for Message {
                     .into_iter()
                     .map(|content| match content {
                         message::UserContent::Text(message::Text { text }) => Ok(text),
-                        _ => Err(crate::completion::MessageError::ConversionError(
+                        _ => Err(fluent_ai_domain::message::MessageError::ConversionError(
                             "Only text content is supported by Perplexity".to_owned(),
                         )),
                     })
@@ -188,7 +188,7 @@ impl TryFrom<message::Message> for Message {
                     .map(|content| {
                         Ok(match content {
                             message::AssistantContent::Text(message::Text { text }) => text,
-                            _ => return Err(crate::completion::MessageError::ConversionError(
+                            _ => return Err(fluent_ai_domain::message::MessageError::ConversionError(
                                 "Only text assistant message content is supported by Perplexity"
                                     .to_owned(),
                             )),

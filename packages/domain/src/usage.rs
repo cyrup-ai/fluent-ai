@@ -56,7 +56,9 @@ impl std::ops::Add for Usage {
 
     #[inline]
     fn add(self, rhs: Self) -> Self::Output {
-        (&self).add(&rhs)
+        let prompt = self.prompt_tokens + rhs.prompt_tokens;
+        let completion = self.completion_tokens + rhs.completion_tokens;
+        Self::new(prompt, completion)
     }
 }
 

@@ -22,13 +22,16 @@ pub mod image_generation;
 pub mod streaming;
 pub mod transcription;
 
-// Explicit re-exports to avoid ambiguity
-pub use client::{HuggingFaceClient, HuggingFaceProvider};
+// Explicit re-exports to avoid ambiguity  
+pub use client::{HuggingFaceClient, HuggingFaceProvider, HuggingFaceClient as Client};
+pub use completion::HuggingFaceCompletionBuilder as HuggingfaceCompletionBuilder;
+pub use client::HuggingFaceProvider as SubProvider;
 pub use completion::{
     HuggingFaceChoice, HuggingFaceCompletionBuilder, HuggingFaceCompletionRequest,
     HuggingFaceDelta, HuggingFaceFunction, HuggingFaceFunctionDelta, HuggingFaceMessage,
     HuggingFaceStreamChunk, HuggingFaceToolCall, HuggingFaceToolCallDelta, HuggingFaceUsage,
     available_models, completion_builder, get_model_config,
+    GEMMA_2, META_LLAMA_3_1, PHI_4, QWEN_QVQ_PREVIEW, QWEN2_5, QWEN2_5_CODER, QWEN2_VL, SMALLTHINKER_PREVIEW,
 };
 #[cfg(feature = "image")]
 pub use image_generation::{FLUX_1, KOLORS, STABLE_DIFFUSION_3};

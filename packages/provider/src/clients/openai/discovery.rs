@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::{debug, error, info, instrument, trace, warn};
 
-use super::super::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
+use crate::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
 use super::{
     client::OpenAIClient,
     error::OpenAIError,

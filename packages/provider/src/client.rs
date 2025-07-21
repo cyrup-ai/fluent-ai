@@ -58,7 +58,7 @@ pub trait CompletionModel: Send + Sync + Clone {
     type Error: Send + Sync + 'static;
 
     /// Generate completion from prompt using the domain pattern
-    fn prompt(&self, prompt: fluent_ai_domain::prompt::Prompt) -> AsyncStream<CompletionChunk>;
+    fn prompt(&self, prompt: fluent_ai_domain::prompt::Prompt) -> Box<dyn AsyncStream<CompletionChunk>>;
 
     /// Perform completion
     fn completion(
@@ -70,7 +70,7 @@ pub trait CompletionModel: Send + Sync + Clone {
     fn stream(
         &self,
         request: fluent_ai_domain::completion::CompletionRequest,
-    ) -> AsyncTask<Result<AsyncStream<Self::StreamingResponse>, Self::Error>>;
+    ) -> Box<dyn AsyncTask<Result<Box<dyn AsyncStream<Self::StreamingResponse>>, Self::Error>>>;
 }
 
 /// Embedding model trait for model-specific implementations  
@@ -88,8 +88,8 @@ pub trait EmbeddingModel: Send + Sync + Clone {
     ) -> AsyncTask<Result<Vec<crate::embeddings::Embedding>, crate::embeddings::EmbeddingError>>;
 
     /// Create embeddings for a single text
-    fn embed(&self, text: &str) -> AsyncTask<ZeroOneOrMany<f32>>;
+    fn embed(&self, text: &str) -> Box<dyn AsyncTask<ZeroOneOrMany<f32>>>;
 
     /// Create embeddings for multiple texts with streaming
-    fn embed_batch(&self, texts: ZeroOneOrMany<String>) -> AsyncStream<EmbeddingChunk>;
+    fn embed_batch(&self, texts: ZeroOneOrMany<String>) -> Box<dyn AsyncStream<EmbeddingChunk>>;
 }

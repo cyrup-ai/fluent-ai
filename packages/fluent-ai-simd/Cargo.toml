@@ -1,0 +1,31 @@
+[package]
+name = "fluent-ai-simd"
+version = "0.1.0"
+edition = "2021"
+description = "Shared high-performance SIMD operations for fluent-ai ecosystem"
+authors = ["Fluent AI Contributors"]
+license = "MIT"
+repository = "https://github.com/cyrusnimda/fluent-ai"
+
+[dependencies]
+# Core SIMD support
+wide = "0.7"
+arrayvec = "0.7"
+smallvec = "1.13"
+
+# Random number generation for sampling
+rand = "0.8"
+
+# Error handling
+thiserror = "1.0"
+
+# Optional candle integration
+candle-core = { version = "0.9.1", optional = true }
+
+[features]
+default = []
+candle = ["dep:candle-core"]
+portable_simd = []
+
+[dev-dependencies]
+criterion = "0.5"

@@ -45,6 +45,9 @@ pub use fluent_ai_domain::AsyncTask;
 pub use fluent_ai_domain::spawn_async;
 // pub use crate::Provider; // TODO: Define Provider trait
 
+// Re-export json_util for provider implementations
+pub use fluent_ai_domain::json_util;
+
 // Create our own AsyncStream type for provider compatibility
 pub type AsyncStream<T> = tokio_stream::wrappers::UnboundedReceiverStream<T>;
 pub type AsyncStreamSender<T> = tokio::sync::mpsc::UnboundedSender<T>;

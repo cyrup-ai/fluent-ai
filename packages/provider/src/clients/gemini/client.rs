@@ -21,14 +21,18 @@ use super::embedding::EmbeddingModel;
 use super::transcription::TranscriptionModel;
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient, TranscriptionClient},
-    completion::{
-        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
-    },
-    embeddings::{Embedding, EmbeddingBuilder},
-    json_util,
-    message::Message,
-    runtime::{self, AsyncTask},
 };
+use fluent_ai_domain::completion::{
+    self, CompletionCoreError, CompletionRequest, CompletionRequestBuilder,
+};
+use fluent_ai_domain::PromptStruct as Prompt;
+use fluent_ai_domain::embedding::Embedding;
+use crate::json_util;
+use fluent_ai_domain::message::Message;
+
+// Note: AsyncTask, spawn_async, channel from fluent_ai_domain may not exist - using tokio
+use tokio::{task::JoinHandle as AsyncTask, task::spawn as spawn_async};
+use tokio::sync::mpsc::channel;
 
 // ============================================================================
 // Google Gemini API Client with HTTP3 and zero-allocation patterns
@@ -604,12 +608,12 @@ impl<'a> GeminiCompletionBuilder<'a, HasPrompt> {
             CompletionError,
         >,
     > {
-        let (tx, task) = runtime::channel();
+        let (tx, task) = channel();
         let model = CompletionModel::new(self.client.clone(), self.model_name);
 
         match self.build_request() {
             Ok(request) => {
-                runtime::spawn_async(async move {
+                spawn_async(async move {
                     let result = model.completion(request).await;
                     tx.finish(result);
                 });
@@ -633,12 +637,12 @@ impl<'a> GeminiCompletionBuilder<'a, HasPrompt> {
             CompletionError,
         >,
     > {
-        let (tx, task) = runtime::channel();
+        let (tx, task) = channel();
         let model = CompletionModel::new(self.client.clone(), self.model_name);
 
         match self.build_request() {
             Ok(request) => {
-                runtime::spawn_async(async move {
+                spawn_async(async move {
                     let result = model.stream(request).await;
                     tx.finish(result);
                 });

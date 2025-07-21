@@ -45,9 +45,9 @@ use serde_json::{Map, Value};
 use self::gemini_api_types::Schema;
 use super::Client;
 use super::streaming::StreamingCompletionResponse;
+use fluent_ai_domain::completion::{self, CompletionCoreError as CompletionError, CompletionRequest};
 use crate::{
     AsyncStream, OneOrMany,
-    completion::{self, CompletionError, CompletionRequest},
     completion_provider::{ChunkHandler, CompletionProvider, ModelConfig, ModelInfo},
 };
 
@@ -852,11 +852,9 @@ pub mod gemini_api_types {
     use serde::{Deserialize, Serialize};
     use serde_json::Value;
 
-    use crate::{
-        OneOrMany,
-        completion::CompletionError,
-        message::{self, MimeType as _},
-    };
+    use fluent_ai_domain::completion::CompletionCoreError as CompletionError;
+    use fluent_ai_domain::message::{self, MimeType as _};
+    use crate::OneOrMany;
 
     /// Response from the model supporting multiple candidate responses.
     /// Safety ratings and content filtering are reported for both prompt in GenerateContentResponse.prompt_feedback
@@ -1631,7 +1629,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::message;
+    use fluent_ai_domain::message;
 
     #[test]
     fn test_deserialize_message_user() {

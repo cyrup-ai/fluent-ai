@@ -7,9 +7,10 @@ use tracing::{debug, error, info, instrument, warn};
 
 use crate::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
 use super::client::AnthropicClient;
-use crate::model::{
+use fluent_ai_domain::model::{
     error::ModelError,
-    info::{ModelCapability, ModelInfo, ModelInfoBuilder},
+    info::{ModelInfo, ModelInfoBuilder},
+    capabilities::Capability,
     registry::{ModelRegistry, RegisteredModel},
     traits::Model,
 };
@@ -55,14 +56,14 @@ impl AnthropicDiscovery {
     #[instrument(skip(self))]
     fn get_model_info(&self, model_name: &'static str) -> Option<ModelInfo> {
         // Determine model capabilities based on model name patterns
-        let mut capabilities = vec![ModelCapability::TextGeneration];
+        let mut capabilities = vec![Capability::TextGeneration];
 
         // All Claude 3+ models support function calling
         if model_name.contains("claude-3")
             || model_name.contains("claude-opus-4")
             || model_name.contains("claude-sonnet-4")
         {
-            capabilities.push(ModelCapability::FunctionCalling);
+            capabilities.push(Capability::FunctionCalling);
         }
 
         // Determine context length and other model-specific properties
@@ -171,8 +172,8 @@ mod tests {
             .expect("Failed to get model info for claude-3-5-sonnet-20241022 in test");
         assert_eq!(model_info.name(), "claude-3-5-sonnet-20241022");
         assert_eq!(model_info.provider(), "anthropic");
-        assert!(model_info.has_capability(ModelCapability::TextGeneration));
-        assert!(model_info.has_capability(ModelCapability::FunctionCalling));
+        assert!(model_info.has_capability(Capability::TextGeneration));
+        assert!(model_info.has_capability(Capability::FunctionCalling));
 
         // Test model registration (in-memory only for tests)
         let result = discovery.discover_and_register().await;
@@ -205,8 +206,8 @@ mod tests {
             .expect("Failed to get model info for claude-3-5-sonnet-20241022 in test_get_model_info");
         assert_eq!(model_info.name(), "claude-3-5-sonnet-20241022");
         assert_eq!(model_info.provider(), "anthropic");
-        assert!(model_info.has_capability(ModelCapability::TextGeneration));
-        assert!(model_info.has_capability(ModelCapability::FunctionCalling));
+        assert!(model_info.has_capability(Capability::TextGeneration));
+        assert!(model_info.has_capability(Capability::FunctionCalling));
 
         // Test with unsupported model
         assert!(discovery.get_model_info("unsupported-model").is_none());

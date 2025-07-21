@@ -573,7 +573,7 @@ impl<'de> Deserialize<'de> for MemoryNode {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &["base_memory", "embedding"];
+        const FIELDS: &[&str] = &["base_memory", "embedding"];
         deserializer.deserialize_struct("MemoryNode", FIELDS, MemoryNodeVisitor)
     }
 }

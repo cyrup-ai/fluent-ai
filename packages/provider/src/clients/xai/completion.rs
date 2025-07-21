@@ -7,6 +7,9 @@ use fluent_ai_domain::completion::CompletionRequest;
 use serde_json::{Value, json};
 use xai_api_types::{CompletionResponse, ToolDefinition};
 
+// Re-export the domain CompletionModel trait
+pub use fluent_ai_domain::CompletionModel;
+
 use super::client::Client;
 use crate::clients::anthropic::ApiResponse;
 use crate::clients::openai;
@@ -26,10 +29,14 @@ pub const GROK_2_IMAGE_1212: &str = "grok-2-image-1212";
 // Rig Implementation Types
 // =================================================================
 
-// CompletionModel is now imported from fluent_ai_domain::model
-// Removed duplicated CompletionModel struct - use canonical domain type
+/// xAI completion model implementation
+#[derive(Clone)]
+pub struct XaiCompletionModel {
+    client: Client,
+    model: String,
+}
 
-impl CompletionModel {
+impl XaiCompletionModel {
     pub(crate) fn create_completion_request(
         &self,
         completion_request: fluent_ai_domain::completion::CompletionRequest,
@@ -96,7 +103,7 @@ impl CompletionModel {
     }
 }
 
-impl completion::CompletionModel for CompletionModel {
+impl completion::CompletionModel for XaiCompletionModel {
     type Response = CompletionResponse;
     type StreamingResponse = openai::StreamingCompletionResponse;
 

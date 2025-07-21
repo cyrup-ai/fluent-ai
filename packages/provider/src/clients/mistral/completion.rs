@@ -6,11 +6,12 @@ use serde_json::{Value, json};
 
 use super::client::{Client, Usage};
 use crate::streaming::{RawStreamingChoice, StreamingCompletionResponse};
+use fluent_ai_domain::completion::{self, CompletionCoreError as CompletionError, CompletionRequest};
+use fluent_ai_domain::message;
 use crate::{
     OneOrMany,
     clients::mistral::client::ApiResponse,
-    completion::{self, CompletionError, CompletionRequest},
-    json_util, message,
+    json_util,
 };
 
 pub const CODESTRAL: &str = "codestral-latest";
@@ -246,8 +247,12 @@ impl FromStr for AssistantContent {
     }
 }
 
-// CompletionModel is now imported from fluent_ai_domain::model
-// Removed duplicated CompletionModel struct - use canonical domain type
+/// Mistral completion model with zero-allocation performance optimizations
+#[derive(Clone)]
+pub struct CompletionModel {
+    client: Client,
+    model: String,
+}
 
 impl CompletionModel {
     pub fn new(client: Client, model: &str) -> Self {

@@ -20,12 +20,10 @@ use smallvec::{SmallVec, smallvec};
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient, TranscriptionClient},
     clients::azure::completion::{CompletionModel, GPT_4O},
-    completion::{
-        self, CompletionError, CompletionRequest, CompletionRequestBuilder, Prompt, PromptError,
-    },
-    message::Message,
-    runtime::{self as rt, AsyncTask},
 };
+use fluent_ai_domain::completion::{self, CompletionRequest, CompletionRequestBuilder};
+use fluent_ai_domain::message::Message;
+use crate::completion_provider::{CompletionError, CompletionProvider};
 
 /// Azure OpenAI authentication with zero-allocation patterns
 #[derive(Clone, Debug)]
@@ -428,7 +426,13 @@ impl<'a, S> AzureCompletionBuilder<'a, S> {
 
     #[inline(always)]
     pub fn additional_params(mut self, p: serde_json::Value) -> Self {
-        crate::json_util::merge_inplace(&mut self.additional_params, p);
+        // Merge JSON values in-place
+        if let (serde_json::Value::Object(ref mut base), serde_json::Value::Object(other)) = 
+            (&mut self.additional_params, p) {
+            base.extend(other);
+        } else {
+            self.additional_params = p;
+        }
         self
     }
 }

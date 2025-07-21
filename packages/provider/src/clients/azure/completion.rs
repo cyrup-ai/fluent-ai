@@ -15,13 +15,13 @@ use super::client::Client;
 use crate::{
     OneOrMany,
     clients::openai::{self, TranscriptionResponse, send_compatible_streaming_request},
-    completion::CompletionRequest,
-    completion::{self, CompletionError, StreamingCompletionResponse as RigStreaming},
-    json_util::{self, merge},
-    message::{self, MessageError},
-    runtime::{self as rt, AsyncTask},
-    streaming::StreamingCompletionResponse,
 };
+use fluent_ai_domain::completion::CompletionRequest;
+use fluent_ai_domain::completion::{self, CompletionCoreError, StreamingCoreResponse as RigStreaming};
+use fluent_ai_domain::message::{self, MessageError};
+use tokio::runtime::{self as rt};
+use tokio::task::spawn as AsyncTask;
+use fluent_ai_domain::completion::StreamingCoreResponse;
 
 // ───────────────────────────── public constants ──────────────────────────
 
@@ -68,7 +68,7 @@ enum ApiResponse<T> {
 
 // ───────────────────────────── provider model ────────────────────────────
 
-pub use crate::Models as CompletionModel;
+pub use fluent_ai_domain::CompletionModel;
 
 impl CompletionModel {
     #[inline(always)]

@@ -14,7 +14,7 @@ use serde_json::Value;
 use super::messages::ContentBlock;
 use super::AnthropicResult;
 
-use crate::runtime::AsyncStream;
+use futures::stream::Stream as AsyncStream;
 
 /// Streaming completion chunk from Anthropic API
 #[derive(Debug, Clone, Serialize, Deserialize)]

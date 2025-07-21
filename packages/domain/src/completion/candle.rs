@@ -457,6 +457,14 @@ impl StreamingCoreResponse {
     }
 }
 
+impl Stream for StreamingCoreResponse {
+    type Item = CompletionCoreResult<CompletionCoreResponse>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+        self.stream.as_mut().poll_next(cx)
+    }
+}
+
 /// Extension trait for additional completion client functionality
 pub trait CompletionCoreClientExt: CompletionCoreClient {
     /// Perform multiple completions in parallel

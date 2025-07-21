@@ -11,7 +11,7 @@ use fluent_ai_domain::{
     AsyncTask, ContentFormat, Document, DocumentMediaType, HashMap, ZeroOneOrMany,
     async_task::AsyncStream, spawn_async,
 };
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
+use fluent_ai_http3::{HttpClient, HttpConfig, HttpMethod, HttpRequest};
 use serde_json::Value;
 use tokio::fs;
 
@@ -619,12 +619,11 @@ impl DocumentBuilderWithHandler {
         let client = HttpClient::with_config(HttpConfig::ai_optimized())
             .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
-        let mut request =
-            HttpRequest::get(url).map_err(|e| format!("Failed to create HTTP request: {}", e))?;
+        let mut request = HttpRequest::new(HttpMethod::Get, url.to_string());
 
         // Set timeout if specified
         if let Some(timeout_ms) = builder.timeout_ms {
-            request = request.timeout(std::time::Duration::from_millis(timeout_ms));
+            request = request.with_timeout(std::time::Duration::from_millis(timeout_ms));
         }
 
         // Attempt request with retries

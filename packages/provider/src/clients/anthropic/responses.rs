@@ -6,10 +6,10 @@
 
 use serde_json;
 
-use super::completion::AnthropicCompletionResponse;
+use fluent_ai_domain::completion::CompletionResponse;
 use super::error::{AnthropicError, AnthropicResult};
 use super::streaming::AnthropicStreamChunk;
-use crate::http::HttpResponse;
+use fluent_ai_http3::HttpResponse;
 
 /// Content type constants for response validation
 const CONTENT_TYPE_JSON: &str = "application/json";
@@ -28,7 +28,7 @@ impl AnthropicResponseProcessor {
     #[inline]
     pub fn process_completion_response(
         response: HttpResponse,
-    ) -> AnthropicResult<AnthropicCompletionResponse> {
+    ) -> AnthropicResult<CompletionResponse> {
         // Validate response status
         if !response.status.is_success() {
             return Err(Self::process_error_response(response));
@@ -38,7 +38,7 @@ impl AnthropicResponseProcessor {
         Self::validate_json_content_type(&response)?;
 
         // Parse JSON response
-        let completion_response: AnthropicCompletionResponse =
+        let completion_response: CompletionResponse =
             serde_json::from_slice(&response.body).map_err(|e| {
                 AnthropicError::DeserializationError {
                     message: format!("Failed to parse completion response: {}", e),
@@ -82,7 +82,7 @@ impl AnthropicResponseProcessor {
         Self::validate_json_content_type(&response)?;
 
         // Try to parse as completion response to ensure it's valid
-        let _: AnthropicCompletionResponse =
+        let _: CompletionResponse =
             serde_json::from_slice(&response.body).map_err(|e| {
                 AnthropicError::DeserializationError {
                     message: format!("Test response is not a valid completion response: {}", e),
@@ -163,7 +163,7 @@ impl AnthropicResponseProcessor {
 
     /// Validate completion response structure
     #[inline]
-    fn validate_completion_response(response: &AnthropicCompletionResponse) -> AnthropicResult<()> {
+    fn validate_completion_response(response: &CompletionResponse) -> AnthropicResult<()> {
         if response.content.is_empty() {
             return Err(AnthropicError::ResponseError {
                 message: "Completion response has no content".to_string(),
@@ -311,7 +311,7 @@ impl RateLimitInfo {
 #[inline]
 pub fn process_completion_response(
     response: HttpResponse,
-) -> AnthropicResult<AnthropicCompletionResponse> {
+) -> AnthropicResult<CompletionResponse> {
     AnthropicResponseProcessor::process_completion_response(response)
 }
 

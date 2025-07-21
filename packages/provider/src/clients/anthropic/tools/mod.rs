@@ -15,14 +15,17 @@ pub mod function_calling;
 // Re-export core types for API compatibility
 pub use core::{
     AnthropicError, AnthropicResult, ChainControl, Emitter, ErrorHandler, InvocationHandler,
-    Message, ResultHandler, SchemaType, Tool, ToolError, ToolExecutionError, ToolRegistrationError,
+    Message, ResultHandler, SchemaType, ToolExecutionError, ToolRegistrationError,
 };
+// Re-export Tool from fluent_ai_domain
+pub use fluent_ai_domain::tool::{Tool};
+// Note: ToolError not available - using anyhow::Error instead
 
 // Re-export built-in tools
 pub use calculator::{CalculatorTool, ExpressionError, ExpressionEvaluator};
 pub use file_operations::FileOperationsTool;
-// Convenience macro for tool creation
-pub use function_calling::tool_builder;
+// Note: tool_builder may not exist in function_calling - removing for now
+// pub use function_calling::tool_builder;
 // Re-export function calling system
 pub use function_calling::{
     Conversation, DescribedTool, NamedTool, ToolBuilder, ToolExecutionContext, ToolExecutor,

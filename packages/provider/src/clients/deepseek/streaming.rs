@@ -9,18 +9,17 @@ use futures::StreamExt;
 
 // Re-export OpenAI streaming response type since DeepSeek uses the same format
 pub use crate::clients::openai::StreamingCompletionResponse;
-use crate::{
-    completion::CompletionError,
-    runtime::{self, AsyncStream},
-};
+use fluent_ai_domain::completion::CompletionCoreError;
+// Note: runtime module doesn't exist - using tokio equivalents
+use tokio::{self as runtime, task::JoinHandle as AsyncTask};
 
 /// Send a streaming request to DeepSeek using HTTP3 client and return an AsyncStream
 pub fn send_deepseek_streaming_request(
     http3_request: Http3Request,
-) -> crate::runtime::AsyncTask<
+) -> AsyncTask<
     Result<
-        crate::streaming::StreamingCompletionResponse<StreamingCompletionResponse>,
-        CompletionError,
+        StreamingCompletionResponse, // Simplified - no nested streaming wrapper
+        CompletionCoreError,
     >,
 > {
     crate::runtime::spawn_async(async move {

@@ -1,0 +1,134 @@
+//! IMPORTANT: Cyrup-agent's AsyncStream COPIED INTO fluent-ai
+//!
+//! ⚠️  DO NOT IMPORT FROM cyrup-agent - IT WILL BE DELETED! ⚠️
+//! All streaming primitives are now part of fluent-ai directly
+//!
+//! Lock-free bounded producer/consumer stream based on crossbeam_queue::ArrayQueue
+//! Zero-allocation streaming with proven performance
+
+use core::{
+    pin::Pin,
+    task::{Context, Poll},
+};
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
+
+use crossbeam_queue::ArrayQueue;
+use futures_util::Stream;
+use futures_util::task::AtomicWaker;
+
+/// Cyrup-agent's AsyncStream with const-generic capacity
+pub struct AsyncStream<T, const CAP: usize = 1024> {
+    inner: Arc<Inner<T, CAP>>,
+}
+
+/// Producer side of AsyncStream
+pub struct AsyncStreamSender<T, const CAP: usize = 1024> {
+    inner: Arc<Inner<T, CAP>>,
+}
+
+struct Inner<T, const CAP: usize> {
+    q: ArrayQueue<T>,
+    waker: AtomicWaker,
+    len: AtomicUsize, // optional runtime metric; not part of API
+}
+
+impl<T, const CAP: usize> AsyncStream<T, CAP> {
+    /// Create a fresh `(sender, stream)` pair.
+    #[inline]
+    pub fn channel() -> (AsyncStreamSender<T, CAP>, Self) {
+        let inner = Arc::new(Inner {
+            q: ArrayQueue::new(CAP),
+            waker: AtomicWaker::new(),
+            len: AtomicUsize::new(0),
+        });
+        (
+            AsyncStreamSender {
+                inner: inner.clone(),
+            },
+            Self { inner },
+        )
+    }
+
+    /// Convenience helper – wrap a single item into a ready stream.
+    /// Used in API glue; cost = one push into the bounded queue.
+    #[inline]
+    pub fn from_single(item: T) -> Self {
+        let (tx, st) = Self::channel();
+        // ignore full error – CAP ≥ 1 in every instantiation
+        let _ = tx.try_send(item);
+        st
+    }
+
+    /// Empty stream (always returns `Poll::Ready(None)`).
+    #[inline]
+    pub fn empty() -> Self {
+        let (_tx, st) = Self::channel();
+        st
+    }
+
+    /// Create from tokio mpsc receiver for compatibility
+    pub fn new(mut receiver: tokio::sync::mpsc::UnboundedReceiver<T>) -> Self
+    where
+        T: Send + 'static,
+    {
+        let (tx, st) = Self::channel();
+        tokio::spawn(async move {
+            while let Some(item) = receiver.recv().await {
+                if tx.try_send(item).is_err() {
+                    break; // Stream closed
+                }
+            }
+        });
+        st
+    }
+}
+
+impl<T, const CAP: usize> AsyncStreamSender<T, CAP> {
+    /// Zero-alloc try-send; returns `Err(val)` if the buffer is full.
+    #[inline]
+    pub fn try_send(&self, val: T) -> Result<(), T> {
+        match self.inner.q.push(val) {
+            Ok(()) => {
+                self.inner.len.fetch_add(1, Ordering::Release);
+                self.inner.waker.wake();
+                Ok(())
+            }
+            Err(v) => Err(v), // queue full → give caller its item back
+        }
+    }
+}
+
+impl<T, const CAP: usize> Default for AsyncStream<T, CAP> {
+    /// Create an empty AsyncStream
+    #[inline]
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
+impl<T, const CAP: usize> Stream for AsyncStream<T, CAP> {
+    type Item = T;
+
+    #[inline]
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        // fast-path: try pop first
+        if let Some(v) = self.inner.q.pop() {
+            self.inner.len.fetch_sub(1, Ordering::AcqRel);
+            return Poll::Ready(Some(v));
+        }
+
+        // register waker then re-check to avoid missed notifications
+        self.inner.waker.register(cx.waker());
+
+        match self.inner.q.pop() {
+            Some(v) => {
+                self.inner.len.fetch_sub(1, Ordering::AcqRel);
+                Poll::Ready(Some(v))
+            }
+            None => Poll::Pending,
+        }
+    }
+}

@@ -475,7 +475,7 @@ pub enum ProviderMessage {
     ToolResult { name: String, content: String },
 }
 
-/// Conversion from an internal Rig message (crate::message::Message) to a provider Message.
+/// Conversion from an internal Rig message (fluent_ai_domain::message::Message) to a provider Message.
 /// (Only User and Assistant variants are supported.)
 impl TryFrom<Message> for ProviderMessage {
     type Error = MessageError;

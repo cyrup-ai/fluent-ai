@@ -12,9 +12,10 @@ use reqwest::multipart::Part;
 use super::client::Client;
 use crate::{
     clients::openai::TranscriptionResponse,
-    runtime::{self as rt, AsyncTask},
-    transcription::{self, TranscriptionError},
 };
+use tokio::{self as rt, task::spawn as AsyncTask};
+// Note: fluent_ai_domain::transcription doesn't exist - commenting out
+// use fluent_ai_domain::transcription::{self, TranscriptionError};
 
 // ───────────────────────────── error handling ───────────────────────
 

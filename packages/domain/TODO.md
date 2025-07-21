@@ -1,5 +1,33 @@
 # Domain Package Production Readiness TODO
 
+## WARNINGS TO FIX (CRITICAL PATH)
+
+### WARNING-1. Redundant static lifetime in node.rs
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/memory/primitives/node.rs`
+**Lines**: 576
+**Issue**: Constants have by default a `'static` lifetime, so `&'static [&'static str]` is redundant
+**Fix**: Remove `'static` from `&'static [&'static str]`
+**Impact**: Cleaner code, no functional change
+**Status**: PENDING
+
+### WARNING-2. Collapsible if statements in mcp.rs
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/tool/mcp.rs`
+**Lines**: 95-99, 196-206
+**Issue**: Nested if statements that can be collapsed using `&&`
+**Fix**: Refactor nested ifs into single conditions with `&&`
+**Impact**: Cleaner, more readable code
+**Status**: PENDING
+
+### WARNING-3. Needless borrow in usage.rs
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/usage.rs`
+**Line**: 59
+**Issue**: Unnecessary borrow of `self` that the compiler would automatically borrow
+**Fix**: Remove the explicit `&` before `self`
+**Impact**: Cleaner code, no functional change
+**Status**: PENDING
+
+## TYPE REFACTORING TASKS (CRITICAL PATH)
+
 ## TYPE REFACTORING TASKS (CRITICAL PATH)
 
 ### REFACTOR-1. Move EmbeddingResponse to embedding.rs

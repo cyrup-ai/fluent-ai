@@ -23,11 +23,15 @@ use std::arch::x86_64::*;
 use crate::error::{CandleError, CandleResult};
 use crate::model::CandleModel;
 use crate::tokenizer::CandleTokenizer;
+use crate::sampling::{LogitsProcessor, Sampling};
+use crate::streaming::{TokenOutputStream, StreamingConfig};
+use crate::kv_cache::{KVCache, KVCacheConfig};
 
 /// Maximum generation buffer size
 const MAX_GENERATION_BUFFER: usize = 4096;
 
 /// Maximum batch size for generation
+#[allow(dead_code)]
 const MAX_BATCH_SIZE: usize = 8;
 
 /// SIMD-optimized token processing operations for blazing-fast performance
@@ -473,6 +477,16 @@ pub struct CandleGenerator {
     rng_state: parking_lot::Mutex<Option<u64>>,
     /// Cumulative log probability for current generation
     cumulative_log_prob: parking_lot::Mutex<f64>,
+    /// Sophisticated sampling configuration
+    sampling_config: Sampling,
+    /// Streaming configuration for real-time output
+    streaming_config: StreamingConfig,
+    /// KV cache for efficient generation
+    kv_cache: Option<Arc<parking_lot::Mutex<KVCache>>>,
+    /// LogitsProcessor for sophisticated sampling
+    logits_processor: Option<Box<dyn LogitsProcessor>>,
+    /// TokenOutputStream for real-time streaming
+    token_output_stream: Option<Arc<parking_lot::Mutex<TokenOutputStream>>>,
 }
 
 impl Clone for CandleGenerator {
@@ -484,12 +498,17 @@ impl Clone for CandleGenerator {
             device: self.device.clone(),
             rng_state: parking_lot::Mutex::new(*self.rng_state.lock()),
             cumulative_log_prob: parking_lot::Mutex::new(*self.cumulative_log_prob.lock()),
+            sampling_config: self.sampling_config.clone(),
+            streaming_config: self.streaming_config.clone(),
+            kv_cache: self.kv_cache.as_ref().map(Arc::clone),
+            logits_processor: self.logits_processor.clone(),
+            token_output_stream: self.token_output_stream.as_ref().map(Arc::clone),
         }
     }
 }
 
 impl CandleGenerator {
-    /// Create a new generator
+    /// Create a new generator with sophisticated features
     #[inline(always)]
     pub fn new(
         model: Arc<CandleModel>,
@@ -504,7 +523,54 @@ impl CandleGenerator {
             config,
             device,
             cumulative_log_prob: parking_lot::Mutex::new(0.0),
+            sampling_config: Sampling::default(),
+            streaming_config: StreamingConfig::default(),
+            kv_cache: None,
+            logits_processor: None,
+            token_output_stream: None,
         }
+    }
+
+    /// Create a new generator with sophisticated features configured
+    #[inline(always)]
+    pub fn with_sophisticated_features(
+        model: Arc<CandleModel>,
+        tokenizer: Arc<CandleTokenizer>,
+        config: GenerationConfig,
+        device: Device,
+        sampling_config: Sampling,
+        streaming_config: StreamingConfig,
+        kv_cache_config: Option<KVCacheConfig>,
+    ) -> CandleResult<Self> {
+        // Initialize KV cache if configured
+        let kv_cache = if let Some(cache_config) = kv_cache_config {
+            let cache = KVCache::with_config(cache_config)?;
+            Some(Arc::new(parking_lot::Mutex::new(cache)))
+        } else {
+            None
+        };
+
+        // Initialize LogitsProcessor based on sampling configuration
+        let composite_processor = sampling_config.build_processor()?;
+        let logits_processor: Option<Box<dyn LogitsProcessor>> = Some(Box::new(composite_processor));
+
+        // Initialize TokenOutputStream for streaming
+        let (token_stream, _sender) = TokenOutputStream::new(streaming_config.clone())?;
+        let token_output_stream = Some(Arc::new(parking_lot::Mutex::new(token_stream)));
+
+        Ok(Self {
+            model,
+            tokenizer,
+            rng_state: parking_lot::Mutex::new(config.seed),
+            config,
+            device,
+            cumulative_log_prob: parking_lot::Mutex::new(0.0),
+            sampling_config,
+            streaming_config,
+            kv_cache,
+            logits_processor,
+            token_output_stream,
+        })
     }
 
     /// Zero-allocation prompt construction with stack allocation for small prompts
@@ -847,9 +913,17 @@ impl CandleGenerator {
 
     /// Sample next token from logits
     async fn sample_token(&self, logits: &Tensor, _step: u32) -> CandleResult<u32> {
-        // Apply temperature
+        // Apply temperature scaling using SIMD optimization
         let scaled_logits = if self.config.temperature != 1.0 {
-            (logits / self.config.temperature as f64).map_err(|e| CandleError::from(e))?
+            // Convert to CPU for SIMD processing
+            let cpu_logits = logits.to_device(&Device::Cpu).map_err(|e| CandleError::from(e))?;
+            let mut logits_vec = cpu_logits.to_vec1::<f32>().map_err(|e| CandleError::from(e))?;
+            
+            // Use SIMD-optimized temperature scaling
+            simd_ops::scale_logits_by_temperature(&mut logits_vec, self.config.temperature);
+            
+            // Convert back to tensor
+            Tensor::from_vec(logits_vec, logits.shape(), logits.device()).map_err(|e| CandleError::from(e))?
         } else {
             logits.clone()
         };

@@ -10,10 +10,19 @@
 //! - Elegant ergonomic: Clean API with builder patterns, zero-cost abstractions
 
 pub mod client;
+pub mod constants;
 pub mod error;
 pub mod generator;
+pub mod hub;
+pub mod kv_cache;
+pub mod logits;
+pub mod memory;
 pub mod model;
+pub mod progress;
+pub mod sampling;
+pub mod streaming;
 pub mod tokenizer;
+pub mod var_builder;
 
 // Re-export core types for ergonomic usage
 pub use client::{CandleClientBuilder, CandleClientConfig, CandleCompletionClient};
@@ -25,28 +34,27 @@ pub use fluent_ai_domain::completion::{
 pub use fluent_ai_domain::{FinishReason};
 pub use generator::{CandleGenerator, GenerationConfig};
 pub use model::CandleModel;
+pub use logits::{
+    LogitsProcessor, TemperatureProcessor, TopKProcessor, TopPProcessor, 
+    RepetitionPenaltyProcessor, ComposedProcessor, LogitsSampler,
+    ProcessingContext, SamplingConfig, SamplingMetrics, sampling_metrics
+};
+pub use streaming::{
+    TokenOutputStream, StreamingConfig, TokenStreamWrapper, TokenChunk, TokenMetadata, FlushPolicy, StreamingMetrics
+};
+pub use var_builder::{
+    CandleVarBuilder, VarBuilderConfig, VarBuilderConfigBuilder, ModelMetadata, TensorEntry, LoadingStats
+};
+pub use kv_cache::{
+    KVCache, KVCacheBuilder, KVCacheConfig, KVCacheEntry, EvictionStrategy, CacheStats
+};
+pub use hub::{
+    HubClient, HubConfig, DownloadProgress, DownloadStage, ModelMetadata as HubModelMetadata, HubStats
+};
+pub use progress::{
+    ProgressReporter, ProgressHubReporter, MetricsAggregator, InferenceMetrics, AggregateStats
+};
 pub use tokenizer::{CandleTokenizer, TokenizerConfig};
-
-/// Performance constants for candle integration
-pub mod constants {
-    /// Maximum model file size for memory mapping (2GB)
-    pub const MAX_MODEL_FILE_SIZE: usize = 2 * 1024 * 1024 * 1024;
-
-    /// Default token buffer size for generation
-    pub const DEFAULT_TOKEN_BUFFER_SIZE: usize = 2048;
-
-    /// Default KV cache size
-    pub const DEFAULT_KV_CACHE_SIZE: usize = 1024;
-
-    /// Maximum vocabulary size
-    pub const MAX_VOCAB_SIZE: usize = 100_000;
-
-    /// Cache line size for memory alignment
-    pub const CACHE_LINE_SIZE: usize = 64;
-
-    /// Default batch size for parallel processing
-    pub const DEFAULT_BATCH_SIZE: usize = 8;
-}
 
 /// Device utilities for optimal device selection
 pub mod device {
@@ -102,37 +110,8 @@ pub mod device {
     }
 }
 
-/// Memory utilities for efficient memory management
-pub mod memory {
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    /// Global memory usage tracker
-    static MEMORY_USAGE: AtomicUsize = AtomicUsize::new(0);
-
-    /// Track memory allocation
-    #[inline(always)]
-    pub fn track_allocation(size: usize) {
-        MEMORY_USAGE.fetch_add(size, Ordering::Relaxed);
-    }
-
-    /// Track memory deallocation
-    #[inline(always)]
-    pub fn track_deallocation(size: usize) {
-        MEMORY_USAGE.fetch_sub(size, Ordering::Relaxed);
-    }
-
-    /// Get current memory usage
-    #[inline(always)]
-    pub fn current_usage() -> usize {
-        MEMORY_USAGE.load(Ordering::Relaxed)
-    }
-
-    /// Reset memory tracking
-    #[inline(always)]
-    pub fn reset_tracking() {
-        MEMORY_USAGE.store(0, Ordering::Relaxed);
-    }
-}
+// Memory utilities are now in the separate memory module
+pub use memory::{track_allocation, track_deallocation, current_usage, peak_usage, allocation_count, reset_stats};
 
 /// Performance utilities for optimization
 pub mod perf {

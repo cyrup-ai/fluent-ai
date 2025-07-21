@@ -18,7 +18,7 @@ pub mod xai;
 
 // Re-export core provider types for convenience
 pub use anthropic::{
-    AnthropicClient, AnthropicCompletionRequest, AnthropicCompletionResponse, AnthropicError,
+    AnthropicClient, AnthropicCompletionRequest, AnthropicError,
     AnthropicProvider, AnthropicResult,
 };
 // Azure OpenAI client
@@ -29,7 +29,7 @@ pub use bedrock::{
 };
 // Deepseek client
 pub use deepseek::{
-    Client as DeepseekClient, DEEPSEEK_CHAT, DEEPSEEK_REASONER, DeepSeekCompletionBuilder,
+    DeepSeekClient as DeepseekClient, DEEPSEEK_CHAT, DEEPSEEK_REASONER, DeepSeekCompletionBuilder,
 };
 // Gemini client
 pub use gemini::{Client as GeminiClient, GeminiCompletionBuilder};

@@ -103,6 +103,21 @@ impl<'a> CompletionRequest<'a> {
 
         Ok(())
     }
+
+    /// Convert to a static lifetime version by making all borrowed data owned
+    #[inline]
+    pub fn into_static(self) -> CompletionRequest<'static> {
+        CompletionRequest {
+            system_prompt: self.system_prompt.into_owned().into(),
+            chat_history: self.chat_history,
+            documents: self.documents,
+            tools: self.tools,
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            chunk_size: self.chunk_size,
+            additional_params: self.additional_params,
+        }
+    }
 }
 
 impl<'a> CompletionRequestBuilder<'a> {

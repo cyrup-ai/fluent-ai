@@ -19,9 +19,9 @@ use super::Client;
 use super::gemini_error::{GeminiError, GeminiResult};
 use super::gemini_streaming::{GeminiStreamProcessor, StreamingResponse};
 use super::gemini_types::*;
+use fluent_ai_domain::completion::{self, CompletionCoreError as CompletionError, CompletionRequest};
 use crate::{
     AsyncStream, OneOrMany,
-    completion::{self, CompletionError, CompletionRequest},
     completion_provider::{ChunkHandler, CompletionProvider, ModelConfig, ModelInfo},
     streaming::StreamingCompletionResponse,
 };

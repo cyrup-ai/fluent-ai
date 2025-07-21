@@ -11,9 +11,10 @@ use std::{
 };
 
 use serde_json::{Value, json};
+use fluent_ai_domain::tool::Tool;
 
 use super::{
-    core::{AnthropicError, AnthropicResult, Tool},
+    core::{AnthropicError, AnthropicResult},
     function_calling::{ToolExecutionContext, ToolExecutor, ToolOutput},
 };
 
