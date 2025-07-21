@@ -45,7 +45,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum CompletionError {
     #[error("http error: {0}")]
-    Http(#[from] reqwest::Error),
+    Http(#[from] fluent_ai_http3::HttpError),
     #[error("json error: {0}")]
     Json(#[from] serde_json::Error),
     #[error("request construction: {0}")]

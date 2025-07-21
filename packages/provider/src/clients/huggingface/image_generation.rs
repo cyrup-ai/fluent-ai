@@ -1,7 +1,7 @@
 use fluent_ai_domain::model::ImageGenerationModel;
 use serde_json::json;
 
-use super::Client;
+use super::client::HuggingFaceClient as Client;
 use crate::image_generation;
 use crate::image_generation::{ImageGenerationError, ImageGenerationRequest};
 

@@ -1,8 +1,9 @@
 //! Candle model definitions that comply with domain traits
 
 use std::borrow::Cow;
+use std::num::NonZeroU32;
 
-use fluent_ai_domain::{Model, ModelInfo, ModelInfoData};
+use fluent_ai_domain::model::{ModelInfo, traits::Model};
 use serde::{Deserialize, Serialize};
 
 /// Candle-supported models for local inference
@@ -26,22 +27,31 @@ pub enum CandleModel {
     Gemma_7B,
 }
 
+// Static model info constants  
+const DEVSTRAL_22B_INFO: ModelInfo = ModelInfo {
+    provider_name: "candle",
+    name: "devstral-22b", 
+    max_input_tokens: NonZeroU32::new(32768),
+    max_output_tokens: NonZeroU32::new(32768),
+    input_price: None,
+    output_price: None,
+    supports_vision: false,
+    supports_function_calling: true,
+    supports_streaming: true,
+    supports_embeddings: false,
+    requires_max_tokens: false,
+    supports_thinking: true,
+    optimal_thinking_budget: Some(4096),
+    system_prompt_prefix: None,
+    real_name: None,
+    model_type: None,
+    patch: None,
+};
+
 impl Model for CandleModel {
-    fn info(&self) -> ModelInfo {
-        let data = match self {
-            CandleModel::Devstral_22B => ModelInfoData {
-                provider_name: "candle".to_string(),
-                name: "devstral-22b".to_string(),
-                max_input_tokens: Some(32768),
-                max_output_tokens: Some(32768),
-                input_price: None, // Local inference - no API costs
-                output_price: None,
-                supports_vision: Some(false),
-                supports_function_calling: Some(true),
-                require_max_tokens: Some(false),
-                supports_thinking: Some(true),
-                optimal_thinking_budget: Some(4096),
-            },
+    fn info(&self) -> &'static ModelInfo {
+        match self {
+            CandleModel::Devstral_22B => &DEVSTRAL_22B_INFO,
             CandleModel::Llama2_7B => ModelInfoData {
                 provider_name: "candle".to_string(),
                 name: "llama2-7b".to_string(),

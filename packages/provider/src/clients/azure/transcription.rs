@@ -6,7 +6,7 @@
 
 #![allow(clippy::type_complexity)]
 
-use fluent_ai_domain::model::TranscriptionModel;
+// TranscriptionModel does not exist in domain - removed
 use reqwest::multipart::Part;
 
 use super::client::Client;

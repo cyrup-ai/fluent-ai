@@ -2,7 +2,6 @@
 //!
 //! Provides different template rendering implementations.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::chat::templates::core::{ChatTemplate, TemplateError, TemplateResult, TemplateValue, TemplateContext};

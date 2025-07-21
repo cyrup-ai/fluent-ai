@@ -9,7 +9,7 @@ use std::future::Future;
 use std::hash::{Hash, Hasher};
 use std::pin::Pin;
 
-// Legacy compatibility type for BoxFuture
+// Compatibility type for BoxFuture
 pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 
 // Error type for vector store operations

@@ -539,7 +539,7 @@ impl<'a> Prompt for OpenRouterCompletionBuilder<'a, NeedsPrompt> {
 }
 
 // ============================================================================
-// Legacy API types for compatibility
+// API types for compatibility
 // ============================================================================
 use serde::Deserialize;
 

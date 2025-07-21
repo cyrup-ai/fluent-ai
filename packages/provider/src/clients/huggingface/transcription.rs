@@ -1,10 +1,10 @@
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use fluent_ai_domain::model::TranscriptionModel;
+// TranscriptionModel does not exist in domain - removed
 use serde::Deserialize;
 use serde_json::json;
 
-use super::Client;
+use super::client::HuggingFaceClient as Client;
 use super::completion::ApiResponse;
 use crate::transcription;
 use crate::transcription::TranscriptionError;

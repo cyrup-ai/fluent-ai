@@ -11,7 +11,7 @@ use thiserror::Error;
 
 use super::types::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE, ToolDefinition};
 use crate::validation::{ValidationError, ValidationResult};
-use crate::{Document, Message, ZeroOneOrMany};
+use crate::{Document, ChatMessage, ZeroOneOrMany};
 
 /// A request for text completion
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,7 +19,7 @@ pub struct CompletionRequest<'a> {
     /// System prompt providing instructions
     pub system_prompt: Cow<'a, str>,
     /// Conversation history
-    pub chat_history: ZeroOneOrMany<Message>,
+    pub chat_history: ZeroOneOrMany<ChatMessage>,
     /// Documents to use as context
     pub documents: ZeroOneOrMany<Document>,
     /// Tools available to the model
@@ -37,7 +37,7 @@ pub struct CompletionRequest<'a> {
 /// Builder for `CompletionRequest`
 pub struct CompletionRequestBuilder<'a> {
     system_prompt: Cow<'a, str>,
-    chat_history: ZeroOneOrMany<Message>,
+    chat_history: ZeroOneOrMany<ChatMessage>,
     documents: ZeroOneOrMany<Document>,
     tools: ZeroOneOrMany<ToolDefinition>,
     temperature: f64,
@@ -127,7 +127,7 @@ impl<'a> CompletionRequestBuilder<'a> {
     }
 
     /// Set the chat history
-    pub fn chat_history(mut self, history: ZeroOneOrMany<Message>) -> Self {
+    pub fn chat_history(mut self, history: ZeroOneOrMany<ChatMessage>) -> Self {
         self.chat_history = history;
         self
     }

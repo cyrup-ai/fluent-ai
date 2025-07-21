@@ -16,7 +16,7 @@ use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
 
-use super::{embedding::EmbeddingModel, transcription::TranscriptionModel};
+// Removed invalid imports - EmbeddingModel and TranscriptionModel are not exported from submodules
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient, TranscriptionClient},
     clients::azure::completion::{CompletionModel, GPT_4O},

@@ -3,7 +3,7 @@
 //! From [Gemini API Reference](https://ai.google.dev/api/embeddings)
 // ================================================================
 
-use fluent_ai_domain::model::EmbeddingModel;
+use fluent_ai_domain::model::AnyEmbeddingCapable;
 use serde_json::json;
 
 use super::{ApiResponse, Client};

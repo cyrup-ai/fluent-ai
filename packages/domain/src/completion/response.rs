@@ -24,6 +24,10 @@ pub struct CompletionResponse<'a> {
     pub finish_reason: Option<Cow<'a, str>>,
     /// Response time in milliseconds (optional)
     pub response_time_ms: Option<u64>,
+    /// Generation time in milliseconds for performance tracking (optional)
+    pub generation_time_ms: Option<u32>,
+    /// Tokens per second throughput for performance tracking (optional)
+    pub tokens_per_second: Option<f64>,
 }
 
 /// Builder for `CompletionResponse`
@@ -66,6 +70,31 @@ impl<'a> CompletionResponse<'a> {
     pub fn usage(&self) -> Option<&Usage> {
         self.usage.as_ref()
     }
+
+    /// Get the generation time in milliseconds if available
+    pub fn generation_time_ms(&self) -> Option<u32> {
+        self.generation_time_ms
+    }
+
+    /// Get the tokens per second throughput if available
+    pub fn tokens_per_second(&self) -> Option<f64> {
+        self.tokens_per_second
+    }
+
+    /// Set the generation time in milliseconds for performance tracking
+    pub fn set_generation_time_ms(&mut self, ms: u32) {
+        self.generation_time_ms = Some(ms);
+    }
+
+    /// Set the tokens per second throughput for performance tracking
+    pub fn set_tokens_per_second(&mut self, tps: f64) {
+        self.tokens_per_second = Some(tps);
+    }
+
+    /// Get the number of tokens generated (completion tokens) if available
+    pub fn tokens_generated(&self) -> Option<u32> {
+        self.usage.as_ref().map(|u| u.completion_tokens)
+    }
 }
 
 impl<'a> CompletionResponseBuilder<'a> {
@@ -79,6 +108,8 @@ impl<'a> CompletionResponseBuilder<'a> {
                 usage: None,
                 finish_reason: None,
                 response_time_ms: None,
+                generation_time_ms: None,
+                tokens_per_second: None,
             },
         }
     }
@@ -116,6 +147,14 @@ impl<'a> CompletionResponseBuilder<'a> {
     /// Set the response time in milliseconds
     pub fn response_time_ms(mut self, ms: u64) -> Self {
         self.inner.response_time_ms = Some(ms);
+        self
+    }
+
+    /// Set the number of tokens generated (completion tokens)
+    pub fn tokens_generated(mut self, tokens: u32) -> Self {
+        let usage = self.inner.usage.get_or_insert_with(Usage::zero);
+        usage.completion_tokens = tokens;
+        usage.total_tokens = usage.prompt_tokens + tokens;
         self
     }
 
@@ -179,6 +218,8 @@ impl<'a> CompactCompletionResponse<'a> {
             } else {
                 None
             },
+            generation_time_ms: None, // Not available in compact form
+            tokens_per_second: None,  // Not available in compact form
         }
     }
 }

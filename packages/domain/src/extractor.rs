@@ -13,7 +13,6 @@ use crate::agent::Agent;
 use crate::completion::{CompletionModel, CompletionParams, CompletionRequest};
 use crate::context::chunk::{CompletionChunk, FinishReason};
 // Removed unused import: crate::model::Model
-use crate::message::{Message, MessageType};
 use crate::prompt::Prompt;
 use crate::{AsyncTask, ZeroOneOrMany, spawn_async};
 
@@ -111,22 +110,12 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
         });
 
         // Create user message for completion request - handle error within async block
-        let text_bytes = text.as_bytes().to_vec();
         let agent = self.agent.clone();
         let text_input = text.to_string();
 
         spawn_async(async move {
             // Create user message for completion request
-            let user_message = match Message::new(
-                1, // Simple ID for user message
-                MessageType::AgentChat,
-                &text_bytes
-            ) {
-                Ok(msg) => msg,
-                Err(e) => {
-                    return Err(ExtractionError::CompletionError(format!("Failed to create message: {}", e)));
-                }
-            };
+            let user_message = crate::message::ChatMessage::user(text_input.clone());
 
             // Create completion request with optimized settings
             let completion_request = CompletionRequest {
@@ -177,10 +166,10 @@ Please extract structured data from the following text and return it as JSON:
 {}",
             completion_request.system_prompt,
             match &completion_request.chat_history {
-                crate::ZeroOneOrMany::One(msg) => std::str::from_utf8(&msg.content).unwrap_or(""),
+                crate::ZeroOneOrMany::One(msg) => &msg.content,
                 crate::ZeroOneOrMany::Many(msgs) => {
                     msgs.first()
-                        .and_then(|msg| std::str::from_utf8(&msg.content).ok())
+                        .map(|msg| msg.content.as_str())
                         .unwrap_or("")
                 }
                 crate::ZeroOneOrMany::None => ""

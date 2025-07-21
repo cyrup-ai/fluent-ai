@@ -306,7 +306,7 @@ impl CandleTokenizer {
 
     /// Truncate text to fit within token limit (approximate)
     #[inline(always)]
-    pub fn truncate_text(&self, text: &str, max_tokens: u32) -> &str {
+    pub fn truncate_text<'a>(&self, text: &'a str, max_tokens: u32) -> &'a str {
         let max_chars = (max_tokens * 4) as usize; // 4 chars per token approximation
 
         if text.len() <= max_chars {
@@ -341,7 +341,7 @@ pub struct TokenWithMetadata {
     /// Token ID
     pub id: u32,
     /// Token text
-    pub text: SmallVec<[u8; 16]>,
+    pub text: SmallVec<u8, 16>,
     /// Start position in original text
     pub start: u32,
     /// End position in original text
@@ -355,9 +355,7 @@ impl TokenWithMetadata {
     #[inline(always)]
     pub fn new(id: u32, text: &str, start: u32, end: u32, is_special: bool) -> CandleResult<Self> {
         let mut text_bytes = SmallVec::new();
-        text_bytes
-            .try_extend_from_slice(text.as_bytes())
-            .map_err(|_| CandleError::tokenizer("Token text too long"))?;
+        text_bytes.extend_from_slice(text.as_bytes());
 
         Ok(Self {
             id,
@@ -382,7 +380,7 @@ pub struct TokenizationResult {
     /// Token IDs
     pub token_ids: ArrayVec<u32, MAX_TOKEN_BUFFER>,
     /// Tokens with metadata
-    pub tokens: SmallVec<[TokenWithMetadata; 64]>,
+    pub tokens: SmallVec<TokenWithMetadata, 64>,
     /// Original text length
     pub original_length: u32,
     /// Total tokens

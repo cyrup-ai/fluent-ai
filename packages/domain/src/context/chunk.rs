@@ -150,18 +150,6 @@ pub enum CompletionChunk {
     Error(String),
 }
 
-/// Legacy completion chunk for backward compatibility
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LegacyCompletionChunk {
-    /// The text content
-    pub text: String,
-
-    /// Reason for finishing (if this is the last chunk)
-    pub finish_reason: Option<FinishReason>,
-
-    /// Token usage information (if available)
-    pub usage: Option<Usage>,
-}
 
 /// Chunk of embedding data for streaming embeddings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -329,21 +317,3 @@ impl CompletionChunk {
     }
 }
 
-impl LegacyCompletionChunk {
-    pub fn new(text: impl Into<String>) -> Self {
-        Self {
-            text: text.into(),
-            finish_reason: None,
-            usage: None,
-        }
-    }
-
-    /// Convert to new CompletionChunk format
-    pub fn into_completion_chunk(self) -> CompletionChunk {
-        CompletionChunk::Complete {
-            text: self.text,
-            finish_reason: self.finish_reason,
-            usage: self.usage,
-        }
-    }
-}

@@ -24,7 +24,7 @@ use crate::runtime::{AsyncStream, AsyncTask};
 #[derive(Debug, Error)]
 pub enum AudioGenerationError {
     #[error("HTTP error: {0}")]
-    Http(#[from] reqwest::Error),
+    Http(#[from] fluent_ai_http3::HttpError),
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
     #[error("request build error: {0}")]

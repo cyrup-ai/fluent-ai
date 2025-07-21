@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use fluent_ai_domain::{
-    chunk::{ChatMessageChunk, DocumentChunk, FinishReason, LegacyCompletionChunk, Usage},
+    chunk::{ChatMessageChunk, DocumentChunk, FinishReason, CompletionChunk, Usage},
     message::MessageRole,
 };
 use serde_json::Value;
@@ -103,15 +103,15 @@ impl ChatMessageChunkBuilder {
     }
 }
 
-/// Zero-allocation legacy completion chunk builder with blazing-fast construction
-pub struct LegacyCompletionChunkBuilder {
+/// Zero-allocation completion chunk builder with blazing-fast construction
+pub struct CompletionChunkBuilder {
     text: String,
     finish_reason: Option<FinishReason>,
     usage: Option<Usage>,
 }
 
-impl LegacyCompletionChunkBuilder {
-    /// Create new legacy completion chunk builder - EXACT syntax: LegacyCompletionChunkBuilder::new(text)
+impl CompletionChunkBuilder {
+    /// Create new completion chunk builder - EXACT syntax: CompletionChunkBuilder::new(text)
     #[inline]
     pub fn new(text: impl Into<String>) -> Self {
         Self {
@@ -135,10 +135,10 @@ impl LegacyCompletionChunkBuilder {
         self
     }
 
-    /// Build final legacy completion chunk - EXACT syntax: .build()
+    /// Build final completion chunk - EXACT syntax: .build()
     #[inline]
-    pub fn build(self) -> LegacyCompletionChunk {
-        LegacyCompletionChunk {
+    pub fn build(self) -> CompletionChunk {
+        CompletionChunk {
             text: self.text,
             finish_reason: self.finish_reason,
             usage: self.usage,
@@ -162,10 +162,10 @@ impl ChatMessageChunk {
     }
 }
 
-impl LegacyCompletionChunk {
-    /// Create legacy completion chunk - EXACT syntax: LegacyCompletionChunk::from_text(text)
+impl CompletionChunk {
+    /// Create completion chunk - EXACT syntax: CompletionChunk::from_text(text)
     #[inline]
-    pub fn from_text(text: impl Into<String>) -> LegacyCompletionChunkBuilder {
-        LegacyCompletionChunkBuilder::new(text)
+    pub fn from_text(text: impl Into<String>) -> CompletionChunkBuilder {
+        CompletionChunkBuilder::new(text)
     }
 }

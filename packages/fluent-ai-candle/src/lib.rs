@@ -209,10 +209,10 @@ pub mod tensor_utils {
     #[inline(always)]
     pub fn softmax_with_temperature(logits: &Tensor, temperature: f32) -> CandleResult<Tensor> {
         if temperature == 1.0 {
-            logits.softmax(candle_core::D::Minus1)
+            candle_nn::ops::softmax(logits, candle_core::D::Minus1)
         } else {
             let scaled = logits.affine(1.0 / temperature as f64, 0.0)?;
-            scaled.softmax(candle_core::D::Minus1)
+            candle_nn::ops::softmax(&scaled, candle_core::D::Minus1)
         }
     }
 
@@ -249,7 +249,7 @@ pub mod tensor_utils {
             let mut cumulative_prob = 0.0;
             for (i, &idx) in indices.iter().enumerate() {
                 cumulative_prob += probs[idx];
-                if cumulative_prob > p {
+                if cumulative_prob > p as f32 {
                     // Zero out remaining probabilities
                     for &remaining_idx in &indices[i + 1..] {
                         probs[remaining_idx] = 0.0;
@@ -268,7 +268,7 @@ pub mod tensor_utils {
         }
 
         // Sample from the distribution
-        let random_value: f32 = rng.gen();
+        let random_value: f32 = rng.random();
         let mut cumulative = 0.0;
 
         for (i, &prob) in probs.iter().enumerate() {

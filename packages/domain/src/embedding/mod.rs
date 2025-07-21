@@ -16,7 +16,7 @@ pub mod usage;
 pub mod service;
 
 // Re-export core types from core module
-// Legacy compatibility re-exports
+// Compatibility re-exports
 pub use core::EmbeddingModel as EmbeddingModelTrait;
 pub use core::{Embedding, EmbeddingData, EmbeddingModel, EmbeddingResponse};
 

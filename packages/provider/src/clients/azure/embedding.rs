@@ -6,7 +6,7 @@
 
 #![allow(clippy::type_complexity)]
 
-use fluent_ai_domain::model::EmbeddingModel;
+use fluent_ai_domain::model::AnyEmbeddingCapable;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 

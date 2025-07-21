@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use base64::{Engine, prelude::BASE64_STANDARD};
-use fluent_ai_domain::model::TranscriptionModel;
+// TranscriptionModel does not exist in domain - removed
 use mime_guess;
 use serde_json::{Map, Value};
 

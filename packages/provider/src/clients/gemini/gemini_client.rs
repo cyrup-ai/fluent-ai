@@ -34,7 +34,7 @@ const MAX_TOOLS: usize = 32;
 const MAX_DOCUMENTS: usize = 64;
 
 // =================================================================
-// Legacy Rig Implementation (Compatibility)
+// Rig Implementation (Compatibility)
 // =================================================================
 
 // CompletionModel is now imported from fluent_ai_domain::model
@@ -152,10 +152,10 @@ impl CompletionModel {
         crate::streaming::StreamingCompletionResponse<StreamingCompletionResponse>,
         CompletionError,
     > {
-        // This would be implemented for legacy compatibility
+        // This would be implemented for backward compatibility
         // For now, return a basic error to encourage migration to new API
         Err(CompletionError::ProviderError(
-            "Legacy streaming not implemented - use GeminiCompletionBuilder instead".to_string(),
+            "Streaming not implemented - use GeminiCompletionBuilder instead".to_string(),
         ))
     }
 }
@@ -579,7 +579,7 @@ impl GeminiCompletionBuilder {
 }
 
 // =================================================================
-// Helper Functions (Legacy Compatibility)
+// Helper Functions (Compatibility)
 // =================================================================
 
 pub(crate) fn create_request_body(

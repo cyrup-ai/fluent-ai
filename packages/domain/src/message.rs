@@ -125,7 +125,7 @@ impl std::fmt::Display for MessageRole {
 
 // Core message types
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LegacyMessage {
+pub struct ChatMessage {
     pub role: MessageRole,
     pub content: String,
     pub name: Option<String>,
@@ -149,7 +149,7 @@ pub trait Content {}
 // Conversation container
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Conversation {
-    pub messages: Vec<LegacyMessage>,
+    pub messages: Vec<ChatMessage>,
 }
 
 impl Conversation {
@@ -157,7 +157,7 @@ impl Conversation {
         Self { messages: vec![] }
     }
 
-    pub fn add_message(&mut self, message: LegacyMessage) {
+    pub fn add_message(&mut self, message: ChatMessage) {
         self.messages.push(message);
     }
 
@@ -200,9 +200,9 @@ pub struct ToolResult {
 }
 
 // Direct factory methods - no new(), no build()
-impl LegacyMessage {
+impl ChatMessage {
     pub fn user(content: impl Into<String>) -> Self {
-        LegacyMessage {
+        ChatMessage {
             role: MessageRole::User,
             content: content.into(),
             name: None,
@@ -212,7 +212,7 @@ impl LegacyMessage {
     }
 
     pub fn assistant(content: impl Into<String>) -> Self {
-        LegacyMessage {
+        ChatMessage {
             role: MessageRole::Assistant,
             content: content.into(),
             name: None,
@@ -222,7 +222,7 @@ impl LegacyMessage {
     }
 
     pub fn system(content: impl Into<String>) -> Self {
-        LegacyMessage {
+        ChatMessage {
             role: MessageRole::System,
             content: content.into(),
             name: None,
@@ -232,7 +232,7 @@ impl LegacyMessage {
     }
 
     pub fn tool(content: impl Into<String>) -> Self {
-        LegacyMessage {
+        ChatMessage {
             role: MessageRole::Tool,
             content: content.into(),
             name: None,
@@ -280,8 +280,6 @@ impl SearchChatMessage {
     }
 }
 
-/// Type alias for chat messages
-pub type ChatMessage = Message<256>;
 
 /// Zero-allocation message with const generics for stack allocation
 #[derive(Debug, Clone, Serialize, Deserialize)]

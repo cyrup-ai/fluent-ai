@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 pub enum EmbeddingError {
     /// Transport or timeout failure
     #[error("HttpError: {0}")]
-    HttpError(#[from] reqwest::Error),
+    HttpError(#[from] fluent_ai_http3::HttpError),
 
     /// (De)serialisation failure
     #[error("JsonError: {0}")]

@@ -36,6 +36,19 @@ dashmap = "7.0.0-rc2"
 num_cpus = "1.16.0"
 termcolor = { path = "../termcolor" }
 
+# Missing dependencies that are causing compilation errors
+async-trait = "0.1.85"
+arc-swap = "1.7.1" 
+smallvec = "2.0.0-alpha.11"
+crossbeam-channel = "0.5.15"
+crossbeam-queue = "0.3.12"
+crossbeam-utils = "0.8.21"
+crossbeam = "0.8.4"
+log = "0.4.24"
+hmac = "0.12.1"
+sha2 = "0.10.8"
+rand = "0.8.5"
+
 # Candle dependencies (optional, enabled by features) - TEMPORARILY DISABLED FOR COMPILATION TEST
 # candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
 # candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }

@@ -58,10 +58,9 @@ crossbeam-channel = "0.5.15"
 crossbeam-queue = "0.3.12"
 lazy_static = "1.5.0"
 
-# Streaming and WebSocket dependencies
-reqwest = { version = "0.12.22", features = ["json", "stream", "http3", "rustls-tls", "rustls-tls-native-roots", "rustls-tls-manual-roots", "gzip", "deflate", "brotli"] }
-reqwest-eventsource = "0.6.0"
-tokio-tungstenite = "0.27.0"
+# HTTP3 library (mandatory per CLAUDE.md)
+# Note: Removed forbidden HTTP libraries (reqwest, reqwest-eventsource, tokio-tungstenite)
+# All HTTP operations must use fluent_ai_http3 exclusively
 tracing = "0.1.41"
 
 # Additional core dependencies

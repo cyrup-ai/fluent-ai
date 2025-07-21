@@ -12,7 +12,7 @@ use std::sync::Arc;
 use arrayvec::{ArrayString, ArrayVec};
 use fluent_ai_domain::chunk::CompletionChunk;
 use fluent_ai_domain::completion::CompletionRequest;
-use fluent_ai_domain::message::{Message, Role};
+use fluent_ai_domain::message::{Message, MessageRole as Role};
 use fluent_ai_domain::tool::Tool;
 use fluent_ai_domain::{AsyncStream, AsyncTask};
 use fluent_ai_http3::{HttpClient, HttpRequest};

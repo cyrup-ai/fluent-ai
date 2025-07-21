@@ -28,14 +28,15 @@
 //!     .prompt("Hello world");
 //! ```
 
-pub use audio::OpenAIAudioClient;
+pub use audio::{OpenAIAudioClient, TranscriptionResponse};
 // Re-export all public types with zero allocation
 pub use client::OpenAIClient;
-pub use completion::OpenAICompletionBuilder;
+pub use completion::{OpenAICompletionBuilder, CompletionResponse};
 pub use discovery::OpenAIDiscovery;
 pub use embeddings::OpenAIEmbeddingClient;
-pub use error::{OpenAIError, Result};
-pub use streaming::OpenAIStream;
+pub use error::{OpenAIError, Result as OpenAIResult};
+pub use messages::{Message, OpenAIMessage, AssistantContent};
+pub use streaming::{OpenAIStream, StreamingCompletionResponse, StreamingChoice, StreamingMessage, send_compatible_streaming_request};
 pub use vision::OpenAIVisionClient;
 
 use crate::client::{CompletionClient, ProviderClient};
@@ -48,7 +49,11 @@ mod completion;
 mod discovery;
 mod embeddings;
 mod error;
+mod messages;
+mod model_info;
+mod moderation;
 mod streaming;
+mod tools;
 mod vision;
 
 /// OpenAI model constants using &'static str for zero allocation

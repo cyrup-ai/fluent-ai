@@ -621,7 +621,7 @@ impl<'a> Prompt for TogetherCompletionBuilder<'a, NeedsPrompt> {
 }
 
 // ============================================================================
-// Legacy API types for compatibility
+// API types for compatibility
 // ============================================================================
 pub mod together_ai_api_types {
     use serde::Deserialize;

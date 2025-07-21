@@ -4,7 +4,6 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::chat::templates::core::{ChatTemplate, TemplateError, TemplateResult};
 

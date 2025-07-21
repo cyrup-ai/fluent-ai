@@ -22,7 +22,7 @@ use crate::{
 #[derive(Debug, Error)]
 pub enum TranscriptionError {
     #[error("http: {0}")]
-    Http(#[from] reqwest::Error),
+    Http(#[from] fluent_ai_http3::HttpError),
 
     #[error("json: {0}")]
     Json(#[from] serde_json::Error),

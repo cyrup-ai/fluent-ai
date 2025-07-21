@@ -1,6 +1,5 @@
-use super::cache::get_cached_system_time;
-use super::types_legacy::{
-    ImportanceContext, MemoryMetadata, MemoryNode, MemoryType, calculate_importance, next_memory_id,
+use super::primitives::{
+    MemoryNode, MemoryTypeEnum as MemoryType, MemoryContent,
 };
 
 /// Lock-free memory node pool for zero-allocation MemoryNode reuse
@@ -22,17 +21,14 @@ impl MemoryNodePool {
 
         // Pre-allocate nodes to avoid allocations during runtime
         for _ in 0..capacity {
-            let node = MemoryNode {
-                id: 0,                                // Will be set when acquired
-                content: String::with_capacity(1024), // Pre-allocate string capacity
-                memory_type: MemoryType::ShortTerm,
-                metadata: MemoryMetadata {
-                    importance: 0.0,
-                    last_accessed: get_cached_system_time(),
-                    creation_time: get_cached_system_time(),
-                },
-                embedding: Some(vec![0.0; embedding_dimension]), // Pre-allocate embedding
-            };
+            let content = MemoryContent::text(String::with_capacity(1024)); // Pre-allocate string capacity
+            let mut node = MemoryNode::new(MemoryType::Working, content); // Use Working type for pooled nodes
+            
+            // Set embedding if requested
+            if embedding_dimension > 0 {
+                let _ = node.set_embedding(vec![0.0; embedding_dimension]); // Pre-allocate embedding
+            }
+            
             let _ = pool.available.push(node);
         }
 
@@ -44,17 +40,15 @@ impl MemoryNodePool {
     pub fn acquire(&self) -> PooledMemoryNode<'_> {
         let node = self.available.pop().unwrap_or_else(|| {
             // Fallback: create new node if pool is empty
-            MemoryNode {
-                id: 0,
-                content: String::with_capacity(1024),
-                memory_type: MemoryType::ShortTerm,
-                metadata: MemoryMetadata {
-                    importance: 0.0,
-                    last_accessed: get_cached_system_time(),
-                    creation_time: get_cached_system_time(),
-                },
-                embedding: Some(vec![0.0; self.embedding_dimension]),
+            let content = MemoryContent::text(String::with_capacity(1024));
+            let mut node = MemoryNode::new(MemoryType::Working, content);
+            
+            // Set embedding if requested
+            if self.embedding_dimension > 0 {
+                let _ = node.set_embedding(vec![0.0; self.embedding_dimension]);
             }
+            
+            node
         });
 
         PooledMemoryNode {
@@ -66,20 +60,17 @@ impl MemoryNodePool {
 
     /// Release a node back to the pool for reuse
     #[inline(always)]
-    fn release(&self, mut node: MemoryNode) {
-        // Clear the node data for reuse
-        node.id = 0;
-        node.content.clear();
-        node.memory_type = MemoryType::ShortTerm;
-        node.metadata.importance = 0.0;
-        node.metadata.last_accessed = get_cached_system_time();
-        node.metadata.creation_time = get_cached_system_time();
-
-        // Clear embedding vector but keep allocation
-        if let Some(ref mut embedding) = node.embedding {
-            embedding.fill(0.0);
-        }
-
+    fn release(&self, node: MemoryNode) {
+        // Reset the node to a clean state for reuse
+        // The modern MemoryNode doesn't allow direct mutation of its fields,
+        
+        // The modern MemoryNode doesn't allow direct mutation of its fields,
+        // so we'll just use it as-is for the pool. The creation of new nodes
+        // handles the clean state.
+        
+        // For a more efficient pool, we could add reset methods to MemoryNode,
+        // but for now we'll accept the cost of recreation on acquire.
+        
         // Return to pool (ignore if pool is full)
         let _ = self.available.push(node);
     }
@@ -100,22 +91,26 @@ pub struct PooledMemoryNode<'a> {
 }
 
 impl<'a> PooledMemoryNode<'a> {
-    /// Initialize the pooled node with content and context
+    /// Initialize the pooled node with content
     #[inline(always)]
     pub fn initialize(
         &mut self,
         content: String,
         memory_type: MemoryType,
-        context: ImportanceContext,
     ) {
         if !self.taken {
-            self.node.id = next_memory_id();
-            self.node.content = content;
-            self.node.memory_type = memory_type;
-            self.node.metadata.importance =
-                calculate_importance(&self.node.memory_type, context, self.node.content.len());
-            self.node.metadata.last_accessed = get_cached_system_time();
-            self.node.metadata.creation_time = get_cached_system_time();
+            // For the current design, we replace the node entirely since
+            // the modern MemoryNode doesn't expose mutable fields directly
+            let new_content = MemoryContent::text(content);
+            let mut new_node = MemoryNode::new(memory_type, new_content);
+            
+            // Calculate base importance from memory type
+            let importance = memory_type.base_importance();
+            let _ = new_node.set_importance(importance);
+            
+            // Replace the node
+            let old_node = std::mem::replace(&mut self.node, std::mem::ManuallyDrop::new(new_node));
+            std::mem::ManuallyDrop::into_inner(old_node); // Drop the old node
         }
     }
 
@@ -123,7 +118,7 @@ impl<'a> PooledMemoryNode<'a> {
     #[inline(always)]
     pub fn set_embedding(&mut self, embedding: Vec<f32>) {
         if !self.taken {
-            self.node.embedding = Some(embedding);
+            let _ = self.node.set_embedding(embedding);
         }
     }
 
@@ -152,17 +147,10 @@ impl<'a> PooledMemoryNode<'a> {
             self.taken = true;
             Some(std::mem::ManuallyDrop::into_inner(std::mem::replace(
                 &mut self.node,
-                std::mem::ManuallyDrop::new(MemoryNode {
-                    id: 0,
-                    content: String::new(),
-                    memory_type: MemoryType::ShortTerm,
-                    metadata: MemoryMetadata {
-                        importance: 0.0,
-                        last_accessed: get_cached_system_time(),
-                        creation_time: get_cached_system_time(),
-                    },
-                    embedding: None,
-                }),
+                std::mem::ManuallyDrop::new(MemoryNode::new(
+                    MemoryType::Working, 
+                    MemoryContent::text("")
+                )),
             )))
         }
     }
@@ -192,17 +180,10 @@ impl<'a> Drop for PooledMemoryNode<'a> {
         if !self.taken {
             let node = std::mem::ManuallyDrop::into_inner(std::mem::replace(
                 &mut self.node,
-                std::mem::ManuallyDrop::new(MemoryNode {
-                    id: 0,
-                    content: String::new(),
-                    memory_type: MemoryType::ShortTerm,
-                    metadata: MemoryMetadata {
-                        importance: 0.0,
-                        last_accessed: get_cached_system_time(),
-                        creation_time: get_cached_system_time(),
-                    },
-                    embedding: None,
-                }),
+                std::mem::ManuallyDrop::new(MemoryNode::new(
+                    MemoryType::Working, 
+                    MemoryContent::text("")
+                )),
             ));
             self.pool.release(node);
         }

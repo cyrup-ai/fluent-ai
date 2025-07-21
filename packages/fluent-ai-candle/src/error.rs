@@ -3,6 +3,7 @@
 use std::fmt;
 
 use fluent_ai_domain::extractor::ExtractionError;
+use fluent_ai_domain::completion::{CompletionRequestError, CompletionCoreError};
 
 /// Result type alias for candle operations
 pub type CandleResult<T> = Result<T, CandleError>;
@@ -12,6 +13,8 @@ pub type CandleResult<T> = Result<T, CandleError>;
 pub enum CandleError {
     /// Model file not found or inaccessible
     ModelNotFound(String),
+    /// Model loading failed
+    ModelLoadError(String),
     /// Invalid model format or corrupted file
     InvalidModelFormat(&'static str),
     /// Tensor operation failed
@@ -42,12 +45,27 @@ pub enum CandleError {
     GenerationFailed(&'static str),
     /// Cache overflow
     CacheOverflow,
+    /// Invalid input data
+    InvalidInput(&'static str),
+    /// Device operation failed
+    DeviceOperation(&'static str),
+    /// Memory allocation failed
+    MemoryAllocation(&'static str),
+    /// Tokenizer error with dynamic message
+    TokenizerError(&'static str),
+    /// Configuration error with dynamic message
+    ConfigurationError(&'static str),
+    /// Unsupported operation
+    UnsupportedOperation(&'static str),
+    /// Incompatible tokenizer
+    IncompatibleTokenizer(&'static str),
 }
 
 impl fmt::Display for CandleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ModelNotFound(path) => write!(f, "Model not found: {}", path),
+            Self::ModelLoadError(msg) => write!(f, "Model loading failed: {}", msg),
             Self::InvalidModelFormat(msg) => write!(f, "Invalid model format: {}", msg),
             Self::TensorOperation(msg) => write!(f, "Tensor operation failed: {}", msg),
             Self::DeviceAllocation(msg) => write!(f, "Device allocation failed: {}", msg),
@@ -71,6 +89,13 @@ impl fmt::Display for CandleError {
             }
             Self::GenerationFailed(msg) => write!(f, "Generation failed: {}", msg),
             Self::CacheOverflow => write!(f, "Cache overflow"),
+            Self::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
+            Self::DeviceOperation(msg) => write!(f, "Device operation failed: {}", msg),
+            Self::MemoryAllocation(msg) => write!(f, "Memory allocation failed: {}", msg),
+            Self::TokenizerError(msg) => write!(f, "Tokenizer error: {}", msg),
+            Self::ConfigurationError(msg) => write!(f, "Configuration error: {}", msg),
+            Self::UnsupportedOperation(msg) => write!(f, "Unsupported operation: {}", msg),
+            Self::IncompatibleTokenizer(msg) => write!(f, "Incompatible tokenizer: {}", msg),
         }
     }
 }
@@ -103,7 +128,7 @@ impl From<candle_core::Error> for CandleError {
                 Self::ModelNotFound("IO error during model loading".to_string())
             }
             candle_core::Error::Zip(_) => Self::InvalidModelFormat("ZIP archive error"),
-            candle_core::Error::SafeTensorError(_) => Self::SafeTensors("SafeTensors format error"),
+            candle_core::Error::SafeTensor(_) => Self::SafeTensors("SafeTensors format error"),
             _ => Self::TensorOperation("Unknown candle error"),
         }
     }
@@ -125,12 +150,50 @@ impl From<hf_hub::api::tokio::ApiError> for CandleError {
     }
 }
 
+// Conversion from domain completion request errors
+impl From<CompletionRequestError> for CandleError {
+    #[inline(always)]
+    fn from(err: CompletionRequestError) -> Self {
+        match err {
+            CompletionRequestError::InvalidParameter(_msg) => Self::InvalidInput("Invalid completion parameter"),
+            CompletionRequestError::Validation(_validation_err) => {
+                Self::Configuration("Completion request validation failed")
+            }
+        }
+    }
+}
+
+// Conversion from domain completion core errors
+impl From<CompletionCoreError> for CandleError {
+    #[inline(always)]
+    fn from(err: CompletionCoreError) -> Self {
+        match err {
+            CompletionCoreError::InvalidRequest(_msg) => Self::InvalidInput("Invalid completion request"),
+            CompletionCoreError::ModelLoadingFailed(msg) => Self::ModelLoadError(msg),
+            CompletionCoreError::GenerationFailed(_msg) => Self::GenerationFailed("Generation failed"),
+            CompletionCoreError::ContextLengthExceeded { current, max } => {
+                Self::ContextLengthExceeded { current, max }
+            }
+            CompletionCoreError::ProviderUnavailable(_msg) => Self::DeviceAllocation("Provider unavailable"),
+            CompletionCoreError::RateLimitExceeded => Self::GenerationFailed("Rate limit exceeded"),
+            CompletionCoreError::Timeout => Self::LoadingTimeout,
+            CompletionCoreError::Internal(_msg) => Self::TensorOperation("Internal completion error"),
+        }
+    }
+}
+
 // Helper functions for creating common errors
 impl CandleError {
     /// Create a model not found error
     #[inline(always)]
     pub fn model_not_found<S: Into<String>>(path: S) -> Self {
         Self::ModelNotFound(path.into())
+    }
+
+    /// Create a model loading error
+    #[inline(always)]
+    pub fn model_load_error<S: Into<String>>(msg: S) -> Self {
+        Self::ModelLoadError(msg.into())
     }
 
     /// Create an invalid model format error
@@ -215,6 +278,12 @@ impl CandleError {
     #[inline(always)]
     pub fn cache_overflow() -> Self {
         Self::CacheOverflow
+    }
+
+    /// Create an invalid input error
+    #[inline(always)]
+    pub fn invalid_input(msg: &'static str) -> Self {
+        Self::InvalidInput(msg)
     }
 
     /// Check if this error is retryable
@@ -351,4 +420,38 @@ macro_rules! candle_error {
             context: ErrorContext::new($operation).with_context($context),
         }
     };
+}
+
+/// Convert CandleError to CompletionCoreError for domain compatibility
+impl From<CandleError> for CompletionCoreError {
+    fn from(err: CandleError) -> Self {
+        match err {
+            CandleError::ModelNotFound(msg) => CompletionCoreError::ModelLoadingFailed(msg),
+            CandleError::ModelLoadError(msg) => CompletionCoreError::ModelLoadingFailed(msg),
+            CandleError::InvalidModelFormat(msg) => CompletionCoreError::ModelLoadingFailed(msg.to_string()),
+            CandleError::TensorOperation(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
+            CandleError::DeviceOperation(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
+            CandleError::MemoryAllocation(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
+            CandleError::GenerationFailed(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
+            CandleError::TokenizerError(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
+            CandleError::ConfigurationError(msg) => CompletionCoreError::InvalidRequest(msg.to_string()),
+            CandleError::UnsupportedOperation(msg) => CompletionCoreError::InvalidRequest(msg.to_string()),
+            CandleError::ContextLengthExceeded { current, max } => {
+                CompletionCoreError::ContextLengthExceeded { current, max }
+            }
+            CandleError::VocabularyMismatch { expected, actual } => {
+                CompletionCoreError::GenerationFailed(format!("Vocabulary mismatch: expected {}, got {}", expected, actual))
+            }
+            CandleError::IncompatibleTokenizer(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
+            CandleError::SafeTensors(msg) => CompletionCoreError::ModelLoadingFailed(msg.to_string()),
+            CandleError::Quantization(msg) => CompletionCoreError::ModelLoadingFailed(msg.to_string()),
+            CandleError::Tokenizer(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
+            CandleError::MemoryMapping(msg) => CompletionCoreError::ModelLoadingFailed(msg.to_string()),
+            CandleError::LoadingTimeout => CompletionCoreError::ModelLoadingFailed("Model loading timeout".to_string()),
+            CandleError::UnsupportedArchitecture(arch) => {
+                CompletionCoreError::InvalidRequest(format!("Unsupported architecture: {}", arch))
+            }
+            CandleError::Configuration(msg) => CompletionCoreError::InvalidRequest(msg.to_string()),
+        }
+    }
 }

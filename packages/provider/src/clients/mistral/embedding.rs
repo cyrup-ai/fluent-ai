@@ -1,4 +1,4 @@
-use fluent_ai_domain::model::EmbeddingModel;
+use fluent_ai_domain::model::AnyEmbeddingCapable;
 use serde::Deserialize;
 use serde_json::json;
 

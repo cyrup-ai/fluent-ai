@@ -12,6 +12,417 @@ This document outlines a comprehensive plan to transform the fluent-ai codebase 
 
 ### 🔥 CRITICAL ISSUES REQUIRING IMMEDIATE ACTION
 
+## CANDLE ARCHITECTURE DESIGN & IMPLEMENTATION (HIGHEST PRIORITY)
+
+### 1. IMMEDIATE: Fix type references in domain extension methods  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/completion/candle.rs`  
+**Lines Affected**: 485, 486, 491, 495  
+**Issue**: Extension methods reference old CompletionCoreRequest/CompletionCoreResponse types  
+**Fix Strategy**: Update all type references to use CompletionRequest/CompletionResponse  
+**Technical Notes**: 
+- Change CompletionCoreRequest to CompletionRequest  
+- Change CompletionCoreResponse to CompletionResponse  
+- Update all trait bounds and generic parameters  
+- Maintain exact same API surface  
+- Ensure zero allocation patterns preserved  
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 2. QA: Act as an Objective QA Rust developer and rate the quality of the domain extension methods type fix on a scale of 1-10. Provide specific feedback on compliance with zero allocation, no locking, async patterns, and semantic error handling requirements.
+
+### 3. ARCHITECTURE: Create production-quality CandleConfig module  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/config.rs` (new)  
+**Architecture Notes**: Builder pattern for ergonomic configuration  
+**Technical Specifications**:
+- CandleConfig struct with model_path, generation_params, tokenizer_config  
+- Builder pattern implementation with validation  
+- Default implementations for common model types  
+- Zero-allocation validation using const generics where possible  
+- Thread-safe configuration sharing using Arc<CandleConfig>  
+- Configuration hot-reloading support with atomic swapping  
+**Performance Requirements**: Zero allocation in hot paths, lock-free access patterns  
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 4. QA: Act as an Objective QA Rust developer and rate the quality of the CandleConfig implementation on a scale of 1-10. Provide specific feedback on builder pattern ergonomics, validation logic, and performance characteristics.
+
+### 5. ARCHITECTURE: Enhanced semantic error types for Candle  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/error.rs`  
+**Enhancement Strategy**: Replace generic errors with semantic error variants  
+**Technical Specifications**:
+- CandleError enum with specific variants: ModelLoadError, TokenizationError, GenerationError, ConfigurationError  
+- Implement thiserror::Error for Display and Error traits  
+- Add From conversions for domain error types (fluent_ai_domain::completion::CompletionError)  
+- Zero-allocation error handling using pre-allocated error messages  
+- Contextual error information without heap allocation  
+- Error recovery strategies for transient failures  
+**Performance Requirements**: No allocation in error paths, lock-free error propagation  
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 6. QA: Act as an Objective QA Rust developer and rate the quality of the enhanced CandleError implementation on a scale of 1-10. Provide specific feedback on error variant design, context preservation, and performance characteristics.
+
+### 7. ARCHITECTURE: Enhanced CandleCompletionClient with configuration injection  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/client.rs`  
+**Lines Affected**: 50 (model_name), 35 (error handling), throughout  
+**Enhancement Strategy**: Inject configuration, add resource lifecycle management  
+**Technical Specifications**:
+- Replace hardcoded "candle-model" with actual model name from CandleConfig  
+- Add CandleConfig injection in constructor  
+- Implement proper resource lifecycle management with Arc<Model> sharing  
+- Add connection pooling for model instances  
+- Enhanced error handling using semantic CandleError types  
+- Model hot-swapping capability with atomic pointer updates  
+- Memory management optimizations using pre-allocated buffers  
+**Performance Requirements**: Zero allocation in completion paths, lock-free model access  
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 8. QA: Act as an Objective QA Rust developer and rate the quality of the enhanced CandleCompletionClient on a scale of 1-10. Provide specific feedback on configuration integration, resource management, and API ergonomics.
+
+### 9. ARCHITECTURE: Memory management optimizations  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/client.rs`  
+**Enhancement Strategy**: Implement zero-allocation patterns and connection pooling  
+**Technical Specifications**:
+- Use Arc<Model> for shared model access across concurrent requests  
+- Implement model instance pooling with lock-free queue  
+- Pre-allocated token processing buffers using SlotMap for reuse  
+- Zero-copy token processing where possible using Cow<[Token]>  
+- Atomic reference counting for model lifecycle management  
+- Memory-mapped model loading for faster startup  
+**Performance Requirements**: Sub-millisecond token processing, zero allocation in hot paths  
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 10. QA: Act as an Objective QA Rust developer and rate the quality of the memory management optimizations on a scale of 1-10. Provide specific feedback on allocation patterns, concurrency safety, and performance characteristics.
+
+### 11. ARCHITECTURE: Streaming response optimizations  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/generator.rs`  
+**Lines Affected**: Throughout streaming implementation  
+**Enhancement Strategy**: Implement lock-free streaming with backpressure handling  
+**Technical Specifications**:
+- Backpressure handling in streaming responses using async channels  
+- Cancellation token support for request cancellation  
+- Adaptive batching for token generation based on system load  
+- Lock-free queuing for token streams using crossbeam-queue  
+- Zero-copy streaming where possible  
+- Flow control to prevent memory pressure  
+**Performance Requirements**: High throughput streaming, minimal latency overhead  
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 12. QA: Act as an Objective QA Rust developer and rate the quality of the streaming optimizations on a scale of 1-10. Provide specific feedback on backpressure handling, cancellation support, and streaming performance.
+
+### 13. ARCHITECTURE: Observability and metrics hooks  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/metrics.rs` (new)  
+**Architecture Notes**: Lock-free metrics collection for production monitoring  
+**Technical Specifications**:
+- Request timing metrics using std::time::Instant with atomic storage  
+- Token generation rate tracking with moving averages  
+- Error rate monitoring with categorized error counters  
+- Resource utilization tracking (memory, CPU, GPU if available)  
+- All metrics lock-free using atomic operations (AtomicU64, AtomicPtr)  
+- Integration with observability frameworks (OpenTelemetry compatible)  
+**Performance Requirements**: Zero allocation metrics collection, minimal overhead  
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 14. QA: Act as an Objective QA Rust developer and rate the quality of the observability implementation on a scale of 1-10. Provide specific feedback on metrics design, performance overhead, and integration capabilities.
+
+### 15. ARCHITECTURE: Advanced caching and rate limiting  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/cache.rs` (new)  
+**Architecture Notes**: High-performance caching with intelligent eviction  
+**Technical Specifications**:
+- Token-bucket rate limiting using atomic counters  
+- LRU cache for frequent completion requests using crossbeam-skiplist  
+- Model weight caching with memory-mapped files  
+- Lock-free cache implementation using epoch-based memory management  
+- Cache warming strategies for common requests  
+- Adaptive cache sizing based on available memory  
+**Performance Requirements**: Sub-microsecond cache lookups, zero allocation in cache hits  
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 16. QA: Act as an Objective QA Rust developer and rate the quality of the caching and rate limiting implementation on a scale of 1-10. Provide specific feedback on cache efficiency, rate limiting accuracy, and performance characteristics.
+
+### 17. INTEGRATION: Module exports and feature organization  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/lib.rs`  
+**Integration Strategy**: Organize all new modules with clear public API  
+**Technical Specifications**:
+- Module exports for config, error, metrics, cache modules  
+- Feature flags for optional components (metrics, caching)  
+- Public API documentation with usage examples  
+- Re-export patterns for ergonomic imports  
+- Version compatibility markers  
+- Integration testing hooks  
+**Requirements**: Maintain backward compatibility, clear API surface  
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 18. QA: Act as an Objective QA Rust developer and rate the quality of the module integration on a scale of 1-10. Provide specific feedback on API design, documentation quality, and backward compatibility.
+
+### 19. VALIDATION: Comprehensive integration testing  
+**File**: Create comprehensive tests in `/tests/candle_integration_tests.rs`  
+**Testing Strategy**: End-to-end validation of candle architecture  
+**Technical Specifications**:
+- Test CompletionRequest/CompletionResponse type compatibility  
+- Validate zero-allocation patterns under load  
+- Test error handling and recovery scenarios  
+- Benchmark performance characteristics  
+- Test concurrent access patterns  
+- Validate configuration hot-reloading  
+- Test streaming with backpressure  
+**Performance Requirements**: Tests must validate production performance characteristics  
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 20. QA: Act as an Objective QA Rust developer and rate the quality of the integration testing on a scale of 1-10. Provide specific feedback on test coverage, performance validation, and error scenario testing.
+
+## CANDLE ARCHITECTURE PERFORMANCE OPTIMIZATIONS (HIGHEST PRIORITY)
+
+### 21. SAFETY CRITICAL: Eliminate unwrap_or() violations in generator.rs
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/generator.rs`
+**Lines Affected**: 300, 401, 443
+**Issue**: unwrap_or() calls violate "never use unwrap()" constraint
+**Technical Specifications**:
+- Replace `std::str::from_utf8(&msg.content).unwrap_or("[invalid utf8]")` with proper error handling
+- Use Result<String, CandleError> return type for prompt construction
+- Implement UTF-8 validation with semantic error types
+- Use `String::from_utf8_lossy()` only when data loss is acceptable
+- Add comprehensive error context for debugging
+**Architecture Notes**: Semantic error handling for malformed message content
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 22. QA: Act as an Objective QA Rust developer and rate the quality of the unwrap_or() elimination on a scale of 1-10. Provide specific feedback on error handling patterns, safety guarantees, and performance impact.
+
+### 23. PERFORMANCE: Zero-allocation prompt construction optimization
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/generator.rs`
+**Lines Affected**: 294-303, 395-404, 437-446
+**Issue**: Repeated allocating prompt construction using format!, collect, join
+**Technical Specifications**:
+- Create reusable `PromptBuilder` struct with pre-allocated capacity
+- Use `std::fmt::Write` trait to write directly to buffer without intermediate allocations
+- Implement `write!()` macro for formatting without allocation
+- Add prompt length estimation for buffer pre-sizing
+- Use `SmallString<256>` for typical prompts, heap allocation only for large prompts
+- Implement buffer reuse across multiple generations
+**Architecture Notes**: Stack-allocated prompt building with overflow to heap
+**Performance Requirements**: Zero allocation for prompts under 256 characters
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 24. QA: Act as an Objective QA Rust developer and rate the quality of the zero-allocation prompt construction on a scale of 1-10. Provide specific feedback on allocation patterns, performance characteristics, and code ergonomics.
+
+### 25. ARCHITECTURE: SIMD-optimized token processing pipeline
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/simd_tokens.rs` (new)
+**Architecture Notes**: Vectorized token processing using safe SIMD abstractions
+**Technical Specifications**:
+- Use `std::simd` for portable SIMD operations on token arrays
+- Implement vectorized token ID comparison for stop sequences
+- Add SIMD-accelerated text similarity calculations
+- Use aligned memory allocations for SIMD compatibility
+- Implement fallback scalar operations for unsupported CPUs
+- Add vectorized UTF-8 validation for token text
+- Use cache-friendly data layouts for token streams
+**Performance Requirements**: 4x-8x speedup on token processing operations
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 26. QA: Act as an Objective QA Rust developer and rate the quality of the SIMD optimization implementation on a scale of 1-10. Provide specific feedback on vectorization efficiency, fallback mechanisms, and cross-platform compatibility.
+
+### 27. INTEGRATION: SIMD integration into generator pipeline
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/generator.rs`
+**Lines Affected**: 540-580 (generate_next_token function)
+**Technical Specifications**:
+- Integrate SIMD token processing into generation pipeline
+- Use vectorized operations for token array manipulation
+- Implement SIMD-accelerated stop sequence detection
+- Add vectorized probability calculations for sampling
+- Use aligned allocations for tensor operations
+- Implement batch token processing for streaming
+**Architecture Notes**: Seamless SIMD integration with existing async patterns
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 28. QA: Act as an Objective QA Rust developer and rate the quality of the SIMD integration on a scale of 1-10. Provide specific feedback on pipeline efficiency, async compatibility, and performance gains.
+
+### 29. ARCHITECTURE: Lock-free streaming with backpressure control
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/streaming.rs` (new)
+**Architecture Notes**: High-throughput streaming with flow control and cancellation
+**Technical Specifications**:
+- Implement `crossbeam_queue::SegQueue` for lock-free token streaming
+- Add adaptive backpressure using token bucket algorithm
+- Use `tokio::sync::Semaphore` for flow control without blocking
+- Implement cancellation tokens for request termination
+- Add stream prioritization using weighted fair queuing
+- Use epoch-based memory management for stream cleanup
+- Implement zero-copy token forwarding where possible
+**Performance Requirements**: Handle 10,000+ concurrent streams without degradation
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 30. QA: Act as an Objective QA Rust developer and rate the quality of the lock-free streaming implementation on a scale of 1-10. Provide specific feedback on throughput characteristics, backpressure handling, and resource usage.
+
+### 31. INTEGRATION: Streaming integration with generation pipeline
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/generator.rs`
+**Lines Affected**: 428-485 (generate_stream_internal function)
+**Technical Specifications**:
+- Replace `mpsc::UnboundedSender` with lock-free streaming pipeline
+- Implement adaptive batching based on generation speed
+- Add flow control to prevent memory pressure
+- Use zero-copy token transmission when possible
+- Implement graceful stream termination on errors
+- Add stream health monitoring and recovery
+**Architecture Notes**: Backpressure-aware streaming without blocking generation
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 32. QA: Act as an Objective QA Rust developer and rate the quality of the streaming integration on a scale of 1-10. Provide specific feedback on flow control effectiveness, error handling, and performance characteristics.
+
+### 33. ARCHITECTURE: Lock-free memory pooling system
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/memory_pool.rs` (new)
+**Architecture Notes**: Zero-allocation object pooling with automatic sizing
+**Technical Specifications**:
+- Use `crossbeam_queue::ArrayQueue` for lock-free buffer pools
+- Implement typed pools for `Vec<u32>` (tokens), `String` (text), `Tensor` (model state)
+- Add automatic pool sizing based on usage patterns
+- Use `thread_local!` storage for thread-specific pools
+- Implement pool overflow handling with heap allocation fallback
+- Add memory pressure monitoring with adaptive pool resizing
+- Use `std::alloc::System` for direct allocation when needed
+**Performance Requirements**: 99% pool hit rate for common buffer sizes
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 34. QA: Act as an Objective QA Rust developer and rate the quality of the memory pooling system on a scale of 1-10. Provide specific feedback on pool efficiency, overflow handling, and memory pressure adaptation.
+
+### 35. INTEGRATION: Memory pool integration throughout codebase
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/generator.rs`
+**Lines Affected**: Throughout token processing sections
+**Technical Specifications**:
+- Replace direct `Vec::new()` with pool-allocated buffers
+- Use pooled strings for prompt construction
+- Implement automatic buffer return to pools on scope exit
+- Add pool-backed tensor allocations for model inference
+- Use RAII patterns for automatic resource cleanup
+- Implement pool statistics collection for optimization
+**Architecture Notes**: Transparent pooling with automatic resource management
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 36. QA: Act as an Objective QA Rust developer and rate the quality of the memory pool integration on a scale of 1-10. Provide specific feedback on resource management, automatic cleanup, and performance impact.
+
+### 37. ARCHITECTURE: Production-quality configuration management
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/config.rs`
+**Lines Affected**: Entire file enhancement
+**Technical Specifications**:
+- Use `ArcSwap<CandleConfig>` for atomic configuration updates
+- Implement file watching with `notify` crate for config changes
+- Add configuration validation with semantic error reporting
+- Use `serde` with custom deserializers for type-safe parsing
+- Implement configuration versioning for backward compatibility
+- Add environment variable override support
+- Use `const` generics for compile-time configuration optimization
+**Architecture Notes**: Zero-downtime configuration updates with validation
+**Performance Requirements**: Configuration access in under 10 nanoseconds
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 38. QA: Act as an Objective QA Rust developer and rate the quality of the configuration management on a scale of 1-10. Provide specific feedback on hot-reloading reliability, validation completeness, and access performance.
+
+### 39. INTEGRATION: Hot configuration reloading throughout components
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/client.rs`
+**Lines Affected**: Constructor and configuration access points
+**Technical Specifications**:
+- Replace static configuration with `ArcSwap<CandleConfig>` references
+- Implement configuration change notifications via async channels
+- Add graceful model reloading on configuration changes
+- Use weak references to prevent configuration memory leaks
+- Implement configuration rollback on validation failures
+- Add configuration change auditing and logging
+**Architecture Notes**: Live configuration updates without service interruption
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 40. QA: Act as an Objective QA Rust developer and rate the quality of the hot reloading integration on a scale of 1-10. Provide specific feedback on rollback mechanisms, change propagation, and system stability.
+
+### 41. ARCHITECTURE: Lock-free metrics collection system
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/metrics.rs`
+**Lines Affected**: Entire file enhancement
+**Technical Specifications**:
+- Extend existing `GenerationStats` with comprehensive metrics
+- Use `AtomicU64` for all counters to ensure lock-free access
+- Implement histogram data structures using `AtomicPtr<[u64; N]>`
+- Add exponential moving averages for rate calculations
+- Use memory ordering guarantees for consistent reads
+- Implement metrics aggregation without allocation
+- Add OpenTelemetry integration for distributed tracing
+**Architecture Notes**: Production-grade observability with minimal overhead
+**Performance Requirements**: Metrics collection overhead under 1% of total CPU
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 42. QA: Act as an Objective QA Rust developer and rate the quality of the metrics collection system on a scale of 1-10. Provide specific feedback on lock-free implementation, overhead characteristics, and observability completeness.
+
+### 43. INTEGRATION: Metrics instrumentation throughout generation pipeline
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/generator.rs`
+**Lines Affected**: All major functions for instrumentation
+**Technical Specifications**:
+- Add timing instrumentation to all generation phases
+- Implement token-level metrics for generation quality
+- Add error rate tracking with categorization
+- Use macro-based instrumentation for minimal overhead
+- Implement automatic metric export to monitoring systems
+- Add custom metric tags for request tracing
+**Architecture Notes**: Comprehensive instrumentation without performance impact
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 44. QA: Act as an Objective QA Rust developer and rate the quality of the metrics instrumentation on a scale of 1-10. Provide specific feedback on instrumentation coverage, overhead impact, and debugging utility.
+
+### 45. ARCHITECTURE: Zero-allocation error handling system
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/error.rs`
+**Lines Affected**: Entire file enhancement
+**Technical Specifications**:
+- Enhance existing `CandleError` with pre-allocated error messages
+- Use `&'static str` for error descriptions to avoid allocation
+- Implement error context using `SmallVec<ErrorContext, 4>`
+- Add error categorization for automatic recovery strategies
+- Use `const` error codes for efficient error matching
+- Implement error aggregation for batch operations
+- Add structured error serialization without allocation
+**Architecture Notes**: Rich error information with zero runtime allocation
+**Performance Requirements**: Error creation and propagation under 100 nanoseconds
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 46. QA: Act as an Objective QA Rust developer and rate the quality of the error handling system on a scale of 1-10. Provide specific feedback on allocation patterns, error information richness, and recovery mechanisms.
+
+### 47. INTEGRATION: Error handling integration with all components
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/generator.rs`
+**Lines Affected**: All error handling paths
+**Technical Specifications**:
+- Replace generic errors with semantic `CandleError` variants
+- Implement error recovery strategies for transient failures
+- Add error context preservation throughout call chains
+- Use `?` operator consistently for error propagation
+- Implement graceful degradation on non-critical errors
+- Add error correlation IDs for distributed debugging
+**Architecture Notes**: Comprehensive error handling with context preservation
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 48. QA: Act as an Objective QA Rust developer and rate the quality of the error handling integration on a scale of 1-10. Provide specific feedback on error propagation, context preservation, and recovery effectiveness.
+
+### 49. INTEGRATION: Module exports and feature organization
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/lib.rs`
+**Lines Affected**: Module declarations and feature flags
+**Technical Specifications**:
+- Add feature flags for SIMD optimizations (`simd-optimizations`)
+- Export new modules with clear public APIs
+- Add conditional compilation for platform-specific optimizations
+- Implement feature-gated functionality for optional components
+- Add module-level documentation with performance characteristics
+- Use `#[inline]` attributes for hot path functions
+**Architecture Notes**: Modular architecture with optional optimizations
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 50. QA: Act as an Objective QA Rust developer and rate the quality of the module organization on a scale of 1-10. Provide specific feedback on API design, feature flag usage, and documentation quality.
+
+### 51. VALIDATION: Comprehensive performance and load testing
+**File**: `/Volumes/samsung_t9/fluent-ai/tests/performance_integration_tests.rs` (new)
+**Testing Strategy**: Production-level performance validation under load
+**Technical Specifications**:
+- Benchmark token generation latency (target: sub-millisecond)
+- Load test concurrent streaming (target: 10,000+ streams)
+- Memory allocation profiling (target: zero allocation in hot paths)
+- CPU cache efficiency testing using performance counters
+- SIMD optimization verification on multiple architectures
+- Configuration hot-reloading stress testing
+- Error handling performance under failure scenarios
+- Metrics collection overhead measurement
+**Performance Requirements**: All benchmarks must meet production targets
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 52. QA: Act as an Objective QA Rust developer and rate the quality of the performance testing on a scale of 1-10. Provide specific feedback on test coverage, benchmark accuracy, and production readiness validation.
+
 ## 1. MASSIVE FILE DECOMPOSITION (High Priority)
 
 ### 1.1 CRITICAL: Chat Templates Module Decomposition
@@ -996,1115 +1407,457 @@ fn process_text(input: &str) -> Cow<'_, str> {
     } else {
         Cow::Borrowed(input)
     }
-}
-
-// Use Arc<str> for shared immutable data
-let shared_text: Arc<str> = "immutable data".into();
+}}
 ```
 
-### No Locking Patterns
+## APPROVED CANDLE DOMAIN INTEGRATION ARCHITECTURE IMPLEMENTATION
 
-```rust
-// Use channels for coordination
-let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+**Status**: APPROVED FOR IMMEDIATE IMPLEMENTATION  
+**Priority**: CRITICAL - Required for CompletionRequest/Response compatibility  
+**Architecture**: Zero allocation, lock-free, async-only patterns  
 
-// Use atomic types for simple shared state
-let counter = Arc<AtomicU64>::new(0);
+### PHASE 1: TYPE ADAPTER LAYER (CRITICAL PRIORITY)
 
-// Use DashMap for concurrent collections
-let shared_map = DashMap::new();
-```
+### 21. IMPLEMENTATION: Create production-quality type adapter module  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/adapter.rs` (new)  
+**Lines**: 1-150 (complete implementation)  
+**Architecture**: Zero-allocation type conversion layer between domain and candle types  
+**Technical Specifications**:
+- `TryFrom<CompletionRequest> for CompletionCoreRequest` implementation (lines 15-45)  
+- `TryFrom<CompletionResponse> for domain::CompletionResponse` implementation (lines 47-75)  
+- Zero-allocation conversion utilities using Cow<str> and Arc<str> (lines 77-95)  
+- Semantic error handling with contextual information (lines 97-120)  
+- Validation logic for request compatibility checking (lines 122-150)  
+**Performance Requirements**: Sub-microsecond conversion, zero heap allocation in hot paths  
+**Error Handling**: Never use unwrap() or expect(), comprehensive Result<T, E> patterns  
 
-### Ergonomic Error Handling
+### 22. QA: Act as an Objective QA Rust developer and rate the quality of the type adapter implementation on a scale of 1-10. Provide specific feedback on conversion efficiency, error handling completeness, and zero-allocation compliance.
 
-```rust
-// Rich error context
-#[derive(Debug, thiserror::Error)]
-pub enum ProcessError {
-    #[error("Input validation failed: {field}")]
-    ValidationFailed { field: String },
-    
-    #[error("Network operation failed")]
-    Network(#[from] fluent_ai_http3::HttpError),
-    
-    #[error("Serialization failed")]
-    Serialization(#[from] serde_json::Error),
-}
+### 23. IMPLEMENTATION: Create production-quality adapter error handling  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/error.rs` (new)  
+**Lines**: 1-120 (complete implementation)  
+**Architecture**: Semantic error types for adapter conversion failures  
+**Technical Specifications**:
+- `CandleAdapterError` enum with specific variants: ConversionFailed, ValidationFailed, IncompatibleTypes (lines 10-25)  
+- `thiserror::Error` implementation for Display and Error traits (lines 27-40)  
+- Zero-allocation error context using pre-allocated error messages (lines 42-60)  
+- `From` conversions for domain error types integration (lines 62-80)  
+- Error recovery strategies for transient conversion failures (lines 82-100)  
+- Lock-free error propagation using atomic error signaling (lines 102-120)  
+**Performance Requirements**: Zero allocation in error paths, lock-free error handling  
+**Constraints**: No unwrap() or expect() in src/, comprehensive error coverage  
 
-// Ergonomic error construction
-impl ProcessError {
-    pub fn validation(field: impl Into<String>) -> Self {
-        Self::ValidationFailed { field: field.into() }
-    }
-}
-```
+### 24. QA: Act as an Objective QA Rust developer and rate the quality of the adapter error handling on a scale of 1-10. Provide specific feedback on error variant design, context preservation, and performance characteristics.
 
-## QUALITY ASSURANCE CHECKPOINTS
+### PHASE 2: STREAMING RESPONSE BRIDGE (CRITICAL PRIORITY)
 
-### After Each Phase
+### 25. IMPLEMENTATION: Create production-quality streaming response bridge  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/streaming.rs` (new)  
+**Lines**: 1-200 (complete implementation)  
+**Architecture**: Lock-free streaming bridge between candle tokens and domain CompletionChunk  
+**Technical Specifications**:
+- `CandleStreamingResponse` struct implementing `AsyncIterator` trait (lines 20-50)  
+- Token-to-`CompletionChunk` conversion pipeline with zero-copy where possible (lines 52-85)  
+- Backpressure handling using bounded async channels with configurable buffer size (lines 87-120)  
+- Cancellation token support for graceful request termination (lines 122-140)  
+- Flow control to prevent memory pressure during high-throughput streaming (lines 142-160)  
+- Lock-free queuing using crossbeam-queue for high-performance token streams (lines 162-180)  
+- Zero-allocation streaming patterns with .collect() fallback for compatibility (lines 182-200)  
+**Performance Requirements**: High throughput streaming, minimal latency overhead, sub-millisecond token processing  
+**Async Patterns**: Cooperative scheduling with yield points, no blocking operations  
 
-1. **Compilation Check**: `cargo check --all-features --all-targets`
-2. **Test Validation**: `cargo nextest run --all-features`  
-3. **Performance Verification**: Ensure no allocation regressions
-4. **Error Handling Audit**: Verify no unwrap() calls added
-5. **Documentation Update**: Update module docs for structural changes
+### 26. QA: Act as an Objective QA Rust developer and rate the quality of the streaming response bridge on a scale of 1-10. Provide specific feedback on streaming performance, backpressure handling, and async pattern compliance.
 
-### Final Production Readiness Criteria
+### 27. IMPLEMENTATION: Enhance generator.rs for domain compatibility  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/generator.rs`  
+**Lines Affected**: 180-280 (method signature updates and adapter integration)  
+**Enhancement Strategy**: Update complete_async method to accept CompletionRequest and return domain-compatible StreamingResponse  
+**Technical Specifications**:
+- Update `complete_async` method signature to accept `CompletionRequest` instead of `CompletionCoreRequest` (lines 180-190)  
+- Add adapter conversion at method entry with proper error handling (lines 192-210)  
+- Integrate streaming bridge for domain-compatible response format (lines 212-240)  
+- Add request validation using adapter layer (lines 242-260)  
+- Return domain-compatible `StreamingResponse` with proper async patterns (lines 262-280)  
+**Performance Requirements**: Zero-allocation conversion, lock-free processing  
+**Error Handling**: Comprehensive error propagation, no unwrap() or expect() calls  
 
-- ✅ Zero unwrap() calls in src/
-- ✅ Zero expect() calls in src/
-- ✅ All placeholder implementations completed
-- ✅ All files under 300 lines
-- ✅ All tests in dedicated test directory
-- ✅ Nextest running and passing
-- ✅ Zero allocation constraint maintained
-- ✅ No locking constraint maintained
-- ✅ Cargo check: 0 errors, 0 warnings
-# IMPLEMENTATION EXECUTION PLAN
-*Approved for immediate execution with zero-allocation, lock-free, elegant ergonomic constraints*
+### 28. QA: Act as an Objective QA Rust developer and rate the quality of the generator domain integration on a scale of 1-10. Provide specific feedback on API compatibility, streaming integration, and performance characteristics.
 
-## PHASE 1: CRITICAL FILE DECOMPOSITION (Execute First)
+### PHASE 3: DOMAIN TRAIT IMPLEMENTATION (HIGH PRIORITY)
 
-### Task 1.1: Decompose Chat Templates Module
-**Priority**: CRITICAL  
-**File**: `/packages/domain/src/chat/templates.rs` (2266 lines)  
-**Target**: Break into modular architecture with <300 lines per file
+### 29. IMPLEMENTATION: Implement Completion trait for CandleProvider  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/lib.rs`  
+**Lines Affected**: 45-120 (trait implementation and module exports)  
+**Architecture**: Full domain Completion trait implementation with async delegation  
+**Technical Specifications**:
+- `Completion` trait implementation for `CandleProvider` with proper async patterns (lines 45-65)  
+- Async delegation to generator with type conversion using adapter layer (lines 67-85)  
+- Streaming response handling with proper backpressure and cancellation (lines 87-105)  
+- Module exports for adapter, streaming, error modules (lines 107-115)  
+- Re-exports for ergonomic API surface (lines 117-120)  
+**Performance Requirements**: Zero-allocation delegation, lock-free trait dispatch  
+**API Compatibility**: Maintain backward compatibility while adding domain integration  
 
-#### Step 1.1.1: Create Module Directory Structure
-**Action**: Create new directory structure
-**Files to create**:
-```
-/packages/domain/src/chat/templates/
-├── mod.rs
-├── core/
-│   ├── mod.rs
-│   ├── parser.rs
-│   ├── compiler.rs
-│   └── validator.rs
-├── engines/
-│   ├── mod.rs
-│   ├── handlebars.rs
-│   ├── tera.rs
-│   └── liquid.rs
-├── cache/
-│   ├── mod.rs
-│   ├── memory.rs
-│   └── persistence.rs
-├── filters/
-│   ├── mod.rs
-│   ├── builtin.rs
-│   └── custom.rs
-└── manager.rs
-```
+### 30. QA: Act as an Objective QA Rust developer and rate the quality of the Completion trait implementation on a scale of 1-10. Provide specific feedback on trait compliance, async patterns, and API design.
 
-#### Step 1.1.2: Extract Core Template Types
-**Source**: `/packages/domain/src/chat/templates.rs` (lines 1-150)  
-**Target**: `/packages/domain/src/chat/templates/core/mod.rs`  
-**Extract**: Core structs and traits
-- `Template` struct
-- `TemplateEngine` trait
-- `CompilationResult` enum
-- Core error types
+### 31. IMPLEMENTATION: Create production-quality CandleProviderFactory  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/factory.rs` (new)  
+**Lines**: 1-180 (complete implementation)  
+**Architecture**: Provider factory implementing domain ProviderFactory trait with model lifecycle management  
+**Technical Specifications**:
+- `CandleProviderFactory` implementing `ProviderFactory` trait from domain (lines 25-60)  
+- Async model loading with Arc-based caching for shared access (lines 62-90)  
+- Model discovery and metadata alignment with domain ModelInfo structure (lines 92-120)  
+- LRU eviction for memory management using lock-free algorithms (lines 122-140)  
+- Model hot-swapping capability with atomic pointer updates (lines 142-160)  
+- Connection pooling for model instances with lock-free queue (lines 162-180)  
+**Performance Requirements**: Sub-second model loading, zero-allocation model access  
+**Memory Management**: Arc<Model> sharing, intelligent caching, automatic cleanup  
 
-#### Step 1.1.3: Extract Template Parser
-**Source**: `/packages/domain/src/chat/templates.rs` (lines 400-800)  
-**Target**: `/packages/domain/src/chat/templates/core/parser.rs`  
-**Extract**: 
-- `TemplateParser` struct
-- Parsing logic and methods
-- AST node definitions
-- Zero-allocation streaming parser implementation
+### 32. QA: Act as an Objective QA Rust developer and rate the quality of the CandleProviderFactory on a scale of 1-10. Provide specific feedback on model lifecycle management, caching efficiency, and factory pattern implementation.
 
-#### Step 1.1.4: Extract Template Compiler 
-**Source**: `/packages/domain/src/chat/templates.rs` (lines 800-1200)  
-**Target**: `/packages/domain/src/chat/templates/core/compiler.rs`  
-**Extract**:
-- `TemplateCompiler` struct
-- Compilation methods
-- Optimization passes
-- Lock-free compilation cache using `crossbeam_skiplist::SkipMap`
+### PHASE 4: CONFIGURATION INTEGRATION (MEDIUM PRIORITY)
 
-#### Step 1.1.5: Extract Template Manager
-**Source**: `/packages/domain/src/chat/templates.rs` (lines 1800-2266)  
-**Target**: `/packages/domain/src/chat/templates/manager.rs`  
-**Extract**:
-- `TemplateManager` struct
-- Template registration and lookup
-- Template lifecycle management
-- Atomic reference counting for shared templates
+### 33. IMPLEMENTATION: Enhanced CandleConfig with domain integration  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/config.rs`  
+**Lines Affected**: 1-150 (complete rewrite of existing config)  
+**Enhancement Strategy**: Domain-compatible configuration with builder pattern and hot-reloading  
+**Technical Specifications**:
+- `CandleConfig` implementing domain configuration trait with serde support (lines 15-45)  
+- Builder pattern implementation with validation and zero-allocation patterns (lines 47-70)  
+- Device selection configuration (CPU/CUDA/Metal) with runtime detection (lines 72-95)  
+- Tokenizer and performance tuning parameters with sensible defaults (lines 97-120)  
+- Configuration hot-reloading support with atomic swapping (lines 122-140)  
+- Integration with domain provider configuration system (lines 142-150)  
+**Performance Requirements**: Zero-allocation access patterns, lock-free configuration updates  
+**Validation**: Comprehensive input validation, graceful degradation for invalid configs  
 
-#### Step 1.1.6: Implement Lock-Free Cache
-**Target**: `/packages/domain/src/chat/templates/cache/memory.rs`  
-**Implementation**: Zero-allocation, lock-free template cache
-**Technical requirements**:
-```rust
-use crossbeam_skiplist::SkipMap;
-use std::sync::Arc;
+### 34. QA: Act as an Objective QA Rust developer and rate the quality of the enhanced CandleConfig on a scale of 1-10. Provide specific feedback on builder pattern ergonomics, validation logic, and hot-reloading implementation.
 
-pub struct TemplateCache {
-    entries: SkipMap<Arc<str>, Arc<CompiledTemplate>>,
-    metrics: AtomicCacheMetrics,
-}
+### PHASE 5: PERFORMANCE OPTIMIZATION LAYER (MEDIUM PRIORITY)
 
-impl TemplateCache {
-    pub fn new() -> Self {
-        Self {
-            entries: SkipMap::new(),
-            metrics: AtomicCacheMetrics::new(),
-        }
-    }
-    
-    pub fn get(&self, key: &str) -> Option<Arc<CompiledTemplate>> {
-        self.entries.get(key).map(|entry| Arc::clone(entry.value()))
-    }
-    
-    pub fn insert(&self, key: Arc<str>, template: Arc<CompiledTemplate>) {
-        self.entries.insert(key, template);
-        self.metrics.increment_entries();
-    }
-}
-```
+### 35. IMPLEMENTATION: Create production-quality performance optimization module  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/performance.rs` (new)  
+**Lines**: 1-200 (complete implementation)  
+**Architecture**: Zero-allocation performance optimizations with lock-free patterns  
+**Technical Specifications**:
+- Memory pool management for token buffers using SlotMap for reuse (lines 20-50)  
+- Response object recycling to minimize allocation with atomic reference counting (lines 52-80)  
+- Bounded channel management for streaming with adaptive sizing (lines 82-110)  
+- Allocation tracking and optimization metrics using atomic counters (lines 112-140)  
+- Zero-copy token processing where possible using Cow<[Token]> (lines 142-170)  
+- Lock-free caching with crossbeam-skiplist for high-performance lookups (lines 172-200)  
+**Performance Requirements**: Sub-microsecond buffer allocation, zero heap allocation in hot paths  
+**Metrics**: Comprehensive performance monitoring without allocation overhead  
 
-#### Step 1.1.7: Update Module Re-exports
-**Target**: `/packages/domain/src/chat/templates/mod.rs`  
-**Implementation**: Clean public API with re-exports
-```rust
-//! Zero-allocation, lock-free template system
-//! 
-//! Provides blazing-fast template compilation and rendering with
-//! elegant ergonomic APIs and comprehensive error handling.
+### 36. QA: Act as an Objective QA Rust developer and rate the quality of the performance optimization module on a scale of 1-10. Provide specific feedback on allocation patterns, memory management, and performance monitoring.
 
-pub use self::core::{Template, TemplateEngine, CompilationResult};
-pub use self::manager::TemplateManager;
-pub use self::cache::TemplateCache;
+### PHASE 6: COMPREHENSIVE INTEGRATION AND TESTING PREPARATION
 
-pub mod core;
-pub mod engines;
-pub mod cache;
-pub mod filters;
-pub mod manager;
-
-// Re-export commonly used types
-pub type Result<T> = std::result::Result<T, TemplateError>;
-```
-
-#### Step 1.1.8: Replace Original File
-**Action**: Replace `/packages/domain/src/chat/templates.rs` with module declaration
-**Content**:
-```rust
-//! Template system module
-//! 
-//! This module has been decomposed into focused submodules.
-//! See individual modules for specific functionality.
-
-pub use templates::*;
-
-mod templates;
-```
-
-#### Step 1.1.9: Validation
-**Commands to run**:
-```bash
-cargo check --package fluent-ai-domain --all-features
-cargo test --package fluent-ai-domain templates --no-run
-```
-
-### Task 1.2: Decompose Cognitive Types Module
-**Priority**: CRITICAL  
-**File**: `/packages/domain/src/memory/cognitive/types.rs` (1297 lines)  
-**Target**: Break into focused domain modules
-
-#### Step 1.2.1: Create Module Directory Structure  
-**Action**: Create cognitive submodules
-**Files to create**:
-```
-/packages/domain/src/memory/cognitive/
-├── mod.rs
-├── state/
-│   ├── mod.rs
-│   ├── cognitive.rs
-│   ├── quantum.rs
-│   ├── attention.rs
-│   └── working_memory.rs
-├── patterns/
-│   ├── mod.rs
-│   ├── activation.rs
-│   ├── neural.rs
-│   └── temporal.rs
-├── metrics/
-│   ├── mod.rs
-│   ├── performance.rs
-│   ├── coherence.rs
-│   └── entropy.rs
-└── traits/
-    ├── mod.rs
-    ├── observable.rs
-    ├── measurable.rs
-    └── serializable.rs
-```
-
-#### Step 1.2.2: Extract Cognitive State Types
-**Source**: `/packages/domain/src/memory/cognitive/types.rs` (lines 1-200)  
-**Target**: `/packages/domain/src/memory/cognitive/state/cognitive.rs`  
-**Extract**:
-- `CognitiveState` struct (without serialization)
-- State transition methods
-- Atomic state management
-- Zero-allocation state observers
-
-#### Step 1.2.3: Extract Quantum Types
-**Source**: `/packages/domain/src/memory/cognitive/types.rs` (lines 400-600)  
-**Target**: `/packages/domain/src/memory/cognitive/state/quantum.rs`  
-**Extract**:
-- `QuantumSignature` struct (without serialization)
-- Quantum coherence types
-- Entanglement measurement types
-- Lock-free quantum state operations
-
-#### Step 1.2.4: Extract Activation Patterns
-**Source**: `/packages/domain/src/memory/cognitive/types.rs` (lines 800-1000)  
-**Target**: `/packages/domain/src/memory/cognitive/patterns/activation.rs`  
-**Extract**:
-- `AlignedActivationPattern` struct
-- Pattern recognition algorithms
-- Neural activation types
-- SIMD-optimized pattern matching
-
-#### Step 1.2.5: Implement Lock-Free Observable Pattern
-**Target**: `/packages/domain/src/memory/cognitive/traits/observable.rs`  
-**Implementation**: Zero-allocation observer pattern
-```rust
-use std::sync::atomic::{AtomicPtr, Ordering};
-use std::sync::Arc;
-
-pub trait Observable<T> {
-    fn subscribe(&self, observer: Arc<dyn Observer<T>>) -> ObserverId;
-    fn unsubscribe(&self, id: ObserverId);
-    fn notify(&self, event: &T);
-}
-
-pub trait Observer<T>: Send + Sync {
-    fn on_change(&self, event: &T);
-}
-
-pub struct LockFreeObservable<T> {
-    observers: crossbeam_skiplist::SkipMap<ObserverId, Arc<dyn Observer<T>>>,
-    next_id: std::sync::atomic::AtomicU64,
-}
-
-impl<T> LockFreeObservable<T> {
-    pub fn new() -> Self {
-        Self {
-            observers: crossbeam_skiplist::SkipMap::new(),
-            next_id: std::sync::atomic::AtomicU64::new(1),
-        }
-    }
-}
-
-impl<T> Observable<T> for LockFreeObservable<T> {
-    fn subscribe(&self, observer: Arc<dyn Observer<T>>) -> ObserverId {
-        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        self.observers.insert(id, observer);
-        ObserverId(id)
-    }
-    
-    fn unsubscribe(&self, id: ObserverId) {
-        self.observers.remove(&id.0);
-    }
-    
-    fn notify(&self, event: &T) {
-        for entry in self.observers.iter() {
-            entry.value().on_change(event);
-        }
-    }
-}
-```
-
-#### Step 1.2.6: Validation
-**Commands to run**:
-```bash
-cargo check --package fluent-ai-domain --all-features
-cargo test --package fluent-ai-domain cognitive --no-run
-```
-
-### Task 1.3: Decompose Anthropic Completion Module
-**Priority**: CRITICAL  
-**File**: `/packages/provider/src/clients/anthropic/completion.rs` (858 lines)
-
-#### Step 1.3.1: Create Module Structure
-**Files to create**:
-```
-/packages/provider/src/clients/anthropic/completion/
-├── mod.rs
-├── request/
-│   ├── mod.rs
-│   ├── builder.rs
-│   ├── validator.rs
-│   └── transformer.rs
-├── response/
-│   ├── mod.rs
-│   ├── parser.rs
-│   ├── validator.rs
-│   └── transformer.rs
-├── streaming/
-│   ├── mod.rs
-│   ├── sse_handler.rs
-│   ├── chunk_processor.rs
-│   └── reconnection.rs
-└── cache/
-    ├── mod.rs
-    ├── request_cache.rs
-    └── response_cache.rs
-```
-
-#### Step 1.3.2: Extract Request Builder
-**Source**: `/packages/provider/src/clients/anthropic/completion.rs` (lines 50-200)  
-**Target**: `/packages/provider/src/clients/anthropic/completion/request/builder.rs`  
-**Implementation**: Zero-allocation request builder with fluent API
-
-#### Step 1.3.3: Extract Streaming Handler
-**Source**: `/packages/provider/src/clients/anthropic/completion.rs` (lines 400-650)  
-**Target**: `/packages/provider/src/clients/anthropic/completion/streaming/sse_handler.rs`  
-**Implementation**: Lock-free SSE processing with `fluent_ai_http3`
-
-## PHASE 2: TEST EXTRACTION (Execute After Phase 1)
-
-### Task 2.1: Extract Domain Model Tests
-**Source Files with Embedded Tests**:
-- `/packages/domain/src/model/error.rs` (Lines: 158, 198, 213, 230)
-- `/packages/domain/src/model/registry.rs` (Lines: 425, 449, 482, 516)  
-- `/packages/domain/src/model/info.rs` (Lines: 433, 465, 510)
-- `/packages/domain/src/model/resolver.rs` (Lines: 402, 423, 450)
-
-#### Step 2.1.1: Create Test Directory Structure
-**Action**: Create comprehensive test structure
-```
-tests/
-├── unit/
-│   ├── domain/
-│   │   ├── mod.rs
-│   │   ├── model_error_tests.rs
-│   │   ├── model_registry_tests.rs
-│   │   ├── model_info_tests.rs
-│   │   ├── model_resolver_tests.rs
-│   │   └── templates_tests.rs
-│   ├── provider/
-│   │   ├── mod.rs
-│   │   ├── anthropic_tests.rs
-│   │   └── client_tests.rs
-│   └── memory/
-│       ├── mod.rs
-│       ├── cognitive_tests.rs
-│       └── quantum_tests.rs
-├── integration/
-│   ├── mod.rs
-│   ├── end_to_end_tests.rs
-│   └── performance_tests.rs
-└── common/
-    ├── mod.rs
-    ├── fixtures.rs
-    ├── mock_providers.rs
-    └── test_utils.rs
-```
-
-#### Step 2.1.2: Extract Model Error Tests
-**Source**: `/packages/domain/src/model/error.rs` (Lines 154-268)  
-**Target**: `/tests/unit/domain/model_error_tests.rs`  
-**Action**: Move all `#[cfg(test)]` content to dedicated test file
-**Implementation**:
-```rust
-use fluent_ai_domain::model::error::ModelError;
-
-#[test]
-fn test_model_error_display() {
-    assert_eq!(
-        ModelError::ModelNotFound {
-            provider: "test",
-            name: "test"
-        }.to_string(),
-        "Model not found: test:test"
-    );
-    
-    assert_eq!(
-        ModelError::ProviderNotFound("test").to_string(),
-        "Provider not found: test"
-    );
-}
-
-#[test]
-fn test_model_error_debug() {
-    let error = ModelError::ModelAlreadyExists {
-        provider: "test_provider",
-        name: "test_model"
-    };
-    
-    let debug_str = format!("{:?}", error);
-    assert!(debug_str.contains("ModelAlreadyExists"));
-    assert!(debug_str.contains("test_provider"));
-    assert!(debug_str.contains("test_model"));
-}
-```
-
-#### Step 2.1.3: Remove Tests from Source Files
-**Action**: Remove all `#[cfg(test)]` mod tests blocks from source files
-**Files to modify**:
-- `/packages/domain/src/model/error.rs` - Remove lines 154-268
-- `/packages/domain/src/model/registry.rs` - Remove lines 410-550  
-- `/packages/domain/src/model/info.rs` - Remove lines 429-520
-- `/packages/domain/src/model/resolver.rs` - Remove lines 387-470
-
-#### Step 2.1.4: Create Test Utilities
-**Target**: `/tests/common/test_utils.rs`  
-**Implementation**: Lock-free test context and utilities
-```rust
-use std::sync::Arc;
-use fluent_ai_http3::{HttpClient, HttpConfig};
-
-/// Zero-allocation test context for concurrent testing
-pub struct TestContext {
-    http_client: Arc<HttpClient>,
-    test_id: u64,
-}
-
-impl TestContext {
-    pub async fn new() -> Self {
-        let http_client = Arc::new(
-            HttpClient::with_config(HttpConfig::testing_optimized())
-                .expect("Failed to create test HTTP client")
-        );
-        
-        Self {
-            http_client,
-            test_id: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("Time went backwards")
-                .as_nanos() as u64,
-        }
-    }
-    
-    pub fn http_client(&self) -> Arc<HttpClient> {
-        Arc::clone(&self.http_client)
-    }
-    
-    pub fn unique_id(&self) -> String {
-        format!("test_{}", self.test_id)
-    }
-}
-
-/// Create isolated test environment
-pub async fn isolated_test_env() -> TestContext {
-    TestContext::new().await
-}
-```
-
-### Task 2.2: Bootstrap Nextest Configuration
-
-#### Step 2.2.1: Add Nextest Dependencies
-**Target**: `/Cargo.toml` (workspace level)  
-**Action**: Add nextest configuration
+### 37. IMPLEMENTATION: Update Cargo.toml with required dependencies  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/Cargo.toml`  
+**Lines Affected**: Dependencies section  
+**Dependencies to Add**:
 ```toml
-[workspace.metadata.nextest]
-slow-timeout = { period = "60s", terminate-after = 3 }
-retries = 2
-
-[workspace.metadata.nextest.profiles.ci]
-retries = 1
-test-threads = 1
-failure-output = "immediate"
+futures-util = "0.3"
+tokio = { version = "1.0", features = ["sync", "time"] }
+crossbeam-queue = "0.3"
+crossbeam-skiplist = "0.1"
+thiserror = "1.0"
 ```
+**Version Compatibility**: Ensure compatibility with existing workspace dependencies  
+**Feature Flags**: Add optional features for performance monitoring and caching  
 
-#### Step 2.2.2: Create Nextest Configuration
-**Target**: `/.cargo/nextest.toml`  
-**Content**:
-```toml
-[profile.default]
-retries = 2
-test-threads = "num-cpus"
-failure-output = "immediate-final"
-success-output = "never"
-slow-timeout = { period = "60s", terminate-after = 3 }
+### 38. QA: Act as an Objective QA Rust developer and rate the quality of the dependency additions on a scale of 1-10. Provide specific feedback on dependency choices, version compatibility, and feature organization.
 
-[profile.ci]
-retries = 1
-test-threads = 1
-failure-output = "immediate"
-timeout = { period = "300s" }
-
-[profile.integration]
-test-threads = 1
-retries = 0
-failure-output = "final"
-filter = "test(integration)"
-
-[profile.performance]
-test-threads = 1
-retries = 0
-timeout = { period = "600s" }
-filter = "test(perf_)"
-```
-
-#### Step 2.2.3: Install Nextest
-**Commands to run**:
-```bash
-cargo install cargo-nextest --locked
-cargo nextest install
-```
-
-## PHASE 3: IMPLEMENTATION VALIDATION (Execute After Each Task)
-
-### Validation 3.1: Compilation Check
-**Command**: `cargo check --all-features --all-targets`  
-**Expected**: 0 errors, 0 warnings  
-**Action on failure**: Fix immediately before proceeding
-
-### Validation 3.2: Test Execution  
-**Command**: `cargo nextest run --all-features`  
-**Expected**: All tests pass  
-**Action on failure**: Debug and fix test issues
-
-### Validation 3.3: Performance Verification
-**Command**: `cargo bench` (if benchmarks exist)  
-**Expected**: No performance regressions  
-**Metrics to verify**:
-- Memory allocation patterns unchanged
-- Lock-free operations maintained
-- Response times within acceptable ranges
-
-### Validation 3.4: Architecture Compliance
-**Manual checks**:
-- ✅ No `unwrap()` calls in src files
-- ✅ No `expect()` calls in src files  
-- ✅ No blocking operations
-- ✅ All files under 300 lines
-- ✅ Lock-free patterns maintained
-- ✅ Zero-allocation patterns maintained
-
-## EXECUTION ORDER DEPENDENCIES
-
-1. **Phase 1 must complete before Phase 2** - File decomposition creates stable module structure for test extraction
-2. **Nextest bootstrap can run in parallel with Phase 1** - No dependencies
-3. **Each validation step must pass before proceeding** - Ensures incremental stability
-4. **Template module decomposition first** - Most complex, highest risk
-5. **Cognitive types second** - Moderate complexity, atomic types constraints  
-6. **Anthropic completion third** - HTTP/streaming patterns, well-defined scope
-
-## SUCCESS CRITERIA FOR EACH TASK
-
-### File Decomposition Success:
-- ✅ Original file size reduced to <50 lines (re-exports only)
-- ✅ Each new module file <300 lines
-- ✅ All exports preserved (no API breaking changes)
-- ✅ Cargo check passes without warnings
-- ✅ All constraints maintained (zero-allocation, lock-free)
-
-### Test Extraction Success:
-- ✅ All `#[cfg(test)]` blocks removed from src files
-- ✅ All tests moved to `/tests/` directory
-- ✅ `cargo nextest run` passes all extracted tests
-- ✅ Test coverage maintained or improved
-- ✅ Clear test organization by module/feature
-
-### Architecture Compliance Success:
-- ✅ Zero unwrap() calls in production code
-- ✅ Zero expect() calls in production code
-- ✅ Lock-free patterns throughout
-- ✅ Zero-allocation patterns maintained
-- ✅ Elegant ergonomic APIs preserved
-- ✅ Complete error handling implemented
-
-This execution plan provides the exact steps, file paths, line numbers, and technical specifications needed to implement the approved architecture while maintaining all constraints and ensuring production-ready quality.
-
-# INCREMENTAL MODEL GENERATION SYSTEM (Approved Implementation)
-
-*Zero-allocation, lock-free, elegant ergonomic implementation of dynamic model generation with HTTP3 conditional requests*
-
-## Parallel Model Discovery & Loading System
-
-### Task A1: Implement ModelLoader with parallel filesystem scanning
-**Priority**: HIGH  
-**Target**: `packages/provider/build_system/model_loader.rs` (NEW FILE)  
-**Implementation**: Create `ModelLoader` struct using `tokio::fs` for parallel directory scanning of `packages/provider/src/clients/` to extract model metadata from existing generated files. Include `ExistingModelRegistry` using `DashMap` for thread-safe in-memory model tracking and `ModelMetadata` struct for efficient comparison operations. Handle file permission errors and malformed files gracefully without unwrap/expect. Use zero-allocation streaming patterns and lock-free atomic operations for concurrent access. **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### Task A2: Act as an Objective QA Rust developer and rate the ModelLoader implementation
-**Action**: Verify parallel filesystem scanning works correctly, error handling is comprehensive without unwrap/expect usage, ModelMetadata extraction is accurate, and ExistingModelRegistry provides efficient lookup operations. Confirm the implementation follows Rust best practices and integrates properly with existing codebase architecture using lock-free patterns and zero-allocation constraints.
-
-## HTTP3 Conditional YAML Download System
-
-### Task B1: Create YamlManager with HTTP3 conditional request integration  
-**Priority**: HIGH  
-**Target**: `packages/provider/build_system/yaml_manager.rs` (NEW FILE)  
-**Implementation**: Implement `YamlManager` struct using `fluent_ai_http3::HttpClient` with `.if_none_match()` conditional requests for models.yaml download. Include ETag storage in cache directory using lock-free file operations, streaming YAML parsing with zero-allocation patterns, and graceful fallback to existing download behavior if conditional requests fail. Handle network failures and malformed YAML without unwrap/expect using proper Result error propagation. Use `crossbeam_skiplist::SkipMap` for concurrent cache access. **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### Task B2: Act as an Objective QA Rust developer and rate the YamlManager implementation
-**Action**: Verify HTTP3 conditional requests work correctly with ETag headers, cache storage and retrieval is reliable using lock-free operations, YAML streaming and parsing handles edge cases with zero allocations, fallback to existing behavior works seamlessly, and error handling covers network failures without unwrap/expect usage while maintaining elegant ergonomic APIs.
-
-## Incremental Change Detection Engine
-
-### Task C1: Implement ChangeDetector for model comparison
-**Priority**: HIGH  
-**Target**: `packages/provider/build_system/change_detector.rs` (NEW FILE)  
-**Implementation**: Create `ChangeDetector` struct that compares YAML model definitions with existing filesystem models using SIMD-optimized comparison algorithms. Include `ModelChangeSet` with additions, modifications, and deletions using zero-allocation data structures. Implement streaming comparison logic for model parameters and capabilities without temporary allocations. Gracefully handle missing or malformed existing models by treating them as new, using atomic flags for state tracking. Use `Arc<str>` for shared string data and lock-free skiplist for concurrent access patterns. **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### Task C2: Act as an Objective QA Rust developer and rate the ChangeDetector implementation  
-**Action**: Verify comparison logic correctly identifies changes using zero-allocation patterns, ModelChangeSet accurately represents modifications with lock-free operations, missing model handling defaults to regeneration safely, and the system degrades gracefully to full regeneration when comparison fails while maintaining blazing-fast performance and elegant ergonomic APIs.
-
-## Template Generation Integration System
-
-### Task D1: Create IncrementalGenerator with selective template processing
-**Priority**: HIGH  
-**Target**: `packages/provider/build_system/incremental_generator.rs` (NEW FILE)  
-**Implementation**: Implement `IncrementalGenerator` struct that integrates with existing template system using zero-allocation processing pipelines. Generate only changed models from `ModelChangeSet` using streaming template compilation, preserve unchanged files with atomic file operations, and maintain proper module structure. Fall back to full generation if incremental processing encounters any issues, using lock-free coordination with crossbeam channels. Implement elegant fluent API with method chaining for template generation pipeline. Use `Arc<CompiledTemplate>` for shared template data and atomic reference counting. **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### Task D2: Act as an Objective QA Rust developer and rate the IncrementalGenerator implementation
-**Action**: Verify selective generation works correctly with zero-allocation patterns, template integration maintains existing functionality using lock-free operations, fallback to full generation works properly when needed with atomic coordination, and the system preserves all existing build behavior as a safety net while providing blazing-fast performance and elegant ergonomic APIs.
-
-## Build Process Integration
-
-### Task E1: Modify build.rs to orchestrate incremental model generation
-**Priority**: HIGH  
-**Target**: `packages/provider/build.rs` (MODIFY EXISTING)  
-**Lines to modify**: Integrate at appropriate entry point (likely around main build function)  
-**Implementation**: Update `packages/provider/build.rs` to integrate `ModelLoader`, `YamlManager`, `ChangeDetector`, and `IncrementalGenerator` in sequence using async orchestration with tokio tasks. Include graceful fallback to existing build process if any component fails using atomic error tracking and crossbeam channels for coordination. Ensure the new system never breaks existing functionality and defaults to current behavior when incremental processing isn't possible. Use zero-allocation error aggregation and lock-free progress tracking. Implement streaming-first patterns throughout the pipeline. **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### Task E2: Act as an Objective QA Rust developer and rate the build.rs integration  
-**Action**: Verify component orchestration follows proper sequence with zero-allocation patterns, fallback to existing build process works correctly when needed using lock-free operations, existing functionality is fully preserved, and the system gracefully degrades to current behavior without any negative impact while maintaining blazing-fast performance and elegant ergonomic APIs throughout the entire pipeline.
-
-## Implementation Architecture Specifications
-
-### Zero-Allocation Patterns Required:
-- Use `&[T]` instead of `Vec<T>` in function signatures where possible
-- Implement streaming iterators with `.collect()` only when necessary  
-- Use `Arc<str>` for shared string data instead of `String`
-- Implement object pooling for frequently allocated types
-- Use `Cow<'_, str>` for conditional string ownership
-
-### Lock-Free Concurrency Requirements:
-- Replace any `Mutex<T>` with `AtomicPtr<T>` or `crossbeam_skiplist::SkipMap<K,V>`
-- Use `crossbeam_channel` for message passing between components
-- Implement atomic reference counting with `Arc<T>` for shared data
-- Use `parking_lot::RwLock` only when atomic operations are insufficient
-- Implement lock-free algorithms using `crossbeam_epoch` for memory management
-
-### Elegant Ergonomic API Design:
-- Builder patterns for complex type construction with fluent method chaining
-- Comprehensive error types with contextual information using `thiserror`
-- Zero-cost abstractions using const generics where applicable
-- Streaming-first APIs with consistent error propagation using `?` operator
-- Rich error context with semantic error variants for different failure modes
-
-### HTTP3 Integration Requirements:
-- Use `fluent_ai_http3::HttpClient` exclusively for all HTTP operations
-- Leverage conditional request methods: `.if_none_match()`, `.conditional()`
-- Implement streaming-first patterns with `response.stream()` and `.collect()` fallback
-- Use `CacheMiddleware` for automatic ETag and expires processing
-- Handle 304 Not Modified responses gracefully with cached data serving
-
-### File System Integration:
-- Use `tokio::fs` for all async file operations
-- Implement atomic file operations with temporary files and rename
-- Handle concurrent access with file locking or lock-free coordination
-- Use memory-mapped files for large file processing where appropriate
-- Implement graceful handling of permission errors and missing directories
-
-This incremental model generation system will provide zero-allocation, lock-free, blazing-fast model discovery and generation while maintaining elegant ergonomic APIs and comprehensive error handling throughout the entire pipeline.
-## HAKARI WORKSPACE-HACK GENERATION FIX (IMMEDIATE PRIORITY)
-
-### CRITICAL: Complete fluent-voice to fluent-ai Migration in cargo-hakari-regenerate
-
-**Issue**: Hakari workspace-hack generation failing due to remaining "fluent-voice" references that should be "fluent-ai"
-**Impact**: Cannot generate workspace-hack, blocking build optimization
-**Priority**: IMMEDIATE - Blocking other development work
-
-#### Task 1: Fix workspace.rs Regex Patterns and String References
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/cargo-hakari-regenerate/src/workspace.rs`
-**Lines Impacted**: 
-- Line 40: `commented_workspace_hack_dep` regex pattern
-- Line 161: String replacement in comment_workspace_hack_dependency_in_package
-- Line 186: String replacement in uncomment_workspace_hack_dependency_in_package  
-- Line 534: String check in check_workspace_hack_dependency
-
+### 39. IMPLEMENTATION: Comprehensive module integration and exports  
+**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/lib.rs`  
+**Lines Affected**: Module declarations and re-exports  
+**Integration Strategy**: Organize all new modules with clear public API and backward compatibility  
 **Technical Specifications**:
-- Replace all instances of "fluent-voice-workspace-hack" with "fluent-ai-workspace-hack"
-- Maintain regex pattern structure and escaping
-- Preserve function logic and error handling
-- Ensure zero-allocation string operations using Cow<str> where appropriate
-- Follow no-unwrap() constraint - all regex operations must handle potential errors
+- Module declarations for adapter, streaming, error, performance modules  
+- Public API re-exports for ergonomic imports  
+- Feature-gated exports for optional components  
+- Backward compatibility preservation for existing API  
+- Clear documentation with usage examples  
+**API Design**: Intuitive module organization, minimal breaking changes  
 
-**Detailed Changes Required**:
+### 40. QA: Act as an Objective QA Rust developer and rate the quality of the module integration on a scale of 1-10. Provide specific feedback on API organization, documentation quality, and backward compatibility.
+
+### 41. VALIDATION: Comprehensive compilation and integration testing  
+**Action**: Run cargo check and verify zero errors/warnings for candle integration  
+**Command**: `cargo check --package fluent-ai-candle --all-features`  
+**Success Criteria**: 0 errors, 0 warnings, successful compilation  
+**Performance Validation**: Verify zero-allocation patterns and lock-free operation  
+**API Validation**: Confirm CompletionRequest/Response compatibility  
+
+### 42. QA: Act as an Objective QA Rust developer and rate the quality of the compilation validation on a scale of 1-10. Provide specific feedback on any compilation issues, performance characteristics, and integration success.
+
+### IMPLEMENTATION SUCCESS CRITERIA
+
+**✅ API Compatibility**:
+- CandleProvider implements Completion trait from fluent_ai_domain  
+- Full CompletionRequest/CompletionResponse type compatibility  
+- Streaming response integration with domain StreamingResponse  
+
+**✅ Performance Requirements**:
+- Zero allocation in completion hot paths  
+- Lock-free concurrent model access  
+- Sub-millisecond token processing  
+- High-throughput streaming with backpressure handling  
+
+**✅ Architecture Compliance**:
+- Async-only patterns throughout  
+- No unwrap() or expect() in src/ files  
+- Comprehensive error handling with semantic error types  
+- Elegant ergonomic API with builder patterns  
+
+**✅ Integration Quality**:
+- Backward compatibility maintained  
+- Clear module organization and exports  
+- Comprehensive documentation and examples  
+- Production-ready code quality  
+
+# IMMEDIATE ERROR/WARNING ELIMINATION PLAN (APPROVED FOR EXECUTION)
+
+**Status**: APPROVED - Execute immediately to achieve 0 errors, 0 warnings  
+**Current State**: 739 errors + 176 warnings preventing compilation  
+**Target**: Complete compilation with zero output from cargo check  
+
+## Phase 1: Core API Alignment (Critical Foundation)
+
+### 101. Fix CompletionRequest Builder Pattern Usage
+**File**: `packages/fluent-ai-candle/src/client.rs`  
+**Lines**: 364-370 (warmup method)  
+**Current Issue**: Using `.prompt("Hello").max_tokens(1).temperature(0.0)` - methods that don't exist  
+**Implementation**: Replace with proper domain API:
 ```rust
-// Line 40: Fix regex pattern
-commented_workspace_hack_dep: Regex::new(r#"^#\s*fluent-ai-workspace-hack\s*="#)
-    .map_err(|e| WorkspaceError::InvalidPattern { source: e })?
-
-// Line 161: Fix comment replacement  
-.replace_all(&content, "# fluent-ai-workspace-hack =")
-
-// Line 186: Fix uncomment replacement
-.replace_all(&content, "fluent-ai-workspace-hack =")
-
-// Line 534: Fix dependency check
-Ok(content.contains("fluent-ai-workspace-hack"))
+CompletionRequest::builder()
+    .system_prompt("Hello")
+    .max_tokens(Some(NonZeroU64::new(1).unwrap()))
+    .temperature(0.0)?
+    .build()?
 ```
+**Architecture**: Use domain's builder validation patterns, handle Result returns properly, implement proper error conversion from CompletionRequestError to CandleError.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-#### Task 2: Fix hakari.rs Package References and Validation Logic
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/cargo-hakari-regenerate/src/hakari.rs`
-**Lines Impacted**:
-- Package name replacement logic
-- Validation functions checking package names
-- Error messages and warnings
+### 102. QA: CompletionRequest Builder Pattern Fix
+Act as an Objective QA Rust developer and rate the quality of the CompletionRequest builder pattern fix on a scale of 1-10. Provide specific feedback on API alignment correctness, error handling completeness, and compliance with zero-allocation patterns.
 
-**Technical Specifications**:
-- Update all package name references from "fluent-voice-workspace-hack" to "fluent-ai-workspace-hack"
-- Maintain validation logic structure
-- Preserve error handling patterns
-- Use Result<T, E> for all operations, no unwrap() calls
-- Implement zero-allocation string comparisons using &str
+### 103. Fix CompletionRequest Field Access Patterns
+**File**: `packages/fluent-ai-candle/src/generator.rs`  
+**Lines**: 294, 310, 332, 384-385, 393  
+**Current Issue**: Accessing `request.prompt()` and `request.max_tokens()` as methods when they're fields  
+**Implementation**: 
+- Replace `request.prompt()` with prompt construction from `system_prompt + chat_history + documents`
+- Replace `request.max_tokens()` with `request.max_tokens.map(|n| n.get() as u32).unwrap_or(1000)`
+- Handle complex conversation structure properly with Message role formatting
+**Architecture**: Build intelligent prompt fusion that combines system_prompt, formats chat_history with role/content structure, includes document context, and handles tool definitions appropriately.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-**Expected Changes**:
+### 104. QA: CompletionRequest Field Access Fix
+Act as an Objective QA Rust developer and rate the quality of the CompletionRequest field access pattern fix on a scale of 1-10. Provide specific feedback on prompt construction logic, field access correctness, and conversation handling completeness.
+
+### 105. Fix CompletionResponse Construction Patterns
+**File**: `packages/fluent-ai-candle/src/generator.rs`  
+**Lines**: 366 (tokens_per_second type), throughout response building  
+**Current Issue**: Using u32 for tokens_per_second when CompletionResponse expects f64, missing required fields  
+**Implementation**: 
+- Use CompletionResponse::builder() with correct field types
+- Set text, model (not hardcoded "candle-model"), provider ("candle")
+- Implement proper Usage tracking with prompt_tokens, completion_tokens, total_tokens
+- Set generation_time_ms, tokens_per_second as f64, finish_reason
+**Architecture**: Comprehensive response building that tracks all performance metrics, provides accurate usage statistics, and integrates with domain monitoring patterns.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 106. QA: CompletionResponse Construction Fix
+Act as an Objective QA Rust developer and rate the quality of the CompletionResponse construction fix on a scale of 1-10. Provide specific feedback on field completeness, type correctness, and performance tracking implementation quality.
+
+## Phase 2: Model Integration API Fixes
+
+### 107. Fix CandleModel Load Method Calls
+**File**: `packages/fluent-ai-candle/src/client.rs`  
+**Lines**: 222 (load_from_path call)  
+**Current Issue**: Calling `CandleModel::load_from_path()` which doesn't exist  
+**Implementation**: Replace with `model.load_from_file(&config.model_path).await?` using the correct instance method
+**Architecture**: Proper async model loading with path validation, memory mapping, and progress tracking integration.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 108. QA: CandleModel Load Method Fix
+Act as an Objective QA Rust developer and rate the quality of the CandleModel load method fix on a scale of 1-10. Provide specific feedback on method usage correctness, async pattern compliance, and error handling integration.
+
+### 109. Fix CandleModel Hub Loading Signature
+**File**: `packages/fluent-ai-candle/src/client.rs`  
+**Lines**: 259 (load_from_hub call)  
+**Current Issue**: Calling `load_from_hub(repo_id, &device)` but method expects `(&self, repo_id: &str, filename: &str)`  
+**Implementation**: Fix to `model.load_from_hub(repo_id, "model.safetensors").await?` with proper instance call and filename parameter
+**Architecture**: Proper HuggingFace Hub integration with model discovery, file selection, and download progress tracking.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 110. QA: CandleModel Hub Loading Fix
+Act as an Objective QA Rust developer and rate the quality of the CandleModel hub loading fix on a scale of 1-10. Provide specific feedback on signature correctness, parameter handling, and hub integration patterns.
+
+## Phase 3: Error System Integration
+
+### 111. Implement Missing CandleError Variants
+**File**: `packages/fluent-ai-candle/src/error.rs`  
+**Lines**: Add ModelLoadError variant and From conversions  
+**Current Issue**: Missing ModelLoadError variant, no conversion from domain error types  
+**Implementation**: 
+- Add `ModelLoadError(String)` variant to CandleError enum
+- Implement `From<fluent_ai_domain::completion::CompletionRequestError>` for CandleError
+- Implement `From<fluent_ai_domain::completion::CompletionError>` for CandleError  
+**Architecture**: Comprehensive error hierarchy that maintains error context, supports error chaining, and provides meaningful error messages for debugging.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 112. QA: CandleError Integration Fix
+Act as an Objective QA Rust developer and rate the quality of the CandleError integration fix on a scale of 1-10. Provide specific feedback on error variant design, conversion correctness, and error context preservation.
+
+## Phase 4: Streaming System Alignment
+
+### 113. Fix AsyncStream Type Compatibility
+**File**: `packages/fluent-ai-candle/src/generator.rs`  
+**Lines**: 407 (CandleTokenStream AsyncStream::Item mismatch)  
+**Current Issue**: CandleTokenStream::Item type doesn't match expected domain streaming interface  
+**Implementation**: Ensure CandleTokenStream implements proper AsyncStream with Item = Result<CompletionChunk, CandleError> for domain compatibility
+**Architecture**: Streaming response integration that maintains backpressure handling, supports cancellation, and provides proper error propagation through async streams.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 114. QA: AsyncStream Type Fix
+Act as an Objective QA Rust developer and rate the quality of the AsyncStream type fix on a scale of 1-10. Provide specific feedback on streaming interface compliance, backpressure handling, and async pattern correctness.
+
+## Phase 5: Provider Package Import Resolution
+
+### 115. Fix Unresolved Import Issues
+**Files**: Throughout `packages/provider/src/` (115 import errors)  
+**Current Issues**: Missing discovery module, CompletionModel imports, fluent_ai_http3 imports  
+**Implementation**: 
+- Fix `use super::super::discovery` imports - locate correct discovery module path
+- Fix `use super::completion::CompletionModel` - implement or import CompletionModel correctly
+- Fix `use fluent_ai_http3::SseEvent` - ensure fluent_ai_http3 dependency provides SseEvent
+- Fix `use crate::http` imports - implement or redirect to fluent_ai_http3
+**Architecture**: Proper module organization that follows Rust conventions, maintains clean separation of concerns, and integrates HTTP3 streaming patterns consistently.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 116. QA: Import Resolution Fix
+Act as an Objective QA Rust developer and rate the quality of the import resolution fix on a scale of 1-10. Provide specific feedback on module organization, import path correctness, and dependency integration quality.
+
+## Phase 6: Model Configuration Completeness
+
+### 117. Fix Missing Llama Model Configuration Fields
+**Files**: Throughout candle package where `candle_transformers::models::llama::Config` is constructed  
+**Current Issue**: Missing required fields `bos_token_id`, `eos_token_id`, `rope_scaling`  
+**Implementation**: Add missing fields with appropriate default values:
+- `bos_token_id: 1` (standard Llama BOS token)
+- `eos_token_id: 2` (standard Llama EOS token)  
+- `rope_scaling: None` (no RoPE scaling by default)
+**Architecture**: Complete model configuration that supports all Llama variants, provides sensible defaults, and maintains compatibility with different model sizes and formats.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 118. QA: Llama Configuration Fix
+Act as an Objective QA Rust developer and rate the quality of the Llama configuration fix on a scale of 1-10. Provide specific feedback on field completeness, default value appropriateness, and model compatibility.
+
+### 119. Fix Missing Mistral Model Configuration Fields
+**Files**: Throughout candle package where `candle_transformers::models::mistral::Config` is constructed  
+**Current Issue**: Missing required fields `head_dim`, `hidden_act`, `use_flash_attn`  
+**Implementation**: Add missing fields with appropriate values:
+- `head_dim: hidden_size / num_attention_heads` (calculated from existing fields)
+- `hidden_act: "silu"` (standard Mistral activation)
+- `use_flash_attn: false` (disable flash attention by default)
+**Architecture**: Comprehensive Mistral model support that handles different model variants, optimizes for the target hardware, and maintains numerical accuracy.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 120. QA: Mistral Configuration Fix
+Act as an Objective QA Rust developer and rate the quality of the Mistral configuration fix on a scale of 1-10. Provide specific feedback on field calculation correctness, activation function choice, and hardware optimization appropriateness.
+
+## Phase 7: Dependency and Compatibility Updates
+
+### 121. Fix VarBuilderArgs::from_safetensors Method Usage
+**Files**: Throughout candle package where safetensors loading occurs  
+**Current Issue**: Calling `VarBuilderArgs::from_safetensors()` which doesn't exist in current candle API  
+**Implementation**: Replace with correct safetensors loading pattern using current candle API - likely `VarBuilder::from_safetensors()` or newer equivalent method
+**Architecture**: Proper safetensors integration that supports memory mapping, lazy loading, and device placement for optimal model loading performance.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 122. QA: SafeTensors Integration Fix
+Act as an Objective QA Rust developer and rate the quality of the safetensors integration fix on a scale of 1-10. Provide specific feedback on API usage correctness, memory efficiency, and loading performance optimization.
+
+### 123. Fix Deprecated rand::Rng::gen Usage
+**Files**: Throughout packages where `rand::Rng::gen` is used  
+**Current Issue**: Using deprecated `gen()` method  
+**Implementation**: Replace `rng.gen()` with `rng.random()` to use the new Rust 2024 API
+**Architecture**: Modern random number generation that avoids keyword conflicts and follows current Rust best practices.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 124. QA: Random Number Generation Fix
+Act as an Objective QA Rust developer and rate the quality of the random number generation fix on a scale of 1-10. Provide specific feedback on API modernization correctness and future compatibility.
+
+### 125. Fix Unexpected cfg Condition Values
+**Files**: Throughout provider package with cfg conditions  
+**Current Issue**: Unexpected cfg condition values 'candle', 'cylo'  
+**Implementation**: Either define these feature flags in Cargo.toml or remove/replace with standard cfg conditions
+**Architecture**: Proper feature flag management that supports conditional compilation for different backends and deployment scenarios.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 126. QA: Feature Flag Management Fix
+Act as an Objective QA Rust developer and rate the quality of the feature flag management fix on a scale of 1-10. Provide specific feedback on conditional compilation design and feature organization clarity.
+
+## Phase 8: Final Integration and Verification
+
+### 127. Fix Trait Implementation Conflicts
+**File**: `packages/fluent-ai-candle/src/client.rs`  
+**Lines**: 496 (conflicting CompletionClientExt implementation)  
+**Current Issue**: Conflicting trait implementations between domain blanket impl and candle specific impl  
+**Implementation**: Remove redundant trait implementation or specialize it properly to avoid conflicts
+**Architecture**: Clean trait hierarchy that leverages domain blanket implementations while providing candle-specific optimizations where needed.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 128. QA: Trait Implementation Fix
+Act as an Objective QA Rust developer and rate the quality of the trait implementation fix on a scale of 1-10. Provide specific feedback on trait coherence, implementation uniqueness, and API design quality.
+
+### 129. Comprehensive Compilation Verification
+**Action**: Run `cargo check --all-packages --all-features` to verify zero errors and warnings  
+**Success Criteria**: Complete compilation with no output from cargo check
+**Architecture**: Full workspace compilation that validates all package dependencies, feature combinations, and cross-package integrations work correctly.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 130. QA: Compilation Verification
+Act as an Objective QA Rust developer and rate the quality of the compilation verification on a scale of 1-10. Provide specific feedback on error elimination completeness, warning resolution, and overall code health.
+
+### 131. End-to-End Functionality Verification  
+**Action**: Test that a simple completion request works through the entire stack from domain API to candle implementation  
+**Implementation**: Create a test that constructs CompletionRequest, passes it to candle client, and receives valid CompletionResponse
+**Architecture**: Integration testing that validates the complete request/response cycle with proper error handling and performance characteristics.
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### 132. QA: End-to-End Functionality Verification
+Act as an Objective QA Rust developer and rate the quality of the end-to-end functionality verification on a scale of 1-10. Provide specific feedback on integration completeness, API contract compliance, and production readiness.
+
+### IMPLEMENTATION CONSTRAINTS REMINDER
+
+- **Zero Allocation**: Use streaming patterns, object pooling, Arc<T> sharing  
+- **No Locking**: Lock-free algorithms, atomic operations, crossbeam data structures  
+- **Async Only**: No block_on, no spawn_blocking, cooperative scheduling  
+- **Error Handling**: Never unwrap() or expect() in src/, comprehensive Result<T, E>  
+- **Elegance**: Builder patterns, fluent APIs, intuitive naming conventions  
+- **Performance**: Sub-millisecond hot paths, minimal overhead, SIMD optimization where applicable  
+
+## IMPLEMENTATION CONSTRAINTS
+
+### Zero Allocation Patterns
+
 ```rust
-// Update package name constant
-const WORKSPACE_HACK_NAME: &str = "fluent-ai-workspace-hack";
-
-// Update validation logic to use constant
-fn validate_package_name(&self) -> Result<(), HakariError> {
-    if self.config.hakari_package != WORKSPACE_HACK_NAME {
-        return Err(HakariError::InvalidPackageName {
-            expected: WORKSPACE_HACK_NAME,
-            found: self.config.hakari_package.clone(),
-        });
-    }
-    Ok(())
+// Use streaming instead of collecting
+let stream = data.iter().map(|item| process(item));
+for result in stream {
+    handle(result)?;
 }
-```
 
-#### Task 3: Fix cli.rs Function References  
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/cargo-hakari-regenerate/src/cli.rs`
-**Lines Impacted**: Function call using old naming
-
-**Technical Specifications**:
-- Update function calls from for_fluent_voice to for_fluent_ai
-- Maintain CLI argument structure
-- Preserve async patterns and error propagation
-- Ensure all Result types are properly handled with ? operator
-
-#### Task 4: Verify and Complete Workspace-Hack Generation
-**Command**: `just hakari-regenerate`
-**Dependencies**: Tasks 1-3 must be completed first
-
-**Technical Specifications**:
-- Verify all packages have fluent-ai-workspace-hack dependency
-- Ensure .config/hakari.toml uses correct package name  
-- Validate workspace-hack directory structure
-- Confirm cargo-hakari generates dependencies successfully
-- Test compilation with workspace-hack enabled
-
-**Success Criteria**:
-- `just hakari-regenerate` completes without errors
-- workspace-hack/Cargo.toml contains generated dependencies
-- All packages compile successfully with workspace-hack
-- Build time optimization is measurable
-
-### ARCHITECTURAL CONSTRAINTS FOR ALL TASKS
-
-#### Zero Allocation Requirements:
-- Use `&str` and `Cow<str>` instead of `String` where possible
-- Implement streaming patterns for file processing
-- Use Arc<str> for shared string data across threads
-- Avoid unnecessary cloning or copying of data
-
-#### No Unsafe/No Locking Requirements:
-- All operations must be memory-safe
-- Use atomic operations instead of mutexes where concurrency needed
-- Implement lock-free algorithms using crossbeam primitives
-- Never use unsafe blocks or raw pointer manipulation
-
-#### Error Handling Requirements:
-- NO unwrap() or expect() calls in source code (tests only)
-- Use ? operator for error propagation
-- Define semantic error types with thiserror
-- Implement graceful degradation for non-critical failures
-
-#### Elegant Ergonomic Requirements:
-- Fluent APIs with method chaining where appropriate
-- Builder patterns for complex type construction  
-- Comprehensive error messages with context
-- Zero-cost abstractions using const generics
-
-### IMPLEMENTATION NOTES
-
-1. **Read each file completely** before making changes to understand context
-2. **Test after each change** to ensure functionality is preserved
-3. **Verify compilation** after all changes are complete
-4. **Run hakari-regenerate** as final validation step
-5. **Document any issues** encountered during implementation
-
-This completes the specific technical requirements for fixing the hakari workspace-hack generation issue while adhering to all architectural constraints and performance requirements.
-## PHASE 5: CODEBASE HYGIENE AND PRODUCTION ARTIFACTS CLEANUP
-
-### CRITICAL: Development Artifact Removal (Production Blocker)
-
-#### 5.1 Backup File Cleanup (24 files - Immediate Deletion Required)
-**Files to Remove**:
-- `/Volumes/samsung_t9/fluent-ai/.config/hakari.toml.bak` - Line 1-63: Hakari config backup
-- `/Volumes/samsung_t9/fluent-ai/.config/hakari.toml.bk` - Line 1-63: Hakari config backup  
-- Cargo.toml backups across ALL packages (22 files):
-  - `packages/cargo-hakari-regenerate/Cargo.toml.bak` & `.bak2`
-  - `packages/cylo/Cargo.toml.bak` & `.bak2` 
-  - `packages/cylo/watched_dir/Cargo.toml.bak` & `.bak2`
-  - `packages/domain/Cargo.toml.bak` & `.bak2`
-  - `packages/fluent-ai-candle/Cargo.toml.bak` & `.bak2`
-  - `packages/fluent-ai/Cargo.toml.bak` & `.bak2`
-  - `packages/http3/Cargo.toml.bak` & `.bak2`
-  - `packages/memory/Cargo.toml.bak` & `.bak2`
-  - `packages/provider/Cargo.toml.bak` & `.bak2`
-  - `packages/termcolor/Cargo.toml.bak` & `.bak2`
-  - `packages/termcolor/wincolor/Cargo.toml.bak` & `.bak2`
-
-**Implementation**: Use `find` command with atomic removal and verification
-**Architecture Notes**: Backup files create confusion and should be handled by git version control
-**Technical Requirements**: Verify corresponding source files exist before deletion
-
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-#### 5.2 QA: Act as an Objective QA Rust developer and verify backup file cleanup
-Rate the backup file removal work performed previously. Confirm all specified backup files have been removed. Verify no backup files remain that could confuse developers or automated tools. Check git status to ensure no tracked backup files exist.
-
-#### 5.3 Source Code Backup Removal (2 files)
-**Files to Remove**:
-- `/Volumes/samsung_t9/fluent-ai/packages/memory/src/monitoring/mod.rs.backup`
-- `/Volumes/samsung_t9/fluent-ai/packages/termcolor/src/lib.rs.backup`
-
-**Implementation**: Remove backup source files after confirming corresponding source files compile
-**Architecture Notes**: Source backups indicate manual editing artifacts that should be handled by version control
-**Technical Requirements**: Ensure no functionality loss, verify compilation after removal
-
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-#### 5.4 QA: Act as an Objective QA Rust developer and verify source backup cleanup
-Rate the source backup file removal. Verify corresponding source files compile correctly and backup artifacts are completely removed. Confirm no functionality is lost.
-
-#### 5.5 macOS System Artifact Cleanup (5 files)
-**Files to Remove**:
-- `/Volumes/samsung_t9/fluent-ai/packages/memory/.DS_Store`
-- `/Volumes/samsung_t9/fluent-ai/packages/memory/src/.DS_Store`
-- `/Volumes/samsung_t9/fluent-ai/packages/memory/target/.DS_Store`
-- `/Volumes/samsung_t9/fluent-ai/packages/memory/target/debug/.DS_Store`
-- `/Volumes/samsung_t9/fluent-ai/tmp/cyrup-agent/.DS_Store`
-
-**Implementation**: Use `find` command to locate and remove all .DS_Store files recursively
-**Architecture Notes**: macOS system artifacts should never be in version control
-**Technical Requirements**: Update .gitignore to prevent future .DS_Store inclusion
-
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-#### 5.6 QA: Act as an Objective QA Rust developer and verify .DS_Store cleanup
-Rate the .DS_Store file removal work. Confirm all system files are removed and .gitignore is properly configured to prevent future inclusion. Verify no macOS artifacts remain.
-
-#### 5.7 IDE History Directory Cleanup (6 directories, 436KB)
-**Directories to Remove**:
-- `/Volumes/samsung_t9/fluent-ai/.history/`
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/.history/`
-- `/Volumes/samsung_t9/fluent-ai/packages/memory/.history/`
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/.history/`
-- `/Volumes/samsung_t9/fluent-ai/packages/provider/.history/`
-- `/Volumes/samsung_t9/fluent-ai/packages/domain/.history/`
-
-**Implementation**: Remove entire .history directories recursively with `rm -rf`
-**Architecture Notes**: IDE history files are editor-specific artifacts that contain development history
-**Technical Requirements**: Update .gitignore to exclude .history/ patterns
-
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-#### 5.8 QA: Act as an Objective QA Rust developer and verify history directory cleanup
-Rate the .history directory removal. Confirm all IDE artifacts are removed, git repository size is reduced, and .gitignore prevents future inclusion. Verify no development history remains.
-
-### CRITICAL: Misplaced Test File Organization
-
-#### 5.9 Memory Package Test File Reorganization (5 files)
-**Files to Move**:
-- `packages/memory/src/monitoring/metrics_test.rs` → `tests/memory/monitoring/metrics_test.rs`
-- `packages/memory/src/monitoring/tests.rs` → `tests/memory/monitoring/mod.rs`  
-- `packages/memory/src/monitoring/tests/metrics_tests.rs` → `tests/memory/monitoring/metrics_tests.rs`
-- `packages/memory/src/transaction/tests.rs` → `tests/memory/transaction/mod.rs`
-- `packages/memory/src/transaction/tests/transaction_tests.rs` → `tests/memory/transaction/transaction_tests.rs`
-
-**Implementation**: 
-1. Create proper tests/ directory structure in memory package
-2. Move files maintaining test functionality
-3. Update module declarations and imports
-4. Ensure all test functions use expect() instead of unwrap()
-5. Update imports to use absolute paths from crate root
-
-**Architecture Notes**: Rust convention places integration tests in tests/ directory at package root
-**Technical Requirements**: Maintain test functionality, improve compilation performance
-
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-#### 5.10 QA: Act as an Objective QA Rust developer and verify test file organization
-Rate the test file reorganization work. Confirm all tests still compile and run successfully. Verify proper Rust test conventions are followed. Check that expect() is used instead of unwrap() in test code.
-
-#### 5.11 Update Module Declarations After Test Moves
-**Files to Modify**:
-- `packages/memory/src/monitoring/mod.rs` - Remove test module declarations at lines referencing moved tests
-- `packages/memory/src/transaction/mod.rs` - Remove test module declarations at lines referencing moved tests
-- Create `packages/memory/tests/lib.rs` for integration test organization
-
-**Implementation**: Remove mod declarations for moved test files, ensure remaining code compiles
-**Architecture Notes**: Clean module structure improves compilation efficiency
-**Technical Requirements**: Zero compilation errors after module declaration cleanup
-
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-#### 5.12 QA: Act as an Objective QA Rust developer and verify module declaration updates  
-Rate the module declaration cleanup. Confirm source modules no longer reference moved test files. Verify all code compiles correctly and test discovery works properly.
-
-### CRITICAL: Temporary Development Directory Cleanup
-
-#### 5.13 Temporary Directory Evaluation and Cleanup (817MB)
-**Directory to Process**: `/Volumes/samsung_t9/fluent-ai/tmp/` containing:
-- `candle/` - Candle ML framework fork experiments
-- `cyrup-agent/` - Agent development prototypes  
-- `cyrup-sugars/` - Syntax sugar experiments
-- `reqwest/` - HTTP client experiments
-- `rig/` - LLM framework fork experiments
-
-**Implementation**: 
-1. Review each subdirectory for production-relevant code
-2. Extract any useful patterns or implementations to proper locations
-3. Document findings in extraction report
-4. Remove entire tmp/ directory after extraction
-5. Verify no production code depends on tmp/ contents
-
-**Architecture Notes**: Temporary directories should not exist in production repositories  
-**Technical Requirements**: Ensure no build dependencies on tmp/ before deletion
-**Space Recovery**: ~817MB of disk space reclaimed
-
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-#### 5.14 QA: Act as an Objective QA Rust developer and verify tmp directory cleanup
-Rate the tmp directory processing. Confirm valuable code is preserved in proper locations. Verify tmp/ directory is completely removed and no dependencies exist on tmp/ contents.
-
-#### 5.15 Legacy Code File Cleanup (1 file)
-**File to Review**: `/Volumes/samsung_t9/fluent-ai/packages/domain/src/memory/types_legacy.rs`
-
-**Implementation**:
-1. Review file contents and current usage
-2. If types are still used: remove TODO comments and complete implementation  
-3. If unused: delete file entirely and update module declarations
-4. Ensure no unwrap() calls exist in any remaining code
-5. Update related imports and dependencies
-
-**Architecture Notes**: Legacy code creates confusion and technical debt
-**Technical Requirements**: Either complete implementation or clean removal
-
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-#### 5.16 QA: Act as an Objective QA Rust developer and verify legacy code cleanup
-Rate the legacy types file handling. Confirm either proper implementation or complete removal. Verify no broken references remain and no unwrap() calls are present.
-
-### CRITICAL: TODO File Consolidation and Documentation Cleanup
-
-#### 5.17 TODO File Consolidation (5 files)
-**Files to Process**:
-- `/Volumes/samsung_t9/fluent-ai/TODO.md` (keep as main)
-- `/Volumes/samsung_t9/fluent-ai/packages/domain/TODO.md`
-- `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai/TODO.md`  
-- `/Volumes/samsung_t9/fluent-ai/packages/memory/TODO.md`
-- `/Volumes/samsung_t9/fluent-ai/packages/provider/TODO.md`
-
-**Implementation**:
-1. Review each package-specific TODO file for relevant items
-2. Merge important tasks into main TODO.md with package prefixes
-3. Remove duplicate or obsolete items
-4. Delete individual package TODO files after consolidation
-5. Maintain this main TODO.md as single source of truth
-
-**Architecture Notes**: Centralized TODO management improves project visibility
-**Technical Requirements**: Preserve all important development tasks
-
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-#### 5.18 QA: Act as an Objective QA Rust developer and verify TODO consolidation
-Rate the TODO file consolidation work. Confirm important tasks are preserved in main TODO.md. Verify package-specific files are removed and no duplicate tasks exist.
-
-#### 5.19 Production .gitignore Enhancement
-**File to Modify**: `/Volumes/samsung_t9/fluent-ai/.gitignore`
-
-**Implementation**: Add comprehensive ignore patterns:
-```gitignore
-# Development artifacts
-.DS_Store
-.history/
-*.bak
-*.bak2  
-*.bk
-*.backup
-tmp/
-
-# IDE artifacts
-.vscode/settings.json
-.idea/
-*.swp
-*.swo
-
-# OS artifacts  
-Thumbs.db
-.Spotlight-V100
-.Trashes
-```
-
-**Architecture Notes**: Comprehensive .gitignore prevents future artifact inclusion
-**Technical Requirements**: Ensure all cleanup patterns are properly ignored
-
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-#### 5.20 QA: Act as an Objective QA Rust developer and verify .gitignore updates
-Rate the .gitignore configuration. Confirm all cleanup artifact patterns are properly excluded. Verify no ignored files currently exist in the repository.
-
-### CRITICAL: Final Workspace Validation
-
-#### 5.21 Post-Cleanup Workspace Compilation Verification
-**Implementation**:
-1. Run `cargo check --workspace` to verify compilation
-2. Run `cargo test --workspace` to verify test functionality  
-3. Run `cargo clippy --all-targets --all-features` to verify linting
-4. Fix any compilation issues caused by cleanup operations
-5. Ensure no unwrap() calls exist in source code after cleanup
-6. Verify all moved tests still pass with nextest
-
-**Architecture Notes**: Cleanup should never break functionality
-**Technical Requirements**: 100% compilation success, all tests passing
-**Performance Validation**: Ensure cleanup improves build times and repository size
-
-DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
-
-#### 5.22 QA: Act as an Objective QA Rust developer and verify final workspace state  
-Rate the overall cleanup work. Confirm workspace compiles successfully, all tests pass, and no production-inappropriate artifacts remain. Verify adherence to Rust conventions and error handling best practices.
-
-## PHASE 5 SUCCESS CRITERIA
-
-### ✅ Development Artifact Elimination
-- Zero backup files (.bak, .bak2, .bk, .backup) in repository
-- Zero macOS system files (.DS_Store) in version control
-- Zero IDE history directories (.history/) in repository
-- Zero temporary development directories (tmp/) in production
-
-### ✅ Test Organization Compliance
-- All test files properly located in tests/ directories
-- Zero embedded tests in src/ directories (following existing plan for phases 1-4)
-- Proper nextest configuration and execution
-- All test code uses expect() instead of unwrap()
-
-### ✅ Codebase Hygiene Standards
-- Single consolidated TODO.md for project management
-- Comprehensive .gitignore preventing future artifacts
-- Zero legacy placeholder files
-- Clean module structure without test dependencies
-
-### ✅ Production Quality Validation
-- 100% workspace compilation success after cleanup
-- All tests passing with proper organization
-- Reduced repository size (~818MB space recovery)
-- Improved build performance through cleanup
-
-This phase complements the existing production quality improvement phases (1-4) by ensuring clean development environment and proper artifact management while maintaining all functionality and performance requirements.
+// Use Cow<str> for conditional ownership
+fn process_text(input: &str) -> Cow<'_, str> {
+    if needs_transformation(input) {
+        Cow::Owned(transform(input))
+    } else {
+        Cow::Borrowed(input)
+    }
+}

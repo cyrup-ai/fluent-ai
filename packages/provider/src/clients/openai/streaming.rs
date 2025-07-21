@@ -784,3 +784,56 @@ pub fn optimize_stream_batching(
 pub type StreamingCompletionResponse = OpenAIStreamChunk;
 pub type StreamingChoice = StreamChoice;
 pub type StreamingMessage = Delta;
+
+/// Send a compatible streaming request for OpenAI-compatible providers
+/// This function provides compatibility for other providers that use OpenAI-style APIs
+pub async fn send_compatible_streaming_request(
+    client: &fluent_ai_http3::HttpClient,
+    url: &str,
+    headers: std::collections::HashMap<String, String>,
+    body: serde_json::Value,
+) -> Result<AsyncStream<serde_json::Value>, crate::clients::openai::error::OpenAIError> {
+    use fluent_ai_http3::HttpRequest;
+    
+    let mut request = HttpRequest::post(url, serde_json::to_vec(&body)?)?;
+    
+    for (key, value) in headers {
+        request = request.header(&key, &value);
+    }
+    
+    let response = client.send(request).await?;
+    let sse_stream = response.sse();
+    
+    let (sender, stream) = AsyncStream::channel();
+    
+    crate::async_task::spawn_async(async move {
+        let mut sse_iter = sse_stream;
+        while let Some(event) = futures_util::StreamExt::next(&mut sse_iter).await {
+            match event {
+                Ok(sse_event) => {
+                    if let Some(data) = sse_event.data {
+                        if data == "[DONE]" {
+                            break;
+                        }
+                        
+                        match serde_json::from_str::<serde_json::Value>(&data) {
+                            Ok(json_chunk) => {
+                                sender.send(json_chunk).await;
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to parse SSE chunk: {}", e);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("SSE stream error: {}", e);
+                    break;
+                }
+            }
+        }
+        sender.close().await;
+    });
+    
+    Ok(stream)
+}

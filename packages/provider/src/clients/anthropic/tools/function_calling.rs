@@ -697,10 +697,10 @@ pub trait ToolExecutor: Send + Sync {
     }
 }
 
-/// Tool registry for managing available tools with both legacy and typed tool support
+/// Tool registry for managing available tools with typed tool support
 #[derive(Default)]
 pub struct ToolRegistry {
-    /// Legacy tool storage for backward compatibility
+    /// Tool metadata storage
     tools: HashMap<String, Tool>,
     executors: HashMap<String, Box<dyn ToolExecutor + Send + Sync>>,
     /// Zero-allocation typed tool storage engine
@@ -714,7 +714,7 @@ impl ToolRegistry {
         Self::default()
     }
 
-    /// Register a legacy tool executor
+    /// Register a tool executor
     pub fn register_tool(
         &mut self,
         name: String,
@@ -766,7 +766,7 @@ impl ToolRegistry {
         input: Value,
         context: &ToolExecutionContext,
     ) -> AnthropicResult<ToolOutput> {
-        // Try legacy executor first
+        // Try executor
         if let Some(executor) = self.executors.get(name) {
             executor.validate_input(&input)?;
             return executor.execute(input, context).await;

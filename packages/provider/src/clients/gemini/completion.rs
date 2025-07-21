@@ -35,7 +35,7 @@ pub use super::gemini_types::{
     GEMINI_2_5_PRO_PREVIEW_06_05, available_models,
 };
 
-// For maximum backward compatibility, also provide the legacy imports
+// For maximum backward compatibility, also provide the compatibility imports
 // This ensures existing code continues to work without modification
 pub mod gemini_api_types {
     pub use super::super::gemini_types::*;
@@ -69,8 +69,8 @@ mod tests {
     }
 
     #[test]
-    fn test_legacy_gemini_api_types_import() {
-        // Test that legacy import path still works
+    fn test_compatibility_gemini_api_types_import() {
+        // Test that compatibility import path still works
         use gemini_api_types::GenerateContentResponse;
 
         // This should compile without errors, ensuring backward compatibility

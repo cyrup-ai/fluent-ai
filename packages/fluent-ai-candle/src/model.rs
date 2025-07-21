@@ -7,7 +7,7 @@ use std::sync::Arc;
 use arc_swap::ArcSwap;
 use arrayvec::ArrayVec;
 use candle_core::{Device, Module, Tensor};
-use candle_transformers::models;
+
 use crossbeam_skiplist::SkipMap;
 use memmap2::Mmap;
 
@@ -315,7 +315,7 @@ impl CandleModel {
     #[inline(always)]
     pub fn forward(&self, input_ids: &[u32]) -> CandleResult<Tensor> {
         if !self.is_loaded.load(Ordering::Relaxed) {
-            return Err(CandleError::ModelNotFound("Model not loaded"));
+            return Err(CandleError::ModelNotFound("Model not loaded".to_string()));
         }
 
         let state = self.model_state.load();
@@ -381,7 +381,7 @@ impl CandleModel {
         mmap: &Mmap,
     ) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
         use candle_transformers::models::llama as llama_models;
-        use safetensors::SafeTensors;
+        use safetensors::tensor::SafeTensors;
 
         // Parse safetensors file to get model weights
         let safetensors = SafeTensors::deserialize(mmap).map_err(|e| {
@@ -452,15 +452,8 @@ impl CandleModel {
                 }
             };
 
-        // Create variable store from safetensors
-        let vs = candle_nn::VarBuilder::from_safetensors(
-            vec![&safetensors],
-            candle_core::DType::F16,
-            &self.device,
-        )
-        .map_err(|e| {
-            CandleError::ModelLoadError(format!("Failed to create variable store: {}", e))
-        })?;
+        // Create variable store from memory-mapped safetensors data 
+        let vs = candle_nn::VarBuilder::from_slice_safetensors(mmap, candle_core::DType::F16, &self.device)?;
 
         // Load LLaMA model
         let llama_model = llama_models::Llama::load(&vs, &llama_config).map_err(|e| {
@@ -486,7 +479,7 @@ impl CandleModel {
         mmap: &Mmap,
     ) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
         use candle_transformers::models::mistral as mistral_models;
-        use safetensors::SafeTensors;
+        use safetensors::tensor::SafeTensors;
 
         // Parse safetensors file to get model weights
         let safetensors = SafeTensors::deserialize(mmap).map_err(|e| {
@@ -560,15 +553,8 @@ impl CandleModel {
                 }
             };
 
-        // Create variable store from safetensors
-        let vs = candle_nn::VarBuilder::from_safetensors(
-            vec![&safetensors],
-            candle_core::DType::F16,
-            &self.device,
-        )
-        .map_err(|e| {
-            CandleError::ModelLoadError(format!("Failed to create variable store: {}", e))
-        })?;
+        // Create variable store from memory-mapped safetensors data 
+        let vs = candle_nn::VarBuilder::from_slice_safetensors(mmap, candle_core::DType::F16, &self.device)?;
 
         // Load Mistral model
         let mistral_model = mistral_models::Model::load(&vs, &mistral_config).map_err(|e| {
@@ -594,7 +580,7 @@ impl CandleModel {
         mmap: &Mmap,
     ) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
         use candle_transformers::models::gemma as gemma_models;
-        use safetensors::SafeTensors;
+        use safetensors::tensor::SafeTensors;
 
         // Parse safetensors file to get model weights
         let safetensors = SafeTensors::deserialize(mmap).map_err(|e| {
@@ -678,15 +664,8 @@ impl CandleModel {
                 }
             };
 
-        // Create variable store from safetensors
-        let vs = candle_nn::VarBuilder::from_safetensors(
-            vec![&safetensors],
-            candle_core::DType::F16,
-            &self.device,
-        )
-        .map_err(|e| {
-            CandleError::ModelLoadError(format!("Failed to create variable store: {}", e))
-        })?;
+        // Create variable store from memory-mapped safetensors data 
+        let vs = candle_nn::VarBuilder::from_slice_safetensors(mmap, candle_core::DType::F16, &self.device)?;
 
         // Load Gemma model
         let gemma_model = gemma_models::Model::load(&vs, &gemma_config).map_err(|e| {
@@ -712,7 +691,7 @@ impl CandleModel {
         mmap: &Mmap,
     ) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
         use candle_transformers::models::phi as phi_models;
-        use safetensors::SafeTensors;
+        use safetensors::tensor::SafeTensors;
 
         // Parse safetensors file to get model weights
         let safetensors = SafeTensors::deserialize(mmap).map_err(|e| {
@@ -790,15 +769,8 @@ impl CandleModel {
                 }
             };
 
-        // Create variable store from safetensors
-        let vs = candle_nn::VarBuilder::from_safetensors(
-            vec![&safetensors],
-            candle_core::DType::F16,
-            &self.device,
-        )
-        .map_err(|e| {
-            CandleError::ModelLoadError(format!("Failed to create variable store: {}", e))
-        })?;
+        // Create variable store from memory-mapped safetensors data 
+        let vs = candle_nn::VarBuilder::from_slice_safetensors(mmap, candle_core::DType::F16, &self.device)?;
 
         // Load Phi model
         let phi_model = phi_models::Model::load(&vs, &phi_config)
@@ -823,7 +795,7 @@ impl CandleModel {
         mmap: &Mmap,
     ) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
         use candle_transformers::models::qwen2 as qwen_models;
-        use safetensors::SafeTensors;
+        use safetensors::tensor::SafeTensors;
 
         // Parse safetensors file to get model weights
         let safetensors = SafeTensors::deserialize(mmap).map_err(|e| {
@@ -893,6 +865,7 @@ impl CandleModel {
                         .get("use_sliding_window")
                         .and_then(|v| v.as_bool())
                         .unwrap_or(false),
+                    hidden_act: candle_nn::Activation::Silu,
                 }
             } else {
                 // Default Qwen2-7B configuration
@@ -910,22 +883,16 @@ impl CandleModel {
                     rope_theta: 1000000.0,
                     rms_norm_eps: 1e-6,
                     use_sliding_window: false,
+                    hidden_act: candle_nn::Activation::Silu,
                 }
             };
 
-        // Create variable store from safetensors
-        let vs = candle_nn::VarBuilder::from_safetensors(
-            vec![&safetensors],
-            candle_core::DType::F16,
-            &self.device,
-        )
-        .map_err(|e| {
-            CandleError::ModelLoadError(format!("Failed to create variable store: {}", e))
-        })?;
+        // Create variable store from memory-mapped safetensors data 
+        let vs = candle_nn::VarBuilder::from_slice_safetensors(mmap, candle_core::DType::F16, &self.device)?;
 
         // Load Qwen model
-        let qwen_model = qwen_models::Model::load(&vs, &qwen_config).map_err(|e| {
-            CandleError::ModelLoadError(format!("Failed to load Qwen model: {}", e))
+        let qwen_model = qwen_models::Model::new(&qwen_config, vs).map_err(|e| {
+            CandleError::model_load_error(format!("Failed to load Qwen model: {}", e))
         })?;
 
         // Create model configuration
@@ -935,7 +902,7 @@ impl CandleModel {
             vocab_size: qwen_config.vocab_size as u32,
             hidden_size: qwen_config.hidden_size as u32,
             num_layers: qwen_config.num_hidden_layers as u32,
-            num_attention_heads: qwen_config.num_attention_heads as u32,
+            num_heads: qwen_config.num_attention_heads as u32,
             ..Default::default()
         };
 

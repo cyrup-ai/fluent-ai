@@ -310,7 +310,7 @@ impl Default for ChatExporter {
 
 /// Export a conversation to the specified format
 pub fn export_conversation(
-    messages: &[crate::message::LegacyMessage],
+    messages: &[crate::message::ChatMessage],
     config: &ExportConfig,
 ) -> ExportResult<String> {
     match config.format {
@@ -323,7 +323,7 @@ pub fn export_conversation(
 
 /// Export to JSON format
 fn export_to_json(
-    messages: &[crate::message::LegacyMessage],
+    messages: &[crate::message::ChatMessage],
     config: &ExportConfig,
 ) -> ExportResult<String> {
     let limited_messages = if config.max_messages > 0 {
@@ -339,7 +339,7 @@ fn export_to_json(
 
 /// Export to Markdown format
 fn export_to_markdown(
-    messages: &[crate::message::LegacyMessage],
+    messages: &[crate::message::ChatMessage],
     config: &ExportConfig,
 ) -> ExportResult<String> {
     let mut output = String::with_capacity(messages.len() * 100);
@@ -370,7 +370,7 @@ fn export_to_markdown(
 
 /// Export to plain text format
 fn export_to_text(
-    messages: &[crate::message::LegacyMessage],
+    messages: &[crate::message::ChatMessage],
     config: &ExportConfig,
 ) -> ExportResult<String> {
     let mut output = String::with_capacity(messages.len() * 100);
@@ -399,7 +399,7 @@ fn export_to_text(
 
 /// Export to CSV format
 fn export_to_csv(
-    messages: &[crate::message::LegacyMessage],
+    messages: &[crate::message::ChatMessage],
     config: &ExportConfig,
 ) -> ExportResult<String> {
     let mut output = String::with_capacity(messages.len() * 100);

@@ -17,6 +17,7 @@ use thiserror::Error;
 use tokio_stream::Stream;
 
 use super::types::ModelParams;
+use super::{CompletionRequest, CompletionResponse, StreamingResponse};
 
 /// Maximum prompt size in bytes (4KB stack allocation)
 pub const MAX_PROMPT_SIZE: usize = 4096;
@@ -420,14 +421,14 @@ pub trait CompletionCoreClient: Send + Sync + 'static {
     /// Generate completion with zero allocation
     fn complete<'a>(
         &'a self,
-        request: CompletionCoreRequest<'_>,
-    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<CompletionCoreResponse>> + Send + 'a>>;
+        request: CompletionRequest<'a>,
+    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<CompletionResponse<'a>>> + Send + 'a>>;
 
     /// Generate streaming completion
     fn complete_stream<'a>(
         &'a self,
-        request: CompletionCoreRequest<'_>,
-    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<StreamingCoreResponse>> + Send + 'a>>;
+        request: CompletionRequest<'_>,
+    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<StreamingResponse>> + Send + 'a>>;
 
     /// Get the model name/identifier for this client
     fn model_name(&self) -> &'static str;
@@ -461,8 +462,8 @@ pub trait CompletionCoreClientExt: CompletionCoreClient {
     /// Perform multiple completions in parallel
     fn complete_batch<'a>(
         &'a self,
-        requests: Vec<CompletionCoreRequest<'a>>,
-    ) -> Pin<Box<dyn Future<Output = Vec<CompletionCoreResult<CompletionCoreResponse>>> + Send + 'a>>
+        requests: Vec<CompletionRequest<'a>>,
+    ) -> Pin<Box<dyn Future<Output = Vec<CompletionCoreResult<CompletionResponse<'a>>>> + Send + 'a>>
     {
         Box::pin(async move {
             let mut results = Vec::with_capacity(requests.len());
@@ -476,9 +477,9 @@ pub trait CompletionCoreClientExt: CompletionCoreClient {
     /// Get completion with timeout
     fn complete_with_timeout<'a>(
         &'a self,
-        request: CompletionCoreRequest<'a>,
+        request: CompletionRequest<'a>,
         timeout: std::time::Duration,
-    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<CompletionCoreResponse>> + Send + 'a>>
+    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<CompletionResponse<'a>>> + Send + 'a>>
     {
         Box::pin(async move {
             tokio::time::timeout(timeout, self.complete(request))

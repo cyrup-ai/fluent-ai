@@ -24,7 +24,7 @@ use fluent_ai_http3::{HttpClient, HttpRequest};
 use fluent_ai_domain::{AsyncTask, AsyncStream};
 use fluent_ai_domain::chunk::CompletionChunk;
 use fluent_ai_domain::completion::CompletionRequest;
-use fluent_ai_domain::message::{Message, Role};
+use fluent_ai_domain::message::{Message, MessageRole as Role};
 use fluent_ai_domain::tool::Tool;
 use fluent_ai_domain::usage::Usage;
 

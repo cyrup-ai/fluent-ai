@@ -2,10 +2,8 @@
 //!
 //! Provides template compilation with optimization passes.
 
-use std::sync::Arc;
-
 use crate::chat::templates::core::{
-    ChatTemplate, CompiledTemplate, TemplateAst, TemplateError, TemplateResult
+    ChatTemplate, CompiledTemplate, TemplateAst, TemplateResult
 };
 
 /// Template compiler configuration

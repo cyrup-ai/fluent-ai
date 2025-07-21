@@ -1,6 +1,7 @@
 //! Production-ready CandleCompletionClient with zero allocation and lock-free design
 
 use std::future::Future;
+use std::num::NonZeroU64;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -9,8 +10,8 @@ use std::time::Instant;
 use arc_swap::ArcSwap;
 use candle_core::Device;
 use fluent_ai_domain::completion::{
-    CompletionClient, CompletionClientExt, CompletionRequest,
-    CompletionResponse, CompletionResult, StreamingResponse,
+    CompletionCoreClient, CompletionCoreResult, CompletionRequest,
+    CompletionResponse, StreamingResponse,
 };
 use fluent_ai_domain::extractor::ExtractionError;
 type CompletionError = ExtractionError;
@@ -218,8 +219,9 @@ impl CandleCompletionClient {
     pub async fn new(config: CandleClientConfig) -> CandleResult<Self> {
         let device = Self::create_device(config.device_type)?;
 
-        // Load model
-        let model = Arc::new(CandleModel::load_from_path(&config.model_path, &device).await?);
+        // Load model using correct API
+        let model = Arc::new(CandleModel::new(device.clone()));
+        model.load_from_file(&config.model_path).await?;
 
         // Load tokenizer
         let tokenizer_path = config.tokenizer_path.as_ref().unwrap_or(&config.model_path);
@@ -255,8 +257,9 @@ impl CandleCompletionClient {
     pub async fn from_hub(repo_id: &str, config: CandleClientConfig) -> CandleResult<Self> {
         let device = Self::create_device(config.device_type)?;
 
-        // Load model from hub
-        let model = Arc::new(CandleModel::load_from_hub(repo_id, &device).await?);
+        // Load model from hub using correct API
+        let model = Arc::new(CandleModel::new(device.clone()));
+        model.load_from_hub(repo_id, "model.safetensors").await?;
 
         // Load tokenizer from hub
         let tokenizer =
@@ -361,10 +364,15 @@ impl CandleCompletionClient {
     /// Warm up the model with a dummy request
     #[inline(always)]
     pub async fn warmup(&self) -> CandleResult<()> {
+        // Use the correct CompletionRequest API with proper error handling
+        let max_tokens = NonZeroU64::new(1)
+            .ok_or_else(|| CandleError::configuration("Invalid max_tokens value"))?;
+        
         let warmup_request = CompletionRequest::builder()
-            .prompt("Hello")
-            .max_tokens(1)
+            .system_prompt("Hello")
+            .max_tokens(Some(max_tokens))
             .temperature(0.0)
+            .map_err(|_| CandleError::configuration("Temperature validation failed"))?
             .build()
             .map_err(|_| CandleError::configuration("Failed to build warmup request"))?;
 
@@ -404,12 +412,12 @@ impl CandleCompletionClient {
     }
 }
 
-impl CompletionClient for CandleCompletionClient {
+impl CompletionCoreClient for CandleCompletionClient {
     #[inline(always)]
     fn complete<'a>(
         &'a self,
         request: CompletionRequest<'_>,
-    ) -> Pin<Box<dyn Future<Output = CompletionResult<CompletionResponse>> + Send + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<CompletionResponse<'_>>> + Send + 'a>> {
         Box::pin(async move {
             let start_time = Instant::now();
 
@@ -435,7 +443,7 @@ impl CompletionClient for CandleCompletionClient {
                 Ok(response) => {
                     self.record_request_stats(
                         true,
-                        response.tokens_generated(),
+                        response.tokens_generated().unwrap_or(0),
                         processing_time_us,
                     );
                     Ok(response)
@@ -452,7 +460,7 @@ impl CompletionClient for CandleCompletionClient {
     fn complete_stream<'a>(
         &'a self,
         request: CompletionRequest<'_>,
-    ) -> Pin<Box<dyn Future<Output = CompletionResult<StreamingResponse>> + Send + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<StreamingResponse>> + Send + 'a>> {
         Box::pin(async move {
             let start_time = Instant::now();
 
@@ -487,9 +495,13 @@ impl CompletionClient for CandleCompletionClient {
             }
         })
     }
+
+    fn model_name(&self) -> &'static str {
+        "candle-model"
+    }
 }
 
-impl CompletionClientExt for CandleCompletionClient {}
+
 
 unsafe impl Send for CandleCompletionClient {}
 unsafe impl Sync for CandleCompletionClient {}

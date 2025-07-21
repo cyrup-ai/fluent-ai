@@ -5,7 +5,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tracing::{debug, error, info, instrument, warn};
 
-use super::super::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
+use crate::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
 use super::client::AnthropicClient;
 use crate::model::{
     error::ModelError,

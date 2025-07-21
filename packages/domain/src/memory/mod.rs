@@ -12,10 +12,8 @@ mod cognitive;
 /// High-performance configuration system
 mod config;
 
-/// Compatibility layer for legacy types
-mod compatibility;
 
-/// Core memory management and configuration (legacy)
+/// Core memory management and configuration
 mod manager;
 
 /// SIMD-optimized vector operations for high-performance memory processing
@@ -36,17 +34,26 @@ mod serialization;
 /// Memory workflow management
 mod workflow;
 
-/// Legacy types (maintained for backward compatibility)
-mod types_legacy;
 
 // Re-export all new domain types
 // Type aliases for migration compatibility
 use std::future::Future;
 use std::pin::Pin;
 
+/// Compatibility mode for memory systems
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, Default)]
+pub enum CompatibilityMode {
+    /// Strict mode: Only allow exact matches
+    Strict,
+    /// Flexible mode: Allow best-effort conversions  
+    #[default]
+    Flexible,
+    /// Hybrid mode: Support both modern and transitional types simultaneously
+    Hybrid,
+}
+
 // Re-export specific types to avoid ambiguous glob re-exports
 pub use cognitive::{CognitiveMemory, CognitiveProcessor};
-pub use compatibility::{CompatibilityError, CompatibilityLayer, CompatibilityMode};
 pub use config::database::{DatabaseType, PoolConfig};
 pub use config::llm::{
     CacheConfig, LLMProvider, ModelConfig, RateLimitConfig, RetryConfig, StreamingConfig,
@@ -61,7 +68,7 @@ pub use config::{DatabaseConfig, LLMConfig, MemoryConfig, VectorStoreConfig};
 // Removed unexpected cfg condition "cognitive" - feature does not exist
 // Re-export fluent_ai_memory types for convenience
 // Removed unexpected cfg condition "fluent-ai-memory" - feature does not exist
-// Re-export core legacy types for backward compatibility
+// Re-export core types for backward compatibility
 pub use manager::Memory;
 pub use ops::{
     CpuArchitecture, CpuFeatures, EMBEDDING_DIMENSION, Op, SIMD_WIDTH, SMALL_EMBEDDING_DIMENSION,
@@ -70,13 +77,6 @@ pub use primitives::*;
 // Re-export commonly used primitives types
 pub use primitives::{MemoryContent, MemoryTypeEnum};
 pub use tool::{MemoryOperation, MemoryResult, MemoryTool, MemoryToolError, MemoryToolResult};
-// Legacy type aliases for backward compatibility
-pub use types_legacy::{
-    Error as LegacyMemoryError, ImportanceContext, MemoryMetadata as LegacyMemoryMetadata,
-    MemoryNode as LegacyMemoryNode, MemoryRelationship as LegacyMemoryRelationship,
-    MemoryType as LegacyMemoryType, VectorStoreIndex, VectorStoreIndexDyn, calculate_importance,
-    next_memory_id,
-};
 
 pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 
@@ -93,7 +93,7 @@ pub trait MemoryManagerTrait: Send + Sync {
 // Primary error type is now the new MemoryError from primitives
 pub type Error = crate::memory::primitives::MemoryError;
 
-// Legacy compatibility aliases
+// Compatibility aliases
 pub type VectorStoreError = Error;
 // MemoryError alias removed to avoid conflict with fluent_ai_memory::Error
 
@@ -108,7 +108,7 @@ pub struct MemorySystemConfig {
     pub llm: LLMConfig,
     /// Enable cognitive features
     pub enable_cognitive: bool,
-    /// Compatibility mode for legacy systems
+    /// Compatibility mode for transitional systems
     pub compatibility_mode: CompatibilityMode,
 }
 

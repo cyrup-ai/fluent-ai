@@ -11,7 +11,7 @@
 
 pub mod client;
 pub mod completion;
-pub mod completion_old; // Legacy monolithic implementation
+pub mod completion_old; // Original monolithic implementation
 pub mod embedding;
 pub mod model_info;
 pub mod streaming;

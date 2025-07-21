@@ -2,7 +2,6 @@
 //!
 //! Provides high-performance template storage with lock-free operations.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use crossbeam_skiplist::SkipMap;
 

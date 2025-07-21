@@ -288,14 +288,6 @@ pub async fn initialize_domain_with_config(
     Ok(memory)
 }
 
-/// Initialize domain with default configuration (legacy compatibility)
-///
-/// # Performance
-/// Zero allocation with pre-configured settings
-pub fn initialize_domain_legacy() {
-    // Legacy function - no longer needed with modern API
-    // Configuration is handled by MemoryConfig now
-}
 
 /// Initialize domain with production-ready configuration
 ///
@@ -728,8 +720,6 @@ pub use memory::{
     CognitiveProcessor,
 
     // Compatibility types
-    CompatibilityError,
-    CompatibilityLayer,
     CompatibilityMode,
 
     // Configuration types
