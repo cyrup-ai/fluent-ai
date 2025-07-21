@@ -59,8 +59,7 @@ impl AppleBackend {
             return Err(BackendError::InvalidConfig {
                 backend: "Apple",
                 details: format!(
-                    "Invalid image format: {}. Expected format: 'name:tag'",
-                    image
+                    "Invalid image format: {image}. Expected format: 'name:tag'"
                 ),
             });
         }
@@ -156,7 +155,7 @@ impl AppleBackend {
         AsyncTaskBuilder::new(async move {
             // Check if image exists locally first
             let check_result = Command::new("container")
-                .args(&["image", "exists", &image])
+                .args(["image", "exists", &image])
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .status();
@@ -173,7 +172,7 @@ impl AppleBackend {
 
             // Pull the image
             let pull_result = Command::new("container")
-                .args(&["pull", &image])
+                .args(["pull", &image])
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .output();
@@ -183,11 +182,11 @@ impl AppleBackend {
                 Ok(output) => {
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     Err(BackendError::ContainerFailed {
-                        details: format!("Failed to pull image {}: {}", image, stderr),
+                        details: format!("Failed to pull image {image}: {stderr}"),
                     })
                 }
                 Err(e) => Err(BackendError::ContainerFailed {
-                    details: format!("Failed to execute container pull: {}", e),
+                    details: format!("Failed to execute container pull: {e}"),
                 }),
             }
         })
@@ -220,29 +219,29 @@ impl AppleBackend {
 
             // Build container run command
             let mut cmd = Command::new("container");
-            cmd.args(&["run", "--rm", "--name", &container_name]);
+            cmd.args(["run", "--rm", "--name", &container_name]);
 
             // Add resource limits
             if let Some(memory) = request.limits.max_memory {
-                cmd.args(&["--memory", &format!("{}b", memory)]);
+                cmd.args(["--memory", &format!("{memory}b")]);
             }
 
             if let Some(cpu_time) = request.limits.max_cpu_time {
-                cmd.args(&["--cpus", &format!("{}", cpu_time)]);
+                cmd.args(["--cpus", &format!("{cpu_time}")]);
             }
 
             // Add environment variables
             for (key, value) in &request.env_vars {
-                cmd.args(&["-e", &format!("{}={}", key, value)]);
+                cmd.args(["-e", &format!("{key}={value}")]);
             }
 
             // Set working directory if specified
             if let Some(workdir) = &request.working_dir {
-                cmd.args(&["-w", workdir]);
+                cmd.args(["-w", workdir]);
             }
 
             // Add timeout handling
-            cmd.args(&["--timeout", &format!("{}s", request.timeout.as_secs())]);
+            cmd.args(["--timeout", &format!("{}s", request.timeout.as_secs())]);
 
             // Specify image and command
             cmd.arg(&image);
@@ -255,21 +254,20 @@ impl AppleBackend {
 
             // Execute the container
             let mut child = cmd.spawn().map_err(|e| BackendError::ProcessFailed {
-                details: format!("Failed to spawn container: {}", e),
+                details: format!("Failed to spawn container: {e}"),
             })?;
 
             // Write input if provided
-            if let Some(input) = &request.input {
-                if let Some(stdin) = child.stdin.take() {
+            if let Some(input) = &request.input
+                && let Some(stdin) = child.stdin.take() {
                     use std::io::Write;
                     let mut stdin = stdin;
                     stdin
                         .write_all(input.as_bytes())
                         .map_err(|e| BackendError::ProcessFailed {
-                            details: format!("Failed to write to container stdin: {}", e),
+                            details: format!("Failed to write to container stdin: {e}"),
                         })?;
                 }
-            }
 
             // Wait for completion with timeout
             let timeout_duration = request.timeout;
@@ -281,7 +279,7 @@ impl AppleBackend {
                 Ok(Ok(Ok(output))) => output,
                 Ok(Ok(Err(e))) => {
                     return Err(BackendError::ProcessFailed {
-                        details: format!("Container execution failed: {}", e),
+                        details: format!("Container execution failed: {e}"),
                     });
                 }
                 Ok(Err(_)) => {
@@ -377,7 +375,7 @@ impl AppleBackend {
     /// Resource usage statistics or default values
     async fn parse_resource_usage(container_name: &str) -> Option<ResourceUsage> {
         let stats_result = Command::new("container")
-            .args(&["stats", "--no-stream", "--format", "json", container_name])
+            .args(["stats", "--no-stream", "--format", "json", container_name])
             .output();
 
         match stats_result {
@@ -420,12 +418,12 @@ impl ExecutionBackend for AppleBackend {
             match Self::ensure_image_available(image.clone()).await {
                 Ok(Ok(())) => {}
                 Ok(Err(e)) => {
-                    return ExecutionResult::failure(-1, format!("Failed to prepare image: {}", e));
+                    return ExecutionResult::failure(-1, format!("Failed to prepare image: {e}"));
                 }
                 Err(e) => {
                     return ExecutionResult::failure(
                         -1,
-                        format!("Failed to prepare image task: {}", e),
+                        format!("Failed to prepare image task: {e}"),
                     );
                 }
             }
@@ -435,11 +433,11 @@ impl ExecutionBackend for AppleBackend {
                 Ok(Ok(result)) => result,
                 Ok(Err(e)) => ExecutionResult::failure(
                     -1,
-                    format!("{} execution failed: {}", backend_name, e),
+                    format!("{backend_name} execution failed: {e}"),
                 ),
                 Err(e) => ExecutionResult::failure(
                     -1,
-                    format!("{} execution task failed: {}", backend_name, e),
+                    format!("{backend_name} execution task failed: {e}"),
                 ),
             }
         })
@@ -451,10 +449,7 @@ impl ExecutionBackend for AppleBackend {
 
         AsyncTaskBuilder::new(async move {
             // Check CLI availability
-            let cli_available = match Self::check_cli_availability().await {
-                Ok(available) => available,
-                Err(_) => false,
-            };
+            let cli_available: bool = (Self::check_cli_availability().await).unwrap_or_default();
             if !cli_available {
                 return HealthStatus::unhealthy("Apple containerization CLI not available")
                     .with_metric("cli_available", "false");
@@ -481,13 +476,13 @@ impl ExecutionBackend for AppleBackend {
                 Ok(Ok(result)) => {
                     HealthStatus::unhealthy(format!("Test execution failed: {}", result.stderr))
                         .with_metric("test_execution", "failed")
-                        .with_metric("exit_code", &result.exit_code.to_string())
+                        .with_metric("exit_code", result.exit_code.to_string())
                 }
                 Ok(Err(e)) => {
-                    HealthStatus::unhealthy(format!("Health check execution error: {}", e))
+                    HealthStatus::unhealthy(format!("Health check execution error: {e}"))
                         .with_metric("test_execution", "error")
                 }
-                Err(e) => HealthStatus::unhealthy(format!("Health check task error: {}", e))
+                Err(e) => HealthStatus::unhealthy(format!("Health check task error: {e}"))
                     .with_metric("test_execution", "task_error"),
             }
         })
@@ -498,7 +493,7 @@ impl ExecutionBackend for AppleBackend {
         AsyncTaskBuilder::new(async move {
             // Clean up any dangling containers with our prefix
             let cleanup_result = Command::new("container")
-                .args(&[
+                .args([
                     "ps",
                     "-a",
                     "--filter",
@@ -508,18 +503,17 @@ impl ExecutionBackend for AppleBackend {
                 ])
                 .output();
 
-            if let Ok(output) = cleanup_result {
-                if output.status.success() {
+            if let Ok(output) = cleanup_result
+                && output.status.success() {
                     let container_names = String::from_utf8_lossy(&output.stdout);
                     for name in container_names.lines() {
                         if !name.trim().is_empty() {
                             let _ = Command::new("container")
-                                .args(&["rm", "-f", name.trim()])
+                                .args(["rm", "-f", name.trim()])
                                 .status();
                         }
                     }
                 }
-            }
 
             Ok(())
         })

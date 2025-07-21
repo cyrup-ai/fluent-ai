@@ -99,7 +99,7 @@ pub mod response;
 pub mod stream;
 
 pub use cache::CacheEntry;
-pub use client::{ClientStats, HttpClient};
+pub use client::{ClientStats, HttpClient, Ready, RequestBuilder};
 pub use config::HttpConfig;
 pub use error::{HttpError, HttpResult};
 pub use middleware::{cache::CacheMiddleware, Middleware, MiddlewareChain};
@@ -123,38 +123,56 @@ pub fn global_client() -> Arc<HttpClient> {
 
 /// Create a new HTTP request using the global client
 #[must_use]
-pub fn get(url: &str) -> HttpRequest {
-    global_client().get(url)
+pub fn get(url: &str) -> RequestBuilder<'static, Ready> {
+    // SAFETY: We use a leaked static reference to make the lifetime 'static
+    // This is safe because GLOBAL_CLIENT is a static that lives for the entire program
+    let client: &'static HttpClient = unsafe { std::mem::transmute(global_client().as_ref()) };
+    client.get(url)
 }
 
 /// Create a new POST request using the global client
 #[must_use]
-pub fn post(url: &str) -> HttpRequest {
-    global_client().post(url)
+pub fn post(url: &str) -> RequestBuilder<'static, Ready> {
+    // SAFETY: We use a leaked static reference to make the lifetime 'static
+    // This is safe because GLOBAL_CLIENT is a static that lives for the entire program
+    let client: &'static HttpClient = unsafe { std::mem::transmute(global_client().as_ref()) };
+    client.post(url)
 }
 
 /// Create a new PUT request using the global client
 #[must_use]
-pub fn put(url: &str) -> HttpRequest {
-    global_client().put(url)
+pub fn put(url: &str) -> RequestBuilder<'static, Ready> {
+    // SAFETY: We use a leaked static reference to make the lifetime 'static
+    // This is safe because GLOBAL_CLIENT is a static that lives for the entire program
+    let client: &'static HttpClient = unsafe { std::mem::transmute(global_client().as_ref()) };
+    client.put(url)
 }
 
 /// Create a new DELETE request using the global client
 #[must_use]
-pub fn delete(url: &str) -> HttpRequest {
-    global_client().delete(url)
+pub fn delete(url: &str) -> RequestBuilder<'static, Ready> {
+    // SAFETY: We use a leaked static reference to make the lifetime 'static
+    // This is safe because GLOBAL_CLIENT is a static that lives for the entire program
+    let client: &'static HttpClient = unsafe { std::mem::transmute(global_client().as_ref()) };
+    client.delete(url)
 }
 
 /// Create a new PATCH request using the global client
 #[must_use]
-pub fn patch(url: &str) -> HttpRequest {
-    global_client().patch(url)
+pub fn patch(url: &str) -> RequestBuilder<'static, Ready> {
+    // SAFETY: We use a leaked static reference to make the lifetime 'static
+    // This is safe because GLOBAL_CLIENT is a static that lives for the entire program
+    let client: &'static HttpClient = unsafe { std::mem::transmute(global_client().as_ref()) };
+    client.patch(url)
 }
 
 /// Create a new HEAD request using the global client
 #[must_use]
-pub fn head(url: &str) -> HttpRequest {
-    global_client().head(url)
+pub fn head(url: &str) -> RequestBuilder<'static, Ready> {
+    // SAFETY: We use a leaked static reference to make the lifetime 'static
+    // This is safe because GLOBAL_CLIENT is a static that lives for the entire program
+    let client: &'static HttpClient = unsafe { std::mem::transmute(global_client().as_ref()) };
+    client.head(url)
 }
 
 /// Get connection pool statistics
@@ -171,8 +189,9 @@ pub fn init_global_client(_config: HttpConfig) -> HttpResult<()> {
     Ok(())
 }
 
-/// Builder pattern for creating HTTP requests
-pub struct RequestBuilder {
+/// Legacy builder pattern for creating HTTP requests (deprecated - use client methods instead)
+#[deprecated(note = "Use client.get(), client.post(), etc. methods instead")]
+pub struct LegacyRequestBuilder {
     client: Arc<HttpClient>,
     method: HttpMethod,
     url: String,
@@ -182,7 +201,7 @@ pub struct RequestBuilder {
     cache_control: Option<String>,
 }
 
-impl RequestBuilder {
+impl LegacyRequestBuilder {
     /// Create a new request builder
     pub fn new(client: Arc<HttpClient>, method: HttpMethod, url: String) -> Self {
         Self {

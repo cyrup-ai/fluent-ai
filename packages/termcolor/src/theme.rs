@@ -116,6 +116,12 @@ pub struct CyrupThemeBuilder {
     theme: CyrupTheme,
 }
 
+impl Default for CyrupThemeBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CyrupThemeBuilder {
     /// Create new theme builder with Cyrup.ai defaults
     #[inline(always)]
@@ -264,8 +270,10 @@ impl SemanticColor {
 
 /// Theme configuration options
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub enum ThemeConfig {
     /// Use default Cyrup.ai theme
+    #[default]
     Default,
     /// No colors, plain text only
     None,
@@ -281,11 +289,6 @@ pub enum ThemeConfig {
     Production,
 }
 
-impl Default for ThemeConfig {
-    fn default() -> Self {
-        ThemeConfig::Default
-    }
-}
 
 impl ThemeConfig {
     /// Get the actual theme for this configuration
@@ -388,7 +391,7 @@ pub fn get_current_theme() -> Option<CyrupTheme> {
 /// Thread-local storage for theme configuration (allows runtime changes)
 use std::cell::RefCell;
 thread_local! {
-    static THEME_CONFIG: RefCell<ThemeConfig> = RefCell::new(ThemeConfig::Default);
+    static THEME_CONFIG: RefCell<ThemeConfig> = const { RefCell::new(ThemeConfig::Default) };
 }
 
 /// Execute code with temporary theme override
@@ -414,10 +417,10 @@ pub fn write_colored<W: WriteColor>(
     if let Some(theme) = get_current_theme() {
         let spec = theme.spec(semantic);
         writer.set_color(&spec)?;
-        write!(writer, "{}", text)?;
+        write!(writer, "{text}")?;
         writer.reset()?;
     } else {
-        write!(writer, "{}", text)?;
+        write!(writer, "{text}")?;
     }
     Ok(())
 }
@@ -433,10 +436,10 @@ pub fn write_colored_bold<W: WriteColor>(
     if let Some(theme) = get_current_theme() {
         let spec = theme.bold_spec(semantic);
         writer.set_color(&spec)?;
-        write!(writer, "{}", text)?;
+        write!(writer, "{text}")?;
         writer.reset()?;
     } else {
-        write!(writer, "{}", text)?;
+        write!(writer, "{text}")?;
     }
     Ok(())
 }
@@ -452,10 +455,10 @@ pub fn write_colored_italic<W: WriteColor>(
     if let Some(theme) = get_current_theme() {
         let spec = theme.italic_spec(semantic);
         writer.set_color(&spec)?;
-        write!(writer, "{}", text)?;
+        write!(writer, "{text}")?;
         writer.reset()?;
     } else {
-        write!(writer, "{}", text)?;
+        write!(writer, "{text}")?;
     }
     Ok(())
 }

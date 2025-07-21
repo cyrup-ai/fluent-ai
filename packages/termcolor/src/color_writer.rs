@@ -277,10 +277,7 @@ pub mod color_choice_ext {
         /// * True if ANSI output should be forced regardless of terminal detection
         #[inline(always)]
         fn should_force_ansi(&self) -> bool {
-            match *self {
-                ColorChoice::AlwaysAnsi => true,
-                _ => false,
-            }
+            matches!(*self, ColorChoice::AlwaysAnsi)
         }
     }
 }

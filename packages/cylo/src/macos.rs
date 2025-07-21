@@ -15,7 +15,7 @@ impl MacosRamdisk {
     fn get_mounted_volumes(&self) -> Result<Vec<String>, StorageError> {
         let output = Command::new("mount")
             .output()
-            .map_err(|e| StorageError::CommandFailed(format!("Failed to get mount info: {}", e)))?;
+            .map_err(|e| StorageError::CommandFailed(format!("Failed to get mount info: {e}")))?;
 
         Ok(String::from_utf8_lossy(&output.stdout)
             .lines()
@@ -27,9 +27,9 @@ impl MacosRamdisk {
     /// Returns the device path on success
     fn attach_disk(&mut self, size_sectors: u64) -> Result<String, StorageError> {
         let output = Command::new("hdiutil")
-            .args(["attach", "-nomount", &format!("ram://{}", size_sectors)])
+            .args(["attach", "-nomount", &format!("ram://{size_sectors}")])
             .output()
-            .map_err(|e| StorageError::CommandFailed(format!("hdiutil failed: {}", e)))?;
+            .map_err(|e| StorageError::CommandFailed(format!("hdiutil failed: {e}")))?;
 
         if !output.status.success() {
             return Err(StorageError::CommandFailed(
@@ -52,7 +52,7 @@ impl MacosRamdisk {
         let output = Command::new("diskutil")
             .args(["erasevolume", fs_type, &config.volume_name, device])
             .output()
-            .map_err(|e| StorageError::CommandFailed(format!("diskutil format failed: {}", e)))?;
+            .map_err(|e| StorageError::CommandFailed(format!("diskutil format failed: {e}")))?;
 
         if !output.status.success() {
             // Attempt to detach the device since format failed
@@ -72,7 +72,7 @@ impl MacosRamdisk {
         let output = Command::new("diskutil")
             .args(["info", mount_point])
             .output()
-            .map_err(|e| StorageError::CommandFailed(format!("diskutil info failed: {}", e)))?;
+            .map_err(|e| StorageError::CommandFailed(format!("diskutil info failed: {e}")))?;
 
         if !output.status.success() {
             return Err(StorageError::CommandFailed(
@@ -87,8 +87,7 @@ impl MacosRamdisk {
             .map(|s| s.trim().to_string())
             .ok_or_else(|| {
                 StorageError::CommandFailed(format!(
-                    "Could not find device for mount point {}",
-                    mount_point
+                    "Could not find device for mount point {mount_point}"
                 ))
             })
     }
@@ -118,7 +117,7 @@ impl RamdiskPlatform for MacosRamdisk {
         }
 
         // Calculate size in 512-byte sectors
-        let size_sectors = config.size_gb as u64 * 1024 * 1024 * 2;
+        let size_sectors = config.size_gb * 1024 * 1024 * 2;
 
         // Create mount point if needed
         if !config.mount_point.exists() {
@@ -149,7 +148,7 @@ impl RamdiskPlatform for MacosRamdisk {
         let unmount_output = Command::new("diskutil")
             .args(["unmountDisk", &device])
             .output()
-            .map_err(|e| StorageError::CommandFailed(format!("unmount failed: {}", e)))?;
+            .map_err(|e| StorageError::CommandFailed(format!("unmount failed: {e}")))?;
 
         if !unmount_output.status.success() {
             return Err(StorageError::CommandFailed(
@@ -161,7 +160,7 @@ impl RamdiskPlatform for MacosRamdisk {
         let detach_output = Command::new("hdiutil")
             .args(["detach", &device])
             .output()
-            .map_err(|e| StorageError::CommandFailed(format!("detach failed: {}", e)))?;
+            .map_err(|e| StorageError::CommandFailed(format!("detach failed: {e}")))?;
 
         if !detach_output.status.success() {
             return Err(StorageError::CommandFailed(

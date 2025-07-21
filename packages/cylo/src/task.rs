@@ -72,14 +72,14 @@ impl ExecutionPool {
     pub fn submit_task(&self, task: ExecutionTask) -> Result<(), ExecError> {
         self.task_sender
             .send(task)
-            .map_err(|e| ExecError::RuntimeError(format!("Failed to submit task: {}", e)))
+            .map_err(|e| ExecError::RuntimeError(format!("Failed to submit task: {e}")))
     }
 
     /// Receives the next completed task outcome, non-blocking
     pub fn receive_outcome(&self) -> Result<ExecutionOutcome, ExecError> {
         self.result_receiver
             .try_recv()
-            .map_err(|e| ExecError::RuntimeError(format!("Failed to receive outcome: {}", e)))
+            .map_err(|e| ExecError::RuntimeError(format!("Failed to receive outcome: {e}")))
     }
 
     /// Returns the number of worker threads

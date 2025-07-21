@@ -38,17 +38,16 @@ pub fn ansi_spec<W: io::Write>(
     if spec.strikethrough() {
         write!(wtr, "\x1B[9m")?;
     }
-    if let Some(ref c) = spec.fg() {
+    if let Some(c) = spec.fg() {
         ansi_color(&mut wtr, c, false)?;
     }
-    if let Some(ref c) = spec.bg() {
+    if let Some(c) = spec.bg() {
         ansi_color(&mut wtr, c, true)?;
     }
-    if spec.intense() {
-        if spec.fg().is_some() {
+    if spec.intense()
+        && spec.fg().is_some() {
             write!(wtr, "\x1B[1m")?;
         }
-    }
     Ok(())
 }
 
@@ -124,19 +123,18 @@ pub fn ansi_color<W: io::Write>(
         }
         Color::Ansi256(n) => {
             if bg {
-                write!(wtr, "\x1B[48;5;{}m", n)
+                write!(wtr, "\x1B[48;5;{n}m")
             } else {
-                write!(wtr, "\x1B[38;5;{}m", n)
+                write!(wtr, "\x1B[38;5;{n}m")
             }
         }
         Color::Rgb(r, g, b) => {
             if bg {
-                write!(wtr, "\x1B[48;2;{};{};{}m", r, g, b)
+                write!(wtr, "\x1B[48;2;{r};{g};{b}m")
             } else {
-                write!(wtr, "\x1B[38;2;{};{};{}m", r, g, b)
+                write!(wtr, "\x1B[38;2;{r};{g};{b}m")
             }
         }
-        Color::__Nonexhaustive => unreachable!(),
     }
 }
 

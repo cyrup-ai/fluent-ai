@@ -1,6 +1,6 @@
 #[cfg(not(any(target_os = "macos", target_os = "linux")))]
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use tracing::{info, warn};
 
@@ -42,7 +42,7 @@ pub fn create_ramdisk(config: &RamdiskConfig) -> Result<(), StorageError> {
 /// # Returns
 /// * `Ok(())` if successful
 /// * `Err(StorageError)` if removal fails
-pub fn remove_ramdisk(mount_point: &PathBuf) -> Result<(), StorageError> {
+pub fn remove_ramdisk(mount_point: &Path) -> Result<(), StorageError> {
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     {
         let platform = get_platform_impl()?;
@@ -62,7 +62,7 @@ pub fn remove_ramdisk(mount_point: &PathBuf) -> Result<(), StorageError> {
 /// * `Ok(true)` if path is mounted as a ramdisk
 /// * `Ok(false)` if not
 /// * `Err(StorageError)` if there's an error checking
-pub fn is_mounted(mount_point: &PathBuf) -> Result<bool, StorageError> {
+pub fn is_mounted(mount_point: &Path) -> Result<bool, StorageError> {
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     {
         let platform = get_platform_impl()?;

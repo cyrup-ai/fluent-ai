@@ -168,7 +168,7 @@ pub fn execute_code_auto(code: &str, language: &str) -> AsyncTask<CyloResult<Exe
         let result = backend
             .execute_code(request)
             .await
-            .map_err(|e| CyloError::internal(format!("Task execution failed: {}", e)))?;
+            .map_err(|e| CyloError::internal(format!("Task execution failed: {e}")))?;
         Ok(result)
     })
     .spawn()
@@ -225,7 +225,7 @@ pub fn get_diagnostics() -> AsyncTask<DiagnosticsReport> {
 
         DiagnosticsReport {
             platform: platform_info.clone(),
-            available_backends: available_backends,
+            available_backends,
             backend_health: health_results,
             active_instances: instance_list,
             performance_hints: platform_info.performance.clone(),

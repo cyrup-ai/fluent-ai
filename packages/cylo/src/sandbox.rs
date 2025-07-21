@@ -124,15 +124,14 @@ impl SandboxedEnvironment {
         }
 
         let output = cmd.output().map_err(|e| SandboxError::ProcessLaunch {
-            detail: Arc::from(format!("Failed to launch command '{}': {}", command, e)),
+            detail: Arc::from(format!("Failed to launch command '{command}': {e}")),
         })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             Err(SandboxError::ProcessLaunch {
                 detail: Arc::from(format!(
-                    "Failed to execute {} command in sandbox: {}",
-                    command, stderr
+                    "Failed to execute {command} command in sandbox: {stderr}"
                 )),
             })
         } else {
@@ -156,11 +155,10 @@ impl SandboxManager {
         let base_dir = base_dir.as_ref().to_path_buf();
 
         // Ensure the base directory exists
-        if !base_dir.exists() {
-            if let Err(e) = fs::create_dir_all(&base_dir) {
+        if !base_dir.exists()
+            && let Err(e) = fs::create_dir_all(&base_dir) {
                 error!("Failed to create sandbox base directory: {}", e);
             }
-        }
 
         Self {
             base_dir,
@@ -216,8 +214,7 @@ impl SandboxManager {
 
         if python_cmd.is_none() {
             return Err(ExecError::RuntimeError(format!(
-                "No Python interpreter found. Tried: {:?}",
-                python_candidates
+                "No Python interpreter found. Tried: {python_candidates:?}"
             )));
         }
 
@@ -271,8 +268,7 @@ impl SandboxManager {
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     warn!("Failed to create Python virtual environment: {}", stderr);
                     Err(ExecError::CommandFailed(format!(
-                        "Failed to create Python virtual environment: {}",
-                        stderr
+                        "Failed to create Python virtual environment: {stderr}"
                     )))
                 }
             }
@@ -289,8 +285,7 @@ impl SandboxManager {
                 let bin_path = env_path.join("bin");
                 let bin_path_str = safe_path_to_str(&bin_path)?;
                 let activate_script = format!(
-                    "#!/bin/sh\nexport VIRTUAL_ENV=\"{}\"\nexport PATH=\"{}:$PATH\"\n",
-                    env_path_str, bin_path_str
+                    "#!/bin/sh\nexport VIRTUAL_ENV=\"{env_path_str}\"\nexport PATH=\"{bin_path_str}:$PATH\"\n"
                 );
 
                 if let Err(e) = fs::write(env_path.join("bin").join("activate"), activate_script) {
@@ -300,8 +295,7 @@ impl SandboxManager {
                 // Create a simple wrapper script for python
                 let env_path_str = safe_path_to_str(&env_path)?;
                 let python_wrapper = format!(
-                    "#!/bin/sh\nexport PYTHONUSERBASE=\"{}\"\n{} \"$@\"\n",
-                    env_path_str, python
+                    "#!/bin/sh\nexport PYTHONUSERBASE=\"{env_path_str}\"\n{python} \"$@\"\n"
                 );
 
                 let python_bin_path = env_path.join("bin").join("python");
@@ -342,8 +336,7 @@ impl SandboxManager {
                 }
 
                 Err(ExecError::CommandFailed(format!(
-                    "Failed to create Python environment: {}",
-                    e
+                    "Failed to create Python environment: {e}"
                 )))
             }
         }
@@ -417,8 +410,7 @@ impl SandboxManager {
         if let Err(e) = fs::create_dir_all(env_path.join("bin")) {
             warn!("Failed to create Node.js env directory structure: {}", e);
             return Err(ExecError::RuntimeError(format!(
-                "Failed to create Node.js environment directory: {}",
-                e
+                "Failed to create Node.js environment directory: {e}"
             )));
         }
 
@@ -438,8 +430,7 @@ impl SandboxManager {
 
         if node_cmd.is_none() {
             return Err(ExecError::RuntimeError(format!(
-                "No Node.js runtime found. Tried: {:?}",
-                node_candidates
+                "No Node.js runtime found. Tried: {node_candidates:?}"
             )));
         }
 
@@ -453,16 +444,14 @@ impl SandboxManager {
         let node_modules_path = env_path.join("node_modules");
         let node_modules_path_str = safe_path_to_str(&node_modules_path)?;
         let node_wrapper = format!(
-            "#!/bin/sh\nexport NODE_PATH=\"{}:$NODE_PATH\"\n{} \"$@\"\n",
-            node_modules_path_str, node
+            "#!/bin/sh\nexport NODE_PATH=\"{node_modules_path_str}:$NODE_PATH\"\n{node} \"$@\"\n"
         );
 
         let node_bin_path = env_path.join("bin").join("node");
         if let Err(e) = fs::write(&node_bin_path, node_wrapper) {
             warn!("Failed to create Node.js wrapper script: {}", e);
             return Err(ExecError::RuntimeError(format!(
-                "Failed to create Node.js wrapper script: {}",
-                e
+                "Failed to create Node.js wrapper script: {e}"
             )));
         }
 
@@ -470,8 +459,7 @@ impl SandboxManager {
         if let Err(e) = fs::set_permissions(&node_bin_path, fs::Permissions::from_mode(0o755)) {
             warn!("Failed to make Node.js wrapper executable: {}", e);
             return Err(ExecError::RuntimeError(format!(
-                "Failed to set permissions on Node.js wrapper: {}",
-                e
+                "Failed to set permissions on Node.js wrapper: {e}"
             )));
         }
 
@@ -535,8 +523,7 @@ impl SandboxManager {
         if let Err(e) = fs::create_dir_all(env_path.join("bin")) {
             warn!("Failed to create Rust env directory structure: {}", e);
             return Err(ExecError::RuntimeError(format!(
-                "Failed to create Rust environment directory: {}",
-                e
+                "Failed to create Rust environment directory: {e}"
             )));
         }
 
@@ -591,8 +578,7 @@ edition = "2021"
 
         if rustc_cmd.is_none() || cargo_cmd.is_none() {
             return Err(ExecError::RuntimeError(format!(
-                "Rust toolchain not found. Tried rustc: {:?}, cargo: {:?}",
-                rustc_candidates, cargo_candidates
+                "Rust toolchain not found. Tried rustc: {rustc_candidates:?}, cargo: {cargo_candidates:?}"
             )));
         }
 
@@ -610,21 +596,18 @@ edition = "2021"
         // Create wrapper scripts
         let env_path_str = safe_path_to_str(&env_path)?;
         let rustc_wrapper = format!(
-            "#!/bin/sh\nexport CARGO_HOME=\"{}\"\nexport RUSTUP_HOME=\"{}\"\n{} \"$@\"\n",
-            env_path_str, env_path_str, rustc
+            "#!/bin/sh\nexport CARGO_HOME=\"{env_path_str}\"\nexport RUSTUP_HOME=\"{env_path_str}\"\n{rustc} \"$@\"\n"
         );
 
         let cargo_wrapper = format!(
-            "#!/bin/sh\nexport CARGO_HOME=\"{}\"\nexport RUSTUP_HOME=\"{}\"\n{} \"$@\"\n",
-            env_path_str, env_path_str, cargo
+            "#!/bin/sh\nexport CARGO_HOME=\"{env_path_str}\"\nexport RUSTUP_HOME=\"{env_path_str}\"\n{cargo} \"$@\"\n"
         );
 
         let rustc_bin_path = env_path.join("bin").join("rustc");
         if let Err(e) = fs::write(&rustc_bin_path, rustc_wrapper) {
             warn!("Failed to create rustc wrapper script: {}", e);
             return Err(ExecError::RuntimeError(format!(
-                "Failed to create rustc wrapper script: {}",
-                e
+                "Failed to create rustc wrapper script: {e}"
             )));
         }
 
@@ -632,8 +615,7 @@ edition = "2021"
         if let Err(e) = fs::write(&cargo_bin_path, cargo_wrapper) {
             warn!("Failed to create cargo wrapper script: {}", e);
             return Err(ExecError::RuntimeError(format!(
-                "Failed to create cargo wrapper script: {}",
-                e
+                "Failed to create cargo wrapper script: {e}"
             )));
         }
 
@@ -705,8 +687,7 @@ edition = "2021"
                     path, e
                 );
                 return Err(ExecError::RuntimeError(format!(
-                    "Failed to create Go environment directory structure: {}",
-                    e
+                    "Failed to create Go environment directory structure: {e}"
                 )));
             }
         }
@@ -724,8 +705,7 @@ edition = "2021"
 
         if go_cmd.is_none() {
             return Err(ExecError::RuntimeError(format!(
-                "No Go runtime found. Tried: {:?}",
-                go_candidates
+                "No Go runtime found. Tried: {go_candidates:?}"
             )));
         }
 
@@ -742,16 +722,14 @@ edition = "2021"
         let tmp_path = env_path.join("tmp");
         let tmp_path_str = safe_path_to_str(&tmp_path)?;
         let go_wrapper = format!(
-            "#!/bin/sh\nexport GOPATH=\"{}\"\nexport GOCACHE=\"{}\"\nexport GOTMPDIR=\"{}\"\n{} \"$@\"\n",
-            env_path_str, pkg_path_str, tmp_path_str, go
+            "#!/bin/sh\nexport GOPATH=\"{env_path_str}\"\nexport GOCACHE=\"{pkg_path_str}\"\nexport GOTMPDIR=\"{tmp_path_str}\"\n{go} \"$@\"\n"
         );
 
         let go_bin_path = env_path.join("bin").join("go");
         if let Err(e) = fs::write(&go_bin_path, go_wrapper) {
             warn!("Failed to create Go wrapper script: {}", e);
             return Err(ExecError::RuntimeError(format!(
-                "Failed to create Go wrapper script: {}",
-                e
+                "Failed to create Go wrapper script: {e}"
             )));
         }
 
@@ -759,8 +737,7 @@ edition = "2021"
         if let Err(e) = fs::set_permissions(&go_bin_path, fs::Permissions::from_mode(0o755)) {
             warn!("Failed to make Go wrapper executable: {}", e);
             return Err(ExecError::RuntimeError(format!(
-                "Failed to set permissions on Go wrapper: {}",
-                e
+                "Failed to set permissions on Go wrapper: {e}"
             )));
         }
 
@@ -817,11 +794,10 @@ func main() {
     pub fn cleanup(&self) -> Result<()> {
         for env in &self.environments {
             debug!("Cleaning up environment at {:?}", env.path);
-            if env.path.exists() {
-                if let Err(e) = fs::remove_dir_all(&env.path) {
+            if env.path.exists()
+                && let Err(e) = fs::remove_dir_all(&env.path) {
                     warn!("Failed to clean up environment at {:?}: {}", env.path, e);
                 }
-            }
         }
         Ok(())
     }

@@ -174,12 +174,11 @@ impl BufferWriter {
             return Ok(());
         }
         let mut stream = self.stream.wrap(self.stream.get_ref().lock());
-        if let Some(ref sep) = self.separator {
-            if self.printed.load(Ordering::Relaxed) {
+        if let Some(ref sep) = self.separator
+            && self.printed.load(Ordering::Relaxed) {
                 stream.write_all(sep)?;
                 stream.write_all(b"\n")?;
             }
-        }
         match buf.0 {
             BufferInner::NoColor(ref b) => stream.write_all(&b.0)?,
             BufferInner::Ansi(ref b) => stream.write_all(&b.0)?,

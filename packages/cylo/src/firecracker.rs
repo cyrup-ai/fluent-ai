@@ -66,7 +66,7 @@ impl FirecrackerVM {
     /// Create a new Firecracker VM manager
     pub fn new(config: FirecrackerConfig, vm_id: impl Into<String>) -> Self {
         let vm_id = vm_id.into();
-        let socket_path = PathBuf::from(format!("/tmp/firecracker-{}.sock", vm_id));
+        let socket_path = PathBuf::from(format!("/tmp/firecracker-{vm_id}.sock"));
 
         Self {
             config,
@@ -192,7 +192,7 @@ impl FirecrackerVM {
     /// Make a PUT request to the Firecracker API
     fn api_put(&self, path: &str, body: &str) -> Result<()> {
         if let Some(socket) = &self.api_socket {
-            let url = format!("http://localhost/{}", path);
+            let url = format!("http://localhost/{path}");
 
             // Write the request to a temporary file
             let tmp_file = format!("/tmp/fc-request-{}.json", path.replace("/", "-"));
@@ -208,7 +208,7 @@ impl FirecrackerVM {
                 .arg("-H")
                 .arg("Content-Type: application/json")
                 .arg("-d")
-                .arg(format!("@{}", tmp_file))
+                .arg(format!("@{tmp_file}"))
                 .arg(url)
                 .output()?;
 
@@ -241,12 +241,11 @@ impl FirecrackerVM {
             thread::sleep(Duration::from_secs(2));
 
             // Clean up socket file
-            if socket.exists() {
-                if let Err(e) = fs::remove_file(socket) {
+            if socket.exists()
+                && let Err(e) = fs::remove_file(socket) {
                     warn!("Failed to remove socket file: {}", e);
                     // Continue anyway
                 }
-            }
         }
 
         info!("Firecracker VM stopped successfully");
@@ -265,16 +264,16 @@ impl FirecrackerVM {
             language,
             Self::get_file_extension(language)
         );
-        let file_path = format!("{}/{}", tmp_dir, file_name);
+        let file_path = format!("{tmp_dir}/{file_name}");
 
         let mut file = File::create(&file_path)?;
         file.write_all(code.as_bytes())?;
 
         // Copy the file to the VM
-        self.copy_to_vm(&file_path, &format!("/tmp/{}", file_name))?;
+        self.copy_to_vm(&file_path, &format!("/tmp/{file_name}"))?;
 
         // Execute the code in the VM
-        let cmd = Self::get_execution_command(language, &format!("/tmp/{}", file_name));
+        let cmd = Self::get_execution_command(language, &format!("/tmp/{file_name}"));
         let output = self.execute_command(&cmd)?;
 
         // Clean up
@@ -296,7 +295,7 @@ impl FirecrackerVM {
         // In a real implementation, this would use SSH or another method to execute commands
         // For now, we'll simulate it
         info!("Executing command in VM: {}", command);
-        Ok(format!("Output from command: {}", command))
+        Ok(format!("Output from command: {command}"))
     }
 
     /// Get the file extension for a language
@@ -313,11 +312,11 @@ impl FirecrackerVM {
     /// Get the execution command for a language
     fn get_execution_command(language: &str, file_path: &str) -> String {
         match language {
-            "go" => format!("go run {}", file_path),
-            "rust" => format!("rust-script {}", file_path),
-            "python" => format!("python3 {}", file_path),
-            "js" => format!("node {}", file_path),
-            _ => format!("cat {}", file_path),
+            "go" => format!("go run {file_path}"),
+            "rust" => format!("rust-script {file_path}"),
+            "python" => format!("python3 {file_path}"),
+            "js" => format!("node {file_path}"),
+            _ => format!("cat {file_path}"),
         }
     }
 }

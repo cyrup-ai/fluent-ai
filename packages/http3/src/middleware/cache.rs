@@ -1,11 +1,10 @@
 //! Cache middleware for ETag processing and expires computation
 
-use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
-use crate::{HttpError, HttpRequest, HttpResponse, HttpResult, Middleware};
+use crate::{HttpResponse, HttpResult, Middleware};
 
 /// Cache middleware that handles ETag processing and expires computation
 pub struct CacheMiddleware {
@@ -86,7 +85,7 @@ impl Default for CacheMiddleware {
 impl Middleware for CacheMiddleware {
     fn process_response(
         &self,
-        mut response: HttpResponse,
+        response: HttpResponse,
     ) -> Pin<Box<dyn Future<Output = HttpResult<HttpResponse>> + Send + '_>> {
         Box::pin(async move {
             let mut headers = response.headers().clone();

@@ -14,13 +14,6 @@ members = [
 ]
 exclude = ["tmp/rig", "tmp/cyrup-agent", "tmp/cyrup-sugars", "tmp/candle"]
 
-[patch.crates-io]
-candle-core = { git = "https://github.com/huggingface/candle" }
-candle-nn = { git = "https://github.com/huggingface/candle" }
-candle-transformers = { git = "https://github.com/huggingface/candle" }
-
-[workspace.dependencies]
-half = { version = "2.6.0", features = ["serde", "num-traits", "bytemuck", "zerocopy", "rand_distr"] }
 
 [workspace.package]
 version = "0.1.0"

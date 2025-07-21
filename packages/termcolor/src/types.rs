@@ -350,6 +350,7 @@ impl ColorSpec {
 /// Hexadecimal numbers are written with a `0x` prefix.
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum Color {
     Black,
     Blue,
@@ -361,8 +362,6 @@ pub enum Color {
     White,
     Ansi256(u8),
     Rgb(u8, u8, u8),
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 impl Color {
@@ -375,31 +374,27 @@ impl Color {
         // by a comma corresponding to one of 256^3 colors.
 
         fn parse_number(s: &str) -> Option<u8> {
-            use std::u8;
-
-            if s.starts_with("0x") {
-                u8::from_str_radix(&s[2..], 16).ok()
+            if let Some(stripped) = s.strip_prefix("0x") {
+                u8::from_str_radix(stripped, 16).ok()
             } else {
-                u8::from_str_radix(s, 10).ok()
+                s.parse::<u8>().ok()
             }
         }
 
         let codes: Vec<&str> = s.split(',').collect();
         if codes.len() == 1 {
-            if let Some(n) = parse_number(&codes[0]) {
+            if let Some(n) = parse_number(codes[0]) {
                 Ok(Color::Ansi256(n))
+            } else if s.chars().all(|c| c.is_ascii_hexdigit()) {
+                Err(ParseColorError {
+                    kind: ParseColorErrorKind::InvalidAnsi256,
+                    given: s.to_string(),
+                })
             } else {
-                if s.chars().all(|c| c.is_digit(16)) {
-                    Err(ParseColorError {
-                        kind: ParseColorErrorKind::InvalidAnsi256,
-                        given: s.to_string(),
-                    })
-                } else {
-                    Err(ParseColorError {
-                        kind: ParseColorErrorKind::InvalidName,
-                        given: s.to_string(),
-                    })
-                }
+                Err(ParseColorError {
+                    kind: ParseColorErrorKind::InvalidName,
+                    given: s.to_string(),
+                })
             }
         } else if codes.len() == 3 {
             let mut v = vec![];
@@ -523,7 +518,7 @@ impl std::error::Error for ColorSpecParseError {
 impl fmt::Display for ColorSpecParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ColorSpecParseError::InvalidColor(e) => write!(f, "{}", e),
+            ColorSpecParseError::InvalidColor(e) => write!(f, "{e}"),
         }
     }
 }
@@ -539,15 +534,13 @@ impl FromStr for ColorSpec {
                 continue;
             }
 
-            if part.starts_with("fg:") {
-                let color_str = &part[3..];
+            if let Some(color_str) = part.strip_prefix("fg:") {
                 let color = Color::from_str(color_str)
-                    .map_err(|e| ColorSpecParseError::InvalidColor(e))?;
+                    .map_err(ColorSpecParseError::InvalidColor)?;
                 color_spec.set_fg(Some(color));
-            } else if part.starts_with("bg:") {
-                let color_str = &part[3..];
+            } else if let Some(color_str) = part.strip_prefix("bg:") {
                 let color = Color::from_str(color_str)
-                    .map_err(|e| ColorSpecParseError::InvalidColor(e))?;
+                    .map_err(ColorSpecParseError::InvalidColor)?;
                 color_spec.set_bg(Some(color));
             } else if part == "bold" {
                 color_spec.set_bold(true);
@@ -567,7 +560,7 @@ impl FromStr for ColorSpec {
                 color_spec.set_reset(false);
             } else {
                 let color = Color::from_str(part)
-                    .map_err(|e| ColorSpecParseError::InvalidColor(e))?;
+                    .map_err(ColorSpecParseError::InvalidColor)?;
                 color_spec.set_fg(Some(color));
             }
         }

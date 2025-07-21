@@ -154,9 +154,9 @@ impl Cylo {
 impl fmt::Display for Cylo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Cylo::LandLock(path) => write!(f, "LandLock({})", path),
-            Cylo::FireCracker(image) => write!(f, "FireCracker({})", image),
-            Cylo::Apple(image) => write!(f, "Apple({})", image),
+            Cylo::LandLock(path) => write!(f, "LandLock({path})"),
+            Cylo::FireCracker(image) => write!(f, "FireCracker({image})"),
+            Cylo::Apple(image) => write!(f, "Apple({image})"),
         }
     }
 }
@@ -339,7 +339,7 @@ impl CyloError {
 impl From<tokio::task::JoinError> for CyloError {
     fn from(error: tokio::task::JoinError) -> Self {
         Self::Internal {
-            message: format!("Task join error: {}", error),
+            message: format!("Task join error: {error}"),
         }
     }
 }

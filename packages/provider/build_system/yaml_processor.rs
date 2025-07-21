@@ -147,15 +147,27 @@ impl YamlProcessor {
                         parameters.insert("output_price".to_string(), yyaml::Value::Number(yyaml::Number::from(output_price)));
                     }
                     
-                    let model = ModelInfo {
-                        id: sanitize_identifier(&name).into_owned(),
-                        name: name.clone(),
-                        description: format!("Model {} with {} input tokens", name, max_input_tokens),
-                        max_tokens: max_input_tokens.max(max_output_tokens),
-                        supports_streaming: true, // Most modern models support streaming
-                        capabilities,
-                        parameters,
-                    };
+                    // Convert String to &'static str for build script context
+                    let static_name: &'static str = Box::leak(name.clone().into_boxed_str());
+                    let static_provider: &'static str = Box::leak(provider_name.clone().into_boxed_str());
+                    
+                    let mut builder = ModelInfo::builder()
+                        .provider_name(static_provider)
+                        .name(static_name)
+                        .max_input_tokens(max_input_tokens as u32)
+                        .max_output_tokens(max_output_tokens as u32)
+                        .with_vision(capabilities.iter().any(|cap| cap.to_lowercase().contains("vision")))
+                        .with_function_calling(capabilities.iter().any(|cap| cap.to_lowercase().contains("function")));
+
+                    // Add pricing if available
+                    if let (Some(input_price), Some(output_price)) = (
+                        model_obj.get("input_price").and_then(|v| v.as_f64()),
+                        model_obj.get("output_price").and_then(|v| v.as_f64())
+                    ) {
+                        builder = builder.pricing(input_price, output_price);
+                    }
+
+                    let model = builder.build()?;
                     
                     self.validate_model(&model)?;
                     models.push(model);

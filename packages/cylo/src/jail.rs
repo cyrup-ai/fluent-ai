@@ -45,12 +45,11 @@ fn is_apparmor_enabled() -> bool {
     // Alternative check using the aa-status command
     let output = Command::new("aa-status").output();
 
-    if let Ok(output) = output {
-        if output.status.success() {
+    if let Ok(output) = output
+        && output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
             return stdout.contains("apparmor module is loaded");
         }
-    }
 
     false
 }
@@ -81,7 +80,7 @@ pub fn init_jail(config: &JailConfig) -> Result<(), StorageError> {
     // Create the allowed directory if it doesn't exist
     let allowed_dir = config.allowed_dir.to_str().unwrap_or("/tmp/cylo");
     create_dir_all(allowed_dir)
-        .with_context(|| format!("Failed to create allowed directory at {}", allowed_dir))?;
+        .with_context(|| format!("Failed to create allowed directory at {allowed_dir}"))?;
     info!("Allowed directory ensured at {}", allowed_dir);
 
     // Try to set up Landlock rules if enabled
@@ -185,14 +184,12 @@ pub fn watch_directory(path: PathBuf, tx: mpsc::Sender<PipelineEvent>) -> Result
             // Check if any file in the directory has changed
             if let Ok(entries) = std::fs::read_dir(&path_clone) {
                 for entry in entries.filter_map(Result::ok) {
-                    if let Ok(metadata) = entry.metadata() {
-                        if let Ok(modified) = metadata.modified() {
-                            if modified > last_modified {
+                    if let Ok(metadata) = entry.metadata()
+                        && let Ok(modified) = metadata.modified()
+                            && modified > last_modified {
                                 last_modified = modified;
                                 let _ = tx.send(PipelineEvent::FileChanged(entry.path()));
                             }
-                        }
-                    }
                 }
             }
         }

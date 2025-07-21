@@ -111,34 +111,34 @@ impl From<SandboxError> for ExecError {
     fn from(error: SandboxError) -> Self {
         match error {
             SandboxError::ConfigurationFailed { detail } => {
-                ExecError::RuntimeError(format!("Configuration failed: {}", detail))
+                ExecError::RuntimeError(format!("Configuration failed: {detail}"))
             }
             SandboxError::EnvironmentSetup { detail } => {
-                ExecError::RuntimeError(format!("Environment setup failed: {}", detail))
+                ExecError::RuntimeError(format!("Environment setup failed: {detail}"))
             }
             SandboxError::ProcessLaunch { detail } => {
-                ExecError::CommandFailed(format!("Process launch failed: {}", detail))
+                ExecError::CommandFailed(format!("Process launch failed: {detail}"))
             }
             SandboxError::ResourceExhausted { resource } => {
-                ExecError::RuntimeError(format!("Resource exhausted: {}", resource))
+                ExecError::RuntimeError(format!("Resource exhausted: {resource}"))
             }
             SandboxError::PermissionDenied { operation } => {
-                ExecError::RuntimeError(format!("Permission denied: {}", operation))
+                ExecError::RuntimeError(format!("Permission denied: {operation}"))
             }
             SandboxError::IoError { kind: _, detail } => {
-                ExecError::RuntimeError(format!("IO error: {}", detail))
+                ExecError::RuntimeError(format!("IO error: {detail}"))
             }
             SandboxError::CommandNotFound { command } => {
-                ExecError::RuntimeError(format!("Command not found: {}", command))
+                ExecError::RuntimeError(format!("Command not found: {command}"))
             }
             SandboxError::EnvironmentInvalid { detail } => {
-                ExecError::RuntimeError(format!("Environment invalid: {}", detail))
+                ExecError::RuntimeError(format!("Environment invalid: {detail}"))
             }
             SandboxError::PathInvalid { detail } => {
-                ExecError::RuntimeError(format!("Path invalid: {}", detail))
+                ExecError::RuntimeError(format!("Path invalid: {detail}"))
             }
             SandboxError::RuntimeNotFound { runtime } => {
-                ExecError::RuntimeError(format!("Runtime not found: {}", runtime))
+                ExecError::RuntimeError(format!("Runtime not found: {runtime}"))
             }
         }
     }

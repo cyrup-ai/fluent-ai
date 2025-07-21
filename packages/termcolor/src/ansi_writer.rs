@@ -159,10 +159,10 @@ impl<W: io::Write> WriteColor for Ansi<W> {
         if spec.strikethrough() {
             self.write_str("\x1B[9m")?;
         }
-        if let Some(ref c) = spec.fg() {
+        if let Some(c) = spec.fg() {
             self.write_color(true, c, spec.intense())?;
         }
-        if let Some(ref c) = spec.bg() {
+        if let Some(c) = spec.bg() {
             self.write_color(false, c, spec.intense())?;
         }
         Ok(())
@@ -310,12 +310,6 @@ impl<W: io::Write> Ansi<W> {
                 Color::White => write_intense!("15"),
                 Color::Ansi256(c) => write_custom!(c),
                 Color::Rgb(r, g, b) => write_custom!(r, g, b),
-                Color::__Nonexhaustive => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "invalid color variant",
-                    ));
-                }
             }
         } else {
             match *c {
@@ -329,12 +323,6 @@ impl<W: io::Write> Ansi<W> {
                 Color::White => write_normal!("7"),
                 Color::Ansi256(c) => write_custom!(c),
                 Color::Rgb(r, g, b) => write_custom!(r, g, b),
-                Color::__Nonexhaustive => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "invalid color variant",
-                    ));
-                }
             }
         }
     }

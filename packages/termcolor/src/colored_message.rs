@@ -305,7 +305,7 @@ impl ColoredMessage {
 
     /// Convert to string (without colors)
     #[inline(always)]
-    pub fn to_string(self) -> String {
+    pub fn to_plain_string(self) -> String {
         self.parts
             .into_iter()
             .map(|part| part.text)
@@ -317,6 +317,15 @@ impl ColoredMessage {
 impl Default for ColoredMessage {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl std::fmt::Display for ColoredMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for part in &self.parts {
+            write!(f, "{}", part.text)?;
+        }
+        Ok(())
     }
 }
 
@@ -371,7 +380,7 @@ impl ColoredMessage {
             .text_muted("[")
             .info(bar)
             .text_muted("] ")
-            .accent(format!("{}%", percentage))
+            .accent(format!("{percentage}%"))
             .space()
             .text_primary(message)
     }

@@ -12,8 +12,23 @@ use std::time::{Duration, Instant, SystemTime};
 use bytes::Bytes;
 use crossbeam_skiplist::SkipMap;
 use reqwest::tls;
+use cyrup_sugars::ZeroOneOrMany;
 
 use crate::{HttpConfig, HttpError, HttpRequest, HttpResponse, HttpResult, HttpStream};
+
+/// Typestate marker for ready-to-send requests
+pub struct Ready;
+
+/// Typestate-safe request builder that prevents invalid request construction
+pub struct RequestBuilder<'a, State> {
+    client: &'a HttpClient,
+    method: crate::HttpMethod,
+    url: String,
+    headers: ZeroOneOrMany<(String, String)>,
+    body: Vec<u8>,
+    timeout: Duration,
+    _state: std::marker::PhantomData<State>,
+}
 
 /// High-performance HTTP client with QUIC/HTTP3 support and zero-allocation design
 #[derive(Debug)]
@@ -174,40 +189,40 @@ impl HttpClient {
         })
     }
 
-    /// Create a GET request with zero allocation
+    /// Create a GET request with zero allocation - returns a typestate builder
     #[inline(always)]
-    pub fn get(&self, url: &str) -> HttpRequest {
-        HttpRequest::new(crate::HttpMethod::Get, url.to_string())
+    pub fn get(&self, url: &str) -> RequestBuilder<'_, Ready> {
+        RequestBuilder::new(self, crate::HttpMethod::Get, url.to_string())
     }
 
-    /// Create a POST request with zero allocation
+    /// Create a POST request with zero allocation - returns a typestate builder
     #[inline(always)]
-    pub fn post(&self, url: &str) -> HttpRequest {
-        HttpRequest::new(crate::HttpMethod::Post, url.to_string())
+    pub fn post(&self, url: &str) -> RequestBuilder<'_, Ready> {
+        RequestBuilder::new(self, crate::HttpMethod::Post, url.to_string())
     }
 
-    /// Create a PUT request with zero allocation
+    /// Create a PUT request with zero allocation - returns a typestate builder
     #[inline(always)]
-    pub fn put(&self, url: &str) -> HttpRequest {
-        HttpRequest::new(crate::HttpMethod::Put, url.to_string())
+    pub fn put(&self, url: &str) -> RequestBuilder<'_, Ready> {
+        RequestBuilder::new(self, crate::HttpMethod::Put, url.to_string())
     }
 
-    /// Create a DELETE request with zero allocation
+    /// Create a DELETE request with zero allocation - returns a typestate builder
     #[inline(always)]
-    pub fn delete(&self, url: &str) -> HttpRequest {
-        HttpRequest::new(crate::HttpMethod::Delete, url.to_string())
+    pub fn delete(&self, url: &str) -> RequestBuilder<'_, Ready> {
+        RequestBuilder::new(self, crate::HttpMethod::Delete, url.to_string())
     }
 
-    /// Create a PATCH request with zero allocation
+    /// Create a PATCH request with zero allocation - returns a typestate builder
     #[inline(always)]
-    pub fn patch(&self, url: &str) -> HttpRequest {
-        HttpRequest::new(crate::HttpMethod::Patch, url.to_string())
+    pub fn patch(&self, url: &str) -> RequestBuilder<'_, Ready> {
+        RequestBuilder::new(self, crate::HttpMethod::Patch, url.to_string())
     }
 
-    /// Create a HEAD request with zero allocation
+    /// Create a HEAD request with zero allocation - returns a typestate builder
     #[inline(always)]
-    pub fn head(&self, url: &str) -> HttpRequest {
-        HttpRequest::new(crate::HttpMethod::Head, url.to_string())
+    pub fn head(&self, url: &str) -> RequestBuilder<'_, Ready> {
+        RequestBuilder::new(self, crate::HttpMethod::Head, url.to_string())
     }
 
     /// Download a file from the given URL with streaming support
@@ -836,6 +851,258 @@ impl ClientStats {
         } else {
             0.0
         }
+    }
+}
+
+impl<'a> RequestBuilder<'a, Ready> {
+    /// Create a new request builder in Ready state with smart defaults
+    fn new(client: &'a HttpClient, method: crate::HttpMethod, url: String) -> Self {
+        let default_body = match method {
+            crate::HttpMethod::Get | crate::HttpMethod::Head => Vec::new(),
+            _ => Vec::new(), // Empty by default, can be set with body() methods
+        };
+
+        Self {
+            client,
+            method,
+            url,
+            headers: ZeroOneOrMany::none(),
+            body: default_body,
+            timeout: client.config.timeout, // Use client's default timeout
+            _state: std::marker::PhantomData,
+        }
+    }
+
+    /// Add a header to the request (immutable)
+    #[must_use]
+    pub fn header<K, V>(self, key: K, value: V) -> Self
+    where
+        K: Into<String>,
+        V: Into<String>,
+    {
+        Self {
+            headers: self.headers.with_pushed((key.into(), value.into())),
+            ..self
+        }
+    }
+
+    /// Add multiple headers using ergonomic JSON syntax: {"key" => "val", "foo" => "bar"} (immutable)
+    #[must_use]
+    pub fn headers<H>(self, headers: H) -> Self 
+    where
+        H: Into<HashMap<String, String>>,
+    {
+        let new_headers = headers.into().into_iter().collect::<Vec<_>>();
+        Self {
+            headers: self.headers.with_extended(new_headers),
+            ..self
+        }
+    }
+
+    /// Set the request body (immutable)
+    #[must_use]
+    pub fn body(self, body: Vec<u8>) -> Self {
+        Self {
+            body,
+            ..self
+        }
+    }
+
+    /// Set the request body from a string (immutable)
+    #[must_use]
+    pub fn body_string(self, body: String) -> Self {
+        Self {
+            body: body.into_bytes(),
+            ..self
+        }
+    }
+
+    /// Set the request body from JSON (immutable)
+    pub fn json<T: serde::Serialize>(self, json: &T) -> crate::HttpResult<Self> {
+        let body = serde_json::to_vec(json)?;
+        Ok(Self {
+            headers: self.headers.with_pushed(("Content-Type".to_string(), "application/json".to_string())),
+            body,
+            ..self
+        })
+    }
+
+    /// Set request timeout (immutable)
+    #[must_use]
+    pub fn timeout(self, timeout: Duration) -> Self {
+        Self {
+            timeout,
+            ..self
+        }
+    }
+
+    /// Set timeout in seconds (immutable)
+    #[must_use]
+    pub fn timeout_seconds(self, seconds: u64) -> Self {
+        Self {
+            timeout: Duration::from_secs(seconds),
+            ..self
+        }
+    }
+
+    /// Set timeout in milliseconds (immutable)
+    #[must_use]
+    pub fn timeout_millis(self, millis: u64) -> Self {
+        Self {
+            timeout: Duration::from_millis(millis),
+            ..self
+        }
+    }
+
+    // === Convenience header methods ===
+
+    /// Add authorization header (immutable)
+    #[must_use]
+    pub fn authorization<V: Into<String>>(self, auth: V) -> Self {
+        self.header("Authorization", auth.into())
+    }
+
+    /// Add bearer token authorization (immutable)
+    #[must_use]
+    pub fn bearer_token<V: Into<String>>(self, token: V) -> Self {
+        self.header("Authorization", format!("Bearer {}", token.into()))
+    }
+
+    /// Add basic auth (immutable)
+    #[must_use]
+    pub fn basic_auth<U: Into<String>, P: Into<String>>(self, username: U, password: P) -> Self {
+        use base64::Engine;
+        let credentials = base64::engine::general_purpose::STANDARD.encode(format!("{}:{}", username.into(), password.into()));
+        self.header("Authorization", format!("Basic {}", credentials))
+    }
+
+    /// Add content type header (immutable)
+    #[must_use]
+    pub fn content_type<V: Into<String>>(self, content_type: V) -> Self {
+        self.header("Content-Type", content_type.into())
+    }
+
+    /// Add JSON content type (immutable)
+    #[must_use]
+    pub fn content_type_json(self) -> Self {
+        self.header("Content-Type", "application/json")
+    }
+
+    /// Add form content type (immutable)
+    #[must_use]
+    pub fn content_type_form(self) -> Self {
+        self.header("Content-Type", "application/x-www-form-urlencoded")
+    }
+
+    /// Add user agent header (immutable)
+    #[must_use]
+    pub fn user_agent<V: Into<String>>(self, user_agent: V) -> Self {
+        self.header("User-Agent", user_agent.into())
+    }
+
+    /// Add accept header (immutable)
+    #[must_use]
+    pub fn accept<V: Into<String>>(self, accept: V) -> Self {
+        self.header("Accept", accept.into())
+    }
+
+    /// Add JSON accept header (immutable)
+    #[must_use]
+    pub fn accept_json(self) -> Self {
+        self.header("Accept", "application/json")
+    }
+
+    /// Add accept encoding header (immutable)
+    #[must_use]
+    pub fn accept_encoding<V: Into<String>>(self, accept_encoding: V) -> Self {
+        self.header("Accept-Encoding", accept_encoding.into())
+    }
+
+    /// Add cache control header (immutable)
+    #[must_use]
+    pub fn cache_control<V: Into<String>>(self, cache_control: V) -> Self {
+        self.header("Cache-Control", cache_control.into())
+    }
+
+    /// Add no-cache header (immutable)
+    #[must_use]
+    pub fn no_cache(self) -> Self {
+        self.header("Cache-Control", "no-cache")
+    }
+
+    /// Add connection header (immutable)
+    #[must_use]
+    pub fn connection<V: Into<String>>(self, connection: V) -> Self {
+        self.header("Connection", connection.into())
+    }
+
+    /// Add keep-alive connection header (immutable)
+    #[must_use]
+    pub fn keep_alive(self) -> Self {
+        self.header("Connection", "keep-alive")
+    }
+
+    /// Add If-None-Match header for conditional requests (ETag-based) (immutable)
+    #[must_use]
+    pub fn if_none_match<V: Into<String>>(self, etag: V) -> Self {
+        self.header("If-None-Match", etag.into())
+    }
+
+    /// Add If-Modified-Since header for conditional requests (date-based) (immutable)
+    #[must_use]
+    pub fn if_modified_since<V: Into<String>>(self, date: V) -> Self {
+        self.header("If-Modified-Since", date.into())
+    }
+
+    /// Add custom API key header (immutable)
+    #[must_use]
+    pub fn api_key<K: Into<String>, V: Into<String>>(self, header_name: K, api_key: V) -> Self {
+        self.header(header_name.into(), api_key.into())
+    }
+
+    /// Add X-API-Key header (immutable)
+    #[must_use]
+    pub fn x_api_key<V: Into<String>>(self, api_key: V) -> Self {
+        self.header("X-API-Key", api_key.into())
+    }
+
+    /// Add streaming-specific headers (immutable)
+    #[must_use]
+    pub fn streaming(self) -> Self {
+        self
+            .header("Accept", "text/event-stream")
+            .header("Cache-Control", "no-cache")
+            .header("Connection", "keep-alive")
+    }
+
+    /// Send the request and return a response
+    pub async fn send(self) -> HttpResult<HttpResponse> {
+        let mut request = HttpRequest::new(self.method, self.url);
+
+        // Convert ZeroOneOrMany headers to HashMap for HttpRequest
+        for (key, value) in self.headers.to_vec() {
+            request = request.header(key, value);
+        }
+
+        request = request.set_body(self.body);
+        request = request.set_timeout(self.timeout);
+
+        self.client.send(request).await
+    }
+
+    /// Send the request and return a streaming response
+    pub async fn send_stream(self) -> HttpResult<HttpStream> {
+        let mut request = HttpRequest::new(self.method, self.url);
+
+        // Convert ZeroOneOrMany headers to HashMap for HttpRequest
+        for (key, value) in self.headers.to_vec() {
+            request = request.header(key, value);
+        }
+
+        request = request.set_body(self.body);
+        request = request.set_timeout(self.timeout);
+
+        self.client.send_stream(request).await
     }
 }
 

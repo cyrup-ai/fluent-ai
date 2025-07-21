@@ -638,7 +638,6 @@ impl PlatformInfo {
 }
 
 /// Public API functions
-
 /// Get current platform information
 pub fn detect_platform() -> &'static PlatformInfo {
     PlatformInfo::get()

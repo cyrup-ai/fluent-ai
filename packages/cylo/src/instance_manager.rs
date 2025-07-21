@@ -114,7 +114,7 @@ impl InstanceManager {
             // Check if instance already exists
             {
                 let instances = instances_lock.read().map_err(|e| {
-                    CyloError::internal(format!("Failed to acquire read lock: {}", e))
+                    CyloError::internal(format!("Failed to acquire read lock: {e}"))
                 })?;
 
                 if instances.contains_key(&instance.id()) {
@@ -128,10 +128,7 @@ impl InstanceManager {
             let backend = create_backend(&instance.env, default_config)?;
 
             // Perform initial health check
-            let health_result = match backend.health_check().await {
-                Ok(health) => Some(health),
-                Err(_) => None,
-            };
+            let health_result = (backend.health_check().await).ok();
 
             let managed_instance = ManagedInstance {
                 backend: Arc::from(backend),
@@ -144,7 +141,7 @@ impl InstanceManager {
             // Register the instance
             {
                 let mut instances = instances_lock.write().map_err(|e| {
-                    CyloError::internal(format!("Failed to acquire write lock: {}", e))
+                    CyloError::internal(format!("Failed to acquire write lock: {e}"))
                 })?;
 
                 instances.insert(instance.id(), managed_instance);
@@ -178,7 +175,7 @@ impl InstanceManager {
             // First, try to get the instance with read lock
             let backend = {
                 let instances = instances_lock.read().map_err(|e| {
-                    CyloError::internal(format!("Failed to acquire read lock: {}", e))
+                    CyloError::internal(format!("Failed to acquire read lock: {e}"))
                 })?;
 
                 match instances.get(&instance_id) {
@@ -192,7 +189,7 @@ impl InstanceManager {
             // Check if health check is needed
             let needs_health_check = {
                 let instances = instances_lock.read().map_err(|e| {
-                    CyloError::internal(format!("Failed to acquire read lock: {}", e))
+                    CyloError::internal(format!("Failed to acquire read lock: {e}"))
                 })?;
 
                 if let Some(managed) = instances.get(&instance_id) {
@@ -214,7 +211,7 @@ impl InstanceManager {
                     Err(e) => {
                         return Err(CyloError::backend_unavailable(
                             backend.backend_type(),
-                            format!("Health check failed for instance {}: {}", instance_id, e),
+                            format!("Health check failed for instance {instance_id}: {e}"),
                         ));
                     }
                 };
@@ -232,7 +229,7 @@ impl InstanceManager {
                 // Update health status
                 {
                     let mut instances = instances_lock.write().map_err(|e| {
-                        CyloError::internal(format!("Failed to acquire write lock: {}", e))
+                        CyloError::internal(format!("Failed to acquire write lock: {e}"))
                     })?;
 
                     if let Some(managed) = instances.get_mut(&instance_id) {
@@ -246,7 +243,7 @@ impl InstanceManager {
                 // Just update access timestamp and ref count
                 {
                     let mut instances = instances_lock.write().map_err(|e| {
-                        CyloError::internal(format!("Failed to acquire write lock: {}", e))
+                        CyloError::internal(format!("Failed to acquire write lock: {e}"))
                     })?;
 
                     if let Some(managed) = instances.get_mut(&instance_id) {
@@ -276,13 +273,12 @@ impl InstanceManager {
         let mut instances = self
             .instances
             .write()
-            .map_err(|e| CyloError::internal(format!("Failed to acquire write lock: {}", e)))?;
+            .map_err(|e| CyloError::internal(format!("Failed to acquire write lock: {e}")))?;
 
-        if let Some(managed) = instances.get_mut(instance_id) {
-            if managed.ref_count > 0 {
+        if let Some(managed) = instances.get_mut(instance_id)
+            && managed.ref_count > 0 {
                 managed.ref_count -= 1;
             }
-        }
 
         Ok(())
     }
@@ -305,7 +301,7 @@ impl InstanceManager {
             // Remove the instance from registry
             let managed_instance = {
                 let mut instances = instances_lock.write().map_err(|e| {
-                    CyloError::internal(format!("Failed to acquire write lock: {}", e))
+                    CyloError::internal(format!("Failed to acquire write lock: {e}"))
                 })?;
 
                 instances.remove(&instance_id)
@@ -322,7 +318,7 @@ impl InstanceManager {
                 // Perform cleanup
                 if let Err(e) = managed.backend.cleanup().await {
                     // Log cleanup error but don't fail the removal
-                    eprintln!("Warning: Failed to cleanup instance {}: {}", instance_id, e);
+                    eprintln!("Warning: Failed to cleanup instance {instance_id}: {e}");
                 }
             }
 
@@ -339,7 +335,7 @@ impl InstanceManager {
         let instances = self
             .instances
             .read()
-            .map_err(|e| CyloError::internal(format!("Failed to acquire read lock: {}", e)))?;
+            .map_err(|e| CyloError::internal(format!("Failed to acquire read lock: {e}")))?;
 
         Ok(instances.keys().cloned().collect())
     }
@@ -355,7 +351,7 @@ impl InstanceManager {
         let instances = self
             .instances
             .read()
-            .map_err(|e| CyloError::internal(format!("Failed to acquire read lock: {}", e)))?;
+            .map_err(|e| CyloError::internal(format!("Failed to acquire read lock: {e}")))?;
 
         Ok(instances
             .get(instance_id)
@@ -377,7 +373,7 @@ impl InstanceManager {
             // Get list of instances to check
             let instance_list = {
                 let instances = instances_lock.read().map_err(|e| {
-                    CyloError::internal(format!("Failed to acquire read lock: {}", e))
+                    CyloError::internal(format!("Failed to acquire read lock: {e}"))
                 })?;
 
                 instances
@@ -448,7 +444,7 @@ impl InstanceManager {
             // Identify idle instances
             {
                 let instances = instances_lock.read().map_err(|e| {
-                    CyloError::internal(format!("Failed to acquire read lock: {}", e))
+                    CyloError::internal(format!("Failed to acquire read lock: {e}"))
                 })?;
 
                 for (instance_id, managed) in instances.iter() {
@@ -467,7 +463,7 @@ impl InstanceManager {
             for instance_id in to_remove {
                 let managed_instance = {
                     let mut instances = instances_lock.write().map_err(|e| {
-                        CyloError::internal(format!("Failed to acquire write lock: {}", e))
+                        CyloError::internal(format!("Failed to acquire write lock: {e}"))
                     })?;
 
                     instances.remove(&instance_id)
@@ -477,8 +473,7 @@ impl InstanceManager {
                     // Perform cleanup
                     if let Err(e) = managed.backend.cleanup().await {
                         eprintln!(
-                            "Warning: Failed to cleanup idle instance {}: {}",
-                            instance_id, e
+                            "Warning: Failed to cleanup idle instance {instance_id}: {e}"
                         );
                     } else {
                         removed_count += 1;
@@ -505,11 +500,11 @@ impl InstanceManager {
             // Get all instances
             let all_instances = {
                 let mut instances = instances_lock.write().map_err(|e| {
-                    CyloError::internal(format!("Failed to acquire write lock: {}", e))
+                    CyloError::internal(format!("Failed to acquire write lock: {e}"))
                 })?;
 
-                let instances_vec = instances.drain().collect::<Vec<_>>();
-                instances_vec
+                
+                instances.drain().collect::<Vec<_>>()
             };
 
             // Cleanup all instances concurrently
@@ -520,8 +515,7 @@ impl InstanceManager {
                 let cleanup_task = AsyncTaskBuilder::new(async move {
                     if let Err(e) = managed.backend.cleanup().await {
                         eprintln!(
-                            "Warning: Failed to cleanup instance {} during shutdown: {}",
-                            id, e
+                            "Warning: Failed to cleanup instance {id} during shutdown: {e}"
                         );
                     }
                 })

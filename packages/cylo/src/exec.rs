@@ -87,14 +87,14 @@ pub fn exec_go(code: &str, config: &RamdiskConfig) -> Result<()> {
         .suffix(".go")
         .tempfile_in(&watched_dir)?;
 
-    write!(tmpfile, "{}", code)?;
+    write!(tmpfile, "{code}")?;
     info!("Created Go file: {:?}", tmpfile.path());
 
     // Create and use a sandboxed Go environment
     info!("Creating sandboxed Go environment");
     let env = create_go_environment(config).map_err(|e| {
         error!("Failed to create Go environment: {}", e);
-        ExecError::CommandFailed(format!("Failed to create secure Go environment: {}", e))
+        ExecError::CommandFailed(format!("Failed to create secure Go environment: {e}"))
     })?;
 
     info!("Created Go environment at {:?}", env.path);
@@ -112,7 +112,7 @@ pub fn exec_go(code: &str, config: &RamdiskConfig) -> Result<()> {
     // Execute the command
     let output = cmd.output().map_err(|e| {
         error!("Failed to execute Go in sandbox: {}", e);
-        ExecError::CommandFailed(format!("Failed to execute Go in sandbox: {}", e))
+        ExecError::CommandFailed(format!("Failed to execute Go in sandbox: {e}"))
     })?;
 
     // Update metadata for the executed file
@@ -131,8 +131,7 @@ pub fn exec_go(code: &str, config: &RamdiskConfig) -> Result<()> {
         let stderr = String::from_utf8_lossy(&output.stderr);
         error!("Go execution in sandbox failed: {}", stderr);
         Err(ExecError::CommandFailed(format!(
-            "Go execution in sandbox failed: {}",
-            stderr
+            "Go execution in sandbox failed: {stderr}"
         )))
     }
 }
@@ -147,14 +146,14 @@ pub fn exec_rust(code: &str, config: &RamdiskConfig) -> Result<()> {
         .suffix(".rs")
         .tempfile_in(&watched_dir)?;
 
-    write!(tmpfile, "{}", code)?;
+    write!(tmpfile, "{code}")?;
     info!("Created Rust file: {:?}", tmpfile.path());
 
     // Create and use a sandboxed Rust environment
     info!("Creating sandboxed Rust environment");
     let env = create_rust_environment(config).map_err(|e| {
         error!("Failed to create Rust environment: {}", e);
-        ExecError::CommandFailed(format!("Failed to create secure Rust environment: {}", e))
+        ExecError::CommandFailed(format!("Failed to create secure Rust environment: {e}"))
     })?;
 
     info!("Created Rust environment at {:?}", env.path);
@@ -199,7 +198,7 @@ edition = "2021"
     // Execute the command
     let output = cmd.output().map_err(|e| {
         error!("Failed to execute Rust in sandbox: {}", e);
-        ExecError::CommandFailed(format!("Failed to execute Rust in sandbox: {}", e))
+        ExecError::CommandFailed(format!("Failed to execute Rust in sandbox: {e}"))
     })?;
 
     // Update metadata for the executed file
@@ -218,8 +217,7 @@ edition = "2021"
         let stderr = String::from_utf8_lossy(&output.stderr);
         error!("Rust execution in sandbox failed: {}", stderr);
         Err(ExecError::CommandFailed(format!(
-            "Rust execution in sandbox failed: {}",
-            stderr
+            "Rust execution in sandbox failed: {stderr}"
         )))
     }
 }
@@ -235,7 +233,7 @@ pub fn exec_python(code: &str, config: &RamdiskConfig) -> Result<()> {
     if !watched_dir.exists() {
         fs::create_dir_all(&watched_dir).map_err(|e| {
             error!("Failed to create watched directory: {}", e);
-            ExecError::RuntimeError(format!("Failed to create directory: {}", e))
+            ExecError::RuntimeError(format!("Failed to create directory: {e}"))
         })?;
     }
 
@@ -248,12 +246,12 @@ pub fn exec_python(code: &str, config: &RamdiskConfig) -> Result<()> {
         .tempfile_in(&watched_dir)
         .map_err(|e| {
             error!("Failed to create temporary Python file: {}", e);
-            ExecError::RuntimeError(format!("Failed to create temp file: {}", e))
+            ExecError::RuntimeError(format!("Failed to create temp file: {e}"))
         })?;
 
-    write!(tmpfile, "{}", code).map_err(|e| {
+    write!(tmpfile, "{code}").map_err(|e| {
         error!("Failed to write Python code to file: {}", e);
-        ExecError::RuntimeError(format!("Failed to write to temp file: {}", e))
+        ExecError::RuntimeError(format!("Failed to write to temp file: {e}"))
     })?;
 
     let path = tmpfile.path().to_owned();
@@ -263,7 +261,7 @@ pub fn exec_python(code: &str, config: &RamdiskConfig) -> Result<()> {
     info!("Creating sandboxed Python environment");
     let env = create_python_venv(config).map_err(|e| {
         error!("Failed to create Python virtual environment: {}", e);
-        ExecError::CommandFailed(format!("Failed to create secure Python environment: {}", e))
+        ExecError::CommandFailed(format!("Failed to create secure Python environment: {e}"))
     })?;
 
     info!("Created Python virtual environment at {:?}", env.path);
@@ -296,7 +294,7 @@ pub fn exec_python(code: &str, config: &RamdiskConfig) -> Result<()> {
     // Execute the command
     let output = cmd.output().map_err(|e| {
         error!("Failed to execute Python in venv: {}", e);
-        ExecError::CommandFailed(format!("Failed to execute Python in sandbox: {}", e))
+        ExecError::CommandFailed(format!("Failed to execute Python in sandbox: {e}"))
     })?;
 
     // Update metadata for the executed file
@@ -315,8 +313,7 @@ pub fn exec_python(code: &str, config: &RamdiskConfig) -> Result<()> {
         let stderr = String::from_utf8_lossy(&output.stderr);
         error!("Python execution in sandbox failed: {}", stderr);
         Err(ExecError::CommandFailed(format!(
-            "Python execution in sandbox failed: {}",
-            stderr
+            "Python execution in sandbox failed: {stderr}"
         )))
     }
 }
@@ -331,7 +328,7 @@ pub fn exec_js(code: &str, config: &RamdiskConfig) -> Result<()> {
         .suffix(".js")
         .tempfile_in(&watched_dir)?;
 
-    write!(tmpfile, "{}", code)?;
+    write!(tmpfile, "{code}")?;
     info!("Created JS file: {:?}", tmpfile.path());
 
     // Create and use a sandboxed Node environment
@@ -339,8 +336,7 @@ pub fn exec_js(code: &str, config: &RamdiskConfig) -> Result<()> {
     let env = create_node_environment(config).map_err(|e| {
         error!("Failed to create Node environment: {}", e);
         ExecError::CommandFailed(format!(
-            "Failed to create secure JavaScript environment: {}",
-            e
+            "Failed to create secure JavaScript environment: {e}"
         ))
     })?;
 
@@ -358,7 +354,7 @@ pub fn exec_js(code: &str, config: &RamdiskConfig) -> Result<()> {
     // Execute the command
     let output = cmd.output().map_err(|e| {
         error!("Failed to execute JavaScript in sandbox: {}", e);
-        ExecError::CommandFailed(format!("Failed to execute JavaScript in sandbox: {}", e))
+        ExecError::CommandFailed(format!("Failed to execute JavaScript in sandbox: {e}"))
     })?;
 
     // Update metadata for the executed file
@@ -377,8 +373,7 @@ pub fn exec_js(code: &str, config: &RamdiskConfig) -> Result<()> {
         let stderr = String::from_utf8_lossy(&output.stderr);
         error!("JavaScript execution in sandbox failed: {}", stderr);
         Err(ExecError::CommandFailed(format!(
-            "JavaScript execution in sandbox failed: {}",
-            stderr
+            "JavaScript execution in sandbox failed: {stderr}"
         )))
     }
 }
@@ -393,7 +388,7 @@ pub fn exec_bash(code: &str, config: &RamdiskConfig) -> Result<()> {
         .suffix(".sh")
         .tempfile_in(&watched_dir)?;
 
-    write!(tmpfile, "{}", code)?;
+    write!(tmpfile, "{code}")?;
     info!("Created Bash script: {:?}", tmpfile.path());
 
     // Make the script executable
@@ -440,7 +435,7 @@ pub fn exec_bash(code: &str, config: &RamdiskConfig) -> Result<()> {
     // Execute the command
     let output = cmd.output().map_err(|e| {
         error!("Failed to execute Bash script: {}", e);
-        ExecError::CommandFailed(format!("Failed to execute Bash script: {}", e))
+        ExecError::CommandFailed(format!("Failed to execute Bash script: {e}"))
     })?;
 
     // Update metadata for the executed file
@@ -459,8 +454,7 @@ pub fn exec_bash(code: &str, config: &RamdiskConfig) -> Result<()> {
         let stderr = String::from_utf8_lossy(&output.stderr);
         error!("Bash execution failed: {}", stderr);
         Err(ExecError::CommandFailed(format!(
-            "Bash execution failed: {}",
-            stderr
+            "Bash execution failed: {stderr}"
         )))
     }
 }

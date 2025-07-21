@@ -466,7 +466,7 @@ impl From<BackendError> for CyloError {
                 message: Box::leak(details.into_boxed_str()),
             },
             BackendError::UnsupportedLanguage { backend, language } => {
-                CyloError::execution_failed(backend, format!("Unsupported language: {}", language))
+                CyloError::execution_failed(backend, format!("Unsupported language: {language}"))
             }
             BackendError::ExecutionTimeout { seconds } => CyloError::ExecutionTimeout {
                 backend: "unknown",
@@ -563,18 +563,18 @@ pub fn create_backend(
 /// # Returns
 /// List of backend types available on this platform
 pub fn available_backends() -> Vec<&'static str> {
-    let mut backends = Vec::new();
-
     #[cfg(target_os = "macos")]
-    backends.push("Apple");
-
+    {
+        vec!["Apple"]
+    }
     #[cfg(target_os = "linux")]
     {
-        backends.push("LandLock");
-        backends.push("FireCracker");
+        vec!["LandLock", "FireCracker"]
     }
-
-    backends
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    {
+        vec![]
+    }
 }
 
 #[cfg(test)]
