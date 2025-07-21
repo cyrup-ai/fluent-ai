@@ -32,6 +32,7 @@ memchr = { version = "2.7.5" }
 fluent_ai_http3 = { path = "../http3" }
 fluent_ai_domain = { path = "../domain" }
 fluent_ai_provider = { path = "../provider" }
+fluent_ai_core = { package = "fluent-ai-core", version = "0.1.0", path = "../fluent-ai-core" }
 bincode = { version = "2.0.1" }
 md5 = "0.8.0"
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["all"] }

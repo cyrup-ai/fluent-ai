@@ -6,21 +6,21 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-/// AsyncStream type for streaming operations  
-pub type AsyncStream<T> = fluent_ai_http3::async_task::AsyncStream<T>;
 
+use arc_swap::ArcSwap;
 use chrono::{DateTime, Utc};
+use crossbeam_skiplist::SkipMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use arc_swap::ArcSwap;
-use crossbeam_skiplist::SkipMap;
 
 use crate::memory::primitives::metadata::MemoryMetadata;
 use crate::memory::primitives::node::MemoryNode;
 use crate::memory::primitives::types::{BaseMemory, MemoryContent, MemoryType, MemoryTypeEnum};
 use crate::memory::repository::MemoryRepository;
-use crate::utils::Result;
 use crate::utils::error::Error;
+use crate::utils::Result;
+use fluent_ai_core::channel::async_stream_channel;
+use fluent_ai_core::stream::AsyncStream;
 
 /// Context for an episodic memory event
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,80 +59,33 @@ impl EpisodicContext {
     pub fn to_value(&self) -> Result<Value> {
         let mut obj = serde_json::Map::new();
         obj.insert("id".to_string(), Value::String(self.id.clone()));
-        obj.insert("type".to_string(), Value::String(self.context_type.clone()));
+        obj.insert(
+            "context_type".to_string(),
+            Value::String(self.context_type.clone()),
+        );
         obj.insert("value".to_string(), Value::String(self.value.clone()));
-
-        if !self.metadata.is_empty() {
-            obj.insert(
-                "metadata".to_string(),
-                serde_json::to_value(&self.metadata)?,
-            );
-        }
-
+        obj.insert(
+            "metadata".to_string(),
+            serde_json::to_value(&self.metadata)?,
+        );
         Ok(Value::Object(obj))
-    }
-
-    /// Convert from a SurrealDB value to a context
-    pub fn from_value(value: &Value) -> Result<Self> {
-        if let Value::Object(obj) = value {
-            let id = if let Some(Value::String(s)) = obj.get("id") {
-                s.clone()
-            } else {
-                return Err(Error::ConversionError("Missing id in context".to_string()));
-            };
-
-            let context_type = if let Some(Value::String(s)) = obj.get("type") {
-                s.clone()
-            } else {
-                return Err(Error::ConversionError(
-                    "Missing type in context".to_string(),
-                ));
-            };
-
-            let value = if let Some(Value::String(s)) = obj.get("value") {
-                s.clone()
-            } else {
-                return Err(Error::ConversionError(
-                    "Missing value in context".to_string(),
-                ));
-            };
-
-            let mut metadata = HashMap::new();
-            if let Some(Value::Object(meta_obj)) = obj.get("metadata") {
-                for (key, val) in meta_obj.iter() {
-                    metadata.insert(key.to_string(), val.clone());
-                }
-            }
-
-            Ok(Self {
-                id,
-                context_type,
-                value,
-                metadata,
-            })
-        } else {
-            Err(Error::ConversionError("Invalid context value".to_string()))
-        }
     }
 }
 
-/// Event in an episodic memory
+/// Represents a single event in episodic memory
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EpisodicEvent {
     /// Unique identifier for the event
     pub id: String,
 
-    /// Description of the event
-    pub description: String,
-
     /// Timestamp of the event
     pub timestamp: DateTime<Utc>,
 
-    /// Importance of the event (0-100)
-    pub importance: u8,
+    /// Content of the event
+    pub content: MemoryContent,
 
-    /// Contexts associated with the event
-    pub contexts: Vec<EpisodicContext>,
+    /// Context associated with the event
+    pub context: Vec<EpisodicContext>,
 
     /// Additional metadata for the event
     pub metadata: HashMap<String, Value>,
@@ -140,20 +93,19 @@ pub struct EpisodicEvent {
 
 impl EpisodicEvent {
     /// Create a new episodic event
-    pub fn new(id: &str, description: &str, timestamp: DateTime<Utc>, importance: u8) -> Self {
+    pub fn new(id: &str, content: MemoryContent) -> Self {
         Self {
             id: id.to_string(),
-            description: description.to_string(),
-            timestamp,
-            importance,
-            contexts: Vec::new(),
+            timestamp: Utc::now(),
+            content,
+            context: Vec::new(),
             metadata: HashMap::new(),
         }
     }
 
     /// Add a context to the event
     pub fn with_context(mut self, context: EpisodicContext) -> Self {
-        self.contexts.push(context);
+        self.context.push(context);
         self
     }
 
@@ -162,378 +114,119 @@ impl EpisodicEvent {
         self.metadata.insert(key.to_string(), value);
         self
     }
-
-    /// Convert the event to a SurrealDB value
-    pub fn to_value(&self) -> Result<Value> {
-        let mut obj = serde_json::Map::new();
-        obj.insert("id".to_string(), Value::String(self.id.clone()));
-        obj.insert(
-            "description".to_string(),
-            Value::String(self.description.clone()),
-        );
-        obj.insert(
-            "timestamp".to_string(),
-            Value::String(self.timestamp.to_rfc3339()),
-        );
-        obj.insert(
-            "importance".to_string(),
-            Value::Number(self.importance.into()),
-        );
-
-        let mut contexts = Vec::new();
-        for context in &self.contexts {
-            contexts.push(context.to_value()?);
-        }
-        obj.insert("contexts".to_string(), Value::Array(contexts));
-
-        if !self.metadata.is_empty() {
-            obj.insert(
-                "metadata".to_string(),
-                serde_json::to_value(&self.metadata)?,
-            );
-        }
-
-        Ok(Value::Object(obj))
-    }
-
-    /// Convert from a SurrealDB value to an event
-    pub fn from_value(value: &Value) -> Result<Self> {
-        if let Value::Object(obj) = value {
-            let id = if let Some(Value::String(s)) = obj.get("id") {
-                s.clone()
-            } else {
-                return Err(Error::ConversionError("Missing id in event".to_string()));
-            };
-
-            let description = if let Some(Value::String(s)) = obj.get("description") {
-                s.clone()
-            } else {
-                return Err(Error::ConversionError(
-                    "Missing description in event".to_string(),
-                ));
-            };
-
-            let timestamp = if let Some(Value::String(s)) = obj.get("timestamp") {
-                DateTime::parse_from_rfc3339(s)
-                    .map_err(|_| Error::ConversionError("Invalid timestamp format".to_string()))?
-                    .with_timezone(&Utc)
-            } else {
-                return Err(Error::ConversionError(
-                    "Missing timestamp in event".to_string(),
-                ));
-            };
-
-            let importance = if let Some(Value::Number(n)) = obj.get("importance") {
-                n.as_u64()
-                    .ok_or_else(|| Error::ConversionError("Invalid importance value".to_string()))?
-                    as u8
-            } else {
-                return Err(Error::ConversionError(
-                    "Missing importance in event".to_string(),
-                ));
-            };
-
-            let mut contexts = Vec::new();
-            if let Some(Value::Array(arr)) = obj.get("contexts") {
-                for value in arr.iter() {
-                    contexts.push(EpisodicContext::from_value(value)?);
-                }
-            }
-
-            let mut metadata = HashMap::new();
-            if let Some(Value::Object(meta_obj)) = obj.get("metadata") {
-                for (key, val) in meta_obj.iter() {
-                    metadata.insert(key.to_string(), val.clone());
-                }
-            }
-
-            Ok(Self {
-                id,
-                description,
-                timestamp,
-                importance,
-                contexts,
-                metadata,
-            })
-        } else {
-            Err(Error::ConversionError("Invalid event value".to_string()))
-        }
-    }
 }
 
-/// Episodic memory
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Represents an episodic memory, which is a collection of events
+#[derive(Debug, Clone)]
 pub struct EpisodicMemory {
-    /// Base memory fields
+    /// Base memory properties
     pub base: BaseMemory,
 
-    /// Events in the episodic memory
-    pub events: Vec<EpisodicEvent>,
+    /// Collection of events, indexed by timestamp for fast temporal queries
+    pub events: Arc<ArcSwap<SkipMap<DateTime<Utc>, EpisodicEvent>>>,
+}
+
+impl MemoryType for EpisodicMemory {
+    fn new(id: &str, name: &str, description: &str) -> Self {
+        let mut metadata = MemoryMetadata::with_type(MemoryTypeEnum::Episodic);
+        metadata.add_attribute("version".to_string(), json!("1.0"));
+
+        Self {
+            base: BaseMemory {
+                id: id.to_string(),
+                name: name.to_string(),
+                description: description.to_string(),
+                updated_at: Utc::now(),
+                metadata,
+                content: MemoryContent::None,
+            },
+            events: Arc::new(ArcSwap::new(Arc::new(SkipMap::new()))),
+        }
+    }
+
+    fn from_memory(memory: &BaseMemory) -> Result<Self> {
+        let events: SkipMap<DateTime<Utc>, EpisodicEvent> = match &memory.content {
+            MemoryContent::Json(val) => serde_json::from_value(val.clone())?,
+            MemoryContent::Text(s) => serde_json::from_str(s)?,
+            _ => return Err(Error::MemoryError("Invalid content type for episodic memory".to_string())),
+        };
+
+        Ok(Self {
+            base: memory.clone(),
+            events: Arc::new(ArcSwap::new(Arc::new(events))),
+        })
+    }
+
+    fn to_memory(&self) -> Result<BaseMemory> {
+        let mut memory = self.base.clone();
+        let events_guard = self.events.load();
+        let events_map: HashMap<_, _> = events_guard.iter().map(|entry| (entry.key().clone(), entry.value().clone())).collect();
+        memory.content = MemoryContent::Json(serde_json::to_value(events_map)?);
+        Ok(memory)
+    }
+
+    fn id(&self) -> &str {
+        &self.base.id
+    }
+
+    fn name(&self) -> &str {
+        &self.base.name
+    }
+
+    fn description(&self) -> &str {
+        &self.base.description
+    }
+
+    fn memory_type(&self) -> MemoryTypeEnum {
+        MemoryTypeEnum::Episodic
+    }
 }
 
 impl EpisodicMemory {
-    /// Create a new episodic memory
-    pub fn new(id: &str, name: &str, description: &str) -> Self {
-        Self {
-            base: BaseMemory::new(
-                id,
-                name,
-                description,
-                MemoryTypeEnum::Episodic,
-                MemoryContent::json(Value::Array(vec![])),
-            ),
-            events: Vec::new(),
-        }
-    }
-
     /// Add an event to the episodic memory
-    pub fn add_event(&mut self, event: EpisodicEvent) {
-        self.events.push(event);
-        self.base.updated_at = chrono::Utc::now();
+    pub fn add_event(&self, event: EpisodicEvent) {
+        let new_events = self.events.load().clone();
+        new_events.insert(event.timestamp, event);
+        self.events.store(new_events);
+        self.base.touch();
     }
 
-    /// Get events in a time range
+    /// Retrieve events within a specific time range
     pub fn get_events_in_range(
         &self,
-        start: DateTime<Utc>,
-        end: DateTime<Utc>,
-    ) -> Vec<&EpisodicEvent> {
+        start_time: DateTime<Utc>,
+        end_time: DateTime<Utc>,
+    ) -> Vec<EpisodicEvent> {
         self.events
-            .iter()
-            .filter(|e| e.timestamp >= start && e.timestamp <= end)
+            .load()
+            .range(start_time..=end_time)
+            .map(|entry| entry.value().clone())
             .collect()
     }
 
-    /// Get events by importance threshold
-    pub fn get_events_by_importance(&self, min_importance: u8) -> Vec<&EpisodicEvent> {
+    /// Find the last N events before a given time
+    pub fn get_last_n_events(&self, n: usize, before_time: DateTime<Utc>) -> Vec<EpisodicEvent> {
         self.events
-            .iter()
-            .filter(|e| e.importance >= min_importance)
+            .load()
+            .range(..=before_time)
+            .rev()
+            .take(n)
+            .map(|entry| entry.value().clone())
             .collect()
     }
 
-    /// Get events by context type and value
-    pub fn get_events_by_context(&self, context_type: &str, value: &str) -> Vec<&EpisodicEvent> {
-        self.events
-            .iter()
-            .filter(|e| {
-                e.contexts
-                    .iter()
-                    .any(|c| c.context_type == context_type && c.value == value)
-            })
-            .collect()
-    }
-
-    /// Convert to a MemoryType object
-    pub fn to_memory(&self) -> Box<dyn MemoryType> {
-        Box::new(self.base.clone())
-    }
-
-    /// Convert from a MemoryType object
-    pub fn from_memory(memory: &dyn MemoryType) -> Result<Self> {
-        let base = BaseMemory {
-            id: memory.id().to_string(),
-            name: "Episodic Memory".to_string(),
-            description: "Converted from memory object".to_string(),
-            updated_at: chrono::Utc::now(),
-            metadata: memory.metadata().clone(),
-            content: memory.content().clone(),
-        };
-
-        // Parse events from JSON stored in text field
-        let events = if let Ok(json_value) = serde_json::from_str::<Value>(&memory.content().text) {
-            if let Value::Array(arr) = json_value {
-                let mut events = Vec::new();
-                for value in arr.iter() {
-                    if let Ok(event) = serde_json::from_value(value.clone()) {
-                        events.push(event);
-                    }
-                }
-                events
-            } else {
-                Vec::new()
-            }
-        } else {
-            Vec::new()
-        };
-
-        Ok(Self { base, events })
-    }
-
-    /// Generate a timeline summary of the episodic memory
-    pub fn generate_timeline(&self) -> String {
-        let mut events = self.events.clone();
-        events.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
-
-        let mut timeline = String::new();
-        timeline.push_str(&format!("Timeline for {}\n", self.base.name));
-        timeline.push_str(&format!("Description: {}\n\n", self.base.description));
-
-        for event in events {
-            timeline.push_str(&format!(
-                "[{}] {}\n",
-                event.timestamp.format("%Y-%m-%d %H:%M:%S"),
-                event.description
-            ));
-
-            if !event.contexts.is_empty() {
-                timeline.push_str("  Contexts:\n");
-                for context in event.contexts {
-                    timeline.push_str(&format!(
-                        "    - {} ({}): {}\n",
-                        context.context_type, context.id, context.value
-                    ));
-                }
-            }
-
-            timeline.push('\n');
-        }
-
-        timeline
-    }
-
-    /// Find related events by context similarity
-    pub fn find_related_events(&self, event_id: &str) -> Result<Vec<&EpisodicEvent>> {
-        let event = self
-            .events
-            .iter()
-            .find(|e| e.id == event_id)
-            .ok_or_else(|| Error::NotFound(format!("Event with ID {event_id} not found")))?;
-
-        let mut related = Vec::new();
-        for other in &self.events {
-            if other.id == event_id {
-                continue;
-            }
-
-            // Check for shared contexts
-            for context in &event.contexts {
-                if other
-                    .contexts
-                    .iter()
-                    .any(|c| c.context_type == context.context_type && c.value == context.value)
-                {
-                    related.push(other);
-                    break;
-                }
-            }
-        }
-
-        Ok(related)
-    }
-
-    /// Summarize the episodic memory
-    pub fn summarize(&self) -> String {
-        let mut summary = String::new();
-        summary.push_str(&format!("Episodic Memory: {}\n", self.base.name));
-        summary.push_str(&format!("Description: {}\n", self.base.description));
-        summary.push_str(&format!("Events: {}\n", self.events.len()));
-
-        if !self.events.is_empty() {
-            let mut events = self.events.clone();
-            events.sort_by(|a, b| b.importance.cmp(&a.importance));
-
-            summary.push_str("\nKey Events:\n");
-            for event in events.iter().take(5) {
-                summary.push_str(&format!(
-                    "- [{}] {} (Importance: {})\n",
-                    event.timestamp.format("%Y-%m-%d"),
-                    event.description,
-                    event.importance
-                ));
-            }
-
-            // Find most common contexts
-            let mut context_counts: HashMap<(String, String), usize> = HashMap::new();
-            for event in &self.events {
-                for context in &event.contexts {
-                    let key = (context.context_type.clone(), context.value.clone());
-                    *context_counts.entry(key).or_insert(0) += 1;
-                }
-            }
-
-            let mut context_vec: Vec<_> = context_counts.into_iter().collect();
-            context_vec.sort_by(|a, b| b.1.cmp(&a.1));
-
-            if !context_vec.is_empty() {
-                summary.push_str("\nCommon Contexts:\n");
-                for ((context_type, value), count) in context_vec.iter().take(5) {
-                    summary.push_str(&format!(
-                        "- {context_type} ({value}): {count} occurrences\n"
-                    ));
-                }
-            }
-        }
-
-        summary
-    }
-}
-
-/// Episodic memory manager with lock-free operations
-pub struct EpisodicMemoryManager {
-    /// Lock-free memory repository with atomic pointer swapping
-    memory_repo: ArcSwap<MemoryRepository>,
-}
-
-impl EpisodicMemoryManager {
-    /// Create a new episodic memory manager with lock-free repository
-    pub fn new(memory_repo: Arc<MemoryRepository>) -> Self {
-        Self { 
-            memory_repo: ArcSwap::new(memory_repo)
-        }
-    }
-
-    /// Get episodic memory by ID
-    pub fn get(
-        &self,
-        id: &str,
-    ) -> AsyncStream<Result<Option<EpisodicMemory>>> {
-        let id_string = id.to_string();
-        let memory_repo = self.memory_repo.load();
-
-        let (tx, stream) = AsyncStream::channel();
-        tokio::spawn(async move {
-            let result = {
-                let memory_option = memory_repo.get(&id_string);
-
-                match memory_option {
-                    Some(memory) => {
-                        // Convert MemoryNode to BaseMemory for from_memory
-                        let mut metadata = MemoryMetadata::with_type(MemoryTypeEnum::Episodic);
-                        metadata.created_at = memory.created_at;
-
-                        let base_memory = BaseMemory {
-                            id: memory.id.clone(),
-                            name: "Episodic Memory".to_string(),
-                            description: "Retrieved from storage".to_string(),
-                            updated_at: memory.updated_at,
-                            metadata,
-                            content: MemoryContent::text(&memory.content),
-                        };
-                        let episodic = EpisodicMemory::from_memory(&base_memory)?;
-                        Ok(Some(episodic))
-                    }
-                    None => Ok(None),
-                }
-            };
-            let _ = tx.send(result);
-        });
-        stream
-    }
-
-    /// Create a new episodic memory
+    /// Create a new episodic memory and store it in the repository
     pub fn create(
-        &self,
+        memory_repo: Arc<MemoryRepository>,
         id: &str,
         name: &str,
         description: &str,
     ) -> AsyncStream<Result<EpisodicMemory>> {
+        let (tx, stream) = async_stream_channel();
         let id_string = id.to_string();
         let name_string = name.to_string();
         let description_string = description.to_string();
-        let memory_repo = self.memory_repo.load();
 
-        let (tx, stream) = AsyncStream::channel();
         tokio::spawn(async move {
             let result = {
                 let episodic = EpisodicMemory::new(&id_string, &name_string, &description_string);
@@ -544,9 +237,11 @@ impl EpisodicMemoryManager {
 
                 let content = match serde_json::to_string(&episodic.base.content) {
                     Ok(content_str) => content_str,
-                    Err(_) => return Err(crate::utils::error::Error::SerializationError(
-                        "Failed to serialize episodic memory content".to_string()
-                    )),
+                    Err(_) => {
+                        return Err(crate::utils::error::Error::SerializationError(
+                            "Failed to serialize episodic memory content".to_string(),
+                        ))
+                    }
                 };
 
                 let memory_node = MemoryNode {

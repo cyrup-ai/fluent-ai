@@ -79,6 +79,37 @@ This document outlines the detailed plan to refactor the entire `fluent-ai` code
 
 ## Milestone 6: Refactor Examples and Tests
 
+
+## Milestone 7: Add Kimi-K2-Instruct Support to fluent-ai-candle
+
+- [ ] **Task 7.1**: Create `packages/fluent-ai-candle/src/kimi_k2/mod.rs` with `KimiK2Config`, quantisation enums, and re-exports.
+    - **Implementation Notes**: Pure data structs (no logic), zero-allocation field defaults with `ArrayVec` where useful.
+    - **Warning**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+- [ ] **QA Task 7.1**: Act as an Objective QA Rust developer. Verify structs compile, derive traits, no unwrap/expect, exhaustive docs.
+
+- [ ] **Task 7.2**: Implement `packages/fluent-ai-candle/src/kimi_k2/loader.rs` streaming loader for sharded weights (FP16 & FP8) with memory-mapped tensors and SHA-256 validation via `HubClient`.
+    - **Implementation Notes**: Use `safetensors::SafeTensors::deserialize_buffer` over mmap; zero-copy routing tables; fully lock-free; return `AsyncStream<CandleModel>`.
+    - **Warning**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA.
+- [ ] **QA Task 7.2**: Act as an Objective QA Rust developer. Confirm loader streams, no blocking, validates checksums, no unwrap/expect.
+
+- [ ] **Task 7.3**: Add `packages/fluent-ai-candle/src/tokenizer/kimi.rs` implementing custom tokenizer and chat template from `tokenizer_config.json`.
+    - **Implementation Notes**: Build on existing tokenizer.rs utilities; provide `encode_chat` & `decode` with zero-allocation buffers.
+    - **Warning**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA.
+- [ ] **QA Task 7.3**: Act as an Objective QA Rust developer. Cross-check tokenisation parity with upstream Python reference, no unwrap/expect.
+
+- [ ] **Task 7.4**: Extend candle model registry (`packages/fluent-ai-candle/src/model/loading/registry.rs` or create if absent) to register `kimi-k2-fp16` and `kimi-k2-fp8` variants mapping to loader.
+    - **Implementation Notes**: Maintain lock-free atomic registration map; expose `ModelRegistry::load("kimi-k2-fp8")`.
+    - **Warning**: DO NOT MOCK…
+- [ ] **QA Task 7.4**: Act as an Objective QA Rust developer. Ensure registry returns correct loader as `AsyncStream<CandleModel>` and no unwrap/expect.
+
+- [ ] **Task 7.5**: Update documentation `docs/models.md` with Kimi-K2 usage, VRAM requirements, FP8 benefits.
+    - **Warning**: DO NOT MOCK…
+- [ ] **QA Task 7.5**: Act as an Objective QA Rust developer. Validate doc builds with `cargo check --doc`, links valid.
+
+- [ ] **Task 7.6**: Run `cargo fmt && cargo check --message-format short --quiet` via Desktop Commander ensuring zero warnings across crate.
+    - **Warning**: DO NOT MOCK…
+- [ ] **QA Task 7.6**: Act as an Objective QA Rust developer. Confirm build cleanliness, zero warnings, no unwrap/expect in src.
+
 - [ ] **Task 6.1**: Update all examples in the `examples/` directory.
     - **Implementation Notes**: Change all `main` functions and other async blocks to use the new streaming API, consuming the streams with `on_chunk` or by iterating over them.
     - **Warning**: DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.

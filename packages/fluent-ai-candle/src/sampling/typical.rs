@@ -286,49 +286,26 @@ impl TypicalSamplingProcessor {
     }
 }
 
-impl LogitsProcessor for TypicalSamplingProcessor {
-    fn process(
-        &self,
-        logits: &mut Tensor,
-        _token_ids: &[u32],
-        _position: usize,
-    ) -> Result<(), crate::sampling::SamplingError> {
-        // Validate input
-        if logits.shape().elem_count() == 0 {
-            return Err(crate::sampling::SamplingError::EmptyVocabulary);
-        }
-
-        // Skip processing if typical_p is at maximum (no filtering)
-        if (self.typical_p - Self::MAX_TYPICAL_P).abs() < 1e-10 {
-            return Ok(());
-        }
-
-        // Apply typical sampling
-        let filtered = self.apply_typical_sampling(logits)?;
-        *logits = filtered;
-        
-        Ok(())
-    }
-
-    fn validate(&self) -> Result<(), crate::sampling::SamplingError> {
-        if !self.typical_p.is_finite() || 
-           self.typical_p < Self::MIN_TYPICAL_P || 
-           self.typical_p > Self::MAX_TYPICAL_P {
-            return Err(crate::sampling::SamplingError::InvalidTopP(self.typical_p));
-        }
-        Ok(())
-    }
-
-    #[inline(always)]
-    fn name(&self) -> &'static str {
-        "TypicalSamplingProcessor"
-    }
-
-    #[inline(always)]
-    fn is_identity(&self) -> bool {
-        (self.typical_p - Self::MAX_TYPICAL_P).abs() < 1e-10
-    }
-}
+// TODO: Update to new LogitsProcessor API that uses process_logits() instead of process()
+// impl LogitsProcessor for TypicalSamplingProcessor {
+//     fn process_logits(&mut self, logits: &mut [f32], context: &ProcessingContext) -> ProcessingResult<()> {
+//         // Implementation needed for new API
+//     }
+//
+//     fn validate(&self) -> ProcessingResult<()> {
+//         // Implementation needed for new API
+//     }
+//
+//     #[inline(always)]
+//     fn name(&self) -> &'static str {
+//         "TypicalSamplingProcessor"
+//     }
+//
+//     #[inline(always)]
+//     fn is_identity(&self) -> bool {
+//         (self.typical_p - Self::MAX_TYPICAL_P).abs() < 1e-10
+//     }
+// }
 
 /// Statistics for typical sampling analysis
 #[derive(Debug, Clone)]

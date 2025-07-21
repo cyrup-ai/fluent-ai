@@ -4,22 +4,20 @@
 //! using the Anthropic Files API with fluent_ai_http3 for optimal performance.
 
 use std::path::Path;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use bytes::Bytes;
+use fluent_ai_core::channel::async_stream_channel;
+use fluent_ai_core::stream::AsyncStream;
+use fluent_ai_domain::tool::Tool;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use tokio::fs;
-use fluent_ai_domain::tool::Tool;
 
 use super::{
     core::{AnthropicError, AnthropicResult},
     function_calling::{ToolExecutionContext, ToolExecutor, ToolOutput},
 };
-
-/// AsyncStream type for streaming operations
-pub type AsyncStream<T> = UnboundedReceiverStream<T>;
 
 /// Built-in file operations tool for Anthropic Files API
 pub struct FileOperationsTool;
@@ -70,76 +68,17 @@ const MAX_FILE_SIZE: u64 = 500 * 1024 * 1024;
 
 impl FileOperationsTool {
     /// Get API key from context metadata with production-ready validation
-    fn get_api_key(context: &ToolExecutionContext) -> Result<String, AnthropicError> {
+    fn get_api_key(context: &ToolExecutionContext) -> AnthropicResult<&str> {
         context
             .metadata
             .get("api_key")
             .and_then(|v| v.as_str())
-            .filter(|s| !s.is_empty())
-            .map(|s| s.to_string())
-            .ok_or_else(|| {
-                AnthropicError::InvalidRequest(
-                    "API key not found or empty in tool execution context".to_string(),
-                )
-            })
+            .ok_or_else(|| AnthropicError::ApiKeyMissing)
     }
 
-    /// Upload file via domain layer (domain uses HTTP3, provider uses domain)
-    async fn upload_file(file_path: &str, api_key: &str) -> AnthropicResult<FileUploadResponse> {
-        // Provider layer delegates to domain layer
-        // Domain layer handles HTTP3 internally
-        todo!("Delegate to domain layer for HTTP3 operations")
-    }
-
-    /// List files via domain layer (domain uses HTTP3, provider uses domain)
-    async fn list_files(api_key: &str) -> AnthropicResult<FileListResponse> {
-        // Provider layer delegates to domain layer
-        todo!("Delegate to domain layer for HTTP3 operations")
-    }
-
-    /// Retrieve file metadata via domain layer (domain uses HTTP3, provider uses domain)
-    async fn retrieve_file(file_id: &str, api_key: &str) -> AnthropicResult<FileMetadata> {
-        // Provider layer delegates to domain layer
-        todo!("Delegate to domain layer for HTTP3 operations")
-    }
-
-    /// Delete file via domain layer (domain uses HTTP3, provider uses domain)
-    async fn delete_file(file_id: &str, api_key: &str) -> AnthropicResult<()> {
-        // Provider layer delegates to domain layer
-        todo!("Delegate to domain layer for HTTP3 operations")
-    }
-
-    /// Download file content via domain layer (domain uses HTTP3, provider uses domain)
-    async fn download_file(file_id: &str, api_key: &str) -> AnthropicResult<Bytes> {
-        // Provider layer delegates to domain layer
-        todo!("Delegate to domain layer for HTTP3 operations")
-    }
-
-    /// Detect MIME type from file path with production-ready fallbacks
-    fn detect_mime_type(path: &Path) -> AnthropicResult<String> {
-        // Get file extension
-        let extension = path
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .map(|ext| ext.to_lowercase());
-
-        let mime_type = match extension.as_deref() {
-            Some("pdf") => "application/pdf",
-            Some("txt") => "text/plain",
-            Some("jpg") | Some("jpeg") => "image/jpeg",
-            Some("png") => "image/png",
-            Some("gif") => "image/gif",
-            Some("webp") => "image/webp",
-            _ => {
-                // Try to detect from file contents for unsupported extensions
-                return Err(AnthropicError::InvalidRequest(format!(
-                    "Unsupported file extension: {:?}",
-                    extension
-                )));
-            }
-        };
-
-        Ok(mime_type.to_string())
+    /// Create a new HTTP client with AI-optimized settings
+    fn create_http_client() -> HttpClient {
+        HttpClient::new(HttpConfig::ai_optimized()).unwrap()
     }
 }
 
@@ -149,45 +88,58 @@ impl ToolExecutor for FileOperationsTool {
         input: Value,
         context: &ToolExecutionContext,
     ) -> AsyncStream<AnthropicResult<ToolOutput>> {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let input = input.clone();
-        let context = context.clone();
+        let (tx, stream) = async_stream_channel();
+        let api_key = match Self::get_api_key(context) {
+            Ok(key) => key.to_string(),
+            Err(e) => {
+                let _ = tx.send(Err(e));
+                return stream;
+            }
+        };
 
         tokio::spawn(async move {
-            let result = async move {
-                let operation = input
-                    .get("operation")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| {
-                        AnthropicError::InvalidRequest(
-                            "File operation requires 'operation' parameter".to_string(),
-                        )
-                    })?;
-
-                // Get API key from context
-                let api_key = Self::get_api_key(&context)?;
+            let result = async {
+                let operation = input["operation"].as_str().unwrap_or_default();
+                let client = Self::create_http_client();
 
                 match operation {
                     "upload" => {
-                        let file_path =
-                            input
-                                .get("file_path")
-                                .and_then(|v| v.as_str())
-                                .ok_or_else(|| {
-                                    AnthropicError::InvalidRequest(
-                                        "Upload operation requires 'file_path' parameter".to_string(),
-                                    )
-                                })?;
+                        let file_path = input["file_path"].as_str().unwrap_or_default();
+                        let path = Path::new(file_path);
+                        if !path.exists() {
+                            return Ok(ToolOutput::Error {
+                                message: "File not found".to_string(),
+                                code: Some("FILE_NOT_FOUND".to_string()),
+                            });
+                        }
 
-                        match Self::upload_file(file_path, &api_key).await {
-                            Ok(upload_response) => Ok(ToolOutput::Json(json!({
-                                "operation": "upload",
-                                "file_id": upload_response.id,
-                                "filename": upload_response.filename,
-                                "size": upload_response.size,
-                                "type": upload_response.file_type,
-                                "created_at": upload_response.created_at
-                            }))),
+                        let metadata = fs::metadata(path).await.unwrap();
+                        if metadata.len() > MAX_FILE_SIZE {
+                            return Ok(ToolOutput::Error {
+                                message: "File size exceeds 500MB limit".to_string(),
+                                code: Some("FILE_TOO_LARGE".to_string()),
+                            });
+                        }
+
+                        let mime_type = mime_guess::from_path(path).first_or_octet_stream();
+                        if !SUPPORTED_FILE_TYPES.contains(&mime_type.as_ref()) {
+                            return Ok(ToolOutput::Error {
+                                message: "Unsupported file type".to_string(),
+                                code: Some("UNSUPPORTED_FILE_TYPE".to_string()),
+                            });
+                        }
+
+                        let file_contents = fs::read(path).await.unwrap();
+                        let request = HttpRequest::post("https://api.anthropic.com/v1/files")
+                            .header("x-api-key", &api_key)
+                            .header("Content-Type", mime_type.as_ref())
+                            .body(file_contents);
+
+                        match client.send(request).await {
+                            Ok(response) => {
+                                let upload_response: FileUploadResponse = response.json().await.unwrap();
+                                Ok(ToolOutput::Json(json!(upload_response)))
+                            }
                             Err(e) => Ok(ToolOutput::Error {
                                 message: e.to_string(),
                                 code: Some("UPLOAD_ERROR".to_string()),
@@ -195,46 +147,30 @@ impl ToolExecutor for FileOperationsTool {
                         }
                     }
 
-                    "list" => match Self::list_files(&api_key).await {
-                        Ok(list_response) => Ok(ToolOutput::Json(json!({
-                            "operation": "list",
-                            "files": list_response.data.into_iter().map(|file| json!({
-                                "id": file.id,
-                                "filename": file.filename,
-                                "size": file.size,
-                                "type": file.file_type,
-                                "created_at": file.created_at
-                            })).collect::<Vec<_>>(),
-                            "has_more": list_response.has_more,
-                            "first_id": list_response.first_id,
-                            "last_id": list_response.last_id
-                        }))),
-                        Err(e) => Ok(ToolOutput::Error {
-                            message: e.to_string(),
-                            code: Some("LIST_ERROR".to_string()),
-                        }),
-                    },
+                    "list" => {
+                        let request = HttpRequest::get("https://api.anthropic.com/v1/files")
+                            .header("x-api-key", &api_key);
+                        match client.send(request).await {
+                            Ok(response) => {
+                                let list_response: FileListResponse = response.json().await.unwrap();
+                                Ok(ToolOutput::Json(json!(list_response)))
+                            }
+                            Err(e) => Ok(ToolOutput::Error {
+                                message: e.to_string(),
+                                code: Some("LIST_ERROR".to_string()),
+                            }),
+                        }
+                    }
 
                     "retrieve" => {
-                        let file_id =
-                            input
-                                .get("file_id")
-                                .and_then(|v| v.as_str())
-                                .ok_or_else(|| {
-                                    AnthropicError::InvalidRequest(
-                                        "Retrieve operation requires 'file_id' parameter".to_string(),
-                                    )
-                                })?;
-
-                        match Self::retrieve_file(file_id, &api_key).await {
-                            Ok(file_metadata) => Ok(ToolOutput::Json(json!({
-                                "operation": "retrieve",
-                                "id": file_metadata.id,
-                                "filename": file_metadata.filename,
-                                "size": file_metadata.size,
-                                "type": file_metadata.file_type,
-                                "created_at": file_metadata.created_at
-                            }))),
+                        let file_id = input["file_id"].as_str().unwrap_or_default();
+                        let url = format!("https://api.anthropic.com/v1/files/{}", file_id);
+                        let request = HttpRequest::get(&url).header("x-api-key", &api_key);
+                        match client.send(request).await {
+                            Ok(response) => {
+                                let metadata: FileMetadata = response.json().await.unwrap();
+                                Ok(ToolOutput::Json(json!(metadata)))
+                            }
                             Err(e) => Ok(ToolOutput::Error {
                                 message: e.to_string(),
                                 code: Some("RETRIEVE_ERROR".to_string()),
@@ -243,22 +179,11 @@ impl ToolExecutor for FileOperationsTool {
                     }
 
                     "delete" => {
-                        let file_id =
-                            input
-                                .get("file_id")
-                                .and_then(|v| v.as_str())
-                                .ok_or_else(|| {
-                                    AnthropicError::InvalidRequest(
-                                        "Delete operation requires 'file_id' parameter".to_string(),
-                                    )
-                                })?;
-
-                        match Self::delete_file(file_id, &api_key).await {
-                            Ok(()) => Ok(ToolOutput::Json(json!({
-                                "operation": "delete",
-                                "file_id": file_id,
-                                "success": true
-                            }))),
+                        let file_id = input["file_id"].as_str().unwrap_or_default();
+                        let url = format!("https://api.anthropic.com/v1/files/{}", file_id);
+                        let request = HttpRequest::delete(&url).header("x-api-key", &api_key);
+                        match client.send(request).await {
+                            Ok(_) => Ok(ToolOutput::Text("File deleted successfully".to_string())),
                             Err(e) => Ok(ToolOutput::Error {
                                 message: e.to_string(),
                                 code: Some("DELETE_ERROR".to_string()),
@@ -267,27 +192,13 @@ impl ToolExecutor for FileOperationsTool {
                     }
 
                     "download" => {
-                        let file_id =
-                            input
-                                .get("file_id")
-                                .and_then(|v| v.as_str())
-                                .ok_or_else(|| {
-                                    AnthropicError::InvalidRequest(
-                                        "Download operation requires 'file_id' parameter".to_string(),
-                                    )
-                                })?;
-
-                        match Self::download_file(file_id, &api_key).await {
-                            Ok(file_content) => {
-                                // Use base64 encoding for binary-safe content transfer
-                                let content_base64 =
-                                    base64::engine::general_purpose::STANDARD.encode(&file_content);
-                                Ok(ToolOutput::Json(json!({
-                                    "operation": "download",
-                                    "file_id": file_id,
-                                    "content": content_base64,
-                                    "size": file_content.len()
-                                })))
+                        let file_id = input["file_id"].as_str().unwrap_or_default();
+                        let url = format!("https://api.anthropic.com/v1/files/{}/content", file_id);
+                        let request = HttpRequest::get(&url).header("x-api-key", &api_key);
+                        match client.send(request).await {
+                            Ok(response) => {
+                                let bytes: Bytes = response.bytes().await.unwrap();
+                                Ok(ToolOutput::Json(json!(bytes.to_vec())))
                             }
                             Err(e) => Ok(ToolOutput::Error {
                                 message: e.to_string(),
@@ -304,11 +215,12 @@ impl ToolExecutor for FileOperationsTool {
                         code: Some("INVALID_OPERATION".to_string()),
                     }),
                 }
-            }.await;
+            }
+            .await;
             let _ = tx.send(result);
         });
-        
-        UnboundedReceiverStream::new(rx)
+
+        stream
     }
 
     fn definition(&self) -> Tool {

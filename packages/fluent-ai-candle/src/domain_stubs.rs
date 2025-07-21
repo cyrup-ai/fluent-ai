@@ -2,7 +2,9 @@
 //! These are minimal implementations to allow compilation testing.
 
 use std::borrow::Cow;
-use serde::{Serialize, Deserialize};
+
+use fluent_ai_core::stream::AsyncStream;
+use serde::{Deserialize, Serialize};
 
 /// Temporary stub for completion request
 #[derive(Debug, Clone)]
@@ -38,15 +40,31 @@ pub struct CompletionCoreResponse {
 }
 
 impl<'a> CompletionResponse<'a> {
-    pub fn text(&self) -> &str { &self.text }
-    pub fn model(&self) -> &str { &self.model }
-    pub fn provider(&self) -> Option<&str> { self.provider.as_deref() }
-    pub fn usage(&self) -> Option<&Usage> { self.usage.as_ref() }
-    pub fn finish_reason(&self) -> Option<&str> { self.finish_reason.as_deref() }
-    pub fn response_time_ms(&self) -> u64 { self.response_time_ms }
-    pub fn generation_time_ms(&self) -> u64 { self.generation_time_ms }
-    pub fn tokens_per_second(&self) -> f32 { self.tokens_per_second }
-    pub fn tokens_generated(&self) -> Option<usize> { 
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+    pub fn model(&self) -> &str {
+        &self.model
+    }
+    pub fn provider(&self) -> Option<&str> {
+        self.provider.as_deref()
+    }
+    pub fn usage(&self) -> Option<&Usage> {
+        self.usage.as_ref()
+    }
+    pub fn finish_reason(&self) -> Option<&str> {
+        self.finish_reason.as_deref()
+    }
+    pub fn response_time_ms(&self) -> u64 {
+        self.response_time_ms
+    }
+    pub fn generation_time_ms(&self) -> u64 {
+        self.generation_time_ms
+    }
+    pub fn tokens_per_second(&self) -> f32 {
+        self.tokens_per_second
+    }
+    pub fn tokens_generated(&self) -> Option<usize> {
         self.usage.as_ref().map(|u| u.completion_tokens)
     }
 }
@@ -58,13 +76,23 @@ pub struct StreamingResponse {
 }
 
 /// Temporary stub for message role
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MessageRole {
-    System,
     User,
     Assistant,
-    Function,
+    System,
     Tool,
+}
+
+impl MessageRole {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            MessageRole::User => "user",
+            MessageRole::Assistant => "assistant",
+            MessageRole::System => "system",
+            MessageRole::Tool => "tool",
+        }
+    }
 }
 
 /// Temporary stub for message
@@ -137,9 +165,12 @@ pub enum ExtractionError {
 
 /// Temporary stub for completion client trait
 pub trait CompletionCoreClient: Send + Sync {
-    fn complete<'a>(&'a self, request: CompletionRequest<'a>) -> AsyncStream<CompletionCoreResult<CompletionResponse<'a>>>;
-    fn complete_stream<'a>(&'a self, request: CompletionRequest<'a>) -> AsyncStream<CompletionCoreResult<StreamingResponse>>;
+    fn complete<'a>(
+        &'a self,
+        request: CompletionRequest<'a>,
+    ) -> AsyncStream<CompletionCoreResult<CompletionResponse<'a>>>;
+    fn complete_stream<'a>(
+        &'a self,
+        request: CompletionRequest<'a>,
+    ) -> AsyncStream<CompletionCoreResult<StreamingResponse>>;
 }
-
-/// Temporary type alias for async stream
-pub type AsyncStream<T> = tokio_stream::wrappers::UnboundedReceiverStream<T>;

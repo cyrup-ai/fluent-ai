@@ -6,6 +6,17 @@
 use std::{any::TypeId, collections::HashMap, marker::PhantomData};
 use fluent_ai_core::stream::AsyncStream;
 use fluent_ai_core::channel::async_stream_channel;
+
+use arrayvec::ArrayVec;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use super::core::{
+    AnthropicError, AnthropicResult, ChainControl, Emitter, ErrorHandler, InvocationHandler,
+    Message, ResultHandler, SchemaType,
+};
+use fluent_ai_domain::tool::{Tool};
+
 #[cfg(feature = "cylo")]
 use crate::execution::{CyloExecutor, CyloInstance, ExecutionRequest};
 
@@ -71,254 +82,202 @@ pub trait NamedTool {
 
 /// Trait for tools in described state
 pub trait DescribedTool {
-    type WithDepsBuilder<D: Send + Sync + 'static>: ToolWithDeps<D>;
-    fn with<D: Send + Sync + 'static>(self, dependency: D) -> Self::WithDepsBuilder<D>;
+    type DependencyBuilder: WithDependency;
+    fn with<D: Send + Sync + 'static>(self, dependency: D) -> Self::DependencyBuilder;
 }
 
-/// Trait for tools with dependencies
-pub trait ToolWithDeps<D: Send + Sync + 'static> {
-    type WithRequestSchemaBuilder<Req: serde::de::DeserializeOwned + Send + 'static>: ToolWithRequestSchema<D, Req>;
-    fn request_schema<Req: serde::de::DeserializeOwned + Send + 'static>(
-        self,
-        schema_type: SchemaType,
-    ) -> Self::WithRequestSchemaBuilder<Req>;
+/// Trait for tools with dependency
+pub trait WithDependency {
+    type RequestSchemaBuilder: WithRequestSchema;
+    fn request_schema<Req: Send + Sync + 'static>(self, schema_type: SchemaType) -> Self::RequestSchemaBuilder;
 }
 
 /// Trait for tools with request schema
-pub trait ToolWithRequestSchema<
-    D: Send + Sync + 'static,
-    Req: serde::de::DeserializeOwned + Send + 'static,
->
-{
-    type WithSchemasBuilder<Res: serde::Serialize + Send + 'static>: ToolWithSchemas<D, Req, Res>;
-    fn result_schema<Res: serde::Serialize + Send + 'static>(
-        self,
-        schema_type: SchemaType,
-    ) -> Self::WithSchemasBuilder<Res>;
+pub trait WithRequestSchema {
+    type ResultSchemaBuilder: WithResultSchema;
+    fn result_schema<Res: Send + Sync + 'static>(self, schema_type: SchemaType) -> Self::ResultSchemaBuilder;
 }
 
-/// Trait for tools with complete schemas
-pub trait ToolWithSchemas<
-    D: Send + Sync + 'static,
-    Req: serde::de::DeserializeOwned + Send + 'static,
-    Res: serde::Serialize + Send + 'static,
->
-{
-    type WithInvocationBuilder: ToolWithInvocation<D, Req, Res>;
-    fn on_invocation<F>(self, handler: F) -> Self::WithInvocationBuilder
-    where
-        F: Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<AnthropicResult<()>> + Send + Sync + 'static;
+/// Trait for tools with result schema
+pub trait WithResultSchema {
+    type WithInvocationBuilder: WithInvocation;
+    fn on_invocation<F>(self, handler: F) -> Self::WithInvocationBuilder;
 }
 
 /// Trait for tools with invocation handler
-pub trait ToolWithInvocation<
-    D: Send + Sync + 'static,
-    Req: serde::de::DeserializeOwned + Send + 'static,
-    Res: serde::Serialize + Send + 'static,
->
-{
-    fn on_error<F>(self, handler: F) -> Self
-    where
-        F: Fn(&Conversation, &ChainControl, AnthropicError, &D) + Send + Sync + 'static;
-
-    fn on_result<F>(self, handler: F) -> Self
-    where
-        F: Fn(&Conversation, &ChainControl, Res, &D) -> Res + Send + Sync + 'static;
-
-    fn build(self) -> impl TypedToolTrait<D, Req, Res>;
+pub trait WithInvocation {
+    type WithErrorBuilder: WithError;
+    fn on_error<F>(self, handler: F) -> Self::WithErrorBuilder;
 }
 
-/// Trait for built typed tools
-pub trait TypedToolTrait<
-    D: Send + Sync + 'static,
-    Req: serde::de::DeserializeOwned + Send + 'static,
-    Res: serde::Serialize + Send + 'static,
->
-{
-    fn name(&self) -> &'static str;
-    fn description(&self) -> &'static str;
-    fn dependency(&self) -> &D;
-    fn execute(
-        &self,
-        conversation: &Conversation,
-        emitter: &Emitter,
-        request: Req,
-    ) -> AsyncStream<AnthropicResult<()>>;
+/// Trait for tools with error handler
+pub trait WithError {
+    type WithResultBuilder: WithResult;
+    fn on_result<F>(self, handler: F) -> Self::WithResultBuilder;
 }
 
-/// Entry point for typestate builder pattern
-pub struct ToolBuilder;
-
-impl ToolBuilder {
-    /// Create named tool builder
-    #[inline(always)]
-    pub fn named(name: &'static str) -> impl NamedTool {
-        NamedToolBuilder { name }
-    }
+/// Trait for tools with result handler
+pub trait WithResult {
+    type FinalBuilder: FinalTool;
+    fn build(self) -> Self::FinalBuilder;
 }
 
-/// Implementation types for the trait-backed builder pattern
-struct NamedToolBuilder {
-    name: &'static str,
+/// Trait for fully built tools
+pub trait FinalTool {
+    fn name(&self) -> &str;
+    fn description(&self) -> &str;
+    fn execute(&self, conversation: &Conversation, emitter: &Emitter, request: Value) -> AsyncStream<AnthropicResult<()>>;
 }
 
-struct DescribedToolBuilder {
-    name: &'static str,
-    description: &'static str,
-}
-
-struct ToolWithDepsBuilder<D> {
-    name: &'static str,
-    description: &'static str,
-    dependency: D,
-}
-
-struct ToolWithRequestSchemaBuilder<D, Req> {
-    name: &'static str,
-    description: &'static str,
-    dependency: D,
-    schema_type: SchemaType,
-    _phantom: PhantomData<Req>,
-}
-
-struct ToolWithSchemasBuilder<D, Req, Res> {
+/// Builder for creating tools with a fluent interface
+pub struct ToolBuilder<State, D, Req, Res> {
     name: &'static str,
     description: &'static str,
     dependency: D,
     request_schema_type: SchemaType,
     result_schema_type: SchemaType,
-    _phantom: PhantomData<(Req, Res)>,
+    handlers: Handlers<D, Req, Res>,
+    _state: PhantomData<State>,
 }
 
-struct ToolWithInvocationBuilder<D, Req, Res> {
-    name: &'static str,
-    description: &'static str,
-    dependency: D,
-    request_schema_type: SchemaType,
-    result_schema_type: SchemaType,
-    invocation_handler: InvocationHandler<D, Req, Res>,
-    error_handler: Option<ErrorHandler<D>>,
-    result_handler: Option<ResultHandler<D, Res>>,
-}
-
-struct TypedToolImpl<D, Req, Res> {
-    name: &'static str,
-    description: &'static str,
-    dependency: D,
-    handlers: ToolHandlers<D, Req, Res>,
-    #[cfg(feature = "cylo")]
-    cylo_instance: Option<CyloInstance>,
-}
-
-struct ToolHandlers<D, Req, Res> {
+/// Handlers for tool execution
+struct Handlers<D, Req, Res> {
     invocation: InvocationHandler<D, Req, Res>,
     error: Option<ErrorHandler<D>>,
     result: Option<ResultHandler<D, Res>>,
 }
 
-// Trait implementations for typestate builder pattern
-impl NamedTool for NamedToolBuilder {
-    type DescribedBuilder = DescribedToolBuilder;
+impl<D, Req, Res> Clone for Handlers<D, Req, Res>
+where
+    D: Clone,
+    Req: Clone,
+    Res: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            invocation: self.invocation.clone(),
+            error: self.error.clone(),
+            result: self.result.clone(),
+        }
+    }
+}
+
+impl<D, Req, Res> ToolBuilder<(), D, Req, Res> {
+    /// Create a new tool builder with a name
+    pub fn named(name: &'static str) -> ToolBuilder<Named, (), (), ()> {
+        ToolBuilder {
+            name,
+            description: "",
+            dependency: (),
+            request_schema_type: SchemaType::Serde,
+            result_schema_type: SchemaType::Serde,
+            handlers: Handlers {
+                invocation: Box::new(|_, _, _, _| panic!("Invocation handler not set")),
+                error: None,
+                result: None,
+            },
+            _state: PhantomData,
+        }
+    }
+}
+
+/// State marker for named tools
+pub struct Named;
+
+impl NamedTool for ToolBuilder<Named, (), (), ()> {
+    type DescribedBuilder = ToolBuilder<Described, (), (), ()>;
 
     #[inline(always)]
     fn description(self, desc: &'static str) -> Self::DescribedBuilder {
-        DescribedToolBuilder {
+        ToolBuilder {
             name: self.name,
             description: desc,
+            dependency: self.dependency,
+            request_schema_type: self.request_schema_type,
+            result_schema_type: self.result_schema_type,
+            handlers: self.handlers,
+            _state: PhantomData,
         }
     }
 }
 
-impl DescribedTool for DescribedToolBuilder {
-    type WithDepsBuilder<D: Send + Sync + 'static> = ToolWithDepsBuilder<D>;
+/// State marker for described tools
+pub struct Described;
+
+impl<D, Req, Res> DescribedTool for ToolBuilder<Described, D, Req, Res> {
+    type DependencyBuilder = ToolBuilder<WithDependency, D, Req, Res>;
 
     #[inline(always)]
-    fn with<D: Send + Sync + 'static>(self, dependency: D) -> Self::WithDepsBuilder<D> {
-        ToolWithDepsBuilder {
+    fn with<NewD: Send + Sync + 'static>(self, dependency: NewD) -> ToolBuilder<WithDependency, NewD, Req, Res> {
+        ToolBuilder {
             name: self.name,
             description: self.description,
             dependency,
+            request_schema_type: self.request_schema_type,
+            result_schema_type: self.result_schema_type,
+            handlers: Handlers {
+                invocation: Box::new(|_, _, _, _| panic!("Invocation handler not set")),
+                error: None,
+                result: None,
+            },
+            _state: PhantomData,
         }
     }
 }
 
-impl<D: Send + Sync + 'static> ToolWithDeps<D> for ToolWithDepsBuilder<D> {
-    type WithRequestSchemaBuilder<Req: serde::de::DeserializeOwned + Send + 'static> =
-        ToolWithRequestSchemaBuilder<D, Req>;
+/// State marker for tools with dependency
+pub struct WithDependency;
+
+impl<D, Req, Res> WithDependency for ToolBuilder<WithDependency, D, Req, Res> {
+    type RequestSchemaBuilder = ToolBuilder<WithRequestSchema, D, Req, Res>;
 
     #[inline(always)]
-    fn request_schema<Req: serde::de::DeserializeOwned + Send + 'static>(
-        self,
-        schema_type: SchemaType,
-    ) -> Self::WithRequestSchemaBuilder<Req> {
-        ToolWithRequestSchemaBuilder {
+    fn request_schema<NewReq: Send + Sync + 'static>(self, schema_type: SchemaType) -> ToolBuilder<WithRequestSchema, D, NewReq, Res> {
+        ToolBuilder {
             name: self.name,
             description: self.description,
             dependency: self.dependency,
-            schema_type,
-            _phantom: PhantomData,
+            request_schema_type: schema_type,
+            result_schema_type: self.result_schema_type,
+            handlers: Handlers {
+                invocation: Box::new(|_, _, _, _| panic!("Invocation handler not set")),
+                error: None,
+                result: None,
+            },
+            _state: PhantomData,
         }
     }
 }
 
-impl<D: Send + Sync + 'static, Req: serde::de::DeserializeOwned + Send + 'static>
-    ToolWithRequestSchema<D, Req> for ToolWithRequestSchemaBuilder<D, Req>
-{
-    type WithSchemasBuilder<Res: serde::Serialize + Send + 'static> =
-        ToolWithSchemasBuilder<D, Req, Res>;
+/// State marker for tools with request schema
+pub struct WithRequestSchema;
+
+impl<D, Req, Res> WithRequestSchema for ToolBuilder<WithRequestSchema, D, Req, Res> {
+    type ResultSchemaBuilder = ToolBuilder<WithResultSchema, D, Req, Res>;
 
     #[inline(always)]
-    fn result_schema<Res: serde::Serialize + Send + 'static>(
-        self,
-        schema_type: SchemaType,
-    ) -> Self::WithSchemasBuilder<Res> {
-        ToolWithSchemasBuilder {
-            name: self.name,
-            description: self.description,
-            dependency: self.dependency,
-            request_schema_type: self.schema_type,
-            result_schema_type: schema_type,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<
-    D: Send + Sync + 'static,
-    Req: serde::de::DeserializeOwned + Send + 'static,
-    Res: serde::Serialize + Send + 'static,
-> ToolWithSchemasBuilder<D, Req, Res>
-{
-    /// Set Cylo execution environment - EXACT syntax: .cylo(Cylo::Apple("python:alpine3.20").instance("env_name"))
-    #[cfg(feature = "cylo")]
-    #[inline(always)]
-    pub fn cylo(self, instance: CyloInstance) -> ToolWithCyloBuilder<D, Req, Res> {
-        ToolWithCyloBuilder {
+    fn result_schema<NewRes: Send + Sync + 'static>(self, schema_type: SchemaType) -> ToolBuilder<WithResultSchema, D, Req, NewRes> {
+        ToolBuilder {
             name: self.name,
             description: self.description,
             dependency: self.dependency,
             request_schema_type: self.request_schema_type,
-            result_schema_type: self.result_schema_type,
-            cylo_instance: Some(instance),
-            _phantom: PhantomData,
+            result_schema_type: schema_type,
+            handlers: Handlers {
+                invocation: Box::new(|_, _, _, _| panic!("Invocation handler not set")),
+                error: None,
+                result: None,
+            },
+            _state: PhantomData,
         }
-    }
-
-    /// No-op when cylo feature is disabled
-    #[cfg(not(feature = "cylo"))]
-    #[inline(always)]
-    pub fn cylo(self, _instance: ()) -> Self {
-        self
     }
 }
 
-impl<
-    D: Send + Sync + 'static,
-    Req: serde::de::DeserializeOwned + Send + 'static,
-    Res: serde::Serialize + Send + 'static,
-> ToolWithSchemas<D, Req, Res> for ToolWithSchemasBuilder<D, Req, Res>
-{
-    type WithInvocationBuilder = ToolWithInvocationBuilder<D, Req, Res>;
+/// State marker for tools with result schema
+pub struct WithResultSchema;
+
+impl<D, Req, Res> WithResultSchema for ToolBuilder<WithResultSchema, D, Req, Res> {
+    type WithInvocationBuilder = ToolBuilder<WithInvocation, D, Req, Res>;
 
     #[inline(always)]
     fn on_invocation<F>(self, handler: F) -> Self::WithInvocationBuilder
@@ -330,504 +289,222 @@ impl<
                 let (tx, stream) = async_stream_channel();
                 let handler_stream = handler(conv, emitter, req, dep);
                 tokio::spawn(async move {
-                    let result = async move {
-                        use tokio_stream::StreamExt;
-                        let mut stream = handler_stream.collect::<Vec<_>>().await;
-                        if let Some(result) = stream.pop() {
-                            result
-                        } else {
-                            Ok(())
-                        }
-                    }.await;
-                    let _ = tx.send(result);
+                    use tokio_stream::StreamExt;
+                    let mut handler_stream = handler_stream;
+                    while let Some(res) = handler_stream.next().await {
+                        let _ = tx.send(res);
+                    }
                 });
-                UnboundedReceiverStream::new(rx)
+                stream
             });
 
-        ToolWithInvocationBuilder {
+        ToolBuilder {
             name: self.name,
             description: self.description,
             dependency: self.dependency,
             request_schema_type: self.request_schema_type,
             result_schema_type: self.result_schema_type,
-            invocation_handler: boxed_handler,
-            error_handler: None,
-            result_handler: None,
+            handlers: Handlers {
+                invocation: boxed_handler,
+                error: None,
+                result: None,
+            },
+            _state: PhantomData,
         }
     }
 }
 
-impl<
-    D: Send + Sync + 'static,
-    Req: serde::de::DeserializeOwned + Send + 'static,
-    Res: serde::Serialize + Send + 'static,
-> ToolWithInvocation<D, Req, Res> for ToolWithInvocationBuilder<D, Req, Res>
-{
-    #[inline(always)]
-    fn on_error<F>(mut self, handler: F) -> Self
-    where
-        F: Fn(&Conversation, &ChainControl, AnthropicError, &D) + Send + Sync + 'static,
-    {
-        self.error_handler = Some(Box::new(handler));
-        self
-    }
+/// State marker for tools with invocation handler
+pub struct WithInvocation;
+
+impl<D, Req, Res> WithInvocation for ToolBuilder<WithInvocation, D, Req, Res> {
+    type WithErrorBuilder = ToolBuilder<WithError, D, Req, Res>;
 
     #[inline(always)]
-    fn on_result<F>(mut self, handler: F) -> Self
+    fn on_error<F>(self, handler: F) -> Self::WithErrorBuilder
     where
-        F: Fn(&Conversation, &ChainControl, Res, &D) -> Res + Send + Sync + 'static,
+        F: Fn(&Conversation, &Emitter, &AnthropicError, &D) -> ChainControl + Send + Sync + 'static,
     {
-        self.result_handler = Some(Box::new(handler));
-        self
-    }
-
-    #[inline(always)]
-    fn build(self) -> impl TypedToolTrait<D, Req, Res> {
-        TypedToolImpl {
+        ToolBuilder {
             name: self.name,
             description: self.description,
             dependency: self.dependency,
-            handlers: ToolHandlers {
-                invocation: self.invocation_handler,
-                error: self.error_handler,
-                result: self.result_handler,
+            request_schema_type: self.request_schema_type,
+            result_schema_type: self.result_schema_type,
+            handlers: Handlers {
+                invocation: self.handlers.invocation,
+                error: Some(Box::new(handler)),
+                result: self.handlers.result,
             },
-            #[cfg(feature = "cylo")]
-            cylo_instance: None,
+            _state: PhantomData,
         }
     }
 }
 
-impl<
-    D: Send + Sync + 'static,
-    Req: serde::de::DeserializeOwned + Send + 'static,
-    Res: serde::Serialize + Send + 'static,
-> TypedToolTrait<D, Req, Res> for TypedToolImpl<D, Req, Res>
-{
-    #[inline(always)]
-    fn name(&self) -> &'static str {
-        self.name
-    }
+/// State marker for tools with error handler
+pub struct WithError;
+
+impl<D, Req, Res> WithError for ToolBuilder<WithError, D, Req, Res> {
+    type WithResultBuilder = ToolBuilder<WithResult, D, Req, Res>;
 
     #[inline(always)]
-    fn description(&self) -> &'static str {
-        self.description
-    }
-
-    #[inline(always)]
-    fn dependency(&self) -> &D {
-        &self.dependency
-    }
-
-    fn execute(
-        &self,
-        conversation: &Conversation,
-        emitter: &Emitter,
-        request: Req,
-    ) -> AsyncStream<AnthropicResult<()>> {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        
-        #[cfg(feature = "cylo")]
-        {
-            if let Some(cylo_instance) = self.cylo_instance.clone() {
-                let invocation_handler = self.handlers.invocation.clone();
-                let dependency = self.dependency.clone();
-                
-                tokio::spawn(async move {
-                    let result = async move {
-                        // Execute tool within configured Cylo environment
-                        let execution_request = ExecutionRequest {
-                            command: "tool_execute".to_string(),
-                            args: vec![],
-                            env: std::collections::HashMap::new(),
-                            working_dir: None,
-                            timeout: None,
-                        };
-
-                        let executor = CyloExecutor::new(cylo_instance);
-                        match executor.execute_async(execution_request).await {
-                            Ok(_execution_result) => {
-                                // Execute the actual tool handler within the Cylo environment
-                                use tokio_stream::StreamExt;
-                                let handler_stream = invocation_handler(conversation, emitter, request, &dependency);
-                                let mut results = handler_stream.collect::<Vec<_>>().await;
-                                if let Some(result) = results.pop() {
-                                    result
-                                } else {
-                                    Ok(())
-                                }
-                            }
-                            Err(e) => Err(AnthropicError::ExecutionError(format!(
-                                "Cylo execution failed: {}",
-                                e
-                            ))),
-                        }
-                    }.await;
-                    let _ = tx.send(result);
-                });
-            } else {
-                let invocation_handler = self.handlers.invocation.clone();
-                let dependency = self.dependency.clone();
-                tokio::spawn(async move {
-                    let result = async move {
-                        use tokio_stream::StreamExt;
-                        let handler_stream = invocation_handler(conversation, emitter, request, &dependency);
-                        let mut results = handler_stream.collect::<Vec<_>>().await;
-                        if let Some(result) = results.pop() {
-                            result
-                        } else {
-                            Ok(())
-                        }
-                    }.await;
-                    let _ = tx.send(result);
-                });
-            }
+    fn on_result<F>(self, handler: F) -> Self::WithResultBuilder
+    where
+        F: Fn(&Conversation, &Emitter, Res, &D) -> ChainControl + Send + Sync + 'static,
+    {
+        ToolBuilder {
+            name: self.name,
+            description: self.description,
+            dependency: self.dependency,
+            request_schema_type: self.request_schema_type,
+            result_schema_type: self.result_schema_type,
+            handlers: Handlers {
+                invocation: self.handlers.invocation,
+                error: self.handlers.error,
+                result: Some(Box::new(handler)),
+            },
+            _state: PhantomData,
         }
-
-        #[cfg(not(feature = "cylo"))]
-        {
-            let invocation_handler = self.handlers.invocation.clone();
-            let dependency = self.dependency.clone();
-            tokio::spawn(async move {
-                let result = async move {
-                    use tokio_stream::StreamExt;
-                    let handler_stream = invocation_handler(conversation, emitter, request, &dependency);
-                    let mut results = handler_stream.collect::<Vec<_>>().await;
-                    if let Some(result) = results.pop() {
-                        result
-                    } else {
-                        Ok(())
-                    }
-                }.await;
-                let _ = tx.send(result);
-            });
-        }
-        
-        UnboundedReceiverStream::new(rx)
     }
 }
 
-/// Maximum number of tools supported in zero-allocation storage
-const MAX_TYPED_TOOLS: usize = 64;
+/// State marker for tools with result handler
+pub struct WithResult;
 
-/// Tool storage entry with zero allocation using stack-based storage
-#[derive(Clone)]
-struct ToolStorageEntry {
-    type_id: TypeId,
-    name: &'static str,
-    schema_index: usize,
+impl<D, Req, Res> WithResult for ToolBuilder<WithResult, D, Req, Res> {
+    type FinalBuilder = BuiltTool<D, Req, Res>;
+
+    #[inline(always)]
+    fn build(self) -> Self::FinalBuilder {
+        BuiltTool {
+            name: self.name,
+            description: self.description,
+            dependency: self.dependency,
+            handlers: self.handlers,
+            _req: PhantomData,
+            _res: PhantomData,
+        }
+    }
 }
 
-/// Zero-allocation tool storage engine with compile-time bounded capacity
-pub struct TypedToolStorage {
-    /// Stack-allocated tool registry with fixed capacity
-    entries: ArrayVec<ToolStorageEntry, MAX_TYPED_TOOLS>,
-    /// Pre-allocated schema storage with compile-time bounds
-    schemas: ArrayVec<(Value, Value), MAX_TYPED_TOOLS>, // (request_schema, result_schema)
-    /// Tool count for O(1) capacity checks
-    tool_count: usize,
-}
-
-/// Typed tool with full type information for zero-allocation storage
-pub struct TypedTool<D, Req, Res> {
+/// Final, built tool
+pub struct BuiltTool<D, Req, Res> {
     name: &'static str,
     description: &'static str,
     dependency: D,
-    request_schema: Value,
-    result_schema: Value,
-    handlers: ToolHandlers<D, Req, Res>,
-    #[cfg(feature = "cylo")]
-    cylo_instance: Option<CyloInstance>,
+    handlers: Handlers<D, Req, Res>,
+    _req: PhantomData<Req>,
+    _res: PhantomData<Res>,
 }
 
-impl TypedToolStorage {
-    /// Create new typed tool storage with zero-allocation arena
-    #[inline(always)]
-    pub const fn new() -> Self {
-        Self {
-            entries: ArrayVec::new_const(),
-            schemas: ArrayVec::new_const(),
-            tool_count: 0,
-        }
+impl<D, Req, Res> FinalTool for BuiltTool<D, Req, Res>
+where
+    D: Send + Sync + 'static,
+    Req: for<'de> Deserialize<'de> + Send + Sync + 'static,
+    Res: Serialize + Send + Sync + 'static,
+{
+    fn name(&self) -> &str {
+        self.name
     }
 
-    /// Register a typed tool with compile-time type safety and zero allocation
-    #[inline(always)]
-    pub fn register<D, Req, Res>(&mut self, tool: TypedTool<D, Req, Res>) -> AnthropicResult<()>
-    where
-        D: Send + Sync + 'static,
-        Req: serde::de::DeserializeOwned + Send + 'static,
-        Res: serde::Serialize + Send + 'static,
-    {
-        // Check capacity before allocation
-        if self.tool_count >= MAX_TYPED_TOOLS {
-            return Err(AnthropicError::InvalidRequest(
-                "Maximum tool capacity reached".to_string(),
-            ));
-        }
-
-        // Check for duplicate tool names in O(n) time (acceptable for bounded n)
-        for entry in &self.entries {
-            if entry.name == tool.name {
-                return Err(AnthropicError::InvalidRequest(format!(
-                    "Tool '{}' already registered",
-                    tool.name
-                )));
-            }
-        }
-
-        // Create type identifier for compile-time type safety
-        let type_id = TypeId::of::<TypedTool<D, Req, Res>>();
-
-        // Store schemas with bounds checking
-        let schema_index = self.schemas.len();
-        if self
-            .schemas
-            .try_push((tool.request_schema, tool.result_schema))
-            .is_err()
-        {
-            return Err(AnthropicError::InvalidRequest(
-                "Schema storage capacity exceeded".to_string(),
-            ));
-        }
-
-        // Store tool entry with bounds checking
-        let entry = ToolStorageEntry {
-            type_id,
-            name: tool.name,
-            schema_index,
-        };
-
-        if self.entries.try_push(entry).is_err() {
-            // Rollback schema storage if entry storage fails
-            self.schemas.pop();
-            return Err(AnthropicError::InvalidRequest(
-                "Tool storage capacity exceeded".to_string(),
-            ));
-        }
-
-        self.tool_count += 1;
-        Ok(())
+    fn description(&self) -> &str {
+        self.description
     }
 
-    /// Check if tool exists by name with O(n) lookup (acceptable for bounded n)
-    #[inline(always)]
-    pub fn contains_tool(&self, name: &str) -> bool {
-        self.entries.iter().any(|entry| entry.name == name)
-    }
-
-    /// Get tool schemas for validation with O(n) lookup
-    #[inline(always)]
-    pub fn get_schemas(&self, name: &str) -> Option<&(Value, Value)> {
-        self.entries
-            .iter()
-            .find(|entry| entry.name == name)
-            .and_then(|entry| self.schemas.get(entry.schema_index))
-    }
-
-    /// List all registered tool names with zero allocation
-    #[inline(always)]
-    pub fn tool_names(&self) -> impl Iterator<Item = &'static str> + '_ {
-        self.entries.iter().map(|entry| entry.name)
-    }
-
-    /// Get current tool count
-    #[inline(always)]
-    pub fn tool_count(&self) -> usize {
-        self.tool_count
-    }
-
-    /// Get remaining capacity
-    #[inline(always)]
-    pub fn remaining_capacity(&self) -> usize {
-        MAX_TYPED_TOOLS - self.tool_count
-    }
-
-    /// Execute typed tool with zero-allocation streaming pipeline
-    pub async fn execute_typed_tool<D, Req, Res>(
-        &self,
-        name: &str,
-        request: Req,
-        context: &ToolExecutionContext,
-    ) -> AnthropicResult<tokio::sync::mpsc::Receiver<ToolOutput>>
-    where
-        D: Send + Sync + 'static,
-        Req: Send + 'static,
-        Res: serde::Serialize + Send + 'static,
-    {
-        // Verify tool exists with type safety
-        let type_id = TypeId::of::<TypedTool<D, Req, Res>>();
-        let _entry = self
-            .entries
-            .iter()
-            .find(|entry| entry.name == name && entry.type_id == type_id)
-            .ok_or_else(|| AnthropicError::ToolExecutionError {
-                tool_name: name.to_string(),
-                error: "Tool not found or type mismatch".to_string(),
-            })?;
-
-        // Create bounded streaming channel with backpressure
-        let channel_capacity = context
-            .metadata
-            .get("channel_capacity")
-            .and_then(|v| v.as_u64())
-            .map(|v| v as usize)
-            .filter(|&v| v > 0 && v <= 65536) // Validate capacity bounds
-            .unwrap_or(1024); // Default 1KB buffer
-
-        let (_bounded_sender, receiver) = tokio::sync::mpsc::channel(channel_capacity);
-
-        // Create stack-allocated conversation context using message history from context
-        let messages = &context.message_history;
-        let last_message = messages.last().ok_or_else(|| {
-            AnthropicError::InvalidRequest(
-                "No messages available in conversation context".to_string(),
-            )
-        })?;
-        let _conversation = Conversation {
-            messages,
-            context,
-            last_message,
-        };
-
-        // Create chain control with atomic operations
-        let _chain_control = ChainControl::new();
-
-        // In a complete implementation, we would execute the tool handler here
-        // and stream results through the bounded_sender channel
-
-        Ok(receiver)
-    }
-
-    /// Memory optimization with stack-based cleanup
-    #[inline(always)]
-    pub fn optimize_memory(&mut self) {
-        // No dynamic allocation to clean up - stack-based storage is automatically optimized
-        // This is a no-op for stack-allocated structures but maintains API compatibility
-    }
-
-    /// Get memory usage statistics for monitoring
-    #[inline(always)]
-    pub fn memory_stats(&self) -> (usize, usize, usize) {
-        (
-            self.entries.len() * core::mem::size_of::<ToolStorageEntry>(),
-            self.schemas.len() * core::mem::size_of::<(Value, Value)>(),
-            MAX_TYPED_TOOLS * core::mem::size_of::<ToolStorageEntry>(), // Total capacity
-        )
-    }
-}
-
-impl Default for TypedToolStorage {
-    #[inline(always)]
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Trait for tool execution implementations
-pub trait ToolExecutor: Send + Sync {
-    /// Execute tool with given input and context
-    fn execute(
-        &self,
-        input: Value,
-        context: &ToolExecutionContext,
-    ) -> AsyncStream<AnthropicResult<ToolOutput>>;
-
-    /// Get tool definition
-    fn definition(&self) -> Tool;
-
-    /// Validate input before execution with production-ready error handling
-    fn validate_input(&self, input: &Value) -> AnthropicResult<()> {
-        // Default validation - check if input is an object
-        if !input.is_object() {
-            return Err(AnthropicError::InvalidRequest(
-                "Tool input must be a JSON object".to_string(),
-            ));
-        }
-        Ok(())
-    }
-}
-
-/// Tool registry for managing available tools with typed tool support
-#[derive(Default)]
-pub struct ToolRegistry {
-    /// Tool metadata storage
-    tools: HashMap<String, Tool>,
-    executors: HashMap<String, Box<dyn ToolExecutor + Send + Sync>>,
-    /// Zero-allocation typed tool storage engine
-    typed_storage: TypedToolStorage,
-}
-
-impl ToolRegistry {
-    /// Create new tool registry
-    #[inline(always)]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Register a tool executor
-    pub fn register_tool(
-        &mut self,
-        name: String,
-        executor: Box<dyn ToolExecutor + Send + Sync>,
-    ) -> AnthropicResult<()> {
-        if self.tools.contains_key(&name) {
-            return Err(AnthropicError::InvalidRequest(format!(
-                "Tool '{}' already registered",
-                name
-            )));
-        }
-
-        let definition = executor.definition();
-        self.tools.insert(name.clone(), definition);
-        self.executors.insert(name, executor);
-        Ok(())
-    }
-
-    /// Register a typed tool with zero allocation
-    #[inline(always)]
-    pub fn register_typed_tool<D, Req, Res>(
-        &mut self,
-        tool: TypedTool<D, Req, Res>,
-    ) -> AnthropicResult<()>
-    where
-        D: Send + Sync + 'static,
-        Req: serde::de::DeserializeOwned + Send + 'static,
-        Res: serde::Serialize + Send + 'static,
-    {
-        self.typed_storage.register(tool)
-    }
-
-    /// Get all registered tools
-    #[inline(always)]
-    pub fn list_tools(&self) -> Vec<&Tool> {
-        self.tools.values().collect()
-    }
-
-    /// Check if tool exists
-    #[inline(always)]
-    pub fn has_tool(&self, name: &str) -> bool {
-        self.tools.contains_key(name) || self.typed_storage.contains_tool(name)
-    }
-
-    /// Execute tool with production-ready error handling
-    pub fn execute_tool(
-        &self,
-        name: &str,
-        input: Value,
-        context: &ToolExecutionContext,
-    ) -> AsyncStream<AnthropicResult<ToolOutput>> {
+    fn execute(&self, conversation: &Conversation, emitter: &Emitter, request: Value) -> AsyncStream<AnthropicResult<()>> {
         let (tx, stream) = async_stream_channel();
-        let name = name.to_string();
-        
-        if let Some(executor) = self.executors.get(&name) {
-            let validation_result = executor.validate_input(&input);
-            match validation_result {
-                Ok(_) => {
-                    let executor_stream = executor.execute(input, context);
-                    tokio::spawn(async move {
-                        use tokio_stream::StreamExt;
-                        let mut results = executor_stream.collect::<Vec<_>>().await;
+        let invocation_handler = self.handlers.invocation.clone();
+        let dependency = self.dependency.clone();
+        tokio::spawn(async move {
+            let result = async move {
+                use tokio_stream::StreamExt;
+                let handler_stream = invocation_handler(conversation, emitter, request, &dependency);
+                let mut results = handler_stream.collect::<Vec<_>>().await;
+                if let Some(result) = results.pop() {
+                    result
+                } else {
+                    Ok(())
+                }
+            }.await;
+            let _ = tx.send(result);
+        });
+        stream
+    }
+}
+
+/// Storage for tools with zero-allocation retrieval
+pub struct ToolStorage<const N: usize> {
+    tools: ArrayVec<Box<dyn FinalTool + Send + Sync>, N>,
+    by_name: HashMap<&'static str, usize>,
+}
+
+impl<const N: usize> ToolStorage<N> {
+    /// Create new tool storage
+    pub fn new() -> Self {
+        Self { tools: ArrayVec::new(), by_name: HashMap::new() }
+    }
+
+    /// Add a tool to storage
+    pub fn add<T: FinalTool + Send + Sync + 'static>(&mut self, tool: T) {
+        let name = tool.name();
+        let index = self.tools.len();
+        self.tools.push(Box::new(tool));
+        self.by_name.insert(name, index);
+    }
+
+    /// Get a tool by name
+    pub fn get(&self, name: &str) -> Option<&dyn FinalTool> {
+        self.by_name.get(name).map(|&i| &*self.tools[i])
+    }
+}
+
+/// Zero-allocation tool executor
+pub struct ToolExecutor<const N: usize> {
+    tools: ToolStorage<N>,
+    #[cfg(feature = "cylo")]
+    cylo: Option<CyloInstance>,
+}
+
+impl<const N: usize> ToolExecutor<N> {
+    /// Create a new tool executor
+    pub fn new() -> Self {
+        Self { tools: ToolStorage::new(), cylo: None }
+    }
+
+    /// Add a tool to the executor
+    pub fn with(mut self, tool: impl FinalTool + Send + Sync + 'static) -> Self {
+        self.tools.add(tool);
+        self
+    }
+
+    /// Set up Cylo for remote execution
+    #[cfg(feature = "cylo")]
+    pub fn with_cylo(mut self, instance: CyloInstance) -> Self {
+        self.cylo = Some(instance);
+        self
+    }
+
+    /// Execute a tool by name
+    pub fn execute_tool(&self, name: String, input: Value) -> AsyncStream<AnthropicResult<ToolOutput>> {
+        let (tx, stream) = async_stream_channel();
+        if let Some(tool) = self.tools.get(&name) {
+            let conversation = Conversation { messages: &[], context: &ToolExecutionContext::default(), last_message: &Message::default() };
+            let emitter = Emitter::new(tx.clone());
+            let mut stream = tool.execute(&conversation, &emitter, input);
+            tokio::spawn(async move {
+                use tokio_stream::StreamExt;
+                while let Some(result) = stream.next().await {
+                    // Handle result
+                }
+            });
+        } else {
+            #[cfg(feature = "cylo")]
+            if let Some(cylo) = &self.cylo {
+                let request = ExecutionRequest { tool_name: name, input, context: None };
+                let mut stream = cylo.execute(request);
+                tokio::spawn(async move {
+                    use tokio_stream::StreamExt;
+                    while let Some(result) = stream.next().await {
                         let result = if let Some(result) = results.pop() {
                             result
                         } else {
