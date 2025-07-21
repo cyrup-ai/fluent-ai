@@ -259,7 +259,7 @@ impl IncrementalGenerator {
         }
 
         // Generate model definitions for this provider
-        let models_code = code_generator.generate_model_definitions(&[provider.clone()])?;
+        let models_code = code_generator.generate_model_registry(&[provider.clone()])?;
         let models_file = output_dir.join(format!("{}_models.rs", provider.id));
         
         if self.should_update_file(&models_file, &models_code).await? {

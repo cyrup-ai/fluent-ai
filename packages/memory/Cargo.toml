@@ -16,7 +16,7 @@ futures = { version = "0.3.31" }
 
 # Serialization
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = { version = "1.0.140" }
+serde_json = { version = "1.0.141" }
 
 # Utilities
 uuid = { version = "1.17.0", features = ["v4", "serde"] }
@@ -25,24 +25,24 @@ thiserror = { version = "2.0.12" }
 anyhow = { version = "1.0.98" }
 tracing = { version = "0.1.41" }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-memchr = { version = "2.7.4" }
+memchr = { version = "2.7.5" }
 # reqwest removed - replaced with fluent_ai_http3 per project mandate
 fluent_ai_http3 = { path = "../http3" }
 bincode = { version = "2.0.1" }
 prometheus = { version = "0.14.0" }
 
 # Cognitive system dependencies
-rand = "0.9.1"
+rand = "0.9.2"
 base64 = { version = "0.22.1" }
 ndarray = { version = "0.16.1" }
 nalgebra = { version = "0.33.2", features = ["serde-serialize"] }
 petgraph = { version = "0.8.2" }
 ordered-float = { version = "5.0.0" }
-dashmap = { version = "6.1.0" }
+dashmap = { version = "7.0.0-rc2" }
 async-channel = { version = "2.5.0" }
 
 # Missing dependencies for cognitive features
-sha2 = { version = "0.10.8" }
+sha2 = { version = "0.11.0-rc.0" }
 walkdir = { version = "2.5.0" }
 num_cpus = { version = "1.17.0" }
 num-complex = { version = "0.4.6" }

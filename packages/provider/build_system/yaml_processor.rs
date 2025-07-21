@@ -11,7 +11,7 @@ use super::string_utils::sanitize_identifier;
 use fluent_ai_domain::model::ModelInfo;
 
 /// Information about a model provider
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ProviderInfo {
     /// Provider ID (e.g., "openai", "anthropic")
     pub id: String,

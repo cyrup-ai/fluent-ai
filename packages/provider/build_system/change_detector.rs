@@ -14,7 +14,7 @@ use super::model_loader::{ExistingModelRegistry, ModelMetadata};
 use super::yaml_processor::ProviderInfo;
 
 /// Represents a new model that needs to be generated
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ModelAddition {
     /// Provider name
     pub provider: Arc<str>,
@@ -25,7 +25,7 @@ pub struct ModelAddition {
 }
 
 /// Represents a model that has changed and needs to be regenerated
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ModelModification {
     /// Provider name
     pub provider: Arc<str>,
@@ -40,7 +40,7 @@ pub struct ModelModification {
 }
 
 /// Represents a model that was removed from YAML but exists in filesystem
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ModelDeletion {
     /// Provider name
     pub provider: Arc<str>,
@@ -51,7 +51,7 @@ pub struct ModelDeletion {
 }
 
 /// Specific types of changes detected in a model
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ModelChange {
     /// Token limits changed
     TokenLimits { 
@@ -153,7 +153,7 @@ impl ModelChangeSet {
 }
 
 /// Simplified model information extracted from YAML for comparison
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct YamlModelInfo {
     /// Model name
     pub name: Arc<str>,
@@ -348,7 +348,7 @@ impl ChangeDetector {
     fn build_yaml_model_map(
         &self,
         yaml_providers: &[ProviderInfo],
-    ) -> BuildResult<HashMap<String, (Arc<str>, YamlModelInfo)>> {
+    ) -> BuildResult<HashMap<Arc<str>, (Arc<str>, YamlModelInfo)>> {
         let mut yaml_models = HashMap::new();
 
         for provider in yaml_providers {
@@ -357,7 +357,7 @@ impl ChangeDetector {
             for model in &provider.models {
                 // Convert ModelInfo to YamlModelInfo for comparison
                 let yaml_model = self.convert_model_info_to_yaml(model)?;
-                let identifier = yaml_model.identifier(&provider.id);
+                let identifier: Arc<str> = yaml_model.identifier(&provider.id).into();
                 
                 yaml_models.insert(identifier, (Arc::clone(&provider_name), yaml_model));
             }
