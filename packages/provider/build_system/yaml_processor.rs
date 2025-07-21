@@ -75,7 +75,7 @@ impl YamlProcessor {
             for item in array {
                 if let Some(obj) = item.as_object() {
                     if let Some(provider_name) = obj.get("provider").and_then(|v| v.as_str()) {
-                        let models = self.parse_sigoden_models(obj.get("models"))?;
+                        let models = self.parse_sigoden_models(provider_name, obj.get("models"))?;
                         
                         let provider = ProviderInfo {
                             id: provider_name.to_string(),
@@ -102,7 +102,7 @@ impl YamlProcessor {
     }
 
     /// Parse models from sigoden YAML format
-    fn parse_sigoden_models(&self, models_value: Option<&serde_json::Value>) -> BuildResult<Vec<ModelInfo>> {
+    fn parse_sigoden_models(&self, provider_name: &str, models_value: Option<&serde_json::Value>) -> BuildResult<Vec<ModelInfo>> {
         let mut models = Vec::new();
         
         if let Some(models_array) = models_value.and_then(|v| v.as_array()) {
