@@ -452,6 +452,11 @@ impl From<CandleError> for CompletionCoreError {
                 CompletionCoreError::InvalidRequest(format!("Unsupported architecture: {}", arch))
             }
             CandleError::Configuration(msg) => CompletionCoreError::InvalidRequest(msg.to_string()),
+            // Handle missing patterns
+            CandleError::DeviceAllocation(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
+            CandleError::HuggingFaceHub(msg) => CompletionCoreError::ModelLoadingFailed(msg),
+            CandleError::CacheOverflow => CompletionCoreError::GenerationFailed("Cache overflow".to_string()),
+            CandleError::InvalidInput(msg) => CompletionCoreError::InvalidRequest(msg.to_string()),
         }
     }
 }

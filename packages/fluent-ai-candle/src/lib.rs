@@ -232,7 +232,9 @@ pub mod tensor_utils {
             if k < vocab_size {
                 // Find the k-th largest probability
                 let mut indices: Vec<usize> = (0..vocab_size).collect();
-                indices.sort_by(|&a, &b| probs[b].partial_cmp(&probs[a]).unwrap());
+                indices.sort_by(|&a, &b| {
+                    probs[b].partial_cmp(&probs[a]).unwrap_or(std::cmp::Ordering::Equal)
+                });
 
                 // Zero out probabilities below top-k
                 for &idx in &indices[k..] {
@@ -244,7 +246,9 @@ pub mod tensor_utils {
         // Apply top-p (nucleus) filtering
         if let Some(p) = top_p {
             let mut indices: Vec<usize> = (0..vocab_size).collect();
-            indices.sort_by(|&a, &b| probs[b].partial_cmp(&probs[a]).unwrap());
+            indices.sort_by(|&a, &b| {
+                probs[b].partial_cmp(&probs[a]).unwrap_or(std::cmp::Ordering::Equal)
+            });
 
             let mut cumulative_prob = 0.0;
             for (i, &idx) in indices.iter().enumerate() {
@@ -320,13 +324,14 @@ mod tests {
     }
 
     #[test]
-    fn test_device_auto_selection() {
+    fn test_device_auto_selection() -> Result<(), Box<dyn std::error::Error>> {
         let device = device::auto_device();
         assert!(device.is_ok());
 
-        let device = device.unwrap();
+        let device = device.map_err(|_| "Failed to create test device")?;
         let info = device::device_info(&device);
         assert!(!info.is_empty());
+        Ok(())
     }
 
     #[test]

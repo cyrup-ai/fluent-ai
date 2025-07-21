@@ -59,7 +59,7 @@ mod simd_ops {
         }
         
         // Fallback optimized scalar with manual unrolling for ILP
-        let chunks = logits.chunks_exact_mut(4);
+        let mut chunks = logits.chunks_exact_mut(4);
         let remainder = chunks.into_remainder();
         
         for chunk in chunks {
@@ -919,9 +919,9 @@ impl CandleGenerator {
         let probs = candle_nn::ops::softmax(logits, candle_core::D::Minus1)
             .map_err(|e| CandleError::from(e))?;
 
-        // Sort probabilities in descending order using argsort
+        // Sort probabilities in descending order using arg_sort
         let indices = probs
-            .argsort(candle_core::D::Minus1, true)  // true for descending
+            .arg_sort_last_dim(false)  // false for descending order
             .map_err(|e| CandleError::from(e))?;
         let sorted_probs = probs
             .gather(&indices, candle_core::D::Minus1)
