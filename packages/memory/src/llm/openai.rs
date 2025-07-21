@@ -80,8 +80,8 @@ impl LLMProvider for OpenAIProvider {
                     .header("Content-Type", "application/json")
                     .body(request_body);
 
-                let response = client
-                    .send(http_request)
+                let response = http_request
+                    .send()
                     .await
                     .map_err(|e| LLMError::NetworkError(format!("HTTP request failed: {}", e)))?;
 
@@ -149,8 +149,8 @@ impl LLMProvider for OpenAIProvider {
                     .header("Content-Type", "application/json")
                     .body(request_body);
 
-                let response = client
-                    .send(http_request)
+                let response = http_request
+                    .send()
                     .await
                     .map_err(|e| LLMError::NetworkError(format!("HTTP request failed: {}", e)))?;
 
