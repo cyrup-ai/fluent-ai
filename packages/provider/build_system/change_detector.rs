@@ -371,23 +371,21 @@ impl ChangeDetector {
         &self,
         model: &fluent_ai_domain::model::ModelInfo,
     ) -> BuildResult<YamlModelInfo> {
-        let capabilities = model.capabilities().iter()
+        let capabilities = model.to_capabilities().iter()
             .map(|cap| format!("{:?}", cap).to_lowercase().into())
             .collect();
 
-        let parameters = model.parameters().iter()
-            .map(|(k, v)| (k.as_str().into(), v.to_string().into()))
-            .collect();
+        let parameters = std::collections::HashMap::new(); // ModelInfo doesn't expose parameters directly
 
         Ok(YamlModelInfo {
-            name: model.name().into(),
-            max_input_tokens: model.max_input_tokens(),
-            max_output_tokens: model.max_output_tokens(),
+            name: model.name.clone().into(),
+            max_input_tokens: model.max_input_tokens,
+            max_output_tokens: model.max_output_tokens,
             input_price: None, // Not available in ModelInfo
             output_price: None, // Not available in ModelInfo
-            supports_vision: model.capabilities().iter()
+            supports_vision: model.to_capabilities().iter()
                 .any(|cap| format!("{:?}", cap).to_lowercase().contains("vision")),
-            supports_function_calling: model.capabilities().iter()
+            supports_function_calling: model.to_capabilities().iter()
                 .any(|cap| format!("{:?}", cap).to_lowercase().contains("function")),
             capabilities,
             parameters,

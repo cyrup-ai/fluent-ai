@@ -36,6 +36,7 @@ impl TemplateCache {
 
 
 /// Generates Rust code from parsed YAML data
+#[derive(Debug)]
 pub struct CodeGenerator {
     perf_monitor: Arc<PerformanceMonitor>,
     template_cache: TemplateCache,

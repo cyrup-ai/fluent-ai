@@ -16,6 +16,7 @@ use reqwest::tls;
 use crate::{HttpConfig, HttpError, HttpRequest, HttpResponse, HttpResult, HttpStream};
 
 /// High-performance HTTP client with QUIC/HTTP3 support and zero-allocation design
+#[derive(Debug)]
 pub struct HttpClient {
     inner: reqwest::Client,
     request_count: AtomicUsize,

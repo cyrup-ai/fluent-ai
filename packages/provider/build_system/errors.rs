@@ -40,6 +40,12 @@ pub enum BuildError {
     /// Generic error for other cases
     Other(Cow<'static, str>),
 
+    /// HTTP operation error
+    HttpError(String),
+
+    /// Validation error
+    ValidationError(String),
+
     /// Bincode serialization/deserialization error
     BincodeError(bincode::error::EncodeError),
 }
@@ -54,6 +60,8 @@ impl fmt::Display for BuildError {
             BuildError::Network(msg) => write!(f, "Network error: {}", msg),
             BuildError::Template(msg) => write!(f, "Template error: {}", msg),
             BuildError::Other(msg) => write!(f, "Other error: {}", msg),
+            BuildError::HttpError(msg) => write!(f, "HTTP error: {}", msg),
+            BuildError::ValidationError(msg) => write!(f, "Validation error: {}", msg),
             BuildError::BincodeError(e) => write!(f, "Bincode error: {}", e),
         }
     }

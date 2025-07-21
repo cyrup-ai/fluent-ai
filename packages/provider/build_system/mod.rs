@@ -5,7 +5,6 @@
 
 
 pub mod errors;
-pub mod http_client;
 pub mod yaml_processor;
 pub mod cache_manager;
 pub mod code_generator;
@@ -20,10 +19,10 @@ pub mod incremental_generator;
 // Re-export commonly used types for ergonomic usage
 pub use {
     errors::{BuildError, BuildResult},
-    http_client::HttpClient,
-    yaml_processor::{YamlProcessor, ProviderInfo, ModelInfo},
+    yaml_processor::{YamlProcessor, ProviderInfo},
     code_generator::CodeGenerator,
     performance::PerformanceMonitor,
+    fluent_ai_domain::model::ModelInfo,
     string_utils::sanitize_identifier,
     model_loader::{ModelLoader, ModelMetadata, ExistingModelRegistry},
     change_detector::{ChangeDetector, ModelChangeSet, ModelAddition, ModelModification, ModelDeletion, YamlModelInfo},
@@ -39,31 +38,4 @@ pub use {
 
 // Removed CacheAligned struct - not used anywhere in codebase
 
-/// Helper macro for zero-allocation string formatting
-#[macro_export]
-macro_rules! format_inline {
-    ($($arg:tt)*) => {{
-        let mut buf = arrayvec::ArrayString::<{ $crate::build_modules::MAX_BUFFER_SIZE }>::new();
-        use std::fmt::Write;
-        write!(&mut buf, $($arg)*).expect("Failed to write to ArrayString");
-        buf
-    }};
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_cache_alignment() {
-        let aligned = CacheAligned(42u64);
-        let ptr = &aligned as *const _ as usize;
-        assert_eq!(ptr % 64, 0, "CacheAligned must be 64-byte aligned");
-    }
-
-    #[test]
-    fn test_format_inline() {
-        let s = format_inline!("Hello, {}!", "world");
-        assert_eq!(s, "Hello, world!");
-    }
-}

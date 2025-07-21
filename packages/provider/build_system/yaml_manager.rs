@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use fluent_ai_http3::{HttpClient, HttpRequest, HttpConfig, HttpError};
+use fluent_ai_http3::{HttpClient, HttpRequest, HttpConfig, HttpMethod};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
@@ -201,7 +201,7 @@ impl YamlManager {
         }
 
         // Build conditional HTTP request
-        let mut request = HttpRequest::get(url)
+        let mut request = HttpRequest::new(HttpMethod::Get, url.to_string())
             .header("User-Agent", "fluent-ai-provider/1.0");
 
         // Add conditional headers if we have cache metadata

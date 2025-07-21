@@ -50,7 +50,7 @@ pub struct RateLimitConfig {
 }
 
 /// YAML processor for provider and model definitions
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct YamlProcessor;
 
 impl YamlProcessor {

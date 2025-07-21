@@ -16,7 +16,7 @@ use tracing::{debug, error, instrument, warn};
 use super::errors::{BuildError, BuildResult};
 
 /// Metadata extracted from existing model files for comparison
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModelMetadata {
     /// Provider name (e.g., "openai", "anthropic")
     pub provider: Arc<str>,
@@ -211,7 +211,7 @@ impl ModelLoader {
     /// Load existing models from filesystem in parallel
     #[instrument(skip(self))]
     pub async fn load_existing_models(&self) -> BuildResult<ExistingModelRegistry> {
-        let registry = ExistingModelRegistry::new();
+        let registry = Arc::new(ExistingModelRegistry::new());
 
         // Scan provider directories in parallel
         let provider_dirs = self.scan_provider_directories().await?;
@@ -224,7 +224,9 @@ impl ModelLoader {
 
         for provider_dir in provider_dirs {
             let sem = Arc::clone(&semaphore);
-            let registry_ref = &registry;
+            let registry_ref = Arc::clone(&registry);
+            let base_path = self.base_path.clone();
+            let max_concurrent = self.max_concurrent;
             
             let task = tokio::spawn(async move {
                 let _permit = sem.acquire().await
@@ -233,7 +235,12 @@ impl ModelLoader {
                         format!("Semaphore error: {}", e)
                     )))?;
                 
-                self.scan_provider_directory(provider_dir, registry_ref).await
+                // Create a temporary loader for this task
+                let loader = ModelLoader {
+                    base_path,
+                    max_concurrent,
+                };
+                loader.scan_provider_directory(provider_dir, &*registry_ref).await
             });
             
             tasks.push(task);
@@ -264,7 +271,11 @@ impl ModelLoader {
                registry.model_count(), 
                registry.provider_count());
 
-        Ok(registry)
+        // Return the registry by unwrapping from Arc
+        Arc::try_unwrap(registry).map_err(|_| BuildError::IoError(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to unwrap Arc<ExistingModelRegistry>"
+        )))
     }
 
     /// Scan for provider directories
@@ -368,7 +379,7 @@ impl ModelLoader {
             for model_name in model_names {
                 let model_metadata = ModelMetadata::new(
                     Arc::clone(provider_name),
-                    model_name.into(),
+                    model_name,
                     file_path.to_path_buf(),
                     modified_time,
                 ).with_content_hash(content_hash);
@@ -404,7 +415,7 @@ impl ModelLoader {
             for model_name in model_names {
                 let model_metadata = ModelMetadata::new(
                     Arc::clone(provider_name),
-                    model_name.into(),
+                    model_name,
                     file_path.to_path_buf(),
                     modified_time,
                 ).with_content_hash(content_hash);
