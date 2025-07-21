@@ -79,10 +79,10 @@ impl LLMProvider for AnthropicProvider {
                     .header("x-api-key", api_key)
                     .header("anthropic-version", "2023-06-01")
                     .header("content-type", "application/json")
-                    .with_body(request_body);
+                    .body(request_body);
 
-                let response = client
-                    .send(http_request)
+                let response = http_request
+                    .send()
                     .await
                     .map_err(|e| LLMError::NetworkError(format!("HTTP request failed: {}", e)))?;
 

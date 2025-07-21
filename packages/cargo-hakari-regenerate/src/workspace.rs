@@ -35,7 +35,7 @@ impl CommentPatterns {
     fn new() -> Self {
         Self {
             workspace_hack_member: Regex::new(r#"^\s*"workspace-hack",?\s*$"#).unwrap(),
-            workspace_hack_dep: Regex::new(r#"^fluent-voice-workspace-hack\s*="#).unwrap(),
+            workspace_hack_dep: Regex::new(r#"^fluent-ai-workspace-hack\s*="#).unwrap(),
             commented_workspace_hack_member: Regex::new(r#"^\s*#\s*"workspace-hack",?\s*$"#).unwrap(),
             commented_workspace_hack_dep: Regex::new(r#"^#\s*fluent-voice-workspace-hack\s*="#).unwrap(),
         }

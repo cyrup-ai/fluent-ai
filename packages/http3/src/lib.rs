@@ -124,55 +124,37 @@ pub fn global_client() -> Arc<HttpClient> {
 /// Create a new HTTP request using the global client
 #[must_use]
 pub fn get(url: &str) -> RequestBuilder<'static, Ready> {
-    // SAFETY: We use a leaked static reference to make the lifetime 'static
-    // This is safe because GLOBAL_CLIENT is a static that lives for the entire program
-    let client: &'static HttpClient = unsafe { std::mem::transmute(global_client().as_ref()) };
-    client.get(url)
+    GLOBAL_CLIENT.get(url)
 }
 
 /// Create a new POST request using the global client
 #[must_use]
 pub fn post(url: &str) -> RequestBuilder<'static, Ready> {
-    // SAFETY: We use a leaked static reference to make the lifetime 'static
-    // This is safe because GLOBAL_CLIENT is a static that lives for the entire program
-    let client: &'static HttpClient = unsafe { std::mem::transmute(global_client().as_ref()) };
-    client.post(url)
+    GLOBAL_CLIENT.post(url)
 }
 
 /// Create a new PUT request using the global client
 #[must_use]
 pub fn put(url: &str) -> RequestBuilder<'static, Ready> {
-    // SAFETY: We use a leaked static reference to make the lifetime 'static
-    // This is safe because GLOBAL_CLIENT is a static that lives for the entire program
-    let client: &'static HttpClient = unsafe { std::mem::transmute(global_client().as_ref()) };
-    client.put(url)
+    GLOBAL_CLIENT.put(url)
 }
 
 /// Create a new DELETE request using the global client
 #[must_use]
 pub fn delete(url: &str) -> RequestBuilder<'static, Ready> {
-    // SAFETY: We use a leaked static reference to make the lifetime 'static
-    // This is safe because GLOBAL_CLIENT is a static that lives for the entire program
-    let client: &'static HttpClient = unsafe { std::mem::transmute(global_client().as_ref()) };
-    client.delete(url)
+    GLOBAL_CLIENT.delete(url)
 }
 
 /// Create a new PATCH request using the global client
 #[must_use]
 pub fn patch(url: &str) -> RequestBuilder<'static, Ready> {
-    // SAFETY: We use a leaked static reference to make the lifetime 'static
-    // This is safe because GLOBAL_CLIENT is a static that lives for the entire program
-    let client: &'static HttpClient = unsafe { std::mem::transmute(global_client().as_ref()) };
-    client.patch(url)
+    GLOBAL_CLIENT.patch(url)
 }
 
 /// Create a new HEAD request using the global client
 #[must_use]
 pub fn head(url: &str) -> RequestBuilder<'static, Ready> {
-    // SAFETY: We use a leaked static reference to make the lifetime 'static
-    // This is safe because GLOBAL_CLIENT is a static that lives for the entire program
-    let client: &'static HttpClient = unsafe { std::mem::transmute(global_client().as_ref()) };
-    client.head(url)
+    GLOBAL_CLIENT.head(url)
 }
 
 /// Get connection pool statistics

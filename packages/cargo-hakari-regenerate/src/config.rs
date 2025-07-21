@@ -63,7 +63,7 @@ pub struct PackageInfo {
 impl Default for HakariConfig {
     fn default() -> Self {
         Self {
-            hakari_package: "fluent-voice-workspace-hack".to_string(),
+            hakari_package: "fluent-ai-workspace-hack".to_string(),
             dep_format_version: 4,
             resolver: "2".to_string(),
             platforms: Vec::new(),
@@ -80,8 +80,8 @@ impl HakariConfig {
         Self::default()
     }
 
-    /// Create configuration optimized for the fluent-voice workspace
-    pub fn for_fluent_voice() -> Self {
+    /// Create configuration optimized for the fluent-ai workspace
+    pub fn for_fluent_ai() -> Self {
         let mut config = Self::default();
         config.omitted_deps = Self::default_omitted_deps();
         config
@@ -288,7 +288,7 @@ impl WorkspaceConfig {
                 path: cargo_toml_path.to_path_buf(),
             })?;
 
-        Ok(content.contains("fluent-voice-workspace-hack"))
+        Ok(content.contains("fluent-ai-workspace-hack"))
     }
 
     pub fn validate(&self) -> Result<()> {

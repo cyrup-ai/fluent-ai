@@ -3,7 +3,7 @@ name = "cargo-hakari-regenerate"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
-repository = "https://github.com/davidmaple/fluent-voice"
+repository = "https://github.com/davidmaple/fluent-ai"
 description = "High-performance workspace-hack regeneration tool using cargo-hakari API"
 keywords = ["cargo", "hakari", "workspace", "dependencies", "optimization"]
 categories = ["command-line-utilities", "development-tools"]
@@ -17,6 +17,7 @@ name = "cargo_hakari_regenerate"
 path = "src/lib.rs"
 
 [dependencies]
+fluent-ai-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 # Core hakari integration
 cargo-hakari = "0.9"
 cargo_metadata = "0.18"

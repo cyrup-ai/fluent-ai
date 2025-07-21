@@ -157,7 +157,8 @@ impl ApiKeyManager {
 
         // Generate secure random key for development
         let dev_key = format!("dev_{}", uuid::Uuid::new_v4());
-        let key_hash = format!("{:x}", Sha256::digest(dev_key.as_bytes()));
+        let digest = Sha256::digest(dev_key.as_bytes());
+        let key_hash = digest.iter().map(|b| format!("{:02x}", b)).collect::<String>();
 
         let user_context = UserContext {
             user_id: "dev_user".to_string(),
@@ -182,7 +183,8 @@ impl ApiKeyManager {
         use sha2::{Digest, Sha256};
 
         // Hash the provided key
-        let key_hash = format!("{:x}", Sha256::digest(provided_key.as_bytes()));
+        let digest = Sha256::digest(provided_key.as_bytes());
+        let key_hash = digest.iter().map(|b| format!("{:02x}", b)).collect::<String>();
 
         // Look up by hash to prevent timing attacks
         if let Some(key_id) = self.key_hashes.get(&key_hash) {
@@ -198,7 +200,8 @@ impl ApiKeyManager {
         use sha2::{Digest, Sha256};
 
         if let Some(user_context) = self.keys.remove(old_key) {
-            let new_hash = format!("{:x}", Sha256::digest(new_key.as_bytes()));
+            let digest = Sha256::digest(new_key.as_bytes());
+            let new_hash = digest.iter().map(|b| format!("{:02x}", b)).collect::<String>();
             self.keys.insert(new_key.to_string(), user_context);
             self.key_hashes.insert(new_hash, new_key.to_string());
             Ok(())

@@ -78,7 +78,7 @@ impl LLMProvider for OpenAIProvider {
                     .post(&format!("{api_base}/chat/completions"))
                     .header("Authorization", format!("Bearer {api_key}"))
                     .header("Content-Type", "application/json")
-                    .with_body(request_body);
+                    .body(request_body);
 
                 let response = client
                     .send(http_request)
@@ -147,7 +147,7 @@ impl LLMProvider for OpenAIProvider {
                     .post(&format!("{api_base}/embeddings"))
                     .header("Authorization", format!("Bearer {api_key}"))
                     .header("Content-Type", "application/json")
-                    .with_body(request_body);
+                    .body(request_body);
 
                 let response = client
                     .send(http_request)

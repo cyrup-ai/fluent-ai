@@ -6,7 +6,7 @@ description = "High-performance candle integration for fluent-ai completion syst
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-
+fluent-ai-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 progresshub = { path = "../../../progresshub/tui" }
 
 # Candle dependencies (optional, enabled by features)

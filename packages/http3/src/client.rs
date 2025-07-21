@@ -893,8 +893,14 @@ impl<'a> RequestBuilder<'a, Ready> {
         H: Into<HashMap<String, String>>,
     {
         let new_headers = headers.into().into_iter().collect::<Vec<_>>();
+        let new_headers_collection = if new_headers.is_empty() {
+            ZeroOneOrMany::none()
+        } else {
+            ZeroOneOrMany::many(new_headers)
+        };
+        
         Self {
-            headers: self.headers.with_extended(new_headers),
+            headers: ZeroOneOrMany::merge(vec![self.headers, new_headers_collection]),
             ..self
         }
     }
@@ -1079,9 +1085,9 @@ impl<'a> RequestBuilder<'a, Ready> {
     pub async fn send(self) -> HttpResult<HttpResponse> {
         let mut request = HttpRequest::new(self.method, self.url);
 
-        // Convert ZeroOneOrMany headers to HashMap for HttpRequest
-        for (key, value) in self.headers.to_vec() {
-            request = request.header(key, value);
+        // Convert ZeroOneOrMany headers to HttpRequest using zero-allocation iteration
+        for (key, value) in &self.headers {
+            request = request.header(key.clone(), value.clone());
         }
 
         request = request.set_body(self.body);
@@ -1094,9 +1100,9 @@ impl<'a> RequestBuilder<'a, Ready> {
     pub async fn send_stream(self) -> HttpResult<HttpStream> {
         let mut request = HttpRequest::new(self.method, self.url);
 
-        // Convert ZeroOneOrMany headers to HashMap for HttpRequest
-        for (key, value) in self.headers.to_vec() {
-            request = request.header(key, value);
+        // Convert ZeroOneOrMany headers to HttpRequest using zero-allocation iteration
+        for (key, value) in &self.headers {
+            request = request.header(key.clone(), value.clone());
         }
 
         request = request.set_body(self.body);

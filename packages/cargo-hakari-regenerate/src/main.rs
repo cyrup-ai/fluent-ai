@@ -126,7 +126,7 @@ async fn regenerate_workspace_hack(progress: bool, _force: bool, dry_run: bool) 
     }
 
     let current_dir = std::env::current_dir()?;
-    let config = HakariConfig::for_fluent_voice();
+    let config = HakariConfig::for_fluent_ai();
 
     if dry_run {
         println!(
@@ -177,7 +177,7 @@ async fn verify_workspace_hack(detailed: bool) -> Result<()> {
 
 async fn show_info(packages: bool, config: bool) -> Result<()> {
     if config {
-        let hakari_config = HakariConfig::for_fluent_voice();
+        let hakari_config = HakariConfig::for_fluent_ai();
         println!("Configuration:");
         println!("  Hakari package: {}", hakari_config.hakari_package);
         println!("  Resolver: {}", hakari_config.resolver);
@@ -250,7 +250,7 @@ async fn cleanup(all: bool) -> Result<()> {
 }
 
 async fn validate_config(detailed: bool) -> Result<()> {
-    let config = HakariConfig::for_fluent_voice();
+    let config = HakariConfig::for_fluent_ai();
 
     match config.validate() {
         Ok(()) => {
@@ -285,7 +285,7 @@ async fn reset_config(yes: bool) -> Result<()> {
     let current_dir = std::env::current_dir()?;
     let config_path = current_dir.join(".hakari.toml");
 
-    let config = HakariConfig::for_fluent_voice();
+    let config = HakariConfig::for_fluent_ai();
     config.save(&config_path).await?;
 
     println!("✓ Configuration reset to defaults");
