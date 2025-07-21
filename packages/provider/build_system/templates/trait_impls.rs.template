@@ -1,0 +1,26 @@
+impl ModelInfoProvider for {STRUCT_NAME} {
+    fn get_model_info(&self, model_name: &str) -> Option<ModelInfo> {
+        // Generated model info lookup will be inserted here
+        None
+    }
+
+    fn list_models(&self) -> Vec<ModelInfo> {
+        // Generated model info list will be inserted here
+        vec![]
+    }
+}
+
+impl std::fmt::Display for {STRUCT_NAME} {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{DISPLAY_NAME} Provider")
+    }
+}
+
+impl Default for {STRUCT_NAME} {
+    fn default() -> Self {
+        Self::new(ClientConfig::default())
+            .expect("Failed to create default {PROVIDER_NAME} provider")
+    }
+}
+
+// Additional trait implementations will be generated based on provider capabilities

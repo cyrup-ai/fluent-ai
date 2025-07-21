@@ -7,10 +7,10 @@ use std::task::{Context, Poll};
 
 use arrayvec::ArrayVec;
 use candle_core::{Device, Tensor};
-use fluent_ai_core::completion::{CompletionRequest, CompletionResponse, StreamingResponse};
+use fluent_ai_domain::completion::{CompletionRequest, CompletionResponse};
 use smallvec::SmallVec;
 use tokio::sync::mpsc;
-use tokio_stream::Stream;
+use futures::stream::Stream;
 
 use crate::error::{CandleError, CandleResult};
 use crate::model::CandleModel;
@@ -413,7 +413,7 @@ impl CandleGenerator {
         &self,
         request: &CompletionRequest<'_>,
         tx: mpsc::UnboundedSender<
-            Result<CompletionResponse, fluent_ai_core::completion::error::CompletionError>,
+            Result<CompletionResponse, fluent_ai_domain::extractor::ExtractionError>,
         >,
     ) -> CandleResult<()> {
         // Tokenize input
@@ -728,7 +728,7 @@ impl CandleGenerator {
 /// Stream implementation for token generation
 pub struct CandleTokenStream {
     receiver: mpsc::UnboundedReceiver<
-        Result<CompletionResponse, fluent_ai_core::completion::error::CompletionError>,
+        Result<CompletionResponse, fluent_ai_domain::extractor::ExtractionError>,
     >,
 }
 
@@ -737,7 +737,7 @@ impl CandleTokenStream {
     #[inline(always)]
     pub fn new(
         receiver: mpsc::UnboundedReceiver<
-            Result<CompletionResponse, fluent_ai_core::completion::error::CompletionError>,
+            Result<CompletionResponse, fluent_ai_domain::extractor::ExtractionError>,
         >,
     ) -> Self {
         Self { receiver }
@@ -745,7 +745,7 @@ impl CandleTokenStream {
 }
 
 impl Stream for CandleTokenStream {
-    type Item = Result<CompletionResponse, fluent_ai_core::completion::error::CompletionError>;
+    type Item = Result<CompletionResponse, fluent_ai_domain::extractor::ExtractionError>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.receiver.poll_recv(cx)

@@ -13,8 +13,9 @@ use crate::agent::Agent;
 use crate::completion::{CompletionModel, CompletionParams, CompletionRequest};
 use crate::context::chunk::{CompletionChunk, FinishReason};
 // Removed unused import: crate::model::Model
+use crate::message::{Message, MessageType};
 use crate::prompt::Prompt;
-use crate::{AsyncTask, SearchChatMessage, ZeroOneOrMany, spawn_async};
+use crate::{AsyncTask, ZeroOneOrMany, spawn_async};
 
 /// Extraction error types for production-ready error handling
 #[derive(Debug, thiserror::Error)]
@@ -84,6 +85,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
         self.system_prompt.as_deref()
     }
 
+    #[allow(dead_code)] // TODO: Implement in extraction system
     fn new(agent: Agent) -> Self {
         Self {
             agent,
@@ -92,6 +94,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
         }
     }
 
+    #[allow(dead_code)] // TODO: Implement in extraction system
     fn with_system_prompt(mut self, prompt: impl Into<String>) -> Self {
         self.system_prompt = Some(prompt.into());
         self
@@ -107,22 +110,36 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
             )
         });
 
-        // Create completion request with optimized settings
-        let completion_request = CompletionRequest {
-            system_prompt: system_prompt.clone(),
-            chat_history: ZeroOneOrMany::One(SearchChatMessage::new("user", text)),
-            documents: ZeroOneOrMany::None,
-            tools: ZeroOneOrMany::None,
-            temperature: self.agent.temperature,
-            max_tokens: self.agent.max_tokens,
-            chunk_size: Some(1024), // Optimized chunk size for JSON parsing
-            additional_params: self.agent.additional_params.clone(),
-        };
-
+        // Create user message for completion request - handle error within async block
+        let text_bytes = text.as_bytes().to_vec();
         let agent = self.agent.clone();
         let text_input = text.to_string();
 
         spawn_async(async move {
+            // Create user message for completion request
+            let user_message = match Message::new(
+                1, // Simple ID for user message
+                MessageType::AgentChat,
+                &text_bytes
+            ) {
+                Ok(msg) => msg,
+                Err(e) => {
+                    return Err(ExtractionError::CompletionError(format!("Failed to create message: {}", e)));
+                }
+            };
+
+            // Create completion request with optimized settings
+            let completion_request = CompletionRequest {
+                system_prompt: system_prompt.into(),
+                chat_history: ZeroOneOrMany::One(user_message),
+                documents: ZeroOneOrMany::None,
+                tools: ZeroOneOrMany::None,
+                temperature: agent.temperature.unwrap_or(0.7),
+                max_tokens: agent.max_tokens.and_then(|n| std::num::NonZeroU64::new(n)),
+                chunk_size: Some(1024), // Optimized chunk size for JSON parsing
+                additional_params: agent.additional_params.clone(),
+            };
+
             // Use timeout to prevent hanging operations
             let timeout_duration = Duration::from_secs(30);
 
@@ -228,6 +245,7 @@ Please extract structured data from the following text and return it as JSON:
         serde_json::from_value(parsed_value).map_err(|e| ExtractionError::JsonParse(e))
     }
 
+    #[allow(dead_code)] // TODO: Implement in extraction system
     fn new(agent: Agent) -> Self {
         Self {
             agent,
@@ -236,6 +254,7 @@ Please extract structured data from the following text and return it as JSON:
         }
     }
 
+    #[allow(dead_code)] // TODO: Implement in extraction system
     fn with_system_prompt(mut self, prompt: impl Into<String>) -> Self {
         self.system_prompt = Some(prompt.into());
         self
@@ -260,13 +279,13 @@ impl CompletionModel for AgentCompletionModel {
     fn prompt(
         &self,
         prompt: Prompt,
-        params: &CompletionParams,
+        _params: &CompletionParams,
     ) -> crate::async_task::AsyncStream<CompletionChunk> {
         // Removed unused import: futures::stream::Stream
         use tokio::sync::mpsc;
 
         let (tx, rx) = mpsc::unbounded_channel();
-        let agent = self.agent.clone();
+        let _agent = self.agent.clone();
 
         // Spawn the completion task
         tokio::spawn(async move {
@@ -288,7 +307,7 @@ impl CompletionModel for AgentCompletionModel {
         });
 
         // Return the async stream
-        Box::pin(tokio_stream::wrappers::UnboundedReceiverStream::new(rx))
+        crate::async_task::AsyncStream::new(rx)
     }
 }
 

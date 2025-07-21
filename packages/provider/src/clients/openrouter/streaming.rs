@@ -13,7 +13,6 @@
 
 use std::future::Future;
 use std::pin::Pin;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU16, AtomicU32, AtomicU64, Ordering};
 use std::task::{Context, Poll};
@@ -1330,9 +1329,20 @@ impl SIMDCapabilities {
 
     pub fn detect() -> Self {
         Self {
+            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             avx2_available: is_x86_feature_detected!("avx2"),
+            #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+            avx2_available: false,
+            
+            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             avx512_available: is_x86_feature_detected!("avx512f"),
+            #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+            avx512_available: false,
+            
+            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             sse42_available: is_x86_feature_detected!("sse4.2"),
+            #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+            sse42_available: false,
         }
     }
 }
@@ -1939,5 +1949,5 @@ static OPTIMIZATION_STRATEGIES: [OptimizationStrategy; 5] = [
     },
 ];
 
-use futures::StreamExt;
+
 use serde::{Deserialize, Serialize};

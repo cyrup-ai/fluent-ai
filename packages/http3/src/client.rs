@@ -211,37 +211,50 @@ impl HttpClient {
 
     /// Download a file from the given URL with streaming support
     /// Returns a DownloadStream that yields DownloadChunk items
+    /// Use HttpRequest builder methods like .if_none_match() for conditional requests
     pub async fn download_file(&self, url: &str) -> HttpResult<crate::DownloadStream> {
+        let request = HttpRequest::new(crate::HttpMethod::Get, url.to_string());
+        self.download_with_request(request).await
+    }
+
+    /// Download a file using an HttpRequest (supports conditional headers)
+    /// Returns a DownloadStream that yields DownloadChunk items
+    pub async fn download_with_request(&self, request: HttpRequest) -> HttpResult<crate::DownloadStream> {
         // Validate URL
-        let parsed_url = url::Url::parse(url).map_err(|e| crate::HttpError::InvalidUrl {
-            url: url.to_string(),
+        let parsed_url = url::Url::parse(request.url()).map_err(|e| crate::HttpError::InvalidUrl {
+            url: request.url().to_string(),
             message: format!("Invalid URL format: {}", e),
         })?;
 
-        // Only allow HTTP/HTTPS schemes for downloads
         match parsed_url.scheme() {
             "http" | "https" => {}
             scheme => {
                 return Err(crate::HttpError::InvalidUrl {
-                    url: url.to_string(),
+                    url: request.url().to_string(),
                     message: format!("Unsupported URL scheme for download: {}", scheme),
                 });
             }
         }
 
-        // Build optimized request for downloading
+        // Build reqwest request with all headers from HttpRequest
         let mut req_builder = self
             .inner
-            .get(url)
+            .get(request.url())
             .header("Accept", "*/*")
-            .header("Accept-Encoding", "identity") // Disable compression for downloads
+            .header("Accept-Encoding", "identity")
             .header("Connection", "keep-alive")
             .header("User-Agent", &self.config.user_agent);
 
-        // Add range support header to enable resumable downloads
-        req_builder = req_builder.header("Accept-Ranges", "bytes");
+        // Add all headers from the HttpRequest (including conditional headers)
+        for (key, value) in request.headers() {
+            req_builder = req_builder.header(key, value);
+        }
 
-        // Send request and get streaming response
+        // Add timeout if specified
+        if let Some(timeout) = request.timeout() {
+            req_builder = req_builder.timeout(timeout);
+        }
+
         let response = req_builder
             .send()
             .await
@@ -249,20 +262,29 @@ impl HttpClient {
                 message: format!("Failed to initiate download: {}", e),
             })?;
 
-        // Check for successful response status
         let status = response.status();
+
+        // Handle 304 Not Modified
+        if status.as_u16() == 304 {
+            return Err(crate::HttpError::HttpStatus {
+                status: 304,
+                message: "Not Modified - content hasn't changed".to_string(),
+                body: String::new(),
+            });
+        }
+
+        // Handle other non-success status codes
         if !status.is_success() {
             return Err(crate::HttpError::HttpStatus {
                 status: status.as_u16(),
                 message: format!("Download failed with status: {}", status),
-                body: String::new(), // Empty body for download errors
+                body: String::new(),
             });
         }
 
-        // Validate content type if present
+        // Validate content type
         if let Some(content_type) = response.headers().get("content-type") {
             if let Ok(content_type_str) = content_type.to_str() {
-                // Reject HTML responses as they're likely error pages
                 if content_type_str.starts_with("text/html") {
                     return Err(crate::HttpError::InvalidResponse {
                         message: "Received HTML response, likely an error page".to_string(),
@@ -843,3 +865,4 @@ impl Default for HttpClient {
         })
     }
 }
+

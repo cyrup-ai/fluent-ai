@@ -219,13 +219,13 @@ impl<'a> CompletionCoreRequestBuilder<'a> {
     pub fn build(self) -> CompletionCoreResult<CompletionCoreRequest<'a>> {
         if self.prompt.is_empty() {
             return Err(CompletionCoreError::InvalidRequest(
-                "prompt cannot be empty",
+                String::from("prompt cannot be empty"),
             ));
         }
 
         if self.max_tokens == 0 {
             return Err(CompletionCoreError::InvalidRequest(
-                "max_tokens must be > 0",
+                String::from("max_tokens must be > 0"),
             ));
         }
 
@@ -271,7 +271,7 @@ impl CompletionCoreResponse {
     #[inline(always)]
     pub fn text(&self) -> CompletionCoreResult<&str> {
         std::str::from_utf8(&self.text)
-            .map_err(|_| CompletionCoreError::Internal("invalid UTF-8 in response"))
+            .map_err(|_| CompletionCoreError::Internal(String::from("invalid UTF-8 in response")))
     }
 
     /// Get the number of tokens generated
@@ -400,7 +400,7 @@ impl CompletionCoreResponseBuilder {
     pub fn build(self) -> CompletionCoreResult<CompletionCoreResponse> {
         if self.text.is_empty() {
             return Err(CompletionCoreError::Internal(
-                "response text cannot be empty",
+                String::from("response text cannot be empty"),
             ));
         }
 
@@ -497,7 +497,7 @@ pub fn with_stack_buffer<T, F, R>(f: F) -> R
 where
     F: FnOnce(&mut [std::mem::MaybeUninit<T>]) -> R,
 {
-    let mut buffer = [std::mem::MaybeUninit::uninit(); 1024];
+    let mut buffer: [std::mem::MaybeUninit<T>; 1024] = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
     f(&mut buffer)
 }
 

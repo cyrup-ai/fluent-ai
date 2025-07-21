@@ -155,6 +155,62 @@ pub enum ChatCommand {
         /// Show system information
         system_info: bool,
     },
+    /// Chat history operations
+    History {
+        /// History action (show, search, clear, export)
+        action: HistoryAction,
+        /// Number of messages to show
+        limit: Option<usize>,
+        /// Filter criteria
+        filter: Option<Arc<str>>,
+    },
+    /// Save conversation state
+    Save {
+        /// Save name
+        name: Option<Arc<str>>,
+        /// Include configuration
+        include_config: bool,
+        /// Save location
+        location: Option<Arc<str>>,
+    },
+    /// Load conversation state
+    Load {
+        /// Load name
+        name: Arc<str>,
+        /// Merge with current session
+        merge: bool,
+        /// Load location
+        location: Option<Arc<str>>,
+    },
+    /// Import data or configuration
+    Import {
+        /// Import type (conversation, config, templates)
+        import_type: ImportType,
+        /// Source file or URL
+        source: Arc<str>,
+        /// Import options
+        options: HashMap<Arc<str>, Arc<str>>,
+    },
+    /// Application settings
+    Settings {
+        /// Setting category (appearance, behavior, security)
+        category: SettingsCategory,
+        /// Setting key
+        key: Option<Arc<str>>,
+        /// Setting value
+        value: Option<Arc<str>>,
+        /// Show current settings
+        show: bool,
+    },
+    /// Custom command
+    Custom {
+        /// Command name
+        name: Arc<str>,
+        /// Command arguments
+        args: HashMap<Arc<str>, Arc<str>>,
+        /// Command metadata
+        metadata: Option<serde_json::Value>,
+    },
 }
 
 /// Template actions
@@ -255,6 +311,35 @@ pub enum DebugAction {
     Memory,
     Network,
     Cache,
+}
+
+/// History actions
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum HistoryAction {
+    Show,
+    Search,
+    Clear,
+    Export,
+}
+
+/// Import types
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ImportType {
+    Conversation,
+    Config,
+    Templates,
+    Macros,
+    Themes,
+}
+
+/// Settings categories
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum SettingsCategory {
+    Appearance,
+    Behavior,
+    Security,
+    Performance,
+    Advanced,
 }
 
 /// Command execution context
@@ -476,7 +561,34 @@ pub trait CommandHandler: Send + Sync {
 
     /// Validate command before execution
     fn validate(&self, command: &ChatCommand, context: &CommandContext) -> CommandResult<()> {
-        // Default implementation - can be overridden
+        // Default validation - ensure command is well-formed
+        match command {
+            ChatCommand::Help { command: Some(cmd), .. } if cmd.is_empty() => {
+                return Err(CommandError::InvalidArguments { 
+                    detail: Arc::from("Help command reference cannot be empty") 
+                });
+            }
+            ChatCommand::Export { format, .. } if format.is_empty() => {
+                return Err(CommandError::InvalidArguments { 
+                    detail: Arc::from("Export format cannot be empty") 
+                });
+            }
+            ChatCommand::Config { key: Some(key), .. } if key.is_empty() => {
+                return Err(CommandError::InvalidArguments { 
+                    detail: Arc::from("Config key cannot be empty") 
+                });
+            }
+            _ => {} // Other variants are valid by default
+        }
+
+        // Validate that we have a valid context
+        if context.user_id.is_empty() {
+            return Err(CommandError::InvalidArguments { 
+                detail: Arc::from("User ID cannot be empty") 
+            });
+        }
+
+        // Default implementation passes validation
         Ok(())
     }
 
@@ -497,6 +609,12 @@ pub trait CommandHandler: Send + Sync {
             ChatCommand::Stats { .. } => "stats",
             ChatCommand::Theme { .. } => "theme",
             ChatCommand::Debug { .. } => "debug",
+            ChatCommand::History { .. } => "history",
+            ChatCommand::Save { .. } => "save",
+            ChatCommand::Load { .. } => "load",
+            ChatCommand::Import { .. } => "import",
+            ChatCommand::Settings { .. } => "settings",
+            ChatCommand::Custom { .. } => "custom",
         };
 
         self.supported_commands().contains(&command_name)

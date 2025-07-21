@@ -1,0 +1,1728 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Checking fluent_ai_http3 v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/http3)
+   Compiling fluent_ai_provider v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/provider)
+    Checking sweetmcp_memory v0.1.0 (https://github.com/cyrup-ai/sweetmcp?branch=main#27c806d9)
+    Checking cylo v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/cylo)
+warning: fluent_ai_provider@0.1.0: Build script simplified to unblock compilation
+    Checking fluent_ai_memory v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/memory)
+error[E0425]: cannot find value `state` in this scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/committee.rs:315:49
+    |
+274 |         _state: &CodeState,
+    |         ------ `_state` defined here
+...
+315 |             self.perspective, rubric.objective, state.code, action, self.perspective
+    |                                                 ^^^^^
+    |
+help: the leading underscore in `_state` marks it as unused, consider renaming it to `state`
+    |
+274 -         _state: &CodeState,
+274 +         state: &CodeState,
+    |
+
+error[E0425]: cannot find value `state` in this scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/committee.rs:648:31
+    |
+631 |         _state: &CodeState,
+    |         ------ `_state` defined here
+...
+648 |             let state_clone = state.clone();
+    |                               ^^^^^
+    |
+help: the leading underscore in `_state` marks it as unused, consider renaming it to `state`
+    |
+631 -         _state: &CodeState,
+631 +         state: &CodeState,
+    |
+
+error[E0560]: struct `EvaluationRound` has no field named `consensus`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/committee.rs:585:17
+    |
+585 |                 consensus: None, // Remove consensus from round tracking for now
+    |                 ^^^^^^^^^ `EvaluationRound` does not have this field
+    |
+    = note: all struct fields are already assigned
+
+error[E0382]: borrow of moved value: `new_state`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:159:57
+    |
+149 |         let new_state = self.apply_action(&parent_state, &action).await?;
+    |             --------- move occurs because `new_state` has type `CodeState`, which does not implement the `Copy` trait
+...
+158 |             state: new_state,
+    |                    --------- value moved here
+159 |             untried_actions: Self::get_possible_actions(&new_state, &self.spec),
+    |                                                         ^^^^^^^^^^ value borrowed here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+158 |             state: new_state.clone(),
+    |                             ++++++++
+
+error[E0282]: type annotations needed for `JoinSet<std::result::Result<(std::string::String, f64), _>>`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:208:13
+    |
+208 |         let mut join_set = JoinSet::new();
+    |             ^^^^^^^^^^^^
+...
+215 |                     match result {
+    |                           ------ type must be known at this point
+    |
+help: consider giving `join_set` an explicit type, where the type for type parameter `E` is specified
+    |
+208 |         let mut join_set: JoinSet<std::result::Result<_, E>> = JoinSet::new();
+    |                         ++++++++++++++++++++++++++++++++++++
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:412:43
+    |
+412 |         let new_latency = state.latency * factors.latency_factor;
+    |                                           ^^^^^^^^^^^^^^^^^^^^^^ expected `f64`, found `f32`
+
+error[E0277]: cannot multiply `f64` by `f32`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:412:41
+    |
+412 |         let new_latency = state.latency * factors.latency_factor;
+    |                                         ^ no implementation for `f64 * f32`
+    |
+    = help: the trait `std::ops::Mul<f32>` is not implemented for `f64`
+    = help: the following other types implement trait `std::ops::Mul<Rhs>`:
+              `&f64` implements `std::ops::Mul<&Complex<f64>>`
+              `&f64` implements `std::ops::Mul<Complex<f64>>`
+              `&f64` implements `std::ops::Mul<f64>`
+              `&f64` implements `std::ops::Mul`
+              `f64` implements `std::ops::Mul<&Complex<f64>>`
+              `f64` implements `std::ops::Mul<&DualQuaternion<f64>>`
+              `f64` implements `std::ops::Mul<&Matrix<f64, R, C, S>>`
+              `f64` implements `std::ops::Mul<&OPoint<f64, D>>`
+            and 16 others
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:413:41
+    |
+413 |         let new_memory = state.memory * factors.memory_factor;
+    |                                         ^^^^^^^^^^^^^^^^^^^^^ expected `f64`, found `f32`
+
+error[E0277]: cannot multiply `f64` by `f32`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:413:39
+    |
+413 |         let new_memory = state.memory * factors.memory_factor;
+    |                                       ^ no implementation for `f64 * f32`
+    |
+    = help: the trait `std::ops::Mul<f32>` is not implemented for `f64`
+    = help: the following other types implement trait `std::ops::Mul<Rhs>`:
+              `&f64` implements `std::ops::Mul<&Complex<f64>>`
+              `&f64` implements `std::ops::Mul<Complex<f64>>`
+              `&f64` implements `std::ops::Mul<f64>`
+              `&f64` implements `std::ops::Mul`
+              `f64` implements `std::ops::Mul<&Complex<f64>>`
+              `f64` implements `std::ops::Mul<&DualQuaternion<f64>>`
+              `f64` implements `std::ops::Mul<&Matrix<f64, R, C, S>>`
+              `f64` implements `std::ops::Mul<&OPoint<f64, D>>`
+            and 16 others
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:414:48
+    |
+414 |         let new_relevance = (state.relevance * factors.relevance_factor).min(100.0);
+    |                                                ^^^^^^^^^^^^^^^^^^^^^^^^ expected `f64`, found `f32`
+
+error[E0277]: cannot multiply `f64` by `f32`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:414:46
+    |
+414 |         let new_relevance = (state.relevance * factors.relevance_factor).min(100.0);
+    |                                              ^ no implementation for `f64 * f32`
+    |
+    = help: the trait `std::ops::Mul<f32>` is not implemented for `f64`
+    = help: the following other types implement trait `std::ops::Mul<Rhs>`:
+              `&f64` implements `std::ops::Mul<&Complex<f64>>`
+              `&f64` implements `std::ops::Mul<Complex<f64>>`
+              `&f64` implements `std::ops::Mul<f64>`
+              `&f64` implements `std::ops::Mul`
+              `f64` implements `std::ops::Mul<&Complex<f64>>`
+              `f64` implements `std::ops::Mul<&DualQuaternion<f64>>`
+              `f64` implements `std::ops::Mul<&Matrix<f64, R, C, S>>`
+              `f64` implements `std::ops::Mul<&OPoint<f64, D>>`
+            and 16 others
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:430:26
+    |
+430 |         if new_latency > max_latency || new_memory > max_memory || new_relevance < min_relevance {
+    |            -----------   ^^^^^^^^^^^ expected `f64`, found `f32`
+    |            |
+    |            expected because this is `f64`
+    |
+help: you can convert an `f32` to an `f64`
+    |
+430 |         if new_latency > max_latency.into() || new_memory > max_memory || new_relevance < min_relevance {
+    |                                     +++++++
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:430:54
+    |
+430 |         if new_latency > max_latency || new_memory > max_memory || new_relevance < min_relevance {
+    |                                         ----------   ^^^^^^^^^^ expected `f64`, found `f32`
+    |                                         |
+    |                                         expected because this is `f64`
+    |
+help: you can convert an `f32` to an `f64`
+    |
+430 |         if new_latency > max_latency || new_memory > max_memory.into() || new_relevance < min_relevance {
+    |                                                                +++++++
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:430:84
+    |
+430 |         if new_latency > max_latency || new_memory > max_memory || new_relevance < min_relevance {
+    |                                                                    -------------   ^^^^^^^^^^^^^ expected `f64`, found `f32`
+    |                                                                    |
+    |                                                                    expected because this is `f64`
+    |
+help: you can convert an `f32` to an `f64`
+    |
+430 |         if new_latency > max_latency || new_memory > max_memory || new_relevance < min_relevance.into() {
+    |                                                                                                 +++++++
+
+error[E0609]: no field `applied` on type `&OptimizationOutcome`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/orchestrator.rs:148:84
+    |
+148 |                 if outcomes.len() > 10 && outcomes.iter().rev().take(5).all(|o| !o.applied) {
+    |                                                                                    ^^^^^^^ unknown field
+
+error[E0277]: `?` couldn't convert the error to `cognitive::types::CognitiveError`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/orchestrator.rs:187:91
+    |
+187 | ...                   fs::write(&output_path, serde_json::to_string_pretty(&outcome)?)
+    |                                               --------------------------------------^ the trait `std::convert::From<serde_json::Error>` is not implemented for `cognitive::types::CognitiveError`
+    |                                               |
+    |                                               this can't be annotated with `?` because it has type `Result<_, serde_json::Error>`
+    |
+note: `cognitive::types::CognitiveError` needs to implement `From<serde_json::Error>`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/types.rs:223:1
+    |
+223 | pub enum CognitiveError {
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+
+error[E0609]: no field `applied` on type `&&OptimizationOutcome`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/orchestrator.rs:212:63
+    |
+212 |                 let successful = outcomes.iter().filter(|o| o.applied).count();
+    |                                                               ^^^^^^^ unknown field
+
+error[E0271]: type mismatch resolving `<&Vec<f32> as IntoIterator>::Item == f32`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/attention.rs:80:40
+    |
+80  |             all_weighted_values.extend(&head_scores.weighted_values);
+    |                                 ------ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `f32`, found `&f32`
+    |                                 |
+    |                                 required by a bound introduced by this call
+    |
+note: required by a bound in `extend`
+   --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/iter/traits/collect.rs:413:31
+    |
+413 |     fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
+    |                               ^^^^^^^^ required by this bound in `Extend::extend`
+
+error[E0277]: the trait bound `&str: surrealdb::opt::IntoEndpoint<surrealdb::engine::any::Any>` is not satisfied
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/manager.rs:63:73
+    |
+63  |         let db = surrealdb::Surreal::new::<surrealdb::engine::any::Any>(surreal_url).await
+    |                  ------------------------------------------------------ ^^^^^^^^^^^ the trait `surrealdb::opt::IntoEndpoint<surrealdb::engine::any::Any>` is not implemented for `&str`
+    |                  |
+    |                  required by a bound introduced by this call
+    |
+    = help: the following other types implement trait `surrealdb::opt::IntoEndpoint<Scheme>`:
+              `&str` implements `surrealdb::opt::IntoEndpoint<surrealdb::engine::local::SurrealKv>`
+              `&str` implements `surrealdb::opt::IntoEndpoint<surrealdb::engine::remote::http::Http>`
+              `&str` implements `surrealdb::opt::IntoEndpoint<surrealdb::engine::remote::http::Https>`
+              `&str` implements `surrealdb::opt::IntoEndpoint<surrealdb::engine::remote::ws::Ws>`
+              `&str` implements `surrealdb::opt::IntoEndpoint<surrealdb::engine::remote::ws::Wss>`
+note: required by a bound in `surrealdb::method::<impl Surreal<C>>::new`
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/surrealdb-2.3.7/src/api/method/mod.rs:253:30
+    |
+253 |     pub fn new<P>(address: impl IntoEndpoint<P, Client = C>) -> Connect<C, Self> {
+    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `surrealdb::method::<impl Surreal<C>>::new`
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/manager.rs:98:66
+    |
+98  |           let evolution_engine = Arc::new(tokio::sync::RwLock::new(EvolutionEngine::new(
+    |  __________________________________________________________________^^^^^^^^^^^^^^^^^^^^-
+99  | |             settings.evolution_rate,
+    | |             ----------------------- expected `CodeState`, found `f32`
+100 | |         )));
+    | |_________- argument #2 of type `u64` is missing
+    |
+note: associated function defined here
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/evolution.rs:206:12
+    |
+206 |     pub fn new(initial_state: CodeState, max_generations: u64) -> Self {
+    |            ^^^ ------------------------  --------------------
+help: provide the argument
+    |
+98  -         let evolution_engine = Arc::new(tokio::sync::RwLock::new(EvolutionEngine::new(
+99  -             settings.evolution_rate,
+100 -         )));
+98  +         let evolution_engine = Arc::new(tokio::sync::RwLock::new(EvolutionEngine::new(/* CodeState */, /* u64 */)));
+    |
+
+error[E0308]: `?` operator has incompatible types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/manager.rs:126:44
+    |
+126 |           cognitive_memory.cognitive_state = self.cognitive_mesh
+    |  ____________________________________________^
+127 | |             .analyze_memory_context(&cognitive_memory.base_memory)
+128 | |             .await?;
+    | |___________________^ expected `cognitive::types::CognitiveState`, found `cognitive::state::CognitiveState`
+    |
+    = note: `?` operator cannot convert from `cognitive::state::CognitiveState` to `cognitive::types::CognitiveState`
+    = note: `cognitive::state::CognitiveState` and `cognitive::types::CognitiveState` have similar names, but are actually distinct types
+note: `cognitive::state::CognitiveState` is defined in module `crate::cognitive::state` of the current crate
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/state.rs:13:1
+    |
+13  | pub struct CognitiveState {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `cognitive::types::CognitiveState` is defined in module `crate::cognitive::types` of the current crate
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/types.rs:10:1
+    |
+10  | pub struct CognitiveState {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: `MemoryStream` is not an iterator
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/manager.rs:193:14
+    |
+190 |           let memories = self
+    |  ________________________-
+191 | |             .legacy_manager
+192 | |             .search_by_content(&query.original)
+193 | |             .collect::<Vec<_>>()
+    | |             -^^^^^^^ `MemoryStream` is not an iterator
+    | |_____________|
+    |
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/memory/memory_manager.rs:192:1
+    |
+192 |   pub struct MemoryStream {
+    |   ----------------------- method `collect` not found for this struct because it doesn't satisfy `MemoryStream: Iterator`
+    |
+    = note: the following trait bounds were not satisfied:
+            `MemoryStream: Iterator`
+            which is required by `&mut MemoryStream: Iterator`
+note: the trait `Iterator` must be implemented
+   --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:39:1
+    |
+39  | pub trait Iterator {
+    | ^^^^^^^^^^^^^^^^^^
+    = help: items from traits can only be used if the trait is in scope
+help: trait `StreamExt` which provides `collect` is implemented but not in scope; perhaps you want to import it
+    |
+3   + use futures::StreamExt;
+    |
+
+error[E0599]: no method named `record_fitness` found for struct `tokio::sync::RwLockWriteGuard<'_, EvolutionEngine>` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/manager.rs:235:19
+    |
+235 |         evolution.record_fitness(metrics);
+    |                   ^^^^^^^^^^^^^^ method not found in `tokio::sync::RwLockWriteGuard<'_, EvolutionEngine>`
+
+error[E0599]: no method named `evolve_if_needed` found for struct `tokio::sync::RwLockWriteGuard<'_, EvolutionEngine>` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/manager.rs:238:51
+    |
+238 |         if let Some(evolution_result) = evolution.evolve_if_needed().await {
+    |                                                   ^^^^^^^^^^^^^^^^ method not found in `tokio::sync::RwLockWriteGuard<'_, EvolutionEngine>`
+
+error[E0382]: borrow of moved value: `error_locations`
+    --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/error_correction.rs:353:70
+     |
+347  |             let error_locations = ml_decoder.decode_syndrome(syndrome);
+     |                 --------------- move occurs because `error_locations` has type `Vec<usize>`, which does not implement the `Copy` trait
+...
+351  |                 error_location: error_locations,
+     |                                 --------------- value moved here
+352  |                 error_type: ErrorType::BitFlip, // Simplified
+353  |                 correction_operation: self.generate_correction_gates(&error_locations),
+     |                                                                      ^^^^^^^^^^^^^^^^ value borrowed here after move
+     |
+     = note: borrow occurs due to deref coercion to `[usize]`
+note: deref defined here
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc/src/vec/mod.rs:3382:5
+     |
+3382 |     type Target = [T];
+     |     ^^^^^^^^^^^
+help: consider cloning the value if the performance cost is acceptable
+     |
+351  |                 error_location: error_locations.clone(),
+     |                                                ++++++++
+
+error[E0277]: `?` couldn't convert the error to `quantum::types::CognitiveError`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/router.rs:231:34
+    |
+231 |         superposition.normalize()?;
+    |                       -----------^ the trait `std::convert::From<std::string::String>` is not implemented for `quantum::types::CognitiveError`
+    |                       |
+    |                       this can't be annotated with `?` because it has type `Result<_, std::string::String>`
+    |
+note: `quantum::types::CognitiveError` needs to implement `From<std::string::String>`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/types.rs:11:1
+    |
+11  | pub enum CognitiveError {
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+
+error[E0277]: `?` couldn't convert the error to `quantum::types::CognitiveError`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/router.rs:295:34
+    |
+295 |         superposition.normalize()?;
+    |                       -----------^ the trait `std::convert::From<std::string::String>` is not implemented for `quantum::types::CognitiveError`
+    |                       |
+    |                       this can't be annotated with `?` because it has type `Result<_, std::string::String>`
+    |
+note: `quantum::types::CognitiveError` needs to implement `From<std::string::String>`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/types.rs:11:1
+    |
+11  | pub enum CognitiveError {
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+
+error[E0382]: borrow of moved value: `measurement.context`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/router.rs:395:17
+    |
+390 |             target_context: measurement.context,
+    |                             ------------------- value moved here
+...
+395 |                 measurement.context, measurement.probability
+    |                 ^^^^^^^^^^^^^^^^^^^ value borrowed here after move
+    |
+    = note: move occurs because `measurement.context` has type `std::string::String`, which does not implement the `Copy` trait
+    = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:139:41
+    |
+139 |         let error_correction = Arc::new(QuantumErrorCorrection::new());
+    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^-- argument #1 of type `f64` is missing
+    |
+note: associated function defined here
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/error_correction.rs:170:12
+    |
+170 |     pub fn new(error_rate_threshold: f64) -> Self {
+    |            ^^^ -------------------------
+help: provide the argument
+    |
+139 |         let error_correction = Arc::new(QuantumErrorCorrection::new(/* f64 */));
+    |                                                                     +++++++++
+
+error[E0599]: no function or associated item named `new` found for struct `PhaseEvolution` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:143:56
+    |
+143 |         let phase_evolution = Arc::new(PhaseEvolution::new(
+    |                                                        ^^^ function or associated item not found in `PhaseEvolution`
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/state.rs:23:1
+    |
+23  | pub struct PhaseEvolution {
+    | ------------------------- function or associated item `new` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `new`, perhaps you need to implement one of them:
+            candidate #1: `Atomic`
+            candidate #2: `Bit`
+            candidate #3: `Digest`
+            candidate #4: `KeyInit`
+            candidate #5: `KeyIvInit`
+            candidate #6: `UniformSampler`
+            candidate #7: `VariableOutput`
+            candidate #8: `VariableOutputCore`
+            candidate #9: `ahash::HashMapExt`
+            candidate #10: `ahash::HashSetExt`
+            candidate #11: `aws_lc_rs::aead::BoundKey`
+            candidate #12: `brotli::enc::backward_references::hash_to_binary_tree::Allocable`
+            candidate #13: `brotli::enc::threading::AnyBoxConstructor`
+            candidate #14: `ext_sort::chunk::ExternalChunk`
+            candidate #15: `itertools::adaptors::coalesce::CountItem`
+            candidate #16: `ndarray::DataOwned`
+            candidate #17: `ndarray::data_traits::DataOwned`
+            candidate #18: `parking_lot_core::thread_parker::ThreadParkerT`
+            candidate #19: `petgraph::adj::IndexType`
+            candidate #20: `petgraph::matrix_graph::Nullable`
+            candidate #21: `protobuf::message::Message`
+            candidate #22: `quick_cache::shard::SharedPlaceholder`
+            candidate #23: `quick_cache::shard::SharedPlaceholder`
+            candidate #24: `rand::distributions::uniform::UniformSampler`
+            candidate #25: `ring::aead::BoundKey`
+            candidate #26: `rstar::point::PointExt`
+            candidate #27: `serde_with::duplicate_key_impls::error_on_duplicate::PreventDuplicateInsertsMap`
+            candidate #28: `serde_with::duplicate_key_impls::error_on_duplicate::PreventDuplicateInsertsSet`
+            candidate #29: `serde_with::duplicate_key_impls::first_value_wins::DuplicateInsertsFirstWinsMap`
+            candidate #30: `serde_with::duplicate_key_impls::last_value_wins::DuplicateInsertsLastWinsSet`
+            candidate #31: `sha2::digest::Mac`
+            candidate #32: `spade::triangulation::Triangulation`
+            candidate #33: `tendril::tendril::Atomicity`
+
+error[E0599]: no function or associated item named `new` found for struct `TimeDependentTerm` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:146:36
+    |
+146 |                 TimeDependentTerm::new(0.1, 1.0),
+    |                                    ^^^ function or associated item not found in `TimeDependentTerm`
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/state.rs:32:1
+    |
+32  | pub struct TimeDependentTerm {
+    | ---------------------------- function or associated item `new` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `new`, perhaps you need to implement one of them:
+            candidate #1: `Atomic`
+            candidate #2: `Bit`
+            candidate #3: `Digest`
+            candidate #4: `KeyInit`
+            candidate #5: `KeyIvInit`
+            candidate #6: `UniformSampler`
+            candidate #7: `VariableOutput`
+            candidate #8: `VariableOutputCore`
+            candidate #9: `ahash::HashMapExt`
+            candidate #10: `ahash::HashSetExt`
+            candidate #11: `aws_lc_rs::aead::BoundKey`
+            candidate #12: `brotli::enc::backward_references::hash_to_binary_tree::Allocable`
+            candidate #13: `brotli::enc::threading::AnyBoxConstructor`
+            candidate #14: `ext_sort::chunk::ExternalChunk`
+            candidate #15: `itertools::adaptors::coalesce::CountItem`
+            candidate #16: `ndarray::DataOwned`
+            candidate #17: `ndarray::data_traits::DataOwned`
+            candidate #18: `parking_lot_core::thread_parker::ThreadParkerT`
+            candidate #19: `petgraph::adj::IndexType`
+            candidate #20: `petgraph::matrix_graph::Nullable`
+            candidate #21: `protobuf::message::Message`
+            candidate #22: `quick_cache::shard::SharedPlaceholder`
+            candidate #23: `quick_cache::shard::SharedPlaceholder`
+            candidate #24: `rand::distributions::uniform::UniformSampler`
+            candidate #25: `ring::aead::BoundKey`
+            candidate #26: `rstar::point::PointExt`
+            candidate #27: `serde_with::duplicate_key_impls::error_on_duplicate::PreventDuplicateInsertsMap`
+            candidate #28: `serde_with::duplicate_key_impls::error_on_duplicate::PreventDuplicateInsertsSet`
+            candidate #29: `serde_with::duplicate_key_impls::first_value_wins::DuplicateInsertsFirstWinsMap`
+            candidate #30: `serde_with::duplicate_key_impls::last_value_wins::DuplicateInsertsLastWinsSet`
+            candidate #31: `sha2::digest::Mac`
+            candidate #32: `spade::triangulation::Triangulation`
+            candidate #33: `tendril::tendril::Atomicity`
+
+error[E0599]: no function or associated item named `new` found for struct `TimeDependentTerm` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:147:36
+    |
+147 |                 TimeDependentTerm::new(0.05, 2.0),
+    |                                    ^^^ function or associated item not found in `TimeDependentTerm`
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/state.rs:32:1
+    |
+32  | pub struct TimeDependentTerm {
+    | ---------------------------- function or associated item `new` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `new`, perhaps you need to implement one of them:
+            candidate #1: `Atomic`
+            candidate #2: `Bit`
+            candidate #3: `Digest`
+            candidate #4: `KeyInit`
+            candidate #5: `KeyIvInit`
+            candidate #6: `UniformSampler`
+            candidate #7: `VariableOutput`
+            candidate #8: `VariableOutputCore`
+            candidate #9: `ahash::HashMapExt`
+            candidate #10: `ahash::HashSetExt`
+            candidate #11: `aws_lc_rs::aead::BoundKey`
+            candidate #12: `brotli::enc::backward_references::hash_to_binary_tree::Allocable`
+            candidate #13: `brotli::enc::threading::AnyBoxConstructor`
+            candidate #14: `ext_sort::chunk::ExternalChunk`
+            candidate #15: `itertools::adaptors::coalesce::CountItem`
+            candidate #16: `ndarray::DataOwned`
+            candidate #17: `ndarray::data_traits::DataOwned`
+            candidate #18: `parking_lot_core::thread_parker::ThreadParkerT`
+            candidate #19: `petgraph::adj::IndexType`
+            candidate #20: `petgraph::matrix_graph::Nullable`
+            candidate #21: `protobuf::message::Message`
+            candidate #22: `quick_cache::shard::SharedPlaceholder`
+            candidate #23: `quick_cache::shard::SharedPlaceholder`
+            candidate #24: `rand::distributions::uniform::UniformSampler`
+            candidate #25: `ring::aead::BoundKey`
+            candidate #26: `rstar::point::PointExt`
+            candidate #27: `serde_with::duplicate_key_impls::error_on_duplicate::PreventDuplicateInsertsMap`
+            candidate #28: `serde_with::duplicate_key_impls::error_on_duplicate::PreventDuplicateInsertsSet`
+            candidate #29: `serde_with::duplicate_key_impls::first_value_wins::DuplicateInsertsFirstWinsMap`
+            candidate #30: `serde_with::duplicate_key_impls::last_value_wins::DuplicateInsertsLastWinsSet`
+            candidate #31: `sha2::digest::Mac`
+            candidate #32: `spade::triangulation::Triangulation`
+            candidate #33: `tendril::tendril::Atomicity`
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:157:52
+    |
+157 |             superposition: SuperpositionState::new(untried_actions.len()),
+    |                            ----------------------- ^^^^^^^^^^^^^^^^^^^^^ expected `Duration`, found `usize`
+    |                            |
+    |                            arguments to this function are incorrect
+    |
+note: associated function defined here
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/state.rs:40:12
+    |
+40  |     pub fn new(coherence_time: Duration) -> Self {
+    |            ^^^ ------------------------
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:187:13
+    |
+187 |             entanglement_graph,
+    |             ^^^^^^^^^^^^^^^^^^ expected `Arc<RwLock<EntanglementGraph>>`, found `Arc<RwLock<impl Future<Output = ...>>>`
+    |
+    = note: expected struct `Arc<tokio::sync::RwLock<EntanglementGraph>>`
+               found struct `Arc<tokio::sync::RwLock<impl futures::Future<Output = std::result::Result<EntanglementGraph, quantum::types::CognitiveError>>>>`
+
+error[E0599]: no method named `norm` found for struct `Complex64` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:237:57
+    |
+237 |                 let exploitation = child.quantum_reward.norm() / child.visits as f64;
+    |                                                         ^^^^
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/complex.rs:8:1
+    |
+8   | pub struct Complex64 {
+    | -------------------- method `norm` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `norm`, perhaps you need to implement one of them:
+            candidate #1: `Norm`
+            candidate #2: `Normed`
+help: there is a method `or` with a similar name, but with different arguments
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tower-http-0.6.6/src/follow_redirect/policy/mod.rs:165:5
+    |
+165 | /     fn or<P, B, E>(self, other: P) -> Or<Self, P>
+166 | |     where
+167 | |         Self: Policy<B, E> + Sized,
+168 | |         P: Policy<B, E>;
+    | |________________________^
+
+error[E0599]: no method named `norm` found for struct `Complex64` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:241:37
+    |
+241 |                     child.amplitude.norm() * (1.0 - child.quantum_state.decoherence);
+    |                                     ^^^^
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/complex.rs:8:1
+    |
+8   | pub struct Complex64 {
+    | -------------------- method `norm` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `norm`, perhaps you need to implement one of them:
+            candidate #1: `Norm`
+            candidate #2: `Normed`
+help: there is a method `or` with a similar name, but with different arguments
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tower-http-0.6.6/src/follow_redirect/policy/mod.rs:165:5
+    |
+165 | /     fn or<P, B, E>(self, other: P) -> Or<Self, P>
+166 | |     where
+167 | |         Self: Policy<B, E> + Sized,
+168 | |         P: Policy<B, E>;
+    | |________________________^
+
+error[E0502]: cannot borrow `tree` as immutable because it is also borrowed as mutable
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:307:51
+    |
+288 |         let node = tree
+    |                    ---- mutable borrow occurs here
+...
+307 |         let child_id = format!("{}-q{}", node_id, tree.len());
+    |                                                   ^^^^ immutable borrow occurs here
+...
+311 |             amplitude: self.calculate_child_amplitude(&node.amplitude, &action),
+    |                                                       --------------- mutable borrow later used here
+
+error[E0382]: borrow of moved value: `new_quantum_state`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:317:17
+    |
+304 |         let new_quantum_state = self.apply_quantum_action(&parent_state, &action).await?;
+    |             ----------------- move occurs because `new_quantum_state` has type `QuantumNodeState`, which does not implement the `Copy` trait
+...
+315 |             quantum_state: new_quantum_state,
+    |                            ----------------- value moved here
+316 |             untried_actions: Self::get_quantum_actions(
+317 |                 &new_quantum_state.classical_state,
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ value borrowed here after move
+    |
+help: consider cloning the value if the performance cost is acceptable
+    |
+315 |             quantum_state: new_quantum_state.clone(),
+    |                                             ++++++++
+
+error[E0599]: no method named `measure` found for reference `&SuperpositionState` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:345:43
+    |
+345 |         let probabilities = superposition.measure(&measurement)?;
+    |                                           ^^^^^^^ method not found in `&SuperpositionState`
+
+error[E0599]: no method named `evolve` found for struct `SuperpositionState` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:381:27
+    |
+381 |         new_superposition.evolve(self.phase_evolution.compute(0.1))?;
+    |                           ^^^^^^ method not found in `SuperpositionState`
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/state.rs:10:1
+    |
+10  | pub struct SuperpositionState {
+    | ----------------------------- method `evolve` not found for this struct
+
+error[E0599]: no method named `compute` found for struct `Arc<PhaseEvolution>` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:381:55
+    |
+381 |         new_superposition.evolve(self.phase_evolution.compute(0.1))?;
+    |                                                       ^^^^^^^ method not found in `Arc<PhaseEvolution>`
+
+error[E0599]: no method named `add_entanglement` found for struct `tokio::sync::RwLockWriteGuard<'_, EntanglementGraph>` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:432:36
+    |
+432 |                 entanglement_graph.add_entanglement(
+    |                 -------------------^^^^^^^^^^^^^^^^
+    |
+help: there is a method `create_entanglement` with a similar name
+    |
+432 -                 entanglement_graph.add_entanglement(
+432 +                 entanglement_graph.create_entanglement(
+    |
+
+error[E0599]: no variant or associated item named `Weak` found for enum `quantum::types::EntanglementType` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:435:39
+    |
+435 |                     EntanglementType::Weak,
+    |                                       ^^^^ variant or associated item not found in `quantum::types::EntanglementType`
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/types.rs:123:1
+    |
+123 | pub enum EntanglementType {
+    | ------------------------- variant or associated item `Weak` not found for this enum
+
+error[E0599]: no method named `correct_amplitude` found for struct `Arc<QuantumErrorCorrection>` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:529:57
+    |
+529 |                 let corrected_reward = error_correction.correct_amplitude(quantum_reward)?;
+    |                                                         ^^^^^^^^^^^^^^^^^ method not found in `Arc<QuantumErrorCorrection>`
+
+error[E0599]: no method named `get_entangled` found for struct `tokio::sync::RwLockReadGuard<'_, EntanglementGraph>` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:564:55
+    |
+564 |             if let Ok(entangled) = entanglement_graph.get_entangled(&node_id) {
+    |                                                       ^^^^^^^^^^^^^ method not found in `tokio::sync::RwLockReadGuard<'_, EntanglementGraph>`
+
+error[E0599]: no method named `norm` found for struct `Complex64` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:590:54
+    |
+590 |                 let avg_reward = node.quantum_reward.norm() / node.visits as f64;
+    |                                                      ^^^^
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/complex.rs:8:1
+    |
+8   | pub struct Complex64 {
+    | -------------------- method `norm` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `norm`, perhaps you need to implement one of them:
+            candidate #1: `Norm`
+            candidate #2: `Normed`
+help: there is a method `or` with a similar name, but with different arguments
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tower-http-0.6.6/src/follow_redirect/policy/mod.rs:165:5
+    |
+165 | /     fn or<P, B, E>(self, other: P) -> Or<Self, P>
+166 | |     where
+167 | |         Self: Policy<B, E> + Sized,
+168 | |         P: Policy<B, E>;
+    | |________________________^
+
+error[E0368]: binary assignment operation `*=` cannot be applied to type `Complex64`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:604:17
+    |
+604 |                 node.amplitude *= amplification_factor;
+    |                 --------------^^^^^^^^^^^^^^^^^^^^^^^^
+    |                 |
+    |                 cannot use `*=` on type `Complex64`
+    |
+note: an implementation of `MulAssign<{float}>` might be missing for `Complex64`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/complex.rs:8:1
+    |
+8   | pub struct Complex64 {
+    | ^^^^^^^^^^^^^^^^^^^^ must implement `MulAssign<{float}>`
+note: the trait `MulAssign` must be implemented
+   --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/arith.rs:880:1
+    |
+880 | pub trait MulAssign<Rhs = Self> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    Checking fluent_ai_domain v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/domain)
+error[E0599]: no method named `norm` found for struct `Complex64` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:630:43
+    |
+630 |                 let amp = child.amplitude.norm();
+    |                                           ^^^^
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/complex.rs:8:1
+    |
+8   | pub struct Complex64 {
+    | -------------------- method `norm` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `norm`, perhaps you need to implement one of them:
+            candidate #1: `Norm`
+            candidate #2: `Normed`
+help: there is a method `or` with a similar name, but with different arguments
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tower-http-0.6.6/src/follow_redirect/policy/mod.rs:165:5
+    |
+165 | /     fn or<P, B, E>(self, other: P) -> Or<Self, P>
+166 | |     where
+167 | |         Self: Policy<B, E> + Sized,
+168 | |         P: Policy<B, E>;
+    | |________________________^
+
+error[E0689]: can't call method `max` on ambiguous numeric type `{float}`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:631:47
+    |
+631 |                 max_amplitude = max_amplitude.max(amp);
+    |                                               ^^^
+    |
+help: you must specify a type for this binding, like `f32`
+    |
+625 |         let mut max_amplitude: f32 = 0.0;
+    |                              +++++
+
+error[E0689]: can't call method `max` on ambiguous numeric type `{float}`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:637:61
+    |
+637 |         let concentration = max_amplitude / total_amplitude.max(1e-10);
+    |                                                             ^^^
+    |
+help: you must specify a type for this binding, like `f32`
+    |
+626 |         let mut total_amplitude: f32 = 0.0;
+    |                                +++++
+
+error[E0599]: no method named `norm` found for struct `Complex64` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:688:54
+    |
+688 |                     let score = child.quantum_reward.norm() / child.visits as f64;
+    |                                                      ^^^^
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/complex.rs:8:1
+    |
+8   | pub struct Complex64 {
+    | -------------------- method `norm` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `norm`, perhaps you need to implement one of them:
+            candidate #1: `Norm`
+            candidate #2: `Normed`
+help: there is a method `or` with a similar name, but with different arguments
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tower-http-0.6.6/src/follow_redirect/policy/mod.rs:165:5
+    |
+165 | /     fn or<P, B, E>(self, other: P) -> Or<Self, P>
+166 | |     where
+167 | |         Self: Policy<B, E> + Sized,
+168 | |         P: Policy<B, E>;
+    | |________________________^
+
+error[E0282]: type annotations needed for `&(_, _)`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:694:22
+    |
+694 |             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+    |                      ^^^^^^            ----------- type must be known at this point
+    |
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
+    |
+694 |             .max_by(|(_, a): &(_, _), (_, b)| a.partial_cmp(b).unwrap())
+    |                            +++++++++
+
+error[E0599]: no method named `num_entanglements` found for struct `tokio::sync::RwLockReadGuard<'_, EntanglementGraph>` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:706:54
+    |
+706 |         let total_entanglements = entanglement_graph.num_entanglements();
+    |                                                      ^^^^^^^^^^^^^^^^^ method not found in `tokio::sync::RwLockReadGuard<'_, EntanglementGraph>`
+
+error[E0599]: no method named `norm` found for struct `Complex64` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:716:34
+    |
+716 |             .map(|n| n.amplitude.norm())
+    |                                  ^^^^
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/complex.rs:8:1
+    |
+8   | pub struct Complex64 {
+    | -------------------- method `norm` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `norm`, perhaps you need to implement one of them:
+            candidate #1: `Norm`
+            candidate #2: `Normed`
+help: there is a method `or` with a similar name, but with different arguments
+   --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tower-http-0.6.6/src/follow_redirect/policy/mod.rs:165:5
+    |
+165 | /     fn or<P, B, E>(self, other: P) -> Or<Self, P>
+166 | |     where
+167 | |         Self: Policy<B, E> + Sized,
+168 | |         P: Policy<B, E>;
+    | |________________________^
+
+error[E0599]: no method named `clone` found for struct `tokio::sync::RwLockReadGuard<'_, QuantumMetrics>` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_mcts.rs:726:38
+    |
+726 |             quantum_metrics: metrics.clone(),
+    |                                      ^^^^^ method not found in `tokio::sync::RwLockReadGuard<'_, QuantumMetrics>`
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `clone`, perhaps you need to implement it:
+            candidate #1: `Clone`
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_orchestrator.rs:86:39
+    |
+86  |         let quantum_router = Arc::new(QuantumRouter::new(quantum_config));
+    |                                       ^^^^^^^^^^^^^^^^^^ -------------- argument #1 of type `Arc<CognitiveStateManager>` is missing
+    |
+note: associated function defined here
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/router.rs:146:18
+    |
+146 |     pub async fn new(
+    |                  ^^^
+147 |         state_manager: Arc<CognitiveStateManager>,
+    |         -----------------------------------------
+help: provide the argument
+    |
+86  |         let quantum_router = Arc::new(QuantumRouter::new(/* Arc<CognitiveStateManager> */, quantum_config));
+    |                                                          +++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 6 arguments but 0 arguments were supplied
+  --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_orchestrator.rs:87:41
+   |
+87 |         let evolution_engine = Arc::new(CognitiveCodeEvolution::new());
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^-- multiple arguments are missing
+   |
+note: associated function defined here
+  --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/evolution.rs:28:12
+   |
+28 |     pub fn new(
+   |            ^^^
+29 |         initial_code: String,
+   |         --------------------
+30 |         initial_latency: f64,
+   |         --------------------
+31 |         initial_memory: f64,
+   |         -------------------
+32 |         initial_relevance: f64,
+   |         ----------------------
+33 |         spec: Arc<OptimizationSpec>,
+   |         ---------------------------
+34 |         user_objective: String,
+   |         ----------------------
+help: provide the arguments
+   |
+87 |         let evolution_engine = Arc::new(CognitiveCodeEvolution::new(/* std::string::String */, /* f64 */, /* f64 */, /* f64 */, /* Arc<cognitive::types::OptimizationSpec> */, /* std::string::String */));
+   |                                                                     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_orchestrator.rs:95:13
+   |
+95 |             quantum_router,
+   |             ^^^^^^^^^^^^^^ expected `Arc<QuantumRouter>`, found `Arc<impl Future<Output = ...>>`
+   |
+   = note: expected struct `Arc<QuantumRouter>`
+              found struct `Arc<impl futures::Future<Output = std::result::Result<QuantumRouter, quantum::types::CognitiveError>>>`
+
+error[E0308]: mismatched types
+  --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_orchestrator.rs:96:13
+   |
+96 |             evolution_engine,
+   |             ^^^^^^^^^^^^^^^^ expected `Arc<CognitiveCodeEvolution>`, found `Arc<Result<CognitiveCodeEvolution, ...>>`
+   |
+   = note: expected struct `Arc<CognitiveCodeEvolution>`
+              found struct `Arc<std::result::Result<CognitiveCodeEvolution, cognitive::types::CognitiveError>>`
+
+error[E0308]: `?` operator has incompatible types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_orchestrator.rs:195:23
+    |
+106 |     ) -> Result<OptimizationOutcome, CognitiveError> {
+    |          ------------------------------------------- expected `HashMap<std::string::String, serde_json::Value>` because of return type
+...
+195 |             metadata: self.collect_final_metrics(&current_state).await?,
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `HashMap<String, Value>`, found `Value`
+    |
+    = note: `?` operator cannot convert from `serde_json::Value` to `HashMap<std::string::String, serde_json::Value>`
+    = note: expected struct `HashMap<std::string::String, serde_json::Value>`
+                 found enum `serde_json::Value`
+
+error[E0599]: no method named `evolve_code` found for struct `Arc<CognitiveCodeEvolution>` in the current scope
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum_orchestrator.rs:239:14
+    |
+237 |           let evolved_code = self
+    |  ____________________________-
+238 | |             .evolution_engine
+239 | |             .evolve_code(&quantum_state.classical_state.code, evolution_params)
+    | |             -^^^^^^^^^^^ method not found in `Arc<CognitiveCodeEvolution>`
+    | |_____________|
+    |
+
+error[E0026]: variant `CommitteeEvent::ConsensusReached` does not have a field named `factors`
+  --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/evolution.rs:68:29
+   |
+68 | ...                   factors,
+   |                       ^^^^^^^
+   |                       |
+   |                       variant `CommitteeEvent::ConsensusReached` does not have this field
+   |                       help: `CommitteeEvent::ConsensusReached` has a field named `decision`
+
+error[E0027]: pattern does not mention field `decision`
+  --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/evolution.rs:66:25
+   |
+66 | /                         CommitteeEvent::ConsensusReached {
+67 | |                             action,
+68 | |                             factors,
+69 | |                             rounds_taken,
+70 | |                         } => {
+   | |_________________________^ missing field `decision`
+   |
+help: include the missing field in the pattern
+   |
+69 -                             rounds_taken,
+70 -                         } => {
+69 +                             rounds_taken, decision } => {
+   |
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+69 -                             rounds_taken,
+70 -                         } => {
+69 +                             rounds_taken, decision: _ } => {
+   |
+help: or always ignore missing fields here
+   |
+69 -                             rounds_taken,
+70 -                         } => {
+69 +                             rounds_taken, .. } => {
+   |
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/evolution.rs:158:43
+    |
+158 |                         performance_gain: (latency_improvement + memory_improvement + relevance_improvement) / 3.0,
+    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `f32`, found `f64`
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:384:28
+    |
+384 |         if state.latency > spec.baseline_metrics.latency * 1.1 {
+    |            -------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `f64`, found `f32`
+    |            |
+    |            expected because this is `f64`
+    |
+help: you can convert an `f32` to an `f64`
+    |
+384 |         if state.latency > (spec.baseline_metrics.latency * 1.1).into() {
+    |                            +                                   ++++++++
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:388:27
+    |
+388 |         if state.memory > spec.baseline_metrics.memory * 1.1 {
+    |            ------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `f64`, found `f32`
+    |            |
+    |            expected because this is `f64`
+    |
+help: you can convert an `f32` to an `f64`
+    |
+388 |         if state.memory > (spec.baseline_metrics.memory * 1.1).into() {
+    |                           +                                  ++++++++
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/mcts.rs:392:30
+    |
+392 |         if state.relevance < spec.baseline_metrics.relevance * 0.9 {
+    |            ---------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `f64`, found `f32`
+    |            |
+    |            expected because this is `f64`
+    |
+help: you can convert an `f32` to an `f64`
+    |
+392 |         if state.relevance < (spec.baseline_metrics.relevance * 0.9).into() {
+    |                              +                                     ++++++++
+
+error[E0063]: missing fields `baseline_metrics`, `content_type` and `evolution_rules` in initializer of `cognitive::types::OptimizationSpec`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/orchestrator.rs:272:8
+    |
+272 |     Ok(OptimizationSpec {
+    |        ^^^^^^^^^^^^^^^^ missing `baseline_metrics`, `content_type` and `evolution_rules`
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:100:16
+    |
+99  |           let latency_ok = state.latency
+    |                            ------------- expected because this is `f64`
+100 |               <= spec.baseline_metrics.latency
+    |  ________________^
+101 | |                 * (1.0 + spec.content_type.restrictions.max_latency_increase / 100.0);
+    | |_____________________________________________________________________________________^ expected `f64`, found `f32`
+    |
+help: you can convert an `f32` to an `f64`
+    |
+100 ~             <= (spec.baseline_metrics.latency
+101 ~                 * (1.0 + spec.content_type.restrictions.max_latency_increase / 100.0)).into();
+    |
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:103:16
+    |
+102 |           let memory_ok = state.memory
+    |                           ------------ expected because this is `f64`
+103 |               <= spec.baseline_metrics.memory
+    |  ________________^
+104 | |                 * (1.0 + spec.content_type.restrictions.max_memory_increase / 100.0);
+    | |____________________________________________________________________________________^ expected `f64`, found `f32`
+    |
+help: you can convert an `f32` to an `f64`
+    |
+103 ~             <= (spec.baseline_metrics.memory
+104 ~                 * (1.0 + spec.content_type.restrictions.max_memory_increase / 100.0)).into();
+    |
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:106:16
+    |
+105 |           let relevance_ok = state.relevance
+    |                              --------------- expected because this is `f64`
+106 |               >= spec.baseline_metrics.relevance
+    |  ________________^
+107 | |                 * (1.0 + spec.content_type.restrictions.min_relevance_improvement / 100.0);
+    | |__________________________________________________________________________________________^ expected `f64`, found `f32`
+    |
+help: you can convert an `f32` to an `f64`
+    |
+106 ~             >= (spec.baseline_metrics.relevance
+107 ~                 * (1.0 + spec.content_type.restrictions.min_relevance_improvement / 100.0)).into();
+    |
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:115:46
+    |
+115 |             (spec.baseline_metrics.latency - state.latency) / spec.baseline_metrics.latency;
+    |                                              ^^^^^^^^^^^^^ expected `f32`, found `f64`
+
+error[E0277]: cannot subtract `f64` from `f32`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:115:44
+    |
+115 |             (spec.baseline_metrics.latency - state.latency) / spec.baseline_metrics.latency;
+    |                                            ^ no implementation for `f32 - f64`
+    |
+    = help: the trait `std::ops::Sub<f64>` is not implemented for `f32`
+    = help: the following other types implement trait `std::ops::Sub<Rhs>`:
+              `&f32` implements `std::ops::Sub<&Complex<f32>>`
+              `&f32` implements `std::ops::Sub<Complex<f32>>`
+              `&f32` implements `std::ops::Sub<f32>`
+              `&f32` implements `std::ops::Sub`
+              `f32` implements `std::ops::Sub<&Complex<f32>>`
+              `f32` implements `std::ops::Sub<&f32>`
+              `f32` implements `std::ops::Sub<&ndarray::ArrayBase<S, D>>`
+              `f32` implements `std::ops::Sub<&ndarray::ArrayBase<S, D>>`
+            and 7 others
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:117:45
+    |
+117 |             (spec.baseline_metrics.memory - state.memory) / spec.baseline_metrics.memory;
+    |                                             ^^^^^^^^^^^^ expected `f32`, found `f64`
+
+error[E0277]: cannot subtract `f64` from `f32`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:117:43
+    |
+117 |             (spec.baseline_metrics.memory - state.memory) / spec.baseline_metrics.memory;
+    |                                           ^ no implementation for `f32 - f64`
+    |
+    = help: the trait `std::ops::Sub<f64>` is not implemented for `f32`
+    = help: the following other types implement trait `std::ops::Sub<Rhs>`:
+              `&f32` implements `std::ops::Sub<&Complex<f32>>`
+              `&f32` implements `std::ops::Sub<Complex<f32>>`
+              `&f32` implements `std::ops::Sub<f32>`
+              `&f32` implements `std::ops::Sub`
+              `f32` implements `std::ops::Sub<&Complex<f32>>`
+              `f32` implements `std::ops::Sub<&f32>`
+              `f32` implements `std::ops::Sub<&ndarray::ArrayBase<S, D>>`
+              `f32` implements `std::ops::Sub<&ndarray::ArrayBase<S, D>>`
+            and 7 others
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:119:32
+    |
+119 |             (state.relevance - spec.baseline_metrics.relevance) / spec.baseline_metrics.relevance;
+    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `f64`, found `f32`
+
+error[E0277]: cannot subtract `f32` from `f64`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:119:30
+    |
+119 |             (state.relevance - spec.baseline_metrics.relevance) / spec.baseline_metrics.relevance;
+    |                              ^ no implementation for `f64 - f32`
+    |
+    = help: the trait `std::ops::Sub<f32>` is not implemented for `f64`
+    = help: the following other types implement trait `std::ops::Sub<Rhs>`:
+              `&f64` implements `std::ops::Sub<&Complex<f64>>`
+              `&f64` implements `std::ops::Sub<Complex<f64>>`
+              `&f64` implements `std::ops::Sub<f64>`
+              `&f64` implements `std::ops::Sub`
+              `f64` implements `std::ops::Sub<&Complex<f64>>`
+              `f64` implements `std::ops::Sub<&f64>`
+              `f64` implements `std::ops::Sub<&ndarray::ArrayBase<S, D>>`
+              `f64` implements `std::ops::Sub<&ndarray::ArrayBase<S, D>>`
+            and 7 others
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:119:67
+    |
+119 |             (state.relevance - spec.baseline_metrics.relevance) / spec.baseline_metrics.relevance;
+    |                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `f64`, found `f32`
+
+error[E0277]: cannot divide `f64` by `f32`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:119:65
+    |
+119 |             (state.relevance - spec.baseline_metrics.relevance) / spec.baseline_metrics.relevance;
+    |                                                                 ^ no implementation for `f64 / f32`
+    |
+    = help: the trait `std::ops::Div<f32>` is not implemented for `f64`
+    = help: the following other types implement trait `std::ops::Div<Rhs>`:
+              `&f64` implements `std::ops::Div<&Complex<f64>>`
+              `&f64` implements `std::ops::Div<Complex<f64>>`
+              `&f64` implements `std::ops::Div<f64>`
+              `&f64` implements `std::ops::Div`
+              `f64` implements `std::ops::Div<&Complex<f64>>`
+              `f64` implements `std::ops::Div<&f64>`
+              `f64` implements `std::ops::Div<&ndarray::ArrayBase<S, D>>`
+              `f64` implements `std::ops::Div<&ndarray::ArrayBase<S, D>>`
+            and 7 others
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:123:69
+    |
+123 |             (latency_improvement * 0.3 + memory_improvement * 0.3 + relevance_improvement * 0.4)
+    |                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `f32`, found `f64`
+
+error[E0277]: cannot add `f64` to `f32`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:123:67
+    |
+123 |             (latency_improvement * 0.3 + memory_improvement * 0.3 + relevance_improvement * 0.4)
+    |                                                                   ^ no implementation for `f32 + f64`
+    |
+    = help: the trait `std::ops::Add<f64>` is not implemented for `f32`
+    = help: the following other types implement trait `std::ops::Add<Rhs>`:
+              `&f32` implements `std::ops::Add<&Complex<f32>>`
+              `&f32` implements `std::ops::Add<Complex<f32>>`
+              `&f32` implements `std::ops::Add<f32>`
+              `&f32` implements `std::ops::Add`
+              `f32` implements `std::ops::Add<&Complex<f32>>`
+              `f32` implements `std::ops::Add<&f32>`
+              `f32` implements `std::ops::Add<&ndarray::ArrayBase<S, D>>`
+              `f32` implements `std::ops::Add<&ndarray::ArrayBase<S, D>>`
+            and 7 others
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/performance.rs:127:9
+    |
+95  |     fn calculate_reward_from_factors(&self, factors: &ImpactFactors, state: &CodeState) -> f64 {
+    |                                                                                            --- expected `f64` because of return type
+...
+127 |         weighted_reward
+    |         ^^^^^^^^^^^^^^^ expected `f64`, found `f32`
+    |
+help: you can convert an `f32` to an `f64`
+    |
+127 |         weighted_reward.into()
+    |                        +++++++
+
+error[E0624]: associated function `new` is private
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/manager.rs:290:24
+    |
+290 |         PendingMemory::new(rx)
+    |                        ^^^ private associated function
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/memory/memory_manager.rs:85:5
+    |
+85  |     fn new(rx: tokio::sync::oneshot::Receiver<Result<MemoryNode>>) -> Self {
+    |     ---------------------------------------------------------------------- private associated function defined here
+
+error[E0277]: `?` couldn't convert the error to `utils::error::Error`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/manager.rs:272:94
+    |
+272 |                 let cognitive_memory = manager.enhance_memory_cognitively(memory_clone).await?;
+    |                                        ------------------------------------------------------^ the trait `std::convert::From<anyhow::Error>` is not implemented for `utils::error::Error`
+    |                                        |
+    |                                        this can't be annotated with `?` because it has type `Result<_, anyhow::Error>`
+    |
+note: `utils::error::Error` needs to implement `From<anyhow::Error>`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/utils/error.rs:11:1
+    |
+11  | pub enum Error {
+    | ^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+    = help: the following other types implement trait `std::convert::From<T>`:
+              `utils::error::Error` implements `std::convert::From<reqwest::Error>`
+              `utils::error::Error` implements `std::convert::From<serde_json::Error>`
+              `utils::error::Error` implements `std::convert::From<std::io::Error>`
+              `utils::error::Error` implements `std::convert::From<surrealdb::Error>`
+
+error[E0277]: `?` couldn't convert the error to `utils::error::Error`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/manager.rs:282:27
+    |
+281 | /                 manager.store_cognitive_metadata(&stored.id, &cognitive_memory)
+282 | |                     .await?;
+    | |                          -^ the trait `std::convert::From<anyhow::Error>` is not implemented for `utils::error::Error`
+    | |__________________________|
+    |                            this can't be annotated with `?` because it has type `Result<_, anyhow::Error>`
+    |
+note: `utils::error::Error` needs to implement `From<anyhow::Error>`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/utils/error.rs:11:1
+    |
+11  | pub enum Error {
+    | ^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+    = help: the following other types implement trait `std::convert::From<T>`:
+              `utils::error::Error` implements `std::convert::From<reqwest::Error>`
+              `utils::error::Error` implements `std::convert::From<serde_json::Error>`
+              `utils::error::Error` implements `std::convert::From<std::io::Error>`
+              `utils::error::Error` implements `std::convert::From<surrealdb::Error>`
+
+error[E0624]: associated function `new` is private
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/manager.rs:322:24
+    |
+322 |         PendingMemory::new(rx)
+    |                        ^^^ private associated function
+    |
+   ::: /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/memory/memory_manager.rs:85:5
+    |
+85  |     fn new(rx: tokio::sync::oneshot::Receiver<Result<MemoryNode>>) -> Self {
+    |     ---------------------------------------------------------------------- private associated function defined here
+
+error[E0277]: `?` couldn't convert the error to `utils::error::Error`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/manager.rs:311:101
+    |
+311 |                     let cognitive_memory = manager.enhance_memory_cognitively(updated.clone()).await?;
+    |                                            ---------------------------------------------------------^ the trait `std::convert::From<anyhow::Error>` is not implemented for `utils::error::Error`
+    |                                            |
+    |                                            this can't be annotated with `?` because it has type `Result<_, anyhow::Error>`
+    |
+note: `utils::error::Error` needs to implement `From<anyhow::Error>`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/utils/error.rs:11:1
+    |
+11  | pub enum Error {
+    | ^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+    = help: the following other types implement trait `std::convert::From<T>`:
+              `utils::error::Error` implements `std::convert::From<reqwest::Error>`
+              `utils::error::Error` implements `std::convert::From<serde_json::Error>`
+              `utils::error::Error` implements `std::convert::From<std::io::Error>`
+              `utils::error::Error` implements `std::convert::From<surrealdb::Error>`
+
+error[E0277]: `?` couldn't convert the error to `utils::error::Error`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/manager.rs:313:31
+    |
+312 | /                     manager.store_cognitive_metadata(&updated.id, &cognitive_memory)
+313 | |                         .await?;
+    | |                              -^ the trait `std::convert::From<anyhow::Error>` is not implemented for `utils::error::Error`
+    | |______________________________|
+    |                                this can't be annotated with `?` because it has type `Result<_, anyhow::Error>`
+    |
+note: `utils::error::Error` needs to implement `From<anyhow::Error>`
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/utils/error.rs:11:1
+    |
+11  | pub enum Error {
+    | ^^^^^^^^^^^^^^
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+    = help: the following other types implement trait `std::convert::From<T>`:
+              `utils::error::Error` implements `std::convert::From<reqwest::Error>`
+              `utils::error::Error` implements `std::convert::From<serde_json::Error>`
+              `utils::error::Error` implements `std::convert::From<std::io::Error>`
+              `utils::error::Error` implements `std::convert::From<surrealdb::Error>`
+
+error[E0277]: the trait bound `std::time::Instant: Serialize` is not satisfied
+    --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/state.rs:12:24
+     |
+12   | #[derive(Debug, Clone, Serialize, Deserialize)]
+     |                        ^^^^^^^^^ the trait `Serialize` is not implemented for `std::time::Instant`
+...
+20   |     pub timestamp: Instant,
+     |     ---------------------- required by a bound introduced by this call
+     |
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `std::time::Instant` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 1002 others
+note: required by a bound in `llm::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/ser/mod.rs:1866:21
+     |
+1864 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1865 |     where
+1866 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::time::Instant: Deserialize<'_>` is not satisfied
+    --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/state.rs:20:20
+     |
+20   |     pub timestamp: Instant,
+     |                    ^^^^^^^ the trait `Deserialize<'_>` is not implemented for `std::time::Instant`
+     |
+     = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `std::time::Instant` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Deserialize<'de>`:
+               `&'a [u8]` implements `Deserialize<'de>`
+               `&'a serde_json::value::RawValue` implements `Deserialize<'de>`
+               `&'a std::path::Path` implements `Deserialize<'de>`
+               `&'a str` implements `Deserialize<'de>`
+               `()` implements `Deserialize<'de>`
+               `(T,)` implements `Deserialize<'de>`
+               `(T0, T1)` implements `Deserialize<'de>`
+               `(T0, T1, T2)` implements `Deserialize<'de>`
+             and 962 others
+note: required by a bound in `next_element`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/de/mod.rs:1732:12
+     |
+1730 |     fn next_element<T>(&mut self) -> Result<Option<T>, Self::Error>
+     |        ------------ required by a bound in this associated function
+1731 |     where
+1732 |         T: Deserialize<'de>,
+     |            ^^^^^^^^^^^^^^^^ required by this bound in `SeqAccess::next_element`
+
+error[E0277]: the trait bound `std::time::Instant: Deserialize<'_>` is not satisfied
+    --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/state.rs:20:20
+     |
+20   |     pub timestamp: Instant,
+     |                    ^^^^^^^ the trait `Deserialize<'_>` is not implemented for `std::time::Instant`
+     |
+     = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `std::time::Instant` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Deserialize<'de>`:
+               `&'a [u8]` implements `Deserialize<'de>`
+               `&'a serde_json::value::RawValue` implements `Deserialize<'de>`
+               `&'a std::path::Path` implements `Deserialize<'de>`
+               `&'a str` implements `Deserialize<'de>`
+               `()` implements `Deserialize<'de>`
+               `(T,)` implements `Deserialize<'de>`
+               `(T0, T1)` implements `Deserialize<'de>`
+               `(T0, T1, T2)` implements `Deserialize<'de>`
+             and 962 others
+note: required by a bound in `next_value`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/de/mod.rs:1871:12
+     |
+1869 |     fn next_value<V>(&mut self) -> Result<V, Self::Error>
+     |        ---------- required by a bound in this associated function
+1870 |     where
+1871 |         V: Deserialize<'de>,
+     |            ^^^^^^^^^^^^^^^^ required by this bound in `MapAccess::next_value`
+
+error[E0277]: the trait bound `std::time::Instant: Deserialize<'_>` is not satisfied
+  --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/state.rs:12:35
+   |
+12 | #[derive(Debug, Clone, Serialize, Deserialize)]
+   |                                   ^^^^^^^^^^^ the trait `Deserialize<'_>` is not implemented for `std::time::Instant`
+   |
+   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `std::time::Instant` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Deserialize<'de>`:
+             `&'a [u8]` implements `Deserialize<'de>`
+             `&'a serde_json::value::RawValue` implements `Deserialize<'de>`
+             `&'a std::path::Path` implements `Deserialize<'de>`
+             `&'a str` implements `Deserialize<'de>`
+             `()` implements `Deserialize<'de>`
+             `(T,)` implements `Deserialize<'de>`
+             `(T0, T1)` implements `Deserialize<'de>`
+             `(T0, T1, T2)` implements `Deserialize<'de>`
+           and 962 others
+note: required by a bound in `llm::_::_serde::__private::de::missing_field`
+  --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/private/de.rs:25:8
+   |
+23 | pub fn missing_field<'de, V, E>(field: &'static str) -> Result<V, E>
+   |        ------------- required by a bound in this function
+24 | where
+25 |     V: Deserialize<'de>,
+   |        ^^^^^^^^^^^^^^^^ required by this bound in `missing_field`
+   = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::time::Instant: Serialize` is not satisfied
+    --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/metrics.rs:69:24
+     |
+69   | #[derive(Debug, Clone, Serialize)]
+     |                        ^^^^^^^^^ the trait `Serialize` is not implemented for `std::time::Instant`
+70   | pub struct RoutingMetric {
+71   |     pub timestamp: Instant,
+     |     ---------------------- required by a bound introduced by this call
+     |
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `std::time::Instant` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 1003 others
+note: required by a bound in `llm::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/ser/mod.rs:1866:21
+     |
+1864 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1865 |     where
+1866 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::time::Instant: Serialize` is not satisfied
+    --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/metrics.rs:79:24
+     |
+79   | #[derive(Debug, Clone, Serialize)]
+     |                        ^^^^^^^^^ the trait `Serialize` is not implemented for `std::time::Instant`
+80   | pub struct FidelityMetric {
+81   |     pub timestamp: Instant,
+     |     ---------------------- required by a bound introduced by this call
+     |
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `std::time::Instant` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 1003 others
+note: required by a bound in `llm::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/ser/mod.rs:1866:21
+     |
+1864 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1865 |     where
+1866 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::time::Instant: Serialize` is not satisfied
+    --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/metrics.rs:88:24
+     |
+88   | #[derive(Debug, Clone, Serialize)]
+     |                        ^^^^^^^^^ the trait `Serialize` is not implemented for `std::time::Instant`
+89   | pub struct ResourceMetric {
+90   |     pub timestamp: Instant,
+     |     ---------------------- required by a bound introduced by this call
+     |
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `std::time::Instant` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 1003 others
+note: required by a bound in `llm::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/ser/mod.rs:1866:21
+     |
+1864 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1865 |     where
+1866 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/ml_decoder.rs:155:41
+    |
+155 |                     .filter(|&(_, bit)| bit)
+    |                                         ^^^ expected `bool`, found `&bool`
+    |
+help: consider dereferencing the borrow
+    |
+155 |                     .filter(|&(_, bit)| *bit)
+    |                                         +
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/ml_decoder.rs:201:35
+    |
+201 |             .filter(|&(_, a)| a > 0.5)
+    |                                   ^^^ expected `&f64`, found floating-point number
+    |
+help: consider dereferencing the borrow
+    |
+201 |             .filter(|&(_, a)| *a > 0.5)
+    |                               +
+
+error[E0308]: mismatched types
+   --> /Users/davidmaple/.cargo/git/checkouts/sweetmcp-66fda7d21805b0a1/27c806d/packages/sweetmcp-memory/src/cognitive/quantum/ml_decoder.rs:219:37
+    |
+219 |                 .filter(|&(_, bit)| bit)
+    |                                     ^^^ expected `bool`, found `&bool`
+    |
+help: consider dereferencing the borrow
+    |
+219 |                 .filter(|&(_, bit)| *bit)
+    |                                     +
+
+error[E0433]: failed to resolve: use of undeclared type `Ordering`
+   --> packages/domain/src/memory/tool.rs:154:33
+    |
+154 |         TOOL_STATS.fetch_add(1, Ordering::Relaxed);
+    |                                 ^^^^^^^^ use of undeclared type `Ordering`
+    |
+help: consider importing one of these enums
+    |
+8   + use crate::Ordering;
+    |
+8   + use std::cmp::Ordering;
+    |
+8   + use std::sync::atomic::Ordering;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `Ordering`
+   --> packages/domain/src/memory/tool.rs:166:25
+    |
+166 |         TOOL_STATS.load(Ordering::Relaxed)
+    |                         ^^^^^^^^ use of undeclared type `Ordering`
+    |
+help: consider importing one of these enums
+    |
+8   + use crate::Ordering;
+    |
+8   + use std::cmp::Ordering;
+    |
+8   + use std::sync::atomic::Ordering;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `Ordering`
+   --> packages/domain/src/memory/tool.rs:172:29
+    |
+172 |         TOOL_STATS.store(0, Ordering::Relaxed);
+    |                             ^^^^^^^^ use of undeclared type `Ordering`
+    |
+help: consider importing one of these enums
+    |
+8   + use crate::Ordering;
+    |
+8   + use std::cmp::Ordering;
+    |
+8   + use std::sync::atomic::Ordering;
+    |
+
+Some errors have detailed explanations: E0026, E0027, E0061, E0063, E0271, E0277, E0282, E0308, E0368...
+For more information about an error, try `rustc --explain E0026`.
+error: could not compile `sweetmcp_memory` (lib) due to 98 previous errors
+warning: build failed, waiting for other jobs to finish...
+error[E0599]: no method named `get` found for struct `once_cell::sync::Lazy<atomic_counter::RelaxedCounter>` in the current scope
+   --> packages/domain/src/memory/ops.rs:207:42
+    |
+207 |     let simd_ops = SIMD_OPERATIONS_COUNT.get();
+    |                                          ^^^ this is an associated function, not a method
+    |
+    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+    = note: the candidate is defined in an impl for the type `once_cell::sync::Lazy<T, F>`
+    = help: items from traits can only be used if the trait is in scope
+help: use associated function syntax instead
+    |
+207 -     let simd_ops = SIMD_OPERATIONS_COUNT.get();
+207 +     let simd_ops = once_cell::sync::Lazy::<atomic_counter::RelaxedCounter>::get(&SIMD_OPERATIONS_COUNT);
+    |
+help: trait `AtomicCounter` which provides `get` is implemented but not in scope; perhaps you want to import it
+    |
+9   + use atomic_counter::AtomicCounter;
+    |
+
+error[E0599]: no method named `get` found for struct `once_cell::sync::Lazy<atomic_counter::RelaxedCounter>` in the current scope
+   --> packages/domain/src/memory/ops.rs:208:33
+    |
+208 |     let cache_hits = CACHE_HITS.get();
+    |                                 ^^^ this is an associated function, not a method
+    |
+    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+    = note: the candidate is defined in an impl for the type `once_cell::sync::Lazy<T, F>`
+    = help: items from traits can only be used if the trait is in scope
+help: use associated function syntax instead
+    |
+208 -     let cache_hits = CACHE_HITS.get();
+208 +     let cache_hits = once_cell::sync::Lazy::<atomic_counter::RelaxedCounter>::get(&CACHE_HITS);
+    |
+help: trait `AtomicCounter` which provides `get` is implemented but not in scope; perhaps you want to import it
+    |
+9   + use atomic_counter::AtomicCounter;
+    |
+
+error[E0599]: no method named `get` found for struct `once_cell::sync::Lazy<atomic_counter::RelaxedCounter>` in the current scope
+   --> packages/domain/src/memory/ops.rs:209:37
+    |
+209 |     let cache_misses = CACHE_MISSES.get();
+    |                                     ^^^ this is an associated function, not a method
+    |
+    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+    = note: the candidate is defined in an impl for the type `once_cell::sync::Lazy<T, F>`
+    = help: items from traits can only be used if the trait is in scope
+help: use associated function syntax instead
+    |
+209 -     let cache_misses = CACHE_MISSES.get();
+209 +     let cache_misses = once_cell::sync::Lazy::<atomic_counter::RelaxedCounter>::get(&CACHE_MISSES);
+    |
+help: trait `AtomicCounter` which provides `get` is implemented but not in scope; perhaps you want to import it
+    |
+9   + use atomic_counter::AtomicCounter;
+    |
+
+error[E0599]: no method named `increment` found for struct `once_cell::sync::Lazy<atomic_counter::RelaxedCounter>` in the current scope
+   --> packages/domain/src/memory/ops.rs:228:27
+    |
+228 |     SIMD_OPERATIONS_COUNT.increment();
+    |                           ^^^^^^^^^
+    |
+help: there is a method `reset` with a similar name
+    |
+228 -     SIMD_OPERATIONS_COUNT.increment();
+228 +     SIMD_OPERATIONS_COUNT.reset();
+    |
+
+error[E0599]: no method named `increment` found for struct `once_cell::sync::Lazy<atomic_counter::RelaxedCounter>` in the current scope
+   --> packages/domain/src/memory/ops.rs:234:16
+    |
+234 |     CACHE_HITS.increment();
+    |                ^^^^^^^^^
+    |
+help: there is a method `reset` with a similar name
+    |
+234 -     CACHE_HITS.increment();
+234 +     CACHE_HITS.reset();
+    |
+
+error[E0599]: no method named `increment` found for struct `once_cell::sync::Lazy<atomic_counter::RelaxedCounter>` in the current scope
+   --> packages/domain/src/memory/ops.rs:240:18
+    |
+240 |     CACHE_MISSES.increment();
+    |                  ^^^^^^^^^
+    |
+help: there is a method `reset` with a similar name
+    |
+240 -     CACHE_MISSES.increment();
+240 +     CACHE_MISSES.reset();
+    |
+
+Some errors have detailed explanations: E0433, E0599.
+For more information about an error, try `rustc --explain E0433`.
+error: could not compile `fluent_ai_domain` (lib) due to 9 previous errors

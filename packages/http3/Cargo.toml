@@ -26,6 +26,7 @@ url = "2.5.4"
 crossbeam = "0.8.4"
 crossbeam-skiplist = "0.1.3"
 chrono = { version = "0.4", features = ["serde"] }
+async-stream = "0.3.6"
 
 [lib]
 name = "fluent_ai_http3"

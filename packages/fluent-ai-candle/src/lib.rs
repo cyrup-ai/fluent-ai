@@ -18,11 +18,11 @@ pub mod tokenizer;
 // Re-export core types for ergonomic usage
 pub use client::{CandleClientBuilder, CandleClientConfig, CandleCompletionClient};
 pub use error::{CandleError, CandleResult};
-// Re-export fluent_ai_core completion types
-pub use fluent_ai_core::completion::{
-    CompletionClient, CompletionClientExt, CompletionRequest, CompletionResponse, FinishReason,
-    ResponseChunk, StreamingResponse,
+// Re-export fluent_ai_domain completion types
+pub use fluent_ai_domain::completion::{
+    CompletionRequest, CompletionResponse,
 };
+pub use fluent_ai_domain::{FinishReason};
 pub use generator::{CandleGenerator, GenerationConfig};
 pub use model::CandleModel;
 pub use tokenizer::{CandleTokenizer, TokenizerConfig};

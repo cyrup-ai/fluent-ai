@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use arc_swap::ArcSwap;
 use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError, bounded};
-use crossbeam_utils::atomic::AtomicCell;
+use crossbeam::atomic::AtomicCell;
 use smallvec::SmallVec;
 
 use super::error::{CandleError, CandleResult};

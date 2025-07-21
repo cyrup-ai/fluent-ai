@@ -3,18 +3,17 @@
 //! Provides real-time streaming with tool calling, proper SSE handling,
 //! and efficient chunk processing with minimal memory allocation using HTTP3 client.
 
-use std::pin::Pin;
-use std::task::{Context, Poll};
+
 
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
-use futures_util::{Stream, StreamExt};
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::sync::mpsc;
+
 
 use super::messages::ContentBlock;
-use super::{AnthropicCompletionRequest, AnthropicResult, handle_json_error};
-use crate::domain::chunk::CompletionChunk;
+use super::AnthropicResult;
+
 use crate::runtime::AsyncStream;
 
 /// Streaming completion chunk from Anthropic API

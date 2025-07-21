@@ -165,6 +165,13 @@ pub enum HttpError {
         message: String,
     },
 
+    /// I/O error
+    #[error("I/O error: {message}")]
+    IoError {
+        /// Error message describing the I/O issue
+        message: String,
+    },
+
     /// Unknown error
     #[error("Unknown error: {message}")]
     Unknown {
@@ -295,6 +302,13 @@ impl HttpError {
         }
     }
 
+    /// Create an I/O error
+    pub fn io(message: impl Into<String>) -> Self {
+        Self::IoError {
+            message: message.into(),
+        }
+    }
+
     /// Create an unknown error
     pub fn unknown(message: impl Into<String>) -> Self {
         Self::Unknown {
@@ -379,6 +393,7 @@ impl HttpError {
             HttpError::TooManyRedirects { message } => message,
             HttpError::DnsError { message } => message,
             HttpError::ProxyError { message } => message,
+            HttpError::IoError { message } => message,
             HttpError::Unknown { message } => message,
         }
     }
@@ -463,6 +478,14 @@ impl From<http::header::InvalidHeaderValue> for HttpError {
 impl From<http::header::InvalidHeaderName> for HttpError {
     fn from(error: http::header::InvalidHeaderName) -> Self {
         HttpError::InvalidHeader {
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<std::io::Error> for HttpError {
+    fn from(error: std::io::Error) -> Self {
+        HttpError::IoError {
             message: error.to_string(),
         }
     }

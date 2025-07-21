@@ -301,7 +301,7 @@ pub trait ImageEmbeddingProvider: ImageProcessingBackend {
     fn embedding_dimensions(&self) -> usize;
     
     /// Get model information
-    fn model_info(&self) -> ModelInfo;
+    fn model_info(&self) -> ImageModelInfo;
 }
 
 /// Trait for image generation providers
@@ -328,9 +328,9 @@ pub trait ImageGenerationProvider: ImageProcessingBackend {
     fn load_model(&mut self, model_name: &str) -> ImageProcessingResult<()>;
 }
 
-/// Model information descriptor
+/// Image model information descriptor
 #[derive(Debug, Clone)]
-pub struct ModelInfo {
+pub struct ImageModelInfo {
     /// Model name
     pub name: String,
     /// Model version

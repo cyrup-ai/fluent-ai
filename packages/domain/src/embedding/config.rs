@@ -131,8 +131,8 @@ impl IntoEmbeddingConfig for EmbeddingConfig {
     }
 }
 
-impl<T: AsRef<str>> IntoEmbeddingConfig for T {
+impl<T: AsRef<str> + Into<String>> IntoEmbeddingConfig for T {
     fn into_embedding_config(self) -> EmbeddingConfig {
-        EmbeddingConfig::new().with_model(self)
+        EmbeddingConfig::new().with_model(self.into())
     }
 }

@@ -3,7 +3,7 @@
 //! This module provides blazing-fast response parsing and validation with minimal allocations
 //! and no locking requirements.
 
-use bytes::Bytes;
+
 use serde_json;
 
 use super::completion::AnthropicCompletionResponse;

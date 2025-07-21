@@ -96,6 +96,7 @@ impl EmbeddingPool {
 pub struct InMemoryEmbeddingCache {
     cache: std::sync::RwLock<HashMap<String, Vec<f32>>>,
     pool: EmbeddingPool,
+    #[allow(dead_code)] // TODO: Implement in embedding cache system
     dimension: usize,
 }
 impl InMemoryEmbeddingCache {

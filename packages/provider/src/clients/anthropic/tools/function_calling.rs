@@ -7,11 +7,11 @@ use std::{any::TypeId, collections::HashMap, future::Future, marker::PhantomData
 
 use arrayvec::ArrayVec;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use super::core::{
     AnthropicError, AnthropicResult, ChainControl, Emitter, ErrorHandler, InvocationHandler,
-    Message, ResultHandler, SchemaType, Tool, ToolError, ToolExecutionError, ToolRegistrationError,
+    Message, ResultHandler, SchemaType, Tool, ToolError,
 };
 #[cfg(feature = "cylo")]
 use crate::execution::{CyloExecutor, CyloInstance, ExecutionRequest};

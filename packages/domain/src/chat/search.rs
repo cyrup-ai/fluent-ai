@@ -174,6 +174,21 @@ pub struct ChatSearchIndex {
     simd_threshold: AtomicUsize,
 }
 
+impl std::fmt::Debug for ChatSearchIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ChatSearchIndex")
+            .field("inverted_index", &format!("SkipMap with {} entries", self.inverted_index.len()))
+            .field("document_store", &format!("SkipMap with {} entries", self.document_store.len()))
+            .field("term_frequencies", &format!("SkipMap with {} entries", self.term_frequencies.len()))
+            .field("document_count", &self.document_count.load(std::sync::atomic::Ordering::Relaxed))
+            .field("query_counter", &"ConsistentCounter")
+            .field("index_update_counter", &"ConsistentCounter")
+            .field("statistics", &"Arc<RwLock<SearchStatistics>>")
+            .field("simd_threshold", &self.simd_threshold.load(std::sync::atomic::Ordering::Relaxed))
+            .finish()
+    }
+}
+
 impl ChatSearchIndex {
     /// Create a new search index
     pub fn new() -> Self {
@@ -1788,9 +1803,9 @@ pub enum SearchScope {
 /// - Advanced filtering and ranking
 /// - Performance monitoring and caching
 /// - Result highlighting and metadata
-#[derive(Debug)]
 pub struct ChatSearcher {
     /// Search index for fast lookups
+    #[allow(dead_code)] // TODO: Implement in search indexing system
     search_index: Arc<ChatSearchIndex>,
     /// Search options configuration
     options: SearchOptions,
@@ -1802,6 +1817,19 @@ pub struct ChatSearcher {
     query_processor: Arc<QueryProcessor>,
     /// Result ranker for relevance scoring
     result_ranker: Arc<ResultRanker>,
+}
+
+impl std::fmt::Debug for ChatSearcher {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ChatSearcher")
+            .field("search_index", &"Arc<ChatSearchIndex>")
+            .field("options", &self.options)
+            .field("cache", &"Arc<SkipMap<Arc<str>, CachedSearchResult>>")
+            .field("stats", &"Arc<ChatSearcherStats>")
+            .field("query_processor", &"Arc<QueryProcessor>")
+            .field("result_ranker", &"Arc<ResultRanker>")
+            .finish()
+    }
 }
 
 /// Cached search result
@@ -1881,8 +1909,10 @@ pub struct ChatSearcherStats {
 #[derive(Debug)]
 pub struct QueryProcessor {
     /// Query expansion enabled
+    #[allow(dead_code)] // TODO: Implement in query expansion system
     expansion_enabled: bool,
     /// Expansion dictionary
+    #[allow(dead_code)] // TODO: Implement in query expansion system
     expansion_dict: HashMap<Arc<str>, Vec<Arc<str>>>,
 }
 
@@ -1890,8 +1920,10 @@ pub struct QueryProcessor {
 #[derive(Debug)]
 pub struct ResultRanker {
     /// Ranking algorithm
+    #[allow(dead_code)] // TODO: Implement in ranking system
     algorithm: RankingAlgorithm,
     /// Boost factors for different fields
+    #[allow(dead_code)] // TODO: Implement in ranking system
     field_boosts: HashMap<Arc<str>, f32>,
 }
 

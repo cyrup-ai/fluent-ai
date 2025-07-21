@@ -15,13 +15,16 @@ use crate::ZeroOneOrMany;
 // Unused imports cleaned up
 
 /// Maximum number of relevant memories for context injection
+#[allow(dead_code)] // TODO: Implement in memory context system
 const MAX_RELEVANT_MEMORIES: usize = 10;
 
 /// Global atomic counter for memory node creation
+#[allow(dead_code)] // TODO: Implement in memory node creation system
 static MEMORY_NODE_COUNTER: Lazy<CachePadded<RelaxedCounter>> =
     Lazy::new(|| CachePadded::new(RelaxedCounter::new(0)));
 
 /// Global atomic counter for attention scoring operations
+#[allow(dead_code)] // TODO: Implement in attention scoring system
 static ATTENTION_SCORE_COUNTER: Lazy<CachePadded<AtomicUsize>> =
     Lazy::new(|| CachePadded::new(AtomicUsize::new(0)));
 
@@ -195,6 +198,7 @@ impl AgentRoleImpl {
 
     /// Get the API key, falling back to environment variable if not set
     /// Zero allocation with efficient environment variable access
+    #[allow(dead_code)] // TODO: Implement in API authentication system
     #[inline]
     fn get_api_key(&self) -> Result<String, ChatError> {
         if let Some(ref api_key) = self.api_key {
@@ -249,6 +253,7 @@ impl AgentConversationMessage {
 pub struct AgentWithHistory {
     #[allow(dead_code)] // TODO: Use for accessing agent role configuration during chat
     inner: Box<dyn std::any::Any + Send + Sync>,
+    #[allow(dead_code)] // TODO: Implement chunk processing in streaming system
     chunk_handler:
         Box<dyn Fn(crate::chunk::ChatMessageChunk) -> crate::chunk::ChatMessageChunk + Send + Sync>,
     #[allow(dead_code)] // TODO: Use for loading previous conversation context during chat

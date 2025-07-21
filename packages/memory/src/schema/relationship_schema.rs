@@ -250,7 +250,7 @@ mod tests {
 
         if let serde_json::Value::Object(map) = &relationship.metadata {
             assert!(map.contains_key("key"));
-            assert_eq!(map.get("key").unwrap(), &serde_json::json!("value"));
+            assert_eq!(map.get("key").expect("key should exist in metadata"), &serde_json::json!("value"));
         } else {
             panic!("Expected metadata to be an object");
         }
@@ -271,7 +271,7 @@ mod tests {
 
         if let serde_json::Value::Object(map) = &relationship.metadata {
             assert!(map.contains_key("key"));
-            assert_eq!(map.get("key").unwrap(), &serde_json::json!("updated"));
+            assert_eq!(map.get("key").expect("key should exist in updated metadata"), &serde_json::json!("updated"));
         } else {
             panic!("Expected metadata to be an object");
         }
@@ -287,8 +287,8 @@ mod tests {
         let mut relationship = Relationship::new("source-id", "target-id", "related_to");
 
         // Set metadata value
-        relationship.set_metadata_value("number", 42).unwrap();
-        relationship.set_metadata_value("string", "value").unwrap();
+        relationship.set_metadata_value("number", 42).expect("should set metadata number");
+        relationship.set_metadata_value("string", "value").expect("should set metadata string");
 
         // Get metadata value
         assert_eq!(relationship.get_metadata_value::<i32>("number"), Some(42));
@@ -308,10 +308,10 @@ mod tests {
         let mut relationship = Relationship::new("source-id", "target-id", "related_to");
 
         // Set additional field
-        relationship.set_additional_field("field1", 123).unwrap();
+        relationship.set_additional_field("field1", 123).expect("should set additional field1");
         relationship
             .set_additional_field("field2", "value")
-            .unwrap();
+            .expect("should set additional field2");
 
         // Get additional field
         assert_eq!(
@@ -367,8 +367,8 @@ mod tests {
             .with_metadata(serde_json::json!({"key": "value"}))
             .with_strength(0.75);
 
-        let json = serde_json::to_string(&relationship).unwrap();
-        let deserialized: Relationship = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&relationship).expect("should serialize relationship to JSON");
+        let deserialized: Relationship = serde_json::from_str(&json).expect("should deserialize relationship from JSON");
 
         assert_eq!(deserialized.id, relationship.id);
         assert_eq!(deserialized.source_id, relationship.source_id);

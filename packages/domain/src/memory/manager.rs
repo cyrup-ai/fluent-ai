@@ -20,15 +20,16 @@ use crossbeam_utils::CachePadded;
 pub use fluent_ai_memory::{
     MemoryConfig,
     MemoryManager as MemoryManagerTrait,
-    MemoryMetadata,
     SurrealDBMemoryManager,
     // Removed unused import: SurrealMemoryQuery
 };
 use once_cell::sync::Lazy;
 
 // Removed unused import: super::types_legacy::MemoryType
-use super::MemoryError;
-use super::primitives::MemoryNode;
+use crate::memory::primitives::types::MemoryError;
+use crate::memory::primitives::MemoryNode;
+use crate::memory::primitives::node::MemoryNodeMetadata;
+use crate::memory::primitives::types::MemoryContent;
 // Removed unused import: parking_lot::Mutex
 // Removed unused import: smallvec::SmallVec
 
@@ -39,6 +40,7 @@ use super::primitives::MemoryNode;
 ///
 /// This wrapper provides a safe alternative to unsafe memory operations when
 /// full initialization is not possible in synchronous contexts.
+#[allow(dead_code)] // TODO: Implement synchronous memory stub API
 pub struct MemoryStub {
     config: MemoryConfig,
 }
@@ -52,6 +54,7 @@ impl MemoryStub {
     /// # Performance
     /// Zero allocation with minimal initialization
     #[inline]
+    #[allow(dead_code)] // TODO: Implement memory stub constructor
     pub fn new() -> Self {
         let config = MemoryConfig {
             database: fluent_ai_memory::utils::config::DatabaseConfig {
@@ -77,33 +80,41 @@ impl MemoryStub {
     ///
     /// # Performance
     /// Zero allocation with proper async initialization
+    #[allow(dead_code)] // TODO: Implement async memory conversion
     pub async fn into_memory(self) -> Result<Memory, MemoryError> {
         Memory::new(self.config).await
     }
 }
 
 /// Maximum number of memory nodes in result collections
+#[allow(dead_code)] // TODO: Implement memory result size limits
 const MAX_MEMORY_RESULTS: usize = 1000;
 
 /// Maximum number of search results per query
+#[allow(dead_code)] // TODO: Implement search result limits
 const MAX_SEARCH_RESULTS: usize = 100;
 
 /// Memory node pool for zero-allocation operations
+#[allow(dead_code)] // TODO: Implement memory node pooling system
 static MEMORY_NODE_POOL: Lazy<SegQueue<Box<MemoryNode>>> = Lazy::new(|| SegQueue::new());
 
 /// Pool statistics for monitoring
+#[allow(dead_code)] // TODO: Implement pool statistics monitoring
 static POOL_STATS: Lazy<CachePadded<AtomicUsize>> =
     Lazy::new(|| CachePadded::new(AtomicUsize::new(0)));
 
 /// Lock-free timestamp cache for high-performance time operations
+#[allow(dead_code)] // TODO: Implement timestamp caching system
 static TIMESTAMP_CACHE: Lazy<CachePadded<AtomicU64>> =
     Lazy::new(|| CachePadded::new(AtomicU64::new(0)));
 
 /// Last timestamp cache update time
+#[allow(dead_code)] // TODO: Implement timestamp cache update tracking
 static TIMESTAMP_CACHE_LAST_UPDATE: Lazy<CachePadded<AtomicU64>> =
     Lazy::new(|| CachePadded::new(AtomicU64::new(0)));
 
 /// Timestamp cache refresh interval in microseconds (1ms = 1000µs)
+#[allow(dead_code)] // TODO: Implement timestamp cache refresh intervals
 const TIMESTAMP_CACHE_REFRESH_INTERVAL_MICROS: u64 = 1000;
 /// Initialize memory node pool with pre-allocated nodes
 ///
@@ -114,12 +125,25 @@ const TIMESTAMP_CACHE_REFRESH_INTERVAL_MICROS: u64 = 1000;
 /// # Performance
 /// Zero allocation during runtime through pre-allocation
 #[inline(always)]
+#[allow(dead_code)] // TODO: Implement memory node pool initialization
 pub fn initialize_memory_node_pool(initial_size: usize, embedding_dim: usize) {
+    // Validate embedding dimension
+    assert!(embedding_dim > 0 && embedding_dim <= 65536, 
+        "Embedding dimension must be between 1 and 65536, got: {}", embedding_dim);
+
     for _ in 0..initial_size {
-        let node = Box::new(MemoryNode::new(
+        let mut node = Box::new(MemoryNode::new(
             super::primitives::MemoryTypeEnum::Episodic,
             super::primitives::MemoryContent::text(""),
         ));
+        
+        // Pre-allocate embedding vector with correct dimension
+        let zero_embedding = vec![0.0f32; embedding_dim];
+        if let Err(e) = node.set_embedding(zero_embedding) {
+            log::error!("Failed to set embedding for pooled memory node: {}", e);
+            // Continue anyway - this is pool initialization, not critical path
+        }
+        
         MEMORY_NODE_POOL.push(node);
     }
     POOL_STATS.store(initial_size, Ordering::Relaxed);
@@ -133,6 +157,7 @@ pub fn initialize_memory_node_pool(initial_size: usize, embedding_dim: usize) {
 /// # Performance
 /// Lock-free pool access with atomic statistics
 #[inline(always)]
+#[allow(dead_code)] // TODO: Implement pooled memory node retrieval
 pub fn get_pooled_memory_node() -> Box<MemoryNode> {
     if let Some(node) = MEMORY_NODE_POOL.pop() {
         POOL_STATS.fetch_sub(1, Ordering::Relaxed);
@@ -153,10 +178,11 @@ pub fn get_pooled_memory_node() -> Box<MemoryNode> {
 /// # Performance
 /// Zero allocation with lock-free pool management
 #[inline(always)]
+#[allow(dead_code)] // TODO: Implement pooled memory node return
 pub fn return_pooled_memory_node(mut node: Box<MemoryNode>) {
     // Clear node data for reuse
-    node.content = String::new();
-    node.metadata = MemoryMetadata::default();
+    node.base_memory.content = MemoryContent::Empty;
+    node.metadata = Arc::new(CachePadded::new(MemoryNodeMetadata::new()));
 
     MEMORY_NODE_POOL.push(node);
     POOL_STATS.fetch_add(1, Ordering::Relaxed);
@@ -166,6 +192,7 @@ pub fn return_pooled_memory_node(mut node: Box<MemoryNode>) {
 /// # Performance
 /// Zero allocation with pre-allocated timestamp cache
 #[inline(always)]
+#[allow(dead_code)] // TODO: Implement timestamp cache initialization
 pub fn initialize_timestamp_cache() {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -184,6 +211,7 @@ pub fn initialize_timestamp_cache() {
 /// # Performance
 /// Sub-millisecond access with lock-free atomic operations
 #[inline(always)]
+#[allow(dead_code)] // TODO: Implement cached timestamp retrieval
 pub fn get_cached_timestamp() -> u64 {
     let cached_time = TIMESTAMP_CACHE.load(Ordering::Relaxed);
     let last_update = TIMESTAMP_CACHE_LAST_UPDATE.load(Ordering::Relaxed);
@@ -210,6 +238,7 @@ pub fn get_cached_timestamp() -> u64 {
 /// # Performance
 /// Lock-free atomic read operations
 #[inline(always)]
+#[allow(dead_code)] // TODO: Implement timestamp cache statistics
 pub fn get_timestamp_cache_stats() -> (u64, u64, u64) {
     let cached_time = TIMESTAMP_CACHE.load(Ordering::Relaxed);
     let last_update = TIMESTAMP_CACHE_LAST_UPDATE.load(Ordering::Relaxed);
@@ -229,6 +258,7 @@ pub fn get_timestamp_cache_stats() -> (u64, u64, u64) {
 /// # Performance
 /// Lock-free atomic read operation
 #[inline(always)]
+#[allow(dead_code)] // TODO: Implement timestamp cache freshness check
 pub fn is_timestamp_cache_fresh() -> bool {
     let last_update = TIMESTAMP_CACHE_LAST_UPDATE.load(Ordering::Relaxed);
     let now = std::time::SystemTime::now()
@@ -239,10 +269,18 @@ pub fn is_timestamp_cache_fresh() -> bool {
     now - last_update <= TIMESTAMP_CACHE_REFRESH_INTERVAL_MICROS
 }
 /// Zero-allocation memory manager wrapper with lock-free operations
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Memory {
     /// Shared memory manager instance for concurrent access
     memory: Arc<SurrealDBMemoryManager>,
+}
+
+impl std::fmt::Debug for Memory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Memory")
+            .field("memory", &"SurrealDBMemoryManager { ... }")
+            .finish()
+    }
 }
 
 impl Memory {
@@ -290,10 +328,138 @@ impl Memory {
 
         Box::pin(async move {
             use fluent_ai_memory::MemoryManager;
-            let pending = memory.create_memory(memory_node);
-            pending
-                .await
-                .map_err(|e| MemoryError::StorageError(e.to_string()))
+            // Convert our MemoryNode to fluent_ai_memory::MemoryNode
+            // For now, create a simple wrapper/conversion
+            // TODO: Implement proper conversion or use consistent memory types
+            match serde_json::to_string(&memory_node) {
+                Ok(serialized) => {
+                    // This is a temporary solution - we should establish proper type conversion
+                    match serde_json::from_str::<fluent_ai_memory::MemoryNode>(&serialized) {
+                        Ok(converted_node) => {
+                            let pending = memory.create_memory(converted_node);
+                            pending
+                                .await
+                                .map(|_| ()) // Discard the MemoryNode return value, just return success
+                                .map_err(|e| MemoryError::OperationFailed(e.to_string()))
+                        }
+                        Err(e) => Err(MemoryError::OperationFailed(format!("Node conversion failed: {}", e)))
+                    }
+                }
+                Err(e) => Err(MemoryError::OperationFailed(format!("Node serialization failed: {}", e)))
+            }
         })
+    }
+
+    /// Create memory stub for testing or fallback scenarios
+    #[inline]
+    pub fn create_stub() -> MemoryStub {
+        MemoryStub::new()
+    }
+
+    /// Convert memory stub to full memory instance (async)
+    pub async fn from_stub(stub: MemoryStub) -> Result<Self, MemoryError> {
+        stub.into_memory().await
+    }
+
+    /// Initialize memory system with optimizations
+    #[inline]
+    pub fn initialize_optimized_memory(pool_size: usize, embedding_dim: usize) {
+        initialize_memory_node_pool(pool_size, embedding_dim);
+        initialize_timestamp_cache();
+    }
+
+    /// Get optimized memory node from pool
+    #[inline]
+    pub fn get_optimized_node() -> Box<MemoryNode> {
+        get_pooled_memory_node()
+    }
+
+    /// Return memory node to pool for reuse
+    #[inline]
+    pub fn return_optimized_node(node: Box<MemoryNode>) {
+        return_pooled_memory_node(node);
+    }
+
+    /// Get memory system performance statistics
+    #[inline]
+    pub fn get_memory_performance_stats() -> (u64, u64, u64, bool) {
+        let (cached_ts, cache_hits, last_update) = get_timestamp_cache_stats();
+        let cache_fresh = is_timestamp_cache_fresh();
+        (cached_ts, cache_hits, last_update, cache_fresh)
+    }
+
+    /// Get cached timestamp for performance optimization
+    #[inline]
+    pub fn get_cached_time() -> u64 {
+        super::cache::get_cached_timestamp()
+    }
+
+    /// Get cached system time for compatibility with existing APIs
+    #[inline]
+    pub fn get_cached_system_time() -> std::time::SystemTime {
+        super::cache::get_cached_system_time()
+    }
+
+    /// Initialize memory cache system for optimal performance
+    #[inline]
+    pub fn initialize_memory_cache() {
+        super::cache::initialize_timestamp_cache();
+    }
+
+    /// Record cache hit for performance tracking
+    #[inline]
+    pub fn record_memory_cache_hit() {
+        super::ops::record_cache_hit();
+    }
+
+    /// Record cache miss for performance tracking
+    #[inline]
+    pub fn record_memory_cache_miss() {
+        super::ops::record_cache_miss();
+    }
+
+    /// Get comprehensive memory operations statistics
+    #[inline]
+    pub fn get_memory_ops_statistics() -> (u64, u64, u64) {
+        super::ops::get_memory_ops_stats()
+    }
+
+    /// Initialize global memory node pool for zero-allocation operations
+    #[inline]
+    pub fn initialize_global_memory_pool(capacity: usize, embedding_dimension: usize) {
+        super::pool::initialize_memory_node_pool(capacity, embedding_dimension);
+    }
+
+    /// Acquire a pooled memory node for zero-allocation reuse
+    #[inline]
+    pub fn acquire_pooled_memory_node() -> Option<super::pool::PooledMemoryNode<'static>> {
+        super::pool::acquire_pooled_node()
+    }
+
+    /// Get memory node pool statistics for monitoring
+    #[inline]
+    pub fn get_memory_pool_statistics() -> Option<(usize, usize)> {
+        super::pool::memory_node_pool_stats()
+    }
+
+    /// Create a memory record for serialization tracking
+    #[inline]
+    pub fn create_memory_record(input: &str, output: &str, timestamp: u64) -> super::serialization::MemoryRecord {
+        super::serialization::MemoryRecord::new(input, output, timestamp)
+    }
+
+    /// Serialize memory data with zero-allocation buffer
+    #[inline]
+    pub fn serialize_with_buffer<F, R>(f: F) -> R 
+    where
+        F: FnOnce(&mut super::serialization::SerializationBuffer) -> R,
+    {
+        super::serialization::with_serialization_buffer(f)
+    }
+
+    /// Calculate content hash for memory indexing
+    #[inline]
+    pub fn calculate_content_hash(content: &str) -> u64 {
+        super::serialization::content_hash(content)
     }
 }

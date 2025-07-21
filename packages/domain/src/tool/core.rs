@@ -77,8 +77,10 @@ pub struct Tool<T> {
     config: HashMap<String, Value>,
     /// Optional Cylo execution environment instance
     #[cfg(feature = "cylo")]
+    #[allow(dead_code)]
     cylo_instance: Option<CyloInstance>,
     #[cfg(not(feature = "cylo"))]
+    #[allow(dead_code)]
     cylo_instance: Option<()>,
 }
 
@@ -169,8 +171,10 @@ pub struct NamedTool {
     description: Option<String>,
     /// Optional Cylo execution environment instance
     #[cfg(feature = "cylo")]
+    #[allow(dead_code)]
     cylo_instance: Option<CyloInstance>,
     #[cfg(not(feature = "cylo"))]
+    #[allow(dead_code)]
     cylo_instance: Option<()>,
 }
 

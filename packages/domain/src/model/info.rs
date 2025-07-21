@@ -398,7 +398,7 @@ impl ProviderModels {
 
         if self.models.iter().any(|m| m.name == model.name) {
             return Err(ModelError::ModelAlreadyExists {
-                provider: self.provider_name.clone().into(),
+                provider: self.provider_name.into(),
                 name: model.name.into(),
             });
         }

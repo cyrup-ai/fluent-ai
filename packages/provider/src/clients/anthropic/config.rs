@@ -3,7 +3,7 @@
 //! This module provides blazing-fast configuration management with zero allocations
 //! after construction and no locking requirements.
 
-use std::borrow::Cow;
+
 
 use super::error::{AnthropicError, AnthropicResult};
 

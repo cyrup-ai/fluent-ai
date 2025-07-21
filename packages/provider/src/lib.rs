@@ -3,8 +3,12 @@
 //! This crate provides provider and model implementations for AI services.
 //! The core domain types are now defined in the domain package.
 
+// Include generated code from build script
+include!(concat!(env!("OUT_DIR"), "/providers.rs"));
+include!(concat!(env!("OUT_DIR"), "/models.rs"));
+
 // Re-export domain types for backward compatibility
-pub use fluent_ai_domain::{model_info::ModelInfoData, models::Models};
+pub use fluent_ai_domain::model::ModelInfo;
 
 // Provider client implementations
 pub mod clients;
@@ -33,7 +37,7 @@ pub use cyrup_sugars::{OneOrMany, ZeroOneOrMany};
 pub use fluent_ai_domain as domain;
 pub use fluent_ai_domain::AsyncTask;
 pub use fluent_ai_domain::spawn_async;
-pub use providers::Providers;
+pub use crate::Provider;
 
 // Create our own AsyncStream type for provider compatibility
 pub type AsyncStream<T> = tokio_stream::wrappers::UnboundedReceiverStream<T>;

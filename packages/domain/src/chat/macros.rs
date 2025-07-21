@@ -6,6 +6,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use atomic_counter::{AtomicCounter, ConsistentCounter};
@@ -812,24 +813,40 @@ pub struct MacroProcessor {
     /// Variable context for macro execution
     variables: Arc<RwLock<HashMap<Arc<str>, Arc<str>>>>,
     /// Execution queue for async processing
+    #[allow(dead_code)] // TODO: Implement in macro execution system
     execution_queue: Arc<SegQueue<MacroExecutionRequest>>,
     /// Configuration settings
     config: MacroProcessorConfig,
 }
 
-/// Macro processor statistics
+/// Macro processor statistics (internal atomic counters)
 #[derive(Debug, Default)]
 pub struct MacroProcessorStats {
     /// Total macros executed
-    pub total_executions: std::sync::atomic::AtomicUsize,
+    pub total_executions: AtomicUsize,
     /// Successful executions
-    pub successful_executions: std::sync::atomic::AtomicUsize,
+    pub successful_executions: AtomicUsize,
     /// Failed executions
-    pub failed_executions: std::sync::atomic::AtomicUsize,
+    pub failed_executions: AtomicUsize,
     /// Total execution time in microseconds
-    pub total_execution_time_us: std::sync::atomic::AtomicUsize,
+    pub total_execution_time_us: AtomicUsize,
     /// Active executions
-    pub active_executions: std::sync::atomic::AtomicUsize,
+    pub active_executions: AtomicUsize,
+}
+
+/// Macro processor statistics snapshot (for external API)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MacroProcessorStatsSnapshot {
+    /// Total macros executed
+    pub total_executions: usize,
+    /// Successful executions
+    pub successful_executions: usize,
+    /// Failed executions
+    pub failed_executions: usize,
+    /// Total execution time in microseconds
+    pub total_execution_time_us: usize,
+    /// Active executions
+    pub active_executions: usize,
 }
 
 /// Macro processor configuration
@@ -1308,13 +1325,13 @@ impl MacroProcessor {
     }
 
     /// Get processor statistics
-    pub fn stats(&self) -> MacroProcessorStats {
-        MacroProcessorStats {
-            total_executions: self.stats.total_executions.load(std::sync::atomic::Ordering::Relaxed),
-            successful_executions: self.stats.successful_executions.load(std::sync::atomic::Ordering::Relaxed),
-            failed_executions: self.stats.failed_executions.load(std::sync::atomic::Ordering::Relaxed),
-            total_execution_time_us: self.stats.total_execution_time_us.load(std::sync::atomic::Ordering::Relaxed),
-            active_executions: self.stats.active_executions.load(std::sync::atomic::Ordering::Relaxed),
+    pub fn stats(&self) -> MacroProcessorStatsSnapshot {
+        MacroProcessorStatsSnapshot {
+            total_executions: self.stats.total_executions.load(Ordering::Relaxed),
+            successful_executions: self.stats.successful_executions.load(Ordering::Relaxed),
+            failed_executions: self.stats.failed_executions.load(Ordering::Relaxed),
+            total_execution_time_us: self.stats.total_execution_time_us.load(Ordering::Relaxed),
+            active_executions: self.stats.active_executions.load(Ordering::Relaxed),
         }
     }
 

@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use fluent_ai_core::completion::error::{CandleError as CoreCandleError, CompletionError};
+use fluent_ai_domain::extractor::ExtractionError;
 
 /// Result type alias for candle operations
 pub type CandleResult<T> = Result<T, CandleError>;
@@ -77,20 +77,11 @@ impl fmt::Display for CandleError {
 
 impl std::error::Error for CandleError {}
 
-// Conversion to core completion error
-impl From<CandleError> for CompletionError {
+// Conversion to extraction error  
+impl From<CandleError> for ExtractionError {
     #[inline(always)]
     fn from(err: CandleError) -> Self {
-        let core_err = match err {
-            CandleError::ModelNotFound(_) => CoreCandleError::ModelNotFound("Model file not found"),
-            CandleError::InvalidModelFormat(msg) => CoreCandleError::InvalidModelFormat(msg),
-            CandleError::TensorOperation(msg) => CoreCandleError::TensorOperation(msg),
-            CandleError::DeviceAllocation(msg) => CoreCandleError::DeviceAllocation(msg),
-            CandleError::Quantization(msg) => CoreCandleError::Quantization(msg),
-            CandleError::Tokenizer(msg) => CoreCandleError::Tokenizer(msg),
-            _ => CoreCandleError::TensorOperation("Candle operation failed"),
-        };
-        CompletionError::from(core_err)
+        ExtractionError::CompletionError(format!("Candle error: {}", err))
     }
 }
 

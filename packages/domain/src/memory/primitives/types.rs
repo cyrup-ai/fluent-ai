@@ -578,6 +578,8 @@ pub enum MemoryError {
     Validation(String),
     #[error("Operation failed: {0}")]
     OperationFailed(String),
+    #[error("Storage error: {0}")]
+    StorageError(String),
 }
 
 impl MemoryError {
@@ -603,6 +605,12 @@ impl MemoryError {
     #[inline]
     pub fn validation(msg: impl Into<String>) -> Self {
         Self::Validation(msg.into())
+    }
+
+    /// Create storage error
+    #[inline]
+    pub fn storage_error(msg: impl Into<String>) -> Self {
+        Self::StorageError(msg.into())
     }
 }
 

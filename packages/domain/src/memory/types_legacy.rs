@@ -8,6 +8,8 @@ use serde_json::Value;
 use crate::ZeroOneOrMany;
 use crate::async_task::AsyncTask;
 
+#[allow(dead_code)] // TODO: Implement boxed future type for legacy compatibility
+#[allow(dead_code)]
 pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 
 #[derive(Debug)]

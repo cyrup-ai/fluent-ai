@@ -574,7 +574,7 @@ mod tests {
         let state_manager = Arc::new(CognitiveStateManager::new());
         let config = QuantumConfig::default();
 
-        let router = QuantumRouter::new(state_manager, config).await.unwrap();
+        let router = QuantumRouter::new(state_manager, config).await.expect("Failed to create QuantumRouter in test");
 
         // Verify initialization
         let states = router.superposition_states.read().await;
@@ -585,7 +585,7 @@ mod tests {
     async fn test_query_routing() {
         let state_manager = Arc::new(CognitiveStateManager::new());
         let config = QuantumConfig::default();
-        let router = QuantumRouter::new(state_manager, config).await.unwrap();
+        let router = QuantumRouter::new(state_manager, config).await.expect("Failed to create QuantumRouter in test");
 
         let query = EnhancedQuery {
             original: "test query".to_string(),
@@ -599,7 +599,7 @@ mod tests {
             priority: 1,
         };
 
-        let decision = router.route_query(&query).await.unwrap();
+        let decision = router.route_query(&query).await.expect("Failed to route query in test");
 
         assert!(decision.confidence > 0.0);
         assert!(!decision.target_context.is_empty());
@@ -609,7 +609,7 @@ mod tests {
     async fn test_superposition_creation() {
         let state_manager = Arc::new(CognitiveStateManager::new());
         let config = QuantumConfig::default();
-        let router = QuantumRouter::new(state_manager, config).await.unwrap();
+        let router = QuantumRouter::new(state_manager, config).await.expect("Failed to create QuantumRouter in test");
 
         let query = EnhancedQuery {
             original: "test".to_string(),
@@ -623,7 +623,7 @@ mod tests {
             priority: 1,
         };
 
-        let superposition = router.create_superposition(&query).await.unwrap();
+        let superposition = router.create_superposition(&query).await.expect("Failed to create superposition in test");
 
         assert!(!superposition.probability_amplitudes.is_empty());
 

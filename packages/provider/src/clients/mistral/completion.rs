@@ -177,12 +177,12 @@ pub enum ToolType {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct ToolDefinition {
+pub struct MistralToolDefinition {
     pub r#type: String,
     pub function: completion::ToolDefinition,
 }
 
-impl From<completion::ToolDefinition> for ToolDefinition {
+impl From<completion::ToolDefinition> for MistralToolDefinition {
     fn from(tool: completion::ToolDefinition) -> Self {
         Self {
             r#type: "function".into(),
@@ -293,7 +293,7 @@ impl CompletionModel {
             json!({
                 "model": self.model,
                 "messages": full_history,
-                "tools": completion_request.tools.into_iter().map(ToolDefinition::from).collect::<Vec<_>>(),
+                "tools": completion_request.tools.into_iter().map(MistralToolDefinition::from).collect::<Vec<_>>(),
                 "tool_choice": "auto",
             })
         };
@@ -554,8 +554,7 @@ use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{AsyncTask, spawn_async};
 use fluent_ai_domain::{Document, Message as DomainMessage};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+
 
 use crate::{
     AsyncStream,
@@ -588,7 +587,7 @@ pub struct MistralCompletionBuilder {
     presence_penalty: f64,
     chat_history: ArrayVec<DomainMessage, MAX_MESSAGES>,
     documents: ArrayVec<Document, MAX_DOCUMENTS>,
-    tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
+    tools: ArrayVec<completion::ToolDefinition, MAX_TOOLS>,
     additional_params: Option<Value>,
     chunk_handler: Option<ChunkHandler>,
 }
@@ -836,7 +835,7 @@ impl CompletionProvider for MistralCompletionBuilder {
 
     /// Add tools for function calling (ZeroOneOrMany with bounded capacity)
     #[inline(always)]
-    fn tools(mut self, tools: ZeroOneOrMany<ToolDefinition>) -> Result<Self, ProviderError> {
+    fn tools(mut self, tools: ZeroOneOrMany<completion::ToolDefinition>) -> Result<Self, ProviderError> {
         match tools {
             ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(tool) => {

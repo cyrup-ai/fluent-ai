@@ -155,7 +155,7 @@ mod tests {
     #[tokio::test]
     async fn test_anthropic_discovery() {
         // Create a discovery instance with a dummy API key for testing
-        let discovery = AnthropicDiscovery::new("test-api-key".to_string()).unwrap();
+        let discovery = AnthropicDiscovery::new("test-api-key".to_string()).expect("Failed to create AnthropicDiscovery in test");
 
         // Test provider name
         assert_eq!(discovery.provider_name(), "anthropic");
@@ -168,7 +168,7 @@ mod tests {
         // Test model info retrieval
         let model_info = discovery
             .get_model_info("claude-3-5-sonnet-20241022")
-            .unwrap();
+            .expect("Failed to get model info for claude-3-5-sonnet-20241022 in test");
         assert_eq!(model_info.name(), "claude-3-5-sonnet-20241022");
         assert_eq!(model_info.provider(), "anthropic");
         assert!(model_info.has_capability(ModelCapability::TextGeneration));
@@ -197,12 +197,12 @@ mod tests {
 
     #[test]
     fn test_get_model_info() {
-        let discovery = AnthropicDiscovery::new("test-api-key".to_string()).unwrap();
+        let discovery = AnthropicDiscovery::new("test-api-key".to_string()).expect("Failed to create AnthropicDiscovery in test_get_model_info");
 
         // Test with supported model
         let model_info = discovery
             .get_model_info("claude-3-5-sonnet-20241022")
-            .unwrap();
+            .expect("Failed to get model info for claude-3-5-sonnet-20241022 in test_get_model_info");
         assert_eq!(model_info.name(), "claude-3-5-sonnet-20241022");
         assert_eq!(model_info.provider(), "anthropic");
         assert!(model_info.has_capability(ModelCapability::TextGeneration));

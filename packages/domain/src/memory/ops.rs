@@ -16,7 +16,7 @@ use std::arch::x86_64::*;
 
 // Removed unused import: arc_swap::ArcSwap
 // Removed unused import: arrayvec::ArrayVec
-use atomic_counter::RelaxedCounter;
+use atomic_counter::{AtomicCounter, RelaxedCounter};
 // Removed unused import: crossbeam_queue::ArrayQueue
 // Removed unused import: futures::stream::StreamExt
 // Removed unused import: jemalloc_sys as jemalloc
@@ -39,14 +39,19 @@ pub const SMALL_EMBEDDING_DIMENSION: usize = 64;
 /// SIMD vector width for f32 operations
 pub const SIMD_WIDTH: usize = 8;
 /// Maximum stack allocation size for embeddings
+#[allow(dead_code)]
 pub const MAX_STACK_EMBEDDING_SIZE: usize = 512;
 
 /// Memory pool size for vector operations
+#[allow(dead_code)]
 pub const VECTOR_POOL_SIZE: usize = 1024;
 
 /// Performance statistics with atomic counters
+#[allow(dead_code)]
 static SIMD_OPERATIONS_COUNT: Lazy<RelaxedCounter> = Lazy::new(|| RelaxedCounter::new(0));
+#[allow(dead_code)]
 static CACHE_HITS: Lazy<RelaxedCounter> = Lazy::new(|| RelaxedCounter::new(0));
+#[allow(dead_code)]
 static CACHE_MISSES: Lazy<RelaxedCounter> = Lazy::new(|| RelaxedCounter::new(0));
 
 /// CPU feature detection for runtime SIMD selection
@@ -197,4 +202,47 @@ pub enum Op {
     Search,
     /// Index operation
     Index,
+}
+
+/// Get memory operation performance statistics
+#[inline]
+#[allow(dead_code)] // TODO: Implement SIMD operations performance monitoring
+pub fn get_memory_ops_stats() -> (u64, u64, u64) {
+    let simd_ops = (*SIMD_OPERATIONS_COUNT).get() as u64;
+    let cache_hits = (*CACHE_HITS).get() as u64;
+    let cache_misses = (*CACHE_MISSES).get() as u64;
+    (simd_ops, cache_hits, cache_misses)
+}
+
+/// Check if embedding should use stack allocation
+#[inline]
+#[allow(dead_code)] // TODO: Implement stack vs heap allocation optimization
+pub fn should_use_stack_allocation(embedding_size: usize) -> bool {
+    embedding_size <= MAX_STACK_EMBEDDING_SIZE
+}
+
+/// Get optimal vector pool allocation size
+#[inline]
+#[allow(dead_code)] // TODO: Implement vector pool size configuration
+pub fn get_vector_pool_size() -> usize {
+    VECTOR_POOL_SIZE
+}
+
+/// Record SIMD operation for performance tracking
+#[inline]
+#[allow(dead_code)] // TODO: Implement SIMD operation performance tracking
+pub fn record_simd_operation() {
+    (*SIMD_OPERATIONS_COUNT).inc();
+}
+
+/// Record cache hit for performance tracking
+#[inline]
+pub fn record_cache_hit() {
+    (*CACHE_HITS).inc();
+}
+
+/// Record cache miss for performance tracking
+#[inline]
+pub fn record_cache_miss() {
+    (*CACHE_MISSES).inc();
 }

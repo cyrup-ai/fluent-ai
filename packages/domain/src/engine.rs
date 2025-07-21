@@ -186,6 +186,7 @@ impl CompletionRequest {
 /// Core engine implementation with zero-allocation patterns
 pub struct Engine {
     config: Arc<RwLock<EngineConfig>>,
+    #[allow(dead_code)] // TODO: Implement in client connection pooling system
     client_pool: Arc<RwLock<std::collections::HashMap<Arc<str>, Arc<dyn Send + Sync>>>>,
 }
 
@@ -244,6 +245,7 @@ impl Engine {
     }
 
     /// Create a provider client based on configuration
+    #[allow(dead_code)] // TODO: Implement in provider client creation system
     #[inline]
     async fn create_provider_client(&self, config: &EngineConfig) -> EngineResult<()> {
         // Validate provider availability

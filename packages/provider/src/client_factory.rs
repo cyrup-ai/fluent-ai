@@ -114,6 +114,7 @@ pub trait UnifiedClient: Send + Sync {
 }
 
 /// OpenAI client wrapper implementing UnifiedClient
+#[derive(Clone)]
 pub struct OpenAIUnifiedClient {
     client: openai::OpenAIClient,
     provider: openai::OpenAIProvider,
@@ -124,115 +125,144 @@ impl UnifiedClient for OpenAIUnifiedClient {
         "openai"
     }
 
-    async fn test_connection(&self) -> ClientFactoryResult<()> {
-        // Test with a minimal model list request
-        let models = self.get_models().await?;
-        if models.is_empty() {
-            return Err(ClientFactoryError::ConfigurationError {
-                message: "No models available".to_string(),
-            });
-        }
-        Ok(())
-    }
-
-    async fn get_models(&self) -> ClientFactoryResult<Vec<String>> {
-        // Return statically known OpenAI models for zero-allocation
-        Ok(vec![
-            "gpt-4-1".to_string(),
-            "gpt-4-1-mini".to_string(),
-            "gpt-4o".to_string(),
-            "gpt-4o-mini".to_string(),
-            "gpt-3.5-turbo".to_string(),
-            "text-embedding-3-large".to_string(),
-            "text-embedding-3-small".to_string(),
-        ])
-    }
-
-    async fn send_completion(
-        &self,
-        request: &serde_json::Value,
-    ) -> ClientFactoryResult<serde_json::Value> {
-        let completion_request: openai::OpenAICompletionRequest =
-            serde_json::from_value(request.clone()).map_err(|e| {
-                ClientFactoryError::ConfigurationError {
-                    message: format!("Invalid completion request: {}", e),
-                }
-            })?;
-
-        let response = self
-            .client
-            .send_completion(&completion_request)
-            .await
-            .map_err(|e| ClientFactoryError::ConfigurationError {
-                message: format!("Completion request failed: {}", e),
-            })?;
-
-        serde_json::to_value(&response).map_err(|e| ClientFactoryError::ConfigurationError {
-            message: format!("Failed to serialize response: {}", e),
+    fn test_connection(&self) -> crate::AsyncTask<ClientFactoryResult<()>> {
+        let self_clone = self.clone();
+        crate::spawn_async(async move {
+            // Test with a minimal model list request
+            let models = self_clone.get_models().await?;
+            if models.is_empty() {
+                return Err(ClientFactoryError::ConfigurationError {
+                    message: "No models available".to_string(),
+                });
+            }
+            Ok(())
         })
     }
 
-    async fn send_streaming_completion(
-        &self,
-        request: &serde_json::Value,
-    ) -> ClientFactoryResult<
-        Box<dyn futures::Stream<Item = ClientFactoryResult<serde_json::Value>> + Send + Unpin>,
-    > {
-        let completion_request: openai::OpenAICompletionRequest =
-            serde_json::from_value(request.clone()).map_err(|e| {
-                ClientFactoryError::ConfigurationError {
-                    message: format!("Invalid streaming completion request: {}", e),
-                }
-            })?;
-
-        let stream = self
-            .client
-            .send_streaming_completion(&completion_request)
-            .await
-            .map_err(|e| ClientFactoryError::ConfigurationError {
-                message: format!("Streaming completion request failed: {}", e),
-            })?;
-
-        let mapped_stream = stream.map(|chunk_result| match chunk_result {
-            Ok(chunk) => {
-                serde_json::to_value(&chunk).map_err(|e| ClientFactoryError::ConfigurationError {
-                    message: format!("Failed to serialize chunk: {}", e),
-                })
-            }
-            Err(e) => Err(ClientFactoryError::ConfigurationError {
-                message: format!("Stream chunk error: {}", e),
-            }),
-        });
-
-        Ok(Box::new(mapped_stream))
+    fn get_models(&self) -> crate::AsyncTask<ClientFactoryResult<Vec<String>>> {
+        crate::spawn_async(async move {
+            // Return statically known OpenAI models for zero-allocation
+            Ok(vec![
+                "gpt-4-1".to_string(),
+                "gpt-4-1-mini".to_string(),
+                "gpt-4o".to_string(),
+                "gpt-4o-mini".to_string(),
+                "gpt-3.5-turbo".to_string(),
+                "text-embedding-3-large".to_string(),
+                "text-embedding-3-small".to_string(),
+            ])
+        })
     }
 
-    async fn send_embedding(
+    fn send_completion(
         &self,
         request: &serde_json::Value,
-    ) -> ClientFactoryResult<serde_json::Value> {
-        let embedding_request: openai::OpenAIEmbeddingRequest =
-            serde_json::from_value(request.clone()).map_err(|e| {
-                ClientFactoryError::ConfigurationError {
-                    message: format!("Invalid embedding request: {}", e),
+    ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
+        let self_clone = self.clone();
+        let request_clone = request.clone();
+        crate::spawn_async(async move {
+            let completion_request: openai::OpenAICompletionRequest =
+                serde_json::from_value(request_clone).map_err(|e| {
+                    ClientFactoryError::ConfigurationError {
+                        message: format!("Invalid completion request: {}", e),
+                    }
+                })?;
+
+            let response = self_clone
+                .client
+                .send_completion(&completion_request)
+                .await
+                .map_err(|e| ClientFactoryError::ConfigurationError {
+                    message: format!("Completion request failed: {}", e),
+                })?;
+
+            serde_json::to_value(&response).map_err(|e| ClientFactoryError::ConfigurationError {
+                message: format!("Failed to serialize response: {}", e),
+            })
+        })
+    }
+
+    fn send_streaming_completion(
+        &self,
+        request: &serde_json::Value,
+    ) -> crate::AsyncTask<
+        ClientFactoryResult<crate::AsyncStream<ClientFactoryResult<serde_json::Value>>>,
+    > {
+        let self_clone = self.clone();
+        let request_clone = request.clone();
+        crate::spawn_async(async move {
+            let completion_request: openai::OpenAICompletionRequest =
+                serde_json::from_value(request_clone).map_err(|e| {
+                    ClientFactoryError::ConfigurationError {
+                        message: format!("Invalid streaming completion request: {}", e),
+                    }
+                })?;
+
+            let stream = self_clone
+                .client
+                .send_streaming_completion(&completion_request)
+                .await
+                .map_err(|e| ClientFactoryError::ConfigurationError {
+                    message: format!("Streaming completion request failed: {}", e),
+                })?;
+
+            let (tx, rx) = crate::async_stream_channel();
+            
+            tokio::spawn(async move {
+                use futures::StreamExt;
+                let mut stream = stream;
+                while let Some(chunk_result) = stream.next().await {
+                    let result = match chunk_result {
+                        Ok(chunk) => {
+                            serde_json::to_value(&chunk).map_err(|e| ClientFactoryError::ConfigurationError {
+                                message: format!("Failed to serialize chunk: {}", e),
+                            })
+                        }
+                        Err(e) => Err(ClientFactoryError::ConfigurationError {
+                            message: format!("Stream chunk error: {}", e),
+                        }),
+                    };
+                    if tx.send(result).is_err() {
+                        break;
+                    }
                 }
-            })?;
+            });
 
-        let response = self
-            .client
-            .send_embedding(&embedding_request)
-            .await
-            .map_err(|e| ClientFactoryError::ConfigurationError {
-                message: format!("Embedding request failed: {}", e),
-            })?;
+            Ok(rx)
+        })
+    }
 
-        serde_json::to_value(&response).map_err(|e| ClientFactoryError::ConfigurationError {
-            message: format!("Failed to serialize response: {}", e),
+    fn send_embedding(
+        &self,
+        request: &serde_json::Value,
+    ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
+        let self_clone = self.clone();
+        let request_clone = request.clone();
+        crate::spawn_async(async move {
+            let embedding_request: openai::OpenAIEmbeddingRequest =
+                serde_json::from_value(request_clone).map_err(|e| {
+                    ClientFactoryError::ConfigurationError {
+                        message: format!("Invalid embedding request: {}", e),
+                    }
+                })?;
+
+            let response = self_clone
+                .client
+                .send_embedding(&embedding_request)
+                .await
+                .map_err(|e| ClientFactoryError::ConfigurationError {
+                    message: format!("Embedding request failed: {}", e),
+                })?;
+
+            serde_json::to_value(&response).map_err(|e| ClientFactoryError::ConfigurationError {
+                message: format!("Failed to serialize response: {}", e),
+            })
         })
     }
 }
 
 /// Anthropic client wrapper implementing UnifiedClient
+#[derive(Clone)]
 pub struct AnthropicUnifiedClient {
     client: anthropic::AnthropicClient,
     provider: anthropic::AnthropicProvider,
@@ -268,93 +298,119 @@ impl UnifiedClient for AnthropicUnifiedClient {
         "anthropic"
     }
 
-    async fn test_connection(&self) -> ClientFactoryResult<()> {
-        // Test with a minimal model list request
-        let models = self.get_models().await?;
-        if models.is_empty() {
-            return Err(ClientFactoryError::ConfigurationError {
-                message: "No models available".to_string(),
-            });
-        }
-        Ok(())
-    }
-
-    async fn get_models(&self) -> ClientFactoryResult<Vec<String>> {
-        // Return statically known Anthropic models for zero-allocation
-        Ok(vec![
-            "claude-opus-4-20250514".to_string(),
-            "claude-sonnet-4-20250514".to_string(),
-            "claude-3-7-sonnet-20250219".to_string(),
-            "claude-3-5-sonnet-20241022".to_string(),
-            "claude-3-5-haiku-20241022".to_string(),
-        ])
-    }
-
-    async fn send_completion(
-        &self,
-        request: &serde_json::Value,
-    ) -> ClientFactoryResult<serde_json::Value> {
-        let completion_request: anthropic::AnthropicCompletionRequest =
-            serde_json::from_value(request.clone()).map_err(|e| {
-                ClientFactoryError::ConfigurationError {
-                    message: format!("Invalid completion request: {}", e),
-                }
-            })?;
-
-        let response = self
-            .client
-            .send_completion(&completion_request)
-            .await
-            .map_err(|e| ClientFactoryError::ConfigurationError {
-                message: format!("Completion request failed: {}", e),
-            })?;
-
-        serde_json::to_value(&response).map_err(|e| ClientFactoryError::ConfigurationError {
-            message: format!("Failed to serialize response: {}", e),
+    fn test_connection(&self) -> crate::AsyncTask<ClientFactoryResult<()>> {
+        let self_clone = self.clone();
+        crate::spawn_async(async move {
+            // Test with a minimal model list request
+            let models = self_clone.get_models().await?;
+            if models.is_empty() {
+                return Err(ClientFactoryError::ConfigurationError {
+                    message: "No models available".to_string(),
+                });
+            }
+            Ok(())
         })
     }
 
-    async fn send_streaming_completion(
-        &self,
-        request: &serde_json::Value,
-    ) -> ClientFactoryResult<
-        Box<dyn futures::Stream<Item = ClientFactoryResult<serde_json::Value>> + Send + Unpin>,
-    > {
-        let completion_request: anthropic::AnthropicCompletionRequest =
-            serde_json::from_value(request.clone()).map_err(|e| {
-                ClientFactoryError::ConfigurationError {
-                    message: format!("Invalid streaming completion request: {}", e),
-                }
-            })?;
-
-        let stream = self
-            .client
-            .send_streaming_completion(&completion_request)
-            .await
-            .map_err(|e| ClientFactoryError::ConfigurationError {
-                message: format!("Streaming completion request failed: {}", e),
-            })?;
-
-        let mapped_stream = stream.map(|chunk_result| match chunk_result {
-            Ok(chunk) => {
-                serde_json::to_value(&chunk).map_err(|e| ClientFactoryError::ConfigurationError {
-                    message: format!("Failed to serialize chunk: {}", e),
-                })
-            }
-            Err(e) => Err(ClientFactoryError::ConfigurationError {
-                message: format!("Stream chunk error: {}", e),
-            }),
-        });
-
-        Ok(Box::new(mapped_stream))
+    fn get_models(&self) -> crate::AsyncTask<ClientFactoryResult<Vec<String>>> {
+        crate::spawn_async(async move {
+            // Return statically known Anthropic models for zero-allocation
+            Ok(vec![
+                "claude-opus-4-20250514".to_string(),
+                "claude-sonnet-4-20250514".to_string(),
+                "claude-3-7-sonnet-20250219".to_string(),
+                "claude-3-5-sonnet-20241022".to_string(),
+                "claude-3-5-haiku-20241022".to_string(),
+            ])
+        })
     }
 
-    async fn send_embedding(
+    fn send_completion(
+        &self,
+        request: &serde_json::Value,
+    ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
+        let self_clone = self.clone();
+        let request_clone = request.clone();
+        crate::spawn_async(async move {
+            let completion_request: anthropic::AnthropicCompletionRequest =
+                serde_json::from_value(request_clone).map_err(|e| {
+                    ClientFactoryError::ConfigurationError {
+                        message: format!("Invalid completion request: {}", e),
+                    }
+                })?;
+
+            let response = self_clone
+                .client
+                .send_completion(&completion_request)
+                .await
+                .map_err(|e| ClientFactoryError::ConfigurationError {
+                    message: format!("Completion request failed: {}", e),
+                })?;
+
+            serde_json::to_value(&response).map_err(|e| ClientFactoryError::ConfigurationError {
+                message: format!("Failed to serialize response: {}", e),
+            })
+        })
+    }
+
+    fn send_streaming_completion(
+        &self,
+        request: &serde_json::Value,
+    ) -> crate::AsyncTask<
+        ClientFactoryResult<crate::AsyncStream<ClientFactoryResult<serde_json::Value>>>,
+    > {
+        let self_clone = self.clone();
+        let request_clone = request.clone();
+        crate::spawn_async(async move {
+            let completion_request: anthropic::AnthropicCompletionRequest =
+                serde_json::from_value(request_clone).map_err(|e| {
+                    ClientFactoryError::ConfigurationError {
+                        message: format!("Invalid streaming completion request: {}", e),
+                    }
+                })?;
+
+            let stream = self_clone
+                .client
+                .send_streaming_completion(&completion_request)
+                .await
+                .map_err(|e| ClientFactoryError::ConfigurationError {
+                    message: format!("Streaming completion request failed: {}", e),
+                })?;
+
+            let (tx, rx) = crate::async_stream_channel();
+            
+            tokio::spawn(async move {
+                use futures::StreamExt;
+                let mut stream = stream;
+                while let Some(chunk_result) = stream.next().await {
+                    let result = match chunk_result {
+                        Ok(chunk) => {
+                            serde_json::to_value(&chunk).map_err(|e| ClientFactoryError::ConfigurationError {
+                                message: format!("Failed to serialize chunk: {}", e),
+                            })
+                        }
+                        Err(e) => Err(ClientFactoryError::ConfigurationError {
+                            message: format!("Stream chunk error: {}", e),
+                        }),
+                    };
+                    if tx.send(result).is_err() {
+                        break;
+                    }
+                }
+            });
+
+            Ok(rx)
+        })
+    }
+
+    fn send_embedding(
         &self,
         _request: &serde_json::Value,
-    ) -> ClientFactoryResult<serde_json::Value> {
-        Err(ClientFactoryError::ProviderNotImplemented {
-            provider: "anthropic".to_string(),
+    ) -> crate::AsyncTask<ClientFactoryResult<serde_json::Value>> {
+        crate::spawn_async(async move {
+            Err(ClientFactoryError::ProviderNotImplemented {
+                provider: "anthropic".to_string(),
+            })
         })
     }
 }

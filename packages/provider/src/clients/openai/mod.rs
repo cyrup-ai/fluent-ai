@@ -485,71 +485,9 @@ impl models {
     }
 }
 
-/// Audio format support constants
-pub mod audio {
-    /// Supported audio input formats
-    pub const SUPPORTED_INPUT_FORMATS: &[&str] = &[
-        "mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm", "flac", "ogg",
-    ];
 
-    /// Supported audio output formats
-    pub const SUPPORTED_OUTPUT_FORMATS: &[&str] = &["mp3", "opus", "aac", "flac", "wav", "pcm"];
 
-    /// Supported TTS voices
-    pub const SUPPORTED_VOICES: &[&str] = &["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
 
-    /// Supported transcription formats
-    pub const SUPPORTED_TRANSCRIPTION_FORMATS: &[&str] =
-        &["json", "text", "srt", "verbose_json", "vtt"];
-
-    /// Check if audio format is supported for input
-    #[inline(always)]
-    pub const fn is_supported_input_format(format: &str) -> bool {
-        matches!(
-            format,
-            "mp3" | "mp4" | "mpeg" | "mpga" | "m4a" | "wav" | "webm" | "flac" | "ogg"
-        )
-    }
-
-    /// Check if audio format is supported for output
-    #[inline(always)]
-    pub const fn is_supported_output_format(format: &str) -> bool {
-        matches!(format, "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm")
-    }
-
-    /// Check if voice is supported for TTS
-    #[inline(always)]
-    pub const fn is_supported_voice(voice: &str) -> bool {
-        matches!(
-            voice,
-            "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"
-        )
-    }
-}
-
-/// Vision processing constants
-pub mod vision {
-    /// Supported image formats
-    pub const SUPPORTED_IMAGE_FORMATS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp"];
-
-    /// Maximum image resolution
-    pub const MAX_IMAGE_RESOLUTION: (u32, u32) = (2048, 2048);
-
-    /// Supported image detail levels
-    pub const SUPPORTED_DETAIL_LEVELS: &[&str] = &["low", "high", "auto"];
-
-    /// Check if image format is supported
-    #[inline(always)]
-    pub const fn is_supported_image_format(format: &str) -> bool {
-        matches!(format, "png" | "jpg" | "jpeg" | "gif" | "webp")
-    }
-
-    /// Check if detail level is supported
-    #[inline(always)]
-    pub const fn is_supported_detail_level(detail: &str) -> bool {
-        matches!(detail, "low" | "high" | "auto")
-    }
-}
 
 /// Endpoint routing utilities with compile-time optimization
 pub mod endpoints {

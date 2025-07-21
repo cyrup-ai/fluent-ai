@@ -115,7 +115,7 @@ pub struct ModelResolutionRule {
 /// A condition for when a rule should apply
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
-enum RuleCondition {
+pub enum RuleCondition {
     /// The rule only applies if the model has the specified capability
     HasCapability { capability: String },
 
@@ -180,6 +180,7 @@ pub struct ModelResolver {
 
     // Cache for compiled regex patterns
     #[allow(clippy::type_complexity)]
+    #[allow(dead_code)]
     pattern_cache: DashMap<String, (String, Regex), RandomState>,
 }
 

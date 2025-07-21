@@ -3,7 +3,7 @@
 //! From [xAI Reference](https://docs.x.ai/docs/api-reference#chat-completions)
 // ================================================================
 
-use fluent_ai_domain::fluent_ai_domain::completion::CompletionRequest;
+use fluent_ai_domain::completion::CompletionRequest;
 use serde_json::{Value, json};
 use xai_api_types::{CompletionResponse, ToolDefinition};
 

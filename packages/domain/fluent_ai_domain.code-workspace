@@ -23,6 +23,9 @@
 		},
 		{
 			"path": "../termcolor"
+		},
+		{
+			"path": "../../../fluent-voice"
 		}
 	],
 	"settings": {}

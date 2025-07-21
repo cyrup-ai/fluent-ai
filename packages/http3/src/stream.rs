@@ -8,6 +8,7 @@ use futures::{Stream, StreamExt};
 use pin_project_lite::pin_project;
 
 use crate::{HttpError, HttpResult};
+use std::path::Path;
 
 pin_project! {
     /// HTTP response stream wrapper that provides zero-allocation streaming
@@ -521,5 +522,191 @@ impl SseEvent {
         serde_json::from_str(&data).map_err(|e| HttpError::DeserializationError {
             message: format!("Failed to parse SSE data as JSON: {}", e),
         })
+    }
+}
+
+pin_project! {
+    /// Cached download stream that reads from a local file and emits DownloadChunk items
+    /// This provides the same interface as DownloadStream but sources data from cache
+    pub struct CachedDownloadStream {
+        file_path: std::path::PathBuf,
+        #[pin]
+        file_stream: Option<futures::stream::BoxStream<'static, std::io::Result<Bytes>>>,
+        chunk_number: u64,
+        bytes_downloaded: u64,
+        total_size: Option<u64>,
+        start_time: std::time::Instant,
+        last_chunk_time: std::time::Instant,
+        chunk_size: usize,
+        etag: Option<String>,
+        computed_expires: Option<u64>,
+    }
+}
+
+impl CachedDownloadStream {
+    /// Create a new cached download stream from a file path
+    pub async fn from_file<P: AsRef<Path>>(
+        path: P,
+        etag: Option<String>,
+        computed_expires: Option<u64>,
+    ) -> HttpResult<Self> {
+        let file_path = path.as_ref().to_path_buf();
+        
+        // Get file size
+        let total_size = std::fs::metadata(&file_path)
+            .map_err(|e| HttpError::IoError {
+                message: format!("Failed to read file metadata: {}", e),
+            })?
+            .len();
+
+        let now = std::time::Instant::now();
+
+        Ok(Self {
+            file_path,
+            file_stream: None,
+            chunk_number: 0,
+            bytes_downloaded: 0,
+            total_size: Some(total_size),
+            start_time: now,
+            last_chunk_time: now,
+            chunk_size: 8192, // 8KB chunks
+            etag,
+            computed_expires,
+        })
+    }
+
+    /// Get the ETag for this cached file
+    pub fn etag(&self) -> Option<&String> {
+        self.etag.as_ref()
+    }
+
+    /// Get the computed expires timestamp
+    pub fn computed_expires(&self) -> Option<u64> {
+        self.computed_expires
+    }
+
+    /// Check if the cached file has expired
+    pub fn is_expired(&self) -> bool {
+        if let Some(expires) = self.computed_expires {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            
+            now >= expires
+        } else {
+            false
+        }
+    }
+
+    /// Set chunk size for streaming
+    pub fn with_chunk_size(mut self, chunk_size: usize) -> Self {
+        self.chunk_size = chunk_size;
+        self
+    }
+
+}
+
+impl Stream for CachedDownloadStream {
+    type Item = HttpResult<DownloadChunk>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+
+        // Initialize file stream if needed
+        if this.file_stream.is_none() {
+            use futures::StreamExt;
+            use tokio::io::AsyncReadExt;
+
+            let file_path = this.file_path.clone();
+            let chunk_size = *this.chunk_size;
+
+            // Create async file reader stream
+            let stream = async_stream::stream! {
+                let mut file = match tokio::fs::File::open(&file_path).await {
+                    Ok(f) => f,
+                    Err(e) => {
+                        yield Err(e);
+                        return;
+                    }
+                };
+
+                let mut buffer = vec![0u8; chunk_size];
+                loop {
+                    match file.read(&mut buffer).await {
+                        Ok(0) => break, // EOF
+                        Ok(n) => {
+                            let chunk = Bytes::copy_from_slice(&buffer[..n]);
+                            yield Ok(chunk);
+                        }
+                        Err(e) => {
+                            yield Err(e);
+                            break;
+                        }
+                    }
+                }
+            };
+
+            this.file_stream.set(Some(stream.boxed()));
+        }
+
+        match this.file_stream.as_mut().as_pin_mut() {
+            Some(stream) => match stream.poll_next(cx) {
+                Poll::Ready(Some(Ok(bytes))) => {
+                    let now = std::time::Instant::now();
+                    let chunk_size = bytes.len() as u64;
+                    *this.bytes_downloaded += chunk_size;
+                    let chunk_number = *this.chunk_number;
+                    *this.chunk_number += 1;
+
+                    // Calculate download speed (from cache is very fast)
+                    let elapsed = now.duration_since(*this.last_chunk_time).as_secs_f64();
+                    let speed = if elapsed > 0.0 {
+                        Some(chunk_size as f64 / elapsed)
+                    } else {
+                        None
+                    };
+
+                    *this.last_chunk_time = now;
+
+                    let chunk = DownloadChunk {
+                        data: bytes,
+                        chunk_number,
+                        total_size: *this.total_size,
+                        bytes_downloaded: *this.bytes_downloaded,
+                        timestamp: now,
+                        download_speed: speed,
+                    };
+
+                    Poll::Ready(Some(Ok(chunk)))
+                }
+                Poll::Ready(Some(Err(e))) => {
+                    Poll::Ready(Some(Err(HttpError::IoError {
+                        message: format!("Failed to read cached file: {}", e),
+                    })))
+                }
+                Poll::Ready(None) => Poll::Ready(None),
+                Poll::Pending => Poll::Pending,
+            },
+            None => Poll::Ready(Some(Err(HttpError::IoError {
+                message: "File stream not initialized".to_string(),
+            }))),
+        }
+    }
+}
+
+impl DownloadStream {
+    /// Create a download stream from a cached file
+    pub async fn from_file<P: AsRef<Path>>(path: P) -> HttpResult<CachedDownloadStream> {
+        CachedDownloadStream::from_file(path, None, None).await
+    }
+
+    /// Create a download stream from a cached file with metadata
+    pub async fn from_file_with_metadata<P: AsRef<Path>>(
+        path: P,
+        etag: Option<String>,
+        computed_expires: Option<u64>,
+    ) -> HttpResult<CachedDownloadStream> {
+        CachedDownloadStream::from_file(path, etag, computed_expires).await
     }
 }

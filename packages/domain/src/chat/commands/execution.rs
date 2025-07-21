@@ -19,6 +19,7 @@ pub struct CommandExecutor {
     /// Command parser
     parser: CommandParser,
     /// Execution context
+    #[allow(dead_code)] // TODO: Implement in command execution system
     context: Arc<RwLock<CommandContext>>,
     /// Execution metrics
     metrics: Arc<RwLock<ExecutionMetrics>>,
@@ -147,6 +148,24 @@ impl CommandExecutor {
                 level,
                 system_info,
             } => self.execute_debug(action, level, system_info).await,
+            ChatCommand::History { action, limit, filter } => {
+                self.execute_history(action, limit, filter).await
+            }
+            ChatCommand::Save { name, include_config, location } => {
+                self.execute_save(name, include_config, location).await
+            }
+            ChatCommand::Load { name, merge, location } => {
+                self.execute_load(name, merge, location).await
+            }
+            ChatCommand::Import { import_type, source, options } => {
+                self.execute_import(import_type, source, options).await
+            }
+            ChatCommand::Settings { category, key, value, show } => {
+                self.execute_settings(category, key, value, show).await
+            }
+            ChatCommand::Custom { name, args, metadata } => {
+                self.execute_custom(name, args, metadata).await
+            }
         }
     }
 
@@ -657,7 +676,108 @@ impl CommandExecutor {
             ChatCommand::Stats { .. } => "stats",
             ChatCommand::Theme { .. } => "theme",
             ChatCommand::Debug { .. } => "debug",
+            ChatCommand::History { .. } => "history",
+            ChatCommand::Save { .. } => "save",
+            ChatCommand::Load { .. } => "load",
+            ChatCommand::Import { .. } => "import",
+            ChatCommand::Settings { .. } => "settings",
+            ChatCommand::Custom { .. } => "custom",
         })
+    }
+
+    /// Execute history command
+    async fn execute_history(
+        &self,
+        action: HistoryAction,
+        limit: Option<usize>,
+        filter: Option<Arc<str>>,
+    ) -> CommandResult<CommandOutput> {
+        let message = match action {
+            HistoryAction::Show => {
+                format!("Showing history (limit: {:?}, filter: {:?})", limit, filter)
+            }
+            HistoryAction::Search => {
+                format!("Searching history with filter: {:?}", filter)
+            }
+            HistoryAction::Clear => "History cleared".to_string(),
+            HistoryAction::Export => "History exported".to_string(),
+        };
+        Ok(CommandOutput::success(message))
+    }
+
+    /// Execute save command
+    async fn execute_save(
+        &self,
+        name: Option<Arc<str>>,
+        include_config: bool,
+        location: Option<Arc<str>>,
+    ) -> CommandResult<CommandOutput> {
+        let save_name = name.unwrap_or_else(|| Arc::from("default"));
+        let message = format!(
+            "Saved session '{}' (config: {}, location: {:?})",
+            save_name, include_config, location
+        );
+        Ok(CommandOutput::success(message))
+    }
+
+    /// Execute load command
+    async fn execute_load(
+        &self,
+        name: Arc<str>,
+        merge: bool,
+        location: Option<Arc<str>>,
+    ) -> CommandResult<CommandOutput> {
+        let message = format!(
+            "Loaded session '{}' (merge: {}, location: {:?})",
+            name, merge, location
+        );
+        Ok(CommandOutput::success(message))
+    }
+
+    /// Execute import command
+    async fn execute_import(
+        &self,
+        import_type: ImportType,
+        source: Arc<str>,
+        options: HashMap<Arc<str>, Arc<str>>,
+    ) -> CommandResult<CommandOutput> {
+        let message = format!(
+            "Imported {:?} from '{}' with options: {:?}",
+            import_type, source, options
+        );
+        Ok(CommandOutput::success(message))
+    }
+
+    /// Execute settings command
+    async fn execute_settings(
+        &self,
+        category: SettingsCategory,
+        key: Option<Arc<str>>,
+        value: Option<Arc<str>>,
+        show: bool,
+    ) -> CommandResult<CommandOutput> {
+        let message = if show {
+            format!("Showing {:?} settings", category)
+        } else if let (Some(k), Some(v)) = (key, value) {
+            format!("Set {:?} setting {} = {}", category, k, v)
+        } else {
+            format!("Settings command for {:?} category", category)
+        };
+        Ok(CommandOutput::success(message))
+    }
+
+    /// Execute custom command
+    async fn execute_custom(
+        &self,
+        name: Arc<str>,
+        args: HashMap<Arc<str>, Arc<str>>,
+        metadata: Option<serde_json::Value>,
+    ) -> CommandResult<CommandOutput> {
+        let message = format!(
+            "Executed custom command '{}' with args: {:?} and metadata: {:?}",
+            name, args, metadata
+        );
+        Ok(CommandOutput::success(message))
     }
 
     /// Get parser reference

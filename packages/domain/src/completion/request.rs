@@ -15,7 +15,6 @@ use crate::{Document, Message, ZeroOneOrMany};
 
 /// A request for text completion
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(bound(deserialize = "'de: 'static"))]
 pub struct CompletionRequest<'a> {
     /// System prompt providing instructions
     pub system_prompt: Cow<'a, str>,
@@ -32,7 +31,7 @@ pub struct CompletionRequest<'a> {
     /// Size of chunks for streaming
     pub chunk_size: Option<usize>,
     /// Additional provider-specific parameters
-    pub additional_params: Option<&'a Value>,
+    pub additional_params: Option<Value>,
 }
 
 /// Builder for `CompletionRequest`
@@ -44,7 +43,7 @@ pub struct CompletionRequestBuilder<'a> {
     temperature: f64,
     max_tokens: Option<NonZeroU64>,
     chunk_size: Option<usize>,
-    additional_params: Option<&'a Value>,
+    additional_params: Option<Value>,
 }
 
 /// Error type for completion request validation
@@ -184,7 +183,7 @@ impl<'a> CompletionRequestBuilder<'a> {
     }
 
     /// Set additional parameters
-    pub fn additional_params(mut self, params: Option<&'a Value>) -> Self {
+    pub fn additional_params(mut self, params: Option<Value>) -> Self {
         self.additional_params = params;
         self
     }

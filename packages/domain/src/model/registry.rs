@@ -1,6 +1,7 @@
 //! Model registry for dynamic model discovery and lookup
 
 use std::any::{Any, TypeId};
+use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -190,7 +191,8 @@ impl ModelRegistry {
         let mut result = Vec::new();
 
         if let Some(type_entries) = GLOBAL_REGISTRY.type_registry.get(&type_id) {
-            for (provider, name) in type_entries.iter() {
+            for entry in type_entries.iter() {
+                let (provider, name) = *entry;
                 if let Some(provider_models) = GLOBAL_REGISTRY.models.get(provider) {
                     if let Some(handle) = provider_models.get(name) {
                         if handle.as_any().downcast_ref::<M>().is_some() {
@@ -215,13 +217,13 @@ impl ModelRegistry {
     ///
     /// # Returns
     /// A result containing the model as the requested trait object
-    pub fn get_as<T: ?Sized + 'static>(
+    pub fn get_as<T: 'static>(
         &self,
         provider: &'static str,
         name: &'static str,
     ) -> Result<Option<Arc<T>>>
     where
-        T: Send + Sync,
+        T: Send + Sync + Sized,
     {
         let provider_models = match GLOBAL_REGISTRY.models.get(provider) {
             Some(provider) => provider,
@@ -233,12 +235,18 @@ impl ModelRegistry {
             None => return Ok(None),
         };
 
-        // The issue is that we're trying to work with ?Sized types
-        // For now, let's simplify and require T to be Sized
-        // This method should be redesigned to work properly with trait objects
-        Err(ModelError::InvalidConfiguration(
-            "get_boxed method currently not implemented for ?Sized types".into(),
-        ))
+        // Attempt to downcast the handle to the requested type
+        match handle.as_any().downcast_ref::<T>() {
+            Some(_) => {
+                // For now, this method is not fully implemented due to Arc<T> conversion complexity
+                Err(ModelError::InvalidConfiguration(
+                    format!("Model downcast for '{}' from provider '{}' requires additional implementation", name, provider).into()
+                ))
+            }
+            None => Err(ModelError::InvalidConfiguration(
+                format!("Model '{}' from provider '{}' is not of the requested type", name, provider).into()
+            ))
+        }
     }
 
     /// Get a model as a boxed trait object
@@ -249,7 +257,7 @@ impl ModelRegistry {
     ///
     /// # Returns
     /// A result containing the model as a boxed trait object
-    pub fn get_boxed<T: ?Sized + 'static>(
+    pub fn get_boxed<T: 'static + ?Sized>(
         &self,
         provider: &'static str,
         name: &'static str,
@@ -262,16 +270,15 @@ impl ModelRegistry {
             None => return Ok(None),
         };
 
-        let handle = match provider_models.get(name) {
+        let _handle = match provider_models.get(name) {
             Some(handle) => handle,
             None => return Ok(None),
         };
 
-        // The issue is that we're trying to work with ?Sized types
-        // For now, let's simplify and require T to be Sized
-        // This method should be redesigned to work properly with trait objects
+        // Attempt to convert the handle to a boxed trait object
+        // This is complex for ?Sized types and requires careful implementation
         Err(ModelError::InvalidConfiguration(
-            "get_boxed method currently not implemented for ?Sized types".into(),
+            Cow::Owned(format!("Boxed trait object conversion for model '{}' from provider '{}' requires additional implementation for ?Sized types", name, provider))
         ))
     }
 
@@ -283,13 +290,13 @@ impl ModelRegistry {
     ///
     /// # Returns
     /// A result containing the model as the requested trait object
-    pub fn get_required_as<T: ?Sized + 'static>(
+    pub fn get_required_as<T: 'static>(
         &self,
         provider: &'static str,
         name: &'static str,
     ) -> Result<Arc<T>>
     where
-        T: Send + Sync,
+        T: Send + Sync + Sized,
     {
         self.get_as(provider, name)?
             .ok_or_else(|| ModelError::ModelNotFound {
@@ -306,13 +313,13 @@ impl ModelRegistry {
     ///
     /// # Returns
     /// A result containing the model as a boxed trait object
-    pub fn get_required_boxed<T: ?Sized + 'static>(
+    pub fn get_required_boxed<T: 'static>(
         &self,
         provider: &'static str,
         name: &'static str,
     ) -> Result<Box<T>>
     where
-        T: Send + Sync,
+        T: Send + Sync + Sized,
     {
         self.get_boxed(provider, name)?
             .ok_or_else(|| ModelError::ModelNotFound {

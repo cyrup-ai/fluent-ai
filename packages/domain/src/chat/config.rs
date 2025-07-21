@@ -1013,7 +1013,7 @@ impl ConfigurationManager {
 
         let serialized = match persistence.format.as_ref() {
             "json" => serde_json::to_string_pretty(&*config)?,
-            "yaml" => serde_yaml::to_string(&*config)?,
+            "yaml" => yyaml::to_string(&*config)?,
             "toml" => toml::to_string(&*config)?,
             "binary" => {
                 // Use bincode for simpler binary serialization
@@ -1061,7 +1061,7 @@ impl ConfigurationManager {
 
         let config: ChatConfig = match persistence.format.as_ref() {
             "json" => serde_json::from_str(&content)?,
-            "yaml" => serde_yaml::from_str(&content)?,
+            "yaml" => yyaml::from_str(&content)?,
             "toml" => toml::from_str(&content)?,
             "binary" => {
                 use base64::Engine;

@@ -389,6 +389,17 @@ impl TypingIndicator {
     }
 }
 
+impl std::fmt::Debug for TypingIndicator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TypingIndicator")
+            .field("active_users", &self.active_users.get())
+            .field("total_typing_events", &self.typing_events.get())
+            .field("expiry_duration", &self.expiry_duration.load(std::sync::atomic::Ordering::Relaxed))
+            .field("cleanup_interval", &self.cleanup_interval.load(std::sync::atomic::Ordering::Relaxed))
+            .finish()
+    }
+}
+
 /// Typing statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypingStatistics {
@@ -648,6 +659,17 @@ impl LiveUpdateSystem {
     }
 }
 
+impl std::fmt::Debug for LiveUpdateSystem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LiveUpdateSystem")
+            .field("message_counter", &self.message_counter.load(std::sync::atomic::Ordering::Relaxed))
+            .field("subscriber_counter", &self.subscriber_counter.get())
+            .field("queue_size_limit", &self.queue_size_limit.load(std::sync::atomic::Ordering::Relaxed))
+            .field("backpressure_threshold", &self.backpressure_threshold.load(std::sync::atomic::Ordering::Relaxed))
+            .finish()
+    }
+}
+
 /// Connection state with atomic operations
 #[derive(Debug)]
 pub struct ConnectionState {
@@ -789,6 +811,19 @@ pub struct ConnectionManager {
     failed_connection_counter: Arc<ConsistentCounter>,
     /// Health check task handle
     health_check_task: ArcSwap<Option<tokio::task::JoinHandle<()>>>,
+}
+
+impl std::fmt::Debug for ConnectionManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ConnectionManager")
+            .field("connections_count", &self.connections.len())
+            .field("connection_counter", &self.connection_counter.get())
+            .field("heartbeat_counter", &self.heartbeat_counter.get())
+            .field("failed_connection_counter", &self.failed_connection_counter.get())
+            .field("heartbeat_timeout", &self.heartbeat_timeout.load(std::sync::atomic::Ordering::Relaxed))
+            .field("health_check_interval", &self.health_check_interval.load(std::sync::atomic::Ordering::Relaxed))
+            .finish()
+    }
 }
 
 impl ConnectionManager {
@@ -1031,6 +1066,18 @@ pub struct RealTimeSystem {
     pub event_broadcaster: broadcast::Sender<RealTimeEvent>,
     /// System statistics
     pub statistics: Arc<RwLock<RealTimeSystemStatistics>>,
+}
+
+impl std::fmt::Debug for RealTimeSystem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RealTimeSystem")
+            .field("typing_indicator", &"TypingIndicator")
+            .field("live_update_system", &"LiveUpdateSystem")
+            .field("connection_manager", &"ConnectionManager")
+            .field("event_broadcaster", &"broadcast::Sender<RealTimeEvent>")
+            .field("statistics", &"Arc<RwLock<RealTimeSystemStatistics>>")
+            .finish()
+    }
 }
 
 /// Real-time system statistics
@@ -1349,7 +1396,6 @@ pub struct RealtimeConfig {
 /// - Typing indicators and presence tracking
 /// - Event broadcasting and subscription
 /// - Performance monitoring and optimization
-#[derive(Debug)]
 pub struct RealtimeChat {
     /// Configuration settings
     config: RealtimeConfig,
@@ -1367,8 +1413,22 @@ pub struct RealtimeChat {
     connection_task: Option<tokio::task::JoinHandle<()>>,
 }
 
+impl std::fmt::Debug for RealtimeChat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RealtimeChat")
+            .field("config", &self.config)
+            .field("rt_system", &self.rt_system)
+            .field("connections", &"Arc<SkipMap<Arc<str>, RealtimeConnection>>")
+            .field("message_broadcaster", &"broadcast::Sender<RealtimeMessage>")
+            .field("event_handlers", &"Arc<RwLock<HashMap<RealtimeEventType, Vec<Arc<dyn RealtimeEventHandler>>>>>")
+            .field("metrics", &"Arc<RealtimeChatMetrics>")
+            .field("connection_task", &self.connection_task.is_some())
+            .finish()
+    }
+}
+
 /// Real-time connection representation
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct RealtimeConnection {
     /// Connection ID
     pub connection_id: Arc<str>,
@@ -1388,6 +1448,22 @@ pub struct RealtimeConnection {
     pub is_typing: AtomicBool,
     /// Presence status
     pub presence: Arc<ArcSwap<PresenceStatus>>,
+}
+
+impl Clone for RealtimeConnection {
+    fn clone(&self) -> Self {
+        Self {
+            connection_id: self.connection_id.clone(),
+            user_id: self.user_id.clone(),
+            session_id: self.session_id.clone(),
+            connected_at: self.connected_at,
+            last_activity: AtomicU64::new(self.last_activity.load(std::sync::atomic::Ordering::Relaxed)),
+            status: self.status.clone(),
+            message_sender: self.message_sender.clone(),
+            is_typing: AtomicBool::new(self.is_typing.load(std::sync::atomic::Ordering::Relaxed)),
+            presence: self.presence.clone(),
+        }
+    }
 }
 
 /// Real-time message for live communication

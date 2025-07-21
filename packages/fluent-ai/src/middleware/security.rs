@@ -102,16 +102,25 @@ impl SecurityMiddleware {
         }
 
         let command_type = match command {
-            ChatCommand::Help(_) => "help",
-            ChatCommand::Clear(_) => "clear",
-            ChatCommand::History(_) => "history",
-            ChatCommand::Save(_) => "save",
-            ChatCommand::Load(_) => "load",
-            ChatCommand::Export(_) => "export",
-            ChatCommand::Import(_) => "import",
-            ChatCommand::Settings(_) => "settings",
-            ChatCommand::Debug(_) => "debug",
-            ChatCommand::Custom(cmd) => &cmd.name,
+            ChatCommand::Help { .. } => "help",
+            ChatCommand::Clear { .. } => "clear",
+            ChatCommand::History { .. } => "history",
+            ChatCommand::Save { .. } => "save",
+            ChatCommand::Load { .. } => "load",
+            ChatCommand::Export { .. } => "export",
+            ChatCommand::Import { .. } => "import",
+            ChatCommand::Settings { .. } => "settings",
+            ChatCommand::Debug { .. } => "debug",
+            ChatCommand::Custom { name, .. } => name,
+            ChatCommand::Config { .. } => "config",
+            ChatCommand::Template { .. } => "template",
+            ChatCommand::Macro { .. } => "macro",
+            ChatCommand::Search { .. } => "search",
+            ChatCommand::Branch { .. } => "branch",
+            ChatCommand::Session { .. } => "session",
+            ChatCommand::Tool { .. } => "tool",
+            ChatCommand::Stats { .. } => "stats",
+            ChatCommand::Theme { .. } => "theme",
         };
 
         self.policy.allowed_commands.contains(command_type)

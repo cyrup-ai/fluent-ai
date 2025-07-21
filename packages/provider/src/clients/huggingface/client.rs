@@ -10,7 +10,6 @@
 //! ```
 
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
-use fluent_ai_http3::{HttpClient, HttpConfig};
 
 use super::completion::HuggingFaceCompletionBuilder;
 use crate::{

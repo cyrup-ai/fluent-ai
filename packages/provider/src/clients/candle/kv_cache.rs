@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use arc_swap::ArcSwap;
 use arrayvec::ArrayVec;
-use crossbeam_utils::atomic::AtomicCell;
+use crossbeam::atomic::AtomicCell;
 use smallvec::SmallVec;
 
 use super::error::{CandleError, CandleResult};
@@ -28,9 +28,9 @@ const MAX_BATCH_SIZE: usize = 32;
 #[derive(Debug, Clone)]
 pub struct AlignedKvData {
     /// Key tensor data (flattened)
-    keys: SmallVec<[f32; 4096]>,
+    keys: SmallVec<[f32; 4096], 4096>,
     /// Value tensor data (flattened)
-    values: SmallVec<[f32; 4096]>,
+    values: SmallVec<[f32; 4096], 4096>,
     /// Sequence length this data represents
     sequence_length: u32,
     /// Attention head dimension
@@ -52,8 +52,8 @@ impl AlignedKvData {
 
     /// Create with pre-allocated data
     pub fn with_data(
-        keys: SmallVec<[f32; 4096]>,
-        values: SmallVec<[f32; 4096]>,
+        keys: SmallVec<[f32; 4096], 4096>,
+        values: SmallVec<[f32; 4096], 4096>,
         sequence_length: u32,
         head_dim: u32,
     ) -> Self {
@@ -76,12 +76,12 @@ impl AlignedKvData {
     }
 
     /// Get mutable key data
-    pub fn keys_mut(&mut self) -> &mut SmallVec<[f32; 4096]> {
+    pub fn keys_mut(&mut self) -> &mut SmallVec<[f32; 4096], 4096> {
         &mut self.keys
     }
 
     /// Get mutable value data
-    pub fn values_mut(&mut self) -> &mut SmallVec<[f32; 4096]> {
+    pub fn values_mut(&mut self) -> &mut SmallVec<[f32; 4096], 4096> {
         &mut self.values
     }
 

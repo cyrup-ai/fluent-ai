@@ -228,13 +228,8 @@ impl ChatExporter {
             output.push_str(&format!("## Message {}\n\n", i + 1));
 
             if self.config.include_timestamps {
-                output.push_str(&format!(
-                    "**Timestamp:** {}\n",
-                    message
-                        .timestamp
-                        .elapsed()
-                        .as_secs()
-                ));
+                let elapsed_secs = message.timestamp.elapsed().as_secs();
+                output.push_str(&format!("**Timestamp:** {}\n", elapsed_secs));
             }
 
             output.push_str(&format!("**Type:** {:?}\n\n", message.message_type));
@@ -252,13 +247,8 @@ impl ChatExporter {
 
         for message in messages {
             if self.config.include_timestamps {
-                output.push_str(&format!(
-                    "[{}] ",
-                    message
-                        .timestamp
-                        .elapsed()
-                        .as_secs()
-                ));
+                let elapsed_secs = message.timestamp.elapsed().as_secs();
+                output.push_str(&format!("[{}] ", elapsed_secs));
             }
 
             let content_str = std::str::from_utf8(&message.content).unwrap_or("<invalid utf8>");
@@ -281,13 +271,8 @@ impl ChatExporter {
 
         for message in messages {
             if self.config.include_timestamps {
-                output.push_str(&format!(
-                    "{},",
-                    message
-                        .timestamp
-                        .elapsed()
-                        .as_secs()
-                ));
+                let elapsed_secs = message.timestamp.elapsed().as_secs();
+                output.push_str(&format!("{},", elapsed_secs));
             }
 
             // Escape CSV content

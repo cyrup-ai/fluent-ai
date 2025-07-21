@@ -101,10 +101,18 @@ impl From<glob::PatternError> for ContextError {
 }
 
 /// Memory integration layer for Context providers
-#[derive(Debug)]
 pub struct MemoryIntegration {
     memory_manager: Arc<SurrealDBMemoryManager>,
     embedding_model: Arc<dyn EmbeddingModel>,
+}
+
+impl std::fmt::Debug for MemoryIntegration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MemoryIntegration")
+            .field("memory_manager", &"Arc<SurrealDBMemoryManager>")
+            .field("embedding_model", &"Arc<dyn EmbeddingModel>")
+            .finish()
+    }
 }
 
 impl MemoryIntegration {

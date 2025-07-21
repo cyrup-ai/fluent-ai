@@ -276,7 +276,13 @@ impl ZeroAllocError {
             location: None,
             cause: None,
             timestamp: Instant::now(),
-            thread_id: std::thread::current().id().as_u64().get(),
+            thread_id: {
+                use std::collections::hash_map::DefaultHasher;
+                use std::hash::{Hash, Hasher};
+                let mut hasher = DefaultHasher::new();
+                std::thread::current().id().hash(&mut hasher);
+                hasher.finish()
+            },
             metadata: [
                 (ErrorMessage::new(""), ErrorMessage::new("")),
                 (ErrorMessage::new(""), ErrorMessage::new("")),
@@ -495,8 +501,10 @@ pub struct ErrorCircuitBreaker {
     /// Error counter for statistics
     counter: ErrorCounter,
     /// Failure threshold
+    #[allow(dead_code)] // TODO: Implement in circuit breaker system
     failure_threshold: usize,
     /// Recovery timeout
+    #[allow(dead_code)] // TODO: Implement in circuit breaker system
     recovery_timeout: Duration,
     /// Half-open requests
     half_open_requests: AtomicU64,
@@ -595,37 +603,42 @@ impl ErrorAggregator {
     /// Create new error aggregator
     #[inline(always)]
     pub fn new(max_errors_per_window: usize, rate_window: Duration) -> Self {
-        const INIT_COUNTER: ErrorCounter = ErrorCounter {
-            total: RelaxedCounter::new(0),
-            by_category: [
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-            ],
-            by_severity: [
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-            ],
-            by_recoverability: [
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-                RelaxedCounter::new(0),
-            ],
-            last_error: AtomicU64::new(0),
-        };
+        fn create_counter() -> ErrorCounter {
+            ErrorCounter {
+                total: RelaxedCounter::new(0),
+                by_category: [
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                ],
+                by_severity: [
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                ],
+                by_recoverability: [
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                    RelaxedCounter::new(0),
+                ],
+                last_error: AtomicU64::new(0),
+            }
+        }
 
         Self {
-            counters: [INIT_COUNTER; 10],
+            counters: [
+                create_counter(), create_counter(), create_counter(), create_counter(), create_counter(),
+                create_counter(), create_counter(), create_counter(), create_counter(), create_counter(),
+            ],
             breakers: [
                 ErrorCircuitBreaker::new(10, Duration::from_secs(30)),
                 ErrorCircuitBreaker::new(10, Duration::from_secs(30)),

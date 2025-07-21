@@ -10,7 +10,6 @@
 //! ```
 
 use fluent_ai_domain::AsyncTask;
-use fluent_ai_http3::{HttpClient, HttpConfig};
 
 use super::completion::AnthropicCompletionBuilder;
 use crate::client::{CompletionClient, ProviderClient};

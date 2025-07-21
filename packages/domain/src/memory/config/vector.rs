@@ -851,6 +851,13 @@ impl VectorStoreConfig {
         self
     }
 
+    /// Set performance configuration
+    #[inline]
+    pub fn with_performance_config(mut self, config: PerformanceConfig) -> Self {
+        self.performance_config = config;
+        self
+    }
+
     /// Estimate memory usage for given number of vectors
     pub fn estimate_memory_usage(&self, num_vectors: usize) -> usize {
         self.index_config

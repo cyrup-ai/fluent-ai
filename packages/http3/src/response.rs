@@ -153,6 +153,36 @@ impl HttpResponse {
         self.header("expires")
     }
 
+    /// Get computed expires timestamp (Unix timestamp)
+    /// This is set by CacheMiddleware and represents the effective cache expiration
+    #[inline(always)]
+    pub fn computed_expires(&self) -> Option<u64> {
+        self.header("x-computed-expires").and_then(|v| v.parse().ok())
+    }
+
+    /// Check if response is cacheable based on computed expires
+    #[inline(always)]
+    pub fn is_cacheable(&self) -> bool {
+        self.computed_expires().is_some() && self.is_success()
+    }
+
+    /// Get time until expires in seconds
+    #[inline(always)]
+    pub fn seconds_until_expires(&self) -> Option<u64> {
+        self.computed_expires().and_then(|expires| {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .ok()?
+                .as_secs();
+            
+            if expires > now {
+                Some(expires - now)
+            } else {
+                Some(0) // Already expired
+            }
+        })
+    }
+
     /// Get Server header value
     #[inline(always)]
     pub fn server(&self) -> Option<&String> {

@@ -617,7 +617,7 @@ mod tests {
             include_credential_hashes: true,
         };
 
-        let logger = AuditLogger::new(&config).await.unwrap();
+        let logger = AuditLogger::new(&config).await.expect("Failed to create audit logger in test");
 
         // Test logging a credential event
         let event = CredentialEvent::Load {
@@ -629,7 +629,7 @@ mod tests {
             success: true,
         };
 
-        logger.log_credential_event(event).await.unwrap();
+        logger.log_credential_event(event).await.expect("Failed to log credential event in test");
 
         // Check statistics
         let stats = logger.get_statistics().await;
@@ -652,7 +652,7 @@ mod tests {
             include_credential_hashes: true,
         };
 
-        let logger = AuditLogger::new(&config).await.unwrap();
+        let logger = AuditLogger::new(&config).await.expect("Failed to create audit logger for integrity test");
 
         // Log multiple events
         for i in 0..5 {
@@ -665,11 +665,11 @@ mod tests {
                 success: true,
             };
 
-            logger.log_credential_event(event).await.unwrap();
+            logger.log_credential_event(event).await.expect("Failed to log credential event in integrity test");
         }
 
         // Verify integrity
-        assert!(logger.verify_log_integrity().await.unwrap());
+        assert!(logger.verify_log_integrity().await.expect("Failed to verify log integrity in test"));
 
         // Cleanup
         let _ = std::fs::remove_file(&log_path);

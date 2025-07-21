@@ -238,7 +238,7 @@ mod tests {
         state.add_state("state1".to_string(), Complex64::new(0.6, 0.0));
         state.add_state("state2".to_string(), Complex64::new(0.8, 0.0));
 
-        state.normalize().unwrap();
+        state.normalize().expect("Failed to normalize quantum state in test");
 
         let total_prob: f64 = state
             .probability_amplitudes
@@ -253,14 +253,14 @@ mod tests {
     fn test_entropy_calculation() {
         let mut state = SuperpositionState::new(Duration::from_secs(1));
         state.add_state("state1".to_string(), Complex64::new(1.0, 0.0));
-        state.normalize().unwrap();
+        state.normalize().expect("Failed to normalize quantum state in entropy test");
 
         // Single state should have zero entropy
         assert_eq!(state.entropy(), 0.0);
 
         // Equal superposition should have maximum entropy
         state.add_state("state2".to_string(), Complex64::new(1.0, 0.0));
-        state.normalize().unwrap();
+        state.normalize().expect("Failed to normalize quantum state for entropy test");
 
         let entropy = state.entropy();
         assert!(entropy > 0.0);
@@ -272,23 +272,23 @@ mod tests {
 
         // Test with a single state
         state.add_state("state1".to_string(), Complex64::new(1.0, 0.0));
-        state.normalize().unwrap();
+        state.normalize().expect("Failed to normalize quantum state in measure test");
 
-        let (measured_state, amplitude) = state.measure().unwrap();
+        let (measured_state, amplitude) = state.measure().expect("Failed to measure quantum state in test");
         assert_eq!(measured_state, "state1");
         assert!((amplitude.real - 1.0).abs() < f64::EPSILON);
         assert!((amplitude.imaginary - 0.0).abs() < f64::EPSILON);
 
         // Test with multiple states
         state.add_state("state2".to_string(), Complex64::new(1.0, 0.0));
-        state.normalize().unwrap();
+        state.normalize().expect("Failed to normalize quantum state for multiple states test");
 
         // Test multiple measurements to ensure we get both states (with some probability)
         let mut state1_count = 0;
         let mut state2_count = 0;
 
         for _ in 0..1000 {
-            let (measured_state, _) = state.measure().unwrap();
+            let (measured_state, _) = state.measure().expect("Failed to measure quantum state in probability test");
             if measured_state == "state1" {
                 state1_count += 1;
             } else if measured_state == "state2" {

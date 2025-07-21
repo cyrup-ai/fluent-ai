@@ -207,6 +207,7 @@ impl LegacyMessage {
             content: content.into(),
             name: None,
             chunk: None,
+            timestamp: default_timestamp(),
         }
     }
 
@@ -216,6 +217,7 @@ impl LegacyMessage {
             content: content.into(),
             name: None,
             chunk: None,
+            timestamp: default_timestamp(),
         }
     }
 
@@ -225,6 +227,7 @@ impl LegacyMessage {
             content: content.into(),
             name: None,
             chunk: None,
+            timestamp: default_timestamp(),
         }
     }
 
@@ -234,6 +237,7 @@ impl LegacyMessage {
             content: content.into(),
             name: None,
             chunk: None,
+            timestamp: default_timestamp(),
         }
     }
 }

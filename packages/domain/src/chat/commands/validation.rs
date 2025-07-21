@@ -155,6 +155,39 @@ impl CommandValidator {
                     )?;
                 }
             }
+            ChatCommand::History { limit, filter, .. } => {
+                if let Some(n) = limit {
+                    self.validate_integer_parameter("limit", *n as i64, Some(1), Some(10000))?;
+                }
+                if let Some(f) = filter {
+                    self.validate_string_parameter("filter", f, false)?;
+                }
+            }
+            ChatCommand::Save { name, location, .. } => {
+                if let Some(n) = name {
+                    self.validate_name_parameter("name", n)?;
+                }
+                if let Some(l) = location {
+                    self.validate_path_parameter("location", l)?;
+                }
+            }
+            ChatCommand::Load { name, location, .. } => {
+                self.validate_name_parameter("name", name)?;
+                if let Some(l) = location {
+                    self.validate_path_parameter("location", l)?;
+                }
+            }
+            ChatCommand::Import { source, .. } => {
+                self.validate_path_parameter("source", source)?;
+            }
+            ChatCommand::Settings { key, .. } => {
+                if let Some(k) = key {
+                    self.validate_string_parameter("key", k, false)?;
+                }
+            }
+            ChatCommand::Custom { name, .. } => {
+                self.validate_string_parameter("name", name, false)?;
+            }
         }
 
         Ok(())

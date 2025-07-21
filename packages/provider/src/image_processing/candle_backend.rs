@@ -4,7 +4,7 @@
 //! including computer vision feature extraction, embedding generation, and tensor operations.
 //! Following the exact patterns from the CLIP example in ./tmp/candle/examples/clip/main.rs.
 
-use super::*;
+use super::{*, ImageModelInfo};
 use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
 use std::sync::Arc;
@@ -698,8 +698,8 @@ impl ImageEmbeddingProvider for CandleImageProcessor {
         self.embedding_dims
     }
     
-    fn model_info(&self) -> ModelInfo {
-        ModelInfo {
+    fn model_info(&self) -> ImageModelInfo {
+        ImageModelInfo {
             name: self.model_name.clone(),
             version: "1.0.0".to_string(),
             architecture: "CLIP-based computer vision".to_string(),

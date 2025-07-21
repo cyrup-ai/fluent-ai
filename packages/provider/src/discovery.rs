@@ -155,21 +155,21 @@ mod tests {
         };
         
         // Register the provider
-        register_provider(provider).unwrap();
+        register_provider(provider).expect("Failed to register test provider");
         
         // Retrieve the provider
-        let provider = get_provider("test").unwrap();
+        let provider = get_provider("test").expect("Failed to get test provider");
         assert_eq!(provider.provider_name(), "test");
         assert!(provider.supports_model("model1"));
         assert!(!provider.supports_model("unknown"));
         
         // Test discovery
-        provider.discover_and_register().await.unwrap();
+        provider.discover_and_register().await.expect("Failed to discover and register models");
         assert_eq!(
             provider
                 .as_any()
                 .downcast_ref::<TestProvider>()
-                .unwrap()
+                .expect("Failed to downcast to TestProvider")
                 .discover_count
                 .load(Ordering::SeqCst),
             1
@@ -191,20 +191,20 @@ mod tests {
         };
         
         // Register providers
-        register_provider(provider1).unwrap();
-        register_provider(provider2).unwrap();
+        register_provider(provider1).expect("Failed to register test provider1");
+        register_provider(provider2).expect("Failed to register test provider2");
         
         // Discover all models
-        discover_all_models().await.unwrap();
+        discover_all_models().await.expect("Failed to discover all models");
         
         // Verify both providers were called
-        let p1 = get_provider("test1").unwrap();
-        let p2 = get_provider("test2").unwrap();
+        let p1 = get_provider("test1").expect("Failed to get test1 provider");
+        let p2 = get_provider("test2").expect("Failed to get test2 provider");
         
         assert_eq!(
             p1.as_any()
                 .downcast_ref::<TestProvider>()
-                .unwrap()
+                .expect("Failed to downcast p1 to TestProvider")
                 .discover_count
                 .load(Ordering::SeqCst),
             1
@@ -213,7 +213,7 @@ mod tests {
         assert_eq!(
             p2.as_any()
                 .downcast_ref::<TestProvider>()
-                .unwrap()
+                .expect("Failed to downcast p2 to TestProvider")
                 .discover_count
                 .load(Ordering::SeqCst),
             1

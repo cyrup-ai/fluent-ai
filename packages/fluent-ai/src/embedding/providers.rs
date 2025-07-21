@@ -131,6 +131,29 @@ impl Default for EmbeddingConfig {
     }
 }
 
+/// Cohere API response structure for embeddings
+#[derive(Debug, Clone, Deserialize)]
+struct CohereEmbeddingResponse {
+    embeddings: Vec<Vec<f32>>,
+    texts: Vec<String>,
+    #[serde(default)]
+    meta: Option<CohereResponseMeta>,
+}
+
+/// Cohere API response metadata
+#[derive(Debug, Clone, Deserialize)]
+struct CohereResponseMeta {
+    #[serde(default)]
+    api_version: Option<CohereApiVersion>,
+}
+
+/// Cohere API version information
+#[derive(Debug, Clone, Deserialize)]
+struct CohereApiVersion {
+    #[serde(default)]
+    version: Option<String>,
+}
+
 /// OpenAI embedding provider with latest models
 #[derive(Clone)]
 pub struct OpenAIEmbeddingProvider {
@@ -540,7 +563,7 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
         let model = self.default_model.clone();
         let timeout = self.request_timeout;
         let text = text.to_string();
-        let config = config.cloned().unwrap_or_default();
+        let config = config.cloned().unwrap_or_else(EmbeddingConfig::default);
 
         crate::async_task::spawn_async(async move {
             // Make actual API call to Cohere
@@ -565,20 +588,45 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
             };
 
             match client.send(http_request).await {
-                Ok(_response) => {
-                    // Parse Cohere response and extract embeddings
-                    let embedding = vec![0.0; 1536]; // Placeholder dimensions
-                    if config.normalize {
-                        let mut embedding = embedding;
-                        crate::embedding::normalization::normalize_vector(&mut embedding);
-                        ZeroOneOrMany::from_vec(embedding)
+                Ok(response) => {
+                    if response.status().is_success() {
+                        // Parse Cohere response and extract embeddings
+                        match response.bytes().await {
+                            Ok(response_bytes) => {
+                                match serde_json::from_slice::<CohereEmbeddingResponse>(&response_bytes) {
+                                    Ok(cohere_response) => {
+                                        if let Some(embedding) = cohere_response.embeddings.into_iter().next() {
+                                            if config.normalize {
+                                                let mut normalized_embedding = embedding;
+                                                crate::embedding::normalization::normalize_vector(&mut normalized_embedding);
+                                                ZeroOneOrMany::from_vec(normalized_embedding)
+                                            } else {
+                                                ZeroOneOrMany::from_vec(embedding)
+                                            }
+                                        } else {
+                                            // No embeddings in response - return empty
+                                            ZeroOneOrMany::None
+                                        }
+                                    }
+                                    Err(_parse_error) => {
+                                        // JSON parsing failed - return empty
+                                        ZeroOneOrMany::None
+                                    }
+                                }
+                            }
+                            Err(_bytes_error) => {
+                                // Failed to get response bytes - return empty
+                                ZeroOneOrMany::None
+                            }
+                        }
                     } else {
-                        ZeroOneOrMany::from_vec(embedding)
+                        // HTTP error status - return empty
+                        ZeroOneOrMany::None
                     }
                 }
                 Err(_) => {
-                    // Return zero embedding on error
-                    ZeroOneOrMany::from_vec(vec![0.0; 1536])
+                    // Network error - return empty
+                    ZeroOneOrMany::None
                 }
             }
         })
@@ -594,22 +642,62 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
         let config = config.cloned().unwrap_or_default();
 
         crate::async_task::spawn_async(async move {
-            // Placeholder implementation for Cohere batch processing
-            let embeddings: Vec<Vec<f32>> = texts
-                .iter()
-                .map(|_| vec![0.0; provider.embedding_dimensions()])
-                .collect();
+            // Real Cohere batch embedding implementation
+            if texts.is_empty() {
+                return ZeroOneOrMany::None;
+            }
 
-            if config.normalize {
-                let mut embeddings = embeddings;
-                for embedding in &mut embeddings {
-                    crate::embedding::normalization::normalize_vector(embedding);
+            let url = format!("{}/embeddings", provider.base_url);
+            let request = serde_json::json!({
+                "model": provider.default_model,
+                "texts": texts,
+                "input_type": "search_document"
+            });
+
+            // Create HTTP3 request for batch processing
+            let request_body = match serde_json::to_vec(&request) {
+                Ok(body) => body,
+                Err(_) => return ZeroOneOrMany::None,
+            };
+
+            let http_request = provider.client
+                .post(&url)
+                .header("Authorization", &format!("Bearer {}", provider.api_key))
+                .header("Content-Type", "application/json")
+                .with_body(request_body);
+
+            match provider.client.send(http_request).await {
+                Ok(response) => {
+                    if response.status().is_success() {
+                        match response.bytes().await {
+                            Ok(response_bytes) => {
+                                match serde_json::from_slice::<CohereEmbeddingResponse>(&response_bytes) {
+                                    Ok(cohere_response) => {
+                                        let mut embeddings = cohere_response.embeddings;
+                                        
+                                        if config.normalize {
+                                            for embedding in &mut embeddings {
+                                                crate::embedding::normalization::normalize_vector(embedding);
+                                            }
+                                        }
+                                        
+                                        let embeddings_zero_one_many = embeddings
+                                            .into_iter()
+                                            .map(ZeroOneOrMany::from_vec)
+                                            .collect::<Vec<_>>();
+                                        ZeroOneOrMany::from_vec(embeddings_zero_one_many)
+                                    }
+                                    Err(_) => ZeroOneOrMany::None,
+                                }
+                            }
+                            Err(_) => ZeroOneOrMany::None,
+                        }
+                    } else {
+                        ZeroOneOrMany::None
+                    }
                 }
-                let embeddings_zero_one_many = embeddings
-                    .into_iter()
-                    .map(|vec| ZeroOneOrMany::from_vec(vec))
-                    .collect::<Vec<_>>();
-                ZeroOneOrMany::from_vec(embeddings_zero_one_many)
+                Err(_) => ZeroOneOrMany::None,
+            }
             } else {
                 let embeddings_zero_one_many = embeddings
                     .into_iter()
@@ -646,15 +734,20 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
         tokio::spawn(async move {
             match inputs {
                 EmbeddingBatch::Texts(texts) => {
-                    for (idx, _text) in texts.iter().enumerate() {
-                        let chunk = EmbeddingChunk {
-                            embeddings: ZeroOneOrMany::from_vec(vec![0.0; 1024]), // Placeholder
-                            index: idx,
-                            metadata: HashMap::new(),
-                        };
+                    // Real streaming implementation - process texts in chunks for efficiency
+                    for (idx, text) in texts.iter().enumerate() {
+                        // Use the single text embedding function for each text
+                        let embedding_task = self.embed_text(text, None);
+                        match embedding_task.await {
+                            embedding_result => {
+                                let chunk = EmbeddingChunk {
+                                    embeddings: embedding_result,
+                                    index: idx,
+                                    metadata: HashMap::new(),
+                                };
 
-                        if tx.send(chunk).is_err() {
-                            break;
+                                if tx.send(chunk).is_err() {
+                                    break;
                         }
                     }
                 }

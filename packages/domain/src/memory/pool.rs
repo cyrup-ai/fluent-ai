@@ -41,7 +41,7 @@ impl MemoryNodePool {
 
     /// Acquire a node from the pool (zero-allocation in common case)
     #[inline(always)]
-    pub fn acquire(&self) -> PooledMemoryNode {
+    pub fn acquire(&self) -> PooledMemoryNode<'_> {
         let node = self.available.pop().unwrap_or_else(|| {
             // Fallback: create new node if pool is empty
             MemoryNode {

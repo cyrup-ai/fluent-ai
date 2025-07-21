@@ -16,6 +16,7 @@ use crate::tool::McpToolData;
 pub const MAX_AGENT_TOOLS: usize = 32;
 
 /// Agent statistics for performance monitoring
+#[allow(dead_code)] // TODO: Implement in agent monitoring system
 static AGENT_STATS: CachePadded<AtomicUsize> = CachePadded::new(AtomicUsize::new(0));
 
 /// Result type for agent operations

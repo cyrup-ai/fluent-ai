@@ -90,7 +90,7 @@ pub struct ContentCandidate {
     pub content: Content,
     /// Optional. Output only. The reason why the model stopped generating tokens.
     /// If empty, the model has not stopped generating tokens.
-    pub finish_reason: Option<FinishReason>,
+    pub finish_reason: Option<GeminiFinishReason>,
     /// List of ratings for the safety of a response candidate.
     /// There is at most one rating per category.
     pub safety_ratings: Option<Vec<SafetyRating>>,
@@ -518,7 +518,7 @@ pub enum BlockReason {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum FinishReason {
+pub enum GeminiFinishReason {
     /// Default value. This value is unused.
     FinishReasonUnspecified,
     /// Natural stop point of the model or provided stop sequence.
@@ -917,12 +917,12 @@ impl TryFrom<GenerateContentResponse> for completion::CompletionResponse<Generat
 }
 
 /// Convert Gemini finish reason to domain finish reason
-impl From<FinishReason> for fluent_ai_domain::chunk::FinishReason {
-    fn from(reason: FinishReason) -> Self {
+impl From<GeminiFinishReason> for fluent_ai_domain::chunk::FinishReason {
+    fn from(reason: GeminiFinishReason) -> Self {
         match reason {
-            FinishReason::Stop => Self::Stop,
-            FinishReason::MaxTokens => Self::Length,
-            FinishReason::Safety | FinishReason::Blocklist | FinishReason::ProhibitedContent => {
+            GeminiFinishReason::Stop => Self::Stop,
+            GeminiFinishReason::MaxTokens => Self::Length,
+            GeminiFinishReason::Safety | GeminiFinishReason::Blocklist | GeminiFinishReason::ProhibitedContent => {
                 Self::ContentFilter
             }
             _ => Self::Stop,

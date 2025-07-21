@@ -16,7 +16,7 @@ use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
 use fluent_ai_domain::tool::ToolDefinition;
-use fluent_ai_domain::{AsyncTask, spawn_async};
+use fluent_ai_domain::spawn_async;
 use fluent_ai_domain::{Document, Message};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde::{Deserialize, Serialize};

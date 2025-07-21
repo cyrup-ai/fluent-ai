@@ -10,7 +10,7 @@ pub type EmbeddingFuture<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
 /// Trait for embedding model implementations
 #[cfg_attr(test, mockall::automock)]
-pub trait EmbeddingModel: Send + Sync {
+pub trait EmbeddingModel: Send + Sync + std::fmt::Debug {
     /// Generate an embedding for text
     fn embed(
         &self,

@@ -6,7 +6,7 @@
 // Removed unused import: std::future::Future
 // Removed unused import: std::pin::Pin
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 // Ultra-high-performance zero-allocation imports
 // Removed unused import: arrayvec::ArrayVec
@@ -38,6 +38,7 @@ static RESULT_QUEUE: Lazy<SegQueue<MemoryNode>> = Lazy::new(|| SegQueue::new());
 #[derive(Debug, Clone)]
 pub struct MemoryTool {
     /// Tool metadata
+    #[allow(dead_code)]
     data: McpToolData,
     /// Shared memory instance for lock-free concurrent access
     memory: Arc<Memory>,
@@ -123,6 +124,7 @@ impl MemoryTool {
                 },
                 "required": ["operation"]
             }),
+            server: None,
         };
 
         Self { data, memory }
@@ -132,5 +134,66 @@ impl MemoryTool {
     #[inline]
     pub fn memory(&self) -> &Arc<Memory> {
         &self.memory
+    }
+
+    /// Get tool metadata
+    #[inline]
+    pub fn tool_data(&self) -> &McpToolData {
+        &self.data
+    }
+
+    /// Get tool name from metadata
+    #[inline]
+    pub fn tool_name(&self) -> &str {
+        &self.data.name
+    }
+
+    /// Get tool description from metadata
+    #[inline]
+    pub fn tool_description(&self) -> &str {
+        &self.data.description
+    }
+
+    /// Get maximum results limit for memory operations
+    #[inline]
+    pub fn max_results_limit() -> usize {
+        MAX_MEMORY_TOOL_RESULTS
+    }
+
+    /// Get maximum streaming results per operation
+    #[inline]
+    pub fn max_streaming_limit() -> usize {
+        MAX_STREAMING_RESULTS
+    }
+
+    /// Add memory node to result queue
+    #[inline]
+    pub fn queue_result(node: MemoryNode) {
+        RESULT_QUEUE.push(node);
+        TOOL_STATS.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Get next result from queue
+    #[inline]
+    pub fn dequeue_result() -> Option<MemoryNode> {
+        RESULT_QUEUE.pop()
+    }
+
+    /// Get tool operation statistics
+    #[inline]
+    pub fn get_tool_stats() -> usize {
+        TOOL_STATS.load(Ordering::Relaxed)
+    }
+
+    /// Reset tool statistics
+    #[inline]
+    pub fn reset_tool_stats() {
+        TOOL_STATS.store(0, Ordering::Relaxed);
+    }
+
+    /// Get result queue length for monitoring
+    #[inline]
+    pub fn result_queue_length() -> usize {
+        RESULT_QUEUE.len()
     }
 }

@@ -1675,7 +1675,7 @@ mod tests {
         if let Part::FunctionCall(function_call) = &parts[2] {
             assert_eq!(function_call.name, "test_function");
             assert_eq!(
-                function_call.args.as_object().unwrap().get("arg1").unwrap(),
+                function_call.args.as_object().expect("Failed to get function call args as object in test").get("arg1").expect("Failed to get arg1 from function call args in test"),
                 "value1"
             );
         } else {
@@ -1688,9 +1688,9 @@ mod tests {
                 function_response
                     .response
                     .as_ref()
-                    .unwrap()
+                    .expect("Failed to get function response in test")
                     .get("result")
-                    .unwrap(),
+                    .expect("Failed to get result from function response in test"),
                 "success"
             );
         } else {
@@ -1698,7 +1698,7 @@ mod tests {
         }
 
         if let Part::FileData(file_data) = &parts[4] {
-            assert_eq!(file_data.mime_type.as_ref().unwrap(), "application/pdf");
+            assert_eq!(file_data.mime_type.as_ref().expect("Failed to get file data mime type in test"), "application/pdf");
             assert_eq!(file_data.file_uri, "http://example.com/file.pdf");
         } else {
             panic!("Expected file data part");
@@ -1712,7 +1712,7 @@ mod tests {
 
         if let Part::CodeExecutionResult(code_execution_result) = &parts[6] {
             assert_eq!(
-                code_execution_result.clone().output.unwrap(),
+                code_execution_result.clone().output.expect("Failed to get code execution result output in test"),
                 "Hello, world!"
             );
         } else {
@@ -1727,7 +1727,7 @@ mod tests {
             "role": "model"
         });
 
-        let content: Content = serde_json::from_value(json_data).unwrap();
+        let content: Content = serde_json::from_value(json_data).expect("Failed to deserialize content from JSON in test");
         assert_eq!(content.role, Some(Role::Model));
         assert_eq!(content.parts.len(), 1);
         if let Part::Text(text) = &content.parts.first() {
@@ -1740,7 +1740,7 @@ mod tests {
     #[test]
     fn test_message_conversion_user() {
         let msg = message::Message::user("Hello, world!");
-        let content: Content = msg.try_into().unwrap();
+        let content: Content = msg.try_into().expect("Failed to convert user message to content in test");
         assert_eq!(content.role, Some(Role::User));
         assert_eq!(content.parts.len(), 1);
         if let Part::Text(text) = &content.parts.first() {
@@ -1754,7 +1754,7 @@ mod tests {
     fn test_message_conversion_model() {
         let msg = message::Message::assistant("Hello, user!");
 
-        let content: Content = msg.try_into().unwrap();
+        let content: Content = msg.try_into().expect("Failed to convert assistant message to content in test");
         assert_eq!(content.role, Some(Role::Model));
         assert_eq!(content.parts.len(), 1);
         if let Part::Text(text) = &content.parts.first() {
@@ -1778,13 +1778,13 @@ mod tests {
             content: OneOrMany::one(message::AssistantContent::ToolCall(tool_call)),
         };
 
-        let content: Content = msg.try_into().unwrap();
+        let content: Content = msg.try_into().expect("Failed to convert tool call message to content in test");
         assert_eq!(content.role, Some(Role::Model));
         assert_eq!(content.parts.len(), 1);
         if let Part::FunctionCall(function_call) = &content.parts.first() {
             assert_eq!(function_call.name, "test_function");
             assert_eq!(
-                function_call.args.as_object().unwrap().get("arg1").unwrap(),
+                function_call.args.as_object().expect("Failed to get function call args as object in tool call test").get("arg1").expect("Failed to get arg1 from function call args in tool call test"),
                 "value1"
             );
         } else {

@@ -12,11 +12,12 @@ use crate::memory::types_legacy;
 /// Zero-allocation conversion functions with inline optimization
 /// Provides seamless migration path from legacy types to new domain types
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, Default)]
 pub enum CompatibilityMode {
     /// Strict mode: Only allow exact matches
     Strict,
-    /// Flexible mode: Allow best-effort conversions
+    /// Flexible mode: Allow best-effort conversions  
+    #[default]
     Flexible,
     /// Hybrid mode: Support both legacy and new types simultaneously
     Hybrid,

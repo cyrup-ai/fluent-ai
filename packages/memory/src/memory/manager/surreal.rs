@@ -267,6 +267,7 @@ pub trait MemoryManager: Send + Sync + 'static {
 }
 
 /// SurrealDB implementation of the memory manager
+#[derive(Debug)]
 pub struct SurrealDBMemoryManager {
     db: Surreal<Any>,
 }

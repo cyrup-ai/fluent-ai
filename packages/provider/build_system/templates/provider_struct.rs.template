@@ -1,0 +1,27 @@
+use std::fmt;
+use std::str::FromStr;
+
+/// An enumeration of all supported AI providers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Providers {
+{{PROVIDER_VARIANTS}}
+}
+
+impl fmt::Display for Providers {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+{{PROVIDER_DISPLAY_ARMS}}
+        }
+    }
+}
+
+impl FromStr for Providers {
+    type Err = fluent_ai_domain::model::ModelError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+{{PROVIDER_FROM_STR_ARMS}}
+            _ => Err(fluent_ai_domain::model::ModelError::UnknownProvider(s.to_string())),
+        }
+    }
+}

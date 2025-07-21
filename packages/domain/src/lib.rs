@@ -171,6 +171,7 @@ fn return_memory_to_pool(memory: Arc<SurrealDBMemoryManager>) {
 }
 
 /// Execute operation with circuit breaker protection and exponential backoff
+#[allow(dead_code)] // TODO: Implement usage in error handling system
 #[inline(always)]
 async fn execute_with_circuit_breaker<F, T, E>(
     operation: F,
@@ -509,9 +510,7 @@ pub use std::collections::HashMap;
 
 // Validation module for model and configuration validation
 pub mod validation;
-// Re-export hash_map_fn macro for transparent JSON syntax
-#[doc(hidden)]
-pub use cyrup_sugars::hash_map_fn;
+// Re-export from cyrup_sugars (hash_map_fn removed as not available in current version)
 pub use cyrup_sugars::{ByteSize, OneOrMany, ZeroOneOrMany};
 
 /// Extension trait to add missing methods to ZeroOneOrMany
@@ -527,7 +526,7 @@ impl<T> ZeroOneOrManyExt<T> for ZeroOneOrMany<T> {
     fn as_single(&self) -> Option<&T> {
         match self {
             ZeroOneOrMany::None => None,
-            ZeroOneOrMany::One(ref item) => Some(item),
+            ZeroOneOrMany::One(item) => Some(item),
             ZeroOneOrMany::Many(_) => None, // Multiple items, can't return single
         }
     }
@@ -535,8 +534,8 @@ impl<T> ZeroOneOrManyExt<T> for ZeroOneOrMany<T> {
     fn to_vec(&self) -> Vec<&T> {
         match self {
             ZeroOneOrMany::None => Vec::new(),
-            ZeroOneOrMany::One(ref item) => vec![item],
-            ZeroOneOrMany::Many(ref items) => items.iter().collect(),
+            ZeroOneOrMany::One(item) => vec![item],
+            ZeroOneOrMany::Many(items) => items.iter().collect(),
         }
     }
 }

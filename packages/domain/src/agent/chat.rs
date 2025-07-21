@@ -18,6 +18,7 @@ use crate::memory::{MemoryTool, MemoryToolError};
 const MAX_RELEVANT_MEMORIES: usize = 10;
 
 /// Global atomic counter for memory node creation
+#[allow(dead_code)] // TODO: Implement in memory node creation system
 static MEMORY_NODE_COUNTER: Lazy<CachePadded<RelaxedCounter>> =
     Lazy::new(|| CachePadded::new(RelaxedCounter::new(0)));
 
@@ -149,9 +150,30 @@ impl AgentRoleImpl {
         // Increment atomic counter for lock-free statistics
         ATTENTION_SCORE_COUNTER.fetch_add(1, Ordering::Relaxed);
 
-        // TODO: Implement actual attention-based relevance scoring
-        // For now, return a placeholder score
-        let score = 0.5;
+        // Simple relevance scoring based on content similarity and memory node importance
+        let message_len = message.len();
+        let memory_content = match &memory_node.base_memory().content {
+            MemoryContent::Text(text) => text.as_ref(),
+            _ => "", // Non-text content gets empty string for comparison
+        };
+        let memory_len = memory_content.len();
+        
+        // Basic content length similarity (normalized)
+        let length_similarity = 1.0 - ((message_len as f64 - memory_len as f64).abs() / (message_len.max(memory_len) as f64 + 1.0));
+        
+        // Memory node importance factor
+        let importance_factor = memory_node.importance() as f64;
+        
+        // Time decay factor based on last access
+        let time_factor = if let Ok(elapsed) = memory_node.last_accessed().elapsed() {
+            // Decay over 24 hours, minimum 0.1
+            (1.0 - (elapsed.as_secs() as f64 / 86400.0)).max(0.1)
+        } else {
+            0.5 // Default if time calculation fails
+        };
+        
+        // Combined relevance score (weighted average)
+        let score = (length_similarity * 0.3 + importance_factor * 0.5 + time_factor * 0.2).min(1.0);
 
         Ok(score)
     }

@@ -6,6 +6,8 @@ use std::sync::Arc;
 
 use crate::{HttpError, HttpRequest, HttpResponse, HttpResult};
 
+pub mod cache;
+
 /// HTTP middleware trait using native async
 pub trait Middleware: Send + Sync {
     /// Process request before sending

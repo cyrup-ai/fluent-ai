@@ -1,0 +1,10 @@
+use fluent_ai_domain::model::{ModelInfo, ModelRegistry};
+use once_cell::sync::Lazy;
+
+/// The global, statically-defined registry of all known models.
+pub static MODEL_REGISTRY: Lazy<ModelRegistry> = Lazy::new(|| {
+    let models = vec![
+{MODEL_INSTANCES}
+    ];
+    ModelRegistry::from_static_infos(models)
+});

@@ -54,7 +54,7 @@ impl std::ops::Add for EmbeddingUsage {
 
     #[inline]
     fn add(self, rhs: Self) -> Self::Output {
-        self.add(&rhs)
+        (&self).add(&rhs)
     }
 }
 

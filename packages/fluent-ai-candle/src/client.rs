@@ -8,14 +8,12 @@ use std::time::Instant;
 
 use arc_swap::ArcSwap;
 use candle_core::Device;
-use fluent_ai_core::completion::{
-    client::{CompletionClient, CompletionClientExt},
-    error::CompletionError,
-    request::CompletionRequest,
-    response::CompletionResponse,
-    streaming::StreamingResponse,
-    CompletionResult,
+use fluent_ai_domain::completion::{
+    CompletionClient, CompletionClientExt, CompletionRequest,
+    CompletionResponse, CompletionResult, StreamingResponse,
 };
+use fluent_ai_domain::extractor::ExtractionError;
+type CompletionError = ExtractionError;
 
 use crate::error::{CandleError, CandleResult};
 use crate::generator::{CandleGenerator, GenerationConfig};

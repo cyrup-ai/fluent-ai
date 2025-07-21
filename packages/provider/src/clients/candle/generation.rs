@@ -6,7 +6,7 @@
 use std::collections::VecDeque;
 
 use arrayvec::ArrayVec;
-use crossbeam_utils::atomic::AtomicCell;
+use crossbeam::atomic::AtomicCell;
 use rand::prelude::*;
 use rand_pcg::Pcg64Mcg;
 use smallvec::SmallVec;

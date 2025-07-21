@@ -67,16 +67,25 @@ impl CacheKey {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
 
         let (command_type, params) = match command {
-            ChatCommand::Help(cmd) => ("help", format!("{:?}", cmd)),
-            ChatCommand::Clear(cmd) => ("clear", format!("{:?}", cmd)),
-            ChatCommand::History(cmd) => ("history", format!("{:?}", cmd)),
-            ChatCommand::Save(cmd) => ("save", format!("{:?}", cmd)),
-            ChatCommand::Load(cmd) => ("load", format!("{:?}", cmd)),
-            ChatCommand::Export(cmd) => ("export", format!("{:?}", cmd)),
-            ChatCommand::Import(cmd) => ("import", format!("{:?}", cmd)),
-            ChatCommand::Settings(cmd) => ("settings", format!("{:?}", cmd)),
-            ChatCommand::Debug(cmd) => ("debug", format!("{:?}", cmd)),
-            ChatCommand::Custom(cmd) => ("custom", format!("{:?}", cmd)),
+            ChatCommand::Help { command, extended } => ("help", format!("command:{:?},extended:{}", command, extended)),
+            ChatCommand::Clear { confirm, keep_last } => ("clear", format!("confirm:{},keep_last:{:?}", confirm, keep_last)),
+            ChatCommand::History { action, limit, filter } => ("history", format!("action:{:?},limit:{:?},filter:{:?}", action, limit, filter)),
+            ChatCommand::Save { name, include_config, location } => ("save", format!("name:{:?},config:{},location:{:?}", name, include_config, location)),
+            ChatCommand::Load { name, merge, location } => ("load", format!("name:{},merge:{},location:{:?}", name, merge, location)),
+            ChatCommand::Export { format, output, include_metadata } => ("export", format!("format:{},output:{:?},metadata:{}", format, output, include_metadata)),
+            ChatCommand::Import { import_type, source, options } => ("import", format!("type:{:?},source:{},options:{:?}", import_type, source, options)),
+            ChatCommand::Settings { category, key, value, show } => ("settings", format!("category:{:?},key:{:?},value:{:?},show:{}", category, key, value, show)),
+            ChatCommand::Debug { action, level, system_info } => ("debug", format!("action:{:?},level:{:?},system:{}", action, level, system_info)),
+            ChatCommand::Custom { name, args, metadata } => ("custom", format!("name:{},args:{:?},metadata:{:?}", name, args, metadata)),
+            ChatCommand::Config { key, value, show, reset } => ("config", format!("key:{:?},value:{:?},show:{},reset:{}", key, value, show, reset)),
+            ChatCommand::Template { action, name, content, variables } => ("template", format!("action:{:?},name:{:?},content:{:?},vars:{:?}", action, name, content, variables)),
+            ChatCommand::Macro { action, name, auto_execute } => ("macro", format!("action:{:?},name:{:?},auto:{}", action, name, auto_execute)),
+            ChatCommand::Search { query, scope, limit, include_context } => ("search", format!("query:{},scope:{:?},limit:{:?},context:{}", query, scope, limit, include_context)),
+            ChatCommand::Branch { action, name, source } => ("branch", format!("action:{:?},name:{:?},source:{:?}", action, name, source)),
+            ChatCommand::Session { action, name, include_config } => ("session", format!("action:{:?},name:{:?},config:{}", action, name, include_config)),
+            ChatCommand::Tool { action, name, args } => ("tool", format!("action:{:?},name:{:?},args:{:?}", action, name, args)),
+            ChatCommand::Stats { stat_type, period, detailed } => ("stats", format!("type:{:?},period:{:?},detailed:{}", stat_type, period, detailed)),
+            ChatCommand::Theme { action, name, properties } => ("theme", format!("action:{:?},name:{:?},props:{:?}", action, name, properties)),
         };
 
         params.hash(&mut hasher);

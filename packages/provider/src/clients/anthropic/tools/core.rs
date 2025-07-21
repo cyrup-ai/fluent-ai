@@ -3,10 +3,10 @@
 //! Foundational types and traits for the Anthropic tool system with
 //! optimal performance, lock-free operations, and elegant ergonomics.
 
-use std::any::TypeId;
+
 use std::collections::HashMap;
 use std::future::Future;
-use std::marker::PhantomData;
+
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 

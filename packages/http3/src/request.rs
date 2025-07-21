@@ -147,6 +147,37 @@ impl HttpRequest {
         self
     }
 
+    /// Add If-None-Match header for conditional requests (ETag-based)
+    /// This will return 304 Not Modified if the resource hasn't changed
+    pub fn if_none_match(mut self, etag: String) -> Self {
+        self.headers.insert("If-None-Match".to_string(), etag);
+        self
+    }
+
+    /// Add If-Modified-Since header for conditional requests (date-based)
+    /// This will return 304 Not Modified if the resource hasn't been modified since the given date
+    pub fn if_modified_since(mut self, date: String) -> Self {
+        self.headers.insert("If-Modified-Since".to_string(), date);
+        self
+    }
+
+    /// Add both ETag and Last-Modified conditional headers
+    /// This provides the most robust conditional request validation
+    pub fn conditional(mut self, etag: Option<String>, last_modified: Option<String>) -> Self {
+        if let Some(etag) = etag {
+            self.headers.insert("If-None-Match".to_string(), etag);
+        }
+        if let Some(last_modified) = last_modified {
+            self.headers.insert("If-Modified-Since".to_string(), last_modified);
+        }
+        self
+    }
+
+    /// Check if this is a conditional request
+    pub fn is_conditional(&self) -> bool {
+        self.headers.contains_key("If-None-Match") || self.headers.contains_key("If-Modified-Since")
+    }
+
     /// Add content type header
     pub fn content_type(mut self, content_type: String) -> Self {
         self.headers
@@ -200,17 +231,6 @@ impl HttpRequest {
         self
     }
 
-    /// Add if-none-match header for caching
-    pub fn if_none_match(mut self, etag: String) -> Self {
-        self.headers.insert("If-None-Match".to_string(), etag);
-        self
-    }
-
-    /// Add if-modified-since header for caching
-    pub fn if_modified_since(mut self, date: String) -> Self {
-        self.headers.insert("If-Modified-Since".to_string(), date);
-        self
-    }
 
     /// Add streaming-specific headers
     pub fn streaming(mut self) -> Self {
