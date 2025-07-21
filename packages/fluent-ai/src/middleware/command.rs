@@ -18,7 +18,7 @@ pub trait CommandMiddleware: Send + Sync + 'static {
         &'a self,
         command: &'a ChatCommand,
         context: &'a CommandContext,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>;
+    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>>;
 
     /// Execute after command processing
     fn after_execute<'a>(
@@ -26,7 +26,7 @@ pub trait CommandMiddleware: Send + Sync + 'static {
         command: &'a ChatCommand,
         context: &'a CommandContext,
         result: &'a CommandResult<CommandOutput>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>;
+    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>>;
 
     /// Get middleware name
     fn name(&self) -> &str;

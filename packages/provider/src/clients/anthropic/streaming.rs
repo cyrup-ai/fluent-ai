@@ -2,19 +2,17 @@
 //!
 //! Provides real-time streaming with tool calling, proper SSE handling,
 //! and efficient chunk processing with minimal memory allocation using HTTP3 client.
-
-
+//! PURE STREAMING - NO FUTURES ARCHITECTURE
 
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
-use futures_util::StreamExt;
+// NO FUTURES - pure streaming HTTP3 architecture
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
 
 use super::messages::ContentBlock;
 use super::AnthropicResult;
 
-use futures::stream::Stream as AsyncStream;
+use fluent_ai_http3::async_task::AsyncStream;
 
 /// Streaming completion chunk from Anthropic API
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,102 +138,96 @@ impl AnthropicStreamingProcessor {
         })
     }
 
-    /// Process a streaming request and return an AsyncStream
+    /// Process a streaming request and return an AsyncStream - PURE STREAMING (no futures)
+    /// Returns stream directly, error handling via user on_chunk handlers
     #[inline(always)]
     pub fn process_streaming_request(
         &self,
         http3_request: Http3Request,
-    ) -> crate::runtime::AsyncTask<
-        Result<
-            AsyncStream<Result<AnthropicStreamChunk, crate::providers::anthropic::AnthropicError>>,
-            crate::providers::anthropic::AnthropicError,
-        >,
-    > {
+    ) -> AnthropicResult<AsyncStream<Result<AnthropicStreamChunk, crate::providers::anthropic::AnthropicError>>> {
         let client = self.client.clone();
 
-        crate::runtime::spawn_async(async move {
-            let (tx, stream) = crate::runtime::async_stream::<
-                Result<AnthropicStreamChunk, crate::providers::anthropic::AnthropicError>,
-            >(512);
+        // Create high-throughput channel for chunks
+        let (tx, stream) = crate::async_stream_channel();
 
-            // Spawn the streaming task with zero-allocation patterns
-            crate::runtime::spawn_async(async move {
-                // Send streaming request using HTTP3 client
-                let stream_response = match client.send_stream(http3_request).await {
-                    Ok(stream) => stream,
-                    Err(e) => {
+        // Use std::thread instead of spawn_async - NO FUTURES
+        std::thread::spawn(move || {
+            // Send streaming request using HTTP3 client with tokio runtime internally
+            let response = {
+                let rt = match tokio::runtime::Handle::try_current() {
+                    Ok(handle) => handle,
+                    Err(_) => {
                         let _ = tx.try_send(Err(
                             crate::providers::anthropic::AnthropicError::RequestError(
-                                e.to_string(),
+                                "No tokio runtime available".to_string(),
                             ),
                         ));
-                        return Ok::<(), crate::providers::anthropic::AnthropicError>(());
+                        return;
                     }
                 };
 
-                // Process SSE events from Anthropic
-                let mut sse_stream = stream_response.sse();
-                let mut content_accumulator = String::with_capacity(4096);
-                let mut current_usage = None;
+                rt.block_on(async {
+                    client.send(http3_request).await
+                        .map_err(|e| crate::providers::anthropic::AnthropicError::RequestError(e.to_string()))
+                })
+            };
 
-                while let Some(event) = sse_stream.next().await {
-                    match event {
-                        Ok(sse_event) => {
-                            let data = sse_event.data_string();
+            let response = match response {
+                Ok(resp) => resp,
+                Err(e) => {
+                    let _ = tx.try_send(Err(e));
+                    return;
+                }
+            };
 
-                            // Skip empty events
-                            if data.trim().is_empty() {
-                                continue;
-                            }
+            // Get SSE events from HTTP3 response - direct Vec<SseEvent> (no futures)
+            let sse_events = response.sse();
+            let mut content_accumulator = String::with_capacity(4096);
+            let mut current_usage = None;
 
-                            // Parse the SSE data as JSON
-                            let chunk = match serde_json::from_str::<StreamingChunk>(&data) {
-                                Ok(chunk) => chunk,
-                                Err(e) => {
-                                    let _ = tx.try_send(Err(crate::providers::anthropic::AnthropicError::DeserializationError(
-                                        format!("Failed to parse Anthropic SSE chunk: {}", e)
-                                    )));
-                                    continue;
-                                }
-                            };
+            // Direct iteration over SSE events (no futures)
+            for sse_event in sse_events {
+                if let Some(data) = sse_event.data {
+                    // Skip empty events
+                    if data.trim().is_empty() {
+                        continue;
+                    }
 
-                            // Process the chunk based on its type
-                            let processed_chunk = match process_anthropic_chunk(
-                                &chunk,
-                                &mut content_accumulator,
-                                &mut current_usage,
-                            ) {
-                                Ok(Some(chunk)) => chunk,
-                                Ok(None) => continue, // Skip internal chunks
-                                Err(e) => {
-                                    let _ = tx.try_send(Err(e));
-                                    continue;
-                                }
-                            };
-
-                            // Send the processed chunk
-                            if tx.try_send(Ok(processed_chunk)).is_err() {
-                                tracing::warn!(target: "rig", "Anthropic streaming receiver dropped");
-                                break;
-                            }
-                        }
+                    // Parse the SSE data as JSON
+                    let chunk = match serde_json::from_str::<StreamingChunk>(&data) {
+                        Ok(chunk) => chunk,
                         Err(e) => {
-                            tracing::error!(target: "rig", "Anthropic streaming error: {}", e);
-                            let _ = tx.try_send(Err(
-                                crate::providers::anthropic::AnthropicError::RequestError(
-                                    e.to_string(),
-                                ),
-                            ));
-                            break;
+                            let _ = tx.try_send(Err(crate::providers::anthropic::AnthropicError::DeserializationError(
+                                format!("Failed to parse Anthropic SSE chunk: {}", e)
+                            )));
+                            continue;
                         }
+                    };
+
+                    // Process the chunk based on its type
+                    let processed_chunk = match process_anthropic_chunk(
+                        &chunk,
+                        &mut content_accumulator,
+                        &mut current_usage,
+                    ) {
+                        Ok(Some(chunk)) => chunk,
+                        Ok(None) => continue, // Skip internal chunks
+                        Err(e) => {
+                            let _ = tx.try_send(Err(e));
+                            continue;
+                        }
+                    };
+
+                    // Send the processed chunk
+                    if tx.try_send(Ok(processed_chunk)).is_err() {
+                        tracing::warn!(target: "rig", "Anthropic streaming receiver dropped");
+                        break;
                     }
                 }
+            }
+        });
 
-                Ok::<(), crate::providers::anthropic::AnthropicError>(())
-            });
-
-            Ok(stream)
-        })
+        Ok(stream)
     }
 }
 

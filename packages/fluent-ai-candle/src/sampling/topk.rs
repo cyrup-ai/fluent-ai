@@ -3,7 +3,8 @@
 //! Top-k sampling keeps only the k most likely tokens, setting all others to negative infinity.
 //! This provides a fixed vocabulary size regardless of model confidence.
 
-use super::{LogitsProcessor, SamplingError};
+use super::SamplingError;
+use crate::processing::traits::LogitsProcessor;
 use candle_core::Tensor;
 
 /// Top-k sampling processor with optimized filtering algorithms
@@ -187,33 +188,24 @@ impl TopKProcessor {
     }
 }
 
-impl LogitsProcessor for TopKProcessor {
-    fn process(
-        &self,
-        logits: &mut Tensor,
-        _token_ids: &[u32],
-        _position: usize,
-    ) -> Result<(), SamplingError> {
-        let new_logits = self.apply_top_k_filtering(logits)?;
-        *logits = new_logits;
-        Ok(())
-    }
-
-    fn validate(&self) -> Result<(), SamplingError> {
-        if self.top_k == 0 {
-            return Err(SamplingError::InvalidTopK(self.top_k));
-        }
-        Ok(())
-    }
-
-    fn name(&self) -> &'static str {
-        "TopKProcessor"
-    }
-
-    fn is_identity(&self) -> bool {
-        self.is_identity
-    }
-}
+// TODO: Update to new LogitsProcessor API that uses process_logits() instead of process()
+// impl LogitsProcessor for TopKProcessor {
+//     fn process_logits(&mut self, logits: &mut [f32], context: &ProcessingContext) -> ProcessingResult<()> {
+//         // Implementation needed for new API
+//     }
+//
+//     fn validate(&self) -> ProcessingResult<()> {
+//         // Implementation needed for new API
+//     }
+//
+//     fn name(&self) -> &'static str {
+//         "TopKProcessor"
+//     }
+//
+//     fn is_identity(&self) -> bool {
+//         self.is_identity
+//     }
+// }
 
 // Implement common traits for ergonomics
 impl std::fmt::Display for TopKProcessor {

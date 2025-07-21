@@ -5,14 +5,15 @@
 //! allowing for time-based queries and context-aware retrieval.
 
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
+/// AsyncStream type for streaming operations  
+pub type AsyncStream<T> = fluent_ai_http3::async_task::AsyncStream<T>;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::sync::Mutex;
+use arc_swap::ArcSwap;
+use crossbeam_skiplist::SkipMap;
 
 use crate::memory::primitives::metadata::MemoryMetadata;
 use crate::memory::primitives::node::MemoryNode;
@@ -468,49 +469,56 @@ impl EpisodicMemory {
     }
 }
 
-/// Episodic memory manager
+/// Episodic memory manager with lock-free operations
 pub struct EpisodicMemoryManager {
-    /// Memory repository
-    memory_repo: Arc<Mutex<MemoryRepository>>,
+    /// Lock-free memory repository with atomic pointer swapping
+    memory_repo: ArcSwap<MemoryRepository>,
 }
 
 impl EpisodicMemoryManager {
-    /// Create a new episodic memory manager
-    pub fn new(memory_repo: Arc<Mutex<MemoryRepository>>) -> Self {
-        Self { memory_repo }
+    /// Create a new episodic memory manager with lock-free repository
+    pub fn new(memory_repo: Arc<MemoryRepository>) -> Self {
+        Self { 
+            memory_repo: ArcSwap::new(memory_repo)
+        }
     }
 
     /// Get episodic memory by ID
     pub fn get(
         &self,
         id: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<Option<EpisodicMemory>>> + Send>> {
+    ) -> AsyncStream<Result<Option<EpisodicMemory>>> {
         let id_string = id.to_string();
-        let memory_repo = Arc::clone(&self.memory_repo);
+        let memory_repo = self.memory_repo.load();
 
-        Box::pin(async move {
-            let memory_option = memory_repo.lock().await.get(&id_string);
+        let (tx, stream) = AsyncStream::channel();
+        tokio::spawn(async move {
+            let result = {
+                let memory_option = memory_repo.get(&id_string);
 
-            match memory_option {
-                Some(memory) => {
-                    // Convert MemoryNode to BaseMemory for from_memory
-                    let mut metadata = MemoryMetadata::with_type(MemoryTypeEnum::Episodic);
-                    metadata.created_at = memory.created_at;
+                match memory_option {
+                    Some(memory) => {
+                        // Convert MemoryNode to BaseMemory for from_memory
+                        let mut metadata = MemoryMetadata::with_type(MemoryTypeEnum::Episodic);
+                        metadata.created_at = memory.created_at;
 
-                    let base_memory = BaseMemory {
-                        id: memory.id.clone(),
-                        name: "Episodic Memory".to_string(),
-                        description: "Retrieved from storage".to_string(),
-                        updated_at: memory.updated_at,
-                        metadata,
-                        content: MemoryContent::text(&memory.content),
-                    };
-                    let episodic = EpisodicMemory::from_memory(&base_memory)?;
-                    Ok(Some(episodic))
+                        let base_memory = BaseMemory {
+                            id: memory.id.clone(),
+                            name: "Episodic Memory".to_string(),
+                            description: "Retrieved from storage".to_string(),
+                            updated_at: memory.updated_at,
+                            metadata,
+                            content: MemoryContent::text(&memory.content),
+                        };
+                        let episodic = EpisodicMemory::from_memory(&base_memory)?;
+                        Ok(Some(episodic))
+                    }
+                    None => Ok(None),
                 }
-                None => Ok(None),
-            }
-        })
+            };
+            let _ = tx.send(result);
+        });
+        stream
     }
 
     /// Create a new episodic memory
@@ -519,47 +527,59 @@ impl EpisodicMemoryManager {
         id: &str,
         name: &str,
         description: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<EpisodicMemory>> + Send>> {
+    ) -> AsyncStream<Result<EpisodicMemory>> {
         let id_string = id.to_string();
         let name_string = name.to_string();
         let description_string = description.to_string();
-        let memory_repo = Arc::clone(&self.memory_repo);
+        let memory_repo = self.memory_repo.load();
 
-        Box::pin(async move {
-            let episodic = EpisodicMemory::new(&id_string, &name_string, &description_string);
+        let (tx, stream) = AsyncStream::channel();
+        tokio::spawn(async move {
+            let result = {
+                let episodic = EpisodicMemory::new(&id_string, &name_string, &description_string);
 
-            // Convert to MemoryNode for storage
-            let mut metadata = MemoryMetadata::new();
-            metadata.created_at = episodic.base.metadata.created_at;
+                // Convert to MemoryNode for storage
+                let mut metadata = MemoryMetadata::new();
+                metadata.created_at = episodic.base.metadata.created_at;
 
-            let memory_node = MemoryNode {
-                id: episodic.base.id.clone(),
-                content: serde_json::to_string(&episodic.base.content).unwrap_or_default(),
-                memory_type: MemoryTypeEnum::Episodic,
-                created_at: episodic.base.metadata.created_at,
-                updated_at: episodic.base.updated_at,
-                embedding: None,
-                metadata,
+                let content = match serde_json::to_string(&episodic.base.content) {
+                    Ok(content_str) => content_str,
+                    Err(_) => return Err(crate::utils::error::Error::SerializationError(
+                        "Failed to serialize episodic memory content".to_string()
+                    )),
+                };
+
+                let memory_node = MemoryNode {
+                    id: episodic.base.id.clone(),
+                    content,
+                    memory_type: MemoryTypeEnum::Episodic,
+                    created_at: episodic.base.metadata.created_at,
+                    updated_at: episodic.base.updated_at,
+                    embedding: None,
+                    metadata,
+                };
+
+                // Lock-free create operation
+                let created_memory = memory_repo.create(&id_string, &memory_node)?;
+                // Convert created MemoryNode to BaseMemory
+                let mut metadata = MemoryMetadata::with_type(MemoryTypeEnum::Episodic);
+                metadata.created_at = created_memory.created_at;
+                // MemoryMetadata doesn't have updated_at field - that's on BaseMemory
+
+                let base_memory = BaseMemory {
+                    id: created_memory.id.clone(),
+                    name: name_string.clone(),
+                    description: description_string.clone(),
+                    updated_at: created_memory.updated_at,
+                    metadata,
+                    content: MemoryContent::text(&created_memory.content),
+                };
+                let created_episodic = EpisodicMemory::from_memory(&base_memory)?;
+
+                Ok(created_episodic)
             };
-
-            let mut memory_repo_guard = memory_repo.lock().await;
-            let created_memory = memory_repo_guard.create(&id_string, &memory_node)?;
-            // Convert created MemoryNode to BaseMemory
-            let mut metadata = MemoryMetadata::with_type(MemoryTypeEnum::Episodic);
-            metadata.created_at = created_memory.created_at;
-            // MemoryMetadata doesn't have updated_at field - that's on BaseMemory
-
-            let base_memory = BaseMemory {
-                id: created_memory.id.clone(),
-                name: name_string.clone(),
-                description: description_string.clone(),
-                updated_at: created_memory.updated_at,
-                metadata,
-                content: MemoryContent::text(&created_memory.content),
-            };
-            let created_episodic = EpisodicMemory::from_memory(&base_memory)?;
-
-            Ok(created_episodic)
-        })
+            let _ = tx.send(result);
+        });
+        stream
     }
 }

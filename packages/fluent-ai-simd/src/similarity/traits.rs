@@ -1,27 +1,15 @@
 //! Core traits for similarity operations
 
+use std::sync::Arc;
 use crate::similarity::metrics::SimilarityMetricsSnapshot;
 
 /// A trait for types that can compute cosine similarity between vectors
 pub trait CosineSimilarity {
-    /// Compute the cosine similarity between two vectors
-    /// 
-    /// # Safety
-    /// Caller must ensure that both slices have the same length
-    unsafe fn cosine_similarity_unchecked(a: &[f32], b: &[f32]) -> f32;
-    
     /// Compute the cosine similarity between two vectors with bounds checking
     /// 
     /// # Panics
     /// If the input vectors have different lengths
-    fn cosine_similarity(&self, a: &[f32], b: &[f32]) -> f32 {
-        assert_eq!(
-            a.len(),
-            b.len(),
-            "Vectors must have the same length for cosine similarity"
-        );
-        unsafe { self.cosine_similarity_unchecked(a, b) }
-    }
+    fn cosine_similarity(&self, a: &[f32], b: &[f32]) -> f32;
 }
 
 /// A trait for similarity operations that can provide metrics
@@ -34,7 +22,7 @@ pub trait WithMetrics {
 }
 
 /// A marker trait for SIMD-accelerated implementations
-pub unsafe trait SimdAccelerated: CosineSimilarity {}
+pub trait SimdAccelerated: CosineSimilarity {}
 
 /// A trait for implementations that can be selected at runtime
 pub trait RuntimeSelectable: CosineSimilarity + WithMetrics + Send + Sync {
@@ -79,9 +67,8 @@ impl SimilarityBuilder {
     }
     
     /// Build a runtime-selected similarity implementation
-    pub fn build(self) -> Box<dyn RuntimeSelectable> {
-        // This will be implemented to select the best available implementation
-        // based on runtime feature detection
-        todo!("Implementation will select the best available backend")
+    pub fn build(self) -> Arc<dyn RuntimeSelectable> {
+        // Return the best available implementation based on current features
+        crate::similarity::simd::best_available()
     }
 }

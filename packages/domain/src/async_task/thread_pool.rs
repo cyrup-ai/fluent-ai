@@ -1,9 +1,9 @@
-//! Cyrup-agent's thread pool and global executor copied into fluent-ai
+//! Pure thread pool - NO Future usage!
 //!
 //! Zero-allocation, crossbeam-based thread pool with proven performance
+//! Eliminated Future usage - pure closure-based execution
 
 use std::collections::HashMap;
-use std::future::Future;
 use std::sync::{Arc, Mutex};
 use std::task::Waker;
 
@@ -33,11 +33,26 @@ impl GlobalExecutor {
         waker.wake();
     }
 
-    pub fn enqueue<F>(&self, fut: F)
+    /// Execute closure on thread - NO Future usage!
+    pub fn execute<F>(&self, f: F)
     where
-        F: Future<Output = ()> + Send + 'static,
+        F: FnOnce() + Send + 'static,
     {
-        tokio::spawn(fut);
+        std::thread::spawn(f);
+    }
+
+    /// Execute closure and send result to channel
+    pub fn execute_with_result<F, T>(&self, f: F) -> crossbeam_channel::Receiver<T>
+    where
+        F: FnOnce() -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        let (tx, rx) = crossbeam_channel::bounded(1);
+        std::thread::spawn(move || {
+            let result = f();
+            let _ = tx.send(result);
+        });
+        rx
     }
 }
 

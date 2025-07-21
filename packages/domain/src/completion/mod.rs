@@ -20,11 +20,8 @@ pub mod types;
 pub use core::{CompletionBackend, CompletionModel};
 
 pub use candle::{
-    CompletionCoreClient, CompletionCoreClientExt, CompletionCoreError, CompletionCoreRequest, CompletionCoreResponse,
+    CompletionCoreError, CompletionCoreRequest, CompletionCoreResponse,
     CompletionCoreResult, StreamingCoreResponse,
-    // Re-export with shorter names for convenience
-    CompletionCoreClient as CompletionClient,
-    CompletionCoreClientExt as CompletionClientExt,
 };
 
 // Type aliases for convenience  

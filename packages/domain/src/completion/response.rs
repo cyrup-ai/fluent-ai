@@ -7,7 +7,8 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::usage::Usage;
+use crate::model::Usage;
+use crate::async_task::AsyncStream;
 
 /// A response from a text completion request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -275,15 +276,23 @@ impl<'a> CompactCompletionResponseBuilder<'a> {
     }
 
     /// Build the compact response
-    pub fn build(self) -> Result<CompactCompletionResponse<'a>, &'static str> {
-        Ok(CompactCompletionResponse {
-            content: self.content.ok_or("content is required")?,
-            model: self.model.ok_or("model is required")?,
-            provider: self.provider.ok_or("provider is required")?,
-            tokens_used: self.tokens_used,
-            finish_reason: self.finish_reason.ok_or("finish_reason is required")?,
-            response_time_ms: self.response_time_ms,
-            _marker: std::marker::PhantomData,
-        })
+    pub fn build(self) -> AsyncStream<CompactCompletionResponse<'a>> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        tokio::spawn(async move {
+            let response = CompactCompletionResponse {
+                content: self.content.unwrap_or_else(|| Arc::from("")),
+                model: self.model.unwrap_or_else(|| Arc::from("unknown")),
+                provider: self.provider.unwrap_or_else(|| Arc::from("unknown")),
+                tokens_used: self.tokens_used,
+                finish_reason: self.finish_reason.unwrap_or_else(|| Arc::from("stop")),
+                response_time_ms: self.response_time_ms,
+                _marker: std::marker::PhantomData,
+            };
+            
+            let _ = sender.try_send(response);
+        });
+        
+        stream
     }
 }

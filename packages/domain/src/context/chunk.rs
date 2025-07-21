@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::usage::Usage;
+use crate::model::Usage;
 
 /// Chunk of document content for streaming file operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,7 +95,7 @@ pub struct ChatMessageChunk {
     pub content: String,
 
     /// Role of the message sender
-    pub role: crate::message::MessageRole,
+    pub role: crate::chat::message::MessageRole,
 
     /// Whether this is the final chunk
     pub is_final: bool,
@@ -224,7 +224,7 @@ impl DocumentChunk {
 }
 
 impl ChatMessageChunk {
-    pub fn new(content: impl Into<String>, role: crate::message::MessageRole) -> Self {
+    pub fn new(content: impl Into<String>, role: crate::chat::message::MessageRole) -> Self {
         Self {
             content: content.into(),
             role,

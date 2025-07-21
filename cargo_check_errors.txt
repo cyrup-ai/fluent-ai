@@ -1,0 +1,100 @@
+   Compiling fluent_ai_domain v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/domain)
+warning: unused import: `warn`
+  --> /Volumes/samsung_t9/progresshub/client_quic/src/client.rs:18:28
+   |
+18 | use tracing::{error, info, warn};
+   |                            ^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused imports: `StateError` and `client::QuicClientError`
+  --> /Volumes/samsung_t9/progresshub/client_quic/src/chunk_manager.rs:27:43
+   |
+27 |     download_state::{SharedDownloadState, StateError},
+   |                                           ^^^^^^^^^^
+28 |     client::QuicClientError,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `status`
+   --> /Volumes/samsung_t9/progresshub/client_quic/src/chunk_manager.rs:620:13
+    |
+620 |             status => {
+    |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_status`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+    Checking progresshub-client-xet v0.1.0 (/Volumes/samsung_t9/progresshub/client_xet)
+warning: `progresshub-client-quic` (lib) generated 3 warnings (run `cargo fix --lib -p progresshub-client-quic` to apply 2 suggestions)
+warning: unused variable: `start`
+  --> packages/fluent-ai-simd/src/benchmark/mod.rs:33:9
+   |
+33 |     let start = Instant::now();
+   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_start`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: `fluent-ai-simd` (lib) generated 1 warning
+    Checking progresshub-client-selector v0.1.0 (/Volumes/samsung_t9/progresshub/client_selector)
+error[E0432]: unresolved import `crate::completion::CompletionProvider`
+ --> packages/domain/src/memory/config/memory.rs:6:5
+  |
+6 | use crate::completion::CompletionProvider;
+  |     ^^^^^^^^^^^^^^^^^^^------------------
+  |     |                  |
+  |     |                  help: a similar name exists in the module: `CompletionModel`
+  |     no `CompletionProvider` in `completion`
+
+error[E0432]: unresolved imports `types::CommandHandler`, `types::CommandHandlerMetadata`, `types::DefaultCommandHandler`
+  --> packages/domain/src/chat/commands/mod.rs:25:17
+   |
+25 | pub use types::{CommandHandler, CommandHandlerMetadata, DefaultCommandHandler};
+   |                 ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^ no `DefaultCommandHandler` in `chat::commands::types`
+   |                 |               |
+   |                 |               no `CommandHandlerMetadata` in `chat::commands::types`
+   |                 no `CommandHandler` in `chat::commands::types`
+   |                 help: a similar name exists in the module: `CommandParser`
+
+error[E0432]: unresolved import `crate::model::ModelConfig`
+ --> packages/domain/src/memory/config/memory.rs:7:5
+  |
+7 | use crate::model::ModelConfig;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^ no `ModelConfig` in `model`
+  |
+help: consider importing this struct instead
+  |
+7 - use crate::model::ModelConfig;
+7 + use crate::chat::config::ModelConfig;
+  |
+
+    Checking progresshub v0.1.0 (/Volumes/samsung_t9/progresshub/tui)
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `bincode`
+    --> packages/domain/src/chat/config.rs:1038:62
+     |
+1038 |                 let bytes = bincode::encode_to_vec(&*config, bincode::config::standard())
+     |                                                              ^^^^^^^ use of unresolved module or unlinked crate `bincode`
+     |
+     = help: if you wanted to use a crate named `bincode`, use `cargo add bincode` to add it to your `Cargo.toml`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `bincode`
+    --> packages/domain/src/chat/config.rs:1100:70
+     |
+1100 |                 let (config, _) = bincode::decode_from_slice(&bytes, bincode::config::standard())
+     |                                                                      ^^^^^^^ use of unresolved module or unlinked crate `bincode`
+     |
+     = help: if you wanted to use a crate named `bincode`, use `cargo add bincode` to add it to your `Cargo.toml`
+
+error[E0106]: missing lifetime specifier
+   --> packages/domain/src/engine.rs:388:23
+    |
+388 |     ) -> EngineResult<CompletionResponse> {
+    |                       ^^^^^^^^^^^^^^^^^^ expected named lifetime parameter
+    |
+    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
+    |
+388 |     ) -> EngineResult<CompletionResponse<'static>> {
+    |                                         +++++++++
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `fluent_ai_memory`
+  --> packages/domain/src/memory/config/cache.rs:40:42
+   |

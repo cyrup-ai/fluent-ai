@@ -9,8 +9,8 @@ pub struct MemoryConfig {
     pub database: DatabaseConfig,
     /// Vector store configuration
     pub vector_store: VectorStoreConfig,
-    /// LLM configuration
-    pub llm: LLMConfig,
+    /// Completion provider configuration
+    pub completion: CompletionConfig,
     /// API configuration (optional)
     pub api: Option<APIConfig>,
     /// Cache configuration
@@ -101,11 +101,11 @@ pub enum EmbeddingModelType {
     Custom,
 }
 
-/// LLM configuration
+/// Completion provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LLMConfig {
-    /// LLM provider
-    pub provider: LLMProvider,
+pub struct CompletionConfig {
+    /// Completion provider
+    pub provider: CompletionProvider,
     /// Model name
     pub model_name: String,
     /// API key (optional)
@@ -120,9 +120,9 @@ pub struct LLMConfig {
     pub options: Option<serde_json::Value>,
 }
 
-/// LLM providers
+/// Completion providers
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum LLMProvider {
+pub enum CompletionProvider {
     /// OpenAI
     OpenAI,
     /// Anthropic
@@ -220,7 +220,7 @@ impl Default for MemoryConfig {
         Self {
             database: DatabaseConfig::default(),
             vector_store: VectorStoreConfig::default(),
-            llm: LLMConfig::default(),
+            completion: CompletionConfig::default(),
             api: None,
             cache: CacheConfig::default(),
             logging: LoggingConfig::default(),
@@ -268,10 +268,10 @@ impl Default for EmbeddingModelConfig {
     }
 }
 
-impl Default for LLMConfig {
+impl Default for CompletionConfig {
     fn default() -> Self {
         Self {
-            provider: LLMProvider::OpenAI,
+            provider: CompletionProvider::OpenAI,
             model_name: "gpt-4".to_string(),
             api_key: None,
             api_base: None,

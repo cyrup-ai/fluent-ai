@@ -34,11 +34,8 @@ pub enum ClientFactoryError {
     #[error("Authentication error: {message}")]
     AuthenticationError { message: String },
 
-    #[error("Network error: {source}")]
-    NetworkError {
-        #[from]
-        source: reqwest::Error,
-    },
+    #[error("Network error: {message}")]
+    NetworkError { message: String },
 
     #[error("HTTP error: {source}")]
     HttpError {

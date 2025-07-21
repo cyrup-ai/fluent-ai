@@ -1,7 +1,7 @@
 //! Main orchestration and coordination for committee-based evaluation
 //!
 //! This module provides the high-level orchestration logic that coordinates
-//! multiple LLM evaluators, manages evaluation sessions, handles caching,
+//! multiple provider evaluators, manages evaluation sessions, handles caching,
 //! and provides the main public API for the committee evaluation system.
 
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
 
 use super::committee_consensus::{CommitteeConsensusEngine, ConsensusConfig, ConsensusDecision};
-use super::committee_evaluators::{EvaluationSession, EvaluatorPool, LLMEvaluator};
+use super::committee_evaluators::{EvaluationSession, EvaluatorPool, ProviderEvaluator};
 use super::committee_types::{
     CacheEntry, CacheMetrics, CommitteeError, CommitteeEvaluation, CommitteeMetrics,
     CommitteeResult, EvaluationConfig, EvaluationResult, ModelType,
@@ -65,7 +65,7 @@ impl CommitteeEvaluator {
 
         // Create evaluators for each specified model type
         for model_type in &config.models {
-            let evaluator = LLMEvaluator::new(model_type.clone(), 3)
+            let evaluator = ProviderEvaluator::new(model_type.clone(), 3)
                 .await
                 .map_err(|e| {
                     error!("Failed to create evaluator for {:?}: {}", model_type, e);
@@ -352,7 +352,7 @@ impl CommitteeEvaluator {
     }
 
     /// Get evaluators for evaluation session
-    fn get_session_evaluators(&self) -> CommitteeResult<ArrayVec<Arc<LLMEvaluator>, MAX_COMMITTEE_SIZE>> {
+    fn get_session_evaluators(&self) -> CommitteeResult<ArrayVec<Arc<ProviderEvaluator>, MAX_COMMITTEE_SIZE>> {
         let mut evaluators = ArrayVec::new();
 
         for model_type in &self.config.models {

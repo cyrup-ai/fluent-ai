@@ -3,17 +3,19 @@ use std::sync::Arc;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use fluent_ai_memory::{SurrealMemoryManager, MemoryNode, MemoryConfig, memory::MemoryTypeEnum};
 use rand::{Rng, rng};
-use tokio::runtime::Runtime;
+use tokio::sync::OnceCell;
 
-fn setup_benchmark_environment() -> (Arc<SurrealMemoryManager>, Runtime) {
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-    let config = MemoryConfig::default();
-    let memory_manager = Arc::new(
-        runtime.block_on(async { 
-            fluent_ai_memory::initialize(&config).await.unwrap()
-        })
-    );
-    (memory_manager, runtime)
+// Global memory manager initialized once for all benchmarks
+static MEMORY_MANAGER: OnceCell<Arc<SurrealMemoryManager>> = OnceCell::const_new();
+
+async fn get_memory_manager() -> Arc<SurrealMemoryManager> {
+    MEMORY_MANAGER.get_or_init(|| async {
+        let config = MemoryConfig::default();
+        Arc::new(
+            fluent_ai_memory::initialize(&config).await
+                .expect("Failed to initialize memory system for benchmarks")
+        )
+    }).await.clone()
 }
 
 fn create_test_memory(id: &str) -> MemoryNode {
@@ -48,75 +50,74 @@ fn bench_memory_serialization(c: &mut Criterion) {
 }
 
 fn bench_memory_storage(c: &mut Criterion) {
-    let (memory_manager, runtime) = setup_benchmark_environment();
-    let memory = create_test_memory("test_id");
-
     c.bench_function("memory_storage", |b| {
-        b.iter(|| {
-            runtime.block_on(async {
-                memory_manager.store(&memory).await.unwrap();
+        b.to_async(tokio::runtime::Runtime::new().expect("Failed to create async runtime"))
+            .iter(|| async {
+                let memory_manager = get_memory_manager().await;
+                let memory = create_test_memory("test_id");
+                memory_manager.store(&memory).await
+                    .expect("Failed to store memory in benchmark");
             });
-        });
     });
 }
 
 fn bench_memory_retrieval(c: &mut Criterion) {
-    let (memory_manager, runtime) = setup_benchmark_environment();
-    let memory = create_test_memory("test_id");
-    
-    // Store the memory first
-    runtime.block_on(async {
-        memory_manager.store(&memory).await.unwrap();
-    });
-
     c.bench_function("memory_retrieval", |b| {
-        b.iter(|| {
-            runtime.block_on(async {
-                let result = memory_manager.get("test_id").await.unwrap();
+        b.to_async(tokio::runtime::Runtime::new().expect("Failed to create async runtime"))
+            .iter(|| async {
+                let memory_manager = get_memory_manager().await;
+                let memory = create_test_memory("test_id");
+                
+                // Store the memory first
+                memory_manager.store(&memory).await
+                    .expect("Failed to store memory for retrieval benchmark");
+                
+                // Then retrieve it
+                let result = memory_manager.get("test_id").await
+                    .expect("Failed to retrieve memory in benchmark");
                 std::hint::black_box(result);
             });
-        });
     });
 }
 
 fn bench_memory_search(c: &mut Criterion) {
-    let (memory_manager, runtime) = setup_benchmark_environment();
-    
-    // Store some test memories
-    runtime.block_on(async {
-        for i in 0..100 {
-            let memory = create_test_memory(&format!("test_id_{}", i));
-            memory_manager.store(&memory).await.unwrap();
-        }
-    });
-
     c.bench_function("memory_search", |b| {
-        b.iter(|| {
-            runtime.block_on(async {
-                let results = memory_manager.search("Test", 10).await.unwrap();
+        b.to_async(tokio::runtime::Runtime::new().expect("Failed to create async runtime"))
+            .iter(|| async {
+                let memory_manager = get_memory_manager().await;
+                
+                // Store test memories for search
+                for i in 0..100 {
+                    let memory = create_test_memory(&format!("test_id_{}", i));
+                    memory_manager.store(&memory).await
+                        .expect("Failed to store memory for search benchmark");
+                }
+                
+                // Perform search
+                let results = memory_manager.search("Test", 10).await
+                    .expect("Failed to search memories in benchmark");
                 std::hint::black_box(results);
             });
-        });
     });
 }
 
 fn bench_batch_operations(c: &mut Criterion) {
-    let (memory_manager, runtime) = setup_benchmark_environment();
-    
     let mut group = c.benchmark_group("batch_operations");
+    
     for size in [10, 100, 1000].iter() {
         group.bench_with_input(BenchmarkId::new("batch_store", size), size, |b, &size| {
-            b.iter(|| {
-                runtime.block_on(async {
+            b.to_async(tokio::runtime::Runtime::new().expect("Failed to create async runtime"))
+                .iter(|| async {
+                    let memory_manager = get_memory_manager().await;
                     let memories: Vec<MemoryNode> = (0..size)
                         .map(|i| create_test_memory(&format!("batch_test_{}", i)))
                         .collect();
                     
                     for memory in memories {
-                        memory_manager.store(&memory).await.unwrap();
+                        memory_manager.store(&memory).await
+                            .expect("Failed to store memory in batch benchmark");
                     }
                 });
-            });
         });
     }
     group.finish();

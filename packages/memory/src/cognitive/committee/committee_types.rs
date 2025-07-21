@@ -1,6 +1,6 @@
 //! Zero-Allocation Committee Evaluation System Core Types
 //!
-//! Blazing-fast, lock-free data structures for LLM committee-based evaluation.
+//! Blazing-fast, lock-free data structures for provider committee-based evaluation.
 //! All operations are designed for optimal performance with zero heap allocations
 //! in hot paths and comprehensive atomic operations for thread safety.
 
@@ -155,7 +155,7 @@ pub const MAX_REASONING_BYTES: usize = 512;
 /// Cache entry maximum lifetime for memory efficiency
 pub const MAX_CACHE_LIFETIME_SECS: u64 = 3600;
 
-/// LLM model types with compile-time performance characteristics
+/// Model types with compile-time performance characteristics
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum ModelType {
@@ -439,7 +439,7 @@ pub struct Model {
     pub timeout_ms: u64,
     pub max_retries: u8,
     pub rate_limit_per_minute: u32,
-    pub provider: Arc<dyn crate::llm::LLMProvider>,
+    pub provider: Arc<dyn fluent_ai_domain::completion::CompletionProvider>,
     pub health_status: Arc<RwLock<HealthStatus>>,
     pub metrics: Arc<RwLock<ModelMetrics>>,
 }
@@ -450,7 +450,7 @@ impl Model {
     pub fn new(
         model_type: ModelType,
         api_key: Arc<str>,
-        provider: Arc<dyn crate::llm::LLMProvider>,
+        provider: Arc<dyn fluent_ai_domain::completion::CompletionProvider>,
     ) -> Self {
         Self {
             model_type,

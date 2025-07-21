@@ -34,6 +34,7 @@ use crate::error::{CandleError, CandleResult as Result};
 use arrayvec::{ArrayString, ArrayVec};
 use candle_core::{DType, Device, Result as CandleCoreResult, Shape, Tensor};
 use candle_nn::{Init, VarBuilder};
+use crossbeam_skiplist::SkipMap;
 use safetensors::SafeTensors;
 use memmap2::Mmap;
 use smallvec::SmallVec;
@@ -138,8 +139,8 @@ pub struct CandleVarBuilder<'a> {
     /// Tensor metadata cache
     tensor_metadata: HashMap<String, TensorMetadata>,
     
-    /// Loaded tensor cache
-    tensor_cache: HashMap<String, Arc<Tensor>>,
+    /// Loaded tensor cache (lock-free)
+    tensor_cache: SkipMap<String, Arc<Tensor>>,
     
     /// File path for reloading
     file_path: Option<PathBuf>,
@@ -833,11 +834,7 @@ impl<'a> CandleVarBuilder<'a> {
             safetensors: None,
             mmap: None,
             tensor_metadata: Arc::new(HashMap::new()),
-            tensor_cache: if config.tensor_cache_enabled() {
-                Some(Mutex::new(HashMap::new()))
-            } else {
-                None
-            },
+            tensor_cache: SkipMap::new(),
             file_path: None,
             config,
         }

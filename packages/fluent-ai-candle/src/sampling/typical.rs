@@ -5,7 +5,8 @@
 
 use candle_core::{Result as CandleResult, Tensor, DType, D};
 use candle_nn::ops;
-use super::{LogitsProcessor, SamplingError};
+use super::SamplingError;
+use crate::processing::traits::LogitsProcessor;
 
 /// Typical sampling processor for surprise-based token selection
 /// 
@@ -291,10 +292,10 @@ impl LogitsProcessor for TypicalSamplingProcessor {
         logits: &mut Tensor,
         _token_ids: &[u32],
         _position: usize,
-    ) -> Result<(), SamplingError> {
+    ) -> Result<(), crate::sampling::SamplingError> {
         // Validate input
         if logits.shape().elem_count() == 0 {
-            return Err(SamplingError::EmptyVocabulary);
+            return Err(crate::sampling::SamplingError::EmptyVocabulary);
         }
 
         // Skip processing if typical_p is at maximum (no filtering)
@@ -309,11 +310,11 @@ impl LogitsProcessor for TypicalSamplingProcessor {
         Ok(())
     }
 
-    fn validate(&self) -> Result<(), SamplingError> {
+    fn validate(&self) -> Result<(), crate::sampling::SamplingError> {
         if !self.typical_p.is_finite() || 
            self.typical_p < Self::MIN_TYPICAL_P || 
            self.typical_p > Self::MAX_TYPICAL_P {
-            return Err(SamplingError::InvalidTopP(self.typical_p));
+            return Err(crate::sampling::SamplingError::InvalidTopP(self.typical_p));
         }
         Ok(())
     }

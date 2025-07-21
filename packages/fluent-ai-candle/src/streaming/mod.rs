@@ -18,9 +18,10 @@ use std::{
 };
 
 use arrayvec::ArrayString;
-use fluent_ai_domain::{FinishReason, completion::StreamingResponse};
+// Temporarily use domain stubs for compilation testing
+use crate::domain_stubs::{FinishReason, StreamingResponse};
 use crossbeam_channel::{bounded, Sender, Receiver, TrySendError, TryRecvError};
-use futures::Stream;
+use futures_util::Stream;
 
 use crate::error::{CandleError, CandleResult};
 use candle_core::Tensor;
@@ -783,7 +784,7 @@ impl Drop for TokenStreamSender {
 /// Convert TokenOutputStream to StreamingResponse for backward compatibility
 impl Into<StreamingResponse> for TokenOutputStream {
     fn into(mut self) -> StreamingResponse {
-        use futures::stream::{unfold, Stream};
+        use futures_util::stream::{unfold, Stream};
         
         // Create a stream that yields strings by consuming TokenChunks
         let stream = unfold(Some(self), |mut token_stream_opt| async move {

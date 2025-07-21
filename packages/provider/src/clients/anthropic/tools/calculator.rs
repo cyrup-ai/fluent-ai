@@ -6,17 +6,19 @@
 use std::{
     collections::HashMap,
     f64::consts::{E, PI, TAU},
-    future::Future,
-    pin::Pin,
 };
 
 use serde_json::{Value, json};
 use fluent_ai_domain::tool::Tool;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use super::{
     core::{AnthropicError, AnthropicResult},
     function_calling::{ToolExecutionContext, ToolExecutor, ToolOutput},
 };
+
+/// AsyncStream type for streaming operations
+pub type AsyncStream<T> = UnboundedReceiverStream<T>;
 
 /// Built-in calculator tool with production-ready expression evaluation
 pub struct CalculatorTool;
@@ -26,41 +28,48 @@ impl ToolExecutor for CalculatorTool {
         &self,
         input: Value,
         _context: &ToolExecutionContext,
-    ) -> Pin<Box<dyn Future<Output = AnthropicResult<ToolOutput>> + Send>> {
-        Box::pin(async move {
-            let expression = input
-                .get("expression")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| {
-                    AnthropicError::InvalidRequest(
-                        "Calculator requires 'expression' parameter".to_string(),
-                    )
-                })?;
+    ) -> AsyncStream<AnthropicResult<Value>> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        tokio::spawn(async move {
+            let result = async {
+                let expression = input
+                    .get("expression")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        AnthropicError::InvalidRequest(
+                            "Calculator requires 'expression' parameter".to_string(),
+                        )
+                    })?;
 
-            // Production-ready expression evaluation with comprehensive error handling
-            let mut evaluator = ExpressionEvaluator::new();
-            match evaluator.evaluate(expression) {
-                Ok(result) => Ok(ToolOutput::Json(json!({
-                    "result": result,
-                    "expression": expression
-                }))),
-                Err(e) => {
-                    let error_code = match e {
-                        ExpressionError::ParseError { .. } => "PARSE_ERROR",
-                        ExpressionError::DivisionByZero => "DIVISION_BY_ZERO",
-                        ExpressionError::InvalidFunctionCall { .. } => "INVALID_FUNCTION",
-                        ExpressionError::UndefinedVariable { .. } => "UNDEFINED_VARIABLE",
-                        ExpressionError::DomainError { .. } => "DOMAIN_ERROR",
-                        ExpressionError::Overflow { .. } => "OVERFLOW",
-                        ExpressionError::InvalidExpression { .. } => "INVALID_EXPRESSION",
-                    };
-                    Ok(ToolOutput::Error {
-                        message: e.to_string(),
-                        code: Some(error_code.to_string()),
-                    })
+                // Production-ready expression evaluation with comprehensive error handling
+                let mut evaluator = ExpressionEvaluator::new();
+                match evaluator.evaluate(expression) {
+                    Ok(result) => Ok(json!({
+                        "result": result,
+                        "expression": expression
+                    })),
+                    Err(e) => {
+                        let error_code = match e {
+                            ExpressionError::ParseError { .. } => "PARSE_ERROR",
+                            ExpressionError::DivisionByZero => "DIVISION_BY_ZERO",
+                            ExpressionError::InvalidFunctionCall { .. } => "INVALID_FUNCTION",
+                            ExpressionError::UndefinedVariable { .. } => "UNDEFINED_VARIABLE",
+                            ExpressionError::DomainError { .. } => "DOMAIN_ERROR",
+                            ExpressionError::Overflow { .. } => "OVERFLOW",
+                            ExpressionError::InvalidExpression { .. } => "INVALID_EXPRESSION",
+                        };
+                        Ok(json!({
+                            "error": {
+                                "message": e.to_string(),
+                                "code": error_code
+                            }
+                        }))
+                    }
                 }
-            }
-        })
+            }.await;
+            let _ = tx.send(result);
+        });
+        UnboundedReceiverStream::new(rx)
     }
 
     fn definition(&self) -> Tool {

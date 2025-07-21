@@ -20,6 +20,8 @@
 
 pub mod commands;
 pub mod config;
+pub mod conversation;
+pub mod message;
 pub mod export;
 pub mod formatting;
 pub mod integrations;
@@ -31,10 +33,13 @@ pub mod templates;
 // Re-export specific types to avoid ambiguous glob re-exports
 pub use commands::{ChatCommand, CommandExecutor, CommandRegistry};
 pub use config::{ChatConfig, PersonalityConfig};
+pub use conversation::{Conversation, ConversationBuilder, ConversationImpl};
 pub use export::{ExportData, ExportFormat};
 pub use formatting::{FormatStyle, MessageFormatter};
 pub use integrations::{IntegrationConfig, IntegrationManager};
 pub use macros::{MacroAction, MacroSystem};
+pub use message::types::{Message, MessageChunk, MessageRole};
+pub use message::message_processing::{process_message, validate_message, validate_message_sync, sanitize_content};
 pub use realtime::RealTimeSystem;
 pub use search::{ChatSearchIndex, SearchQuery};
 pub use templates::{ChatTemplate, TemplateManager};

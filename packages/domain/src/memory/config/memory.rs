@@ -3,7 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use super::database::DatabaseConfig;
-use super::llm::LLMConfig;
+use crate::completion::CompletionModel;
+use crate::chat::config::ModelConfig;
 use super::vector::VectorStoreConfig;
 use crate::memory::cognitive::{CognitiveMemoryConfig, CognitiveProcessorConfig};
 
@@ -23,8 +24,8 @@ pub struct MemoryConfig {
     /// Vector store configuration for embeddings and similarity search
     pub vector_store: VectorStoreConfig,
 
-    /// LLM configuration for language model integration
-    pub llm: LLMConfig,
+    /// Provider configuration for completion services
+    pub provider_model: ModelConfig,
 
     /// Cognitive memory configuration for advanced processing
     pub cognitive: CognitiveMemoryConfig,
@@ -176,7 +177,7 @@ impl Default for MemoryConfig {
         Self {
             database: DatabaseConfig::default(),
             vector_store: VectorStoreConfig::default(),
-            llm: LLMConfig::default(),
+            provider_model: ModelConfig::default(),
             cognitive: CognitiveMemoryConfig::default(),
             cognitive_processor: CognitiveProcessorConfig::default(),
             performance: MemoryPerformanceConfig::default(),

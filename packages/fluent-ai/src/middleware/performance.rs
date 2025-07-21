@@ -111,13 +111,17 @@ impl CommandMiddleware for PerformanceMiddleware {
         &'a self,
         _command: &'a ChatCommand,
         context: &'a CommandContext,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>
+    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>>
     {
-        Box::pin(async move {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        
+        tokio::spawn(async move {
             // Store start time in context for later use
             // This would typically use a context extension mechanism
-            Ok(())
-        })
+            let _ = tx.send(Ok(()));
+        });
+        
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
     fn after_execute<'a>(
@@ -125,19 +129,25 @@ impl CommandMiddleware for PerformanceMiddleware {
         _command: &'a ChatCommand,
         _context: &'a CommandContext,
         result: &'a CommandResult<CommandOutput>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>
+    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>>
     {
-        Box::pin(async move {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let metrics = self.metrics.clone();
+        let result = result.clone();
+        
+        tokio::spawn(async move {
             // Calculate execution time and record metrics
             let duration_ns = 1000000; // Placeholder - would calculate actual duration
 
-            match result {
-                Ok(_) => self.metrics.record_success(duration_ns),
-                Err(_) => self.metrics.record_failure(duration_ns),
+            match &result {
+                Ok(_) => metrics.record_success(duration_ns),
+                Err(_) => metrics.record_failure(duration_ns),
             }
 
-            Ok(())
-        })
+            let _ = tx.send(Ok(()));
+        });
+        
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
     fn name(&self) -> &str {

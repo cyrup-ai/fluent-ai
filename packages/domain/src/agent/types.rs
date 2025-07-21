@@ -2,9 +2,9 @@
 
 // Removed unused Arc import
 
-use crate::MessageRole;
+use crate::chat::MessageRole;
 use crate::ZeroOneOrMany;
-use crate::chunk::ChatMessageChunk;
+use crate::context::chunk::ChatMessageChunk;
 
 /// Placeholder for Stdio type
 pub struct Stdio;

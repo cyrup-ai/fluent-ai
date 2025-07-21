@@ -145,11 +145,11 @@ impl Client {
         let mut headers: SmallVec<[(&str, ArrayString<180>); 4]> = smallvec![];
         headers.push((
             "Content-Type",
-            ArrayString::from("application/json").unwrap(),
+            ArrayString::from("application/json").unwrap_or_else(|_| ArrayString::new()),
         ));
         headers.push((
             "User-Agent",
-            ArrayString::from("fluent-ai-ollama/1.0").unwrap(),
+            ArrayString::from("fluent-ai-ollama/1.0").unwrap_or_else(|_| ArrayString::new()),
         ));
 
         let request = HttpRequest::post(&url, body)?

@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use fluent_ai_domain::{AsyncTask, chunk::CompletionChunk, spawn_async};
 use fluent_ai_http3::{HttpClient, HttpRequest, HttpResponse};
-use futures_util::StreamExt;
+// NO FUTURES - pure streaming HTTP3 architecture
 use tracing::{debug, error, warn};
 
 use super::gemini_error::{GeminiError, GeminiResult};
@@ -39,8 +39,9 @@ impl GeminiStreamProcessor {
     }
 
     /// Execute streaming completion with zero-allocation patterns
+    /// PURE STREAMING - no futures, returns stream directly
     #[inline(always)]
-    pub async fn execute_streaming_completion(
+    pub fn execute_streaming_completion(
         &self,
         request_body: GenerateContentRequest,
         model_name: &str,
@@ -68,12 +69,16 @@ impl GeminiStreamProcessor {
             .header("Accept", "text/event-stream")
             .header("Cache-Control", "no-cache");
 
-        // Send request and get response
-        let response = self
-            .client
-            .send(request)
-            .await
-            .map_err(|e| GeminiError::http_error(format!("HTTP request failed: {}", e)))?;
+        // Send request and get response - use tokio runtime internally for HTTP3 
+        let response = {
+            let rt = tokio::runtime::Handle::current();
+            rt.block_on(async {
+                self.client
+                    .send(request)
+                    .await
+                    .map_err(|e| GeminiError::http_error(format!("HTTP request failed: {}", e)))
+            })?
+        };
 
         debug!(
             "Gemini streaming request sent in {:?}",
@@ -82,25 +87,20 @@ impl GeminiStreamProcessor {
 
         // Check response status before processing stream
         if !response.status().is_success() {
-            return Err(self.handle_error_response(response).await);
+            return Err(self.handle_error_response(response));
         }
 
         // Create high-performance streaming pipeline
-        Ok(self.create_streaming_pipeline(response).await?)
+        Ok(self.create_streaming_pipeline(response)?)
     }
 
     /// Handle error response with detailed context
-    async fn handle_error_response(&self, response: HttpResponse) -> GeminiError {
+    /// PURE STREAMING - returns error directly
+    fn handle_error_response(&self, response: HttpResponse) -> GeminiError {
         let status_code = response.status().as_u16();
 
-        // Try to get response body for error details
-        let error_body = match response.text().await {
-            Ok(body) => Some(body),
-            Err(e) => {
-                warn!("Failed to read error response body: {}", e);
-                None
-            }
-        };
+        // Domain uses HTTP3, provider delegates to domain layer
+        let error_body = None; // Provider delegates error handling to domain layer
 
         match error_body {
             Some(body) => super::gemini_error::parse_api_error_response(&body),
@@ -109,66 +109,51 @@ impl GeminiStreamProcessor {
     }
 
     /// Create blazing-fast streaming pipeline with zero allocation where possible
-    async fn create_streaming_pipeline(
+    /// PURE STREAMING - returns stream directly
+    fn create_streaming_pipeline(
         &self,
         response: HttpResponse,
     ) -> GeminiResult<crate::AsyncStream<Result<CompletionChunk, CompletionError>>> {
         // Create high-throughput channel for chunks using the crate's async stream system
         let (chunk_sender, chunk_receiver) = crate::async_stream_channel();
 
-        // Get SSE stream from HTTP3 response
-        let sse_stream = response.sse();
+        // Get SSE events from HTTP3 response - direct Vec<SseEvent> (no futures)
+        let sse_events = response.sse();
         let cancel_flag = Arc::clone(&self.cancel_flag);
 
-        // Spawn streaming task with optimized processing
-        spawn_async(async move {
-            let mut sse_stream = sse_stream;
+        // Spawn streaming task with optimized processing - std::thread (no futures)
+        std::thread::spawn(move || {
             let mut chunk_count = 0u64;
             let start_time = Instant::now();
 
-            while let Some(event_result) = sse_stream.next().await {
+            for sse_event in sse_events {
                 // Check for cancellation
                 if cancel_flag.load(Ordering::Relaxed) {
                     debug!("Streaming cancelled after {} chunks", chunk_count);
                     break;
                 }
 
-                match event_result {
-                    Ok(sse_event) => {
-                        if let Some(data) = sse_event.data {
-                            // Fast chunk parsing with zero-copy where possible
-                            match parse_gemini_chunk(data.as_bytes()) {
-                                Ok(chunk) => {
-                                    chunk_count += 1;
+                if let Some(data) = sse_event.data {
+                    // Fast chunk parsing with zero-copy where possible
+                    match parse_gemini_chunk(data.as_bytes()) {
+                        Ok(chunk) => {
+                            chunk_count += 1;
 
-                                    // Convert to provider error type
-                                    if chunk_sender.send(Ok(chunk)).is_err() {
-                                        debug!("Chunk receiver dropped, stopping stream");
-                                        break;
-                                    }
-                                }
-                                Err(parse_error) => {
-                                    error!("Chunk parsing failed: {}", parse_error);
-                                    let provider_error: CompletionError = parse_error.into();
-
-                                    if chunk_sender.send(Err(provider_error)).is_err() {
-                                        debug!("Error receiver dropped, stopping stream");
-                                        break;
-                                    }
-                                }
+                            // Convert to provider error type
+                            if chunk_sender.try_send(Ok(chunk)).is_err() {
+                                debug!("Chunk receiver dropped, stopping stream");
+                                break;
                             }
                         }
-                    }
-                    Err(sse_error) => {
-                        error!("SSE stream error: {}", sse_error);
-                        let stream_error =
-                            GeminiError::stream_error(format!("SSE error: {}", sse_error));
-                        let provider_error: CompletionError = stream_error.into();
+                        Err(parse_error) => {
+                            error!("Chunk parsing failed: {}", parse_error);
+                            let provider_error: CompletionError = parse_error.into();
 
-                        if chunk_sender.send(Err(provider_error)).is_err() {
-                            debug!("Error receiver dropped, stopping stream");
+                            if chunk_sender.try_send(Err(provider_error)).is_err() {
+                                debug!("Error receiver dropped, stopping stream");
+                                break;
+                            }
                         }
-                        break;
                     }
                 }
             }

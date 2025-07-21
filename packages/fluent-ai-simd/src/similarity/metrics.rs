@@ -31,7 +31,7 @@ impl SimilarityMetrics {
             total_calculations: self.total_calculations.load(Ordering::Relaxed),
             total_elements_processed: self.total_elements_processed
                 .load(Ordering::Relaxed),
-            simd_time_ns: self.simed_time_ns.load(Ordering::Relaxed),
+            simd_time_ns: self.simd_time_ns.load(Ordering::Relaxed),
         }
     }
 
@@ -97,4 +97,22 @@ impl Drop for MetricsGuard<'_> {
         let duration = self.start.elapsed();
         self.metrics.record_calculation(self.elements, duration);
     }
+}
+
+// Global metrics instance
+use lazy_static::lazy_static;
+use std::sync::Arc;
+
+lazy_static! {
+    static ref GLOBAL_METRICS: Arc<SimilarityMetrics> = Arc::new(SimilarityMetrics::default());
+}
+
+/// Get global similarity metrics
+pub fn get_similarity_metrics() -> SimilarityMetricsSnapshot {
+    GLOBAL_METRICS.get_metrics()
+}
+
+/// Reset global similarity metrics
+pub fn reset_similarity_metrics() {
+    GLOBAL_METRICS.reset();
 }

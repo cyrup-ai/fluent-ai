@@ -6,7 +6,7 @@ use super::request::CompletionRequest;
 use super::response::CompletionResponse;
 use super::types::CompletionParams;
 use crate::async_task::AsyncStream;
-use crate::chunk::CompletionChunk;
+use crate::context::chunk::CompletionChunk;
 use crate::prompt::Prompt;
 
 /// Core trait for completion models

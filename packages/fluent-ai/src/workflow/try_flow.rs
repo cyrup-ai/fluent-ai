@@ -6,7 +6,7 @@
 // across pipelined operations.
 // ============================================================================
 
-use std::future::Future;
+use fluent_ai_http3::async_task::AsyncStream;
 
 use futures::stream::{self, StreamExt, TryStreamExt};
 use futures::{join, try_join};
@@ -25,7 +25,7 @@ pub trait TryOp: Send + Sync {
     fn try_call(
         &self,
         input: Self::Input,
-    ) -> impl Future<Output = Result<Self::Output, Self::Error>> + Send;
+    ) -> AsyncStream<Result<Self::Output, Self::Error>>;
 
     // ---------- fan-out with bounded parallelism ----------
     #[inline]
@@ -33,19 +33,57 @@ pub trait TryOp: Send + Sync {
         &self,
         concurrency: usize,
         input: I,
-    ) -> impl Future<Output = Result<Vec<Self::Output>, Self::Error>> + Send
+    ) -> AsyncStream<Result<Vec<Self::Output>, Self::Error>>
     where
         I: IntoIterator<Item = Self::Input> + Send,
         I::IntoIter: Send,
-        Self: Sized,
+        Self: Sized + Clone,
     {
-        async move {
-            stream::iter(input)
-                .map(|inp| self.try_call(inp))
-                .buffered(concurrency)
-                .try_collect()
-                .await
-        }
+        let (tx, stream) = AsyncStream::channel();
+        let inputs: Vec<_> = input.into_iter().collect();
+        let op = self.clone();
+        
+        tokio::spawn(async move {
+            let mut results = Vec::with_capacity(inputs.len());
+            let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(concurrency));
+            
+            let mut handles = Vec::new();
+            
+            for input_item in inputs {
+                let permit = semaphore.clone().acquire_owned().await.unwrap();
+                let op_clone = op.clone();
+                
+                let handle = tokio::spawn(async move {
+                    let mut call_stream = op_clone.try_call(input_item);
+                    let result = call_stream.next();
+                    drop(permit);
+                    result
+                });
+                handles.push(handle);
+            }
+            
+            let mut final_results = Vec::new();
+            let mut has_error = None;
+            
+            for handle in handles {
+                match handle.await {
+                    Ok(Some(Ok(value))) => final_results.push(value),
+                    Ok(Some(Err(error))) => {
+                        has_error = Some(error);
+                        break;
+                    }
+                    _ => continue,
+                }
+            }
+            
+            let result = match has_error {
+                Some(error) => Err(error),
+                None => Ok(final_results),
+            };
+            let _ = tx.send(result);
+        });
+        
+        stream
     }
 
     // ---------- success-branch combinators ----------

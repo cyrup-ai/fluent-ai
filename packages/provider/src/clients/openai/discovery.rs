@@ -69,22 +69,20 @@ impl OpenAIDiscovery {
             capabilities.push(ModelCapability::Audio);
         }
 
-        Some(
-            ModelInfoBuilder::new(model_name, "openai")
-                .with_display_name(model_name)
-                .with_max_input_tokens(config.context_length)
-                .with_max_output_tokens(config.max_tokens)
-                .with_capabilities(capabilities)
-                .with_parameter("temperature", config.temperature as f64)
-                .with_parameter("top_p", config.top_p as f64)
-                .with_parameter("frequency_penalty", config.frequency_penalty as f64)
-                .with_parameter("presence_penalty", config.presence_penalty as f64)
-                .with_metadata("supports_tools", config.supports_tools.to_string())
-                .with_metadata("supports_vision", config.supports_vision.to_string())
-                .with_metadata("supports_audio", config.supports_audio.to_string())
-                .build()
-                .expect("Failed to build model info"),
-        )
+        ModelInfoBuilder::new(model_name, "openai")
+            .with_display_name(model_name)
+            .with_max_input_tokens(config.context_length)
+            .with_max_output_tokens(config.max_tokens)
+            .with_capabilities(capabilities)
+            .with_parameter("temperature", config.temperature as f64)
+            .with_parameter("top_p", config.top_p as f64)
+            .with_parameter("frequency_penalty", config.frequency_penalty as f64)
+            .with_parameter("presence_penalty", config.presence_penalty as f64)
+            .with_metadata("supports_tools", config.supports_tools.to_string())
+            .with_metadata("supports_vision", config.supports_vision.to_string())
+            .with_metadata("supports_audio", config.supports_audio.to_string())
+            .build()
+            .ok()
     }
 }
 

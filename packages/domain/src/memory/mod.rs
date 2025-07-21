@@ -37,8 +37,7 @@ mod workflow;
 
 // Re-export all new domain types
 // Type aliases for migration compatibility
-use std::future::Future;
-use std::pin::Pin;
+use crate::async_task::AsyncStream;
 
 /// Compatibility mode for memory systems
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, Default)]
@@ -55,15 +54,13 @@ pub enum CompatibilityMode {
 // Re-export specific types to avoid ambiguous glob re-exports
 pub use cognitive::{CognitiveMemory, CognitiveProcessor};
 pub use config::database::{DatabaseType, PoolConfig};
-pub use config::llm::{
-    CacheConfig, LLMProvider, ModelConfig, RateLimitConfig, RetryConfig, StreamingConfig,
-    TokenTrackingConfig,
-};
+pub use config::shared::RetryConfig;
 pub use config::vector::{
-    DistanceMetric, EmbeddingConfig, EmbeddingModelType, IndexConfig, IndexType, PerformanceConfig,
+    DistanceMetric, IndexConfig, IndexType, PerformanceConfig,
     SimdConfig, VectorStoreType,
 };
-pub use config::{DatabaseConfig, LLMConfig, MemoryConfig, VectorStoreConfig};
+pub use config::shared::{EmbeddingConfig, EmbeddingModelType};
+pub use config::{DatabaseConfig, MemoryConfig, VectorStoreConfig};
 // Conditional re-exports for cognitive features
 // Removed unexpected cfg condition "cognitive" - feature does not exist
 // Re-export fluent_ai_memory types for convenience
@@ -78,7 +75,7 @@ pub use primitives::*;
 pub use primitives::{MemoryContent, MemoryTypeEnum};
 pub use tool::{MemoryOperation, MemoryResult, MemoryTool, MemoryToolError, MemoryToolResult};
 
-pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
+// BoxFuture replaced with AsyncStream - use .collect() for Future-like behavior
 
 /// Fallback trait definition (removed unexpected cfg condition "fluent-ai-memory")
 pub trait MemoryManagerTrait: Send + Sync {

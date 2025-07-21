@@ -12,10 +12,10 @@
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
-    future::Future,
-    pin::Pin,
     ptr::NonNull,
 };
+
+use fluent_ai_http3::async_task::AsyncStream;
 
 use crate::{
     agent::{Agent, AgentBuilder},
@@ -31,11 +31,11 @@ use crate::{
     transcription::TranscriptionModelDyn,
 };
 
-/// Factory function signature – boxed future returning a provider.
-type FactoryFut = Pin<Box<dyn Future<Output = Result<Box<dyn ProviderClient>, BuildErr>> + Send>>;
+/// Factory function signature – AsyncStream returning a provider.
+type FactoryStream = AsyncStream<Result<Box<dyn ProviderClient>, BuildErr>>;
 
 /// Raw pointer to a leaked factory (`Send + Sync` by construction).
-type FactoryPtr = *const (dyn Fn() -> FactoryFut + Send + Sync);
+type FactoryPtr = *const (dyn Fn() -> FactoryStream + Send + Sync);
 
 /// Utility so we can map/pipe inline without extra imports.
 trait Pipe: Sized {
@@ -81,21 +81,24 @@ impl DynClientBuilder {
     pub fn register<F, Fut, C>(mut self, name: &'static str, factory: F) -> Self
     where
         F: Fn() -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<C, anyhow::Error>> + Send + 'static,
+        Fut: std::future::Future<Output = Result<C, anyhow::Error>> + Send + 'static,
         C: ProviderClient + 'static,
     {
         // Lower-case once, leak so the &'static str lives forever.
         let name_key: &'static str = Box::leak(name.to_ascii_lowercase().into_boxed_str());
 
-        // Wrap the user-supplied `factory()` into our expected `FactoryFut`.
+        // Wrap the user-supplied `factory()` into our expected `FactoryStream`.
         // Leak the closure and store its raw pointer.
-        let boxed: Box<dyn Fn() -> FactoryFut + Send + Sync> = Box::new(move || {
-            Box::pin(async move {
-                factory()
+        let boxed: Box<dyn Fn() -> FactoryStream + Send + Sync> = Box::new(move || {
+            let (tx, stream) = AsyncStream::channel();
+            tokio::spawn(async move {
+                let result = factory()
                     .await
                     .map(|c| Box::new(c) as Box<dyn ProviderClient>)
-                    .map_err(|e| BuildErr::Factory(e.to_string()))
-            })
+                    .map_err(|e| BuildErr::Factory(e.to_string()));
+                let _ = tx.send(result);
+            });
+            stream
         });
         let ptr: FactoryPtr = Box::leak(boxed);
 
@@ -107,7 +110,7 @@ impl DynClientBuilder {
     where
         I: IntoIterator<Item = (&'static str, F)>,
         F: Fn() -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<C, anyhow::Error>> + Send + 'static,
+        Fut: std::future::Future<Output = Result<C, anyhow::Error>> + Send + 'static,
         C: ProviderClient + 'static,
     {
         providers
@@ -117,14 +120,18 @@ impl DynClientBuilder {
 
     // ----- low-level helper -------------------------------------------------
 
-    async fn build_raw(&self, provider: &str) -> Result<Box<dyn ProviderClient>, BuildErr> {
+    fn build_raw(&self, provider: &str) -> Result<Box<dyn ProviderClient>, BuildErr> {
         let ptr = *self
             .registry
             .get(provider)
             .ok_or_else(|| BuildErr::UnknownProvider(provider.into()))?;
         // SAFETY: pointer is a leaked &'static dyn Fn – always valid.
         let factory = unsafe { &*ptr };
-        (factory)().await
+        let mut stream = (factory)();
+        match stream.next() {
+            Some(result) => result,
+            None => Err(BuildErr::Factory("No result from factory".to_string())),
+        }
     }
 
     // ----- high-level helpers ----------------------------------------------
@@ -137,8 +144,7 @@ impl DynClientBuilder {
         let provider = provider.to_string();
         let model = model.to_string();
         crate::runtime::spawn_async(async move {
-            self.build_raw(&provider)
-                .await?
+            self.build_raw(&provider)?
                 .as_completion()
                 .ok_or_else(|| BuildErr::UnsupportedFeature {
                     provider: provider.clone(),
@@ -157,8 +163,7 @@ impl DynClientBuilder {
         let provider = provider.to_string();
         let model = model.to_string();
         crate::runtime::spawn_async(async move {
-            self.build_raw(&provider)
-                .await?
+            self.build_raw(&provider)?
                 .as_completion()
                 .ok_or_else(|| BuildErr::UnsupportedFeature {
                     provider: provider.clone(),
@@ -177,8 +182,7 @@ impl DynClientBuilder {
         let provider = provider.to_string();
         let model = model.to_string();
         crate::runtime::spawn_async(async move {
-            self.build_raw(&provider)
-                .await?
+            self.build_raw(&provider)?
                 .as_embeddings()
                 .ok_or_else(|| BuildErr::UnsupportedFeature {
                     provider: provider.clone(),
@@ -197,8 +201,7 @@ impl DynClientBuilder {
         let provider = provider.to_string();
         let model = model.to_string();
         crate::runtime::spawn_async(async move {
-            self.build_raw(&provider)
-                .await?
+            self.build_raw(&provider)?
                 .as_transcription()
                 .ok_or_else(|| BuildErr::UnsupportedFeature {
                     provider: provider.clone(),

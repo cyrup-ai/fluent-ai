@@ -8,7 +8,7 @@ use std::ops::RangeInclusive;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::validation::{ValidationError, ValidationResult};
+use crate::model::{ValidationError, ValidationResult};
 
 /// Temperature range for generation (0.0 to 2.0)
 pub const TEMPERATURE_RANGE: RangeInclusive<f64> = 0.0..=2.0;

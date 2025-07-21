@@ -17,7 +17,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 // Removed unused import: wide::f32x8
-use crate::message::SearchChatMessage;
+use crate::chat::message::SearchChatMessage;
 
 /// Search query with advanced filtering options
 #[derive(Debug, Clone, Serialize, Deserialize)]

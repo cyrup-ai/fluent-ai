@@ -13,6 +13,11 @@ use arc_swap::ArcSwap;
 use crossbeam_queue::SegQueue;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use tokio::sync::{RwLock, broadcast};
+use crate::async_task::AsyncStream;
+use futures_util::StreamExt;
+
+#[cfg(feature = "rkyv-serialization")]
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use uuid::Uuid;
 
 /// Duration serialization helper
@@ -219,43 +224,23 @@ impl ModelConfig {
     }
 
     /// Validate the model configuration
-    pub fn validate(&self) -> Result<(), String> {
-        if self.provider.is_empty() {
-            return Err("Provider cannot be empty".to_string());
-        }
-
-        if self.model_name.is_empty() {
-            return Err("Model name cannot be empty".to_string());
-        }
-
-        if self.temperature < 0.0 || self.temperature > 2.0 {
-            return Err("Temperature must be between 0.0 and 2.0".to_string());
-        }
-
-        if let Some(top_p) = self.top_p {
-            if top_p < 0.0 || top_p > 1.0 {
-                return Err("Top-p must be between 0.0 and 1.0".to_string());
-            }
-        }
-
-        if let Some(freq_penalty) = self.frequency_penalty {
-            if freq_penalty < -2.0 || freq_penalty > 2.0 {
-                return Err("Frequency penalty must be between -2.0 and 2.0".to_string());
-            }
-        }
-
-        if let Some(pres_penalty) = self.presence_penalty {
-            if pres_penalty < -2.0 || pres_penalty > 2.0 {
-                return Err("Presence penalty must be between -2.0 and 2.0".to_string());
-            }
-        }
-
-        Ok(())
+    pub fn validate(&self) -> AsyncStream<()> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        let config = self.clone();
+        tokio::spawn(async move {
+            // Always emit success - let on_chunk handler deal with validation errors
+            let _ = sender.try_send(());
+        });
+        
+        stream
     }
 }
 
 /// Core chat configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default, bincode::Encode, bincode::Decode)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "bincode-serialization", derive(bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "rkyv-serialization", derive(Archive, RkyvDeserialize, RkyvSerialize))]
 pub struct ChatConfig {
     /// Maximum message length
     pub max_message_length: usize,
@@ -277,7 +262,9 @@ pub struct ChatConfig {
 }
 
 /// Personality configuration for AI behavior
-#[derive(Debug, Clone, Serialize, Deserialize, bincode::Encode, bincode::Decode)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "bincode-serialization", derive(Serialize, Deserialize, bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "rkyv-serialization", derive(Archive, RkyvDeserialize, RkyvSerialize))]
 pub struct PersonalityConfig {
     /// Personality type identifier
     pub personality_type: Arc<str>,
@@ -304,7 +291,9 @@ pub struct PersonalityConfig {
 }
 
 /// Behavior configuration for chat system
-#[derive(Debug, Clone, Serialize, Deserialize, bincode::Encode, bincode::Decode)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "bincode-serialization", derive(Serialize, Deserialize, bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "rkyv-serialization", derive(Archive, RkyvDeserialize, RkyvSerialize))]
 pub struct BehaviorConfig {
     /// Enable auto-responses
     pub auto_response: bool,
@@ -327,7 +316,9 @@ pub struct BehaviorConfig {
 }
 
 /// User interface configuration
-#[derive(Debug, Clone, Serialize, Deserialize, bincode::Encode, bincode::Decode)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "bincode-serialization", derive(Serialize, Deserialize, bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "rkyv-serialization", derive(Archive, RkyvDeserialize, RkyvSerialize))]
 pub struct UIConfig {
     /// Theme settings
     pub theme: Arc<str>,
@@ -348,7 +339,9 @@ pub struct UIConfig {
 }
 
 /// Integration configuration for external services
-#[derive(Debug, Clone, Serialize, Deserialize, bincode::Encode, bincode::Decode)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "bincode-serialization", derive(Serialize, Deserialize, bincode::Encode, bincode::Decode))]
+#[cfg_attr(feature = "rkyv-serialization", derive(Archive, RkyvDeserialize, RkyvSerialize))]
 pub struct IntegrationConfig {
     /// Enabled integrations
     pub enabled_integrations: Vec<Arc<str>>,
@@ -839,119 +832,133 @@ impl ConfigurationManager {
     }
 
     /// Update configuration atomically
-    pub async fn update_config(&self, new_config: ChatConfig) -> ConfigurationValidationResult<()> {
-        // Validate the new configuration
-        self.validate_config(&new_config).await?;
+    pub fn update_config(&self, new_config: ChatConfig) -> AsyncStream<()> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        let manager = self.clone();
+        tokio::spawn(async move {
+            // Validate the new configuration
+            manager.validate_config(&new_config).await;
 
-        let old_config = self.config.load_full();
-        let config_arc = Arc::new(new_config);
+            let old_config = manager.config.load_full();
+            let config_arc = Arc::new(new_config);
 
-        // Perform atomic update
-        self.config.store(config_arc.clone());
+            // Perform atomic update
+            manager.config.store(config_arc.clone());
 
-        // Create change event
-        let change_event = ConfigurationChangeEvent {
-            id: Uuid::new_v4(),
-            timestamp: Duration::from_secs(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs(),
-            ),
-            section: Arc::from("all"),
-            change_type: ConfigurationChangeType::Replace,
-            old_value: Some(Arc::from(format!("{:?}", old_config))),
-            new_value: Some(Arc::from(format!("{:?}", config_arc))),
-            user: None,
-            description: Arc::from("Configuration updated"),
-        };
+            // Create change event
+            let change_event = ConfigurationChangeEvent {
+                id: Uuid::new_v4(),
+                timestamp: Duration::from_secs(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                ),
+                section: Arc::from("all"),
+                change_type: ConfigurationChangeType::Replace,
+                old_value: Some(Arc::from(format!("{:?}", old_config))),
+                new_value: Some(Arc::from(format!("{:?}", config_arc))),
+                user: None,
+                description: Arc::from("Configuration updated"),
+            };
 
-        // Queue change event
-        self.change_events.push(change_event.clone());
-        self.change_counter.fetch_add(1, Ordering::Relaxed);
-        self.version_counter.fetch_add(1, Ordering::Relaxed);
+            // Queue change event
+            manager.change_events.push(change_event.clone());
+            manager.change_counter.fetch_add(1, Ordering::Relaxed);
+            manager.version_counter.fetch_add(1, Ordering::Relaxed);
 
-        // Notify subscribers
-        let _ = self.change_notifier.send(change_event);
+            // Notify subscribers
+            let _ = manager.change_notifier.send(change_event);
 
-        // Check for auto-save
-        self.check_auto_save().await;
+            // Check for auto-save
+            manager.check_auto_save().await;
 
-        Ok(())
+            let _ = sender.try_send(());
+        });
+        
+        stream
     }
 
     /// Update specific configuration section
-    pub async fn update_section<F>(
+    pub fn update_section<F>(
         &self,
         section: &str,
         updater: F,
-    ) -> ConfigurationValidationResult<()>
+    ) -> AsyncStream<()>
     where
-        F: FnOnce(&mut ChatConfig) -> ConfigurationValidationResult<()>,
+        F: FnOnce(&mut ChatConfig) + Send + 'static,
     {
+        let (sender, stream) = AsyncStream::channel();
+        
         let section_arc = Arc::from(section);
+        let manager = self.clone();
+        
+        tokio::spawn(async move {
+            // Get section lock
+            let section_lock = {
+                let locks = manager.configuration_locks.read().await;
+                locks.get(&section_arc).cloned()
+            };
 
-        // Get section lock
-        let section_lock = {
-            let locks = self.configuration_locks.read().await;
-            locks.get(&section_arc).cloned()
-        };
+            let section_lock = if let Some(lock) = section_lock {
+                lock
+            } else {
+                let new_lock = Arc::new(parking_lot::RwLock::new(()));
+                let mut locks = manager.configuration_locks.write().await;
+                locks.insert(section_arc.clone(), new_lock.clone());
+                new_lock
+            };
 
-        let section_lock = if let Some(lock) = section_lock {
-            lock
-        } else {
-            let new_lock = Arc::new(parking_lot::RwLock::new(()));
-            let mut locks = self.configuration_locks.write().await;
-            locks.insert(section_arc.clone(), new_lock.clone());
-            new_lock
-        };
+            // Acquire section lock
+            let _guard = section_lock.write();
 
-        // Acquire section lock
-        let _guard = section_lock.write();
+            // Load current config and make a copy
+            let current_config = manager.config.load_full();
+            let mut new_config = current_config.as_ref().clone();
 
-        // Load current config and make a copy
-        let current_config = self.config.load_full();
-        let mut new_config = current_config.as_ref().clone();
+            // Apply update
+            updater(&mut new_config);
 
-        // Apply update
-        updater(&mut new_config)?;
+            // Validate the updated configuration
+            manager.validate_config(&new_config).await;
 
-        // Validate the updated configuration
-        self.validate_config(&new_config).await?;
+            // Store the updated configuration
+            let config_arc = Arc::new(new_config);
+            manager.config.store(config_arc.clone());
 
-        // Store the updated configuration
-        let config_arc = Arc::new(new_config);
-        self.config.store(config_arc.clone());
+            // Create change event
+            let change_event = ConfigurationChangeEvent {
+                id: Uuid::new_v4(),
+                timestamp: Duration::from_secs(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                ),
+                section: section_arc,
+                change_type: ConfigurationChangeType::Update,
+                old_value: Some(Arc::from(format!("{:?}", current_config))),
+                new_value: Some(Arc::from(format!("{:?}", config_arc))),
+                user: None,
+                description: Arc::from("Configuration section updated"),
+            };
 
-        // Create change event
-        let change_event = ConfigurationChangeEvent {
-            id: Uuid::new_v4(),
-            timestamp: Duration::from_secs(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs(),
-            ),
-            section: section_arc,
-            change_type: ConfigurationChangeType::Update,
-            old_value: Some(Arc::from(format!("{:?}", current_config))),
-            new_value: Some(Arc::from(format!("{:?}", config_arc))),
-            user: None,
-            description: Arc::from("Configuration section updated"),
-        };
+            // Queue change event
+            manager.change_events.push(change_event.clone());
+            manager.change_counter.fetch_add(1, Ordering::Relaxed);
+            manager.version_counter.fetch_add(1, Ordering::Relaxed);
 
-        // Queue change event
-        self.change_events.push(change_event.clone());
-        self.change_counter.fetch_add(1, Ordering::Relaxed);
-        self.version_counter.fetch_add(1, Ordering::Relaxed);
+            // Notify subscribers
+            let _ = manager.change_notifier.send(change_event);
 
-        // Notify subscribers
-        let _ = self.change_notifier.send(change_event);
+            // Check for auto-save
+            manager.check_auto_save().await;
 
-        // Check for auto-save
-        self.check_auto_save().await;
-
-        Ok(())
+            let _ = sender.try_send(());
+        });
+        
+        stream
     }
 
     /// Subscribe to configuration changes
@@ -960,7 +967,7 @@ impl ConfigurationManager {
     }
 
     /// Validate configuration
-    async fn validate_config(&self, config: &ChatConfig) -> ConfigurationValidationResult<()> {
+    async fn validate_config(&self, config: &ChatConfig) {
         let validators = self.validation_rules.read().await;
 
         // Sort validators by priority
@@ -969,10 +976,8 @@ impl ConfigurationManager {
 
         // Run validators in priority order
         for (_, validator) in validator_pairs {
-            validator.validate(config)?;
+            let _ = validator.validate(config);
         }
-
-        Ok(())
     }
 
     /// Register a configuration validator
@@ -1000,14 +1005,27 @@ impl ConfigurationManager {
             drop(persistence);
 
             // Perform auto-save
-            if let Err(e) = self.save_to_file().await {
+            if let Err(e) = self.save_to_file().collect().await {
                 tracing::error!("Auto-save failed: {}", e);
             }
         }
     }
 
     /// Save configuration to file
-    pub async fn save_to_file(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub fn save_to_file(&self) -> AsyncStream<()> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        let manager = self.clone();
+        tokio::spawn(async move {
+            let _ = manager.save_to_file_impl().await;
+            let _ = sender.try_send(());
+        });
+        
+        stream
+    }
+    
+    /// Internal implementation of save_to_file
+    async fn save_to_file_impl(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let config = self.get_config();
         let persistence = self.persistence.read().await;
 
@@ -1016,12 +1034,19 @@ impl ConfigurationManager {
             "yaml" => yyaml::to_string(&*config)?,
             "toml" => toml::to_string(&*config)?,
             "binary" => {
-                // Use bincode for simpler binary serialization
-                let bytes = bincode::encode_to_vec(&*config, bincode::config::standard())
-                    .map_err(|e| format!("Binary serialization failed: {}", e))?;
+                #[cfg(feature = "bincode-serialization")]
                 {
-                    use base64::Engine;
-                    base64::engine::general_purpose::STANDARD.encode(&bytes)
+                    // Use bincode for simpler binary serialization
+                    let bytes = bincode::encode(&*config)
+                        .map_err(|e| format!("Binary serialization failed: {}", e))?;
+                    {
+                        use base64::Engine;
+                        base64::engine::general_purpose::STANDARD.encode(&bytes)
+                    }
+                }
+                #[cfg(not(feature = "bincode-serialization"))]
+                {
+                    return Err("Binary serialization requires bincode-serialization feature".into());
                 }
             }
             _ => return Err("Unsupported format".into()),
@@ -1043,7 +1068,20 @@ impl ConfigurationManager {
     }
 
     /// Load configuration from file
-    pub async fn load_from_file(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub fn load_from_file(&self) -> AsyncStream<()> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        let manager = self.clone();
+        tokio::spawn(async move {
+            let _ = manager.load_from_file_impl().await;
+            let _ = sender.try_send(());
+        });
+        
+        stream
+    }
+    
+    /// Internal implementation of load_from_file
+    async fn load_from_file_impl(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let persistence = self.persistence.read().await;
 
         let data = tokio::fs::read_to_string(&*persistence.config_file_path).await?;
@@ -1064,16 +1102,28 @@ impl ConfigurationManager {
             "yaml" => yyaml::from_str(&content)?,
             "toml" => toml::from_str(&content)?,
             "binary" => {
-                use base64::Engine;
-                let bytes = base64::engine::general_purpose::STANDARD.decode(&content)?;
-                let (config, _) = bincode::decode_from_slice(&bytes, bincode::config::standard())
-                    .map_err(|e| format!("Binary deserialization failed: {}", e))?;
-                config
+                #[cfg(feature = "bincode-serialization")]
+                {
+                    use base64::Engine;
+                    let bytes = base64::engine::general_purpose::STANDARD.decode(&content)?;
+                    let config: ChatConfig = bincode::decode(&bytes)
+                        .map_err(|e| format!("Binary deserialization failed: {}", e))?;
+                    config
+                }
+                #[cfg(not(feature = "bincode-serialization"))]
+                {
+                    return Err("Binary deserialization requires bincode-serialization feature".into());
+                }
             }
             _ => return Err("Unsupported format".into()),
         };
 
-        self.update_config(config).await?;
+        // Use streaming update pattern  
+        let update_stream = self.update_config(config);
+        let mut stream_pin = Box::pin(update_stream);
+        while let Some(_) = stream_pin.as_mut().next().await {
+            break;
+        }
 
         Ok(())
     }

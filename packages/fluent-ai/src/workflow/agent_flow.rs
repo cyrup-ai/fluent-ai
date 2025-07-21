@@ -8,6 +8,7 @@
 // ============================================================================
 
 use std::future::IntoFuture;
+use fluent_ai_http3::async_task::AsyncStream;
 
 use crate::{
     completion::message::Message,
@@ -58,8 +59,17 @@ where
     type Output = Result<Vec<(f64, String, T)>, VectorStoreError>;
 
     #[inline(always)]
-    async fn call(&self, input: Self::Input) -> Self::Output {
-        self.index.top_n::<T>(&input.into(), self.n).await
+    fn call(&self, input: Self::Input) -> AsyncStream<Self::Output> {
+        let query = input.into();
+        let n = self.n;
+        let index = self.index.clone();
+        
+        let (tx, stream) = AsyncStream::channel();
+        tokio::spawn(async move {
+            let result = index.top_n::<T>(&query, n).await;
+            let _ = tx.send(result);
+        });
+        stream
     }
 }
 
@@ -110,9 +120,14 @@ where
     type Output = Result<String, PromptError>;
 
     #[inline(always)]
-    fn call(&self, input: Self::Input) -> impl std::future::Future<Output = Self::Output> + Send {
+    fn call(&self, input: Self::Input) -> AsyncStream<Self::Output> {
         let msg = Message::user(input.into());
-        self.prompt.prompt(msg).into_future()
+        let (tx, stream) = AsyncStream::channel();
+        tokio::spawn(async move {
+            let result = self.prompt.prompt(msg).into_future().await;
+            let _ = tx.send(result);
+        });
+        stream
     }
 }
 
@@ -164,8 +179,16 @@ where
     type Output = Result<Out, ExtractionError>;
 
     #[inline(always)]
-    async fn call(&self, input: Self::Input) -> Self::Output {
-        self.extractor.extract(input.into()).await
+    fn call(&self, input: Self::Input) -> AsyncStream<Self::Output> {
+        let message = input.into();
+        let extractor = self.extractor.clone();
+        
+        let (tx, stream) = AsyncStream::channel();
+        tokio::spawn(async move {
+            let result = extractor.extract(message).await;
+            let _ = tx.send(result);
+        });
+        stream
     }
 }
 

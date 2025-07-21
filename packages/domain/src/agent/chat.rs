@@ -205,12 +205,15 @@ impl AgentRoleImpl {
             .build()
             .map_err(|e| ChatError::Memory(e.into()))?;
 
-        // Store user memory with zero-allocation error handling
-        memory_tool
+        // Store user memory with zero-allocation error handling - PURE STREAMING
+        let store_result = memory_tool
             .memory()
             .store_memory(&user_memory)
-            .await
-            .map_err(|e| ChatError::Memory(e))?;
+            .collect()
+            .into_iter()
+            .next()
+            .unwrap_or(Err(MemoryError::OperationFailed("Store memory stream closed without result".to_string())));
+        store_result.map_err(|e| ChatError::Memory(e))?;
 
         if memorized_nodes.try_push(user_memory).is_err() {
             return Err(ChatError::System(
@@ -224,12 +227,15 @@ impl AgentRoleImpl {
             MemoryContent::text(assistant_response),
         );
 
-        // Store assistant memory with zero-allocation error handling
-        memory_tool
+        // Store assistant memory with zero-allocation error handling - PURE STREAMING
+        let store_result = memory_tool
             .memory()
             .store_memory(&assistant_memory)
-            .await
-            .map_err(|e| ChatError::Memory(e))?;
+            .collect()
+            .into_iter()
+            .next()
+            .unwrap_or(Err(MemoryError::OperationFailed("Store memory stream closed without result".to_string())));
+        store_result.map_err(|e| ChatError::Memory(e))?;
 
         if memorized_nodes.try_push(assistant_memory).is_err() {
             return Err(ChatError::System(
@@ -246,12 +252,15 @@ impl AgentRoleImpl {
             )),
         );
 
-        // Store context memory with zero-allocation error handling
-        memory_tool
+        // Store context memory with zero-allocation error handling - PURE STREAMING
+        let store_result = memory_tool
             .memory()
             .store_memory(&context_memory)
-            .await
-            .map_err(|e| ChatError::Memory(e))?;
+            .collect()
+            .into_iter()
+            .next()
+            .unwrap_or(Err(MemoryError::OperationFailed("Store memory stream closed without result".to_string())));
+        store_result.map_err(|e| ChatError::Memory(e))?;
 
         if memorized_nodes.try_push(context_memory).is_err() {
             return Err(ChatError::System(

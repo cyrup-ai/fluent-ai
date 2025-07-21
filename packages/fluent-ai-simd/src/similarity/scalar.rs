@@ -25,7 +25,7 @@ impl ScalarSimilarity {
     
     /// Compute the dot product and squared norms for two vectors
     #[inline(always)]
-    fn dot_and_norms(a: &[f32], b: &[f32]) -> (f32, f32, f32) {
+    pub fn dot_and_norms(a: &[f32], b: &[f32]) -> (f32, f32, f32) {
         let mut dot = 0.0f32;
         let mut norm_a = 0.0f32;
         let mut norm_b = 0.0f32;
@@ -42,7 +42,11 @@ impl ScalarSimilarity {
 
 impl CosineSimilarity for ScalarSimilarity {
     #[inline]
-    unsafe fn cosine_similarity_unchecked(&self, a: &[f32], b: &[f32]) -> f32 {
+    fn cosine_similarity(&self, a: &[f32], b: &[f32]) -> f32 {
+        if a.len() != b.len() {
+            return 0.0; // Invalid input, return zero similarity
+        }
+        
         let _guard = MetricsGuard::new(&self.metrics, a.len());
         
         let (dot, norm_a, norm_b) = Self::dot_and_norms(a, b);

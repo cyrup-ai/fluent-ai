@@ -1,15 +1,14 @@
-//! MCP Tool domain traits - pure interfaces only
+//! MCP Tool domain traits - pure interfaces only - NO FUTURES!
 //!
 //! Contains only trait definitions and basic data structures.
 //! Implementation logic is in fluent_ai package.
 
 use std::fmt;
-use std::future::Future;
-use std::pin::Pin;
+use crate::async_task::AsyncStream;
 
 use serde_json::Value;
 
-/// Core tool trait - base interface for all tools
+/// Core tool trait - base interface for all tools - NO FUTURES!
 pub trait Tool: Send + Sync + fmt::Debug + Clone {
     /// Get the name of the tool
     fn name(&self) -> &str;
@@ -21,7 +20,7 @@ pub trait Tool: Send + Sync + fmt::Debug + Clone {
     fn parameters(&self) -> &Value;
 
     /// Execute the tool with given arguments
-    fn execute(&self, args: Value) -> Pin<Box<dyn Future<Output = Result<Value, String>> + Send>>;
+    fn execute(&self, args: Value) -> AsyncStream<Result<Value, String>>;
 }
 
 /// MCP tool trait - extends Tool with MCP-specific functionality

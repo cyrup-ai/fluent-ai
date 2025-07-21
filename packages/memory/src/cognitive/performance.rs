@@ -260,7 +260,7 @@ mod tests {
                 assert!(reward > 0.0, "Good state should have positive reward");
             }
             Err(e) => {
-                // This is expected if no LLM models are configured
+                // This is expected if no completion providers are configured
                 println!("Test skipped: {}", e);
             }
         }

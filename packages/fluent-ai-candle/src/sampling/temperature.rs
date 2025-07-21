@@ -5,7 +5,8 @@
 
 use candle_core::{Tensor, D};
 use candle_nn::ops;
-use super::{LogitsProcessor, SamplingError};
+use super::SamplingError;
+use crate::processing::traits::LogitsProcessor;
 
 /// Temperature scaling processor for controlling generation randomness
 /// 
@@ -143,27 +144,18 @@ impl TemperatureProcessor {
     }
 }
 
-impl LogitsProcessor for TemperatureProcessor {
-    #[inline(always)]
-    fn process(&self, logits: &mut Tensor, _token_ids: &[u32], _position: usize) -> Result<(), crate::sampling::SamplingError> {
-        // Skip processing if temperature is 1.0 (identity)
-        if (self.temperature - 1.0).abs() < f32::EPSILON {
-            return Ok(());
-        }
-        
-        // Apply temperature scaling using tensor operations
-        let inv_temp = 1.0 / self.temperature as f64;
-        *logits = (logits.affine(inv_temp, 0.0))
-            .map_err(|e| SamplingError::ProcessingFailed(format!("Temperature scaling failed: {}", e)))?;
-        
-        Ok(())
-    }
-    
-    #[inline(always)]
-    fn name(&self) -> &'static str {
-        "TemperatureProcessor"
-    }
-}
+// TODO: Update to new LogitsProcessor API that uses process_logits() instead of process()
+// impl LogitsProcessor for TemperatureProcessor {
+//     #[inline(always)]
+//     fn process_logits(&mut self, logits: &mut [f32], context: &ProcessingContext) -> ProcessingResult<()> {
+//         // Implementation needed for new API
+//     }
+//     
+//     #[inline(always)]
+//     fn name(&self) -> &'static str {
+//         "TemperatureProcessor"
+//     }
+// }
 
 /// Builder for temperature processor with validation and presets
 #[derive(Debug, Clone)]

@@ -229,17 +229,23 @@ impl CommandMiddleware for CachingMiddleware {
         &'a self,
         command: &'a ChatCommand,
         context: &'a CommandContext,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>
+    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>>
     {
-        Box::pin(async move {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let cache = self.cache.clone();
+        let command = command.clone();
+        
+        tokio::spawn(async move {
             // Check cache for existing result
-            if let Some(cached_output) = self.cache.get(command).await {
+            if let Some(_cached_output) = cache.get(&command).await {
                 // Store cached result in context for use by command executor
                 // This would typically use a context extension mechanism
                 // For now, we'll let the command execute normally
             }
-            Ok(())
-        })
+            let _ = tx.send(Ok(()));
+        });
+        
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
     fn after_execute<'a>(
@@ -247,15 +253,22 @@ impl CommandMiddleware for CachingMiddleware {
         command: &'a ChatCommand,
         _context: &'a CommandContext,
         result: &'a CommandResult<CommandOutput>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>
+    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>>
     {
-        Box::pin(async move {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let cache = self.cache.clone();
+        let command = command.clone();
+        let result = result.clone();
+        
+        tokio::spawn(async move {
             // Cache successful results
-            if let Ok(output) = result {
-                self.cache.put(command, output.clone()).await;
+            if let Ok(output) = &result {
+                cache.put(&command, output.clone()).await;
             }
-            Ok(())
-        })
+            let _ = tx.send(Ok(()));
+        });
+        
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
     fn name(&self) -> &str {

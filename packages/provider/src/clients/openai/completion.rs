@@ -372,11 +372,12 @@ impl CompletionProvider for OpenAICompletionBuilder {
 
 impl OpenAICompletionBuilder {
     /// Execute streaming completion with zero-allocation HTTP3 (blazing-fast)
+    /// Returns pure AsyncStream<CompletionChunk> - no Result wrapping, user on_chunk handlers for errors
     #[inline(always)]
-    async fn execute_streaming_completion(
+    fn execute_streaming_completion(
         &self,
         prompt: String,
-    ) -> Result<AsyncStream<Result<CompletionChunk, CompletionError>>, CompletionError> {
+    ) -> AsyncStream<CompletionChunk> {
         let request_body = self.build_request(&prompt)?;
         let body_bytes = serde_json::to_vec(&request_body)
             .map_err(|_| CompletionError::Internal("Parse error".to_string()))?;

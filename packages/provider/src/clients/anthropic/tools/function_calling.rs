@@ -3,18 +3,9 @@
 //! This module provides a type-safe, zero-allocation function calling system for
 //! Anthropic tool execution with lock-free streaming and compile-time safety.
 
-use std::{any::TypeId, collections::HashMap, future::Future, marker::PhantomData, pin::Pin};
-
-use arrayvec::ArrayVec;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-
-use super::core::{
-    AnthropicError, AnthropicResult, ChainControl, Emitter, ErrorHandler, InvocationHandler,
-    Message, ResultHandler, SchemaType,
-};
-use fluent_ai_domain::tool::{Tool};
-// Note: ToolError not available in fluent_ai_domain - using anyhow::Error
+use std::{any::TypeId, collections::HashMap, marker::PhantomData};
+use fluent_ai_core::stream::AsyncStream;
+use fluent_ai_core::channel::async_stream_channel;
 #[cfg(feature = "cylo")]
 use crate::execution::{CyloExecutor, CyloInstance, ExecutionRequest};
 
@@ -114,10 +105,9 @@ pub trait ToolWithSchemas<
 >
 {
     type WithInvocationBuilder: ToolWithInvocation<D, Req, Res>;
-    fn on_invocation<F, Fut>(self, handler: F) -> Self::WithInvocationBuilder
+    fn on_invocation<F>(self, handler: F) -> Self::WithInvocationBuilder
     where
-        F: Fn(&Conversation, &Emitter, Req, &D) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = AnthropicResult<()>> + Send + 'static;
+        F: Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<AnthropicResult<()>> + Send + Sync + 'static;
 }
 
 /// Trait for tools with invocation handler
@@ -153,7 +143,7 @@ pub trait TypedToolTrait<
         conversation: &Conversation,
         emitter: &Emitter,
         request: Req,
-    ) -> impl Future<Output = AnthropicResult<()>> + Send;
+    ) -> AsyncStream<AnthropicResult<()>>;
 }
 
 /// Entry point for typestate builder pattern
@@ -331,13 +321,28 @@ impl<
     type WithInvocationBuilder = ToolWithInvocationBuilder<D, Req, Res>;
 
     #[inline(always)]
-    fn on_invocation<F, Fut>(self, handler: F) -> Self::WithInvocationBuilder
+    fn on_invocation<F>(self, handler: F) -> Self::WithInvocationBuilder
     where
-        F: Fn(&Conversation, &Emitter, Req, &D) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = AnthropicResult<()>> + Send + 'static,
+        F: Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<AnthropicResult<()>> + Send + Sync + 'static,
     {
         let boxed_handler: InvocationHandler<D, Req, Res> =
-            Box::new(move |conv, emitter, req, dep| Box::pin(handler(conv, emitter, req, dep)));
+            Box::new(move |conv, emitter, req, dep| {
+                let (tx, stream) = async_stream_channel();
+                let handler_stream = handler(conv, emitter, req, dep);
+                tokio::spawn(async move {
+                    let result = async move {
+                        use tokio_stream::StreamExt;
+                        let mut stream = handler_stream.collect::<Vec<_>>().await;
+                        if let Some(result) = stream.pop() {
+                            result
+                        } else {
+                            Ok(())
+                        }
+                    }.await;
+                    let _ = tx.send(result);
+                });
+                UnboundedReceiverStream::new(rx)
+            });
 
         ToolWithInvocationBuilder {
             name: self.name,
@@ -414,47 +419,91 @@ impl<
         &self.dependency
     }
 
-    async fn execute(
+    fn execute(
         &self,
         conversation: &Conversation,
         emitter: &Emitter,
         request: Req,
-    ) -> AnthropicResult<()> {
+    ) -> AsyncStream<AnthropicResult<()>> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        
         #[cfg(feature = "cylo")]
         {
-            if let Some(cylo_instance) = &self.cylo_instance {
-                // Execute tool within configured Cylo environment
-                let execution_request = ExecutionRequest {
-                    command: "tool_execute".to_string(),
-                    args: vec![],
-                    env: std::collections::HashMap::new(),
-                    working_dir: None,
-                    timeout: None,
-                };
+            if let Some(cylo_instance) = self.cylo_instance.clone() {
+                let invocation_handler = self.handlers.invocation.clone();
+                let dependency = self.dependency.clone();
+                
+                tokio::spawn(async move {
+                    let result = async move {
+                        // Execute tool within configured Cylo environment
+                        let execution_request = ExecutionRequest {
+                            command: "tool_execute".to_string(),
+                            args: vec![],
+                            env: std::collections::HashMap::new(),
+                            working_dir: None,
+                            timeout: None,
+                        };
 
-                let executor = CyloExecutor::new(cylo_instance.clone());
-                match executor.execute_async(execution_request).await {
-                    Ok(_execution_result) => {
-                        // Execute the actual tool handler within the Cylo environment
-                        (self.handlers.invocation)(conversation, emitter, request, &self.dependency)
-                            .await
-                    }
-                    Err(e) => Err(AnthropicError::ExecutionError(format!(
-                        "Cylo execution failed: {}",
-                        e
-                    ))),
-                }
+                        let executor = CyloExecutor::new(cylo_instance);
+                        match executor.execute_async(execution_request).await {
+                            Ok(_execution_result) => {
+                                // Execute the actual tool handler within the Cylo environment
+                                use tokio_stream::StreamExt;
+                                let handler_stream = invocation_handler(conversation, emitter, request, &dependency);
+                                let mut results = handler_stream.collect::<Vec<_>>().await;
+                                if let Some(result) = results.pop() {
+                                    result
+                                } else {
+                                    Ok(())
+                                }
+                            }
+                            Err(e) => Err(AnthropicError::ExecutionError(format!(
+                                "Cylo execution failed: {}",
+                                e
+                            ))),
+                        }
+                    }.await;
+                    let _ = tx.send(result);
+                });
             } else {
-                // No Cylo environment configured, execute directly
-                (self.handlers.invocation)(conversation, emitter, request, &self.dependency).await
+                let invocation_handler = self.handlers.invocation.clone();
+                let dependency = self.dependency.clone();
+                tokio::spawn(async move {
+                    let result = async move {
+                        use tokio_stream::StreamExt;
+                        let handler_stream = invocation_handler(conversation, emitter, request, &dependency);
+                        let mut results = handler_stream.collect::<Vec<_>>().await;
+                        if let Some(result) = results.pop() {
+                            result
+                        } else {
+                            Ok(())
+                        }
+                    }.await;
+                    let _ = tx.send(result);
+                });
             }
         }
 
         #[cfg(not(feature = "cylo"))]
         {
-            // Cylo feature disabled, execute directly
-            (self.handlers.invocation)(conversation, emitter, request, &self.dependency).await
+            let invocation_handler = self.handlers.invocation.clone();
+            let dependency = self.dependency.clone();
+            tokio::spawn(async move {
+                let result = async move {
+                    use tokio_stream::StreamExt;
+                    let handler_stream = invocation_handler(conversation, emitter, request, &dependency);
+                    let mut results = handler_stream.collect::<Vec<_>>().await;
+                    if let Some(result) = results.pop() {
+                        result
+                    } else {
+                        Ok(())
+                    }
+                }.await;
+                let _ = tx.send(result);
+            });
         }
+        
+        UnboundedReceiverStream::new(rx)
     }
 }
 
@@ -682,7 +731,7 @@ pub trait ToolExecutor: Send + Sync {
         &self,
         input: Value,
         context: &ToolExecutionContext,
-    ) -> Pin<Box<dyn Future<Output = AnthropicResult<ToolOutput>> + Send>>;
+    ) -> AsyncStream<AnthropicResult<ToolOutput>>;
 
     /// Get tool definition
     fn definition(&self) -> Tool;
@@ -762,23 +811,47 @@ impl ToolRegistry {
     }
 
     /// Execute tool with production-ready error handling
-    pub async fn execute_tool(
+    pub fn execute_tool(
         &self,
         name: &str,
         input: Value,
         context: &ToolExecutionContext,
-    ) -> AnthropicResult<ToolOutput> {
-        // Try executor
-        if let Some(executor) = self.executors.get(name) {
-            executor.validate_input(&input)?;
-            return executor.execute(input, context).await;
+    ) -> AsyncStream<AnthropicResult<ToolOutput>> {
+        let (tx, stream) = async_stream_channel();
+        let name = name.to_string();
+        
+        if let Some(executor) = self.executors.get(&name) {
+            let validation_result = executor.validate_input(&input);
+            match validation_result {
+                Ok(_) => {
+                    let executor_stream = executor.execute(input, context);
+                    tokio::spawn(async move {
+                        use tokio_stream::StreamExt;
+                        let mut results = executor_stream.collect::<Vec<_>>().await;
+                        let result = if let Some(result) = results.pop() {
+                            result
+                        } else {
+                            Err(AnthropicError::ToolExecutionError {
+                                tool_name: name,
+                                error: "No result from executor".to_string(),
+                            })
+                        };
+                        let _ = tx.send(result);
+                    });
+                }
+                Err(e) => {
+                    let _ = tx.send(Err(e));
+                }
+            }
+        } else {
+            // Tool not found in either storage
+            let _ = tx.send(Err(AnthropicError::ToolExecutionError {
+                tool_name: name,
+                error: "Tool not found".to_string(),
+            }));
         }
-
-        // Tool not found in either storage
-        Err(AnthropicError::ToolExecutionError {
-            tool_name: name.to_string(),
-            error: "Tool not found".to_string(),
-        })
+        
+        stream
     }
 }
 

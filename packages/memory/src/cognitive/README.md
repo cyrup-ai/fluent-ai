@@ -2,12 +2,12 @@
 
 ## Overview
 
-This system uses **committee-based evaluation** with **Monte Carlo Tree Search (MCTS)** to optimize code according to user objectives. Unlike traditional optimization that relies on hardcoded metrics, this system uses LLM agents to evaluate how well each modification achieves the specified goal.
+This system uses **committee-based evaluation** with **Monte Carlo Tree Search (MCTS)** to optimize code according to user objectives. Unlike traditional optimization that relies on hardcoded metrics, this system uses AI model providers to evaluate how well each modification achieves the specified goal.
 
 ## Key Components
 
 ### 1. Committee-based Evaluation (`committee.rs`)
-- Multiple LLM agents with different perspectives (performance, memory, quality)
+- Multiple AI model providers with different perspectives (performance, memory, quality)
 - Multi-round evaluation process:
   - **Initial**: Independent evaluation
   - **Review**: Agents see others' scores and can revise
@@ -106,7 +106,7 @@ This mirrors how human committees work - initial positions, discussion, guidance
 
 ## Configuration
 
-Set environment variables for LLM access:
+Set environment variables for AI provider access:
 - `OPENAI_API_KEY` - For GPT-4 agent
 - `ANTHROPIC_API_KEY` - For Claude agent
 - `COHERE_API_KEY` - For additional agents

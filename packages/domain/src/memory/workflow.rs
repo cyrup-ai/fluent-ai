@@ -10,7 +10,8 @@ pub trait OpTrait {
     type Output;
     fn execute(&self, input: Self::Input) -> Self::Output;
 }
-use fluent_ai_memory::MemoryManager;
+// use fluent_ai_memory::MemoryManager; // Temporarily disabled to break circular dependency
+use crate::memory::manager::MemoryManagerTrait;
 
 use crate::memory::primitives::MemoryError;
 

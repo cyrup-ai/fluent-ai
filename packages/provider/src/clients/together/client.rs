@@ -201,11 +201,11 @@ impl Client {
         headers.push(("Authorization", auth_header));
         headers.push((
             "Content-Type",
-            ArrayString::from("application/json").unwrap(),
+            ArrayString::from("application/json").unwrap_or_else(|_| ArrayString::new()),
         ));
         headers.push((
             "User-Agent",
-            ArrayString::from("fluent-ai-together/1.0").unwrap(),
+            ArrayString::from("fluent-ai-together/1.0").unwrap_or_else(|_| ArrayString::new()),
         ));
 
         let request = HttpRequest::post(url, body)

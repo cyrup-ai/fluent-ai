@@ -171,13 +171,13 @@ impl Tool for McpToolImpl {
         &self.data.parameters
     }
 
-    fn execute(&self, args: Value) -> Pin<Box<dyn Future<Output = Result<Value, String>> + Send>> {
+    fn execute(&self, args: Value) -> fluent_ai_domain::AsyncStream<Result<Value, String>> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let name = self.data.name.clone();
         let description = self.data.description.clone();
 
-        Box::pin(async move {
-            // Check if this is a code execution tool that should use secure execution
-            if should_use_secure_execution(&name, &description, &args) {
+        tokio::spawn(async move {
+            let result = if should_use_secure_execution(&name, &description, &args) {
                 // Use secure execution via cylo
                 match execute_with_secure_backend(&name, &args).await {
                     Ok(result) => result,
@@ -203,8 +203,11 @@ impl Tool for McpToolImpl {
                     "args": args,
                     "result": "MCP tool execution not implemented yet"
                 }))
-            }
-        })
+            };
+            let _ = tx.send(result);
+        });
+        
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 }
 

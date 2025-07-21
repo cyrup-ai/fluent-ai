@@ -10,8 +10,9 @@ members = [
     "packages/termcolor",
 
     "packages/fluent-ai-candle",
-    "packages/cargo-hakari-regenerate"
-,
+    "packages/fluent-ai-simd",
+    "packages/cargo-hakari-regenerate",
+    "packages/fluent-ai-core",
     "workspace-hack"
 ]
 exclude = ["tmp/rig", "tmp/cyrup-agent", "tmp/cyrup-sugars", "tmp/candle"]

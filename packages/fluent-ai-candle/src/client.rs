@@ -1,7 +1,7 @@
 //! Production-ready CandleCompletionClient with zero allocation and lock-free design
 //! Aligned 100% with provider patterns for blazing-fast performance
 
-use std::future::Future;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use std::num::NonZeroU64;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -11,11 +11,12 @@ use arc_swap::ArcSwap;
 use arrayvec::{ArrayString, ArrayVec};
 
 use candle_core::Device;
-use fluent_ai_domain::completion::{
-    CompletionCoreClient, CompletionCoreResult, CompletionRequest,
+use crate::domain_stubs::{
+    AsyncStream, CompletionCoreResult, CompletionRequest,
     CompletionResponse, StreamingResponse, CompletionCoreError,
+    FinishReason, Message, ToolDefinition, Document,
 };
-use fluent_ai_domain::{FinishReason, message::Message, tool::ToolDefinition, context::Document};
+// use fluent_ai_provider::client::CompletionClient; // Temporarily disabled
 
 use crate::error::{CandleError, CandleResult};
 use crate::generator::{CandleGenerator, GenerationConfig};
@@ -283,9 +284,9 @@ pub struct CandleCompletionBuilder<'a, S> {
     presence_penalty: Option<f64>,
     stop_sequences: Option<ArrayVec<ArrayString<64>, 8>>, // Bounded stop sequences
     system_prompt: Option<ArrayString<2048>>, // Bounded system prompt
-    chat_history: ArrayVec<Message, MAX_MESSAGES>,
-    documents: ArrayVec<Document, MAX_DOCUMENTS>,
-    tools: ArrayVec<ToolDefinition, MAX_TOOLS>,
+    chat_history: ArrayVec<Message<'a>, MAX_MESSAGES>,
+    documents: ArrayVec<Document<'a>, MAX_DOCUMENTS>,
+    tools: ArrayVec<ToolDefinition<'a>, MAX_TOOLS>,
     additional_params: Option<serde_json::Value>,
     prompt: Option<ArrayString<4096>>, // present only when S = HasPrompt, bounded
     _state: std::marker::PhantomData<S>,
@@ -397,7 +398,7 @@ impl CandleCompletionClient {
                     let _sequence_id = 0u64;
                     
                     // Process stream and convert to token chunks
-                    use futures::StreamExt;
+                    use futures_util::StreamExt;
                     while let Some(response_result) = stream.next().await {
                         match response_result {
                             Ok(response) => {
@@ -649,90 +650,106 @@ impl CandleCompletionClient {
     }
 }
 
-impl CompletionCoreClient for CandleCompletionClient {
+// TODO: Re-enable when fluent_ai_provider dependency is restored
+// impl fluent_ai_provider::client::CompletionClient for CandleCompletionClient {
+//     type Model = CandleCompletionClient;
+//
+//     fn completion_model(&self, _model: &str) -> Self::Model {
+//         // Clone the client and optionally update model config
+//         // In a full implementation, this would update internal model configuration
+//         // For now, return a clone since CandleCompletionClient manages its own model internally
+//         self.clone()
+//     }
+// }
+
+// Direct implementation methods for completion functionality
+impl CandleCompletionClient {
+    /// Generate completion with zero allocation
     #[inline(always)]
-    fn complete<'a>(
+    pub fn complete<'a>(
         &'a self,
         request: CompletionRequest<'a>,
-    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<CompletionResponse<'a>>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> AsyncStream<CompletionCoreResult<CompletionResponse<'a>>> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let self_clone = self.clone();
+        tokio::spawn(async move {
+            let result = async move {
 
             // Check if client is initialized
-            if !self.is_initialized() {
+            if !self_clone.is_initialized() {
                 return Err(CompletionCoreError::InvalidRequest(
                     "Client not initialized".to_string(),
                 ));
             }
 
             // Acquire semaphore permit for rate limiting
-            let _permit = self.request_semaphore.acquire().await.map_err(|_| {
+            let _permit = self_clone.request_semaphore.acquire().await.map_err(|_| {
                 CompletionCoreError::InvalidRequest("Request semaphore error".to_string())
             })?;
 
             // Update concurrent request counter
-            self.metrics.concurrent_requests.fetch_add(1, Ordering::Relaxed);
+            self_clone.metrics.concurrent_requests.fetch_add(1, Ordering::Relaxed);
 
             // Generate completion - clone Arc to avoid borrow issues
-            let generator = Arc::clone(&self.generator.load());
+            let generator = crossbeam_utils::atomic::AtomicCell::load(&self_clone.generator);
             let result = generator.generate(&request).await;
 
             // Decrement concurrent counter
-            self.metrics.concurrent_requests.fetch_sub(1, Ordering::Relaxed);
+            self_clone.metrics.concurrent_requests.fetch_sub(1, Ordering::Relaxed);
 
             match result {
                 Ok(response) => {
-                    self.record_request_stats(
+                    self_clone.record_request_stats(
                         true,
                         response.tokens_generated().unwrap_or(0),
                         false, // Not streaming
                     );
-                    // Ensure response is owned by converting to owned Cow
-                    let owned_response = CompletionResponse {
-                        text: std::borrow::Cow::Owned(response.text().to_string()),
-                        model: std::borrow::Cow::Owned(response.model().to_string()),
-                        provider: response.provider().map(|p| std::borrow::Cow::Owned(p.to_string())),
-                        usage: response.usage().cloned(),
-                        finish_reason: response.finish_reason().map(|f| std::borrow::Cow::Owned(f.to_string())),
-                        response_time_ms: response.response_time_ms(),
-                        generation_time_ms: response.generation_time_ms(),
-                        tokens_per_second: response.tokens_per_second(),
-                    };
-                    Ok(owned_response)
+                    Ok(response)
                 }
                 Err(e) => {
-                    self.record_request_stats(false, 0, false);
+                    self_clone.record_request_stats(false, 0, false);
                     Err(CompletionCoreError::GenerationFailed(e.to_string()))
                 }
             }
-        })
+            
+            }.await;
+            let _ = tx.send(result);
+        });
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
+    /// Generate streaming completion
     #[inline(always)]
-    fn complete_stream<'a>(
+    pub fn complete_stream<'a>(
         &'a self,
         request: CompletionRequest<'a>,
-    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<StreamingResponse>> + Send + 'a>> {
-        Box::pin(async move {
-            // Use the new enhanced TokenOutputStream method and convert for backward compatibility
-            match self.complete_token_stream(request).await {
-                Ok(token_stream) => {
-                    // Convert TokenOutputStream to StreamingResponse for compatibility
-                    let streaming_response: StreamingResponse = token_stream.into();
-                    Ok(streaming_response)
+    ) -> AsyncStream<CompletionCoreResult<StreamingResponse>> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let self_clone = self.clone();
+        tokio::spawn(async move {
+            let result = async move {
+                // Use the new enhanced TokenOutputStream method and convert for backward compatibility
+                match self_clone.complete_token_stream(request).await {
+                    Ok(token_stream) => {
+                        // Convert TokenOutputStream to StreamingResponse for compatibility
+                        let streaming_response: StreamingResponse = token_stream.into();
+                        Ok(streaming_response)
+                    }
+                    Err(e) => {
+                        Err(CompletionCoreError::GenerationFailed(e.to_string()))
+                    }
                 }
-                Err(e) => {
-                    Err(CompletionCoreError::GenerationFailed(e.to_string()))
-                }
-            }
-        })
+            }.await;
+            let _ = tx.send(result);
+        });
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
-    fn model_name(&self) -> &'static str {
+    /// Get the model name/identifier for this client
+    pub fn model_name(&self) -> &'static str {
         "candle-model"
     }
 }
-
-
 
 unsafe impl Send for CandleCompletionClient {}
 unsafe impl Sync for CandleCompletionClient {}

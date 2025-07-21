@@ -1,10 +1,8 @@
 //! Logits processor implementation
 
-use crate::{
-    config::ProcessorConfig,
-    context::ProcessingContext,
-    logits::{LogitsError, LogitsResult},
-};
+use crate::config::ProcessorConfig;
+use crate::context::ProcessingContext;
+use crate::logits::{LogitsError, LogitsResult};
 
 /// Default implementation of the logits processor
 #[derive(Debug, Clone)]

@@ -11,6 +11,7 @@
 
 pub mod client;
 pub mod constants;
+pub mod domain_stubs;
 pub mod error;
 pub mod generator;
 pub mod hub;
@@ -18,6 +19,7 @@ pub mod kv_cache;
 pub mod logits;
 pub mod memory;
 pub mod model;
+pub mod processing;
 pub mod progress;
 pub mod sampling;
 pub mod streaming;
@@ -27,16 +29,15 @@ pub mod var_builder;
 // Re-export core types for ergonomic usage
 pub use client::{CandleClientBuilder, CandleClientConfig, CandleCompletionClient};
 pub use error::{CandleError, CandleResult};
-// Re-export fluent_ai_domain completion types
-pub use fluent_ai_domain::completion::{
-    CompletionRequest, CompletionResponse,
+// Re-export completion types (temporarily from stubs)
+pub use domain_stubs::{
+    CompletionRequest, CompletionResponse, FinishReason,
 };
-pub use fluent_ai_domain::{FinishReason};
 pub use generator::{CandleGenerator, GenerationConfig};
 pub use model::CandleModel;
 pub use logits::{
     LogitsProcessor, TemperatureProcessor, TopKProcessor, TopPProcessor, 
-    RepetitionPenaltyProcessor, ComposedProcessor, LogitsSampler,
+    RepetitionPenaltyProcessor, CompositeProcessor, LogitsSampler,
     ProcessingContext, SamplingConfig, SamplingMetrics, sampling_metrics
 };
 pub use streaming::{

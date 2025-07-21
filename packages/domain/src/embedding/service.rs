@@ -5,12 +5,8 @@
 
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
-use std::future::Future;
 use std::hash::{Hash, Hasher};
-use std::pin::Pin;
-
-// Compatibility type for BoxFuture
-pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
+use crate::async_task::AsyncStream;
 
 // Error type for vector store operations
 #[derive(Debug, thiserror::Error)]
@@ -24,16 +20,16 @@ pub enum VectorStoreError {
 /// Production-ready embedding service trait with zero-allocation methods
 pub trait EmbeddingService: Send + Sync {
     /// Get embedding for content with zero-copy return
-    fn get_embedding(&self, content: &str) -> BoxFuture<Result<Option<&[f32]>, VectorStoreError>>;
+    fn get_embedding(&self, content: &str) -> AsyncStream<Result<Option<Vec<f32>>, VectorStoreError>>;
 
     /// Get or compute embedding with zero-allocation caching
     fn get_or_compute_embedding(
         &self,
         content: &str,
-    ) -> BoxFuture<Result<&[f32], VectorStoreError>>;
+    ) -> AsyncStream<Result<Vec<f32>, VectorStoreError>>;
 
     /// Precompute embeddings for batch content
-    fn precompute_batch(&self, content: &[&str]) -> BoxFuture<Result<(), VectorStoreError>>;
+    fn precompute_batch(&self, content: &[&str]) -> AsyncStream<Result<(), VectorStoreError>>;
 
     /// Get embedding dimensions
     fn embedding_dimension(&self) -> usize;

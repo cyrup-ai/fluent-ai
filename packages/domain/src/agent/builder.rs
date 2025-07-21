@@ -5,9 +5,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use arrayvec::ArrayVec;
 use crossbeam_utils::CachePadded;
-use fluent_ai_memory::MemoryConfig;
 
 use super::core::{Agent, AgentError, AgentResult, MAX_AGENT_TOOLS};
+use crate::memory::config::MemoryConfig;
 use crate::memory::Memory;
 use crate::model::Model;
 use crate::tool::McpToolData;
@@ -124,8 +124,7 @@ impl<const TOOLS_CAPACITY: usize> AgentBuilder<TOOLS_CAPACITY> {
             shared_memory
         } else {
             let memory_config = self.memory_config.unwrap_or_default();
-            let memory = Memory::new(memory_config).await?;
-            Arc::new(memory)
+            Memory::new(memory_config).collect().await?
         };
 
         // Create memory tool

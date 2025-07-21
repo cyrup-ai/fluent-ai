@@ -91,29 +91,49 @@ pub trait MemoryManagerTrait: Send + Sync {
     fn get_memory(
         &self,
         _id: &str,
-    ) -> Pin<Box<dyn Future<Output = Result<Option<MemoryNode>, Error>> + Send + '_>> {
-        Box::pin(async move { Ok(None) })
+    ) -> fluent_ai_domain::AsyncStream<Result<Option<MemoryNode>, Error>> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        tokio::spawn(async move {
+            let _ = tx.send(Ok(None));
+        });
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
-    fn delete_memory(&self, _id: &str) -> Pin<Box<dyn Future<Output = bool> + Send + '_>> {
-        Box::pin(async move { false })
+    fn delete_memory(&self, _id: &str) -> fluent_ai_domain::AsyncStream<bool> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        tokio::spawn(async move {
+            let _ = tx.send(false);
+        });
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
     fn create_memory(
         &self,
         node: MemoryNode,
-    ) -> Pin<Box<dyn Future<Output = Result<MemoryNode, Error>> + Send + '_>> {
-        Box::pin(async move { Ok(node) })
+    ) -> fluent_ai_domain::AsyncStream<Result<MemoryNode, Error>> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        tokio::spawn(async move {
+            let _ = tx.send(Ok(node));
+        });
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
     fn update_memory(
         &self,
         node: MemoryNode,
-    ) -> Pin<Box<dyn Future<Output = Result<MemoryNode, Error>> + Send + '_>> {
-        Box::pin(async move { Ok(node) })
+    ) -> fluent_ai_domain::AsyncStream<Result<MemoryNode, Error>> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        tokio::spawn(async move {
+            let _ = tx.send(Ok(node));
+        });
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
     fn create_relationship(
         &self,
         rel: MemoryRelationship,
-    ) -> Pin<Box<dyn Future<Output = Result<MemoryRelationship, Error>> + Send + '_>> {
-        Box::pin(async move { Ok(rel) })
+    ) -> fluent_ai_domain::AsyncStream<Result<MemoryRelationship, Error>> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        tokio::spawn(async move {
+            let _ = tx.send(Ok(rel));
+        });
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
     fn query_by_type(
         &self,

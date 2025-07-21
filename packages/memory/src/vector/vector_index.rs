@@ -9,6 +9,7 @@ use std::sync::Arc;
 use dashmap::DashMap;
 use instant_distance::Builder;
 use serde::{Deserialize, Serialize};
+use fluent_ai_simd::cosine_similarity;
 
 use crate::utils::Result;
 use crate::vector::DistanceMetric;
@@ -513,24 +514,9 @@ fn euclidean_distance(a: &[f32], b: &[f32]) -> f32 {
 
 #[inline]
 fn cosine_distance(a: &[f32], b: &[f32]) -> f32 {
-    let mut dot_product = 0.0f32;
-    let mut norm_a = 0.0f32;
-    let mut norm_b = 0.0f32;
-
-    // Single pass for efficiency
-    for (x, y) in a.iter().zip(b.iter()) {
-        dot_product += x * y;
-        norm_a += x * x;
-        norm_b += y * y;
-    }
-
-    let norm_product = norm_a.sqrt() * norm_b.sqrt();
-
-    if norm_product == 0.0 {
-        0.0
-    } else {
-        1.0 - (dot_product / norm_product)
-    }
+    // Use shared SIMD-optimized cosine similarity from fluent-ai-simd crate
+    // Convert similarity to distance: distance = 1.0 - similarity
+    1.0 - cosine_similarity(a, b)
 }
 
 #[inline]

@@ -87,6 +87,8 @@
 use std::sync::Arc;
 use std::sync::LazyLock;
 
+/// Async task primitives for streaming-first architecture
+pub mod async_task;
 pub mod cache;
 pub mod client;
 pub mod config;
@@ -102,7 +104,7 @@ pub use config::HttpConfig;
 pub use error::{HttpError, HttpResult};
 pub use middleware::{cache::CacheMiddleware, Middleware, MiddlewareChain};
 pub use request::{HttpMethod, HttpRequest};
-pub use response::HttpResponse;
+pub use response::{HttpResponse, JsonStream, SseEvent};
 pub use stream::{CachedDownloadStream, DownloadChunk, DownloadStream, HttpStream, LinesStream, SseStream};
 
 /// Global HTTP client instance with connection pooling

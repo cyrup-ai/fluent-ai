@@ -752,7 +752,7 @@ impl AdvancedImageProcessingFactory {
     }
 }
 
-/// Streaming image processor trait
+/// Streaming image processor trait - NO FUTURES!
 pub trait StreamingImageProcessor {
     /// Check if processor supports format
     fn supports_format(&self, format: ImageFormat) -> bool;
@@ -762,7 +762,13 @@ pub trait StreamingImageProcessor {
         &self,
         stream: ImageStream,
         first_chunk: Vec<u8>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ImageProcessingResult<ProcessedImageStream>> + Send>>;
+    ) -> fluent_ai_domain::AsyncStream<ImageProcessingResult<ProcessedImageStream>> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        tokio::spawn(async move {
+            let _ = tx.send(Err(ImageProcessingError::ProcessingError("Not implemented".to_string())));
+        });
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
+    }
 }
 
 /// Image stream wrapper for chunked processing
@@ -887,15 +893,17 @@ impl StreamingImageProcessor for PngStreamingProcessor {
         &self,
         mut stream: ImageStream,
         first_chunk: Vec<u8>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ImageProcessingResult<ProcessedImageStream>> + Send>> {
+    ) -> fluent_ai_domain::AsyncStream<ImageProcessingResult<ProcessedImageStream>> {
         let config = self.config.clone();
+        let (result_tx, result_rx) = tokio::sync::mpsc::unbounded_channel();
         
-        Box::pin(async move {
+        tokio::spawn(async move {
             let (tx, rx) = mpsc::unbounded_channel();
             
             // Send first chunk
             if let Err(_) = tx.send(Ok(first_chunk.clone())) {
-                return Err(ImageProcessingError::ProcessingError("Channel closed".to_string()));
+                let _ = result_tx.send(Err(ImageProcessingError::ProcessingError("Channel closed".to_string())));
+                return;
             }
             
             // Extract metadata from PNG header
@@ -918,8 +926,10 @@ impl StreamingImageProcessor for PngStreamingProcessor {
                 }
             });
             
-            Ok(ProcessedImageStream::new(ImageFormat::Png, metadata, rx))
-        })
+            let _ = result_tx.send(Ok(ProcessedImageStream::new(ImageFormat::Png, metadata, rx)));
+        });
+        
+        tokio_stream::wrappers::UnboundedReceiverStream::new(result_rx)
     }
 }
 
@@ -943,15 +953,17 @@ impl StreamingImageProcessor for JpegStreamingProcessor {
         &self,
         mut stream: ImageStream,
         first_chunk: Vec<u8>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ImageProcessingResult<ProcessedImageStream>> + Send>> {
+    ) -> fluent_ai_domain::AsyncStream<ImageProcessingResult<ProcessedImageStream>> {
         let config = self.config.clone();
+        let (result_tx, result_rx) = tokio::sync::mpsc::unbounded_channel();
         
-        Box::pin(async move {
+        tokio::spawn(async move {
             let (tx, rx) = mpsc::unbounded_channel();
             
             // Send first chunk
             if let Err(_) = tx.send(Ok(first_chunk.clone())) {
-                return Err(ImageProcessingError::ProcessingError("Channel closed".to_string()));
+                let _ = result_tx.send(Err(ImageProcessingError::ProcessingError("Channel closed".to_string())));
+                return;
             }
             
             // Extract metadata from JPEG header
@@ -974,8 +986,10 @@ impl StreamingImageProcessor for JpegStreamingProcessor {
                 }
             });
             
-            Ok(ProcessedImageStream::new(ImageFormat::Jpeg, metadata, rx))
-        })
+            let _ = result_tx.send(Ok(ProcessedImageStream::new(ImageFormat::Jpeg, metadata, rx)));
+        });
+        
+        tokio_stream::wrappers::UnboundedReceiverStream::new(result_rx)
     }
 }
 
@@ -999,15 +1013,17 @@ impl StreamingImageProcessor for WebPStreamingProcessor {
         &self,
         mut stream: ImageStream,
         first_chunk: Vec<u8>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ImageProcessingResult<ProcessedImageStream>> + Send>> {
+    ) -> fluent_ai_domain::AsyncStream<ImageProcessingResult<ProcessedImageStream>> {
         let config = self.config.clone();
+        let (result_tx, result_rx) = tokio::sync::mpsc::unbounded_channel();
         
-        Box::pin(async move {
+        tokio::spawn(async move {
             let (tx, rx) = mpsc::unbounded_channel();
             
             // Send first chunk
             if let Err(_) = tx.send(Ok(first_chunk.clone())) {
-                return Err(ImageProcessingError::ProcessingError("Channel closed".to_string()));
+                let _ = result_tx.send(Err(ImageProcessingError::ProcessingError("Channel closed".to_string())));
+                return;
             }
             
             // Extract metadata from WebP header
@@ -1030,8 +1046,10 @@ impl StreamingImageProcessor for WebPStreamingProcessor {
                 }
             });
             
-            Ok(ProcessedImageStream::new(ImageFormat::WebP, metadata, rx))
-        })
+            let _ = result_tx.send(Ok(ProcessedImageStream::new(ImageFormat::WebP, metadata, rx)));
+        });
+        
+        tokio_stream::wrappers::UnboundedReceiverStream::new(result_rx)
     }
 }
 

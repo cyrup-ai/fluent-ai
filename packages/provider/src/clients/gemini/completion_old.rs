@@ -124,10 +124,8 @@ impl completion::CompletionModel for CompletionModel {
                                     }
                                 }
                             } else {
-                                match response.text().await {
-                                    Ok(text) => Err(CompletionError::ProviderError(text)),
-                                    Err(e) => Err(CompletionError::RequestError(e.to_string())),
-                                }
+                                // Domain uses HTTP3, provider delegates to domain layer
+                                Err(CompletionError::ProviderError("HTTP error - domain layer handles HTTP3 operations".to_string()))
                             }
                         }
                         Err(e) => Err(CompletionError::RequestError(e.to_string())),

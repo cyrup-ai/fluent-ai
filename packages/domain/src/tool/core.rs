@@ -273,8 +273,5 @@ pub trait ToolEmbeddingDyn: Send + Sync {
     fn context(&self) -> Result<Value, Box<dyn std::error::Error + Send + Sync>>;
 }
 
-// Implement Send + Sync
-unsafe impl<T> Send for Tool<T> {}
-unsafe impl<T> Sync for Tool<T> {}
-unsafe impl Send for NamedTool {}
-unsafe impl Sync for NamedTool {}
+// Send + Sync are automatically implemented for these types
+// since all fields are Send + Sync (PhantomData, HashMap, String, Option)

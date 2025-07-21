@@ -35,32 +35,7 @@ impl RelaxedCounter {
 use crossbeam_skiplist::SkipMap;
 use smallvec::SmallVec;
 use tokio::sync::oneshot;
-// use fluent_ai_simd  // Temporarily disabled due to compilation issues
-
-/// Temporary fallback implementation of cosine similarity
-#[inline]
-fn smart_cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
-    if a.len() != b.len() || a.is_empty() {
-        return 0.0;
-    }
-    
-    let mut dot_product = 0.0;
-    let mut norm_a = 0.0;
-    let mut norm_b = 0.0;
-    
-    for i in 0..a.len() {
-        dot_product += a[i] * b[i];
-        norm_a += a[i] * a[i];
-        norm_b += b[i] * b[i];
-    }
-    
-    let norm_product = (norm_a * norm_b).sqrt();
-    if norm_product == 0.0 {
-        0.0
-    } else {
-        dot_product / norm_product
-    }
-}
+use fluent_ai_simd::smart_cosine_similarity;
 
 use super::{
     PendingEmbedding, PendingVectorOp, PendingVectorSearch, VectorSearchResult, VectorStore,
@@ -428,4 +403,6 @@ impl VectorStore for InMemoryVectorStore {
     }
 }
 
-// SIMD cosine similarity functions now provided by fluent-ai-simd crate
+// SIMD cosine similarity functions are now properly integrated via fluent-ai-simd crate
+// The smart_cosine_similarity function automatically selects the optimal implementation
+// (SIMD when beneficial, scalar fallback for small vectors or unsupported platforms)

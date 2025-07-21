@@ -195,67 +195,8 @@ impl Default for TimeoutConfig {
     }
 }
 
-/// Retry configuration with exponential backoff and jitter
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RetryConfig {
-    /// Maximum number of retry attempts
-    pub max_retries: usize,
-    /// Initial retry delay
-    pub initial_delay: Duration,
-    /// Maximum retry delay
-    pub max_delay: Duration,
-    /// Backoff multiplier
-    pub backoff_multiplier: f64,
-    /// Enable jitter to prevent thundering herd
-    pub enable_jitter: bool,
-}
-
-impl RetryConfig {
-    /// Create default retry configuration with exponential backoff
-    #[inline]
-    pub fn default() -> Self {
-        Self {
-            max_retries: 3,
-            initial_delay: Duration::from_millis(100),
-            max_delay: Duration::from_secs(10),
-            backoff_multiplier: 2.0,
-            enable_jitter: true,
-        }
-    }
-
-    /// Create minimal retry configuration for testing
-    #[inline]
-    pub fn minimal() -> Self {
-        Self {
-            max_retries: 1,
-            initial_delay: Duration::from_millis(10),
-            max_delay: Duration::from_millis(100),
-            backoff_multiplier: 1.5,
-            enable_jitter: false,
-        }
-    }
-
-    /// Calculate next retry delay with exponential backoff and optional jitter
-    pub fn next_delay(&self, attempt: usize) -> Duration {
-        if attempt >= self.max_retries {
-            return self.max_delay;
-        }
-
-        let delay_ms =
-            self.initial_delay.as_millis() as f64 * self.backoff_multiplier.powi(attempt as i32);
-
-        let delay = Duration::from_millis(delay_ms as u64).min(self.max_delay);
-
-        if self.enable_jitter {
-            // Add ±25% jitter
-            let jitter = fastrand::f64() * 0.5 - 0.25; // -0.25 to +0.25
-            let jittered_delay = delay.as_millis() as f64 * (1.0 + jitter);
-            Duration::from_millis(jittered_delay.max(0.0) as u64)
-        } else {
-            delay
-        }
-    }
-}
+// Use shared RetryConfig from super::shared
+use super::shared::RetryConfig;
 
 /// Health check configuration with atomic status tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -29,6 +29,9 @@ pub enum GraphError {
 
     #[error("Conversion error: {0}")]
     ConversionError(String),
+    
+    #[error("Other error: {0}")]
+    Other(String),
 }
 
 /// Node ID type

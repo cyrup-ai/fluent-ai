@@ -466,10 +466,14 @@ impl<'a> AzureCompletionBuilder<'a, NeedsPrompt> {
 impl<'a> AzureCompletionBuilder<'a, HasPrompt> {
     /// Build a `CompletionRequest` ready for `.send()` / `.stream()`.
     #[inline(always)]
-    fn build(self) -> CompletionRequest {
+    fn build(self) -> Result<CompletionRequest, fluent_ai_domain::memory::workflow::PromptError> {
+        let prompt = self.prompt.ok_or_else(|| {
+            fluent_ai_domain::memory::workflow::PromptError::MissingPrompt
+        })?;
+        
         let mut req = CompletionRequestBuilder::new(
             CompletionModel::new(self.client.clone(), self.model_name),
-            self.prompt.expect("prompt present"),
+            prompt,
         )
         .preamble_opt(self.preamble)
         .chat_history(self.chat_history)
@@ -479,7 +483,7 @@ impl<'a> AzureCompletionBuilder<'a, HasPrompt> {
         .max_tokens_opt(self.max_tokens)
         .additional_params(self.additional_params);
 
-        req.build()
+        Ok(req.build())
     }
 
     /// Fire off a **single-shot** completion → `AsyncTask<Result<…>>`
@@ -489,7 +493,14 @@ impl<'a> AzureCompletionBuilder<'a, HasPrompt> {
     ) -> AsyncTask<
         Result<completion::CompletionResponse<completion::CompletionResponseData>, CompletionError>,
     > {
-        self.build().send()
+        match self.build() {
+            Ok(request) => request.send(),
+            Err(e) => {
+                AsyncTask::spawn(async move {
+                    Err(CompletionError::from(e))
+                })
+            }
+        }
     }
 
     /// Streaming variant → `AsyncTask<Result<StreamingCompletionResponse<…>>>`
@@ -504,14 +515,27 @@ impl<'a> AzureCompletionBuilder<'a, HasPrompt> {
             CompletionError,
         >,
     > {
-        self.build().stream()
+        match self.build() {
+            Ok(request) => request.stream(),
+            Err(e) => {
+                AsyncTask::spawn(async move {
+                    Err(CompletionError::from(e))
+                })
+            }
+        }
     }
 
     /// Convenience: run chat and get the **first chunk** as `String`.
     #[inline(always)]
     pub fn chat(self, prompt: impl Into<String>) -> AsyncTask<Result<String, PromptError>> {
-        let req = self.prompt(prompt.into()).build();
-        CompletionModel::new(self.client.clone(), self.model_name).prompt(req)
+        match self.prompt(prompt.into()).build() {
+            Ok(req) => CompletionModel::new(self.client.clone(), self.model_name).prompt(req),
+            Err(e) => {
+                AsyncTask::spawn(async move {
+                    Err(PromptError::from(e))
+                })
+            }
+        }
     }
 }
 

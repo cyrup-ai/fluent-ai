@@ -13,6 +13,9 @@ use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tracing::{debug, error, info, instrument, warn};
 
+// Import provider's AsyncStream primitives
+use crate::{AsyncStream, AsyncStreamSender, async_stream_channel};
+
 use super::errors::{BuildError, BuildResult};
 use super::yaml_processor::{YamlProcessor, ProviderInfo};
 
@@ -234,19 +237,33 @@ impl YamlManager {
         }
     }
 
-    /// Parse downloaded YAML content into provider definitions
+    /// Parse downloaded YAML content into provider definitions - pure streaming architecture
     #[instrument(skip(self, content))]
-    pub async fn parse_providers(&self, content: &str) -> BuildResult<Vec<ProviderInfo>> {
-        tokio::task::spawn_blocking({
-            let processor = self.yaml_processor.clone();
-            let content = content.to_string();
-            move || processor.parse_providers(&content)
-        })
-        .await
-        .map_err(|e| BuildError::IoError(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("Task join error: {}", e)
-        )))?
+    pub fn parse_providers(&self, content: &str) -> impl crate::http3_streaming::DownloadChunk {
+        use crate::http3_streaming::DownloadChunkImpl;
+        
+        // Parse YAML synchronously - no spawn operations
+        let processor = self.yaml_processor.clone();
+        let result = processor.parse_providers(content);
+        
+        match result {
+            Ok(providers) => {
+                let data = serde_json::to_vec(&providers).unwrap_or_default();
+                DownloadChunkImpl::new(
+                    data,
+                    Some(format!("Parsed {} providers", providers.len())),
+                    Some("yaml_parsing".to_string()),
+                ).with_progress(100.0).with_final(true)
+            }
+            Err(_) => {
+                // Return empty chunk on parsing error
+                DownloadChunkImpl::new(
+                    Vec::new(),
+                    Some("YAML parsing failed".to_string()),
+                    Some("yaml_error".to_string()),
+                ).with_progress(0.0).with_final(true)
+            }
+        }
     }
 
     /// Download and cache fresh content

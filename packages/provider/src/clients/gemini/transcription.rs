@@ -25,7 +25,7 @@ const TRANSCRIPTION_PREAMBLE: &str =
 
 /// Gemini transcription model implementation
 #[derive(Debug, Clone)]
-pub struct GeminiTranscriptionModel {
+pub struct TranscriptionModel {
     client: Client,
     model: String,
 }

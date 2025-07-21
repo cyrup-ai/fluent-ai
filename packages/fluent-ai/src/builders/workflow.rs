@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use futures::future::BoxFuture;
+use fluent_ai_http3::async_task::AsyncStream;
 use serde_json::Value;
 use tokio::sync::mpsc;
 
@@ -333,24 +333,40 @@ impl WorkflowExecutor {
         group: &ParallelGroup,
         context: &ExecutionContext,
     ) -> Result<Value, WorkflowError> {
-        let mut futures = Vec::with_capacity(group.operation_indices.len());
+        let mut result_streams = Vec::with_capacity(group.operation_indices.len());
+        let mut handles = Vec::new();
 
         for &index in &group.operation_indices {
             if let Some(operation) = self.operations.get(index) {
                 let input_clone = context.current_value.clone();
                 let context_clone = context.clone();
-                let op_ref = operation.as_ref();
-
-                let future = async move {
-                    self.execute_operation_with_retry(op_ref, input_clone, &context_clone)
-                        .await
-                };
-
-                futures.push(Box::pin(future) as BoxFuture<'_, Result<Value, WorkflowError>>);
+                let op_ref = Arc::new(operation.clone());
+                
+                let (tx, stream) = AsyncStream::channel();
+                result_streams.push(stream);
+                
+                let handle = tokio::spawn(async move {
+                    let result = self.execute_operation_with_retry(op_ref.as_ref(), input_clone, &context_clone)
+                        .await;
+                    let _ = tx.send(result);
+                });
+                handles.push(handle);
             }
         }
 
-        let results = futures::future::join_all(futures).await;
+        // Collect all results
+        let mut results = Vec::with_capacity(result_streams.len());
+        for mut stream in result_streams {
+            if let Some(result) = stream.next() {
+                results.push(result);
+            }
+        }
+        
+        // Wait for all tasks to complete
+        for handle in handles {
+            let _ = handle.await;
+        }
+
         self.merge_parallel_results(results, &group.merge_strategy)
     }
 

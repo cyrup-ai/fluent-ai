@@ -21,8 +21,8 @@ pub enum Error {
     #[error("Embedding model error: {0}")]
     Embedding(String),
 
-    #[error("LLM provider error: {0}")]
-    LLM(String),
+    #[error("Completion provider error: {0}")]
+    CompletionProvider(String),
 
     #[error("Configuration error: {0}")]
     Config(String),
@@ -100,9 +100,9 @@ impl axum::response::IntoResponse for Error {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Embedding error: {}", e),
             ),
-            Error::LLM(e) => (
+            Error::CompletionProvider(e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("LLM error: {}", e),
+                format!("Completion provider error: {}", e),
             ),
             Error::Config(e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,

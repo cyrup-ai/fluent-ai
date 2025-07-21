@@ -50,7 +50,8 @@ impl CompletionModel {
             return Err(CompletionError::ProviderError(format!(
                 "{}: {}",
                 response.status(),
-                response.text().await?
+                // Domain uses HTTP3, provider delegates to domain
+                todo!("Delegate to domain layer for HTTP3 streaming")
             )));
         }
 

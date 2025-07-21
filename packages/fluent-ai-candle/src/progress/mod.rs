@@ -64,7 +64,6 @@
 //! ```
 
 use arrayvec::{ArrayString, ArrayVec};
-use indicatif::{ProgressBar, ProgressStyle};
 use std::{
     sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
 };
@@ -109,7 +108,7 @@ pub type SessionId = ArrayString<MAX_SESSION_ID_LEN>;
 /// - Lock-free concurrent access for multi-threaded operations
 /// - Zero-allocation progress data for maximum efficiency
 pub trait ProgressReporter: Send + Sync {
-    /// Report progress for current operation stage
+    /// Report simple progress for current operation stage
     ///
     /// # Arguments
     ///
@@ -119,7 +118,7 @@ pub trait ProgressReporter: Send + Sync {
     /// # Returns
     ///
     /// Returns Ok(()) on success, error if reporting fails
-    fn report_progress(&self, stage: &str, progress: f32) -> Result<()>;
+    fn report_simple_progress(&self, stage: &str, progress: f32) -> Result<()>;
     
     /// Report stage completion with timing information
     ///
@@ -219,6 +218,269 @@ pub trait ProgressReporter: Send + Sync {
     
     /// Get reporter name for debugging
     fn name(&self) -> &'static str;
+    
+    /// Report detailed progress with operation context
+    /// 
+    /// # Arguments
+    /// 
+    /// * `operation_type` - Type of operation (e.g., "hub_download", "model_loading")
+    /// * `operation_key` - Unique key for this operation instance
+    /// * `current_value` - Current progress value
+    /// * `total_value` - Total expected value (optional)
+    /// * `message` - Human-readable status message
+    ///
+    /// # Returns
+    ///
+    /// Returns Ok(()) on success, error if reporting fails
+    fn report_progress(
+        &self,
+        operation_type: &str,
+        operation_key: &str,
+        current_value: u64,
+        total_value: Option<u64>,
+        message: &str,
+    ) -> Result<()> {
+        // Default implementation maps to simple progress reporting
+        let progress = if let Some(total) = total_value {
+            if total > 0 {
+                (current_value as f32) / (total as f32)
+            } else {
+                0.0
+            }
+        } else {
+            0.0
+        };
+        
+        let stage_message = format!("{}: {}", operation_type, message);
+        self.report_simple_progress(&stage_message, progress)
+    }
+    
+    /// Report detailed download progress with stage breakdown
+    ///
+    /// # Arguments
+    ///
+    /// * `download_stage` - Specific download stage (connection, headers, content, validation, caching)
+    /// * `progress` - Progress within current stage (0.0 to 1.0)
+    /// * `total_bytes` - Total bytes to download (optional)
+    /// * `downloaded_bytes` - Bytes downloaded so far (optional)
+    /// * `transfer_rate` - Current transfer rate in bytes/sec (optional)
+    /// * `eta_seconds` - Estimated time remaining in seconds (optional)
+    ///
+    /// # Returns
+    ///
+    /// Returns Ok(()) on success, error if reporting fails
+    fn report_download_progress(
+        &self,
+        download_stage: DownloadStage,
+        progress: f32,
+        total_bytes: Option<u64>,
+        downloaded_bytes: Option<u64>,
+        transfer_rate: Option<f64>,
+        eta_seconds: Option<f64>,
+    ) -> Result<()> {
+        // Default implementation uses standard progress reporting
+        let stage_name = match download_stage {
+            DownloadStage::Connecting => "Connecting",
+            DownloadStage::ReceivingHeaders => "Receiving headers",
+            DownloadStage::DownloadingContent => "Downloading content",
+            DownloadStage::ValidatingChecksum => "Validating checksum",
+            DownloadStage::CachingModel => "Caching model",
+        };
+        
+        self.report_simple_progress(stage_name, progress)
+    }
+    
+    /// Report detailed weight loading progress
+    ///
+    /// # Arguments
+    ///
+    /// * `layer_stage` - Specific layer loading stage
+    /// * `layer_index` - Current layer being loaded
+    /// * `total_layers` - Total number of layers
+    /// * `progress` - Progress within current layer (0.0 to 1.0)
+    /// * `memory_used` - Memory used so far in bytes (optional)
+    /// * `total_parameters` - Total parameters loaded (optional)
+    ///
+    /// # Returns
+    ///
+    /// Returns Ok(()) on success, error if reporting fails
+    fn report_weight_loading_progress(
+        &self,
+        layer_stage: WeightLoadingStage,
+        layer_index: usize,
+        total_layers: usize,
+        progress: f32,
+        memory_used: Option<u64>,
+        total_parameters: Option<u64>,
+    ) -> Result<()> {
+        // Default implementation uses standard progress reporting
+        let stage_name = match layer_stage {
+            WeightLoadingStage::LoadingEmbeddings => "Loading embeddings",
+            WeightLoadingStage::LoadingAttention => "Loading attention",
+            WeightLoadingStage::LoadingMLP => "Loading MLP layers",
+            WeightLoadingStage::LoadingNormalization => "Loading normalization",
+            WeightLoadingStage::InitializingCache => "Initializing cache",
+        };
+        
+        let overall_progress = (layer_index as f32 + progress) / total_layers as f32;
+        self.report_simple_progress(stage_name, overall_progress)
+    }
+    
+    /// Report quantization progress
+    ///
+    /// # Arguments
+    ///
+    /// * `quantization_stage` - Specific quantization stage
+    /// * `progress` - Progress within current stage (0.0 to 1.0)
+    /// * `quantized_layers` - Number of layers quantized so far (optional)
+    /// * `total_layers` - Total layers to quantize (optional)
+    /// * `compression_ratio` - Current compression ratio (optional)
+    ///
+    /// # Returns
+    ///
+    /// Returns Ok(()) on success, error if reporting fails
+    fn report_quantization_progress(
+        &self,
+        quantization_stage: QuantizationStage,
+        progress: f32,
+        quantized_layers: Option<usize>,
+        total_layers: Option<usize>,
+        compression_ratio: Option<f32>,
+    ) -> Result<()> {
+        // Default implementation uses standard progress reporting
+        let stage_name = match quantization_stage {
+            QuantizationStage::AnalyzingWeights => "Analyzing weights",
+            QuantizationStage::ComputingScale => "Computing scale factors",
+            QuantizationStage::QuantizingLayers => "Quantizing layers",
+            QuantizationStage::OptimizingMemory => "Optimizing memory layout",
+            QuantizationStage::ValidatingAccuracy => "Validating accuracy",
+        };
+        
+        self.report_simple_progress(stage_name, progress)
+    }
+}
+
+/// Detailed download stages
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DownloadStage {
+    /// Establishing connection to the server
+    Connecting,
+    /// Receiving HTTP headers and metadata
+    ReceivingHeaders,
+    /// Downloading model content in chunks
+    DownloadingContent,
+    /// Validating SHA256 checksum
+    ValidatingChecksum,
+    /// Caching model to local storage
+    CachingModel,
+}
+
+impl DownloadStage {
+    /// Get human-readable name for this download stage
+    #[inline]
+    pub fn name(&self) -> &'static str {
+        match self {
+            DownloadStage::Connecting => "Connecting",
+            DownloadStage::ReceivingHeaders => "Receiving headers",
+            DownloadStage::DownloadingContent => "Downloading content",
+            DownloadStage::ValidatingChecksum => "Validating checksum",
+            DownloadStage::CachingModel => "Caching model",
+        }
+    }
+    
+    /// Get estimated relative duration of this stage (0.0 to 1.0)
+    #[inline]
+    pub fn estimated_duration_weight(&self) -> f32 {
+        match self {
+            DownloadStage::Connecting => 0.05,         // 5% of total time
+            DownloadStage::ReceivingHeaders => 0.02,   // 2% of total time
+            DownloadStage::DownloadingContent => 0.85, // 85% of total time
+            DownloadStage::ValidatingChecksum => 0.05, // 5% of total time
+            DownloadStage::CachingModel => 0.03,       // 3% of total time
+        }
+    }
+}
+
+/// Detailed weight loading stages
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WeightLoadingStage {
+    /// Loading token embedding layers
+    LoadingEmbeddings,
+    /// Loading attention mechanism weights
+    LoadingAttention,
+    /// Loading multi-layer perceptron weights
+    LoadingMLP,
+    /// Loading normalization layers
+    LoadingNormalization,
+    /// Initializing KV cache structures
+    InitializingCache,
+}
+
+impl WeightLoadingStage {
+    /// Get human-readable name for this weight loading stage
+    #[inline]
+    pub fn name(&self) -> &'static str {
+        match self {
+            WeightLoadingStage::LoadingEmbeddings => "Loading embeddings",
+            WeightLoadingStage::LoadingAttention => "Loading attention",
+            WeightLoadingStage::LoadingMLP => "Loading MLP layers",
+            WeightLoadingStage::LoadingNormalization => "Loading normalization",
+            WeightLoadingStage::InitializingCache => "Initializing cache",
+        }
+    }
+    
+    /// Get estimated relative duration of this stage (0.0 to 1.0)
+    #[inline]
+    pub fn estimated_duration_weight(&self) -> f32 {
+        match self {
+            WeightLoadingStage::LoadingEmbeddings => 0.15,     // 15% of loading time
+            WeightLoadingStage::LoadingAttention => 0.50,      // 50% of loading time
+            WeightLoadingStage::LoadingMLP => 0.25,            // 25% of loading time
+            WeightLoadingStage::LoadingNormalization => 0.05,  // 5% of loading time
+            WeightLoadingStage::InitializingCache => 0.05,     // 5% of loading time
+        }
+    }
+}
+
+/// Detailed quantization stages
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuantizationStage {
+    /// Analyzing weight distributions
+    AnalyzingWeights,
+    /// Computing quantization scale factors
+    ComputingScale,
+    /// Quantizing individual layers
+    QuantizingLayers,
+    /// Optimizing memory layout for quantized weights
+    OptimizingMemory,
+    /// Validating quantization accuracy
+    ValidatingAccuracy,
+}
+
+impl QuantizationStage {
+    /// Get human-readable name for this quantization stage
+    #[inline]
+    pub fn name(&self) -> &'static str {
+        match self {
+            QuantizationStage::AnalyzingWeights => "Analyzing weights",
+            QuantizationStage::ComputingScale => "Computing scale factors",
+            QuantizationStage::QuantizingLayers => "Quantizing layers",
+            QuantizationStage::OptimizingMemory => "Optimizing memory layout",
+            QuantizationStage::ValidatingAccuracy => "Validating accuracy",
+        }
+    }
+    
+    /// Get estimated relative duration of this stage (0.0 to 1.0)
+    #[inline]
+    pub fn estimated_duration_weight(&self) -> f32 {
+        match self {
+            QuantizationStage::AnalyzingWeights => 0.20,      // 20% of quantization time
+            QuantizationStage::ComputingScale => 0.15,        // 15% of quantization time
+            QuantizationStage::QuantizingLayers => 0.50,      // 50% of quantization time
+            QuantizationStage::OptimizingMemory => 0.10,      // 10% of quantization time
+            QuantizationStage::ValidatingAccuracy => 0.05,    // 5% of quantization time
+        }
+    }
 }
 
 /// High-performance ProgressHub TUI integration
@@ -231,8 +493,8 @@ pub trait ProgressReporter: Send + Sync {
 /// - Concurrent session management
 #[repr(C, align(64))] // Cache line aligned
 pub struct ProgressHubReporter {
-    /// ProgressHub handle for TUI updates
-    progress_handle: Option<ProgressBar>,
+    /// ProgressHub handle for TUI updates (placeholder for now)
+    progress_handle: Option<()>,
     
     /// Current progress state (atomic)
     current_progress: AtomicU64, // f32 as u64 for atomic access
@@ -274,15 +536,10 @@ impl ProgressHubReporter {
     /// Create ProgressHub reporter with custom configuration
     pub fn with_config(config: ProgressHubConfig) -> Result<Self> {
         let progress_handle = if config.enable_tui() {
-            // Create ProgressHub TUI integration
-            let progress = ProgressBuilder::new()
-                .with_style(ProgressStyle::default_bar())
-                .with_message("ML Inference")
-                .with_position(0)
-                .with_length(100)
-                .build()?;
-            
-            Some(progress)
+            // TODO: Integrate with actual ProgressHub TUI when available
+            // For now, we use a placeholder that provides progress tracking
+            // without actual TUI display but maintains all the reporting APIs
+            Some(())
         } else {
             None
         };
@@ -343,7 +600,7 @@ impl ProgressHubReporter {
     
     /// Force TUI update (non-blocking)
     fn force_update_tui(&self) {
-        if let Some(ref handle) = self.progress_handle {
+        if let Some(ref _handle) = self.progress_handle {
             let current_progress = Self::atomic_u64_to_f32(
                 self.current_progress.load(Ordering::Relaxed)
             );
@@ -356,8 +613,8 @@ impl ProgressHubReporter {
                 self.cache_hit_rate.load(Ordering::Relaxed)
             );
             
-            // Format progress message and update TUI
-            let message = format!(
+            // Format progress message for future TUI integration
+            let _message = format!(
                 "{} {:.1}% | {:.1} tok/s | {:.1}% cache",
                 stage,
                 current_progress * 100.0,
@@ -365,9 +622,8 @@ impl ProgressHubReporter {
                 cache_hit_rate * 100.0
             );
             
-            // Non-blocking TUI update
-            let _ = handle.set_message(message);
-            let _ = handle.set_position((current_progress * 100.0) as u64);
+            // TODO: When ProgressHub TUI is available, update display here
+            // For now, we just track the progress internally
         }
         
         self.last_update_nanos.store(Self::current_time_nanos(), Ordering::Relaxed);
@@ -412,14 +668,15 @@ impl ProgressHubReporter {
     pub fn deactivate(&self) {
         self.is_active.store(false, Ordering::Relaxed);
         
-        if let Some(ref handle) = self.progress_handle {
-            let _ = handle.finish_with_message("Inference completed");
+        if let Some(ref _handle) = self.progress_handle {
+            // TODO: When ProgressHub TUI is available, finish display here
+            // For now, we just mark the reporter as inactive
         }
     }
 }
 
 impl ProgressReporter for ProgressHubReporter {
-    fn report_progress(&self, stage: &str, progress: f32) -> Result<()> {
+    fn report_simple_progress(&self, stage: &str, progress: f32) -> Result<()> {
         if !self.is_active() {
             return Ok(()); // Reporter deactivated
         }
@@ -450,7 +707,7 @@ impl ProgressReporter for ProgressHubReporter {
     }
     
     fn report_stage_completion(&self, stage: &str) -> Result<()> {
-        self.report_progress(stage, 1.0)?;
+        self.report_simple_progress(stage, 1.0)?;
         
         // Force immediate TUI update for stage completion
         self.force_update_tui();
@@ -516,7 +773,7 @@ impl ProgressReporter for ProgressHubReporter {
             0.0
         };
         
-        self.report_progress("Loading model", progress)?;
+        self.report_simple_progress("Loading model", progress)?;
         
         Ok(())
     }
@@ -548,6 +805,200 @@ impl ProgressReporter for ProgressHubReporter {
     
     fn name(&self) -> &'static str {
         "ProgressHubReporter"
+    }
+    
+    /// Enhanced download progress reporting with detailed stage breakdown
+    fn report_download_progress(
+        &self,
+        download_stage: DownloadStage,
+        progress: f32,
+        total_bytes: Option<u64>,
+        downloaded_bytes: Option<u64>,
+        transfer_rate: Option<f64>,
+        eta_seconds: Option<f64>,
+    ) -> Result<()> {
+        if !self.is_active() {
+            return Ok(());
+        }
+        
+        let clamped_progress = progress.clamp(0.0, 1.0);
+        
+        // Create detailed stage message with metrics
+        let stage_message = if let (Some(total), Some(downloaded), Some(rate), Some(eta)) = 
+            (total_bytes, downloaded_bytes, transfer_rate, eta_seconds) {
+            format!(
+                "{} ({:.1}MB/{:.1}MB, {:.1}MB/s, ETA: {:.1}s)",
+                download_stage.name(),
+                downloaded as f64 / 1_048_576.0, // Convert to MB
+                total as f64 / 1_048_576.0,
+                rate / 1_048_576.0,
+                eta
+            )
+        } else {
+            download_stage.name().to_string()
+        };
+        
+        // Update stage atomically with detailed message
+        {
+            let mut current_stage = self.current_stage.write();
+            current_stage.clear();
+            if current_stage.try_push_str(&stage_message).is_err() {
+                // Message too long, use basic stage name
+                current_stage.clear();
+                let _ = current_stage.try_push_str(download_stage.name());
+            }
+        }
+        
+        // Update progress atomically
+        self.current_progress.store(
+            Self::f32_to_atomic_u64(clamped_progress),
+            Ordering::Relaxed,
+        );
+        
+        // Update loading stats if available
+        if let (Some(total), Some(downloaded)) = (total_bytes, downloaded_bytes) {
+            self.total_bytes.store(total, Ordering::Relaxed);
+            self.loaded_bytes.store(downloaded, Ordering::Relaxed);
+        }
+        
+        // Force TUI update for download stages (user feedback is critical)
+        self.force_update_tui();
+        
+        Ok(())
+    }
+    
+    /// Enhanced weight loading progress with layer-specific tracking
+    fn report_weight_loading_progress(
+        &self,
+        layer_stage: WeightLoadingStage,
+        layer_index: usize,
+        total_layers: usize,
+        progress: f32,
+        memory_used: Option<u64>,
+        total_parameters: Option<u64>,
+    ) -> Result<()> {
+        if !self.is_active() {
+            return Ok(());
+        }
+        
+        let clamped_progress = progress.clamp(0.0, 1.0);
+        
+        // Calculate overall progress across all layers
+        let overall_progress = (layer_index as f32 + clamped_progress) / total_layers as f32;
+        let overall_clamped = overall_progress.clamp(0.0, 1.0);
+        
+        // Create detailed stage message with layer information
+        let stage_message = if let Some(memory) = memory_used {
+            format!(
+                "{} (Layer {}/{}, {:.1}GB)",
+                layer_stage.name(),
+                layer_index + 1,
+                total_layers,
+                memory as f64 / 1_073_741_824.0 // Convert to GB
+            )
+        } else {
+            format!(
+                "{} (Layer {}/{})",
+                layer_stage.name(),
+                layer_index + 1,
+                total_layers
+            )
+        };
+        
+        // Update stage atomically with detailed message
+        {
+            let mut current_stage = self.current_stage.write();
+            current_stage.clear();
+            if current_stage.try_push_str(&stage_message).is_err() {
+                // Message too long, use basic stage name with layer count
+                current_stage.clear();
+                let basic_msg = format!("{} ({}/{})", layer_stage.name(), layer_index + 1, total_layers);
+                let _ = current_stage.try_push_str(&basic_msg);
+            }
+        }
+        
+        // Update progress atomically
+        self.current_progress.store(
+            Self::f32_to_atomic_u64(overall_clamped),
+            Ordering::Relaxed,
+        );
+        
+        // Update parameter count if available
+        if let Some(params) = total_parameters {
+            self.total_parameters.store(params, Ordering::Relaxed);
+        }
+        
+        // Try to update TUI (batched for performance during weight loading)
+        self.try_update_tui();
+        
+        Ok(())
+    }
+    
+    /// Enhanced quantization progress with compression metrics
+    fn report_quantization_progress(
+        &self,
+        quantization_stage: QuantizationStage,
+        progress: f32,
+        quantized_layers: Option<usize>,
+        total_layers: Option<usize>,
+        compression_ratio: Option<f32>,
+    ) -> Result<()> {
+        if !self.is_active() {
+            return Ok(());
+        }
+        
+        let clamped_progress = progress.clamp(0.0, 1.0);
+        
+        // Create detailed stage message with quantization metrics
+        let stage_message = match (quantized_layers, total_layers, compression_ratio) {
+            (Some(quantized), Some(total), Some(ratio)) => {
+                format!(
+                    "{} ({}/{} layers, {:.1}x compression)",
+                    quantization_stage.name(),
+                    quantized,
+                    total,
+                    ratio
+                )
+            },
+            (Some(quantized), Some(total), None) => {
+                format!(
+                    "{} ({}/{} layers)",
+                    quantization_stage.name(),
+                    quantized,
+                    total
+                )
+            },
+            (None, None, Some(ratio)) => {
+                format!(
+                    "{} ({:.1}x compression)",
+                    quantization_stage.name(),
+                    ratio
+                )
+            },
+            _ => quantization_stage.name().to_string(),
+        };
+        
+        // Update stage atomically with detailed message
+        {
+            let mut current_stage = self.current_stage.write();
+            current_stage.clear();
+            if current_stage.try_push_str(&stage_message).is_err() {
+                // Message too long, use basic stage name
+                current_stage.clear();
+                let _ = current_stage.try_push_str(quantization_stage.name());
+            }
+        }
+        
+        // Update progress atomically
+        self.current_progress.store(
+            Self::f32_to_atomic_u64(clamped_progress),
+            Ordering::Relaxed,
+        );
+        
+        // Try to update TUI (batched for performance during quantization)
+        self.try_update_tui();
+        
+        Ok(())
     }
 }
 
@@ -1042,7 +1493,7 @@ impl NoOpReporter {
 
 impl ProgressReporter for NoOpReporter {
     #[inline(always)]
-    fn report_progress(&self, _stage: &str, _progress: f32) -> Result<()> {
+    fn report_simple_progress(&self, _stage: &str, _progress: f32) -> Result<()> {
         Ok(())
     }
     

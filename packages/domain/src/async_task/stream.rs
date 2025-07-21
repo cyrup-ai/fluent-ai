@@ -69,14 +69,14 @@ impl<T, const CAP: usize> AsyncStream<T, CAP> {
         st
     }
 
-    /// Create from tokio mpsc receiver for compatibility
-    pub fn new(mut receiver: tokio::sync::mpsc::UnboundedReceiver<T>) -> Self
+    /// Create from std mpsc receiver - NO tokio dependency!
+    pub fn new(receiver: std::sync::mpsc::Receiver<T>) -> Self
     where
         T: Send + 'static,
     {
         let (tx, st) = Self::channel();
-        tokio::spawn(async move {
-            while let Some(item) = receiver.recv().await {
+        std::thread::spawn(move || {
+            while let Ok(item) = receiver.recv() {
                 if tx.try_send(item).is_err() {
                     break; // Stream closed
                 }

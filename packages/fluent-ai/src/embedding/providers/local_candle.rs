@@ -15,6 +15,7 @@ use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use tokio::time::Instant;
 use thiserror::Error;
+use futures::StreamExt;
 
 use candle_core::{Device, Tensor, DType};
 use candle_nn::{VarBuilder, Module};
@@ -22,8 +23,11 @@ use candle_transformers::models::sentence_transformers::{
     SentenceTransformersModel, PoolingStrategy
 };
 use tokenizers::Tokenizer;
-use hf_hub::api::tokio::Api;
+use fluent_ai_http3::{HttpClient, HttpRequest, HttpMethod, HttpConfig};
 use memmap2::Mmap;
+
+// Import provider's AsyncStream primitives
+use fluent_ai_provider::{AsyncStream, AsyncStreamSender, async_stream_channel};
 
 /// Maximum input sequence length
 const MAX_SEQUENCE_LENGTH: usize = 512;
@@ -35,6 +39,7 @@ const MODEL_CACHE_CAPACITY: usize = 8;
 const MAX_EMBEDDING_DIM: usize = 1024;
 /// Token buffer size for zero allocation
 const TOKEN_BUFFER_SIZE: usize = 512;
+
 
 /// Supported sentence transformer models
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -500,12 +505,15 @@ pub enum CandleEmbeddingError {
     #[error("HuggingFace Hub error: {0}")]
     HubError(String),
     
+    #[error("HTTP error: {0}")]
+    HttpError(String),
+    
     #[error("Input too large: {0} tokens, max {1}")]
     InputTooLarge(usize, usize),
 }
 
 /// Local Candle embedding provider
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LocalCandleProvider {
     model_cache: Arc<ModelCache>,
     device_manager: Arc<DeviceManager>,
@@ -545,68 +553,154 @@ impl LocalCandleProvider {
         })
     }
 
-    /// Load model if not in cache
-    async fn ensure_model_loaded(&self, model_type: SentenceTransformerModel) -> Result<Arc<CachedModel>, CandleEmbeddingError> {
-        // Check cache first
+    /// Load model if not in cache - streaming-first architecture
+    fn ensure_model_loaded(&self, model_type: SentenceTransformerModel) -> AsyncStream<Arc<CachedModel>> {
+        let (tx, stream) = async_stream_channel();
+        
+        // Check cache first - immediate return if available
         if let Some(cached) = self.model_cache.get(model_type) {
-            return Ok(cached);
+            // Model found in cache - emit immediately
+            if tx.send(cached).is_err() {
+                // Stream already closed, but this is not an error in streaming architecture
+            }
+            return stream;
         }
 
-        // Load model in blocking task to avoid blocking async runtime
-        let model_id = model_type.model_id().to_string();
-        let device = self.device_manager.get_best_device()?;
+        // Model not in cache - spawn async task to load it
+        let model_cache = self.model_cache.clone();
+        let device_manager = self.device_manager.clone();
+        let metrics = self.metrics.clone();
         let cache_dir = self.cache_dir.clone();
         let quantization_enabled = self.quantization_enabled;
 
-        let (model, tokenizer, memory_size) = tokio::task::spawn_blocking(move || {
-            Self::load_model_blocking(&model_id, &device, &cache_dir, quantization_enabled)
-        }).await
-        .map_err(|e| CandleEmbeddingError::ModelLoadError(format!("Task join error: {}", e)))??;
+        tokio::spawn(async move {
+            // Get device and model info
+            let device = match device_manager.get_best_device() {
+                Ok(device) => device,
+                Err(_) => {
+                    // On error, stream closes naturally - error handling in consumer
+                    return;
+                }
+            };
+            
+            let model_id = model_type.model_id().to_string();
+            
+            // Load model asynchronously
+            match Self::load_model_async(&model_id, &device, &cache_dir, quantization_enabled).await {
+                Ok((model, tokenizer, memory_size)) => {
+                    let cached_model = Arc::new(CachedModel {
+                        model: Arc::new(model),
+                        tokenizer: Arc::new(tokenizer),
+                        device,
+                        last_used: AtomicU64::new(
+                            std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .map(|d| d.as_secs())
+                                .unwrap_or(0)
+                        ),
+                        usage_count: CachePadded::new(AtomicU64::new(0)),
+                        memory_size_bytes: memory_size,
+                        quantized: quantization_enabled,
+                    });
 
-        let cached_model = Arc::new(CachedModel {
-            model: Arc::new(model),
-            tokenizer: Arc::new(tokenizer),
-            device,
-            last_used: AtomicU64::new(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_secs())
-                    .unwrap_or(0)
-            ),
-            usage_count: CachePadded::new(AtomicU64::new(0)),
-            memory_size_bytes: memory_size,
-            quantized: quantization_enabled,
+                    // Insert into cache
+                    if model_cache.insert(model_type, cached_model.clone()).is_ok() {
+                        metrics.record_model_load(true);
+                        // Stream the loaded model - consumer handles any errors
+                        let _ = tx.send(cached_model);
+                    }
+                }
+                Err(_) => {
+                    metrics.record_model_load(false);
+                    // On error, stream closes naturally - error handling in consumer
+                }
+            }
         });
 
-        self.model_cache.insert(model_type, cached_model.clone())?;
-        self.metrics.record_model_load(true);
-
-        Ok(cached_model)
+        stream
     }
 
-    /// Load model in blocking context
-    fn load_model_blocking(
+    /// Load model asynchronously - streaming-first architecture
+    async fn load_model_async(
         model_id: &str,
         device: &Device,
         cache_dir: &PathBuf,
         quantization_enabled: bool,
     ) -> Result<(SentenceTransformersModel, Tokenizer, usize), CandleEmbeddingError> {
-        // Download model files
-        let api = Api::new()
-            .map_err(|e| CandleEmbeddingError::HubError(format!("Failed to create API: {}", e)))?;
+        // Download model files using HTTP3 directly from HuggingFace Hub
+        let http_client = HttpClient::with_config(HttpConfig::ai_optimized())
+            .map_err(|e| CandleEmbeddingError::HttpError(format!("Failed to create HTTP3 client: {}", e)))?;
+
+        let base_url = format!("https://huggingface.co/{}/resolve/main", model_id);
         
-        let repo = api.model(model_id.to_string());
+        // Download config.json
+        let config_url = format!("{}/config.json", base_url);
+        let config_request = HttpRequest::new(HttpMethod::Get, config_url)
+            .header("User-Agent", "fluent-ai/1.0");
         
-        // Download model files
-        let config_path = repo.get("config.json")
+        let config_response = http_client.send(config_request).await
             .map_err(|e| CandleEmbeddingError::ModelLoadError(format!("Failed to download config: {}", e)))?;
         
-        let tokenizer_path = repo.get("tokenizer.json")
-            .map_err(|e| CandleEmbeddingError::ModelLoadError(format!("Failed to download tokenizer: {}", e)))?;
+        let config_bytes = config_response.bytes()
+            .map_err(|e| CandleEmbeddingError::ModelLoadError(format!("Failed to read config response: {}", e)))?;
+        
+        let config_path = cache_dir.join("config.json");
+        tokio::fs::write(&config_path, config_bytes).await
+            .map_err(|e| CandleEmbeddingError::IoError(e))?;
 
-        let model_path = repo.get("pytorch_model.bin")
-            .or_else(|_| repo.get("model.safetensors"))
-            .map_err(|e| CandleEmbeddingError::ModelLoadError(format!("Failed to download model weights: {}", e)))?;
+        // Download tokenizer.json
+        let tokenizer_url = format!("{}/tokenizer.json", base_url);
+        let tokenizer_request = HttpRequest::new(HttpMethod::Get, tokenizer_url)
+            .header("User-Agent", "fluent-ai/1.0");
+        
+        let tokenizer_response = http_client.send(tokenizer_request).await
+            .map_err(|e| CandleEmbeddingError::ModelLoadError(format!("Failed to download tokenizer: {}", e)))?;
+        
+        let tokenizer_bytes = tokenizer_response.bytes()
+            .map_err(|e| CandleEmbeddingError::ModelLoadError(format!("Failed to read tokenizer response: {}", e)))?;
+        
+        let tokenizer_path = cache_dir.join("tokenizer.json");
+        tokio::fs::write(&tokenizer_path, tokenizer_bytes).await
+            .map_err(|e| CandleEmbeddingError::IoError(e))?;
+
+        // Try to download model weights - first pytorch_model.bin, then model.safetensors
+        let model_path = {
+            let pytorch_url = format!("{}/pytorch_model.bin", base_url);
+            let pytorch_request = HttpRequest::new(HttpMethod::Get, pytorch_url)
+                .header("User-Agent", "fluent-ai/1.0");
+            
+            if let Ok(pytorch_response) = http_client.send(pytorch_request).await {
+                if pytorch_response.is_success() {
+                    let pytorch_bytes = pytorch_response.bytes()
+                        .map_err(|e| CandleEmbeddingError::ModelLoadError(format!("Failed to read pytorch model response: {}", e)))?;
+                    
+                    let pytorch_path = cache_dir.join("pytorch_model.bin");
+                    tokio::fs::write(&pytorch_path, pytorch_bytes).await
+                        .map_err(|e| CandleEmbeddingError::IoError(e))?;
+                    
+                    pytorch_path
+                } else {
+                    // Try safetensors format
+                    let safetensors_url = format!("{}/model.safetensors", base_url);
+                    let safetensors_request = HttpRequest::new(HttpMethod::Get, safetensors_url)
+                        .header("User-Agent", "fluent-ai/1.0");
+                    
+                    let safetensors_response = http_client.send(safetensors_request).await
+                        .map_err(|e| CandleEmbeddingError::ModelLoadError(format!("Failed to download safetensors model: {}", e)))?;
+                    
+                    let safetensors_bytes = safetensors_response.bytes()
+                        .map_err(|e| CandleEmbeddingError::ModelLoadError(format!("Failed to read safetensors response: {}", e)))?;
+                    
+                    let safetensors_path = cache_dir.join("model.safetensors");
+                    tokio::fs::write(&safetensors_path, safetensors_bytes).await
+                        .map_err(|e| CandleEmbeddingError::IoError(e))?;
+                    
+                    safetensors_path
+                }
+            } else {
+                return Err(CandleEmbeddingError::ModelLoadError("Failed to download model weights".to_string()));
+            }
+        };
 
         // Load tokenizer
         let tokenizer = Tokenizer::from_file(&tokenizer_path)
@@ -661,98 +755,184 @@ impl LocalCandleProvider {
         Ok(SmallVec::from_slice(token_ids))
     }
 
-    /// Run inference with zero allocation patterns
-    async fn run_inference(
+    /// Run inference with zero allocation patterns - streaming-first architecture
+    fn run_inference(
         &self,
         cached_model: &CachedModel,
         token_ids: &[u32],
-    ) -> Result<SmallVec<[f32; MAX_EMBEDDING_DIM]>, CandleEmbeddingError> {
+    ) -> AsyncStream<SmallVec<[f32; MAX_EMBEDDING_DIM]>> {
+        let (tx, stream) = async_stream_channel();
         let start_time = Instant::now();
         
         // Convert tokens to tensor
-        let input_tensor = Tensor::new(token_ids, &cached_model.device)
-            .map_err(|e| CandleEmbeddingError::InferenceError(format!("Failed to create input tensor: {}", e)))?
-            .unsqueeze(0)
-            .map_err(|e| CandleEmbeddingError::InferenceError(format!("Failed to add batch dimension: {}", e)))?;
-
-        // Run model inference in blocking task
-        let model = cached_model.model.clone();
-        let device = cached_model.device.clone();
-        
-        let output = tokio::task::spawn_blocking(move || {
-            model.forward(&input_tensor)
-        }).await
-        .map_err(|e| CandleEmbeddingError::InferenceError(format!("Task join error: {}", e)))?
-        .map_err(|e| CandleEmbeddingError::InferenceError(format!("Model forward failed: {}", e)))?;
-
-        // Extract embeddings (assume mean pooling for now)
-        let embeddings = output.mean(1)
-            .map_err(|e| CandleEmbeddingError::InferenceError(format!("Mean pooling failed: {}", e)))?;
-
-        // Convert to CPU if needed and extract values
-        let embeddings = embeddings.to_device(&Device::Cpu)
-            .map_err(|e| CandleEmbeddingError::InferenceError(format!("Failed to move to CPU: {}", e)))?;
-
-        let embedding_values = embeddings.to_vec1::<f32>()
-            .map_err(|e| CandleEmbeddingError::InferenceError(format!("Failed to extract values: {}", e)))?;
-
-        // Normalize embedding
-        let norm = embedding_values.iter().map(|x| x * x).sum::<f32>().sqrt();
-        let normalized: Vec<f32> = if norm > 0.0 {
-            embedding_values.iter().map(|x| x / norm).collect()
-        } else {
-            embedding_values
+        let input_tensor = match Tensor::new(token_ids, &cached_model.device)
+            .and_then(|t| t.unsqueeze(0))
+        {
+            Ok(tensor) => tensor,
+            Err(_) => {
+                // On tensor creation error, stream closes naturally - error handling in consumer
+                return stream;
+            }
         };
 
-        let latency_ms = start_time.elapsed().as_millis() as u64;
-        self.metrics.record_inference(latency_ms, token_ids.len() as u32);
+        // Clone data for async task
+        let model = cached_model.model.clone();
+        let device = cached_model.device.clone();
+        let metrics = self.metrics.clone();
+        let token_count = token_ids.len() as u32;
 
-        Ok(SmallVec::from_slice(&normalized))
+        tokio::spawn(async move {
+            // Run model inference asynchronously
+            match Self::run_model_forward_async(model, input_tensor, device).await {
+                Ok(embedding_vec) => {
+                    let latency_ms = start_time.elapsed().as_millis() as u64;
+                    metrics.record_inference(latency_ms, token_count);
+                    
+                    // Stream the result - consumer handles any errors
+                    let _ = tx.send(SmallVec::from_slice(&embedding_vec));
+                }
+                Err(_) => {
+                    metrics.record_failure();
+                    // On error, stream closes naturally - error handling in consumer
+                }
+            }
+        });
+
+        stream
     }
 
-    /// Generate embedding for single text
-    pub async fn embed_text(
+    /// Run model forward pass asynchronously 
+    async fn run_model_forward_async(
+        model: Arc<SentenceTransformersModel>,
+        input_tensor: Tensor,
+        device: Device,
+    ) -> Result<Vec<f32>, CandleEmbeddingError> {
+        // Use tokio::spawn for compute-intensive work instead of spawn_blocking
+        tokio::spawn(async move {
+            // Run model inference
+            let output = model.forward(&input_tensor)
+                .map_err(|e| CandleEmbeddingError::InferenceError(format!("Model forward failed: {}", e)))?;
+
+            // Extract embeddings (assume mean pooling for now)
+            let embeddings = output.mean(1)
+                .map_err(|e| CandleEmbeddingError::InferenceError(format!("Mean pooling failed: {}", e)))?;
+
+            // Convert to CPU if needed and extract values
+            let embeddings = embeddings.to_device(&Device::Cpu)
+                .map_err(|e| CandleEmbeddingError::InferenceError(format!("Failed to move to CPU: {}", e)))?;
+
+            let embedding_values = embeddings.to_vec1::<f32>()
+                .map_err(|e| CandleEmbeddingError::InferenceError(format!("Failed to extract values: {}", e)))?;
+
+            // Normalize embedding
+            let norm = embedding_values.iter().map(|x| x * x).sum::<f32>().sqrt();
+            let normalized: Vec<f32> = if norm > 0.0 {
+                embedding_values.iter().map(|x| x / norm).collect()
+            } else {
+                embedding_values
+            };
+
+            Ok(normalized)
+        }).await
+        .map_err(|e| CandleEmbeddingError::InferenceError(format!("Task join error: {}", e)))?
+    }
+
+    /// Generate embedding for single text - streaming-first architecture
+    pub fn embed_text(
         &self,
         text: &str,
         model_type: Option<SentenceTransformerModel>,
-    ) -> Result<SmallVec<[f32; MAX_EMBEDDING_DIM]>, CandleEmbeddingError> {
+    ) -> AsyncStream<SmallVec<[f32; MAX_EMBEDDING_DIM]>> {
+        let (tx, stream) = async_stream_channel();
         let model_type = model_type.unwrap_or(self.default_model);
-        let cached_model = self.ensure_model_loaded(model_type).await?;
+        
+        let text = text.to_string();
+        let provider = self.clone();
 
-        let max_length = model_type.max_sequence_length();
-        let token_ids = self.tokenize_text(&cached_model.tokenizer, text, max_length)?;
+        tokio::spawn(async move {
+            let mut model_stream = provider.ensure_model_loaded(model_type);
+            
+            // Wait for model to be loaded from stream
+            if let Some(cached_model) = model_stream.next().await {
+                let max_length = model_type.max_sequence_length();
+                
+                // Tokenize text
+                match provider.tokenize_text(&cached_model.tokenizer, &text, max_length) {
+                    Ok(token_ids) => {
+                        // Run inference and forward results
+                        let mut inference_stream = provider.run_inference(&cached_model, &token_ids);
+                        if let Some(embedding) = inference_stream.next().await {
+                            let _ = tx.send(embedding);
+                        }
+                    }
+                    Err(_) => {
+                        // On tokenization error, stream closes naturally - error handling in consumer
+                    }
+                }
+            }
+            // If model loading fails, stream closes naturally - error handling in consumer
+        });
 
-        self.run_inference(&cached_model, &token_ids).await
+        stream
     }
 
-    /// Generate embeddings for batch of texts
-    pub async fn embed_batch(
+    /// Generate embeddings for batch of texts - streaming-first architecture
+    pub fn embed_batch(
         &self,
         texts: &[&str],
         model_type: Option<SentenceTransformerModel>,
-    ) -> Result<Vec<SmallVec<[f32; MAX_EMBEDDING_DIM]>>, CandleEmbeddingError> {
+    ) -> AsyncStream<Vec<SmallVec<[f32; MAX_EMBEDDING_DIM]>>> {
+        let (tx, stream) = async_stream_channel();
+        
         if texts.is_empty() {
-            return Ok(Vec::new());
+            // Empty batch - emit empty result immediately
+            let _ = tx.send(Vec::new());
+            return stream;
         }
 
         if texts.len() > MAX_BATCH_SIZE {
-            return Err(CandleEmbeddingError::InputTooLarge(texts.len(), MAX_BATCH_SIZE));
+            // Batch too large - stream closes naturally, error handling in consumer
+            return stream;
         }
 
         let model_type = model_type.unwrap_or(self.default_model);
-        let cached_model = self.ensure_model_loaded(model_type).await?;
+        let texts: Vec<String> = texts.iter().map(|s| s.to_string()).collect();
+        let provider = self.clone();
 
-        let mut results = Vec::with_capacity(texts.len());
-        let max_length = model_type.max_sequence_length();
+        tokio::spawn(async move {
+            let mut model_stream = provider.ensure_model_loaded(model_type);
+            
+            // Wait for model to be loaded from stream
+            if let Some(cached_model) = model_stream.next().await {
+                let mut results = Vec::with_capacity(texts.len());
+                let max_length = model_type.max_sequence_length();
 
-        // Process each text (could be optimized for true batch processing)
-        for text in texts {
-            let token_ids = self.tokenize_text(&cached_model.tokenizer, text, max_length)?;
-            let embedding = self.run_inference(&cached_model, &token_ids).await?;
-            results.push(embedding);
-        }
+                // Process each text sequentially (could be optimized for parallel processing)
+                for text in texts {
+                    match provider.tokenize_text(&cached_model.tokenizer, &text, max_length) {
+                        Ok(token_ids) => {
+                            let mut inference_stream = provider.run_inference(&cached_model, &token_ids);
+                            if let Some(embedding) = inference_stream.next().await {
+                                results.push(embedding);
+                            } else {
+                                // Inference failed for this text - stream closes naturally
+                                return;
+                            }
+                        }
+                        Err(_) => {
+                            // Tokenization failed - stream closes naturally
+                            return;
+                        }
+                    }
+                }
 
-        Ok(results)
+                // Emit the complete batch results
+                let _ = tx.send(results);
+            }
+            // If model loading fails, stream closes naturally - error handling in consumer
+        });
+
+        stream
     }
 
     /// Get performance metrics

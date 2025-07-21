@@ -15,6 +15,9 @@ pub mod usage;
 /// Embedding service implementations and caching mechanisms
 pub mod service;
 
+/// Similarity computation types and traits for vector comparisons
+pub mod similarity;
+
 // Re-export core types from core module
 // Compatibility re-exports
 pub use core::EmbeddingModel as EmbeddingModelTrait;
@@ -27,3 +30,5 @@ pub use config::{EmbeddingConfig, IntoEmbeddingConfig};
 pub use service::{EmbeddingPool, EmbeddingService, InMemoryEmbeddingCache};
 // Re-export usage tracking types
 pub use usage::{EmbeddingUsage, TokenUsage};
+// Re-export similarity types
+pub use similarity::{Similarity, SimilarityMetric, SimilarityResult};

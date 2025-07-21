@@ -13,11 +13,10 @@
 // fully optimise the call-graph.  All hot-path methods are `#[inline]`.
 // ============================================================================
 
-use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use futures::future::BoxFuture;
+use fluent_ai_http3::async_task::AsyncStream;
 #[allow(unused_imports)] // used in downstream macro expansion
 use futures::join;
 use futures::stream;
@@ -32,19 +31,25 @@ use crate::{completion, vector_store};
 /// A single transformation step in a workflow
 pub trait WorkflowStep<In, Out>: Send + Sync + 'static {
     /// Execute this step on the input
-    fn execute(&self, input: In) -> BoxFuture<'static, Result<Out, String>>;
+    fn execute(&self, input: In) -> AsyncStream<Result<Out, String>>;
 }
 
 /// Implementation for async functions as workflow steps
 impl<F, In, Out, Fut> WorkflowStep<In, Out> for F
 where
     F: Fn(In) -> Fut + Send + Sync + 'static,
-    Fut: Future<Output = Result<Out, String>> + Send + 'static,
+    Fut: std::future::Future<Output = Result<Out, String>> + Send + 'static,
     In: Send + 'static,
     Out: Send + 'static,
 {
-    fn execute(&self, input: In) -> BoxFuture<'static, Result<Out, String>> {
-        Box::pin(self(input))
+    fn execute(&self, input: In) -> AsyncStream<Result<Out, String>> {
+        let (tx, stream) = AsyncStream::channel();
+        let fut = self(input);
+        tokio::spawn(async move {
+            let result = fut.await;
+            let _ = tx.send(result);
+        });
+        stream
     }
 }
 
@@ -147,25 +152,49 @@ pub trait Op: Send + Sync {
     type Input: Send + Sync;
     type Output: Send + Sync;
 
-    fn call(&self, input: Self::Input) -> impl Future<Output = Self::Output> + Send;
+    fn call(&self, input: Self::Input) -> AsyncStream<Self::Output>;
 
     /// Execute this op over an iterator of inputs with at most `n` concurrent
     /// in-flight tasks.
-    fn batch_call<I>(&self, n: usize, input: I) -> impl Future<Output = Vec<Self::Output>> + Send
+    fn batch_call<I>(&self, n: usize, input: I) -> AsyncStream<Vec<Self::Output>>
     where
         I: IntoIterator<Item = Self::Input> + Send,
         I::IntoIter: Send,
-        Self: Sized,
+        Self: Sized + Clone,
     {
-        use futures::stream::StreamExt;
-
-        async move {
-            stream::iter(input)
-                .map(|v| self.call(v))
-                .buffered(n)
-                .collect()
-                .await
-        }
+        let (tx, stream) = AsyncStream::channel();
+        let inputs: Vec<_> = input.into_iter().collect();
+        let op = self.clone();
+        
+        tokio::spawn(async move {
+            let mut results = Vec::with_capacity(inputs.len());
+            let semaphore = Arc::new(tokio::sync::Semaphore::new(n));
+            
+            let mut handles = Vec::new();
+            
+            for input_item in inputs {
+                let permit = semaphore.clone().acquire_owned().await.unwrap();
+                let op_clone = op.clone();
+                
+                let handle = tokio::spawn(async move {
+                    let mut call_stream = op_clone.call(input_item);
+                    let result = call_stream.next();
+                    drop(permit);
+                    result
+                });
+                handles.push(handle);
+            }
+            
+            for handle in handles {
+                if let Ok(Some(result)) = handle.await {
+                    results.push(result);
+                }
+            }
+            
+            let _ = tx.send(results);
+        });
+        
+        stream
     }
 
     // ---------------------------------------------------------------------

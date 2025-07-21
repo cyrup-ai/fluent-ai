@@ -6,7 +6,8 @@
 
 use candle_core::{Tensor, D};
 use candle_nn::ops;
-use super::{LogitsProcessor, SamplingError};
+use super::SamplingError;
+use crate::processing::traits::LogitsProcessor;
 
 /// Nucleus (top-p) sampling processor
 ///
@@ -144,43 +145,27 @@ impl TopPProcessor {
     }
 }
 
-impl LogitsProcessor for TopPProcessor {
-    #[inline(always)]
-    fn process(
-        &self,
-        logits: &mut Tensor,
-        _token_ids: &[u32],
-        _position: usize,
-    ) -> Result<(), SamplingError> {
-        // Check for empty logits
-        let shape = logits.shape();
-        if shape.dims().is_empty() || shape.elem_count() == 0 {
-            return Err(SamplingError::EmptyLogits);
-        }
-        
-        // Apply nucleus sampling
-        let new_logits = self.apply_nucleus_sampling(logits)?;
-        *logits = new_logits;
-        Ok(())
-    }
-    
-    fn validate(&self) -> Result<(), SamplingError> {
-        if self.top_p < 0.0 || self.top_p > 1.0 || !self.top_p.is_finite() {
-            return Err(SamplingError::InvalidTopP(self.top_p as f64));
-        }
-        Ok(())
-    }
-    
-    #[inline(always)]
-    fn name(&self) -> &'static str {
-        "TopPProcessor"
-    }
-    
-    #[inline(always)]
-    fn is_identity(&self) -> bool {
-        self.is_identity
-    }
-}
+// TODO: Update to new LogitsProcessor API that uses process_logits() instead of process()
+// impl LogitsProcessor for TopPProcessor {
+//     #[inline(always)]
+//     fn process_logits(&mut self, logits: &mut [f32], context: &ProcessingContext) -> ProcessingResult<()> {
+//         // Implementation needed for new API
+//     }
+//     
+//     fn validate(&self) -> ProcessingResult<()> {
+//         // Implementation needed for new API
+//     }
+//     
+//     #[inline(always)]
+//     fn name(&self) -> &'static str {
+//         "TopPProcessor"
+//     }
+//     
+//     #[inline(always)]
+//     fn is_identity(&self) -> bool {
+//         self.is_identity
+//     }
+// }
 
 /// Builder for nucleus sampling processor with validation and presets
 #[derive(Debug, Clone)]

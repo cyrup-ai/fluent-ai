@@ -1,5 +1,5 @@
 // src/cognitive/committee/agent.rs
-//! Defines the LLM-based evaluation agent for the committee.
+//! Defines the provider-based evaluation agent for the committee.
 
 use serde::Deserialize;
 
@@ -8,15 +8,15 @@ use crate::cognitive::common::types::{AgentEvaluation, EvaluationPhase, Evaluati
 use crate::cognitive::mcts::CodeState;
 use crate::cognitive::types::CognitiveError;
 
-/// LLM-based evaluation agent
+/// Provider-based evaluation agent
 #[derive(Debug, Clone)]
-pub struct LLMEvaluationAgent {
+pub struct ProviderEvaluationAgent {
     id: String,
     model: Model,
     perspective: String, // e.g., "performance", "memory", "quality"
 }
 
-impl LLMEvaluationAgent {
+impl ProviderEvaluationAgent {
     pub async fn new(model_type: ModelType, perspective: &str) -> Result<Self, CognitiveError> {
         let model = Model::create(model_type.clone())
             .await

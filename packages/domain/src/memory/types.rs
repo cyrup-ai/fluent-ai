@@ -2,11 +2,8 @@ use std::time::SystemTime;
 use crate::ZeroOneOrMany;
 use crate::async_task::{AsyncTask, spawn_async};
 use serde_json::Value;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
-
-pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
+use crate::async_task::AsyncStream;
 
 #[derive(Debug)]
 pub enum VectorStoreError {
@@ -173,12 +170,12 @@ pub trait VectorStoreIndexDyn: Send + Sync {
         &self,
         query: &str,
         n: usize,
-    ) -> AsyncTask<ZeroOneOrMany<(f64, String, Value)>>;
+    ) -> AsyncStream<ZeroOneOrMany<(f64, String, Value)>>;
     fn top_n_ids(
         &self,
         query: &str,
         n: usize,
-    ) -> AsyncTask<ZeroOneOrMany<(f64, String)>>;
+    ) -> AsyncStream<ZeroOneOrMany<(f64, String)>>;
 }
 
 pub struct VectorStoreIndex {

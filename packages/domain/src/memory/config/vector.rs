@@ -708,76 +708,8 @@ impl Default for MemoryConfig {
     }
 }
 
-/// Embedding configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EmbeddingConfig {
-    /// Embedding model type
-    pub model_type: EmbeddingModelType,
-    /// Model name or identifier
-    pub model_name: Arc<str>,
-    /// Expected embedding dimension
-    pub dimension: usize,
-    /// Normalization strategy
-    pub normalization: NormalizationStrategy,
-    /// Enable caching of embeddings
-    pub enable_caching: bool,
-    /// Cache size for embeddings
-    pub cache_size: usize,
-}
-
-/// Embedding model types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[repr(u8)]
-pub enum EmbeddingModelType {
-    /// OpenAI embedding models
-    OpenAI = 0,
-    /// Sentence transformers
-    SentenceTransformers = 1,
-    /// Custom embedding model
-    Custom = 2,
-    /// Local transformer model
-    Local = 3,
-}
-
-/// Vector normalization strategies
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[repr(u8)]
-pub enum NormalizationStrategy {
-    /// No normalization
-    None = 0,
-    /// L2 normalization (unit vectors)
-    L2 = 1,
-    /// Min-max normalization
-    MinMax = 2,
-    /// Z-score normalization
-    ZScore = 3,
-}
-
-impl EmbeddingConfig {
-    /// Create new embedding configuration
-    #[inline]
-    pub fn new(
-        model_type: EmbeddingModelType,
-        model_name: impl Into<Arc<str>>,
-        dimension: usize,
-    ) -> Self {
-        Self {
-            model_type,
-            model_name: model_name.into(),
-            dimension,
-            normalization: NormalizationStrategy::L2,
-            enable_caching: true,
-            cache_size: 10000,
-        }
-    }
-}
-
-impl Default for EmbeddingConfig {
-    #[inline]
-    fn default() -> Self {
-        Self::new(EmbeddingModelType::OpenAI, "text-embedding-3-small", 1536)
-    }
-}
+// Use shared EmbeddingConfig from super::shared
+use super::shared::{EmbeddingConfig, EmbeddingModelType, NormalizationStrategy};
 
 impl VectorStoreConfig {
     /// Create new vector store configuration with validation

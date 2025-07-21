@@ -46,7 +46,27 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     }
     
     // Otherwise, use the best available implementation
-    unsafe { GLOBAL_SIMILARITY.cosine_similarity_unchecked(a, b) }
+    GLOBAL_SIMILARITY.cosine_similarity(a, b)
+}
+
+/// Smart cosine similarity that automatically selects the best implementation
+/// 
+/// This is an alias for [`cosine_similarity`] that provides automatic
+/// runtime selection of the optimal implementation. The name "smart" indicates
+/// the intelligent selection of SIMD vs scalar implementations based on
+/// vector size and CPU capabilities.
+#[inline]
+pub fn smart_cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+    cosine_similarity(a, b)
+}
+
+/// SIMD-optimized cosine similarity (alias for compatibility)
+///
+/// This function is an alias for the general [`cosine_similarity`] function,
+/// which already uses SIMD when appropriate. Kept for API compatibility.
+#[inline]
+pub fn simd_cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+    cosine_similarity(a, b)
 }
 
 /// Get the name of the currently active similarity implementation
@@ -107,21 +127,21 @@ mod tests {
         
         // First call
         cosine_similarity(&a, &b);
-        let metrics = metrics();
-        assert_eq!(metrics.total_calculations, 1);
-        assert_eq!(metrics.total_elements_processed, 3);
+        let metrics_snapshot = metrics();
+        assert_eq!(metrics_snapshot.total_calculations, 1);
+        assert_eq!(metrics_snapshot.total_elements_processed, 3);
         
         // Second call
         cosine_similarity(&a, &b);
-        let metrics = metrics();
-        assert_eq!(metrics.total_calculations, 2);
-        assert_eq!(metrics.total_elements_processed, 6);
+        let metrics_snapshot = metrics();
+        assert_eq!(metrics_snapshot.total_calculations, 2);
+        assert_eq!(metrics_snapshot.total_elements_processed, 6);
         
         // Reset and verify
         reset_metrics();
-        let metrics = metrics();
-        assert_eq!(metrics.total_calculations, 0);
-        assert_eq!(metrics.total_elements_processed, 0);
+        let metrics_snapshot = metrics();
+        assert_eq!(metrics_snapshot.total_calculations, 0);
+        assert_eq!(metrics_snapshot.total_elements_processed, 0);
     }
     
     #[test]

@@ -1,3 +1,57 @@
+# Domain Model Architecture
+
+## CRITICAL RULE: ALL DOMAIN MODELS MUST LIVE IN fluent_ai_domain
+
+**MANDATORY**: ALL domain models, types, traits, and abstractions MUST be defined in the `fluent_ai_domain` package. NO other packages should define domain models.
+
+### Domain Model Centralization
+
+- **CompletionProvider trait**: Lives in `fluent_ai_domain::completion`
+- **ModelConfig struct**: Lives in `fluent_ai_domain::model` 
+- **All completion types**: Live in `fluent_ai_domain::completion`
+- **All model types**: Live in `fluent_ai_domain::model`
+- **Message types**: Live in `fluent_ai_domain::chat`
+- **Error types**: Live in `fluent_ai_domain::error`
+
+### Import Pattern for REAL LLM Calls
+
+```rust
+// CORRECT: Import domain types and provider clients
+use fluent_ai_domain::{
+    completion::CompletionProvider,  // Trait definition
+    model::ModelConfig,
+    chat::Message,
+    error::CompletionError,
+};
+
+// CORRECT: Import actual completion clients for REAL calls
+use fluent_ai_provider::{
+    openai::OpenAIClient,           // Real OpenAI client
+    anthropic::AnthropicClient,     // Real Anthropic client
+};
+
+// WRONG: Defining domain models in other packages
+use fluent_ai_memory::ModelConfig; // WRONG PACKAGE
+```
+
+### Package Dependency Chain
+
+**CRITICAL DEPENDENCY ORDER**: `fluent_ai` -> `fluent_ai_memory` -> `fluent_ai_provider` -> `fluent_ai_domain`
+
+- **fluent_ai_domain**: Domain models, types, traits (ONLY) - NO dependencies
+- **fluent_ai_provider**: Completion clients (OpenAI, Anthropic, etc.) using domain types
+- **fluent_ai_memory**: Memory implementations using BOTH domain types AND provider clients for REAL LLM calls
+- **fluent_ai**: Top-level package that orchestrates everything
+
+### Zero Duplication Rule
+
+NO package except `fluent_ai_domain` should define:
+- Completion traits or types
+- Model configuration types
+- Message or chat types
+- Provider abstractions
+- Any domain model concepts
+
 # HTTP Client Configuration
 
 ## MANDATORY HTTP3 LIBRARY USAGE
@@ -105,12 +159,22 @@ impl ProviderClient {
         Self { client }
     }
     
-    pub async fn make_request(&self, url: &str, body: Vec<u8>) -> Result<Response, HttpError> {
-        let request = HttpRequest::post(url, body)?
+    pub fn make_request_stream(&self, url: &str, body: Vec<u8>) -> AsyncStream<Response> {
+        let (sender, receiver) = channel::<Response>();
+        
+        let request = HttpRequest::post(url, body)
             .header("Content-Type", "application/json")
             .header("Authorization", &format!("Bearer {}", self.api_key));
             
-        self.client.send(request).await
+        let response_stream = self.client.send_stream(request);
+        response_stream.on_chunk(|chunk| {
+            match chunk {
+                Ok(response) => emit!(sender, response),
+                Err(err) => handle_error!(err, "HTTP request failed"),
+            }
+        });
+        
+        receiver
     }
 }
 ```
@@ -120,33 +184,26 @@ impl ProviderClient {
 ```rust
 use fluent_ai_http3::{HttpClient, HttpConfig};
 
-pub async fn stream_completion(&self, request: CompletionRequest) -> Result<StreamingResponse, HttpError> {
-    let client = HttpClient::with_config(HttpConfig::streaming_optimized())?;
+pub fn stream_completion(&self, request: CompletionRequest) -> AsyncStream<CompletionChunk> {
+    let (sender, receiver) = channel::<CompletionChunk>();
     
-    let http_request = HttpRequest::post(&self.url, request_body)?
+    let client = HttpClient::with_config(HttpConfig::streaming_optimized());
+    
+    let http_request = HttpRequest::post(&self.url, request_body)
         .header("Content-Type", "application/json")
         .header("Authorization", &format!("Bearer {}", self.api_key));
     
-    let response = client.send(http_request).await?;
+    let response_stream = client.send_stream(http_request);
     
-    // Use SSE for most AI providers
-    let mut sse_stream = response.sse();
-    
-    while let Some(event) = sse_stream.next().await {
-        match event {
-            Ok(sse_event) => {
-                // Process SSE event data
-                if let Some(data) = sse_event.data {
-                    // Parse and emit completion chunk
-                }
-            }
-            Err(e) => {
-                // Handle SSE parsing error
-            }
+    // Use SSE for most AI providers - NO FUTURES!
+    response_stream.sse().on_chunk(|sse_event| {
+        match parse_completion_chunk(sse_event.data) {
+            Ok(chunk) => emit!(sender, chunk),
+            Err(err) => handle_error!(err, "SSE parsing failed"),
         }
-    }
+    });
     
-    Ok(StreamingResponse::new(receiver))
+    receiver
 }
 ```
 
@@ -222,3 +279,107 @@ impl NewProviderClient {
 ```
 
 This HTTP3 library provides the foundation for all network operations in fluent-ai with optimal performance, reliability, and modern HTTP/3 capabilities.
+
+# STREAMS-ONLY ARCHITECTURE - NO FUTURES
+
+## CRITICAL PRINCIPLE: ZERO FUTURES THROUGHOUT ENTIRE FRAMEWORK
+
+fluent-ai uses a revolutionary **streams-only architecture** that eliminates ALL futures for blazing-fast LLM orchestration:
+
+### ABSOLUTE CONSTRAINTS
+
+**FORBIDDEN**:
+- `async fn` - Convert ALL to streaming functions
+- `Future<Output = T>` - Use `AsyncStream<T>` instead  
+- `Result<T, E>` in streams - All values must be unwrapped
+- `.await` - Use streaming iteration instead
+- `spawn_async` - Use direct streaming channels
+- `Pin<Box<dyn Stream<Item = Result<...>>>>` - Use unwrapped streams
+
+**REQUIRED**:
+- `AsyncStream<T>` - All async operations return unwrapped value streams
+- `on_chunk` error handling - Errors handled via macro syntax
+- `.collect()` method - For future-like behavior when needed
+- Lock-free streaming - Zero allocation, blazing performance
+
+### ERROR HANDLING PATTERN
+
+```rust
+// BAD - Future with Result
+async fn bad_llm_call() -> Result<String, Error> {
+    // NEVER DO THIS
+}
+
+// GOOD - Stream with unwrapped values + on_chunk error handling
+fn good_llm_call() -> AsyncStream<String> {
+    let (sender, receiver) = channel::<String>();
+    
+    http_stream.on_chunk(|chunk| {
+        match chunk {
+            Ok(text) => emit!(sender, text),
+            Err(err) => handle_error!(err, "LLM call failed"),
+        }
+    });
+    
+    receiver
+}
+```
+
+### STREAMING CONVERSION EXAMPLES
+
+```rust
+// BAD - Async function with await
+pub async fn embed_text(text: &str) -> Result<Vec<f32>, EmbedError> {
+    let response = client.post(url).send().await?;
+    let embedding = response.json().await?;
+    Ok(embedding)
+}
+
+// GOOD - Streaming function with unwrapped values
+pub fn embed_text_stream(text: &str) -> AsyncStream<Vec<f32>> {
+    let (sender, receiver) = channel::<Vec<f32>>();
+    
+    let response_stream = client.post_stream(url);
+    response_stream.on_chunk(|chunk| {
+        match parse_embedding(chunk) {
+            Ok(embedding) => emit!(sender, embedding),
+            Err(err) => handle_error!(err, "Embedding parse failed"),
+        }
+    });
+    
+    receiver
+}
+```
+
+### FUTURE-LIKE BEHAVIOR WITH .collect()
+
+Users wanting traditional future behavior can call `.collect()`:
+
+```rust
+// Stream usage (preferred - real-time processing)
+for embedding in embed_text_stream("hello") {
+    process_embedding(embedding);
+}
+
+// Future-like usage (when needed - blocks until complete)
+let final_embedding = embed_text_stream("hello").collect();
+```
+
+### APPLIES TO ALL PACKAGES
+
+This architecture applies to **EVERY** package:
+- **http3**: Already implements streams-only (good!)
+- **domain**: Convert ALL async methods to streaming
+- **memory**: Cognitive operations must be streaming
+- **candle**: Model operations must stream tensors
+- **provider**: ALL LLM API calls must be streaming-only
+
+### PERFORMANCE BENEFITS
+
+- **Zero allocation**: Stack-based streaming, no heap futures
+- **Blazing speed**: Direct value emission, no Future overhead
+- **Lock-free**: Pure streaming channels, no synchronization
+- **Elegant ergonomics**: Clean unwrapped values + macro error handling
+- **Real-time**: Immediate processing, no batching delays
+
+This is the **core differentiator** that makes fluent-ai the fastest LLM orchestration framework.

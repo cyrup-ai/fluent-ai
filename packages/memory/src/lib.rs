@@ -7,7 +7,6 @@ pub mod api;
 pub mod cognitive;
 pub mod constants;
 pub mod graph;
-pub mod llm;
 pub mod memory;
 pub mod migration;
 pub mod monitoring;
@@ -26,7 +25,6 @@ pub use api::APIServer;
 pub use cognitive::{
     CognitiveMemoryManager, CognitiveMemoryNode, CognitiveSettings, CognitiveState,
     EvolutionMetadata, QuantumSignature,
-    llm::{ModelConfig, PerformanceConfig, ProductionLLMProvider, ProviderConfig},
 };
 pub use memory::MemoryMetadata;
 pub use memory::MemoryNode;

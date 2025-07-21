@@ -1,23 +1,15 @@
-//! IMPORTANT: Cyrup-agent's battle-tested async primitives COPIED INTO fluent-ai
+//! IMPORTANT: Pure streaming primitives - NO Future/async/await!
 //!
-//! ⚠️  DO NOT IMPORT FROM cyrup-agent - IT WILL BE DELETED! ⚠️
-//! All async primitives are now part of fluent-ai directly
+//! ⚠️  ALL FUTURE USAGE ELIMINATED - PURE ASYNCSTREAM ARCHITECTURE ⚠️
+//! Stream-first design with .collect() for await-like behavior
 //!
-//! Zero-allocation, crossbeam-based async primitives with proven performance
+//! Zero-allocation, crossbeam-based streaming primitives with proven performance
 //! No NotResult constraints - errors handled internally
-
-use core::{
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll},
-};
 
 use crossbeam_channel::{Receiver, Sender, bounded};
 
-use super::thread_pool::GLOBAL_EXECUTOR;
-
-/// Cyrup-agent's battle-tested AsyncTask
-/// Zero-allocation one-shot future built on crossbeam
+/// Pure streaming task - NO Future implementation!
+/// Zero-allocation one-shot streaming built on crossbeam
 pub struct AsyncTask<T> {
     rx: Receiver<T>,
 }
@@ -39,45 +31,57 @@ where
         let _ = tx.send(value); // Send immediately
         AsyncTask { rx }
     }
-}
 
-impl<T> Future for AsyncTask<T> {
-    type Output = T;
-
+    /// Collect the result (blocking) - replaces .await behavior
+    /// This is the primary method for await-like usage
     #[inline]
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // fast path – non-blocking recv
-        if let Ok(v) = self.rx.try_recv() {
-            return Poll::Ready(v);
-        }
+    pub fn collect(self) -> T {
+        self.rx.recv().expect("AsyncTask sender dropped without sending")
+    }
 
-        // register waker & double-check
-        GLOBAL_EXECUTOR.register_waker(self.rx.clone(), cx.waker().clone());
+    /// Non-blocking try to receive result
+    #[inline]
+    pub fn try_collect(&self) -> Result<T, crossbeam_channel::TryRecvError> {
+        self.rx.try_recv()
+    }
 
-        match self.rx.try_recv() {
-            Ok(v) => Poll::Ready(v),
-            Err(crossbeam_channel::TryRecvError::Empty) => Poll::Pending,
-            Err(crossbeam_channel::TryRecvError::Disconnected) => {
-                panic!("AsyncTask sender dropped without sending")
-            }
-        }
+    /// Get the underlying receiver for advanced streaming patterns
+    #[inline]
+    pub fn into_receiver(self) -> Receiver<T> {
+        self.rx
     }
 }
 
-/// Spawn a future onto the global single-thread executor
-/// and return an `AsyncTask` that resolves to its output.
+/// Spawn a closure onto a thread and return an `AsyncTask` that resolves to its output.
+/// Replaces spawn_async - NO FUTURE USAGE!
 #[inline]
-pub fn spawn_async<Fut, T>(fut: Fut) -> AsyncTask<T>
+pub fn spawn_task<F, T>(f: F) -> AsyncTask<T>
 where
-    Fut: Future<Output = T> + Send + 'static,
+    F: FnOnce() -> T + Send + 'static,
     T: Send + 'static,
 {
     let (tx, rx): (Sender<T>, Receiver<T>) = bounded(1);
 
-    GLOBAL_EXECUTOR.enqueue(async move {
-        let out = fut.await;
-        let _ = tx.send(out); // ignore error – receiver may be gone
+    std::thread::spawn(move || {
+        let result = f();
+        let _ = tx.send(result); // ignore error – receiver may be gone
     });
 
     AsyncTask { rx }
+}
+
+/// Spawn a closure that produces multiple values as a stream
+#[inline]
+pub fn spawn_stream<F, T>(f: F) -> super::AsyncStream<T>
+where
+    F: FnOnce(super::AsyncStreamSender<T>) + Send + 'static,
+    T: Send + 'static,
+{
+    let (sender, stream) = super::AsyncStream::channel();
+
+    std::thread::spawn(move || {
+        f(sender);
+    });
+
+    stream
 }

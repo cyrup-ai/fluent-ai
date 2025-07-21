@@ -1,8 +1,8 @@
 //! Portable SIMD implementation using the `wide` crate for cross-platform support
 
-use super::traits::{CosineSimilarity, RuntimeSelectable, WithMetrics};
+use crate::similarity::traits::{CosineSimilarity, RuntimeSelectable, WithMetrics};
 use super::super::metrics::{SimilarityMetrics, SimilarityMetricsSnapshot, MetricsGuard};
-use wide::{f32x8, CmpGe};
+use wide::f32x8;
 use std::sync::Arc;
 
 /// Portable SIMD implementation using the `wide` crate
@@ -40,8 +40,29 @@ impl PortableSimdSimilarity {
         
         // Process full chunks
         for (a_chunk, b_chunk) in chunks.zip(b_chunks) {
-            let a_simd = f32x8::from_slice(a_chunk);
-            let b_simd = f32x8::from_slice(b_chunk);
+            let a_simd = if a_chunk.len() == 8 {
+                f32x8::new([
+                    a_chunk[0], a_chunk[1], a_chunk[2], a_chunk[3],
+                    a_chunk[4], a_chunk[5], a_chunk[6], a_chunk[7]
+                ])
+            } else {
+                // Handle partial chunks by padding with zeros
+                let mut padded = [0.0f32; 8];
+                padded[..a_chunk.len()].copy_from_slice(a_chunk);
+                f32x8::new(padded)
+            };
+            
+            let b_simd = if b_chunk.len() == 8 {
+                f32x8::new([
+                    b_chunk[0], b_chunk[1], b_chunk[2], b_chunk[3],
+                    b_chunk[4], b_chunk[5], b_chunk[6], b_chunk[7]
+                ])
+            } else {
+                // Handle partial chunks by padding with zeros
+                let mut padded = [0.0f32; 8];
+                padded[..b_chunk.len()].copy_from_slice(b_chunk);
+                f32x8::new(padded)
+            };
             
             dot = a_simd.mul_add(b_simd, dot);
             norm_a = a_simd.mul_add(a_simd, norm_a);
@@ -49,16 +70,16 @@ impl PortableSimdSimilarity {
         }
         
         // Reduce SIMD vectors to scalars
-        let dot_scalar = dot.reduce_sum();
-        let norm_a_scalar = norm_a.reduce_sum();
-        let norm_b_scalar = norm_b.reduce_sum();
+        let dot_scalar = dot.reduce_add();
+        let norm_a_scalar = norm_a.reduce_add();
+        let norm_b_scalar = norm_b.reduce_add();
         
         // Process remainder
         let (dot_rem, norm_a_rem, norm_b_rem) = 
             if !remainder.is_empty() {
                 let a_remainder = &a[a.len() - remainder.len()..];
                 let b_remainder = &b[b.len() - remainder.len()..];
-                super::super::scalar::ScalarSimilarity::dot_and_norms(a_remainder, b_remainder)
+                crate::similarity::ScalarSimilarity::dot_and_norms(a_remainder, b_remainder)
             } else {
                 (0.0, 0.0, 0.0)
             };
@@ -73,14 +94,18 @@ impl PortableSimdSimilarity {
 
 impl CosineSimilarity for PortableSimdSimilarity {
     #[inline]
-    unsafe fn cosine_similarity_unchecked(&self, a: &[f32], b: &[f32]) -> f32 {
+    fn cosine_similarity(&self, a: &[f32], b: &[f32]) -> f32 {
+        if a.len() != b.len() {
+            return 0.0; // Invalid input, return zero similarity
+        }
+        
         let _guard = MetricsGuard::new(&self.metrics, a.len());
         
         let (dot, norm_a, norm_b) = if a.len() >= 8 {
             Self::process_chunks::<8>(a, b)
         } else {
             // Fall back to scalar for very small vectors
-            return super::super::scalar::ScalarSimilarity::dot_and_norms(a, b).0;
+            crate::similarity::ScalarSimilarity::dot_and_norms(a, b)
         };
         
         let norm_product = (norm_a * norm_b).sqrt();

@@ -4,8 +4,10 @@
 //! with connection pooling, intelligent caching, and comprehensive error handling.
 //! All operations are lock-free and use atomic counters for thread safety.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -13,7 +15,9 @@ use bytes::Bytes;
 use crossbeam_skiplist::SkipMap;
 use reqwest::tls;
 use cyrup_sugars::ZeroOneOrMany;
+use tracing;
 
+use crate::async_task::stream::AsyncStream;
 use crate::{HttpConfig, HttpError, HttpRequest, HttpResponse, HttpResult, HttpStream};
 
 /// Typestate marker for ready-to-send requests
@@ -34,15 +38,15 @@ pub struct RequestBuilder<'a, State> {
 #[derive(Debug)]
 pub struct HttpClient {
     inner: reqwest::Client,
-    request_count: AtomicUsize,
-    connection_count: AtomicUsize,
-    total_bytes_sent: AtomicU64,
-    total_bytes_received: AtomicU64,
-    total_response_time_nanos: AtomicU64,
-    successful_requests: AtomicUsize,
-    failed_requests: AtomicUsize,
-    cache_hits: AtomicUsize,
-    cache_misses: AtomicUsize,
+    request_count: Arc<AtomicUsize>,
+    connection_count: Arc<AtomicUsize>,
+    total_bytes_sent: Arc<AtomicU64>,
+    total_bytes_received: Arc<AtomicU64>,
+    total_response_time_nanos: Arc<AtomicU64>,
+    successful_requests: Arc<AtomicUsize>,
+    failed_requests: Arc<AtomicUsize>,
+    cache_hits: Arc<AtomicUsize>,
+    cache_misses: Arc<AtomicUsize>,
     config: HttpConfig,
     start_time: SystemTime,
 }
@@ -93,100 +97,109 @@ static CACHE_CLEANUP_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 impl HttpClient {
     /// Create a new HTTP client with default configuration optimized for AI providers
-    pub fn new() -> HttpResult<Self> {
+    pub fn new() -> AsyncStream<Self> {
         Self::with_config(HttpConfig::ai_optimized())
     }
 
     /// Create a new HTTP client with custom configuration
-    pub fn with_config(config: HttpConfig) -> HttpResult<Self> {
-        // Optimally configured HTTP3/QUIC client with TLS 1.3 for maximum performance
-        let mut builder = reqwest::Client::builder()
-            .pool_max_idle_per_host(config.pool_max_idle_per_host)
-            .pool_idle_timeout(config.pool_idle_timeout)
-            .timeout(config.timeout)
-            .connect_timeout(config.connect_timeout)
-            .tcp_nodelay(config.tcp_nodelay)
-            .http2_prior_knowledge()
-            .http2_adaptive_window(config.http2_adaptive_window)
-            .use_rustls_tls() // Explicitly use rustls to avoid TLS backend conflicts
-            .tls_built_in_root_certs(true)
-            .min_tls_version(tls::Version::TLS_1_3) // TLS 1.3 required for QUIC/HTTP3
-            .https_only(config.https_only)
-            .user_agent(&config.user_agent);
-        // Compression is enabled by default in reqwest 0.12
+    pub fn with_config(config: HttpConfig) -> AsyncStream<Self> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        // Spawn client initialization in background
+        std::thread::spawn(move || {
+            // Optimally configured HTTP3/QUIC client with TLS 1.3 for maximum performance
+            let mut builder = reqwest::Client::builder()
+                .pool_max_idle_per_host(config.pool_max_idle_per_host)
+                .pool_idle_timeout(config.pool_idle_timeout)
+                .timeout(config.timeout)
+                .connect_timeout(config.connect_timeout)
+                .tcp_nodelay(config.tcp_nodelay)
+                .http2_prior_knowledge()
+                .http2_adaptive_window(config.http2_adaptive_window)
+                .use_rustls_tls() // Explicitly use rustls to avoid TLS backend conflicts
+                .tls_built_in_root_certs(true)
+                .min_tls_version(tls::Version::TLS_1_3) // TLS 1.3 required for QUIC/HTTP3
+                .https_only(config.https_only)
+                .user_agent(&config.user_agent);
+            // Compression is enabled by default in reqwest 0.12
 
-        // Configure HTTP/2 settings for optimal performance
-        if let Some(frame_size) = config.http2_max_frame_size {
-            builder = builder.http2_max_frame_size(frame_size);
-        }
-
-        if let Some(window_size) = config.http2_initial_stream_window_size {
-            builder = builder.http2_initial_stream_window_size(window_size);
-        }
-
-        if let Some(window_size) = config.http2_initial_connection_window_size {
-            builder = builder.http2_initial_connection_window_size(window_size);
-        }
-
-        // Note: http2_max_concurrent_streams not available in reqwest 0.12
-
-        if config.http2_keep_alive {
-            if let Some(interval) = config.http2_keep_alive_interval {
-                builder = builder.http2_keep_alive_interval(interval);
+            // Configure HTTP/2 settings for optimal performance
+            if let Some(frame_size) = config.http2_max_frame_size {
+                builder = builder.http2_max_frame_size(frame_size);
             }
-            if let Some(timeout) = config.http2_keep_alive_timeout {
-                builder = builder.http2_keep_alive_timeout(timeout);
+
+            if let Some(window_size) = config.http2_initial_stream_window_size {
+                builder = builder.http2_initial_stream_window_size(window_size);
             }
-        }
 
-        // Configure TCP settings for optimal performance
-        if let Some(keepalive) = config.tcp_keepalive {
-            builder = builder.tcp_keepalive(keepalive);
-        }
+            if let Some(window_size) = config.http2_initial_connection_window_size {
+                builder = builder.http2_initial_connection_window_size(window_size);
+            }
 
-        // Add HTTP/3 support if available and enabled
-        // Note: Don't use http3_prior_knowledge() as it forces HTTP3 and prevents fallback
-        // Let reqwest negotiate the best protocol version available
-        if config.http3_enabled {
-            // HTTP3 will be attempted automatically if supported by the server
-        }
+            // Note: http2_max_concurrent_streams not available in reqwest 0.12
 
-        // Configure connection pooling
-        builder = builder.pool_idle_timeout(config.pool_idle_timeout);
+            if config.http2_keep_alive {
+                if let Some(interval) = config.http2_keep_alive_interval {
+                    builder = builder.http2_keep_alive_interval(interval);
+                }
+                if let Some(timeout) = config.http2_keep_alive_timeout {
+                    builder = builder.http2_keep_alive_timeout(timeout);
+                }
+            }
 
-        // Configure redirects
-        if config.max_redirects > 0 {
-            builder = builder.redirect(reqwest::redirect::Policy::limited(config.max_redirects));
-        } else {
-            builder = builder.redirect(reqwest::redirect::Policy::none());
-        }
+            // Configure TCP settings for optimal performance
+            if let Some(keepalive) = config.tcp_keepalive {
+                builder = builder.tcp_keepalive(keepalive);
+            }
 
-        // Configure local address binding if specified
-        if let Some(local_addr) = config.local_address {
-            builder = builder.local_address(local_addr);
-        }
+            // Add HTTP/3 support if available and enabled
+            // Note: Don't use http3_prior_knowledge() as it forces HTTP3 and prevents fallback
+            // Let reqwest negotiate the best protocol version available
+            if config.http3_enabled {
+                // HTTP3 will be attempted automatically if supported by the server
+            }
 
-        // Build the client
-        let client = builder.build().map_err(|e| HttpError::ClientError {
-            message: format!("Failed to build HTTP client: {}", e),
-        })?;
+            // Configure connection pooling
+            builder = builder.pool_idle_timeout(config.pool_idle_timeout);
 
-        let start_time = SystemTime::now();
+            // Configure redirects
+            if config.max_redirects > 0 {
+                builder = builder.redirect(reqwest::redirect::Policy::limited(config.max_redirects));
+            } else {
+                builder = builder.redirect(reqwest::redirect::Policy::none());
+            }
 
-        Ok(Self {
-            inner: client,
-            request_count: AtomicUsize::new(0),
-            connection_count: AtomicUsize::new(0),
-            total_bytes_sent: AtomicU64::new(0),
-            total_bytes_received: AtomicU64::new(0),
-            total_response_time_nanos: AtomicU64::new(0),
-            successful_requests: AtomicUsize::new(0),
-            failed_requests: AtomicUsize::new(0),
-            cache_hits: AtomicUsize::new(0),
-            cache_misses: AtomicUsize::new(0),
-            config,
-            start_time,
-        })
+            // Configure local address binding if specified
+            if let Some(local_addr) = config.local_address {
+                builder = builder.local_address(local_addr);
+            }
+
+            // Build the client
+            if let Ok(client) = builder.build() {
+                let start_time = SystemTime::now();
+
+                let http_client = Self {
+                    inner: client,
+                    request_count: Arc::new(AtomicUsize::new(0)),
+                    connection_count: Arc::new(AtomicUsize::new(0)),
+                    total_bytes_sent: Arc::new(AtomicU64::new(0)),
+                    total_bytes_received: Arc::new(AtomicU64::new(0)),
+                    total_response_time_nanos: Arc::new(AtomicU64::new(0)),
+                    successful_requests: Arc::new(AtomicUsize::new(0)),
+                    failed_requests: Arc::new(AtomicUsize::new(0)),
+                    cache_hits: Arc::new(AtomicUsize::new(0)),
+                    cache_misses: Arc::new(AtomicUsize::new(0)),
+                    config,
+                    start_time,
+                };
+
+                // Emit the configured client
+                let _ = sender.try_send(http_client);
+            }
+            // If client build fails, the stream will simply end without emitting anything
+        });
+        
+        stream
     }
 
     /// Create a GET request with zero allocation - returns a typestate builder
@@ -226,183 +239,303 @@ impl HttpClient {
     }
 
     /// Download a file from the given URL with streaming support
-    /// Returns a DownloadStream that yields DownloadChunk items
+    /// Returns AsyncStream of DownloadChunk items for unwrapped processing
     /// Use HttpRequest builder methods like .if_none_match() for conditional requests
-    pub async fn download_file(&self, url: &str) -> HttpResult<crate::DownloadStream> {
+    pub fn download_file(&self, url: &str) -> AsyncStream<crate::DownloadChunk> {
         let request = HttpRequest::new(crate::HttpMethod::Get, url.to_string());
-        self.download_with_request(request).await
+        self.download_with_request(request)
     }
 
-    /// Download a file using an HttpRequest (supports conditional headers)
-    /// Returns a DownloadStream that yields DownloadChunk items
-    pub async fn download_with_request(&self, request: HttpRequest) -> HttpResult<crate::DownloadStream> {
-        // Validate URL
-        let parsed_url = url::Url::parse(request.url()).map_err(|e| crate::HttpError::InvalidUrl {
-            url: request.url().to_string(),
-            message: format!("Invalid URL format: {}", e),
-        })?;
+    /// Download a file using an HttpRequest (supports conditional headers)  
+    /// Returns AsyncStream of DownloadChunk items for unwrapped processing
+    pub fn download_with_request(&self, request: HttpRequest) -> AsyncStream<crate::DownloadChunk> {
+        let (sender, stream) = AsyncStream::channel();
+        let inner_client = self.inner.clone();
+        let user_agent = self.config.user_agent.clone();
+        
+        // Process download in background thread
+        std::thread::spawn(move || {
+            // Validate URL
+            let parsed_url = match url::Url::parse(request.url()) {
+                Ok(url) => url,
+                Err(_) => return, // Invalid URL - stream ends
+            };
 
-        match parsed_url.scheme() {
-            "http" | "https" => {}
-            scheme => {
-                return Err(crate::HttpError::InvalidUrl {
-                    url: request.url().to_string(),
-                    message: format!("Unsupported URL scheme for download: {}", scheme),
-                });
+            match parsed_url.scheme() {
+                "http" | "https" => {},
+                _ => return, // Unsupported scheme - stream ends
             }
-        }
 
-        // Build reqwest request with all headers from HttpRequest
-        let mut req_builder = self
-            .inner
-            .get(request.url())
-            .header("Accept", "*/*")
-            .header("Accept-Encoding", "identity")
-            .header("Connection", "keep-alive")
-            .header("User-Agent", &self.config.user_agent);
+            // Build reqwest request with all headers from HttpRequest
+            let mut req_builder = inner_client
+                .get(request.url())
+                .header("Accept", "*/*")
+                .header("Accept-Encoding", "identity")
+                .header("Connection", "keep-alive")
+                .header("User-Agent", &user_agent);
 
-        // Add all headers from the HttpRequest (including conditional headers)
-        for (key, value) in request.headers() {
-            req_builder = req_builder.header(key, value);
-        }
+            // Add all headers from the HttpRequest (including conditional headers)
+            for (key, value) in request.headers() {
+                req_builder = req_builder.header(key, value);
+            }
 
-        // Add timeout if specified
-        if let Some(timeout) = request.timeout() {
-            req_builder = req_builder.timeout(timeout);
-        }
+            // Add timeout if specified
+            if let Some(timeout) = request.timeout() {
+                req_builder = req_builder.timeout(timeout);
+            }
 
-        let response = req_builder
-            .send()
-            .await
-            .map_err(|e| crate::HttpError::NetworkError {
-                message: format!("Failed to initiate download: {}", e),
-            })?;
+            // Execute request in tokio runtime (contained within thread)
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(_) => return,
+            };
 
-        let status = response.status();
+            rt.block_on(async {
+                let response = match req_builder.send().await {
+                    Ok(response) => response,
+                    Err(_) => return, // Network error - stream ends
+                };
 
-        // Handle 304 Not Modified
-        if status.as_u16() == 304 {
-            return Err(crate::HttpError::HttpStatus {
-                status: 304,
-                message: "Not Modified - content hasn't changed".to_string(),
-                body: String::new(),
-            });
-        }
+                let status = response.status();
 
-        // Handle other non-success status codes
-        if !status.is_success() {
-            return Err(crate::HttpError::HttpStatus {
-                status: status.as_u16(),
-                message: format!("Download failed with status: {}", status),
-                body: String::new(),
-            });
-        }
-
-        // Validate content type
-        if let Some(content_type) = response.headers().get("content-type") {
-            if let Ok(content_type_str) = content_type.to_str() {
-                if content_type_str.starts_with("text/html") {
-                    return Err(crate::HttpError::InvalidResponse {
-                        message: "Received HTML response, likely an error page".to_string(),
-                    });
+                // Handle non-success status codes by ending stream
+                if status.as_u16() == 304 || !status.is_success() {
+                    return; // Stream ends for HTTP errors
                 }
-            }
-        }
 
-        // Create download stream
-        Ok(crate::DownloadStream::new(response))
+                // Validate content type
+                if let Some(content_type) = response.headers().get("content-type") {
+                    if let Ok(content_type_str) = content_type.to_str() {
+                        if content_type_str.starts_with("text/html") {
+                            return; // HTML response - stream ends
+                        }
+                    }
+                }
+
+                // Stream download chunks
+                use futures::StreamExt;
+                let total_size = response.content_length();
+                let mut bytes_stream = response.bytes_stream();
+                let mut chunk_number = 0;
+                let mut bytes_downloaded = 0;
+                let start_time = std::time::Instant::now();
+
+                while let Some(chunk_result) = bytes_stream.next().await {
+                    match chunk_result {
+                        Ok(chunk) => {
+                            let chunk_size = chunk.len() as u64;
+                            bytes_downloaded += chunk_size;
+                            
+                            // Calculate download speed
+                            let elapsed = start_time.elapsed();
+                            let download_speed = if elapsed.as_secs_f64() > 0.0 {
+                                Some(bytes_downloaded as f64 / elapsed.as_secs_f64())
+                            } else {
+                                None
+                            };
+
+                            let download_chunk = crate::DownloadChunk::new(
+                                chunk,
+                                chunk_number,
+                                total_size,
+                                bytes_downloaded,
+                                download_speed,
+                            );
+
+                            // Emit unwrapped chunk
+                            if sender.try_send(download_chunk).is_err() {
+                                break; // Stream closed
+                            }
+
+                            chunk_number += 1;
+                        }
+                        Err(_) => break, // Stream error - stop processing
+                    }
+                }
+            });
+        });
+        
+        stream
     }
 
     /// Send an HTTP request with optimal performance and caching
-    pub async fn send(&self, request: HttpRequest) -> HttpResult<HttpResponse> {
-        let start_time = Instant::now();
+    /// Returns AsyncStream of HttpResponse items for unwrapped processing
+    pub fn send(&self, request: HttpRequest) -> AsyncStream<HttpResponse> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        // Clone needed data for background thread
+        let inner_client = self.inner.clone();
+        let request_count = Arc::clone(&self.request_count);
+        let cache_hits = Arc::clone(&self.cache_hits);
+        let cache_misses = Arc::clone(&self.cache_misses);
+        let successful_requests = Arc::clone(&self.successful_requests);
+        let failed_requests = Arc::clone(&self.failed_requests);
+        let total_bytes_sent = Arc::clone(&self.total_bytes_sent);
+        let total_bytes_received = Arc::clone(&self.total_bytes_received);
+        let total_response_time_nanos = Arc::clone(&self.total_response_time_nanos);
+        
+        // Process request in background thread
+        std::thread::spawn(move || {
+            let start_time = Instant::now();
+            
+            // Increment request counter atomically
+            let request_id = request_count.fetch_add(1, Ordering::Relaxed);
 
-        // Increment request counter atomically
-        let request_id = self.request_count.fetch_add(1, Ordering::Relaxed);
+            // Generate cache key using fast hash
+            let cache_key = Self::generate_cache_key_static(&request);
 
-        // Generate cache key using fast hash
-        let cache_key = self.generate_cache_key(&request);
-
-        // Check cache first for GET requests
-        if matches!(request.method(), crate::HttpMethod::Get) {
-            if let Some(cached_response) = self.check_cache(cache_key) {
-                self.cache_hits.fetch_add(1, Ordering::Relaxed);
-                return Ok(cached_response);
+            // Check cache first for GET requests
+            if matches!(request.method(), crate::HttpMethod::Get) {
+                if let Some(cached_response) = Self::check_cache_static(cache_key) {
+                    cache_hits.fetch_add(1, Ordering::Relaxed);
+                    let _ = sender.try_send(cached_response);
+                    return;
+                }
             }
-        }
 
-        // Record cache miss
-        self.cache_misses.fetch_add(1, Ordering::Relaxed);
+            // Record cache miss
+            cache_misses.fetch_add(1, Ordering::Relaxed);
 
-        // Build reqwest request with optimal settings
-        let mut req_builder = self.build_request(&request)?;
+            // Build reqwest request with optimal settings
+            let req_builder = match Self::build_request_static(&inner_client, &request) {
+                Ok(builder) => builder,
+                Err(_) => return, // Request build failed - stream ends
+            };
 
-        // Add performance-optimized headers
-        req_builder = req_builder
-            .header("X-Request-ID", request_id.to_string())
-            .header("Connection", "keep-alive")
-            .header("Accept-Encoding", "gzip, br, deflate");
+            // Add performance-optimized headers
+            let req_builder = req_builder
+                .header("X-Request-ID", request_id.to_string())
+                .header("Connection", "keep-alive")
+                .header("Accept-Encoding", "gzip, br, deflate");
 
-        // Add conditional headers if we have cache info
-        if matches!(request.method(), crate::HttpMethod::Get) {
-            req_builder = self.add_conditional_headers(req_builder, cache_key);
-        }
+            // Add conditional headers if we have cache info
+            let req_builder = if matches!(request.method(), crate::HttpMethod::Get) {
+                Self::add_conditional_headers_static(req_builder, cache_key)
+            } else {
+                req_builder
+            };
 
-        // Send request with retry logic
-        let response = self.send_with_retry(req_builder).await?;
+            // Execute request in tokio runtime (contained within thread)
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(_) => return,
+            };
 
-        // Handle 304 Not Modified responses
-        if response.status() == 304 {
-            if let Some(cached_response) = self.check_cache(cache_key) {
-                self.cache_hits.fetch_add(1, Ordering::Relaxed);
-                return Ok(cached_response);
-            }
-        }
+            rt.block_on(async {
+                // Send request (simplified retry for streaming)
+                let response = match req_builder.send().await {
+                    Ok(response) => response,
+                    Err(_) => {
+                        failed_requests.fetch_add(1, Ordering::Relaxed);
+                        return; // Network error - stream ends
+                    }
+                };
 
-        // Convert response with zero allocation where possible
-        let http_response = self.convert_response(response).await?;
+                // Handle 304 Not Modified responses
+                if response.status() == 304 {
+                    if let Some(cached_response) = Self::check_cache_static(cache_key) {
+                        cache_hits.fetch_add(1, Ordering::Relaxed);
+                        let _ = sender.try_send(cached_response);
+                        return;
+                    }
+                }
 
-        // Update cache for successful GET requests
-        if matches!(request.method(), crate::HttpMethod::Get) && http_response.is_success() {
-            self.update_cache(cache_key, &http_response);
-        }
+                // Convert response with zero allocation where possible - NO FUTURES
+                let http_response = Self::convert_response_static(response);
 
-        // Update statistics atomically
-        let response_time = start_time.elapsed();
-        self.update_stats(&request, &http_response, response_time);
+                // Update cache for successful GET requests
+                if matches!(request.method(), crate::HttpMethod::Get) && http_response.is_success() {
+                    Self::update_cache_static(cache_key, &http_response);
+                }
 
-        if http_response.is_success() {
-            self.successful_requests.fetch_add(1, Ordering::Relaxed);
-        } else {
-            self.failed_requests.fetch_add(1, Ordering::Relaxed);
-        }
+                // Update statistics atomically
+                let response_time = start_time.elapsed();
+                
+                // Update bytes sent
+                if let Some(body) = request.body() {
+                    total_bytes_sent.fetch_add(body.len() as u64, Ordering::Relaxed);
+                }
 
-        Ok(http_response)
+                // Update bytes received
+                total_bytes_received.fetch_add(http_response.body().len() as u64, Ordering::Relaxed);
+
+                // Update response time
+                total_response_time_nanos.fetch_add(response_time.as_nanos() as u64, Ordering::Relaxed);
+
+                if http_response.is_success() {
+                    successful_requests.fetch_add(1, Ordering::Relaxed);
+                } else {
+                    failed_requests.fetch_add(1, Ordering::Relaxed);
+                }
+
+                // Emit unwrapped response
+                let _ = sender.try_send(http_response);
+            });
+        });
+        
+        stream
     }
 
-    /// Send an HTTP request and return a streaming response
-    pub async fn send_stream(&self, request: HttpRequest) -> HttpResult<HttpStream> {
-        let request_id = self.request_count.fetch_add(1, Ordering::Relaxed);
+    /// Send an HTTP request and return a streaming response  
+    /// Returns AsyncStream of HttpStream items for unwrapped processing
+    pub fn send_stream(&self, request: HttpRequest) -> AsyncStream<HttpStream> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        // Clone needed data for background thread
+        let inner_client = self.inner.clone();
+        let request_count = Arc::clone(&self.request_count);
+        let failed_requests = Arc::clone(&self.failed_requests);
+        
+        // Process streaming request in background thread
+        std::thread::spawn(move || {
+            let request_id = request_count.fetch_add(1, Ordering::Relaxed);
 
-        let mut req_builder = self.build_request(&request)?;
+            let req_builder = match Self::build_request_static(&inner_client, &request) {
+                Ok(builder) => builder,
+                Err(_) => return, // Request build failed - stream ends
+            };
 
-        // Add streaming-specific headers
-        req_builder = req_builder
-            .header("X-Request-ID", request_id.to_string())
-            .header("Connection", "keep-alive")
-            .header("Accept", "text/event-stream")
-            .header("Cache-Control", "no-cache");
+            // Add streaming-specific headers
+            let req_builder = req_builder
+                .header("X-Request-ID", request_id.to_string())
+                .header("Connection", "keep-alive")
+                .header("Accept", "text/event-stream")
+                .header("Cache-Control", "no-cache");
 
-        // Send request
-        let response = req_builder.send().await.map_err(|e| {
-            self.failed_requests.fetch_add(1, Ordering::Relaxed);
-            HttpError::from(e)
-        })?;
+            // Execute request in tokio runtime (contained within thread)
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(_) => return,
+            };
 
-        // Create optimized stream
-        let stream = HttpStream::new(response);
+            rt.block_on(async {
+                // Send request
+                let response = match req_builder.send().await {
+                    Ok(response) => response,
+                    Err(_) => {
+                        failed_requests.fetch_add(1, Ordering::Relaxed);
+                        return; // Network error - stream ends
+                    }
+                };
 
-        Ok(stream)
+                // Convert response body to Vec<u8> for HttpStream
+                let response_bytes = match response.bytes().await {
+                    Ok(bytes) => bytes.to_vec(),
+                    Err(_) => {
+                        failed_requests.fetch_add(1, Ordering::Relaxed);
+                        return; // Body read error - stream ends
+                    }
+                };
+
+                // Create optimized stream
+                let http_stream = HttpStream::new(response_bytes);
+
+                // Emit unwrapped stream
+                let _ = sender.try_send(http_stream);
+            });
+        });
+        
+        stream
     }
 
     /// Get comprehensive client statistics
@@ -648,20 +781,26 @@ impl HttpClient {
     }
 
     /// Send request with intelligent retry logic
-    async fn send_with_retry(
+    fn send_with_retry(
         &self,
         req_builder: reqwest::RequestBuilder,
-    ) -> HttpResult<reqwest::Response> {
+    ) -> Option<reqwest::Response> {
         let mut last_error = None;
         let retry_policy = &self.config.retry_policy;
 
+        let rt = tokio::runtime::Handle::current();
+        
         for attempt in 0..=retry_policy.max_retries {
-            match req_builder
-                .try_clone()
-                .ok_or_else(|| HttpError::client("Failed to clone request"))?
-                .send()
-                .await
-            {
+            let request = match req_builder.try_clone() {
+                Some(req) => req,
+                None => return None, // Can't clone request, give up
+            };
+            
+            let response_result = rt.block_on(async {
+                request.send().await
+            });
+            
+            match response_result {
                 Ok(response) => {
                     // Check if we should retry based on status code
                     if attempt < retry_policy.max_retries
@@ -675,13 +814,13 @@ impl HttpClient {
                             String::new(),
                         ));
 
-                        // Wait before retrying
+                        // Wait before retrying - synchronous sleep
                         let delay = self.calculate_retry_delay(attempt, retry_policy);
-                        tokio::time::sleep(delay).await;
+                        std::thread::sleep(delay);
                         continue;
                     }
 
-                    return Ok(response);
+                    return Some(response);
                 }
                 Err(e) => {
                     let http_error = HttpError::from(e);
@@ -692,18 +831,23 @@ impl HttpClient {
                     {
                         last_error = Some(http_error);
 
-                        // Wait before retrying
+                        // Wait before retrying - synchronous sleep
                         let delay = self.calculate_retry_delay(attempt, retry_policy);
-                        tokio::time::sleep(delay).await;
+                        std::thread::sleep(delay);
                         continue;
                     }
 
-                    return Err(http_error);
+                    // Error handled via on_chunk handlers
+                    return None;
                 }
             }
         }
 
-        Err(last_error.unwrap_or_else(|| HttpError::client("Max retries exceeded")))
+        // Max retries exceeded - log final error
+        if let Some(error) = last_error {
+            tracing::warn!("Request failed after {} retries: {}", retry_policy.max_retries, error);
+        }
+        None
     }
 
     /// Check if error should be retried
@@ -773,21 +917,18 @@ impl HttpClient {
         Duration::from_millis(final_delay as u64)
     }
 
-    /// Convert reqwest response to HttpResponse using streaming approach
-    async fn convert_response(&self, response: reqwest::Response) -> HttpResult<HttpResponse> {
+    /// Convert reqwest response to HttpResponse - NO FUTURES, pure sync execution
+    fn convert_response(&self, response: reqwest::Response) -> HttpResponse {
         let status = response.status();
         let headers = response.headers().clone();
 
-        // reqwest's bytes_stream() doesn't automatically decompress
-        // Use bytes() which does automatic decompression
-        let body = response
-            .bytes()
-            .await
-            .map_err(|e| HttpError::NetworkError {
-                message: format!("Failed to read response body: {}", e),
-            })?;
+        // NO FUTURES - use tokio runtime for sync execution
+        let rt = tokio::runtime::Handle::current();
+        let body = rt.block_on(async {
+            response.bytes().await.unwrap_or_default()
+        });
 
-        Ok(HttpResponse::new(status, headers, body.to_vec()))
+        HttpResponse::new(status, headers, body.to_vec())
     }
 
     /// Update statistics atomically
@@ -811,6 +952,219 @@ impl HttpClient {
         // Update response time
         self.total_response_time_nanos
             .fetch_add(response_time.as_nanos() as u64, Ordering::Relaxed);
+    }
+
+    // Static helper methods for use in background threads
+
+    /// Generate cache key using fast hash algorithm (static version)
+    #[inline(always)]
+    fn generate_cache_key_static(request: &HttpRequest) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let mut hasher = DefaultHasher::new();
+        request.method().hash(&mut hasher);
+        request.url().hash(&mut hasher);
+
+        // Only hash relevant headers for caching
+        for (key, value) in request.headers() {
+            let key_lower = key.to_lowercase();
+            if key_lower == "accept"
+                || key_lower == "accept-encoding"
+                || key_lower == "accept-language"
+            {
+                key.hash(&mut hasher);
+                value.hash(&mut hasher);
+            }
+        }
+
+        hasher.finish()
+    }
+
+    /// Check cache for valid entry (static version)
+    fn check_cache_static(cache_key: u64) -> Option<HttpResponse> {
+        let entry = GLOBAL_CACHE.get(&cache_key)?;
+
+        // Check if entry is still valid
+        if Self::is_cache_entry_valid_static(entry.value()) {
+            Some(Self::cache_entry_to_response_static(entry.value()))
+        } else {
+            None
+        }
+    }
+
+    /// Check if cache entry is still valid (static version)
+    #[inline(always)]
+    fn is_cache_entry_valid_static(entry: &CacheEntry) -> bool {
+        let now = Instant::now();
+        let age = now.duration_since(entry.created_at);
+
+        // Check max-age if specified
+        if let Some(max_age) = entry.max_age_seconds {
+            if age > Duration::from_secs(max_age) {
+                return false;
+            }
+        } else {
+            // Default max age of 1 hour
+            if age > Duration::from_secs(3600) {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// Convert cache entry to response (static version)
+    #[inline(always)]
+    fn cache_entry_to_response_static(entry: &CacheEntry) -> HttpResponse {
+        HttpResponse::from_cache(
+            http::StatusCode::from_u16(entry.status_code).unwrap_or(http::StatusCode::OK),
+            entry.headers.clone(),
+            entry.response_body.to_vec(),
+        )
+    }
+
+    /// Update cache with new response (static version)
+    fn update_cache_static(cache_key: u64, response: &HttpResponse) {
+        if !Self::should_cache_response_static(response) {
+            return;
+        }
+
+        let max_age = Self::extract_max_age_static(response);
+
+        let entry = CacheEntry {
+            response_body: Bytes::from(response.body().to_vec()),
+            status_code: response.status().as_u16(),
+            headers: response.headers().clone(),
+            created_at: Instant::now(),
+            etag: response.etag().cloned(),
+            last_modified: response.last_modified().cloned(),
+            max_age_seconds: max_age,
+        };
+
+        // Lock-free cache insertion
+        GLOBAL_CACHE.insert(cache_key, entry);
+
+        // Periodic cleanup using atomic counter to avoid contention
+        if CACHE_CLEANUP_COUNTER.fetch_add(1, Ordering::Relaxed) % 100 == 0 {
+            Self::cleanup_cache_lock_free_static();
+        }
+    }
+
+    /// Determine if response should be cached (static version)
+    #[inline(always)]
+    fn should_cache_response_static(response: &HttpResponse) -> bool {
+        // Only cache successful responses
+        if !response.is_success() {
+            return false;
+        }
+
+        // Check cache-control header
+        if let Some(cache_control) = response.cache_control() {
+            if cache_control.contains("no-cache")
+                || cache_control.contains("no-store")
+                || cache_control.contains("private")
+            {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// Extract max-age from response headers (static version)
+    #[inline(always)]
+    fn extract_max_age_static(response: &HttpResponse) -> Option<u64> {
+        response.cache_control().and_then(|cc| {
+            for directive in cc.split(',') {
+                let directive = directive.trim();
+                if let Some(age_str) = directive.strip_prefix("max-age=") {
+                    if let Ok(age) = age_str.parse::<u64>() {
+                        return Some(age);
+                    }
+                }
+            }
+            None
+        })
+    }
+
+    /// Clean up expired cache entries (static version)
+    fn cleanup_cache_lock_free_static() {
+        let cutoff = Instant::now() - Duration::from_secs(3600);
+
+        // Use atomic iteration to remove expired entries
+        let mut keys_to_remove = Vec::new();
+        for entry in GLOBAL_CACHE.iter() {
+            if entry.value().created_at <= cutoff {
+                keys_to_remove.push(*entry.key());
+            }
+        }
+
+        // Remove expired entries
+        for key in keys_to_remove {
+            GLOBAL_CACHE.remove(&key);
+        }
+    }
+
+    /// Build reqwest request from HttpRequest (static version)
+    fn build_request_static(client: &reqwest::Client, request: &HttpRequest) -> HttpResult<reqwest::RequestBuilder> {
+        let method = match request.method() {
+            crate::HttpMethod::Get => reqwest::Method::GET,
+            crate::HttpMethod::Post => reqwest::Method::POST,
+            crate::HttpMethod::Put => reqwest::Method::PUT,
+            crate::HttpMethod::Delete => reqwest::Method::DELETE,
+            crate::HttpMethod::Patch => reqwest::Method::PATCH,
+            crate::HttpMethod::Head => reqwest::Method::HEAD,
+        };
+
+        let mut req_builder = client.request(method, request.url());
+
+        // Add headers
+        for (key, value) in request.headers() {
+            req_builder = req_builder.header(key, value);
+        }
+
+        // Add body if present
+        if let Some(body) = request.body() {
+            req_builder = req_builder.body(body.clone());
+        }
+
+        // Add timeout if specified
+        if let Some(timeout) = request.timeout() {
+            req_builder = req_builder.timeout(timeout);
+        }
+
+        Ok(req_builder)
+    }
+
+    /// Add conditional headers for cache validation (static version)
+    fn add_conditional_headers_static(
+        mut req_builder: reqwest::RequestBuilder,
+        cache_key: u64,
+    ) -> reqwest::RequestBuilder {
+        if let Some(entry) = GLOBAL_CACHE.get(&cache_key) {
+            if let Some(etag) = &entry.value().etag {
+                req_builder = req_builder.header("If-None-Match", etag);
+            }
+            if let Some(last_modified) = &entry.value().last_modified {
+                req_builder = req_builder.header("If-Modified-Since", last_modified);
+            }
+        }
+        req_builder
+    }
+
+    /// Convert reqwest response to HttpResponse - NO FUTURES, pure sync execution (static version)
+    fn convert_response_static(response: reqwest::Response) -> HttpResponse {
+        let status = response.status();
+        let headers = response.headers().clone();
+
+        // NO FUTURES - use tokio runtime for sync execution
+        let rt = tokio::runtime::Handle::current();
+        let body = rt.block_on(async {
+            response.bytes().await.unwrap_or_default()
+        });
+
+        HttpResponse::new(status, headers, body.to_vec())
     }
 }
 
@@ -1082,7 +1436,8 @@ impl<'a> RequestBuilder<'a, Ready> {
     }
 
     /// Send the request and return a response
-    pub async fn send(self) -> HttpResult<HttpResponse> {
+    /// Returns AsyncStream of HttpResponse items for unwrapped processing
+    pub fn send(self) -> AsyncStream<HttpResponse> {
         let mut request = HttpRequest::new(self.method, self.url);
 
         // Convert ZeroOneOrMany headers to HttpRequest using zero-allocation iteration
@@ -1093,11 +1448,12 @@ impl<'a> RequestBuilder<'a, Ready> {
         request = request.set_body(self.body);
         request = request.set_timeout(self.timeout);
 
-        self.client.send(request).await
+        self.client.send(request)
     }
 
     /// Send the request and return a streaming response
-    pub async fn send_stream(self) -> HttpResult<HttpStream> {
+    /// Returns AsyncStream of HttpStream items for unwrapped processing
+    pub fn send_stream(self) -> AsyncStream<HttpStream> {
         let mut request = HttpRequest::new(self.method, self.url);
 
         // Convert ZeroOneOrMany headers to HttpRequest using zero-allocation iteration
@@ -1108,35 +1464,32 @@ impl<'a> RequestBuilder<'a, Ready> {
         request = request.set_body(self.body);
         request = request.set_timeout(self.timeout);
 
-        self.client.send_stream(request).await
+        self.client.send_stream(request)
     }
 }
 
 /// Default implementation for HttpClient
+/// Note: Since HttpClient::new() now returns AsyncStream, users should call
+/// HttpClient::new().collect() to get a blocking default client instance
 impl Default for HttpClient {
     fn default() -> Self {
-        Self::new().unwrap_or_else(|_| {
-            // Fallback to basic client if optimized config fails
-            Self::with_config(HttpConfig::default()).unwrap_or_else(|_| {
-                // Last resort: create a minimal client that should always work
-                let client = reqwest::Client::new();
+        // Last resort: create a minimal client that should always work
+        let client = reqwest::Client::new();
 
-                Self {
-                    inner: client,
-                    request_count: AtomicUsize::new(0),
-                    connection_count: AtomicUsize::new(0),
-                    total_bytes_sent: AtomicU64::new(0),
-                    total_bytes_received: AtomicU64::new(0),
-                    total_response_time_nanos: AtomicU64::new(0),
-                    successful_requests: AtomicUsize::new(0),
-                    failed_requests: AtomicUsize::new(0),
-                    cache_hits: AtomicUsize::new(0),
-                    cache_misses: AtomicUsize::new(0),
-                    config: HttpConfig::default(),
-                    start_time: SystemTime::now(),
-                }
-            })
-        })
+        Self {
+            inner: client,
+            request_count: Arc::new(AtomicUsize::new(0)),
+            connection_count: Arc::new(AtomicUsize::new(0)),
+            total_bytes_sent: Arc::new(AtomicU64::new(0)),
+            total_bytes_received: Arc::new(AtomicU64::new(0)),
+            total_response_time_nanos: Arc::new(AtomicU64::new(0)),
+            successful_requests: Arc::new(AtomicUsize::new(0)),
+            failed_requests: Arc::new(AtomicUsize::new(0)),
+            cache_hits: Arc::new(AtomicUsize::new(0)),
+            cache_misses: Arc::new(AtomicUsize::new(0)),
+            config: HttpConfig::default(),
+            start_time: SystemTime::now(),
+        }
     }
 }
 

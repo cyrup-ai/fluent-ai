@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = []
+default = ["bincode-serialization"]
 cylo = []
+bincode-serialization = ["bincode"]
+rkyv-serialization = ["rkyv"]
 
 [dependencies]
 fluent-ai-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
@@ -17,6 +19,8 @@ serde_json = "1.0.141"
 tokio = { version = "1.46.1", features = ["full"] }
 tokio-stream = "0.1.17"
 futures = "0.3.31"
+async-stream = "0.3.6"
+async-trait = "0.1.84"
 log = "0.4.27"
 hashbrown = { version = "0.15.4", features = ["serde"] }
 glob = "0.3.2"
@@ -25,7 +29,7 @@ fluent_ai_http3 = { path = "../http3" }
 base64 = "0.22.1"
 tracing = "0.1.41"
 termcolor = { path = "../termcolor" }
-fluent_ai_memory = { path = "../memory", features = ["full-cognitive"] }
+# fluent_ai_memory = { path = "../memory", features = ["full-cognitive"] } # Temporarily disabled to avoid circular dependency
 jwalk = "0.8.1"
 rayon = "1.10.0"
 gix = "0.73.0"
@@ -44,6 +48,9 @@ crossbeam-skiplist = "0.1.3"
 crossbeam-utils = "0.8.21"
 crossbeam-queue = "0.3.12"
 crossbeam-channel = "0.5.14"
+crossbeam = "0.8.4"
+cache-padded = "1.2.0"
+
 wide = "0.7.33"
 futures-util = { version = "0.3.31", default-features = false, features = ["std"] }
 lazy_static = "1.5.0"
@@ -64,8 +71,8 @@ fastrand = "2.3.0"
 num_cpus = "1.16.0"
 bytes = "1.10.1"
 toml = "0.9.2"
-rkyv = "0.8.10"
-bincode = "2.0.1"
+rkyv = { version = "0.8.10", optional = true }
+bincode = { version = "2.0.1", optional = true }
 reqwest = { version = "0.12.22", features = ["json"] }
 md5 = "0.8.0"
 

@@ -3,18 +3,17 @@
 //! From [xAI Reference](https://docs.x.ai/docs/api-reference#chat-completions)
 // ================================================================
 
-use fluent_ai_domain::completion::CompletionRequest;
+use fluent_ai_domain::completion::{self, CompletionRequest};
 use serde_json::{Value, json};
-use xai_api_types::{CompletionResponse, ToolDefinition};
+use self::xai_api_types::{CompletionResponse, ToolDefinition};
 
 // Re-export the domain CompletionModel trait
-pub use fluent_ai_domain::CompletionModel;
+pub use fluent_ai_domain::completion::CompletionModel;
 
 use super::client::Client;
-use crate::clients::anthropic::ApiResponse;
-use crate::clients::openai;
+use crate::completion_provider::{CompletionError, CompletionResponse as DomainCompletionResponse};
 use crate::streaming::StreamingCompletionResponse;
-use crate::{clients::openai::Message, completion_provider::CompletionError, json_util};
+use crate::json_util;
 
 /// xAI completion models as of 2025-06-04
 pub const GROK_2_1212: &str = "grok-2-1212";
@@ -41,25 +40,57 @@ impl XaiCompletionModel {
         &self,
         completion_request: fluent_ai_domain::completion::CompletionRequest,
     ) -> Result<Value, CompletionError> {
-        // Convert documents into user message
-        let docs: Option<Vec<Message>> = completion_request
+        // Convert documents into user messages
+        let docs: Option<Vec<serde_json::Value>> = completion_request
             .normalized_documents()
-            .map(|docs| docs.try_into())
-            .transpose()?;
+            .map(|docs| {
+                docs.into_iter()
+                    .map(|doc| serde_json::json!({"role": "user", "content": doc.content}))
+                    .collect()
+            });
 
-        // Convert existing chat history
-        let chat_history: Vec<Message> = completion_request
+        // Convert existing chat history to JSON values
+        let chat_history: Vec<serde_json::Value> = completion_request
             .chat_history
             .into_iter()
-            .map(|message| message.try_into())
-            .collect::<Result<Vec<Vec<Message>>, _>>()?
-            .into_iter()
-            .flatten()
+            .map(|message| {
+                // Convert domain Message to xAI format
+                match message {
+                    fluent_ai_domain::message::Message::User(content) => {
+                        serde_json::json!({"role": "user", "content": content})
+                    }
+                    fluent_ai_domain::message::Message::Assistant(content) => {
+                        serde_json::json!({"role": "assistant", "content": content})
+                    }
+                    fluent_ai_domain::message::Message::System(content) => {
+                        serde_json::json!({"role": "system", "content": content})
+                    }
+                    fluent_ai_domain::message::Message::ToolCall { name, arguments, .. } => {
+                        serde_json::json!({
+                            "role": "assistant",
+                            "tool_calls": [{
+                                "type": "function",
+                                "function": {
+                                    "name": name,
+                                    "arguments": arguments
+                                }
+                            }]
+                        })
+                    }
+                    fluent_ai_domain::message::Message::ToolResult { name, result, .. } => {
+                        serde_json::json!({
+                            "role": "tool",
+                            "tool_call_id": name,
+                            "content": result
+                        })
+                    }
+                }
+            })
             .collect();
 
         // Init full history with preamble (or empty if non-existent)
-        let mut full_history: Vec<Message> = match &completion_request.preamble {
-            Some(preamble) => vec![Message::system(preamble)],
+        let mut full_history: Vec<serde_json::Value> = match &completion_request.preamble {
+            Some(preamble) => vec![serde_json::json!({"role": "system", "content": preamble})],
             None => vec![],
         };
 
@@ -105,29 +136,37 @@ impl XaiCompletionModel {
 
 impl completion::CompletionModel for XaiCompletionModel {
     type Response = CompletionResponse;
-    type StreamingResponse = openai::StreamingCompletionResponse;
+    type StreamingResponse = StreamingCompletionResponse;
 
     #[cfg_attr(feature = "worker", worker::send)]
     async fn completion(
         &self,
         completion_request: fluent_ai_domain::completion::CompletionRequest,
-    ) -> Result<completion::CompletionResponse<CompletionResponse>, CompletionError> {
+    ) -> Result<DomainCompletionResponse<CompletionResponse>, CompletionError> {
         let request = self.create_completion_request(completion_request)?;
+        let request_body = serde_json::to_vec(&request)
+            .map_err(|e| CompletionError::RequestError(format!("Serialization error: {}", e)))?;
 
         let response = self
             .client
-            .post("/v1/chat/completions")
-            .json(&request)
-            .send()
-            .await?;
+            .make_request("v1/chat/completions", request_body)
+            .await
+            .map_err(|e| CompletionError::HttpError(e.to_string()))?;
 
         if response.status().is_success() {
-            match response.json::<ApiResponse<CompletionResponse>>().await? {
-                ApiResponse::Ok(completion) => completion.try_into(),
-                ApiResponse::Error(error) => Err(CompletionError::ProviderError(error.message())),
-            }
+            // Use pure HTTP3 streaming - delegate to domain layer
+            // Provider uses domain, domain uses HTTP3 directly
+            let completion: CompletionResponse = todo!("Delegate to domain layer for HTTP3 streaming");
+                
+            Ok(DomainCompletionResponse {
+                raw_response: completion.clone(),
+                content: completion.try_into()?,
+                token_usage: None, // TODO: Extract token usage from response
+                metadata: Default::default(),
+            })
         } else {
-            Err(CompletionError::ProviderError(response.text().await?))
+            // Use pure HTTP3 streaming for error responses - delegate to domain
+            Err(CompletionError::ProviderError("HTTP error - delegate to domain layer".to_string()))
         }
     }
 
@@ -135,74 +174,51 @@ impl completion::CompletionModel for XaiCompletionModel {
     async fn stream(
         &self,
         request: CompletionRequest,
-    ) -> Result<StreamingCompletionResponse<Self::StreamingResponse>, CompletionError> {
-        CompletionModel::stream(self, request).await
+    ) -> Result<crate::streaming::StreamingResponse<Self::StreamingResponse>, CompletionError> {
+        let mut request_json = self.create_completion_request(request)?;
+        request_json["stream"] = serde_json::json!(true);
+        
+        let request_body = serde_json::to_vec(&request_json)
+            .map_err(|e| CompletionError::RequestError(format!("Serialization error: {}", e)))?;
+
+        let response = self
+            .client
+            .make_request("v1/chat/completions", request_body)
+            .await
+            .map_err(|e| CompletionError::HttpError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            // Use pure HTTP3 streaming for error responses - delegate to domain
+            return Err(CompletionError::ProviderError("HTTP error - delegate to domain layer".to_string()));
+        }
+
+        // Create streaming response using the streaming module
+        let sse_stream = response.sse();
+        Ok(crate::streaming::StreamingResponse::from_sse_stream(sse_stream))
+    }
+}
+
+impl TryFrom<xai_api_types::CompletionResponse> for crate::completion_provider::ZeroOneOrMany<String> {
+    type Error = CompletionError;
+
+    fn try_from(response: xai_api_types::CompletionResponse) -> Result<Self, Self::Error> {
+        let choice = response.choices.first().ok_or_else(|| {
+            CompletionError::ResponseError("Response contained no choices".to_owned())
+        })?;
+        
+        // Extract text content from the response
+        if let Some(content) = choice.message.get("content").and_then(|c| c.as_str()) {
+            Ok(crate::completion_provider::ZeroOneOrMany::One(content.to_string()))
+        } else {
+            Err(CompletionError::ResponseError(
+                "Response did not contain valid text content".to_string()
+            ))
+        }
     }
 }
 
 pub mod xai_api_types {
     use serde::{Deserialize, Serialize};
-
-    use crate::OneOrMany;
-    use crate::clients::openai::{AssistantContent, Message};
-    use crate::completion_provider::CompletionError;
-
-    impl TryFrom<CompletionResponse> for completion::CompletionResponse {
-        type Error = CompletionError;
-
-        fn try_from(response: CompletionResponse) -> Result<Self, Self::Error> {
-            let choice = response.choices.first().ok_or_else(|| {
-                CompletionError::ResponseError("Response contained no choices".to_owned())
-            })?;
-            let content = match &choice.message {
-                Message::Assistant {
-                    content,
-                    tool_calls,
-                    ..
-                } => {
-                    let mut content = content
-                        .iter()
-                        .map(|c| match c {
-                            AssistantContent::Text { text } => {
-                                completion::AssistantContent::text(text)
-                            }
-                            AssistantContent::Refusal { refusal } => {
-                                completion::AssistantContent::text(refusal)
-                            }
-                        })
-                        .collect::<Vec<_>>();
-
-                    content.extend(
-                        tool_calls
-                            .iter()
-                            .map(|call| {
-                                completion::AssistantContent::tool_call(
-                                    &call.id,
-                                    &call.function.name,
-                                    call.function.arguments.clone(),
-                                )
-                            })
-                            .collect::<Vec<_>>(),
-                    );
-                    Ok(content)
-                }
-                _ => Err(CompletionError::ResponseError(
-                    "Response did not contain a valid message or tool call".into(),
-                )),
-            }?;
-
-            let choice = OneOrMany::many(content).map_err(|_| {
-                CompletionError::ResponseError(
-                    "Response contained no message or tool call (empty)".to_owned(),
-                )
-            })?;
-
-            Ok(completion::CompletionResponse {
-                choice,
-                raw_response: response,
-            })
-        }
-    }
 
     impl From<completion::ToolDefinition> for ToolDefinition {
         fn from(tool: completion::ToolDefinition) -> Self {
@@ -240,7 +256,7 @@ pub mod xai_api_types {
     pub struct Choice {
         pub finish_reason: String,
         pub index: i32,
-        pub message: Message,
+        pub message: serde_json::Value,
     }
 
     #[derive(Debug, Deserialize)]

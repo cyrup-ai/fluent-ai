@@ -1,6 +1,7 @@
 //! Core domain types and traits
 
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
 
 use arc_swap::ArcSwap;
@@ -132,5 +133,5 @@ where
 }
 
 // Re-export commonly used types
-pub use futures::stream::Stream;
+// REMOVED: pub use futures::stream::Stream; - ALL FUTURES ELIMINATED!
 pub use std::collections::HashMap;

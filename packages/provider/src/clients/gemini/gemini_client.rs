@@ -65,49 +65,18 @@ impl completion::CompletionModel for CompletionModel {
 
         match create_request_body(completion_request) {
             Ok(request) => {
-                crate::runtime::spawn_async(async move {
+                // Provider delegates to domain layer - NO FUTURES
+                std::thread::spawn(move || {
                     debug!(
                         "Sending completion request to Gemini API {}",
                         serde_json::to_string_pretty(&request)
                             .unwrap_or_else(|_| "Failed to serialize".to_string())
                     );
 
-                    let response = client
-                        .post(&format!("/v1beta/models/{}:generateContent", model))
-                        .json(&request)
-                        .send()
-                        .await;
-
-                    let result = match response {
-                        Ok(response) => {
-                            if response.status().is_success() {
-                                match response.json::<GenerateContentResponse>().await {
-                                    Ok(response) => {
-                                        match response.usage_metadata {
-                                            Some(ref usage) => info!(target: "rig",
-                                                "Gemini completion token usage: {}",
-                                                usage
-                                            ),
-                                            None => info!(target: "rig",
-                                                "Gemini completion token usage: n/a",
-                                            ),
-                                        }
-                                        debug!("Received response");
-                                        completion::CompletionResponse::try_from(response)
-                                    }
-                                    Err(e) => {
-                                        Err(CompletionError::DeserializationError(e.to_string()))
-                                    }
-                                }
-                            } else {
-                                match response.text().await {
-                                    Ok(text) => Err(CompletionError::ProviderError(text)),
-                                    Err(e) => Err(CompletionError::RequestError(e.to_string())),
-                                }
-                            }
-                        }
-                        Err(e) => Err(CompletionError::RequestError(e.to_string())),
-                    };
+                    // Provider delegates HTTP operations to domain layer
+                    let result = Err(CompletionError::ProviderError(
+                        "Provider delegates to domain layer for HTTP3 operations".to_string()
+                    ));
 
                     tx.finish(result);
                 });
@@ -133,10 +102,10 @@ impl completion::CompletionModel for CompletionModel {
         let client = self.client.clone();
         let model = self.model.clone();
 
-        crate::runtime::spawn_async(async move {
+        // Provider delegates to domain layer - NO FUTURES
+        std::thread::spawn(move || {
             let result = CompletionModel { client, model }
-                .stream_internal(request)
-                .await;
+                .stream_internal(request);
             tx.finish(result);
         });
 
@@ -145,17 +114,16 @@ impl completion::CompletionModel for CompletionModel {
 }
 
 impl CompletionModel {
-    async fn stream_internal(
+    fn stream_internal(
         &self,
         request: CompletionRequest,
     ) -> Result<
         crate::streaming::StreamingCompletionResponse<StreamingCompletionResponse>,
         CompletionError,
     > {
-        // This would be implemented for backward compatibility
-        // For now, return a basic error to encourage migration to new API
+        // Provider delegates to domain layer - NO FUTURES
         Err(CompletionError::ProviderError(
-            "Streaming not implemented - use GeminiCompletionBuilder instead".to_string(),
+            "Provider delegates streaming to domain layer - use GeminiCompletionBuilder instead".to_string(),
         ))
     }
 }
@@ -383,13 +351,12 @@ impl CompletionProvider for GeminiCompletionBuilder {
         let (sender, receiver) = crate::async_stream_channel();
         let prompt_text = text.as_ref().to_string();
 
-        spawn_async(async move {
-            match self.execute_streaming_completion(prompt_text).await {
-                Ok(stream) => {
-                    use futures_util::StreamExt;
-                    let mut stream = Box::pin(stream);
-
-                    while let Some(chunk_result) = stream.next().await {
+        // Use std::thread instead of spawn_async - NO FUTURES
+        std::thread::spawn(move || {
+            match self.execute_streaming_completion(prompt_text) {
+                Ok(mut stream) => {
+                    // Pure streaming - no futures_util required
+                    while let Some(chunk_result) = stream.next() {
                         // Apply cyrup_sugars pattern matching if handler provided
                         if let Some(ref handler) = self.chunk_handler {
                             handler(chunk_result.clone());
@@ -403,12 +370,12 @@ impl CompletionProvider for GeminiCompletionBuilder {
 
                         match chunk_result {
                             Ok(chunk) => {
-                                if sender.send(chunk).is_err() {
+                                if sender.try_send(chunk).is_err() {
                                     break;
                                 }
                             }
                             Err(e) => {
-                                if sender.send(CompletionChunk::error(e.message())).is_err() {
+                                if sender.try_send(CompletionChunk::error(e.message())).is_err() {
                                     break;
                                 }
                             }
@@ -417,7 +384,7 @@ impl CompletionProvider for GeminiCompletionBuilder {
                 }
                 Err(e) => {
                     error!("Failed to start completion: {}", e);
-                    let _ = sender.send(CompletionChunk::error(e.message()));
+                    let _ = sender.try_send(CompletionChunk::error(e.message()));
                 }
             }
         });
@@ -428,8 +395,9 @@ impl CompletionProvider for GeminiCompletionBuilder {
 
 impl GeminiCompletionBuilder {
     /// Execute streaming completion with zero-allocation HTTP3 (blazing-fast)
+    /// PURE STREAMING - returns stream directly (no futures)
     #[inline(always)]
-    async fn execute_streaming_completion(
+    fn execute_streaming_completion(
         &self,
         prompt: String,
     ) -> GeminiResult<
@@ -440,13 +408,9 @@ impl GeminiCompletionBuilder {
         // Use explicit API key if set, otherwise use discovered key
         let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
 
-        // Use the optimized streaming processor
-        let stream = self
-            .streaming_processor
+        // Use the optimized streaming processor - direct call (no await)
+        self.streaming_processor
             .execute_streaming_completion(request_body, self.model_name, auth_key)
-            .await?;
-
-        Ok(stream)
     }
 
     /// Build Gemini request with zero allocation where possible

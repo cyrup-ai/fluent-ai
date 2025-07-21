@@ -5,7 +5,7 @@
 // Designed for absolute zero overhead on the critical path.
 // ============================================================================
 
-use futures::future::BoxFuture;
+use fluent_ai_http3::async_task::AsyncStream;
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
@@ -50,24 +50,34 @@ pub trait EmbeddingModel: Clone + Send + Sync + 'static {
     fn embed_texts(
         &self,
         texts: impl IntoIterator<Item = String> + Send,
-    ) -> BoxFuture<'_, Result<Vec<Embedding>, EmbeddingError>>;
+    ) -> AsyncStream<Result<Vec<Embedding>, EmbeddingError>>;
 
     /// Convenience: single-document embed.
     #[inline(always)]
-    fn embed_text<'a>(&'a self, text: &'a str) -> BoxFuture<'a, Result<Embedding, EmbeddingError>> {
-        Box::pin(async move {
-            match self
-                .embed_texts(std::iter::once(text.to_owned()))
-                .await?
-                .into_iter()
-                .next()
-            {
-                Some(embedding) => Ok(embedding),
+    fn embed_text(&self, text: &str) -> AsyncStream<Result<Embedding, EmbeddingError>> {
+        let (tx, stream) = AsyncStream::channel();
+        let text_owned = text.to_string();
+        let mut texts_stream = self.embed_texts(std::iter::once(text_owned));
+        
+        tokio::spawn(async move {
+            let result = match texts_stream.next() {
+                Some(Ok(embeddings)) => {
+                    match embeddings.into_iter().next() {
+                        Some(embedding) => Ok(embedding),
+                        None => Err(EmbeddingError::Provider(
+                            "No embeddings returned from provider".to_string(),
+                        )),
+                    }
+                }
+                Some(Err(e)) => Err(e),
                 None => Err(EmbeddingError::Provider(
-                    "No embeddings returned from provider".to_string(),
+                    "No response from provider".to_string(),
                 )),
-            }
-        })
+            };
+            let _ = tx.send(result);
+        });
+        
+        stream
     }
 }
 
@@ -79,12 +89,12 @@ pub trait EmbeddingModelDyn: Send + Sync {
     fn max_documents(&self) -> usize;
     fn ndims(&self) -> usize;
 
-    fn embed_text<'a>(&'a self, text: &'a str) -> BoxFuture<'a, Result<Embedding, EmbeddingError>>;
+    fn embed_text(&self, text: &str) -> AsyncStream<Result<Embedding, EmbeddingError>>;
 
     fn embed_texts(
         &self,
         texts: Vec<String>,
-    ) -> BoxFuture<'_, Result<Vec<Embedding>, EmbeddingError>>;
+    ) -> AsyncStream<Result<Vec<Embedding>, EmbeddingError>>;
 }
 
 impl<T: EmbeddingModel> EmbeddingModelDyn for T {
@@ -99,7 +109,7 @@ impl<T: EmbeddingModel> EmbeddingModelDyn for T {
     }
 
     #[inline(always)]
-    fn embed_text<'a>(&'a self, text: &'a str) -> BoxFuture<'a, Result<Embedding, EmbeddingError>> {
+    fn embed_text(&self, text: &str) -> AsyncStream<Result<Embedding, EmbeddingError>> {
         EmbeddingModel::embed_text(self, text)
     }
 
@@ -107,7 +117,7 @@ impl<T: EmbeddingModel> EmbeddingModelDyn for T {
     fn embed_texts(
         &self,
         texts: Vec<String>,
-    ) -> BoxFuture<'_, Result<Vec<Embedding>, EmbeddingError>> {
+    ) -> AsyncStream<Result<Vec<Embedding>, EmbeddingError>> {
         self.embed_texts(texts)
     }
 }
@@ -124,26 +134,33 @@ pub trait ImageEmbeddingModel: Clone + Send + Sync + 'static {
     fn embed_images(
         &self,
         images: impl IntoIterator<Item = Vec<u8>> + Send,
-    ) -> BoxFuture<'_, Result<Vec<Embedding>, EmbeddingError>>;
+    ) -> AsyncStream<Result<Vec<Embedding>, EmbeddingError>>;
 
     #[inline(always)]
-    fn embed_image<'a>(
-        &'a self,
-        bytes: &'a [u8],
-    ) -> BoxFuture<'a, Result<Embedding, EmbeddingError>> {
-        Box::pin(async move {
-            match self
-                .embed_images(std::iter::once(bytes.to_owned()))
-                .await?
-                .into_iter()
-                .next()
-            {
-                Some(embedding) => Ok(embedding),
+    fn embed_image(
+        &self,
+        bytes: &[u8],
+    ) -> AsyncStream<Result<Embedding, EmbeddingError>> {
+        let bytes_owned = bytes.to_owned();
+        let images_stream = self.embed_images(std::iter::once(bytes_owned));
+        
+        let (tx, stream) = AsyncStream::channel();
+        tokio::spawn(async move {
+            let result = match images_stream.collect().into_iter().next() {
+                Some(Ok(embeddings)) => match embeddings.into_iter().next() {
+                    Some(embedding) => Ok(embedding),
+                    None => Err(EmbeddingError::Provider(
+                        "No embeddings returned from provider".to_string(),
+                    )),
+                },
+                Some(Err(e)) => Err(e),
                 None => Err(EmbeddingError::Provider(
                     "No embeddings returned from provider".to_string(),
                 )),
-            }
-        })
+            };
+            let _ = tx.send(result);
+        });
+        stream
     }
 }
 

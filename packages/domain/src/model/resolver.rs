@@ -18,6 +18,8 @@ use crate::model::registry::ModelRegistry;
 // Removed unused import: strsim::jaro_winkler
 use crate::model::registry::RegisteredModel;
 use crate::model::traits::Model;
+use crate::async_task::AsyncStream;
+use futures_util::StreamExt;
 
 /// A pattern that can be used to match model names
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -173,6 +175,7 @@ impl<'a> ModelResolution<'a> {
 }
 
 /// A resolver for model names and providers
+#[derive(Clone)]
 pub struct ModelResolver {
     registry: ModelRegistry,
     rules: Vec<ModelResolutionRule>,
@@ -227,12 +230,38 @@ impl ModelResolver {
     }
 
     /// Resolve a model by name and optional provider
-    pub fn resolve<'a, M: Model + 'static>(
-        &'a self,
-        model_name: &'a str,
-        provider: Option<&'a str>,
-    ) -> Result<ModelResolution<'a>> {
-        self.resolve_with_registry::<M>(&self.registry, model_name, provider)
+    pub fn resolve<M: Model + 'static>(
+        &self,
+        model_name: &str,
+        provider: Option<&str>,
+    ) -> AsyncStream<ModelResolution<'static>> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        let registry = self.registry.clone();
+        let resolver = self.clone();
+        let model_name = model_name.to_string();
+        let provider = provider.map(|s| s.to_string());
+        
+        tokio::spawn(async move {
+            match resolver.resolve_with_registry::<M>(&registry, &model_name, provider.as_deref()) {
+                Ok(resolution) => {
+                    let _ = sender.try_send(resolution);
+                }
+                Err(_) => {
+                    // Provide a fallback resolution
+                    let fallback = ModelResolution::new(
+                        "fallback",
+                        &model_name,
+                        None,
+                        None,
+                        0.0,
+                    );
+                    let _ = sender.try_send(fallback);
+                }
+            }
+        });
+        
+        stream
     }
 
     /// Resolve a model by name and optional provider using a specific registry
@@ -312,15 +341,33 @@ impl ModelResolver {
         &self,
         model_name: &str,
         provider: Option<&str>,
-    ) -> Result<Option<RegisteredModel<M>>> {
-        let resolution = self.resolve::<M>(model_name, provider)?;
-
-        if !resolution.is_valid() {
-            return Ok(None);
-        }
-
-        self.registry
-            .get::<M>(resolution.provider, resolution.model)
+    ) -> AsyncStream<Option<RegisteredModel<M>>> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        let resolver = self.clone();
+        let model_name = model_name.to_string();
+        let provider = provider.map(|s| s.to_string());
+        
+        tokio::spawn(async move {
+            let resolution_stream = resolver.resolve::<M>(&model_name, provider.as_deref());
+            let mut stream_pin = Box::pin(resolution_stream);
+            
+            if let Some(resolution) = StreamExt::next(&mut stream_pin).await {
+                if resolution.is_valid() {
+                    if let Ok(model) = resolver.registry.get::<M>(resolution.provider, resolution.model) {
+                        let _ = sender.try_send(model);
+                    } else {
+                        let _ = sender.try_send(None);
+                    }
+                } else {
+                    let _ = sender.try_send(None);
+                }
+            } else {
+                let _ = sender.try_send(None);
+            }
+        });
+        
+        stream
     }
 
     /// Get the default provider (if any)

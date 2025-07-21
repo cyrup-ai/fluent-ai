@@ -372,15 +372,15 @@ struct SynthesisResult {
     consensus_score: u32,
 }
 
-/// High-performance Cross-LLM prompt enhancer (zero allocation)
-pub struct CrossLLMEnhancer {
+/// High-performance Cross-Provider prompt enhancer (zero allocation)
+pub struct CrossProviderEnhancer {
     /// Configuration
     config: CrossReviewConfig,
     /// Request counter (atomic)
     request_counter: Arc<AtomicU64>,
 }
 
-impl CrossLLMEnhancer {
+impl CrossProviderEnhancer {
     /// Create new Cross-LLM enhancer
     #[inline]
     pub fn new() -> Self {
@@ -635,22 +635,22 @@ impl CrossLLMEnhancer {
     }
 }
 
-/// Convenience function to create Cross-LLM enhancer
+/// Convenience function to create Cross-Provider enhancer
 #[inline]
-pub fn create_cross_llm_enhancer() -> CrossLLMEnhancer {
-    CrossLLMEnhancer::new()
+pub fn create_cross_provider_enhancer() -> CrossProviderEnhancer {
+    CrossProviderEnhancer::new()
 }
 
 /// Convenience function to create high-performance enhancer
 #[inline]
-pub fn create_high_performance_enhancer() -> CrossLLMEnhancer {
-    CrossLLMEnhancer::new().with_config(CrossReviewConfig::high_performance())
+pub fn create_high_performance_enhancer() -> CrossProviderEnhancer {
+    CrossProviderEnhancer::new().with_config(CrossReviewConfig::high_performance())
 }
 
 /// Convenience function to create quality-focused enhancer
 #[inline]
-pub fn create_quality_focused_enhancer() -> CrossLLMEnhancer {
-    CrossLLMEnhancer::new().with_config(CrossReviewConfig::high_quality())
+pub fn create_quality_focused_enhancer() -> CrossProviderEnhancer {
+    CrossProviderEnhancer::new().with_config(CrossReviewConfig::high_quality())
 }
 
 /// Convenience function for quick enhancement

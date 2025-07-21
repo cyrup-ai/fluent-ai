@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::info::ModelInfo;
+use crate::model::{info::ModelInfo, Usage};
 
 /// Core trait for all AI models
 ///
@@ -166,6 +166,8 @@ pub struct TextChunk {
     pub is_complete: bool,
     /// The reason generation stopped (if complete)
     pub finish_reason: Option<String>,
+    /// Token usage for this chunk (if available)
+    pub usage: Option<Usage>,
 }
 
 /// Request for text generation
@@ -202,6 +204,8 @@ pub struct Embedding {
     pub vector: Vec<f32>,
     /// The original text that was embedded
     pub text: String,
+    /// Token usage for this embedding (if available)
+    pub usage: Option<Usage>,
 }
 
 /// Fine-tuning configuration

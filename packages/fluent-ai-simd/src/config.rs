@@ -38,18 +38,23 @@ impl Default for ProcessorConfig {
 /// Error type for configuration validation
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
+    /// Invalid temperature value - must be positive
     #[error("Invalid temperature value: {0}. Must be positive")]
     InvalidTemperature(f32),
     
+    /// Invalid top_p value - must be in range (0.0, 1.0]
     #[error("Invalid top_p value: {0}. Must be in range (0.0, 1.0]")]
     InvalidTopP(f32),
     
+    /// Invalid repetition penalty - must be >= 1.0
     #[error("Invalid repetition penalty: {0}. Must be >= 1.0")]
     InvalidRepetitionPenalty(f32),
     
+    /// Invalid frequency penalty - must be >= 0.0
     #[error("Invalid frequency penalty: {0}. Must be >= 0.0")]
     InvalidFrequencyPenalty(f32),
     
+    /// Invalid presence penalty - must be >= 0.0
     #[error("Invalid presence penalty: {0}. Must be >= 0.0")]
     InvalidPresencePenalty(f32),
 }

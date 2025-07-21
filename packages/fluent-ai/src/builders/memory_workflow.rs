@@ -157,7 +157,7 @@ pub trait Prompt: Clone {
     fn prompt(
         &self,
         input: String,
-    ) -> impl std::future::Future<Output = Result<String, PromptError>> + Send;
+    ) -> fluent_ai_http3::async_task::AsyncStream<Result<String, PromptError>>;
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -244,55 +244,68 @@ where
     type Input = String;
     type Output = Result<String, WorkflowError>;
 
-    async fn call(&self, input: Self::Input) -> Self::Output {
-        // Store input as episodic memory
-        let _ = memory_ops::store_memory(self.memory_manager.clone(), MemoryType::Episodic)
-            .call(input.clone())
-            .await;
+    fn call(&self, input: Self::Input) -> fluent_ai_http3::async_task::AsyncStream<Self::Output> {
+        let memory_manager = self.memory_manager.clone();
+        let prompt_model = self.prompt_model.clone();
+        let context_limit = self.context_limit;
+        
+        let (tx, stream) = fluent_ai_http3::async_task::AsyncStream::channel();
+        tokio::spawn(async move {
+            let result = async {
+                // Store input as episodic memory
+                let _ = memory_ops::store_memory(memory_manager.clone(), MemoryType::Episodic)
+                    .call(input.clone())
+                    .await;
 
-        // Search for relevant memories
-        let memories = match memory_ops::search_memories(self.memory_manager.clone())
-            .call(input.clone())
-            .await
-        {
-            Ok(memories) => memories,
-            Err(_) => ZeroOneOrMany::None, // Safe fallback without unwrap_or_default
-        };
+                // Search for relevant memories
+                let memories = match memory_ops::search_memories(memory_manager.clone())
+                    .call(input.clone())
+                    .await
+                {
+                    Ok(memories) => memories,
+                    Err(_) => ZeroOneOrMany::None, // Safe fallback without unwrap_or_default
+                };
 
-        // Format the prompt with context using pre-sized capacity for efficiency
-        let mut context_parts = Vec::with_capacity(self.context_limit);
-        match memories {
-            ZeroOneOrMany::None => {}
-            ZeroOneOrMany::One(memory) => {
-                context_parts.push(format!("- {}", memory.content));
-            }
-            ZeroOneOrMany::Many(memories) => {
-                for memory in memories.iter().take(self.context_limit) {
-                    context_parts.push(format!("- {}", memory.content));
+                // Format the prompt with context using pre-sized capacity for efficiency
+                let mut context_parts = Vec::with_capacity(context_limit);
+                match memories {
+                    ZeroOneOrMany::None => {}
+                    ZeroOneOrMany::One(memory) => {
+                        context_parts.push(format!("- {}", memory.content));
+                    }
+                    ZeroOneOrMany::Many(memories) => {
+                        for memory in memories.iter().take(context_limit) {
+                            context_parts.push(format!("- {}", memory.content));
+                        }
+                    }
                 }
-            }
-        }
-        let context = context_parts.join("\n");
+                let context = context_parts.join("\n");
 
-        let formatted_input = if context.is_empty() {
-            input
-        } else {
-            format!("Previous context:\n{}\n\nCurrent query: {}", context, input)
-        };
+                let formatted_input = if context.is_empty() {
+                    input.clone()
+                } else {
+                    format!("Previous context:\n{}\n\nCurrent query: {}", context, input)
+                };
 
-        // Prompt the model
-        let response = self
-            .prompt_model
-            .prompt(formatted_input)
-            .await
-            .map_err(WorkflowError::Prompt)?;
+                // Prompt the model
+                let mut prompt_stream = prompt_model.prompt(formatted_input);
+                let response = match prompt_stream.next() {
+                    Some(Ok(response)) => response,
+                    Some(Err(e)) => return Err(WorkflowError::Prompt(e.to_string())),
+                    None => return Err(WorkflowError::Prompt("No response from prompt model".to_string())),
+                };
 
-        // Store response as semantic memory
-        let _ = memory_ops::store_memory(self.memory_manager.clone(), MemoryType::Semantic)
-            .call(response.clone())
-            .await;
+                // Store response as semantic memory
+                let _ = memory_ops::store_memory(memory_manager, MemoryType::Semantic)
+                    .call(response.clone())
+                    .await;
 
-        Ok(response)
+                Ok(response)
+            }.await;
+            
+            let _ = tx.send(result);
+        });
+        stream
     }
 }
 

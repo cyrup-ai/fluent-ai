@@ -12,7 +12,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
-use futures::Stream;
+use futures_util::Stream;
 
 /// Configuration for token stream behavior
 #[derive(Debug, Clone)]

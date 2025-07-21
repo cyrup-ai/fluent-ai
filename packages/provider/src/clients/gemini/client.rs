@@ -41,7 +41,9 @@ const GEMINI_API_BASE_URL: &str = "https://generativelanguage.googleapis.com";
 
 /// Global HTTP3 client with AI optimization
 static HTTP_CLIENT: LazyLock<HttpClient> = LazyLock::new(|| {
-    HttpClient::with_config(HttpConfig::ai_optimized()).unwrap_or_else(|_| HttpClient::new())
+    HttpClient::with_config(HttpConfig::ai_optimized())
+        .map_err(|e| tracing::error!("Failed to create AI-optimized HTTP client: {}", e))
+        .unwrap_or_else(|_| HttpClient::new())
 });
 
 /// Lock-free performance metrics
@@ -175,11 +177,11 @@ impl Client {
         let mut headers: SmallVec<[(&str, ArrayString<180>); 4]> = smallvec![];
         headers.push((
             "Content-Type",
-            ArrayString::from("application/json").unwrap(),
+            ArrayString::from("application/json").unwrap_or_else(|_| ArrayString::new()),
         ));
         headers.push((
             "User-Agent",
-            ArrayString::from("fluent-ai-gemini/1.0").unwrap(),
+            ArrayString::from("fluent-ai-gemini/1.0").unwrap_or_else(|_| ArrayString::new()),
         ));
 
         let request = HttpRequest::post(&url, body)?
@@ -218,12 +220,12 @@ impl Client {
         let mut headers: SmallVec<[(&str, ArrayString<180>); 4]> = smallvec![];
         headers.push((
             "Content-Type",
-            ArrayString::from("application/json").unwrap(),
+            ArrayString::from("application/json").unwrap_or_else(|_| ArrayString::new()),
         ));
-        headers.push(("Accept", ArrayString::from("text/event-stream").unwrap()));
+        headers.push(("Accept", ArrayString::from("text/event-stream").unwrap_or_else(|_| ArrayString::new())));
         headers.push((
             "User-Agent",
-            ArrayString::from("fluent-ai-gemini/1.0").unwrap(),
+            ArrayString::from("fluent-ai-gemini/1.0").unwrap_or_else(|_| ArrayString::new()),
         ));
 
         let request = HttpRequest::post(&url, body)?
@@ -542,7 +544,7 @@ impl<'a> GeminiCompletionBuilder<'a, NeedsPrompt> {
 impl<'a> GeminiCompletionBuilder<'a, HasPrompt> {
     /// Build the completion request
     fn build_request(&self) -> Result<CompletionRequest, PromptError> {
-        let prompt = self.prompt.as_ref().expect("HasPrompt guarantees prompt");
+        let prompt = self.prompt.as_ref().ok_or_else(|| PromptError::MissingPrompt)?;
 
         let mut builder =
             CompletionRequestBuilder::new(self.model_name.to_string(), prompt.clone())?;

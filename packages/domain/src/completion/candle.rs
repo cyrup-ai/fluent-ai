@@ -1,4 +1,4 @@
-//! Zero-allocation, lock-free completion system
+//! Zero-allocation, lock-free completion system - NO FUTURES!
 //!
 //! This module provides high-performance completion capabilities with:
 //! - Zero allocation: Stack allocation, pre-allocated buffers, ArrayVec/SmallVec
@@ -7,7 +7,6 @@
 //! - No unsafe/unchecked: Explicit bounds checking, safe performance optimizations
 //! - Elegant ergonomic: Clean API with builder patterns, zero-cost abstractions
 
-use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -15,6 +14,8 @@ use arrayvec::ArrayVec;
 use smallvec::SmallVec;
 use thiserror::Error;
 use tokio_stream::Stream;
+
+use crate::async_task::AsyncStream;
 
 use super::types::ModelParams;
 use super::{CompletionRequest, CompletionResponse, StreamingResponse};
@@ -416,23 +417,7 @@ impl CompletionCoreResponseBuilder {
     }
 }
 
-/// Core trait for zero-allocation completion clients
-pub trait CompletionCoreClient: Send + Sync + 'static {
-    /// Generate completion with zero allocation
-    fn complete<'a>(
-        &'a self,
-        request: CompletionRequest<'a>,
-    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<CompletionResponse<'a>>> + Send + 'a>>;
 
-    /// Generate streaming completion
-    fn complete_stream<'a>(
-        &'a self,
-        request: CompletionRequest<'a>,
-    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<StreamingResponse>> + Send + 'a>>;
-
-    /// Get the model name/identifier for this client
-    fn model_name(&self) -> &'static str;
-}
 
 /// Streaming response wrapper
 pub struct StreamingCoreResponse {
@@ -465,40 +450,7 @@ impl Stream for StreamingCoreResponse {
     }
 }
 
-/// Extension trait for additional completion client functionality
-pub trait CompletionCoreClientExt: CompletionCoreClient {
-    /// Perform multiple completions in parallel
-    fn complete_batch<'a>(
-        &'a self,
-        requests: Vec<CompletionRequest<'a>>,
-    ) -> Pin<Box<dyn Future<Output = Vec<CompletionCoreResult<CompletionResponse<'a>>>> + Send + 'a>>
-    {
-        Box::pin(async move {
-            let mut results = Vec::with_capacity(requests.len());
-            for request in requests {
-                results.push(self.complete(request).await);
-            }
-            results
-        })
-    }
 
-    /// Get completion with timeout
-    fn complete_with_timeout<'a>(
-        &'a self,
-        request: CompletionRequest<'a>,
-        timeout: std::time::Duration,
-    ) -> Pin<Box<dyn Future<Output = CompletionCoreResult<CompletionResponse<'a>>> + Send + 'a>>
-    {
-        Box::pin(async move {
-            tokio::time::timeout(timeout, self.complete(request))
-                .await
-                .map_err(|_| CompletionCoreError::Timeout)?
-        })
-    }
-}
-
-// Blanket implementation for all CompletionCoreClient implementors
-impl<T: CompletionCoreClient> CompletionCoreClientExt for T {}
 
 /// Zero-cost wrapper for stack-allocated collections
 #[inline(always)]
@@ -506,7 +458,8 @@ pub fn with_stack_buffer<T, F, R>(f: F) -> R
 where
     F: FnOnce(&mut [std::mem::MaybeUninit<T>]) -> R,
 {
-    let mut buffer: [std::mem::MaybeUninit<T>; 1024] = unsafe { std::mem::MaybeUninit::uninit().assume_init() };
+    // Safe zero-allocation buffer using const generics and MaybeUninit::uninit_array
+    let mut buffer: [std::mem::MaybeUninit<T>; 1024] = std::mem::MaybeUninit::uninit_array();
     f(&mut buffer)
 }
 

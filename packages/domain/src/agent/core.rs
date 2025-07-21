@@ -3,8 +3,9 @@
 use std::sync::{Arc, atomic::AtomicUsize};
 
 use crossbeam_utils::CachePadded;
-use fluent_ai_memory::MemoryConfig;
 use serde_json::Value;
+
+use crate::memory::config::MemoryConfig;
 
 use crate::ZeroOneOrMany;
 use crate::context::Document;
@@ -69,10 +70,10 @@ impl Agent {
     ) -> Result<Self, AgentError> {
         // Initialize memory system with cognitive settings optimized for performance
         let memory_config = MemoryConfig::default();
-        let memory = Arc::new(Memory::new(memory_config).await?);
+        let memory = Memory::new(memory_config).collect().await?;
 
         // Create memory tool with zero-allocation initialization
-        let memory_tool = MemoryTool::new(Arc::clone(&memory));
+        let memory_tool = MemoryTool::new(&memory);
 
         Ok(Self {
             model,
@@ -106,10 +107,10 @@ impl Agent {
         memory_config: MemoryConfig,
     ) -> Result<Self, AgentError> {
         // Initialize memory system with custom configuration
-        let memory = Arc::new(Memory::new(memory_config).await?);
+        let memory = Memory::new(memory_config).collect().await?;
 
         // Create memory tool with zero-allocation initialization
-        let memory_tool = MemoryTool::new(Arc::clone(&memory));
+        let memory_tool = MemoryTool::new(&memory);
 
         Ok(Self {
             model,
@@ -143,7 +144,7 @@ impl Agent {
         memory: Arc<Memory>,
     ) -> Result<Self, AgentError> {
         // Create memory tool with zero-allocation initialization
-        let memory_tool = MemoryTool::new(Arc::clone(&memory));
+        let memory_tool = MemoryTool::new(&memory);
 
         Ok(Self {
             model,

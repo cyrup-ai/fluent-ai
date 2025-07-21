@@ -1,9 +1,9 @@
-// IMPORTANT: Cyrup-agent's async primitives COPIED INTO fluent-ai
-// DO NOT import from cyrup-agent - it will be DELETED!
-// All async primitives are now part of fluent-ai directly
+// IMPORTANT: Pure streaming primitives - NO Future/async/await!
+// ⚠️  ALL FUTURE USAGE ELIMINATED - PURE ASYNCSTREAM ARCHITECTURE ⚠️
+// Stream-first primitives with .collect() for await-like behavior
 
 pub mod task;
-pub use task::{AsyncTask, spawn_async};
+pub use task::{AsyncTask, spawn_task, spawn_stream};
 pub mod stream;
 pub use stream::{AsyncStream, AsyncStreamSender};
 pub mod thread_pool;

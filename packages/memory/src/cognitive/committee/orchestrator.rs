@@ -7,15 +7,15 @@ use futures::stream::{FuturesUnordered, StreamExt};
 use tokio::sync::{RwLock, Semaphore, mpsc};
 use tracing::{info, warn};
 
-use crate::cognitive::committee::agent::LLMEvaluationAgent;
+use crate::cognitive::committee::agent::ProviderEvaluationAgent;
 use crate::cognitive::common::types::*;
 use crate::cognitive::mcts::CodeState;
 use crate::cognitive::types::{CognitiveError, ImpactFactors};
 
-/// Committee orchestrating consensus among LLM agents with multi-round evaluation
+/// Committee orchestrating consensus among provider agents with multi-round evaluation
 #[derive(Debug)]
 pub struct EvaluationCommittee {
-    agents: Vec<LLMEvaluationAgent>,
+    agents: Vec<ProviderEvaluationAgent>,
     config: CommitteeConfig,
     event_tx: mpsc::Sender<CommitteeEvent>,
     history: Arc<RwLock<Vec<EvaluationRound>>>,
@@ -35,7 +35,7 @@ impl EvaluationCommittee {
                     CognitiveError::ConfigError(format!("Model '{}' not found", model_name))
                 })?;
 
-            let agent = LLMEvaluationAgent::new(model_type, perspective).await?;
+            let agent = ProviderEvaluationAgent::new(model_type, perspective).await?;
             agents.push(agent);
         }
 

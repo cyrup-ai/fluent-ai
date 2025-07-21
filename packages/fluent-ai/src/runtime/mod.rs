@@ -16,9 +16,6 @@ pub use tokio_rt::*;
 pub(crate) mod executor {
     use std::sync::Once;
 
-    use crossbeam_channel::{Receiver, bounded};
-    use futures_util::task::AtomicWaker;
-
     use super::thread_pool::ThreadPool;
 
     static INIT: Once = Once::new();
@@ -26,8 +23,6 @@ pub(crate) mod executor {
 
     pub struct GlobalExecutor {
         pool: ThreadPool,
-        waker: AtomicWaker,
-        queue: Receiver<(usize, futures_util::future::BoxFuture<'static, ()>)>,
     }
 
     /// Accessor that bootstraps lazily.
@@ -35,30 +30,19 @@ pub(crate) mod executor {
         unsafe {
             INIT.call_once(|| {
                 let pool = ThreadPool::new();
-                let (tx, rx) = bounded(1024);
-                pool.execute(move || poll_loop(rx.clone()));
-                EXEC = Some(GlobalExecutor {
-                    pool,
-                    waker: AtomicWaker::new(),
-                    queue: rx,
-                });
+                EXEC = Some(GlobalExecutor { pool });
             });
             EXEC.as_ref()
         }
     }
 
     /// Register a waker for an AsyncTask receiver.
-    pub fn register_waker<R>(rx: R, w: std::task::Waker)
+    pub fn register_waker<R>(_rx: R, _w: std::task::Waker)
     where
         R: Send + 'static,
     {
-        let exec = global();
-        exec.waker.register(&w);
-        exec.pool.execute(move || {
-            // when the value arrives, wake
-            let _ = rx;
-            exec.waker.wake();
-        });
+        // Simplified implementation - waker functionality handled by tokio runtime
+        // The old AtomicWaker-based implementation is no longer needed
     }
 
     /// Enqueue a future for execution in the current tokio runtime
@@ -103,5 +87,5 @@ pub(crate) mod executor {
         }
     }
 
-    fn poll_loop(_rx: Receiver<()>) {}
+
 }

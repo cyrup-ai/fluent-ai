@@ -3,7 +3,8 @@
 //! Applies exponential penalty to recently generated tokens to reduce repetitive outputs.
 //! Maintains efficient token history with configurable context window.
 
-use super::{LogitsProcessor, SamplingError};
+use super::SamplingError;
+use crate::processing::traits::LogitsProcessor;
 use candle_core::Tensor;
 use std::collections::HashMap;
 use arrayvec::ArrayVec;
@@ -235,38 +236,24 @@ impl RepetitionPenaltyProcessor {
     }
 }
 
-impl LogitsProcessor for RepetitionPenaltyProcessor {
-    fn process(
-        &self,
-        logits: &mut Tensor,
-        token_ids: &[u32],
-        position: usize,
-    ) -> Result<(), SamplingError> {
-        self.apply_repetition_penalty(logits, token_ids, position)
-    }
-
-    fn validate(&self) -> Result<(), SamplingError> {
-        if self.penalty < 1.0 || !self.penalty.is_finite() {
-            return Err(SamplingError::InvalidRepetitionPenalty(self.penalty));
-        }
-        
-        if self.context_size > MAX_REPETITION_CONTEXT {
-            return Err(SamplingError::ProcessorChainError(
-                format!("Context size {} exceeds maximum {}", self.context_size, MAX_REPETITION_CONTEXT)
-            ));
-        }
-        
-        Ok(())
-    }
-
-    fn name(&self) -> &'static str {
-        "RepetitionPenaltyProcessor"
-    }
-
-    fn is_identity(&self) -> bool {
-        self.is_identity
-    }
-}
+// TODO: Update to new LogitsProcessor API that uses process_logits() instead of process()
+// impl LogitsProcessor for RepetitionPenaltyProcessor {
+//     fn process_logits(&mut self, logits: &mut [f32], context: &ProcessingContext) -> ProcessingResult<()> {
+//         // Implementation needed for new API
+//     }
+//
+//     fn validate(&self) -> ProcessingResult<()> {
+//         // Implementation needed for new API
+//     }
+//
+//     fn name(&self) -> &'static str {
+//         "RepetitionPenaltyProcessor"
+//     }
+//
+//     fn is_identity(&self) -> bool {
+//         self.is_identity
+//     }
+// }
 
 // Implement common traits for ergonomics
 impl std::fmt::Display for RepetitionPenaltyProcessor {

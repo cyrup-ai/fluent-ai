@@ -13,7 +13,7 @@ use serde::{
 use uuid::Uuid;
 
 // Import for error conversion
-use fluent_ai_memory::utils::error::Error as FluentMemoryError;
+// use fluent_ai_memory::utils::error::Error as FluentMemoryError; // Temporarily disabled to break circular dependency
 
 /// Zero-allocation memory type enumeration with blazing-fast operations
 ///
@@ -614,32 +614,4 @@ impl MemoryError {
     }
 }
 
-/// Convert from fluent_ai_memory::Error to MemoryError
-impl From<FluentMemoryError> for MemoryError {
-    fn from(err: FluentMemoryError) -> Self {
-        match err {
-            FluentMemoryError::NotFound(msg) => Self::NotFound(msg),
-            FluentMemoryError::InvalidInput(msg) => Self::InvalidContent(msg),
-            FluentMemoryError::ValidationError(msg) => Self::Validation(msg),
-            FluentMemoryError::ConversionError(msg) => Self::InvalidContent(msg),
-            FluentMemoryError::Config(msg) => Self::Validation(msg),
-            FluentMemoryError::Serialization(e) => Self::Serialization(e.to_string()),
-            FluentMemoryError::SerializationError(msg) => Self::Serialization(msg),
-            FluentMemoryError::BinarySerialization(msg) => Self::Serialization(msg),
-            FluentMemoryError::Database(e) => Self::OperationFailed(format!("Database error: {}", e)),
-            FluentMemoryError::DatabaseError(msg) => Self::OperationFailed(msg),
-            FluentMemoryError::VectorStore(msg) => Self::OperationFailed(format!("Vector store: {}", msg)),
-            FluentMemoryError::IndexError(msg) => Self::OperationFailed(format!("Index error: {}", msg)),
-            FluentMemoryError::Embedding(msg) => Self::OperationFailed(format!("Embedding: {}", msg)),
-            FluentMemoryError::LLM(msg) => Self::OperationFailed(format!("LLM: {}", msg)),
-            FluentMemoryError::Api(msg) => Self::OperationFailed(format!("API: {}", msg)),
-            FluentMemoryError::Migration(msg) => Self::OperationFailed(format!("Migration: {}", msg)),
-            FluentMemoryError::HttpRequest(msg) => Self::OperationFailed(format!("HTTP: {}", msg)),
-            FluentMemoryError::Io(e) => Self::OperationFailed(format!("I/O: {}", e)),
-            FluentMemoryError::Internal(msg) => Self::OperationFailed(format!("Internal: {}", msg)),
-            FluentMemoryError::NotImplemented(msg) => Self::OperationFailed(format!("Not implemented: {}", msg)),
-            FluentMemoryError::AlreadyExists(msg) => Self::OperationFailed(format!("Already exists: {}", msg)),
-            FluentMemoryError::Other(msg) => Self::OperationFailed(format!("Other: {}", msg)),
-        }
-    }
-}
+// Dead code removed - FluentMemoryError type does not exist

@@ -3,12 +3,13 @@
 use crate::context::ProcessingContext;
 use crate::logits::LogitsResult;
 use smallvec::SmallVec;
+use crate::config::ProcessorConfig;
 
 /// Apply penalties to logits
 pub fn apply_penalties_simd(
     logits: &mut [f32],
     context: &ProcessingContext,
-    config: &crate::config::ProcessorConfig,
+    config: &ProcessorConfig,
 ) -> LogitsResult<()> {
     if logits.is_empty() {
         return Ok(());

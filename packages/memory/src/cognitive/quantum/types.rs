@@ -42,8 +42,8 @@ pub enum CognitiveError {
     #[error("Hardware backend error: {0}")]
     HardwareBackendError(String),
 
-    #[error("LLM integration error: {0}")]
-    LLMIntegrationError(String),
+    #[error("Completion provider integration error: {0}")]
+    CompletionIntegrationError(String),
 
     #[error("Evolution error: {0}")]
     EvolutionError(String),

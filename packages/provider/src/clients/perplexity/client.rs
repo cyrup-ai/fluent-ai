@@ -159,11 +159,11 @@ impl Client {
         headers.push(("Authorization", auth_header));
         headers.push((
             "Content-Type",
-            ArrayString::from("application/json").unwrap(),
+            ArrayString::from("application/json").unwrap_or_else(|_| ArrayString::new()),
         ));
         headers.push((
             "User-Agent",
-            ArrayString::from("fluent-ai-perplexity/1.0").unwrap(),
+            ArrayString::from("fluent-ai-perplexity/1.0").unwrap_or_else(|_| ArrayString::new()),
         ));
 
         let request = HttpRequest::post(&url, body)
@@ -196,8 +196,11 @@ impl Client {
             "max_tokens": 1
         });
 
+        let test_body_bytes = serde_json::to_vec(&test_body)
+            .map_err(|e| CompletionError::SerializationError(e.to_string()))?;
+        
         let response = self
-            .make_request("chat/completions", serde_json::to_vec(&test_body).unwrap())
+            .make_request("chat/completions", test_body_bytes)
             .await
             .map_err(|e| CompletionError::HttpError(e.to_string()))?;
 

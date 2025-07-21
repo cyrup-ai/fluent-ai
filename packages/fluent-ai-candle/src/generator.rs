@@ -8,14 +8,14 @@ use std::task::{Context, Poll};
 use arrayvec::ArrayVec;
 use candle_core::{Device, Tensor, IndexOp};
 use candle_transformers::models::deepseek2::TopKLastDimOp;
-use fluent_ai_domain::completion::{
-    CompletionRequest, CompletionResponse, StreamingResponse,
-    CompletionCoreResponse, CompletionCoreError, CompletionCoreResult,
+// Temporarily use domain stubs for compilation testing
+use crate::domain_stubs::{
+    CompletionRequest, CompletionResponse, StreamingResponse, MessageRole, ChatMessage,
+    CompletionCoreResult, CompletionCoreResponse, CompletionCoreError
 };
-use fluent_ai_domain::message::MessageRole;
 use smallvec::SmallVec;
 use tokio::sync::mpsc;
-use futures::stream::Stream;
+use futures_util::stream::Stream;
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -23,7 +23,8 @@ use std::arch::x86_64::*;
 use crate::error::{CandleError, CandleResult};
 use crate::model::CandleModel;
 use crate::tokenizer::CandleTokenizer;
-use crate::sampling::{LogitsProcessor, Sampling};
+use crate::sampling::Sampling;
+use crate::processing::traits::LogitsProcessor;
 use crate::streaming::{TokenOutputStream, StreamingConfig};
 use crate::kv_cache::{KVCache, KVCacheConfig};
 

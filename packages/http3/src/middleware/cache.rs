@@ -1,9 +1,9 @@
 //! Cache middleware for ETag processing and expires computation
+//! NO FUTURES - pure AsyncStream architecture
 
-use std::future::Future;
-use std::pin::Pin;
 use std::time::SystemTime;
 
+use crate::async_task::AsyncStream;
 use crate::{HttpResponse, HttpResult, Middleware};
 
 /// Cache middleware that handles ETag processing and expires computation
@@ -86,41 +86,39 @@ impl Middleware for CacheMiddleware {
     fn process_response(
         &self,
         response: HttpResponse,
-    ) -> Pin<Box<dyn Future<Output = HttpResult<HttpResponse>> + Send + '_>> {
-        Box::pin(async move {
-            let mut headers = response.headers().clone();
+    ) -> AsyncStream<HttpResult<HttpResponse>> {
+        let mut headers = response.headers().clone();
 
-            // Add or ensure ETag header exists
-            if response.etag().is_none() && self.generate_etags {
-                let etag = self.generate_etag(&response);
-                headers.insert("etag".to_string(), etag);
-            }
+        // Add or ensure ETag header exists
+        if response.etag().is_none() && self.generate_etags {
+            let etag = self.generate_etag(&response);
+            headers.insert("etag".to_string(), etag);
+        }
 
-            // Parse user-provided expires from request (if any)
-            // This would need to be passed through request metadata or headers
-            let user_expires_hours = None; // TODO: Extract from request context
+        // Parse user-provided expires from request (if any)
+        // This would need to be passed through request metadata or headers
+        let user_expires_hours = None; // TODO: Extract from request context
 
-            // Compute effective expires timestamp
-            let computed_expires = self.compute_expires(&response, user_expires_hours);
-            
-            // Add computed expires as a custom header
-            headers.insert("x-computed-expires".to_string(), computed_expires.to_string());
+        // Compute effective expires timestamp
+        let computed_expires = self.compute_expires(&response, user_expires_hours);
+        
+        // Add computed expires as a custom header
+        headers.insert("x-computed-expires".to_string(), computed_expires.to_string());
 
-            // Add human-readable expires if not present
-            if response.expires().is_none() {
-                let expires_date = format_timestamp_as_http_date(computed_expires);
-                headers.insert("expires".to_string(), expires_date);
-            }
+        // Add human-readable expires if not present
+        if response.expires().is_none() {
+            let expires_date = format_timestamp_as_http_date(computed_expires);
+            headers.insert("expires".to_string(), expires_date);
+        }
 
-            // Create new response with updated headers
-            let updated_response = HttpResponse::from_cache(
-                response.status(),
-                headers,
-                response.body().to_vec(),
-            );
+        // Create new response with updated headers
+        let updated_response = HttpResponse::from_cache(
+            response.status(),
+            headers,
+            response.body().to_vec(),
+        );
 
-            Ok(updated_response)
-        })
+        AsyncStream::from_single(Ok(updated_response))
     }
 }
 

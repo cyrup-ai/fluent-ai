@@ -281,3 +281,166 @@ pub trait ModelInfo {
         Self::CONFIG.system_prompt
     }
 }
+
+/// Zero-allocation completion response wrapper
+/// 
+/// Provides a unified interface for completion responses across all providers
+/// while maintaining zero-allocation semantics and lock-free access patterns.
+#[derive(Debug, Clone)]
+pub struct CompletionResponse<T> {
+    /// The raw provider-specific response
+    pub raw_response: T,
+    /// Processed completion content
+    pub content: ZeroOneOrMany<String>,
+    /// Token usage information (if available)
+    pub token_usage: Option<TokenUsage>,
+    /// Response metadata
+    pub metadata: ResponseMetadata,
+}
+
+impl<T> CompletionResponse<T> {
+    /// Create a new completion response with zero allocations
+    #[inline(always)]
+    pub fn new(raw_response: T, content: ZeroOneOrMany<String>) -> Self {
+        Self {
+            raw_response,
+            content,
+            token_usage: None,
+            metadata: ResponseMetadata::default(),
+        }
+    }
+
+    /// Add token usage information
+    #[inline(always)]
+    pub fn with_token_usage(mut self, usage: TokenUsage) -> Self {
+        self.token_usage = Some(usage);
+        self
+    }
+
+    /// Add metadata
+    #[inline(always)]
+    pub fn with_metadata(mut self, metadata: ResponseMetadata) -> Self {
+        self.metadata = metadata;
+        self
+    }
+
+    /// Get the primary completion text (zero-allocation)
+    #[inline(always)]
+    pub fn text(&self) -> Option<&str> {
+        match &self.content {
+            ZeroOneOrMany::Zero => None,
+            ZeroOneOrMany::One(text) => Some(text),
+            ZeroOneOrMany::Many(texts) => texts.first().map(|s| s.as_str()),
+        }
+    }
+
+    /// Get all completion texts
+    #[inline(always)]
+    pub fn texts(&self) -> &[String] {
+        self.content.as_slice()
+    }
+}
+
+/// Zero-allocation streaming response wrapper
+/// 
+/// Provides a unified streaming interface for real-time completion responses
+/// with lock-free channel communication and zero-copy token processing.
+pub struct StreamingResponse<T> {
+    /// The raw provider-specific streaming response
+    pub raw_response: T,
+    /// Stream of completion chunks
+    pub stream: AsyncStream<Result<CompletionChunk, CompletionError>>,
+    /// Response metadata (filled as chunks arrive)
+    pub metadata: ResponseMetadata,
+}
+
+impl<T> StreamingResponse<T> {
+    /// Create a new streaming response
+    #[inline(always)]
+    pub fn new(raw_response: T, stream: AsyncStream<Result<CompletionChunk, CompletionError>>) -> Self {
+        Self {
+            raw_response,
+            stream,
+            metadata: ResponseMetadata::default(),
+        }
+    }
+
+    /// Add metadata
+    #[inline(always)]
+    pub fn with_metadata(mut self, metadata: ResponseMetadata) -> Self {
+        self.metadata = metadata;
+        self
+    }
+}
+
+/// Token usage information
+#[derive(Debug, Clone, Default)]
+pub struct TokenUsage {
+    /// Number of tokens in the prompt
+    pub prompt_tokens: u32,
+    /// Number of tokens in the completion
+    pub completion_tokens: u32,
+    /// Total tokens used
+    pub total_tokens: u32,
+}
+
+impl TokenUsage {
+    /// Create new token usage info
+    #[inline(always)]
+    pub fn new(prompt_tokens: u32, completion_tokens: u32) -> Self {
+        Self {
+            prompt_tokens,
+            completion_tokens,
+            total_tokens: prompt_tokens + completion_tokens,
+        }
+    }
+}
+
+/// Response metadata for tracking request/response details
+#[derive(Debug, Clone, Default)]
+pub struct ResponseMetadata {
+    /// Request ID (if provided by the API)
+    pub request_id: Option<String>,
+    /// Model used for the completion
+    pub model: Option<String>,
+    /// Response time in milliseconds
+    pub response_time_ms: Option<u64>,
+    /// Additional provider-specific metadata
+    pub provider_metadata: Option<Value>,
+}
+
+impl ResponseMetadata {
+    /// Create new response metadata
+    #[inline(always)]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set request ID
+    #[inline(always)]
+    pub fn with_request_id(mut self, request_id: String) -> Self {
+        self.request_id = Some(request_id);
+        self
+    }
+
+    /// Set model name
+    #[inline(always)]
+    pub fn with_model(mut self, model: String) -> Self {
+        self.model = Some(model);
+        self
+    }
+
+    /// Set response time
+    #[inline(always)]
+    pub fn with_response_time(mut self, response_time_ms: u64) -> Self {
+        self.response_time_ms = Some(response_time_ms);
+        self
+    }
+
+    /// Set provider metadata
+    #[inline(always)]
+    pub fn with_provider_metadata(mut self, metadata: Value) -> Self {
+        self.provider_metadata = Some(metadata);
+        self
+    }
+}

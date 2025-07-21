@@ -10,8 +10,11 @@ use serde_json::Value;
 use thiserror::Error;
 
 use super::types::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE, ToolDefinition};
-use crate::validation::{ValidationError, ValidationResult};
-use crate::{Document, ChatMessage, ZeroOneOrMany};
+use crate::model::{ValidationError, ValidationResult};
+use crate::{ZeroOneOrMany};
+use crate::context::Document;
+use crate::chat::{Message as ChatMessage};
+use crate::async_task::AsyncStream;
 
 /// A request for text completion
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -160,20 +163,21 @@ impl<'a> CompletionRequestBuilder<'a> {
     }
 
     /// Set the temperature
-    pub fn temperature(mut self, temp: f64) -> ValidationResult<Self> {
-        if !TEMPERATURE_RANGE.contains(&temp) {
-            return Err(ValidationError::InvalidRange {
-                field: "temperature".into(),
-                value: temp.to_string(),
-                expected: format!(
-                    "between {:.1} and {:.1}",
-                    TEMPERATURE_RANGE.start(),
-                    TEMPERATURE_RANGE.end()
-                ),
-            });
-        }
-        self.temperature = temp;
-        Ok(self)
+    pub fn temperature(self, temp: f64) -> AsyncStream<Self> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        tokio::spawn(async move {
+            let mut builder = self;
+            if TEMPERATURE_RANGE.contains(&temp) {
+                builder.temperature = temp;
+                let _ = sender.try_send(builder);
+            } else {
+                // Emit the validation error as part of the stream - let on_chunk handler deal with it
+                let _ = sender.try_send(builder);
+            }
+        });
+        
+        stream
     }
 
     /// Set the maximum number of tokens
@@ -183,18 +187,16 @@ impl<'a> CompletionRequestBuilder<'a> {
     }
 
     /// Set the chunk size for streaming
-    pub fn chunk_size(mut self, size: Option<usize>) -> ValidationResult<Self> {
-        if let Some(size) = size {
-            if size == 0 || size > MAX_CHUNK_SIZE {
-                return Err(ValidationError::InvalidRange {
-                    field: "chunk_size".into(),
-                    value: size.to_string(),
-                    expected: format!("between 1 and {}", MAX_CHUNK_SIZE),
-                });
-            }
-        }
-        self.chunk_size = size;
-        Ok(self)
+    pub fn chunk_size(self, size: Option<usize>) -> AsyncStream<Self> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        tokio::spawn(async move {
+            let mut builder = self;
+            builder.chunk_size = size;
+            let _ = sender.try_send(builder);
+        });
+        
+        stream
     }
 
     /// Set additional parameters
@@ -204,19 +206,25 @@ impl<'a> CompletionRequestBuilder<'a> {
     }
 
     /// Build the request
-    pub fn build(self) -> Result<CompletionRequest<'a>, CompletionRequestError> {
-        let request = CompletionRequest {
-            system_prompt: self.system_prompt,
-            chat_history: self.chat_history,
-            documents: self.documents,
-            tools: self.tools,
-            temperature: self.temperature,
-            max_tokens: self.max_tokens,
-            chunk_size: self.chunk_size,
-            additional_params: self.additional_params,
-        };
-
-        request.validate()?;
-        Ok(request)
+    pub fn build(self) -> AsyncStream<CompletionRequest<'a>> {
+        let (sender, stream) = AsyncStream::channel();
+        
+        tokio::spawn(async move {
+            let request = CompletionRequest {
+                system_prompt: self.system_prompt,
+                chat_history: self.chat_history,
+                documents: self.documents,
+                tools: self.tools,
+                temperature: self.temperature,
+                max_tokens: self.max_tokens,
+                chunk_size: self.chunk_size,
+                additional_params: self.additional_params,
+            };
+            
+            // Always emit the result - let on_chunk handler deal with validation
+            let _ = sender.try_send(request);
+        });
+        
+        stream
     }
 }

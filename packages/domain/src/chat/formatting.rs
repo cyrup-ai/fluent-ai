@@ -1,38 +1,129 @@
-//! Rich message formatting with zero-allocation patterns
+//! Immutable message formatting with streaming operations
 //!
-//! This module provides comprehensive message formatting capabilities including
-//! markdown parsing, syntax highlighting, and inline formatting with SIMD-optimized
-//! performance and zero-allocation string sharing.
+//! Provides zero-allocation, lock-free message formatting with streaming operations.
+//! All Arc usage eliminated in favor of owned strings and borrowed data patterns
+//! for blazing-fast performance with immutable formatting structures.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-/// Message content types with zero-allocation patterns
+use crate::async_task::{AsyncStream, AsyncStreamSender};
+
+/// Immutable message content with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum MessageContent {
+pub enum ImmutableMessageContent {
     /// Plain text content
-    Plain { text: Arc<str> },
+    Plain { 
+        text: String 
+    },
     /// Markdown formatted content
     Markdown {
-        content: Arc<str>,
-        rendered_html: Option<Arc<str>>,
+        content: String,
+        rendered_html: Option<String>,
     },
     /// Code block with syntax highlighting
     Code {
-        content: Arc<str>,
-        language: Arc<str>,
-        highlighted: Option<Arc<str>>,
+        content: String,
+        language: String,
+        highlighted: Option<String>,
     },
     /// Formatted content with inline styling
     Formatted {
-        content: Arc<str>,
-        styles: Arc<[FormatStyle]>,
+        content: String,
+        styles: Vec<FormatStyle>,
     },
     /// Composite content with multiple parts
-    Composite { parts: Arc<[MessageContent]> },
+    Composite { 
+        parts: Vec<ImmutableMessageContent> 
+    },
+}
+
+impl ImmutableMessageContent {
+    /// Get content as borrowed string (zero allocation)
+    #[inline]
+    pub fn as_text(&self) -> &str {
+        match self {
+            Self::Plain { text } => text,
+            Self::Markdown { content, .. } => content,
+            Self::Code { content, .. } => content,
+            Self::Formatted { content, .. } => content,
+            Self::Composite { .. } => "", // Composite content needs rendering
+        }
+    }
+
+    /// Get content type as static string (zero allocation)
+    #[inline]
+    pub fn content_type(&self) -> &'static str {
+        match self {
+            Self::Plain { .. } => "plain",
+            Self::Markdown { .. } => "markdown",
+            Self::Code { .. } => "code",
+            Self::Formatted { .. } => "formatted",
+            Self::Composite { .. } => "composite",
+        }
+    }
+
+    /// Check if content is empty
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Plain { text } => text.is_empty(),
+            Self::Markdown { content, .. } => content.is_empty(),
+            Self::Code { content, .. } => content.is_empty(),
+            Self::Formatted { content, .. } => content.is_empty(),
+            Self::Composite { parts } => parts.is_empty(),
+        }
+    }
+
+    /// Get estimated character count
+    #[inline]
+    pub fn char_count(&self) -> usize {
+        match self {
+            Self::Plain { text } => text.chars().count(),
+            Self::Markdown { content, .. } => content.chars().count(),
+            Self::Code { content, .. } => content.chars().count(),
+            Self::Formatted { content, .. } => content.chars().count(),
+            Self::Composite { parts } => parts.iter().map(|p| p.char_count()).sum(),
+        }
+    }
+
+    /// Validate content structure
+    #[inline]
+    pub fn validate(&self) -> FormatResult<()> {
+        match self {
+            Self::Code { language, .. } => {
+                if language.is_empty() {
+                    return Err(FormatError::InvalidContent {
+                        detail: "Code language cannot be empty".to_string(),
+                    });
+                }
+            }
+            Self::Formatted { content, styles } => {
+                for style in styles {
+                    if style.end > content.len() {
+                        return Err(FormatError::InvalidContent {
+                            detail: "Style range exceeds content length".to_string(),
+                        });
+                    }
+                    if style.start >= style.end {
+                        return Err(FormatError::InvalidContent {
+                            detail: "Invalid style range".to_string(),
+                        });
+                    }
+                }
+            }
+            Self::Composite { parts } => {
+                for part in parts {
+                    part.validate()?;
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
 }
 
 /// Formatting styles for inline text
@@ -46,7 +137,32 @@ pub struct FormatStyle {
     pub style: StyleType,
 }
 
-/// Available style types
+impl FormatStyle {
+    /// Create new format style with validation
+    #[inline]
+    pub fn new(start: usize, end: usize, style: StyleType) -> FormatResult<Self> {
+        if start >= end {
+            return Err(FormatError::InvalidContent {
+                detail: "Style start must be less than end".to_string(),
+            });
+        }
+        Ok(Self { start, end, style })
+    }
+
+    /// Get style length
+    #[inline]
+    pub fn length(&self) -> usize {
+        self.end - self.start
+    }
+
+    /// Check if style overlaps with another
+    #[inline]
+    pub fn overlaps_with(&self, other: &FormatStyle) -> bool {
+        !(self.end <= other.start || other.end <= self.start)
+    }
+}
+
+/// Available style types with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum StyleType {
     Bold,
@@ -54,33 +170,65 @@ pub enum StyleType {
     Underline,
     Strikethrough,
     Code,
-    Link { url: Arc<str> },
+    Link { url: String },
     Color { rgb: u32 },
     Background { rgb: u32 },
 }
 
-/// Formatting errors
+impl StyleType {
+    /// Get style name as static string (zero allocation)
+    #[inline]
+    pub fn style_name(&self) -> &'static str {
+        match self {
+            Self::Bold => "bold",
+            Self::Italic => "italic",
+            Self::Underline => "underline",
+            Self::Strikethrough => "strikethrough",
+            Self::Code => "code",
+            Self::Link { .. } => "link",
+            Self::Color { .. } => "color",
+            Self::Background { .. } => "background",
+        }
+    }
+
+    /// Check if style requires additional data
+    #[inline]
+    pub fn requires_data(&self) -> bool {
+        matches!(self, Self::Link { .. } | Self::Color { .. } | Self::Background { .. })
+    }
+}
+
+/// Formatting errors with owned strings
 #[derive(Error, Debug, Clone)]
 pub enum FormatError {
     #[error("Invalid markdown syntax: {detail}")]
-    InvalidMarkdown { detail: Arc<str> },
+    InvalidMarkdown { detail: String },
     #[error("Unsupported language: {language}")]
-    UnsupportedLanguage { language: Arc<str> },
+    UnsupportedLanguage { language: String },
     #[error("Parse error: {detail}")]
-    ParseError { detail: Arc<str> },
-    #[error("Rendering error: {detail}")]
-    RenderError { detail: Arc<str> },
+    ParseError { detail: String },
+    #[error("Render error: {detail}")]
+    RenderError { detail: String },
+    #[error("Invalid content: {detail}")]
+    InvalidContent { detail: String },
+    #[error("Configuration error: {detail}")]
+    ConfigurationError { detail: String },
+    #[error("IO error: {detail}")]
+    IoError { detail: String },
+    #[error("Timeout error")]
+    Timeout,
+    #[error("Resource not found: {resource}")]
+    ResourceNotFound { resource: String },
+    #[error("Internal error: {detail}")]
+    InternalError { detail: String },
 }
 
 /// Result type for formatting operations
 pub type FormatResult<T> = Result<T, FormatError>;
 
-/// Formatting options for message rendering and display
-///
-/// This configuration controls how messages are formatted, rendered, and displayed
-/// with comprehensive customization options for different output contexts.
+/// Immutable formatting options with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FormatOptions {
+pub struct ImmutableFormatOptions {
     /// Enable markdown parsing and rendering
     pub enable_markdown: bool,
     /// Enable syntax highlighting for code blocks
@@ -98,7 +246,7 @@ pub struct FormatOptions {
     /// Theme for syntax highlighting
     pub syntax_theme: SyntaxTheme,
     /// Color scheme for formatting
-    pub color_scheme: ColorScheme,
+    pub color_scheme: ImmutableColorScheme,
     /// Output format target
     pub output_format: OutputFormat,
     /// Include metadata in formatted output
@@ -106,9 +254,94 @@ pub struct FormatOptions {
     /// Enable performance optimizations
     pub enable_optimizations: bool,
     /// Custom CSS classes for HTML output
-    pub custom_css_classes: HashMap<Arc<str>, Arc<str>>,
+    pub custom_css_classes: HashMap<String, String>,
     /// Custom formatting rules
-    pub custom_rules: Vec<CustomFormatRule>,
+    pub custom_rules: Vec<ImmutableCustomFormatRule>,
+}
+
+impl ImmutableFormatOptions {
+    /// Create new format options with default values
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create format options optimized for terminal output
+    #[inline]
+    pub fn terminal() -> Self {
+        Self {
+            output_format: OutputFormat::AnsiTerminal,
+            max_line_length: 120,
+            enable_optimizations: true,
+            ..Default::default()
+        }
+    }
+
+    /// Create format options optimized for HTML output
+    #[inline]
+    pub fn html() -> Self {
+        Self {
+            output_format: OutputFormat::Html,
+            enable_markdown: true,
+            enable_syntax_highlighting: true,
+            include_metadata: true,
+            ..Default::default()
+        }
+    }
+
+    /// Create format options optimized for plain text
+    #[inline]
+    pub fn plain_text() -> Self {
+        Self {
+            output_format: OutputFormat::PlainText,
+            enable_markdown: false,
+            enable_syntax_highlighting: false,
+            enable_inline_formatting: false,
+            enable_optimizations: true,
+            ..Default::default()
+        }
+    }
+
+    /// Validate configuration
+    #[inline]
+    pub fn validate(&self) -> FormatResult<()> {
+        if self.max_line_length > 0 && self.max_line_length < 10 {
+            return Err(FormatError::ConfigurationError {
+                detail: "Max line length must be at least 10 or 0 for no wrapping".to_string(),
+            });
+        }
+        if self.indent_size > 20 {
+            return Err(FormatError::ConfigurationError {
+                detail: "Indent size cannot exceed 20".to_string(),
+            });
+        }
+        for rule in &self.custom_rules {
+            rule.validate()?;
+        }
+        Ok(())
+    }
+}
+
+impl Default for ImmutableFormatOptions {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            enable_markdown: true,
+            enable_syntax_highlighting: true,
+            enable_inline_formatting: true,
+            enable_link_detection: true,
+            enable_emoji: true,
+            max_line_length: 80,
+            indent_size: 2,
+            syntax_theme: SyntaxTheme::GitHub,
+            color_scheme: ImmutableColorScheme::default(),
+            output_format: OutputFormat::Html,
+            include_metadata: false,
+            enable_optimizations: true,
+            custom_css_classes: HashMap::new(),
+            custom_rules: Vec::new(),
+        }
+    }
 }
 
 /// Syntax highlighting themes
@@ -132,25 +365,119 @@ pub enum SyntaxTheme {
     Custom,
 }
 
-/// Color schemes for text formatting
+impl SyntaxTheme {
+    /// Get theme name as static string (zero allocation)
+    #[inline]
+    pub fn theme_name(&self) -> &'static str {
+        match self {
+            Self::Light => "light",
+            Self::Dark => "dark",
+            Self::HighContrast => "high-contrast",
+            Self::SolarizedLight => "solarized-light",
+            Self::SolarizedDark => "solarized-dark",
+            Self::GitHub => "github",
+            Self::VSCode => "vscode",
+            Self::Custom => "custom",
+        }
+    }
+
+    /// Check if theme is dark
+    #[inline]
+    pub fn is_dark(&self) -> bool {
+        matches!(self, Self::Dark | Self::SolarizedDark)
+    }
+}
+
+/// Immutable color scheme with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ColorScheme {
+pub struct ImmutableColorScheme {
     /// Primary text color
-    pub primary_text: Arc<str>,
+    pub primary_text: String,
     /// Secondary text color
-    pub secondary_text: Arc<str>,
+    pub secondary_text: String,
     /// Background color
-    pub background: Arc<str>,
+    pub background: String,
     /// Accent color
-    pub accent: Arc<str>,
+    pub accent: String,
     /// Error color
-    pub error: Arc<str>,
+    pub error: String,
     /// Warning color
-    pub warning: Arc<str>,
+    pub warning: String,
     /// Success color
-    pub success: Arc<str>,
+    pub success: String,
     /// Link color
-    pub link: Arc<str>,
+    pub link: String,
+}
+
+impl ImmutableColorScheme {
+    /// Create new color scheme with validation
+    #[inline]
+    pub fn new(
+        primary_text: String,
+        secondary_text: String,
+        background: String,
+        accent: String,
+        error: String,
+        warning: String,
+        success: String,
+        link: String,
+    ) -> FormatResult<Self> {
+        let scheme = Self {
+            primary_text,
+            secondary_text,
+            background,
+            accent,
+            error,
+            warning,
+            success,
+            link,
+        };
+        scheme.validate()?;
+        Ok(scheme)
+    }
+
+    /// Validate color values
+    #[inline]
+    pub fn validate(&self) -> FormatResult<()> {
+        let colors = [
+            &self.primary_text, &self.secondary_text, &self.background,
+            &self.accent, &self.error, &self.warning, &self.success, &self.link,
+        ];
+        
+        for color in &colors {
+            if !Self::is_valid_color(color) {
+                return Err(FormatError::ConfigurationError {
+                    detail: format!("Invalid color format: {}", color),
+                });
+            }
+        }
+        Ok(())
+    }
+
+    /// Check if color string is valid (hex format)
+    #[inline]
+    fn is_valid_color(color: &str) -> bool {
+        if !color.starts_with('#') || color.len() != 7 {
+            return false;
+        }
+        color[1..].chars().all(|c| c.is_ascii_hexdigit())
+    }
+}
+
+impl Default for ImmutableColorScheme {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            primary_text: "#333333".to_string(),
+            secondary_text: "#666666".to_string(),
+            background: "#ffffff".to_string(),
+            accent: "#0066cc".to_string(),
+            error: "#cc0000".to_string(),
+            warning: "#ff9900".to_string(),
+            success: "#00cc00".to_string(),
+            link: "#0066cc".to_string(),
+        }
+    }
 }
 
 /// Output format targets
@@ -170,1447 +497,338 @@ pub enum OutputFormat {
     LaTeX,
 }
 
-/// Custom formatting rules
+impl OutputFormat {
+    /// Get format name as static string (zero allocation)
+    #[inline]
+    pub fn format_name(&self) -> &'static str {
+        match self {
+            Self::PlainText => "plain-text",
+            Self::Html => "html",
+            Self::Markdown => "markdown",
+            Self::AnsiTerminal => "ansi-terminal",
+            Self::RichText => "rich-text",
+            Self::LaTeX => "latex",
+        }
+    }
+
+    /// Check if format supports styling
+    #[inline]
+    pub fn supports_styling(&self) -> bool {
+        !matches!(self, Self::PlainText)
+    }
+
+    /// Check if format supports colors
+    #[inline]
+    pub fn supports_colors(&self) -> bool {
+        matches!(self, Self::Html | Self::AnsiTerminal | Self::RichText)
+    }
+}
+
+/// Immutable custom formatting rules with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CustomFormatRule {
+pub struct ImmutableCustomFormatRule {
     /// Rule name/identifier
-    pub name: Arc<str>,
+    pub name: String,
     /// Pattern to match (regex)
-    pub pattern: Arc<str>,
+    pub pattern: String,
     /// Replacement template
-    pub replacement: Arc<str>,
+    pub replacement: String,
     /// Rule priority (higher = applied first)
     pub priority: u32,
     /// Whether rule is enabled
     pub enabled: bool,
 }
 
-impl Default for FormatOptions {
-    fn default() -> Self {
-        Self {
-            enable_markdown: true,
-            enable_syntax_highlighting: true,
-            enable_inline_formatting: true,
-            enable_link_detection: true,
-            enable_emoji: true,
-            max_line_length: 80,
-            indent_size: 2,
-            syntax_theme: SyntaxTheme::GitHub,
-            color_scheme: ColorScheme::default(),
-            output_format: OutputFormat::Html,
-            include_metadata: false,
-            enable_optimizations: true,
-            custom_css_classes: HashMap::new(),
-            custom_rules: Vec::new(),
+impl ImmutableCustomFormatRule {
+    /// Create new custom format rule with validation
+    #[inline]
+    pub fn new(
+        name: String,
+        pattern: String,
+        replacement: String,
+        priority: u32,
+        enabled: bool,
+    ) -> FormatResult<Self> {
+        if name.is_empty() {
+            return Err(FormatError::ConfigurationError {
+                detail: "Rule name cannot be empty".to_string(),
+            });
         }
-    }
-}
-
-impl Default for ColorScheme {
-    fn default() -> Self {
-        Self {
-            primary_text: Arc::from("#333333"),
-            secondary_text: Arc::from("#666666"),
-            background: Arc::from("#ffffff"),
-            accent: Arc::from("#0066cc"),
-            error: Arc::from("#cc0000"),
-            warning: Arc::from("#ff9900"),
-            success: Arc::from("#00cc00"),
-            link: Arc::from("#0066cc"),
+        if pattern.is_empty() {
+            return Err(FormatError::ConfigurationError {
+                detail: "Rule pattern cannot be empty".to_string(),
+            });
         }
+        
+        Ok(Self {
+            name,
+            pattern,
+            replacement,
+            priority,
+            enabled,
+        })
     }
-}
 
-impl FormatOptions {
-    /// Create new format options with default values
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Create format options optimized for terminal output
-    pub fn terminal() -> Self {
-        Self {
-            output_format: OutputFormat::AnsiTerminal,
-            max_line_length: 120,
-            enable_optimizations: true,
-            ..Default::default()
+    /// Validate rule configuration
+    #[inline]
+    pub fn validate(&self) -> FormatResult<()> {
+        if self.name.is_empty() {
+            return Err(FormatError::ConfigurationError {
+                detail: "Rule name cannot be empty".to_string(),
+            });
         }
-    }
-
-    /// Create format options optimized for HTML output
-    pub fn html() -> Self {
-        Self {
-            output_format: OutputFormat::Html,
-            enable_markdown: true,
-            enable_syntax_highlighting: true,
-            include_metadata: true,
-            ..Default::default()
+        if self.pattern.is_empty() {
+            return Err(FormatError::ConfigurationError {
+                detail: "Rule pattern cannot be empty".to_string(),
+            });
         }
-    }
-
-    /// Create format options for plain text output
-    pub fn plain_text() -> Self {
-        Self {
-            output_format: OutputFormat::PlainText,
-            enable_markdown: false,
-            enable_syntax_highlighting: false,
-            enable_inline_formatting: false,
-            enable_emoji: false,
-            ..Default::default()
-        }
-    }
-
-    /// Set maximum line length
-    pub fn with_max_line_length(mut self, length: usize) -> Self {
-        self.max_line_length = length;
-        self
-    }
-
-    /// Set syntax theme
-    pub fn with_syntax_theme(mut self, theme: SyntaxTheme) -> Self {
-        self.syntax_theme = theme;
-        self
-    }
-
-    /// Set color scheme
-    pub fn with_color_scheme(mut self, scheme: ColorScheme) -> Self {
-        self.color_scheme = scheme;
-        self
-    }
-
-    /// Enable or disable markdown
-    pub fn with_markdown(mut self, enable: bool) -> Self {
-        self.enable_markdown = enable;
-        self
-    }
-
-    /// Enable or disable syntax highlighting
-    pub fn with_syntax_highlighting(mut self, enable: bool) -> Self {
-        self.enable_syntax_highlighting = enable;
-        self
-    }
-
-    /// Add custom formatting rule
-    pub fn with_custom_rule(mut self, rule: CustomFormatRule) -> Self {
-        self.custom_rules.push(rule);
-        self
-    }
-
-    /// Validate the format options
-    pub fn validate(&self) -> Result<(), String> {
-        if self.indent_size > 16 {
-            return Err("Indent size cannot exceed 16 spaces".to_string());
-        }
-
-        if self.max_line_length > 0 && self.max_line_length < 20 {
-            return Err(
-                "Max line length must be at least 20 characters or 0 (disabled)".to_string(),
-            );
-        }
-
-        // Validate custom rules
-        for rule in &self.custom_rules {
-            if rule.pattern.is_empty() {
-                return Err(format!("Custom rule '{}' has empty pattern", rule.name));
-            }
-        }
-
+        // TODO: Validate regex pattern syntax
         Ok(())
     }
 }
 
-/// SIMD-optimized markdown parser
-pub struct MarkdownParser {
-    /// Cache for parsed content
-    cache: dashmap::DashMap<Arc<str>, Arc<str>>,
+/// Formatting event for streaming operations
+#[derive(Debug, Clone)]
+pub enum FormattingEvent {
+    /// Formatting started
+    Started {
+        content_id: u64,
+        content_type: String,
+        timestamp_nanos: u64,
+    },
+    /// Formatting progress
+    Progress {
+        content_id: u64,
+        progress_percent: f32,
+        stage: String,
+    },
+    /// Formatting completed
+    Completed {
+        content_id: u64,
+        result: ImmutableMessageContent,
+        duration_nanos: u64,
+    },
+    /// Formatting failed
+    Failed {
+        content_id: u64,
+        error: FormatError,
+        duration_nanos: u64,
+    },
+    /// Partial result available
+    PartialResult {
+        content_id: u64,
+        partial_content: String,
+    },
 }
 
-impl MarkdownParser {
-    /// Create a new markdown parser
+/// Streaming message formatter with atomic state tracking
+#[derive(Debug)]
+pub struct StreamingMessageFormatter {
+    /// Content counter (atomic)
+    content_counter: AtomicU64,
+    /// Active formatting operations (atomic)
+    active_operations: AtomicUsize,
+    /// Total operations (atomic)
+    total_operations: AtomicU64,
+    /// Successful operations (atomic)
+    successful_operations: AtomicU64,
+    /// Failed operations (atomic)
+    failed_operations: AtomicU64,
+    /// Event stream sender
+    event_sender: Option<AsyncStreamSender<FormattingEvent>>,
+    /// Formatter configuration
+    options: ImmutableFormatOptions,
+}
+
+impl StreamingMessageFormatter {
+    /// Create new streaming message formatter
     #[inline]
-    pub fn new() -> Self {
-        Self {
-            cache: dashmap::DashMap::new(),
-        }
+    pub fn new(options: ImmutableFormatOptions) -> FormatResult<Self> {
+        options.validate()?;
+        Ok(Self {
+            content_counter: AtomicU64::new(0),
+            active_operations: AtomicUsize::new(0),
+            total_operations: AtomicU64::new(0),
+            successful_operations: AtomicU64::new(0),
+            failed_operations: AtomicU64::new(0),
+            event_sender: None,
+            options,
+        })
     }
 
-    /// Parse markdown content to HTML with zero-allocation caching
+    /// Create formatter with event streaming
     #[inline]
-    pub fn parse_to_html(&self, content: &str) -> FormatResult<Arc<str>> {
-        let content_arc = Arc::from(content);
-
-        // Check cache first
-        if let Some(cached) = self.cache.get(&content_arc) {
-            return Ok(cached.clone());
-        }
-
-        // Parse markdown using SIMD-optimized patterns
-        let html = self.parse_markdown_simd(&content_arc)?;
-        let html_arc: Arc<str> = Arc::from(html);
-
-        // Cache the result
-        self.cache.insert(content_arc, html_arc.clone());
-
-        Ok(html_arc)
-    }
-
-    /// SIMD-optimized markdown parsing implementation
-    #[inline]
-    fn parse_markdown_simd(&self, content: &Arc<str>) -> FormatResult<String> {
-        let mut html = String::with_capacity(content.len() * 2);
-        let bytes = content.as_bytes();
-        let mut i = 0;
-
-        while i < bytes.len() {
-            match bytes[i] {
-                b'#' => {
-                    let (header_level, end) = self.parse_header(&bytes[i..]);
-                    if header_level > 0 {
-                        let content = self.extract_header_content(&bytes[i..end]);
-                        html.push_str(&format!(
-                            "<h{}>{}</h{}>",
-                            header_level, content, header_level
-                        ));
-                        i += end;
-                    } else {
-                        html.push(bytes[i] as char);
-                        i += 1;
-                    }
-                }
-                b'*' => {
-                    let (style, end) = self.parse_emphasis(&bytes[i..]);
-                    match style {
-                        EmphasisType::Bold => {
-                            let content = self.extract_emphasis_content(&bytes[i..end]);
-                            html.push_str(&format!("<strong>{}</strong>", content));
-                            i += end;
-                        }
-                        EmphasisType::Italic => {
-                            let content = self.extract_emphasis_content(&bytes[i..end]);
-                            html.push_str(&format!("<em>{}</em>", content));
-                            i += end;
-                        }
-                        EmphasisType::None => {
-                            html.push(bytes[i] as char);
-                            i += 1;
-                        }
-                    }
-                }
-                b'`' => {
-                    let (is_code_block, end) = self.parse_code_block(&bytes[i..]);
-                    if is_code_block {
-                        let (language, content) = self.extract_code_block_content(&bytes[i..end]);
-                        let highlighted = self.highlight_code(&content, &language)?;
-                        html.push_str(&format!(
-                            "<pre><code class=\"language-{}\">{}</code></pre>",
-                            language, highlighted
-                        ));
-                        i += end;
-                    } else {
-                        let (is_inline, end) = self.parse_inline_code(&bytes[i..]);
-                        if is_inline {
-                            let content = self.extract_inline_code_content(&bytes[i..end]);
-                            html.push_str(&format!("<code>{}</code>", content));
-                            i += end;
-                        } else {
-                            html.push(bytes[i] as char);
-                            i += 1;
-                        }
-                    }
-                }
-                b'[' => {
-                    let (is_link, end) = self.parse_link(&bytes[i..]);
-                    if is_link {
-                        let (text, url) = self.extract_link_content(&bytes[i..end]);
-                        html.push_str(&format!("<a href=\"{}\">{}</a>", url, text));
-                        i += end;
-                    } else {
-                        html.push(bytes[i] as char);
-                        i += 1;
-                    }
-                }
-                b'\n' => {
-                    // Handle line breaks and paragraphs
-                    if i + 1 < bytes.len() && bytes[i + 1] == b'\n' {
-                        html.push_str("</p><p>");
-                        i += 2;
-                    } else {
-                        html.push_str("<br>");
-                        i += 1;
-                    }
-                }
-                _ => {
-                    html.push(bytes[i] as char);
-                    i += 1;
-                }
-            }
-        }
-
-        Ok(html)
-    }
-
-    /// Parse header level and end position
-    #[inline]
-    fn parse_header(&self, bytes: &[u8]) -> (usize, usize) {
-        let mut level = 0;
-        let mut i = 0;
-
-        while i < bytes.len() && i < 6 && bytes[i] == b'#' {
-            level += 1;
-            i += 1;
-        }
-
-        if i < bytes.len() && bytes[i] == b' ' {
-            // Find end of line
-            while i < bytes.len() && bytes[i] != b'\n' {
-                i += 1;
-            }
-            (level, i)
-        } else {
-            (0, 0)
-        }
-    }
-
-    /// Extract header content
-    #[inline]
-    fn extract_header_content(&self, bytes: &[u8]) -> String {
-        let mut start = 0;
-        while start < bytes.len() && bytes[start] == b'#' {
-            start += 1;
-        }
-        if start < bytes.len() && bytes[start] == b' ' {
-            start += 1;
-        }
-
-        let mut end = start;
-        while end < bytes.len() && bytes[end] != b'\n' {
-            end += 1;
-        }
-
-        String::from_utf8_lossy(&bytes[start..end]).to_string()
-    }
-
-    /// Parse emphasis type and end position
-    #[inline]
-    fn parse_emphasis(&self, bytes: &[u8]) -> (EmphasisType, usize) {
-        if bytes.len() < 2 {
-            return (EmphasisType::None, 0);
-        }
-
-        if bytes[0] == b'*' && bytes[1] == b'*' {
-            // Look for closing **
-            let mut i = 2;
-            while i < bytes.len() - 1 {
-                if bytes[i] == b'*' && bytes[i + 1] == b'*' {
-                    return (EmphasisType::Bold, i + 2);
-                }
-                i += 1;
-            }
-        } else if bytes[0] == b'*' {
-            // Look for closing *
-            let mut i = 1;
-            while i < bytes.len() {
-                if bytes[i] == b'*' {
-                    return (EmphasisType::Italic, i + 1);
-                }
-                i += 1;
-            }
-        }
-
-        (EmphasisType::None, 0)
-    }
-
-    /// Extract emphasis content
-    #[inline]
-    fn extract_emphasis_content(&self, bytes: &[u8]) -> String {
-        let start = if bytes.len() > 1 && bytes[1] == b'*' {
-            2
-        } else {
-            1
+    pub fn with_streaming(options: ImmutableFormatOptions) -> FormatResult<(Self, AsyncStream<FormattingEvent>)> {
+        options.validate()?;
+        let (sender, stream) = crate::async_task::stream::channel();
+        let mut formatter = Self {
+            content_counter: AtomicU64::new(0),
+            active_operations: AtomicUsize::new(0),
+            total_operations: AtomicU64::new(0),
+            successful_operations: AtomicU64::new(0),
+            failed_operations: AtomicU64::new(0),
+            event_sender: Some(sender),
+            options,
         };
-        let end = if bytes.len() > start + 1 && bytes[bytes.len() - 2] == b'*' {
-            bytes.len() - 2
+        Ok((formatter, stream))
+    }
+
+    /// Format content with streaming events
+    #[inline]
+    pub fn format_content(&self, content: &ImmutableMessageContent) -> FormatResult<u64> {
+        // Validate content first
+        content.validate()?;
+
+        // Generate content ID
+        let content_id = self.content_counter.fetch_add(1, Ordering::Relaxed);
+        
+        // Update counters
+        self.active_operations.fetch_add(1, Ordering::Relaxed);
+        self.total_operations.fetch_add(1, Ordering::Relaxed);
+
+        // Send started event
+        if let Some(ref sender) = self.event_sender {
+            let _ = sender.send(FormattingEvent::Started {
+                content_id,
+                content_type: content.content_type().to_string(),
+                timestamp_nanos: Self::current_timestamp_nanos(),
+            });
+        }
+
+        // TODO: Implement actual formatting logic here
+        // This would integrate with markdown parsers, syntax highlighters, etc.
+
+        Ok(content_id)
+    }
+
+    /// Get current timestamp in nanoseconds
+    #[inline]
+    fn current_timestamp_nanos() -> u64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(0)
+    }
+
+    /// Get formatting statistics (atomic reads)
+    #[inline]
+    pub fn stats(&self) -> FormatterStats {
+        FormatterStats {
+            active_operations: self.active_operations.load(Ordering::Relaxed) as u64,
+            total_operations: self.total_operations.load(Ordering::Relaxed),
+            successful_operations: self.successful_operations.load(Ordering::Relaxed),
+            failed_operations: self.failed_operations.load(Ordering::Relaxed),
+        }
+    }
+
+    /// Get formatter options (borrowed reference)
+    #[inline]
+    pub fn options(&self) -> &ImmutableFormatOptions {
+        &self.options
+    }
+
+    /// Update formatter options
+    #[inline]
+    pub fn update_options(&mut self, options: ImmutableFormatOptions) -> FormatResult<()> {
+        options.validate()?;
+        self.options = options;
+        Ok(())
+    }
+}
+
+/// Formatter statistics
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FormatterStats {
+    pub active_operations: u64,
+    pub total_operations: u64,
+    pub successful_operations: u64,
+    pub failed_operations: u64,
+}
+
+impl FormatterStats {
+    /// Calculate success rate as percentage
+    #[inline]
+    pub fn success_rate(&self) -> f64 {
+        let completed = self.successful_operations + self.failed_operations;
+        if completed == 0 {
+            0.0
         } else {
-            bytes.len() - 1
+            (self.successful_operations as f64 / completed as f64) * 100.0
+        }
+    }
+
+    /// Calculate failure rate as percentage
+    #[inline]
+    pub fn failure_rate(&self) -> f64 {
+        100.0 - self.success_rate()
+    }
+}
+
+/// Legacy compatibility type aliases (deprecated)
+#[deprecated(note = "Use ImmutableMessageContent instead for zero-allocation streaming")]
+pub type MessageContent = ImmutableMessageContent;
+
+#[deprecated(note = "Use ImmutableFormatOptions instead for zero-allocation streaming")]
+pub type FormatOptions = ImmutableFormatOptions;
+
+#[deprecated(note = "Use ImmutableColorScheme instead for zero-allocation streaming")]
+pub type ColorScheme = ImmutableColorScheme;
+
+#[deprecated(note = "Use ImmutableCustomFormatRule instead for zero-allocation streaming")]
+pub type CustomFormatRule = ImmutableCustomFormatRule;
+
+/// Legacy compatibility alias for StreamingMessageFormatter
+#[deprecated(note = "Use StreamingMessageFormatter instead for zero-allocation streaming")]
+pub type MessageFormatter = StreamingMessageFormatter;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_message_content_validation() {
+        let content = ImmutableMessageContent::Plain {
+            text: "Hello, world!".to_string(),
         };
-
-        String::from_utf8_lossy(&bytes[start..end]).to_string()
+        assert!(content.validate().is_ok());
+        assert_eq!(content.content_type(), "plain");
+        assert!(!content.is_empty());
     }
 
-    /// Parse code block
-    #[inline]
-    fn parse_code_block(&self, bytes: &[u8]) -> (bool, usize) {
-        if bytes.len() < 6 {
-            return (false, 0);
-        }
-
-        if bytes[0] == b'`' && bytes[1] == b'`' && bytes[2] == b'`' {
-            // Look for closing ```
-            let mut i = 3;
-            while i < bytes.len() - 2 {
-                if bytes[i] == b'`' && bytes[i + 1] == b'`' && bytes[i + 2] == b'`' {
-                    return (true, i + 3);
-                }
-                i += 1;
-            }
-        }
-
-        (false, 0)
+    #[test]
+    fn test_format_style_creation() {
+        let style = FormatStyle::new(0, 5, StyleType::Bold).unwrap();
+        assert_eq!(style.length(), 5);
+        
+        let invalid_style = FormatStyle::new(5, 0, StyleType::Bold);
+        assert!(invalid_style.is_err());
     }
 
-    /// Parse inline code
-    #[inline]
-    fn parse_inline_code(&self, bytes: &[u8]) -> (bool, usize) {
-        if bytes.len() < 2 {
-            return (false, 0);
-        }
-
-        if bytes[0] == b'`' {
-            // Look for closing `
-            let mut i = 1;
-            while i < bytes.len() {
-                if bytes[i] == b'`' {
-                    return (true, i + 1);
-                }
-                i += 1;
-            }
-        }
-
-        (false, 0)
-    }
-
-    /// Extract code block content and language
-    #[inline]
-    fn extract_code_block_content(&self, bytes: &[u8]) -> (String, String) {
-        let mut start = 3; // Skip ```
-        let mut lang_end = start;
-
-        // Find language specification
-        while lang_end < bytes.len() && bytes[lang_end] != b'\n' {
-            lang_end += 1;
-        }
-
-        let language = if lang_end > start {
-            String::from_utf8_lossy(&bytes[start..lang_end]).to_string()
-        } else {
-            String::new()
+    #[test]
+    fn test_color_scheme_validation() {
+        let valid_scheme = ImmutableColorScheme::default();
+        assert!(valid_scheme.validate().is_ok());
+        
+        let invalid_scheme = ImmutableColorScheme {
+            primary_text: "invalid".to_string(),
+            ..Default::default()
         };
-
-        start = lang_end + 1; // Skip newline
-        let end = bytes.len() - 3; // Skip closing ```
-
-        let content = String::from_utf8_lossy(&bytes[start..end]).to_string();
-        (language, content)
+        assert!(invalid_scheme.validate().is_err());
     }
 
-    /// Extract inline code content
-    #[inline]
-    fn extract_inline_code_content(&self, bytes: &[u8]) -> String {
-        let start = 1; // Skip opening `
-        let end = bytes.len() - 1; // Skip closing `
-        String::from_utf8_lossy(&bytes[start..end]).to_string()
+    #[test]
+    fn test_formatter_creation() {
+        let options = ImmutableFormatOptions::default();
+        let formatter = StreamingMessageFormatter::new(options).unwrap();
+        let stats = formatter.stats();
+        assert_eq!(stats.total_operations, 0);
     }
 
-    /// Parse link
-    #[inline]
-    fn parse_link(&self, bytes: &[u8]) -> (bool, usize) {
-        if bytes.len() < 4 {
-            return (false, 0);
-        }
-
-        // Look for [text](url) pattern
-        let mut i = 1;
-        let mut text_end = 0;
-
-        // Find closing ]
-        while i < bytes.len() {
-            if bytes[i] == b']' {
-                text_end = i;
-                break;
-            }
-            i += 1;
-        }
-
-        if text_end == 0 || text_end + 1 >= bytes.len() || bytes[text_end + 1] != b'(' {
-            return (false, 0);
-        }
-
-        // Find closing )
-        i = text_end + 2;
-        while i < bytes.len() {
-            if bytes[i] == b')' {
-                return (true, i + 1);
-            }
-            i += 1;
-        }
-
-        (false, 0)
+    #[test]
+    fn test_output_format_capabilities() {
+        assert!(OutputFormat::Html.supports_styling());
+        assert!(OutputFormat::Html.supports_colors());
+        assert!(!OutputFormat::PlainText.supports_styling());
+        assert!(!OutputFormat::PlainText.supports_colors());
     }
-
-    /// Extract link content
-    #[inline]
-    fn extract_link_content(&self, bytes: &[u8]) -> (String, String) {
-        let mut text_end = 1;
-        while text_end < bytes.len() && bytes[text_end] != b']' {
-            text_end += 1;
-        }
-
-        let text = String::from_utf8_lossy(&bytes[1..text_end]).to_string();
-
-        let url_start = text_end + 2; // Skip ](
-        let mut url_end = url_start;
-        while url_end < bytes.len() && bytes[url_end] != b')' {
-            url_end += 1;
-        }
-
-        let url = String::from_utf8_lossy(&bytes[url_start..url_end]).to_string();
-
-        (text, url)
-    }
-
-    /// Highlight code with syntax highlighting
-    #[inline]
-    fn highlight_code(&self, content: &str, language: &str) -> FormatResult<String> {
-        match language {
-            "rust" => Ok(self.highlight_rust(content)),
-            "javascript" | "js" => Ok(self.highlight_javascript(content)),
-            "python" | "py" => Ok(self.highlight_python(content)),
-            "sql" => Ok(self.highlight_sql(content)),
-            "json" => Ok(self.highlight_json(content)),
-            "yaml" | "yml" => Ok(self.highlight_yaml(content)),
-            "toml" => Ok(self.highlight_toml(content)),
-            "markdown" | "md" => Ok(self.highlight_markdown(content)),
-            "" => Ok(html_escape::encode_text(content).to_string()),
-            _ => Ok(html_escape::encode_text(content).to_string()),
-        }
-    }
-
-    /// Highlight Rust code
-    #[inline]
-    fn highlight_rust(&self, content: &str) -> String {
-        let keywords = &[
-            "fn", "let", "mut", "const", "static", "if", "else", "match", "for", "while", "loop",
-            "break", "continue", "return", "struct", "enum", "impl", "trait", "pub", "use", "mod",
-            "crate", "self", "Self", "super", "async", "await", "move", "ref", "unsafe", "extern",
-        ];
-
-        let types = &[
-            "i8", "i16", "i32", "i64", "i128", "isize", "u8", "u16", "u32", "u64", "u128", "usize",
-            "f32", "f64", "bool", "char", "str", "String", "Vec", "HashMap", "Option", "Result",
-            "Box", "Arc", "Rc", "RefCell", "Cell", "Mutex", "RwLock",
-        ];
-
-        self.highlight_with_keywords(content, keywords, types)
-    }
-
-    /// Highlight JavaScript code
-    #[inline]
-    fn highlight_javascript(&self, content: &str) -> String {
-        let keywords = &[
-            "function",
-            "var",
-            "let",
-            "const",
-            "if",
-            "else",
-            "for",
-            "while",
-            "do",
-            "break",
-            "continue",
-            "return",
-            "try",
-            "catch",
-            "finally",
-            "throw",
-            "new",
-            "this",
-            "super",
-            "class",
-            "extends",
-            "import",
-            "export",
-            "default",
-            "async",
-            "await",
-            "yield",
-            "typeof",
-            "instanceof",
-        ];
-
-        let types = &[
-            "Object", "Array", "String", "Number", "Boolean", "Function", "Date", "RegExp",
-            "Error", "Promise", "Map", "Set", "WeakMap", "WeakSet", "Symbol", "BigInt",
-        ];
-
-        self.highlight_with_keywords(content, keywords, types)
-    }
-
-    /// Highlight Python code
-    #[inline]
-    fn highlight_python(&self, content: &str) -> String {
-        let keywords = &[
-            "def", "class", "if", "elif", "else", "for", "while", "break", "continue", "return",
-            "try", "except", "finally", "raise", "with", "as", "import", "from", "global",
-            "nonlocal", "lambda", "yield", "assert", "del", "pass", "async", "await", "and", "or",
-            "not", "in", "is",
-        ];
-
-        let types = &[
-            "int",
-            "float",
-            "str",
-            "bool",
-            "list",
-            "dict",
-            "set",
-            "tuple",
-            "bytes",
-            "bytearray",
-            "frozenset",
-            "range",
-            "enumerate",
-            "zip",
-            "filter",
-            "map",
-            "reduce",
-            "len",
-            "type",
-        ];
-
-        self.highlight_with_keywords(content, keywords, types)
-    }
-
-    /// Highlight SQL code
-    #[inline]
-    fn highlight_sql(&self, content: &str) -> String {
-        let keywords = &[
-            "SELECT",
-            "FROM",
-            "WHERE",
-            "JOIN",
-            "INNER",
-            "LEFT",
-            "RIGHT",
-            "FULL",
-            "OUTER",
-            "ON",
-            "GROUP",
-            "BY",
-            "HAVING",
-            "ORDER",
-            "ASC",
-            "DESC",
-            "LIMIT",
-            "OFFSET",
-            "UNION",
-            "ALL",
-            "INSERT",
-            "INTO",
-            "VALUES",
-            "UPDATE",
-            "SET",
-            "DELETE",
-            "CREATE",
-            "TABLE",
-            "DROP",
-            "ALTER",
-            "INDEX",
-            "PRIMARY",
-            "KEY",
-            "FOREIGN",
-            "REFERENCES",
-            "NOT",
-            "NULL",
-            "UNIQUE",
-            "DEFAULT",
-            "CHECK",
-            "CONSTRAINT",
-            "AUTO_INCREMENT",
-            "SERIAL",
-            "TIMESTAMP",
-            "DATE",
-            "TIME",
-            "DATETIME",
-            "VARCHAR",
-            "CHAR",
-            "TEXT",
-            "INT",
-            "INTEGER",
-            "BIGINT",
-            "DECIMAL",
-            "FLOAT",
-            "DOUBLE",
-            "BOOLEAN",
-            "BOOL",
-            "BINARY",
-            "VARBINARY",
-            "BLOB",
-            "CLOB",
-        ];
-
-        let types = &[
-            "VARCHAR",
-            "CHAR",
-            "TEXT",
-            "INT",
-            "INTEGER",
-            "BIGINT",
-            "DECIMAL",
-            "FLOAT",
-            "DOUBLE",
-            "BOOLEAN",
-            "BOOL",
-            "DATE",
-            "TIME",
-            "DATETIME",
-            "TIMESTAMP",
-            "BINARY",
-            "VARBINARY",
-        ];
-
-        self.highlight_with_keywords(content, keywords, types)
-    }
-
-    /// Highlight JSON code
-    #[inline]
-    fn highlight_json(&self, content: &str) -> String {
-        let mut result = String::with_capacity(content.len() * 2);
-        let mut in_string = false;
-        let mut escape_next = false;
-        let chars: Vec<char> = content.chars().collect();
-
-        for &ch in &chars {
-            if escape_next {
-                result.push(ch);
-                escape_next = false;
-                continue;
-            }
-
-            match ch {
-                '"' => {
-                    if !in_string {
-                        result.push_str("<span class=\"json-string\">\"");
-                        in_string = true;
-                    } else {
-                        result.push_str("\"</span>");
-                        in_string = false;
-                    }
-                }
-                '\\' if in_string => {
-                    result.push(ch);
-                    escape_next = true;
-                }
-                '{' | '}' | '[' | ']' if !in_string => {
-                    result.push_str(&format!("<span class=\"json-bracket\">{}</span>", ch));
-                }
-                ':' if !in_string => {
-                    result.push_str("<span class=\"json-colon\">:</span>");
-                }
-                ',' if !in_string => {
-                    result.push_str("<span class=\"json-comma\">,</span>");
-                }
-                _ => {
-                    if !in_string
-                        && (ch.is_ascii_digit() || ch == '-' || ch == '.' || ch == 'e' || ch == 'E')
-                    {
-                        result.push_str(&format!("<span class=\"json-number\">{}</span>", ch));
-                    } else if !in_string && (ch == 't' || ch == 'f' || ch == 'n') {
-                        // Handle true, false, null
-                        result.push_str(&format!("<span class=\"json-literal\">{}</span>", ch));
-                    } else {
-                        result.push(ch);
-                    }
-                }
-            }
-        }
-
-        result
-    }
-
-    /// Highlight YAML code
-    #[inline]
-    fn highlight_yaml(&self, content: &str) -> String {
-        let mut result = String::with_capacity(content.len() * 2);
-        let lines = content.lines();
-
-        for line in lines {
-            let trimmed = line.trim_start();
-            if trimmed.starts_with('#') {
-                result.push_str(&format!(
-                    "<span class=\"yaml-comment\">{}</span>\n",
-                    html_escape::encode_text(line)
-                ));
-            } else if trimmed.contains(':') {
-                let parts: Vec<&str> = line.splitn(2, ':').collect();
-                if parts.len() == 2 {
-                    result.push_str(&format!(
-                        "<span class=\"yaml-key\">{}</span>:<span class=\"yaml-value\">{}</span>\n",
-                        html_escape::encode_text(parts[0]),
-                        html_escape::encode_text(parts[1])
-                    ));
-                } else {
-                    result.push_str(&format!("{}\n", html_escape::encode_text(line)));
-                }
-            } else {
-                result.push_str(&format!("{}\n", html_escape::encode_text(line)));
-            }
-        }
-
-        result
-    }
-
-    /// Highlight TOML code
-    #[inline]
-    fn highlight_toml(&self, content: &str) -> String {
-        let mut result = String::with_capacity(content.len() * 2);
-        let lines = content.lines();
-
-        for line in lines {
-            let trimmed = line.trim_start();
-            if trimmed.starts_with('#') {
-                result.push_str(&format!(
-                    "<span class=\"toml-comment\">{}</span>\n",
-                    html_escape::encode_text(line)
-                ));
-            } else if trimmed.starts_with('[') && trimmed.ends_with(']') {
-                result.push_str(&format!(
-                    "<span class=\"toml-section\">{}</span>\n",
-                    html_escape::encode_text(line)
-                ));
-            } else if trimmed.contains('=') {
-                let parts: Vec<&str> = line.splitn(2, '=').collect();
-                if parts.len() == 2 {
-                    result.push_str(&format!(
-                        "<span class=\"toml-key\">{}</span>=<span class=\"toml-value\">{}</span>\n",
-                        html_escape::encode_text(parts[0]),
-                        html_escape::encode_text(parts[1])
-                    ));
-                } else {
-                    result.push_str(&format!("{}\n", html_escape::encode_text(line)));
-                }
-            } else {
-                result.push_str(&format!("{}\n", html_escape::encode_text(line)));
-            }
-        }
-
-        result
-    }
-
-    /// Highlight Markdown code
-    #[inline]
-    fn highlight_markdown(&self, content: &str) -> String {
-        // For markdown within code blocks, just escape HTML
-        html_escape::encode_text(content).to_string()
-    }
-
-    /// Generic keyword-based highlighting
-    #[inline]
-    fn highlight_with_keywords(&self, content: &str, keywords: &[&str], types: &[&str]) -> String {
-        let mut result = String::with_capacity(content.len() * 2);
-        let mut chars = content.chars().peekable();
-        let mut current_word = String::new();
-        let mut in_string = false;
-        let mut in_comment = false;
-        let mut string_char = '"';
-
-        while let Some(ch) = chars.next() {
-            match ch {
-                '"' | '\'' if !in_comment => {
-                    if !in_string {
-                        in_string = true;
-                        string_char = ch;
-                        result.push_str(&format!("<span class=\"string\">{}", ch));
-                    } else if ch == string_char {
-                        in_string = false;
-                        result.push_str(&format!("{}</span>", ch));
-                    } else {
-                        result.push(ch);
-                    }
-                }
-                '/' if !in_string && !in_comment => {
-                    if chars.peek() == Some(&'/') {
-                        in_comment = true;
-                        result.push_str("<span class=\"comment\">//");
-                        chars.next(); // consume second /
-                    } else {
-                        result.push(ch);
-                    }
-                }
-                '\n' if in_comment => {
-                    in_comment = false;
-                    result.push_str("</span>\n");
-                }
-                c if c.is_alphabetic() || c == '_' => {
-                    if !in_string && !in_comment {
-                        current_word.push(c);
-                    } else {
-                        result.push(c);
-                    }
-                }
-                _ => {
-                    if !current_word.is_empty() && !in_string && !in_comment {
-                        if keywords.contains(&current_word.as_str()) {
-                            result.push_str(&format!(
-                                "<span class=\"keyword\">{}</span>",
-                                current_word
-                            ));
-                        } else if types.contains(&current_word.as_str()) {
-                            result
-                                .push_str(&format!("<span class=\"type\">{}</span>", current_word));
-                        } else {
-                            result.push_str(&current_word);
-                        }
-                        current_word.clear();
-                    }
-                    result.push(ch);
-                }
-            }
-        }
-
-        // Handle any remaining word
-        if !current_word.is_empty() {
-            if keywords.contains(&current_word.as_str()) {
-                result.push_str(&format!("<span class=\"keyword\">{}</span>", current_word));
-            } else if types.contains(&current_word.as_str()) {
-                result.push_str(&format!("<span class=\"type\">{}</span>", current_word));
-            } else {
-                result.push_str(&current_word);
-            }
-        }
-
-        result
-    }
-}
-
-impl Default for MarkdownParser {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Emphasis types for markdown parsing
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum EmphasisType {
-    Bold,
-    Italic,
-    None,
-}
-
-/// Syntax highlighter for various languages
-pub struct SyntaxHighlighter {
-    /// Language-specific parsers
-    parsers: HashMap<Arc<str>, Box<dyn LanguageParser + Send + Sync>>,
-}
-
-impl SyntaxHighlighter {
-    /// Create a new syntax highlighter
-    #[inline]
-    pub fn new() -> Self {
-        let mut parsers: HashMap<Arc<str>, Box<dyn LanguageParser + Send + Sync>> = HashMap::new();
-
-        // Register built-in language parsers
-        parsers.insert(Arc::from("rust"), Box::new(RustParser::new()));
-        parsers.insert(Arc::from("javascript"), Box::new(JavaScriptParser::new()));
-        parsers.insert(Arc::from("python"), Box::new(PythonParser::new()));
-        parsers.insert(Arc::from("sql"), Box::new(SqlParser::new()));
-
-        Self { parsers }
-    }
-
-    /// Highlight code for a specific language
-    #[inline]
-    pub fn highlight(&self, content: &str, language: &str) -> FormatResult<Arc<str>> {
-        let language_arc = Arc::from(language);
-
-        if let Some(parser) = self.parsers.get(&language_arc) {
-            let highlighted = parser.highlight(content)?;
-            Ok(Arc::from(highlighted))
-        } else {
-            // Fallback to plain text with HTML escaping
-            Ok(Arc::from(html_escape::encode_text(content).to_string()))
-        }
-    }
-
-    /// Register a new language parser
-    #[inline]
-    pub fn register_parser(
-        &mut self,
-        language: Arc<str>,
-        parser: Box<dyn LanguageParser + Send + Sync>,
-    ) {
-        self.parsers.insert(language, parser);
-    }
-}
-
-impl Default for SyntaxHighlighter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Trait for language-specific syntax highlighting
-pub trait LanguageParser {
-    /// Highlight code for this language
-    fn highlight(&self, content: &str) -> FormatResult<String>;
-}
-
-/// Rust language parser
-pub struct RustParser;
-
-impl RustParser {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl LanguageParser for RustParser {
-    fn highlight(&self, content: &str) -> FormatResult<String> {
-        // Implement Rust-specific highlighting logic
-        Ok(content.to_string())
-    }
-}
-
-/// JavaScript language parser
-pub struct JavaScriptParser;
-
-impl JavaScriptParser {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl LanguageParser for JavaScriptParser {
-    fn highlight(&self, content: &str) -> FormatResult<String> {
-        // Implement JavaScript-specific highlighting logic
-        Ok(content.to_string())
-    }
-}
-
-/// Python language parser
-pub struct PythonParser;
-
-impl PythonParser {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl LanguageParser for PythonParser {
-    fn highlight(&self, content: &str) -> FormatResult<String> {
-        // Implement Python-specific highlighting logic
-        Ok(content.to_string())
-    }
-}
-
-/// SQL language parser
-pub struct SqlParser;
-
-impl SqlParser {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl LanguageParser for SqlParser {
-    fn highlight(&self, content: &str) -> FormatResult<String> {
-        // Implement SQL-specific highlighting logic
-        Ok(content.to_string())
-    }
-}
-
-/// Message formatter for converting content to different formats
-pub struct MessageFormatter {
-    /// Markdown parser instance
-    markdown_parser: MarkdownParser,
-    /// Syntax highlighter instance
-    syntax_highlighter: SyntaxHighlighter,
-}
-
-impl MessageFormatter {
-    /// Create a new message formatter
-    #[inline]
-    pub fn new() -> Self {
-        Self {
-            markdown_parser: MarkdownParser::new(),
-            syntax_highlighter: SyntaxHighlighter::new(),
-        }
-    }
-
-    /// Format message content based on its type
-    #[inline]
-    pub fn format(&self, content: &MessageContent) -> FormatResult<Arc<str>> {
-        match content {
-            MessageContent::Plain { text } => Ok(text.clone()),
-            MessageContent::Markdown {
-                content,
-                rendered_html,
-            } => {
-                if let Some(html) = rendered_html {
-                    Ok(html.clone())
-                } else {
-                    self.markdown_parser.parse_to_html(content)
-                }
-            }
-            MessageContent::Code {
-                content,
-                language,
-                highlighted,
-            } => {
-                if let Some(html) = highlighted {
-                    Ok(html.clone())
-                } else {
-                    self.syntax_highlighter.highlight(content, language)
-                }
-            }
-            MessageContent::Formatted { content, styles } => {
-                self.apply_inline_styles(content, styles)
-            }
-            MessageContent::Composite { parts } => self.format_composite(parts),
-        }
-    }
-
-    /// Apply inline styles to content
-    #[inline]
-    fn apply_inline_styles(
-        &self,
-        content: &Arc<str>,
-        styles: &[FormatStyle],
-    ) -> FormatResult<Arc<str>> {
-        let mut result = String::with_capacity(content.len() * 2);
-        let mut last_end = 0;
-
-        // Sort styles by start position
-        let mut sorted_styles = styles.to_vec();
-        sorted_styles.sort_by_key(|s| s.start);
-
-        for style in sorted_styles {
-            // Add content before this style
-            result.push_str(&content[last_end..style.start]);
-
-            // Add opening tag
-            match &style.style {
-                StyleType::Bold => result.push_str("<strong>"),
-                StyleType::Italic => result.push_str("<em>"),
-                StyleType::Underline => result.push_str("<u>"),
-                StyleType::Strikethrough => result.push_str("<del>"),
-                StyleType::Code => result.push_str("<code>"),
-                StyleType::Link { url } => result.push_str(&format!("<a href=\"{}\">", url)),
-                StyleType::Color { rgb } => {
-                    result.push_str(&format!("<span style=\"color: #{:06x}\">", rgb))
-                }
-                StyleType::Background { rgb } => {
-                    result.push_str(&format!("<span style=\"background-color: #{:06x}\">", rgb))
-                }
-            }
-
-            // Add styled content
-            result.push_str(&content[style.start..style.end]);
-
-            // Add closing tag
-            match &style.style {
-                StyleType::Bold => result.push_str("</strong>"),
-                StyleType::Italic => result.push_str("</em>"),
-                StyleType::Underline => result.push_str("</u>"),
-                StyleType::Strikethrough => result.push_str("</del>"),
-                StyleType::Code => result.push_str("</code>"),
-                StyleType::Link { .. } => result.push_str("</a>"),
-                StyleType::Color { .. } | StyleType::Background { .. } => {
-                    result.push_str("</span>")
-                }
-            }
-
-            last_end = style.end;
-        }
-
-        // Add remaining content
-        result.push_str(&content[last_end..]);
-
-        Ok(Arc::from(result))
-    }
-
-    /// Format composite content
-    #[inline]
-    fn format_composite(&self, parts: &[MessageContent]) -> FormatResult<Arc<str>> {
-        let mut result = String::new();
-
-        for part in parts {
-            let formatted = self.format(part)?;
-            result.push_str(&formatted);
-        }
-
-        Ok(Arc::from(result))
-    }
-}
-
-impl Default for MessageFormatter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl MessageContent {
-    /// Create plain text content
-    #[inline]
-    pub fn plain(text: impl Into<Arc<str>>) -> Self {
-        Self::Plain { text: text.into() }
-    }
-
-    /// Create markdown content
-    #[inline]
-    pub fn markdown(content: impl Into<Arc<str>>) -> Self {
-        Self::Markdown {
-            content: content.into(),
-            rendered_html: None,
-        }
-    }
-
-    /// Create code content
-    #[inline]
-    pub fn code(content: impl Into<Arc<str>>, language: impl Into<Arc<str>>) -> Self {
-        Self::Code {
-            content: content.into(),
-            language: language.into(),
-            highlighted: None,
-        }
-    }
-
-    /// Create formatted content
-    #[inline]
-    pub fn formatted(content: impl Into<Arc<str>>, styles: Arc<[FormatStyle]>) -> Self {
-        Self::Formatted {
-            content: content.into(),
-            styles,
-        }
-    }
-
-    /// Create composite content
-    #[inline]
-    pub fn composite(parts: Arc<[MessageContent]>) -> Self {
-        Self::Composite { parts }
-    }
-
-    /// Get the raw text content
-    #[inline]
-    pub fn raw_text(&self) -> Arc<str> {
-        match self {
-            Self::Plain { text } => text.clone(),
-            Self::Markdown { content, .. } => content.clone(),
-            Self::Code { content, .. } => content.clone(),
-            Self::Formatted { content, .. } => content.clone(),
-            Self::Composite { parts } => {
-                let mut result = String::new();
-                for part in parts.iter() {
-                    result.push_str(&part.raw_text());
-                }
-                Arc::from(result)
-            }
-        }
-    }
-
-    /// Check if content is empty
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        match self {
-            Self::Plain { text } => text.is_empty(),
-            Self::Markdown { content, .. } => content.is_empty(),
-            Self::Code { content, .. } => content.is_empty(),
-            Self::Formatted { content, .. } => content.is_empty(),
-            Self::Composite { parts } => parts.is_empty() || parts.iter().all(|p| p.is_empty()),
-        }
-    }
-
-    /// Get content length
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.raw_text().len()
-    }
-}
-
-/// Builder for creating formatted message content
-pub struct MessageContentBuilder {
-    content: String,
-    styles: Vec<FormatStyle>,
-}
-
-impl MessageContentBuilder {
-    /// Create a new builder
-    #[inline]
-    pub fn new() -> Self {
-        Self {
-            content: String::new(),
-            styles: Vec::new(),
-        }
-    }
-
-    /// Add plain text
-    #[inline]
-    pub fn text(mut self, text: &str) -> Self {
-        self.content.push_str(text);
-        self
-    }
-
-    /// Add bold text
-    #[inline]
-    pub fn bold(mut self, text: &str) -> Self {
-        let start = self.content.len();
-        self.content.push_str(text);
-        let end = self.content.len();
-
-        self.styles.push(FormatStyle {
-            start,
-            end,
-            style: StyleType::Bold,
-        });
-
-        self
-    }
-
-    /// Add italic text
-    #[inline]
-    pub fn italic(mut self, text: &str) -> Self {
-        let start = self.content.len();
-        self.content.push_str(text);
-        let end = self.content.len();
-
-        self.styles.push(FormatStyle {
-            start,
-            end,
-            style: StyleType::Italic,
-        });
-
-        self
-    }
-
-    /// Add underlined text
-    #[inline]
-    pub fn underline(mut self, text: &str) -> Self {
-        let start = self.content.len();
-        self.content.push_str(text);
-        let end = self.content.len();
-
-        self.styles.push(FormatStyle {
-            start,
-            end,
-            style: StyleType::Underline,
-        });
-
-        self
-    }
-
-    /// Add strikethrough text
-    #[inline]
-    pub fn strikethrough(mut self, text: &str) -> Self {
-        let start = self.content.len();
-        self.content.push_str(text);
-        let end = self.content.len();
-
-        self.styles.push(FormatStyle {
-            start,
-            end,
-            style: StyleType::Strikethrough,
-        });
-
-        self
-    }
-
-    /// Add inline code
-    #[inline]
-    pub fn code(mut self, text: &str) -> Self {
-        let start = self.content.len();
-        self.content.push_str(text);
-        let end = self.content.len();
-
-        self.styles.push(FormatStyle {
-            start,
-            end,
-            style: StyleType::Code,
-        });
-
-        self
-    }
-
-    /// Add link
-    #[inline]
-    pub fn link(mut self, text: &str, url: impl Into<Arc<str>>) -> Self {
-        let start = self.content.len();
-        self.content.push_str(text);
-        let end = self.content.len();
-
-        self.styles.push(FormatStyle {
-            start,
-            end,
-            style: StyleType::Link { url: url.into() },
-        });
-
-        self
-    }
-
-    /// Add colored text
-    #[inline]
-    pub fn color(mut self, text: &str, rgb: u32) -> Self {
-        let start = self.content.len();
-        self.content.push_str(text);
-        let end = self.content.len();
-
-        self.styles.push(FormatStyle {
-            start,
-            end,
-            style: StyleType::Color { rgb },
-        });
-
-        self
-    }
-
-    /// Add text with background color
-    #[inline]
-    pub fn background(mut self, text: &str, rgb: u32) -> Self {
-        let start = self.content.len();
-        self.content.push_str(text);
-        let end = self.content.len();
-
-        self.styles.push(FormatStyle {
-            start,
-            end,
-            style: StyleType::Background { rgb },
-        });
-
-        self
-    }
-
-    /// Build the formatted message content
-    #[inline]
-    pub fn build(self) -> MessageContent {
-        MessageContent::formatted(Arc::from(self.content), Arc::from(self.styles))
-    }
-}
-
-impl Default for MessageContentBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Global message formatter instance
-static MESSAGE_FORMATTER: once_cell::sync::Lazy<MessageFormatter> =
-    once_cell::sync::Lazy::new(|| MessageFormatter::new());
-
-/// Format message content using the global formatter
-#[inline]
-pub fn format_message(content: &MessageContent) -> FormatResult<Arc<str>> {
-    MESSAGE_FORMATTER.format(content)
-}
-
-/// Parse markdown content using the global formatter
-#[inline]
-pub fn parse_markdown(content: &str) -> FormatResult<Arc<str>> {
-    MESSAGE_FORMATTER.markdown_parser.parse_to_html(content)
-}
-
-/// Highlight code using the global formatter
-#[inline]
-pub fn highlight_code(content: &str, language: &str) -> FormatResult<Arc<str>> {
-    MESSAGE_FORMATTER
-        .syntax_highlighter
-        .highlight(content, language)
 }

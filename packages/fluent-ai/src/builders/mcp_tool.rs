@@ -58,7 +58,12 @@ impl Tool for McpToolImpl {
     fn execute(
         &self,
         _args: Value,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Value, String>> + Send>> {
-        Box::pin(async move { Ok(Value::Null) })
+    ) -> fluent_ai_http3::async_task::AsyncStream<Result<Value, String>> {
+        let (tx, stream) = fluent_ai_http3::async_task::AsyncStream::channel();
+        tokio::spawn(async move {
+            let result = Ok(Value::Null);
+            let _ = tx.send(result);
+        });
+        stream
     }
 }

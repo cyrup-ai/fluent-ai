@@ -2,8 +2,7 @@
 
 use std::fmt;
 
-use fluent_ai_domain::extractor::ExtractionError;
-use fluent_ai_domain::completion::{CompletionRequestError, CompletionCoreError};
+use crate::domain_stubs::{ExtractionError, CompletionRequestError, CompletionCoreError};
 
 /// Result type alias for candle operations
 pub type CandleResult<T> = Result<T, CandleError>;
@@ -101,6 +100,9 @@ impl fmt::Display for CandleError {
             Self::CacheOverflow => write!(f, "Cache overflow"),
             Self::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
             Self::DeviceOperation(msg) => write!(f, "Device operation failed: {}", msg),
+            Self::ProcessingError(msg) => write!(f, "Processing error: {}", msg),
+            Self::InvalidConfiguration(msg) => write!(f, "Invalid configuration: {}", msg),
+            Self::Tokenization(msg) => write!(f, "Tokenization error: {}", msg),
             Self::MemoryAllocation(msg) => write!(f, "Memory allocation failed: {}", msg),
             Self::TokenizerError(msg) => write!(f, "Tokenizer error: {}", msg),
             Self::ConfigurationError(msg) => write!(f, "Configuration error: {}", msg),

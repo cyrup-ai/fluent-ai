@@ -16,15 +16,15 @@ pub const EMBEDDING_004: &str = "text-embedding-004";
 
 /// Gemini embedding model implementation
 #[derive(Debug, Clone)]
-pub struct GeminiEmbeddingModel {
+pub struct EmbeddingModel {
     client: Client,
     model: String,
-    ndims: usize,
+    ndims: Option<usize>,
 }
 
-impl GeminiEmbeddingModel {
+impl EmbeddingModel {
     /// Create a new Gemini embedding model
-    pub fn new(client: Client, model: &str, ndims: usize) -> Self {
+    pub fn new(client: Client, model: &str, ndims: Option<usize>) -> Self {
         Self {
             client,
             model: model.to_string(),
@@ -37,10 +37,12 @@ impl embeddings::EmbeddingModel for EmbeddingModel {
     const MAX_DOCUMENTS: usize = 1024;
 
     fn ndims(&self) -> usize {
-        match self.model.as_str() {
-            EMBEDDING_001 | EMBEDDING_004 => 768,
-            _ => 0, // Default to 0 for unknown models
-        }
+        self.ndims.unwrap_or_else(|| {
+            match self.model.as_str() {
+                EMBEDDING_001 | EMBEDDING_004 => 768,
+                _ => 768, // Default to 768 for unknown models
+            }
+        })
     }
 
     /// <https://ai.google.dev/api/embeddings#batch_embed_contents-SHELL>
@@ -62,7 +64,7 @@ impl embeddings::EmbeddingModel for EmbeddingModel {
                             "text": doc.to_string()
                         })]
                     }),
-                    "output_dimensionality": self.ndims,
+                    "output_dimensionality": self.ndims(),
                 })
             })
             .collect();

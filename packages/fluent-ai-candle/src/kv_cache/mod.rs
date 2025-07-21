@@ -75,7 +75,7 @@
 //! ```
 
 use arrayvec::ArrayVec;
-use candle_core::Tensor;
+use candle_core::{Device, Tensor};
 use smallvec::SmallVec;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
@@ -208,7 +208,7 @@ impl KVCache {
         }
         
         // Check tensor compatibility
-        if key_tensor.device() != value_tensor.device() {
+        if !key_tensor.device().same_device(value_tensor.device()) {
             self.stats.record_error();
             return Err(CandleError::ProcessingError(ERR_DEVICE_MISMATCH));
         }

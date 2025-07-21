@@ -201,11 +201,12 @@ impl<const N: usize> ZeroAllocMessage<N> {
         Self { data, len }
     }
 
-    /// Get message as string slice
+    /// Get message as string slice with safe UTF-8 validation
     #[inline(always)]
     pub fn as_str(&self) -> &str {
-        // SAFETY: We only store valid UTF-8 bytes
-        unsafe { std::str::from_utf8_unchecked(&self.data[..self.len]) }
+        // Safe UTF-8 validation - returns valid UTF-8 or replacement string
+        std::str::from_utf8(&self.data[..self.len])
+            .unwrap_or("Invalid UTF-8 in error message")
     }
 
     /// Check if message is empty

@@ -1,0 +1,204 @@
+warning: unused import: `float_eq::assert_float_eq`
+   --> packages/fluent-ai-simd/src/logits/topk.rs:190:9
+    |
+190 |     use float_eq::assert_float_eq;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` on by default
+
+warning: variable does not need to be mutable
+   --> packages/fluent-ai-simd/src/logits/mod.rs:157:13
+    |
+157 |         let mut non_inf = logits.iter().filter(|&&x| x > f32::NEG_INFINITY).count();
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: missing documentation for a variant
+  --> packages/fluent-ai-simd/src/config.rs:42:5
+   |
+42 |     InvalidTemperature(f32),
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> packages/fluent-ai-simd/src/lib.rs:36:9
+   |
+36 | #![warn(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/fluent-ai-simd/src/config.rs:45:5
+   |
+45 |     InvalidTopP(f32),
+   |     ^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/fluent-ai-simd/src/config.rs:48:5
+   |
+48 |     InvalidRepetitionPenalty(f32),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/fluent-ai-simd/src/config.rs:51:5
+   |
+51 |     InvalidFrequencyPenalty(f32),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/fluent-ai-simd/src/config.rs:54:5
+   |
+54 |     InvalidPresencePenalty(f32),
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/fluent-ai-simd/src/logits/mod.rs:24:5
+   |
+24 |     InvalidInputLength(usize),
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/fluent-ai-simd/src/logits/mod.rs:27:5
+   |
+27 |     NumericalError(String),
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/fluent-ai-simd/src/logits/mod.rs:30:5
+   |
+30 |     UnsupportedOperation(String),
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/fluent-ai-simd/src/logits/mod.rs:33:5
+   |
+33 |     SamplingError(String),
+   |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/fluent-ai-simd/src/logits/mod.rs:36:5
+   |
+36 |     ConfigError(String),
+   |     ^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> packages/fluent-ai-simd/src/logits/mod.rs:39:5
+   |
+39 |     SimdError(#[from] crate::error::SimdError),
+   |     ^^^^^^^^^
+
+warning: `fluent-ai-simd` (lib test) generated 13 warnings (run `cargo fix --lib -p fluent-ai-simd --tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.76s
+     Running unittests src/lib.rs (/Volumes/samsung_t9/fluent-ai/target/debug/deps/fluent_ai_simd-3884d8983608ac3c)
+
+running 1 test
+Original logits: [0.1, 0.2, 0.3, 0.4]
+[DEBUG] prepare_nucleus_sampling_simd - Input logits: [0.1, 0.2, 0.3, 0.4]
+[DEBUG] Before sort: [(0, 0.1), (1, 0.2), (2, 0.3), (3, 0.4)]
+[DEBUG] After sort: [(3, 0.4), (2, 0.3), (1, 0.2), (0, 0.1)]
+[DEBUG] Top-p threshold: 0.6
+[DEBUG] i=0, idx=3, prob=0.4, cumsum=0.4000000059604645
+[DEBUG] i=1, idx=2, prob=0.3, cumsum=0.7000000178813934
+[DEBUG] Reached threshold at i=1, cutoff=2
+[DEBUG] Final cutoff: 2
+[DEBUG] Setting logits[1] to -inf
+[DEBUG] Setting logits[0] to -inf
+[DEBUG] Final logits: [-inf, -inf, 0.3, 0.4]
+After nucleus sampling: [-inf, -inf, 0.3, 0.4]
+Kept indices: [2, 3]
+
+thread 'logits::nucleus::tests::test_nucleus_sampling' panicked at packages/fluent-ai-simd/src/logits/nucleus.rs:98:9:
+Expected index 0 to be kept, but it was set to -inf
+stack backtrace:
+   0:        0x104657fa0 - std::backtrace_rs::backtrace::libunwind::trace::h55ff2b95044b23af
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/../../backtrace/src/backtrace/libunwind.rs:117:9
+   1:        0x104657fa0 - std::backtrace_rs::backtrace::trace_unsynchronized::h27d3915c5fade0eb
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/../../backtrace/src/backtrace/mod.rs:66:14
+   2:        0x104657fa0 - std::sys::backtrace::_print_fmt::h8814266628a35447
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/sys/backtrace.rs:66:9
+   3:        0x104657fa0 - <std::sys::backtrace::BacktraceLock::print::DisplayBacktrace as core::fmt::Display>::fmt::h5e725fe22fa64edb
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/sys/backtrace.rs:39:26
+   4:        0x104673158 - core::fmt::rt::Argument::fmt::he1ba4eb06f4d26ae
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/core/src/fmt/rt.rs:173:76
+   5:        0x104673158 - core::fmt::write::h8e1a8a4d36399bb5
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/core/src/fmt/mod.rs:1465:25
+   6:        0x104655c8c - std::io::default_write_fmt::hfe5ca79aa8977266
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/io/mod.rs:639:11
+   7:        0x104655c8c - std::io::Write::write_fmt::h0e6971909a7068ed
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/io/mod.rs:1954:13
+   8:        0x104657e54 - std::sys::backtrace::BacktraceLock::print::h356b93a0435479ac
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/sys/backtrace.rs:42:9
+   9:        0x1046593a8 - std::panicking::default_hook::{{closure}}::h96886c361ce2e5ed
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/panicking.rs:300:27
+  10:        0x1046591f8 - std::panicking::default_hook::h205a855c3bc7384c
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/panicking.rs:327:9
+  11:        0x104659d68 - std::panicking::rust_panic_with_hook::hf78b19a86c461f44
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/panicking.rs:833:13
+  12:        0x104659a3c - std::panicking::begin_panic_handler::{{closure}}::h05c1a3f496032da4
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/panicking.rs:699:13
+  13:        0x10465844c - std::sys::backtrace::__rust_end_short_backtrace::hb1ad2b94954f716c
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/sys/backtrace.rs:168:18
+  14:        0x104659740 - __rustc[c0c724db799d4e69]::rust_begin_unwind
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/panicking.rs:697:5
+  15:        0x10467f318 - core::panicking::panic_fmt::hf0f4ee38d6b2b5ec
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/core/src/panicking.rs:75:14
+  16:        0x1045d1ea8 - fluent_ai_simd::logits::nucleus::tests::test_nucleus_sampling::h573784bac5b504f6
+                               at /Volumes/samsung_t9/fluent-ai/packages/fluent-ai-simd/src/logits/nucleus.rs:98:9
+  17:        0x1045ce9b0 - fluent_ai_simd::logits::nucleus::tests::test_nucleus_sampling::{{closure}}::h3095838a9c1918fb
+                               at /Volumes/samsung_t9/fluent-ai/packages/fluent-ai-simd/src/logits/nucleus.rs:83:31
+  18:        0x1045d428c - core::ops::function::FnOnce::call_once::h05dc4b2f52ebd3e4
+                               at /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250:5
+  19:        0x10461eea4 - core::ops::function::FnOnce::call_once::h1d7d96894b57f1a8
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/core/src/ops/function.rs:250:5
+  20:        0x10461eea4 - test::__rust_begin_short_backtrace::h49df205d5e8fa5ed
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/test/src/lib.rs:648:18
+  21:        0x10461e1bc - test::run_test_in_process::{{closure}}::h541faf28c3f28e80
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/test/src/lib.rs:671:74
+  22:        0x10461e1bc - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::h236201a0c4e41711
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/core/src/panic/unwind_safe.rs:272:9
+  23:        0x10461e1bc - std::panicking::catch_unwind::do_call::hae5173175ee45e1c
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/panicking.rs:589:40
+  24:        0x10461e1bc - std::panicking::catch_unwind::h6a8d053f04cf2627
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/panicking.rs:552:19
+  25:        0x10461e1bc - std::panic::catch_unwind::hb283f1f01526f170
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/panic.rs:359:14
+  26:        0x10461e1bc - test::run_test_in_process::h9430f8627c0c1382
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/test/src/lib.rs:671:27
+  27:        0x10461e1bc - test::run_test::{{closure}}::h751bf9ca7de48114
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/test/src/lib.rs:592:43
+  28:        0x1045ee470 - test::run_test::{{closure}}::h86d6947403d809a5
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/test/src/lib.rs:622:41
+  29:        0x1045ee470 - std::sys::backtrace::__rust_begin_short_backtrace::ha06e6ebca7f7fc41
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/sys/backtrace.rs:152:18
+  30:        0x1045f14b4 - std::thread::Builder::spawn_unchecked_::{{closure}}::{{closure}}::h340f74199c0374be
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/thread/mod.rs:559:17
+  31:        0x1045f14b4 - <core::panic::unwind_safe::AssertUnwindSafe<F> as core::ops::function::FnOnce<()>>::call_once::hcab50c7bfdc5f301
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/core/src/panic/unwind_safe.rs:272:9
+  32:        0x1045f14b4 - std::panicking::catch_unwind::do_call::h33579d92230f25ee
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/panicking.rs:589:40
+  33:        0x1045f14b4 - std::panicking::catch_unwind::h3f0594f05de65a14
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/panicking.rs:552:19
+  34:        0x1045f14b4 - std::panic::catch_unwind::h206b182460dad7bb
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/panic.rs:359:14
+  35:        0x1045f14b4 - std::thread::Builder::spawn_unchecked_::{{closure}}::h65fc314577009d40
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/thread/mod.rs:557:30
+  36:        0x1045f14b4 - core::ops::function::FnOnce::call_once{{vtable.shim}}::h55722ca4b30b1375
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/core/src/ops/function.rs:250:5
+  37:        0x10465c0d0 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hc690e8f7f863e4a4
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/alloc/src/boxed.rs:1971:9
+  38:        0x10465c0d0 - <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hbd7368fd73181a81
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/alloc/src/boxed.rs:1971:9
+  39:        0x10465c0d0 - std::sys::pal::unix::thread::Thread::new::thread_start::h68f6477ab49ddfa6
+                               at /rustc/a84ab0ce6c4557a2f01a3a6c3fdb0f92098db78d/library/std/src/sys/pal/unix/thread.rs:97:17
+  40:        0x193e37c0c - __pthread_cond_wait
+test logits::nucleus::tests::test_nucleus_sampling ... FAILED
+
+failures:
+
+failures:
+    logits::nucleus::tests::test_nucleus_sampling
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `--lib`

@@ -138,21 +138,26 @@ impl CommandMiddleware for SecurityMiddleware {
         &'a self,
         command: &'a ChatCommand,
         _context: &'a CommandContext,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>
+    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>>
     {
-        Box::pin(async move {
-            // Check rate limiting
-            if !self.rate_limiter.is_allowed(self.policy.rate_limit) {
-                return Err(CommandError::RateLimitExceeded);
-            }
-
-            // Check command authorization
-            if !self.is_command_authorized(command) {
-                return Err(CommandError::Unauthorized);
-            }
-
-            Ok(())
-        })
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let rate_limiter = self.rate_limiter.clone();
+        let policy = self.policy.clone();
+        let command = command.clone();
+        
+        let self_clone = self.clone();
+        tokio::spawn(async move {
+            let result = if !rate_limiter.is_allowed(policy.rate_limit) {
+                Err(CommandError::RateLimitExceeded)
+            } else if !self_clone.is_command_authorized(&command) {
+                Err(CommandError::Unauthorized)
+            } else {
+                Ok(())
+            };
+            let _ = tx.send(result);
+        });
+        
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
     fn after_execute<'a>(
@@ -160,12 +165,16 @@ impl CommandMiddleware for SecurityMiddleware {
         _command: &'a ChatCommand,
         _context: &'a CommandContext,
         _result: &'a CommandResult<CommandOutput>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), CommandError>> + Send + 'a>>
+    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>>
     {
-        Box::pin(async move {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        
+        tokio::spawn(async move {
             // Security post-processing if needed
-            Ok(())
-        })
+            let _ = tx.send(Ok(()));
+        });
+        
+        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
     fn name(&self) -> &str {
