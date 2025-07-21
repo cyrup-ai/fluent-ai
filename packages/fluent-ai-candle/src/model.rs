@@ -543,10 +543,16 @@ impl CandleModel {
                         .get("num_attention_heads")
                         .and_then(|v| v.as_u64())
                         .unwrap_or(32) as usize,
+                    head_dim: parsed_config
+                        .get("head_dim")
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v as usize),
                     num_key_value_heads: parsed_config
                         .get("num_key_value_heads")
                         .and_then(|v| v.as_u64())
                         .unwrap_or(8) as usize,
+                    hidden_act: candle_nn::Activation::Silu,
+                    use_flash_attn: false,
                     max_position_embeddings: parsed_config
                         .get("max_position_embeddings")
                         .and_then(|v| v.as_u64())
@@ -563,12 +569,6 @@ impl CandleModel {
                         .get("sliding_window")
                         .and_then(|v| v.as_u64())
                         .map(|v| v as usize),
-                    head_dim: parsed_config
-                        .get("head_dim")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(128) as usize,
-                    hidden_act: candle_nn::Activation::Silu,
-                    use_flash_attn: false,
                 }
             } else {
                 // Default Mistral 7B configuration
@@ -583,7 +583,7 @@ impl CandleModel {
                     rms_norm_eps: 1e-5,
                     rope_theta: 10000.0,
                     sliding_window: Some(4096),
-                    head_dim: 128,
+                    head_dim: Some(128),
                     hidden_act: candle_nn::Activation::Silu,
                     use_flash_attn: false,
                 }
@@ -675,10 +675,8 @@ impl CandleModel {
                         .get("attention_bias")
                         .and_then(|v| v.as_bool())
                         .unwrap_or(false),
-                    mlp_bias: parsed_config
-                        .get("mlp_bias")
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(false),
+                    hidden_act: Some(candle_nn::Activation::Gelu),
+                    hidden_activation: None,
                 }
             } else {
                 // Default Gemma 7B configuration
@@ -694,15 +692,15 @@ impl CandleModel {
                     rms_norm_eps: 1e-6,
                     rope_theta: 10000.0,
                     attention_bias: false,
-                    mlp_bias: false,
+
                 }
             };
 
         // Create variable store from memory-mapped safetensors data 
         let vs = candle_nn::VarBuilder::from_slice_safetensors(mmap, candle_core::DType::F16, &self.device)?;
 
-        // Load Gemma model
-        let gemma_model = gemma_models::Model::load(&vs, &gemma_config).map_err(|e| {
+        // Load Gemma model using new API
+        let gemma_model = gemma_models::Model::new(false, &gemma_config, vs).map_err(|e| {
             CandleError::ModelLoadError(format!("Failed to load Gemma model: {}", e))
         })?;
 
@@ -713,7 +711,7 @@ impl CandleModel {
             vocab_size: gemma_config.vocab_size as u32,
             hidden_size: gemma_config.hidden_size as u32,
             num_layers: gemma_config.num_hidden_layers as u32,
-            num_attention_heads: gemma_config.num_attention_heads as u32,
+            num_heads: gemma_config.num_attention_heads as u32,
             ..Default::default()
         };
 
@@ -774,7 +772,7 @@ impl CandleModel {
                     rope_theta: parsed_config
                         .get("rope_theta")
                         .and_then(|v| v.as_f64())
-                        .unwrap_or(10000.0),
+                        .unwrap_or(10000.0) as f32,
                     partial_rotary_factor: parsed_config
                         .get("partial_rotary_factor")
                         .and_then(|v| v.as_f64())
