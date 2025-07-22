@@ -280,71 +280,50 @@ impl NewProviderClient {
 
 This HTTP3 library provides the foundation for all network operations in fluent-ai with optimal performance, reliability, and modern HTTP/3 capabilities.
 
-# STREAMS-ONLY ARCHITECTURE - NO FUTURES
+# ASYNCSTREAM ARCHITECTURE - CORRECT USAGE
 
-## CRITICAL PRINCIPLE: ZERO FUTURES THROUGHOUT ENTIRE FRAMEWORK
+## CRITICAL PRINCIPLE: AsyncStream with .collect() PATTERN
 
-fluent-ai uses a revolutionary **streams-only architecture** that eliminates ALL futures for blazing-fast LLM orchestration:
+fluent-ai uses `AsyncStream<T>` for all async operations with proper error handling:
 
-### ABSOLUTE CONSTRAINTS
+### CORE ASYNCSTREAM PATTERNS
 
-**FORBIDDEN**:
-- `async fn` - Convert ALL to streaming functions
-- `Future<Output = T>` - Use `AsyncStream<T>` instead  
-- `Result<T, E>` in streams - All values must be unwrapped
-- `.await` - Use streaming iteration instead
-- `spawn_async` - Use direct streaming channels
-- `Pin<Box<dyn Stream<Item = Result<...>>>>` - Use unwrapped streams
+**REQUIRED USAGE**:
+- `AsyncStream<T>` - All async operations return streams
+- `AsyncStream::with_channel()` - Primary constructor for creating streams
+- `.collect().await?` - Convert stream to single result when needed
+- Proper `Send + 'static` bounds for thread safety
+- Standard Rust error handling with `Result<T, E>`
 
-**REQUIRED**:
-- `AsyncStream<T>` - All async operations return unwrapped value streams
-- `on_chunk` error handling - Errors handled via macro syntax
-- `.collect()` method - For future-like behavior when needed
-- Lock-free streaming - Zero allocation, blazing performance
-
-### ERROR HANDLING PATTERN
+### CORRECT ASYNCSTREAM CONSTRUCTION
 
 ```rust
-// BAD - Future with Result
-async fn bad_llm_call() -> Result<String, Error> {
-    // NEVER DO THIS
-}
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 
-// GOOD - Stream with unwrapped values + on_chunk error handling
-fn good_llm_call() -> AsyncStream<String> {
-    let (sender, receiver) = channel::<String>();
-    
-    http_stream.on_chunk(|chunk| {
-        match chunk {
-            Ok(text) => emit!(sender, text),
-            Err(err) => handle_error!(err, "LLM call failed"),
-        }
-    });
-    
-    receiver
-}
-```
-
-### CLEAN STREAMING PATTERN
-
-```rust
-// BAD - Async function with await
-pub async fn embed_text(text: &str) -> Result<Vec<f32>, EmbedError> {
-    let response = client.post(url).send().await?;
-    let embedding = response.json().await?;
-    Ok(embedding)
-}
-
-// GOOD - Clean streaming function
-pub fn embed_text_stream(text: &str) -> AsyncStream<Vec<f32>> {
-    AsyncStream::with_channel(|sender| {
-        let response_stream = client.post_stream(url);
-        response_stream.on_chunk(|chunk| {
-            match parse_embedding(chunk) {
-                Ok(embedding) => { let _ = sender.send(embedding); },
-                Err(err) => handle_error!(err, "Embedding parse failed"),
+// CORRECT - AsyncStream with proper channel setup
+pub fn stream_completions(prompt: String) -> AsyncStream<CompletionChunk> {
+    AsyncStream::with_channel(move |sender: AsyncStreamSender<CompletionChunk>| {
+        Box::pin(async move {
+            // Async work inside the closure
+            let response = http_client.post(&url).await?;
+            let mut stream = response.stream();
+            
+            while let Some(chunk) = stream.next().await {
+                match chunk {
+                    Ok(data) => {
+                        if let Ok(completion) = parse_completion(&data) {
+                            let _ = sender.send(completion).await;
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Stream error: {}", e);
+                        break;
+                    }
+                }
             }
-        });
+            
+            Ok(())
+        })
     })
 }
 ```
@@ -352,49 +331,99 @@ pub fn embed_text_stream(text: &str) -> AsyncStream<Vec<f32>> {
 ### USAGE PATTERNS
 
 ```rust
-// Streaming (preferred - real-time processing)
-for embedding in embed_text_stream("hello") {
-    process_embedding(embedding);
+// Pattern 1: Streaming consumption (real-time processing)
+let stream = stream_completions("Hello world".to_string());
+pin_mut!(stream);
+while let Some(chunk) = stream.next().await {
+    println!("Received: {}", chunk.text);
 }
 
-// Future-like (when needed - collect all results)
-let final_embedding = embed_text_stream("hello").collect();
+// Pattern 2: Collect to single result when needed
+let stream = stream_completions("Hello world".to_string());
+let all_chunks: Vec<CompletionChunk> = stream.collect().await?;
 
-// Chaining operations
-let filtered = embed_text_stream("hello")
-    .filter(|e| e.len() > 100)
-    .collect();
+// Pattern 3: Process first result only
+let stream = stream_completions("Hello world".to_string());
+if let Some(first_chunk) = stream.next().await {
+    println!("First chunk: {}", first_chunk.text);
+}
 ```
 
-### FUTURE-LIKE BEHAVIOR WITH .collect()
-
-Users wanting traditional future behavior can call `.collect()`:
+### ERROR HANDLING PATTERN
 
 ```rust
-// Stream usage (preferred - real-time processing)
-for embedding in embed_text_stream("hello") {
-    process_embedding(embedding);
-}
+use fluent_ai_async::{AsyncStream, AsyncStreamSender, StreamError};
 
-// Future-like usage (when needed - blocks until complete)
-let final_embedding = embed_text_stream("hello").collect();
+pub fn robust_stream_operation(input: String) -> AsyncStream<ProcessedResult> {
+    AsyncStream::with_channel(move |sender: AsyncStreamSender<ProcessedResult>| {
+        Box::pin(async move {
+            // All error handling is standard Rust Result<T, E>
+            let processed = match process_input(&input).await {
+                Ok(result) => result,
+                Err(e) => {
+                    eprintln!("Processing failed: {}", e);
+                    return Err(StreamError::ProcessingFailed(e.to_string()));
+                }
+            };
+            
+            // Send successful results
+            let _ = sender.send(processed).await;
+            Ok(())
+        })
+    })
+}
 ```
 
-### APPLIES TO ALL PACKAGES
+### THREAD SAFETY REQUIREMENTS
 
-This architecture applies to **EVERY** package:
-- **http3**: Already implements streams-only (good!)
-- **domain**: Convert ALL async methods to streaming
-- **memory**: Cognitive operations must be streaming
-- **candle**: Model operations must stream tensors
-- **provider**: ALL LLM API calls must be streaming-only
+```rust
+// REQUIRED: All AsyncStream closures must be Send + 'static
+pub fn thread_safe_stream(data: Vec<String>) -> AsyncStream<String> {
+    AsyncStream::with_channel(move |sender: AsyncStreamSender<String>| {
+        Box::pin(async move {
+            for item in data {  // data is moved into closure
+                let _ = sender.send(item).await;
+            }
+            Ok(())
+        })
+    })
+}
+
+// REQUIRED: Sender must have proper bounds
+impl<T> AsyncStreamSender<T> 
+where
+    T: Send + 'static
+{
+    // Implementation ensures thread safety
+}
+```
 
 ### PERFORMANCE BENEFITS
 
-- **Zero allocation**: Stack-based streaming, no heap futures
-- **Blazing speed**: Direct value emission, no Future overhead
-- **Lock-free**: Pure streaming channels, no synchronization
-- **Elegant ergonomics**: Clean unwrapped values + macro error handling
-- **Real-time**: Immediate processing, no batching delays
+- **Zero allocation**: Efficient streaming with minimal overhead
+- **Thread safety**: Proper Send bounds ensure safe concurrent usage  
+- **Flexible consumption**: Stream or collect as needed
+- **Standard Rust patterns**: Uses familiar Result<T, E> error handling
+- **Real-time processing**: Immediate value emission as available
 
-This is the **core differentiator** that makes fluent-ai the fastest LLM orchestration framework.
+### MIGRATION FROM LEGACY PATTERNS
+
+```rust
+// OLD PATTERN (deprecated)
+async fn old_pattern() -> Result<Vec<String>, Error> {
+    // async/await everywhere
+}
+
+// NEW PATTERN (correct)
+fn new_pattern() -> AsyncStream<String> {
+    AsyncStream::with_channel(|sender| {
+        Box::pin(async move {
+            // async work in closure
+            // send individual results as available
+            Ok(())
+        })
+    })
+}
+```
+
+This AsyncStream architecture provides the foundation for all async operations in fluent-ai with optimal performance and ergonomics.
