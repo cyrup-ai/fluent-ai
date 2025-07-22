@@ -6,6 +6,8 @@
 //! - Lock-free sequence management
 //! - Device-aware memory handling
 
+pub mod kimi_k2;
+
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
 

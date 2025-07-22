@@ -88,26 +88,28 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 
 /// Async task primitives for streaming-first architecture
-pub mod async_task;
-pub mod cache;
+
+pub mod builder;
+pub use builder::Http3Builder as Http3;
 pub mod client;
+pub mod common;
 pub mod config;
 pub mod error;
 pub mod middleware;
+pub mod operations;
 pub mod request;
 pub mod response;
 pub mod stream;
 
-pub use cache::CacheEntry;
-pub use client::{ClientStats, HttpClient, Ready, RequestBuilder};
+pub use builder::{ContentType, DownloadBuilder, DownloadProgress, Http3Builder, HttpStreamExt};
+pub use client::{ClientStats, ClientStatsSnapshot, HttpClient};
+pub use common::cache::CacheEntry;
 pub use config::HttpConfig;
 pub use error::{HttpError, HttpResult};
 pub use middleware::{Middleware, MiddlewareChain, cache::CacheMiddleware};
-pub use request::{HttpMethod, HttpRequest};
+pub use request::HttpRequest;
 pub use response::{HttpResponse, JsonStream, SseEvent};
-pub use stream::{
-    CachedDownloadStream, DownloadChunk, DownloadStream, HttpStream, LinesStream, SseStream,
-};
+pub use stream::{DownloadChunk, DownloadStream, HttpChunk, HttpStream, LinesStream, SseStream};
 
 /// Global HTTP client instance with connection pooling
 /// Uses the Default implementation which provides graceful fallback handling
@@ -123,46 +125,13 @@ pub fn global_client() -> Arc<HttpClient> {
     GLOBAL_CLIENT.clone()
 }
 
-/// Create a new HTTP request using the global client
-#[must_use]
-pub fn get(url: &str) -> RequestBuilder<'static, Ready> {
-    GLOBAL_CLIENT.get(url)
-}
-
-/// Create a new POST request using the global client
-#[must_use]
-pub fn post(url: &str) -> RequestBuilder<'static, Ready> {
-    GLOBAL_CLIENT.post(url)
-}
-
-/// Create a new PUT request using the global client
-#[must_use]
-pub fn put(url: &str) -> RequestBuilder<'static, Ready> {
-    GLOBAL_CLIENT.put(url)
-}
-
-/// Create a new DELETE request using the global client
-#[must_use]
-pub fn delete(url: &str) -> RequestBuilder<'static, Ready> {
-    GLOBAL_CLIENT.delete(url)
-}
-
-/// Create a new PATCH request using the global client
-#[must_use]
-pub fn patch(url: &str) -> RequestBuilder<'static, Ready> {
-    GLOBAL_CLIENT.patch(url)
-}
-
-/// Create a new HEAD request using the global client
-#[must_use]
-pub fn head(url: &str) -> RequestBuilder<'static, Ready> {
-    GLOBAL_CLIENT.head(url)
-}
+// Note: Convenience functions removed in favor of modular operations architecture.
+// Use HttpClient directly or the global_client() function to access operation builders.
 
 /// Get connection pool statistics
 #[must_use]
-pub fn connection_stats() -> ClientStats {
-    global_client().stats()
+pub fn connection_stats() -> ClientStatsSnapshot {
+    global_client().as_ref().stats_snapshot()
 }
 
 /// Initialize the global HTTP client with custom configuration

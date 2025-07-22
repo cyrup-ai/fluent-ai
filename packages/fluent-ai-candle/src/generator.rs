@@ -18,7 +18,7 @@ use fluent_ai_domain::{
         CompletionCoreResult, StreamingCoreResponse as StreamingResponse,
     },
 };
-use futures_util::stream::Stream;
+// Removed futures_util::stream::Stream - using AsyncStream<T> only
 use smallvec::SmallVec;
 use tokio::sync::mpsc;
 

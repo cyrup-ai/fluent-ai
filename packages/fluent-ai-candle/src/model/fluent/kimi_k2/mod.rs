@@ -9,6 +9,7 @@
 use arrayvec::ArrayVec;
 
 pub mod loader;
+pub mod model;
 pub mod tokenizer;
 
 /// Quantisation formats supported by Kimi-K2.

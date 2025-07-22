@@ -25,6 +25,7 @@ pub use loading::{
 pub use metrics::{GenerationMetrics, ModelMetrics, ModelPerformanceStats};
 pub use types::{ModelConfig, ModelType, QuantizationType};
 pub use wrappers::{
-    CacheContext, EnhancedLlamaWrapper, GemmaWrapper, LlamaWrapper, MistralWrapper, PhiWrapper,
+    CacheContext, EnhancedLlamaWrapper, GemmaWrapper, KimiK2Wrapper, LlamaWrapper, MistralWrapper, PhiWrapper,
     QwenWrapper,
 };
+pub use wrappers::kimi_k2::IntoKimiK2Wrapper;

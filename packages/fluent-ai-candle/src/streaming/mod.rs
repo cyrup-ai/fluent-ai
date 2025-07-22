@@ -23,7 +23,7 @@ use crossbeam_channel::{bounded, Receiver, Sender, TryRecvError, TrySendError};
 use fluent_ai_domain::{
     completion::StreamingCoreResponse as StreamingResponse, model::FinishReason,
 };
-use futures_util::Stream;
+// Removed futures_util::Stream - using AsyncStream<T> only
 
 use crate::error::{CandleError, CandleResult};
 
@@ -795,48 +795,14 @@ impl Drop for TokenStreamSender {
 // Backward Compatibility Conversion Traits
 // ============================================================================
 
-/// Convert TokenOutputStream to StreamingResponse for backward compatibility
+/// Convert TokenOutputStream to StreamingResponse using streams-only architecture
+/// NOTE: This conversion is deprecated - use direct AsyncStream<T> patterns instead
 impl Into<StreamingResponse> for TokenOutputStream {
-    fn into(mut self) -> StreamingResponse {
-        use futures_util::stream::{unfold, Stream};
-
-        // Create a stream that yields strings by consuming TokenChunks
-        let stream = unfold(Some(self), |mut token_stream_opt| async move {
-            match token_stream_opt.take() {
-                Some(mut token_stream) => {
-                    match token_stream.next().await {
-                        Some(chunk_result) => {
-                            match chunk_result {
-                                Ok(chunk) => {
-                                    let text = chunk.text_str();
-                                    if !text.is_empty() {
-                                        // Continue with stream for next iteration
-                                        (Some(Ok(text.to_string())), Some(token_stream))
-                                    } else if chunk.metadata.finish_reason.is_some() {
-                                        // Stream finished
-                                        (None, None)
-                                    } else {
-                                        // Continue without yielding empty text
-                                        (Some(Ok(String::new())), Some(token_stream))
-                                    }
-                                }
-                                Err(e) => {
-                                    // Error occurred, end stream
-                                    (Some(Err(format!("Streaming error: {}", e))), None)
-                                }
-                            }
-                        }
-                        None => {
-                            // Stream ended naturally
-                            (None, None)
-                        }
-                    }
-                }
-                None => (None, None),
-            }
-        });
-
-        StreamingResponse::new(Box::pin(stream))
+    fn into(self) -> StreamingResponse {
+        // TODO: Replace with proper AsyncStream<T> implementation
+        // For now, create a minimal compatible response
+        // This should be refactored to use fluent_ai_stream::AsyncStream<T>
+        unimplemented!("TokenOutputStream::into(StreamingResponse) requires AsyncStream<T> refactor")
     }
 }
 

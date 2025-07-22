@@ -75,8 +75,6 @@ parking_lot = "0.12.4"
 # Async runtime
 tokio = { version = "1.46.1", features = ["full"] }
 tokio-stream = "0.1.16"
-futures = "0.3.31"
-futures-util = "0.3.31"
 async-stream = "0.3.6"
 
 # Random number generation

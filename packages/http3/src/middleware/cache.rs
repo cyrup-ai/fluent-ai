@@ -3,7 +3,8 @@
 
 use std::time::SystemTime;
 
-use crate::async_task::AsyncStream;
+use fluent_ai_async::AsyncStream;
+
 use crate::{HttpResponse, HttpResult, Middleware};
 
 /// Cache middleware that handles ETag processing and expires computation
@@ -116,7 +117,11 @@ impl Middleware for CacheMiddleware {
         let updated_response =
             HttpResponse::from_cache(response.status(), headers, response.body().to_vec());
 
-        AsyncStream::from_single(Ok(updated_response))
+        AsyncStream::with_channel(move |sender| {
+            let _handle = tokio::spawn(async move {
+                let _ = sender.send(Ok(updated_response));
+            });
+        })
     }
 }
 

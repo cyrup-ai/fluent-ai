@@ -10,18 +10,8 @@
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelType {
-    /// LLaMA family models (LLaMA, LLaMA2, Code Llama)
-    Llama = 0,
-    /// Mistral family models (Mistral 7B, Mixtral)
-    Mistral = 1,
-    /// Gemma family models
-    Gemma = 2,
-    /// Phi family models
-    Phi = 3,
-    /// Qwen family models
-    Qwen = 4,
-    /// Custom/unknown model
-    Custom = 255,
+    /// Kimi K2 - 1T parameter MoE model with 32B activated parameters
+    KimiK2 = 0,
 }
 
 impl ModelType {
@@ -29,18 +19,10 @@ impl ModelType {
     #[inline(always)]
     pub fn from_str(s: &str) -> Self {
         let s = s.to_lowercase();
-        if s.contains("llama") {
-            Self::Llama
-        } else if s.contains("mistral") || s.contains("mixtral") {
-            Self::Mistral
-        } else if s.contains("gemma") {
-            Self::Gemma
-        } else if s.contains("phi") {
-            Self::Phi
-        } else if s.contains("qwen") {
-            Self::Qwen
+        if s.contains("kimi") || s.contains("k2") {
+            Self::KimiK2
         } else {
-            Self::Custom
+            Self::KimiK2 // Default to KimiK2 as it's the only supported model
         }
     }
 
@@ -48,12 +30,7 @@ impl ModelType {
     #[inline(always)]
     pub fn default_context_length(&self) -> u32 {
         match self {
-            Self::Llama => 4096,
-            Self::Mistral => 8192,
-            Self::Gemma => 8192,
-            Self::Phi => 2048,
-            Self::Qwen => 8192,
-            Self::Custom => 2048,
+            Self::KimiK2 => 131072, // Kimi K2 supports 131k context length
         }
     }
 }
@@ -151,32 +128,15 @@ impl ModelConfig {
         config.model_type = model_type;
         config.context_length = model_type.default_context_length();
 
-        // Adjust defaults based on model type
+        // Apply model-specific defaults
         match model_type {
-            ModelType::Mistral => {
-                config.vocab_size = 32000;
-                config.hidden_size = 4096;
-                config.num_heads = 32;
-            }
-            ModelType::Gemma => {
-                config.vocab_size = 256000;
-                config.hidden_size = 3072;
-                config.num_heads = 24;
-            }
-            ModelType::Phi => {
-                config.vocab_size = 51200;
-                config.hidden_size = 2560;
-                config.num_heads = 32;
-                config.num_layers = 32;
-            }
-            ModelType::Qwen => {
-                config.vocab_size = 151936;
-                config.hidden_size = 4096;
-                config.num_heads = 32;
-                config.rope_theta = 1000000.0;
-            }
-            ModelType::Llama | ModelType::Custom => {
-                // Use defaults
+            ModelType::KimiK2 => {
+                config.vocab_size = 163840;
+                config.hidden_size = 7168;
+                config.num_heads = 64;
+                config.num_layers = 61;
+                config.rope_theta = 50000.0;
+                config.context_length = 131072; // 131k context length
             }
         }
 

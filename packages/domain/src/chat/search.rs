@@ -1383,112 +1383,115 @@ impl HistoryExporter {
         let self_clone = self.clone();
         
         AsyncStream::with_channel(move |sender| {
-            let start_time = Instant::now();
-            self_clone.export_counter.inc();
+            Box::pin(async move {
+                let start_time = Instant::now();
+                self_clone.export_counter.inc();
 
-            // Simplified synchronous export (no futures in streams-only architecture)
-            let filtered_messages = messages; // For now, skip filtering to eliminate async dependency
+                // Simplified synchronous export (no futures in streams-only architecture)
+                let filtered_messages = messages; // For now, skip filtering to eliminate async dependency
 
-            let exported_data = match options.format {
-                ExportFormat::Json => {
-                    // Simplified JSON export
-                    match serde_json::to_string_pretty(&filtered_messages) {
-                        Ok(json) => json,
-                        Err(_) => "{}".to_string(),
-                    }
-                },
-                ExportFormat::Csv => {
-                    // Simplified CSV export
-                    let mut csv = String::from("timestamp,role,content\n");
-                    for message in &filtered_messages {
-                        let timestamp = message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string());
-                        let role = match message.message.role {
-                            MessageRole::User => "user",
-                            MessageRole::Assistant => "assistant",
-                        };
-                        let content = message.message.content.replace('\n', " ").replace(',', ";");
-                        csv.push_str(&format!("{},{},{}\n", timestamp, role, content));
-                    }
-                    csv
-                },
-                ExportFormat::Markdown => {
-                    // Simplified Markdown export
-                    let mut md = String::new();
-                    for message in &filtered_messages {
-                        let role = match message.message.role {
-                            MessageRole::User => "**User**",
-                            MessageRole::Assistant => "**Assistant**",
-                        };
-                        md.push_str(&format!("{}: {}\n\n", role, message.message.content));
-                    }
-                    md
-                },
-                ExportFormat::Html => {
-                    // Simplified HTML export
-                    let mut html = String::from("<html><body>");
-                    for message in &filtered_messages {
-                        let role = match message.message.role {
-                            MessageRole::User => "User",
-                            MessageRole::Assistant => "Assistant",
-                        };
-                        html.push_str(&format!("<p><strong>{}:</strong> {}</p>", role, message.message.content));
-                    }
-                    html.push_str("</body></html>");
-                    html
-                },
-                ExportFormat::Xml => {
-                    // Simplified XML export
-                    let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?><messages>");
-                    for message in &filtered_messages {
-                        let role = match message.message.role {
-                            MessageRole::User => "user",
-                            MessageRole::Assistant => "assistant",
-                        };
-                        xml.push_str(&format!("<message role=\"{}\"><content>{}</content></message>", role, message.message.content));
-                    }
-                    xml.push_str("</messages>");
-                    xml
-                },
-                ExportFormat::PlainText => {
-                    // Simplified plain text export
-                    let mut text = String::new();
-                    for message in &filtered_messages {
-                        let role = match message.message.role {
-                            MessageRole::User => "User",
-                            MessageRole::Assistant => "Assistant",
-                        };
-                        text.push_str(&format!("{}: {}\n\n", role, message.message.content));
-                    }
-                    text
-                },
-            };
+                let exported_data = match options.format {
+                    ExportFormat::Json => {
+                        // Simplified JSON export
+                        match serde_json::to_string_pretty(&filtered_messages) {
+                            Ok(json) => json,
+                            Err(_) => "{}".to_string(),
+                        }
+                    },
+                    ExportFormat::Csv => {
+                        // Simplified CSV export
+                        let mut csv = String::from("timestamp,role,content\n");
+                        for message in &filtered_messages {
+                            let timestamp = message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string());
+                            let role = match message.message.role {
+                                MessageRole::User => "user",
+                                MessageRole::Assistant => "assistant",
+                            };
+                            let content = message.message.content.replace('\n', " ").replace(',', ";");
+                            csv.push_str(&format!("{},{},{}\n", timestamp, role, content));
+                        }
+                        csv
+                    },
+                    ExportFormat::Markdown => {
+                        // Simplified Markdown export
+                        let mut md = String::new();
+                        for message in &filtered_messages {
+                            let role = match message.message.role {
+                                MessageRole::User => "**User**",
+                                MessageRole::Assistant => "**Assistant**",
+                            };
+                            md.push_str(&format!("{}: {}\n\n", role, message.message.content));
+                        }
+                        md
+                    },
+                    ExportFormat::Html => {
+                        // Simplified HTML export
+                        let mut html = String::from("<html><body>");
+                        for message in &filtered_messages {
+                            let role = match message.message.role {
+                                MessageRole::User => "User",
+                                MessageRole::Assistant => "Assistant",
+                            };
+                            html.push_str(&format!("<p><strong>{}:</strong> {}</p>", role, message.message.content));
+                        }
+                        html.push_str("</body></html>");
+                        html
+                    },
+                    ExportFormat::Xml => {
+                        // Simplified XML export
+                        let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?><messages>");
+                        for message in &filtered_messages {
+                            let role = match message.message.role {
+                                MessageRole::User => "user",
+                                MessageRole::Assistant => "assistant",
+                            };
+                            xml.push_str(&format!("<message role=\"{}\"><content>{}</content></message>", role, message.message.content));
+                        }
+                        xml.push_str("</messages>");
+                        xml
+                    },
+                    ExportFormat::PlainText => {
+                        // Simplified plain text export
+                        let mut text = String::new();
+                        for message in &filtered_messages {
+                            let role = match message.message.role {
+                                MessageRole::User => "User",
+                                MessageRole::Assistant => "Assistant",
+                            };
+                            text.push_str(&format!("{}: {}\n\n", role, message.message.content));
+                        }
+                        text
+                    },
+                };
 
-            // Simplified compression (synchronous)
-            let final_data = if options.compress {
-                // Basic LZ4 compression - simplified for streams-only architecture
-                match lz4::block::compress(&exported_data.as_bytes(), None, false) {
-                    Ok(compressed) => String::from_utf8_lossy(&compressed).to_string(),
-                    Err(_) => exported_data, // Fallback to uncompressed on error
+                // Simplified compression (synchronous)
+                let final_data = if options.compress {
+                    // Basic LZ4 compression - simplified for streams-only architecture
+                    match lz4::block::compress(&exported_data.as_bytes(), None, false) {
+                        Ok(compressed) => String::from_utf8_lossy(&compressed).to_string(),
+                        Err(_) => exported_data, // Fallback to uncompressed on error
+                    }
+                } else {
+                    exported_data
+                };
+
+                // Update statistics synchronously
+                let export_time = start_time.elapsed().as_millis() as f64;
+                if let Ok(mut stats) = self_clone.export_statistics.try_write() {
+                    stats.total_exports += 1;
+                    stats.total_messages_exported += filtered_messages.len();
+                    stats.average_export_time = (stats.average_export_time * (stats.total_exports - 1) as f64
+                        + export_time)
+                        / stats.total_exports as f64;
+                        stats.last_export_time = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
                 }
-            } else {
-                exported_data
-            };
 
-            // Update statistics synchronously
-            let export_time = start_time.elapsed().as_millis() as f64;
-            if let Ok(mut stats) = self_clone.export_statistics.try_write() {
-                stats.total_exports += 1;
-                stats.total_messages_exported += filtered_messages.len();
-                stats.average_export_time = (stats.average_export_time * (stats.total_exports - 1) as f64
-                    + export_time)
-                    / stats.total_exports as f64;
-                    stats.last_export_time = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs();
-            }
-
-            let _ = sender.send(final_data);
+                let _ = sender.send(final_data).await;
+                Ok(())
+            })
         })
     }
     
