@@ -51,8 +51,15 @@ impl CommandExecutor {
 
     /// Execute a command with streaming output (zero-allocation, lock-free)
     pub fn execute_streaming(&self, execution_id: u64, command: ImmutableChatCommand) -> AsyncStream<CommandOutput> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
         let start_time = Instant::now();
+        
+        // Clone needed data for the closure
+        let total_executions = self.total_executions.clone();
+        let active_executions = self.active_executions.clone();
+        let successful_executions = self.successful_executions.clone();
+        let failed_executions = self.failed_executions.clone();
+        
+        AsyncStream::with_channel(move |sender| {
 
         // Update metrics atomically
         self.total_executions.fetch_add(1, Ordering::AcqRel);
