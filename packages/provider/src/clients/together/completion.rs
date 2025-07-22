@@ -3,19 +3,18 @@
 //! From [Together AI Reference](https://docs.together.ai/docs/chat-overview)
 // ================================================================
 
-use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, CompletionRequest};
-use serde_json::json;
-
-use super::client::{Client, together_ai_api_types::ApiResponse};
-use crate::streaming::StreamingCompletionResponse;
-use crate::{clients::openai, json_util};
-
 // ================================================================
 // Together Completion Models
 // ================================================================
 
 // Re-export the domain CompletionModel trait
 pub use fluent_ai_domain::CompletionModel;
+use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, CompletionRequest};
+use serde_json::json;
+
+use super::client::{Client, together_ai_api_types::ApiResponse};
+use crate::streaming::StreamingCompletionResponse;
+use crate::{clients::openai, json_util};
 
 pub const YI_34B_CHAT: &str = "zero-one-ai/Yi-34B-Chat";
 pub const OLMO_7B_INSTRUCT: &str = "allenai/OLMo-7B-Instruct";

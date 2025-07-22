@@ -106,7 +106,7 @@ pub struct ChatMessageChunk {
 }
 
 /// Reason why a completion finished
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum FinishReason {
     Stop,
     Length,
@@ -149,7 +149,6 @@ pub enum CompletionChunk {
     /// Error occurred during streaming
     Error(String),
 }
-
 
 /// Chunk of embedding data for streaming embeddings
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -316,4 +315,3 @@ impl CompletionChunk {
         matches!(self, Self::Error(_))
     }
 }
-

@@ -111,16 +111,15 @@ impl CommandMiddleware for PerformanceMiddleware {
         &'a self,
         _command: &'a ChatCommand,
         context: &'a CommandContext,
-    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>>
-    {
+    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        
+
         tokio::spawn(async move {
             // Store start time in context for later use
             // This would typically use a context extension mechanism
             let _ = tx.send(Ok(()));
         });
-        
+
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
@@ -129,12 +128,11 @@ impl CommandMiddleware for PerformanceMiddleware {
         _command: &'a ChatCommand,
         _context: &'a CommandContext,
         result: &'a CommandResult<CommandOutput>,
-    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>>
-    {
+    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let metrics = self.metrics.clone();
         let result = result.clone();
-        
+
         tokio::spawn(async move {
             // Calculate execution time and record metrics
             let duration_ns = 1000000; // Placeholder - would calculate actual duration
@@ -146,7 +144,7 @@ impl CommandMiddleware for PerformanceMiddleware {
 
             let _ = tx.send(Ok(()));
         });
-        
+
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 

@@ -7,7 +7,9 @@ use crate::clients::openai::send_compatible_streaming_request;
 use crate::completion_provider::CompletionError;
 /// Helper function to merge two JSON values
 fn merge(mut base: serde_json::Value, other: serde_json::Value) -> serde_json::Value {
-    if let (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) = (&mut base, other) {
+    if let (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) =
+        (&mut base, other)
+    {
         base_map.extend(other_map);
         base
     } else {

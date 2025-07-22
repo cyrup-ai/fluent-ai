@@ -7,8 +7,9 @@ use arrayvec::ArrayVec;
 use crossbeam_utils::CachePadded;
 
 use super::core::{Agent, AgentError, AgentResult, MAX_AGENT_TOOLS};
-use crate::memory::config::MemoryConfig;
 use crate::memory::Memory;
+use crate::memory::config::memory::MemoryConfig;
+use crate::memory::manager::MemoryConfig as StubMemoryConfig;
 use crate::model::Model;
 use crate::tool::McpToolData;
 
@@ -120,15 +121,29 @@ impl<const TOOLS_CAPACITY: usize> AgentBuilder<TOOLS_CAPACITY> {
         AGENT_STATS.fetch_add(1, Ordering::Relaxed);
 
         // Initialize memory system
-        let memory_arc = if let Some(shared_memory) = self.shared_memory {
+        let memory = if let Some(shared_memory) = self.shared_memory {
             shared_memory
         } else {
-            let memory_config = self.memory_config.unwrap_or_default();
-            Memory::new(memory_config).collect().await?
+            let comprehensive_config = self.memory_config.unwrap_or_default();
+            // Convert comprehensive config to stub config for Memory::new()
+            let stub_config = StubMemoryConfig {
+                database_url: comprehensive_config.database.connection_string.to_string(),
+                embedding_dimension: comprehensive_config.vector_store.dimension,
+            };
+            let mut memory_stream = Memory::new(stub_config);
+            
+            // Use tokio_stream::StreamExt to get the first item from the stream
+            use tokio_stream::StreamExt;
+            let memory_instance = match memory_stream.next().await {
+                Some(memory) => memory,
+                None => return Err(AgentError::InitializationError("Failed to initialize memory".to_string())),
+            };
+            let memory_arc = Arc::new(memory_instance);
+            memory_arc
         };
 
         // Create memory tool
-        let memory_tool = crate::memory::MemoryTool::new(Arc::clone(&memory_arc));
+        let memory_tool = crate::memory::MemoryTool::new(memory.clone());
 
         // Convert tools with zero-allocation
         let tools = match self.tools.len() {
@@ -145,7 +160,7 @@ impl<const TOOLS_CAPACITY: usize> AgentBuilder<TOOLS_CAPACITY> {
             system_prompt,
             context: crate::ZeroOneOrMany::None,
             tools,
-            memory: Some((*memory_arc).clone()),
+            memory: Some((*memory).clone()),
             memory_tool: Some(memory_tool),
             temperature: self.temperature,
             max_tokens: self.max_tokens,

@@ -3,35 +3,34 @@
 //! This module provides a comprehensive template system for chat applications with
 //! zero-allocation, lock-free architecture optimized for high-throughput scenarios.
 
-pub mod core;
-pub mod parser;
-pub mod compiler;
-pub mod manager;
 pub mod cache;
+pub mod compiler;
+pub mod core;
 pub mod engines;
 pub mod filters;
+pub mod manager;
+pub mod parser;
 
 // Re-export core types for convenience
 pub use core::{
-    ChatTemplate, CompiledTemplate, TemplateAst, TemplateContext, TemplateValue,
-    TemplateConfig, TemplateInfo, TemplateExample, TemplateMetadata, TemplateCategory,
-    TemplateError, TemplateResult, TemplateTag,
+    ChatTemplate, CompiledTemplate, TemplateAst, TemplateCategory, TemplateConfig, TemplateContext,
+    TemplateError, TemplateExample, TemplateInfo, TemplateMetadata, TemplateResult, TemplateTag,
+    TemplateValue,
 };
-
-// Re-export other important types
-pub use manager::TemplateManager;
-pub use parser::TemplateParser;
-pub use compiler::TemplateCompiler;
-
 // Global template functions for convenience
 use std::collections::HashMap;
 use std::sync::Arc;
+
+pub use compiler::TemplateCompiler;
+// Re-export other important types
+pub use manager::TemplateManager;
+pub use parser::TemplateParser;
 
 /// Create a simple template
 pub fn template(name: impl Into<String>, content: impl Into<String>) -> ChatTemplate {
     let template_name: Arc<str> = Arc::from(name.into());
     let template_content: Arc<str> = Arc::from(content.into());
-    
+
     let metadata = core::TemplateMetadata {
         id: template_name.clone(),
         name: template_name,
@@ -46,7 +45,7 @@ pub fn template(name: impl Into<String>, content: impl Into<String>) -> ChatTemp
         rating: 0.0,
         permissions: core::TemplatePermissions::default(),
     };
-    
+
     ChatTemplate::new(metadata, template_content, Arc::new([]))
 }
 
@@ -70,11 +69,16 @@ pub fn get_template(name: &str) -> Option<ChatTemplate> {
 }
 
 /// Render a template with variables
-pub fn render_template(name: &str, variables: HashMap<Arc<str>, Arc<str>>) -> TemplateResult<Arc<str>> {
+pub fn render_template(
+    name: &str,
+    variables: HashMap<Arc<str>, Arc<str>>,
+) -> TemplateResult<Arc<str>> {
     if let Some(template) = get_template(name) {
         template.render(&variables)
     } else {
-        Err(TemplateError::NotFound { name: Arc::from(name) })
+        Err(TemplateError::NotFound {
+            name: Arc::from(name),
+        })
     }
 }
 
@@ -112,40 +116,40 @@ impl TemplateBuilder {
             variables: Vec::new(),
         }
     }
-    
+
     pub fn name(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
         self
     }
-    
+
     pub fn content(mut self, content: impl Into<String>) -> Self {
         self.content = Some(content.into());
         self
     }
-    
+
     pub fn description(mut self, description: impl Into<String>) -> Self {
         self.description = Some(description.into());
         self
     }
-    
+
     pub fn category(mut self, category: TemplateCategory) -> Self {
         self.category = category;
         self
     }
-    
+
     pub fn variable(mut self, var: impl Into<String>) -> Self {
         self.variables.push(var.into());
         self
     }
-    
+
     pub fn build(self) -> ChatTemplate {
         let name = self.name.unwrap_or_else(|| "untitled".to_string());
         let content = self.content.unwrap_or_else(|| "".to_string());
         let description = self.description.unwrap_or_else(|| "".to_string());
-        
+
         let template_name: Arc<str> = Arc::from(name);
         let template_content: Arc<str> = Arc::from(content);
-        
+
         let metadata = core::TemplateMetadata {
             id: template_name.clone(),
             name: template_name,
@@ -160,8 +164,9 @@ impl TemplateBuilder {
             rating: 0.0,
             permissions: core::TemplatePermissions::default(),
         };
-        
-        let variables: Arc<[core::TemplateVariable]> = self.variables
+
+        let variables: Arc<[core::TemplateVariable]> = self
+            .variables
             .into_iter()
             .map(|v| core::TemplateVariable {
                 name: Arc::from(v),
@@ -176,13 +181,16 @@ impl TemplateBuilder {
             })
             .collect::<Vec<_>>()
             .into();
-        
+
         ChatTemplate::new(metadata, template_content, variables)
     }
 }
 
 /// Create a simple render function
-pub fn render(template: &ChatTemplate, variables: &HashMap<Arc<str>, Arc<str>>) -> TemplateResult<Arc<str>> {
+pub fn render(
+    template: &ChatTemplate,
+    variables: &HashMap<Arc<str>, Arc<str>>,
+) -> TemplateResult<Arc<str>> {
     template.render(variables)
 }
 

@@ -1,18 +1,16 @@
 use std::{convert::Infallible, str::FromStr};
 
 use async_stream::stream;
+use fluent_ai_domain::completion::{
+    self, CompletionCoreError as CompletionError, CompletionRequest,
+};
+use fluent_ai_domain::message;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::client::{Client, Usage};
 use crate::streaming::{RawStreamingChoice, StreamingCompletionResponse};
-use fluent_ai_domain::completion::{self, CompletionCoreError as CompletionError, CompletionRequest};
-use fluent_ai_domain::message;
-use crate::{
-    OneOrMany,
-    clients::mistral::client::ApiResponse,
-    json_util,
-};
+use crate::{OneOrMany, clients::mistral::client::ApiResponse, json_util};
 
 pub const CODESTRAL: &str = "codestral-latest";
 pub const MISTRAL_LARGE: &str = "mistral-large-latest";
@@ -560,7 +558,6 @@ use fluent_ai_domain::{AsyncTask, spawn_async};
 use fluent_ai_domain::{Document, Message as DomainMessage};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 
-
 use crate::{
     AsyncStream,
     completion_provider::{
@@ -840,7 +837,10 @@ impl CompletionProvider for MistralCompletionBuilder {
 
     /// Add tools for function calling (ZeroOneOrMany with bounded capacity)
     #[inline(always)]
-    fn tools(mut self, tools: ZeroOneOrMany<completion::ToolDefinition>) -> Result<Self, ProviderError> {
+    fn tools(
+        mut self,
+        tools: ZeroOneOrMany<completion::ToolDefinition>,
+    ) -> Result<Self, ProviderError> {
         match tools {
             ZeroOneOrMany::None => {}
             ZeroOneOrMany::One(tool) => {
@@ -879,7 +879,7 @@ impl CompletionProvider for MistralCompletionBuilder {
     /// Terminal action - execute completion with user prompt (blazing-fast streaming)
     #[inline(always)]
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
-        let (sender, receiver) = crate::async_stream_channel();
+        let (sender, receiver) = crate::channel();
         let prompt_text = text.as_ref().to_string();
 
         spawn_async(async move {
@@ -958,7 +958,7 @@ impl MistralCompletionBuilder {
         }
 
         let sse_stream = response.sse();
-        let (chunk_sender, chunk_receiver) = crate::async_stream_channel();
+        let (chunk_sender, chunk_receiver) = crate::channel();
 
         spawn_async(async move {
             use futures_util::StreamExt;

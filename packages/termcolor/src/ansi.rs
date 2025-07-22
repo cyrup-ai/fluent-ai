@@ -44,10 +44,9 @@ pub fn ansi_spec<W: io::Write>(
     if let Some(c) = spec.bg() {
         ansi_color(&mut wtr, c, true)?;
     }
-    if spec.intense()
-        && spec.fg().is_some() {
-            write!(wtr, "\x1B[1m")?;
-        }
+    if spec.intense() && spec.fg().is_some() {
+        write!(wtr, "\x1B[1m")?;
+    }
     Ok(())
 }
 

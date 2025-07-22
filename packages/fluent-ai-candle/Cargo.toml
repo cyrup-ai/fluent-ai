@@ -7,7 +7,27 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 fluent-ai-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
-fluent_ai_core = { package = "fluent-ai-core", version = "0.1.0", path = "../fluent-ai-core" }
+fluent_ai_async = { package = "fluent-ai-async", version = "0.1.0", path = "../fluent-ai-async" }
+
+# ProgressHub core components
+progresshub-client-selector = { path = "../../../progresshub/client_selector" }
+progresshub-client-xet = { path = "../../../progresshub/client_xet" }
+progresshub-client-quic = { path = "../../../progresshub/client_quic" }
+progresshub-progress = { path = "../../../progresshub/progress" }
+progresshub-config = { path = "../../../progresshub/config" }
+
+# XET core dependencies
+cas_client = { path = "../../../progresshub/forks/xet-core/cas_client" }
+cas_types = { path = "../../../progresshub/forks/xet-core/cas_types" }
+cas_object = { path = "../../../progresshub/forks/xet-core/cas_object" }
+merklehash = { path = "../../../progresshub/forks/xet-core/merklehash" }
+utils = { path = "../../../progresshub/forks/xet-core/utils", package = "utils" }
+
+# Channel communication
+flume = "0.11"
+
+# Async utilities (pin-project for AsyncStream adapters)
+pin-project = "1.1"
 
 # Candle dependencies (optional, enabled by features)
 candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false }
@@ -81,8 +101,9 @@ tracing = "0.1.41"
 zeroize = "1.8.1"
 
 # Local dependencies
-# fluent_ai_domain = { path = "../domain" } # Temporarily disabled to test candle compilation
-# fluent_ai_provider = { path = "../provider" } # Temporarily disabled due to domain dependency
+
+fluent_ai_domain = { path = "../domain" }
+fluent_ai_provider = { path = "../provider" }
 
 # External ML dependencies  
 fluent_ai_http3 = { path = "../http3" }

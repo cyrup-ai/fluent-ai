@@ -1,32 +1,34 @@
 //! Zero-allocation text generation with streaming support and SIMD optimization
 
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use arrayvec::ArrayVec;
-use candle_core::{Device, Tensor, IndexOp};
+use candle_core::{Device, IndexOp, Tensor};
 use candle_transformers::models::deepseek2::TopKLastDimOp;
-// Temporarily use domain stubs for compilation testing
-use crate::domain_stubs::{
-    CompletionRequest, CompletionResponse, StreamingResponse, MessageRole, ChatMessage,
-    CompletionCoreResult, CompletionCoreResponse, CompletionCoreError
+use fluent_ai_domain::{
+    chat::MessageRole,
+    completion::response::CompletionResponse,
+    completion::{
+        CompletionCoreError, CompletionCoreRequest as CompletionRequest, CompletionCoreResponse,
+        CompletionCoreResult, StreamingCoreResponse as StreamingResponse,
+    },
 };
+use futures_util::stream::Stream;
 use smallvec::SmallVec;
 use tokio::sync::mpsc;
-use futures_util::stream::Stream;
-
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::*;
 
 use crate::error::{CandleError, CandleResult};
-use crate::model::CandleModel;
-use crate::tokenizer::CandleTokenizer;
-use crate::sampling::Sampling;
-use crate::processing::traits::LogitsProcessor;
-use crate::streaming::{TokenOutputStream, StreamingConfig};
 use crate::kv_cache::{KVCache, KVCacheConfig};
+use crate::model::CandleModel;
+use crate::processing::traits::LogitsProcessor;
+use crate::sampling::Sampling;
+use crate::streaming::{StreamingConfig, TokenOutputStream};
+use crate::tokenizer::CandleTokenizer;
 
 /// Maximum generation buffer size
 const MAX_GENERATION_BUFFER: usize = 4096;
@@ -36,7 +38,7 @@ const MAX_GENERATION_BUFFER: usize = 4096;
 const MAX_BATCH_SIZE: usize = 8;
 
 /// SIMD-optimized token processing operations for blazing-fast performance
-/// 
+///
 /// These functions provide vectorized operations using CPU SIMD instructions
 /// (AVX2/FMA3 on x86_64, NEON on ARM64) for maximum throughput
 mod simd_ops {
@@ -50,9 +52,9 @@ mod simd_ops {
         if temperature == 1.0 {
             return; // No scaling needed
         }
-        
+
         let inv_temp = 1.0 / temperature;
-        
+
         #[cfg(target_arch = "x86_64")]
         {
             if is_x86_feature_detected!("avx2") && is_x86_feature_detected!("fma") {
@@ -62,17 +64,17 @@ mod simd_ops {
                 }
             }
         }
-        
+
         // Fallback optimized scalar with manual unrolling for ILP
         let (chunks_4, remainder) = logits.split_at_mut(logits.len() - (logits.len() % 4));
-        
+
         for chunk in chunks_4.chunks_exact_mut(4) {
             chunk[0] *= inv_temp;
-            chunk[1] *= inv_temp; 
+            chunk[1] *= inv_temp;
             chunk[2] *= inv_temp;
             chunk[3] *= inv_temp;
         }
-        
+
         for value in remainder {
             *value *= inv_temp;
         }
@@ -83,11 +85,11 @@ mod simd_ops {
     #[inline(always)]
     pub fn cumulative_sum_f32(input: &[f32], output: &mut [f32]) {
         assert_eq!(input.len(), output.len());
-        
+
         if input.is_empty() {
             return;
         }
-        
+
         #[cfg(target_arch = "x86_64")]
         {
             if is_x86_feature_detected!("avx2") && input.len() >= 8 {
@@ -97,7 +99,7 @@ mod simd_ops {
                 }
             }
         }
-        
+
         // Fallback optimized scalar implementation
         output[0] = input[0];
         for i in 1..input.len() {
@@ -117,14 +119,17 @@ mod simd_ops {
                 }
             }
         }
-        
+
         // Fallback binary search for O(log n) performance
         match cumulative_probs.binary_search_by(|&x| {
-            if x < random_val { std::cmp::Ordering::Less } 
-            else { std::cmp::Ordering::Greater }
+            if x < random_val {
+                std::cmp::Ordering::Less
+            } else {
+                std::cmp::Ordering::Greater
+            }
         }) {
             Ok(idx) => idx,
-            Err(idx) => idx.min(cumulative_probs.len().saturating_sub(1))
+            Err(idx) => idx.min(cumulative_probs.len().saturating_sub(1)),
         }
     }
 
@@ -135,13 +140,13 @@ mod simd_ops {
         let inv_temp_vec = _mm256_set1_ps(inv_temp);
         let chunks = logits.chunks_exact_mut(8);
         let remainder = chunks.into_remainder();
-        
+
         for chunk in chunks {
             let logits_vec = _mm256_loadu_ps(chunk.as_ptr());
             let scaled = _mm256_mul_ps(logits_vec, inv_temp_vec);
             _mm256_storeu_ps(chunk.as_mut_ptr(), scaled);
         }
-        
+
         // Handle remainder with scalar
         for value in remainder {
             *value *= inv_temp;
@@ -159,38 +164,38 @@ mod simd_ops {
             }
             return;
         }
-        
+
         // Vectorized prefix sum using segmented approach
         let mut running_sum = 0.0f32;
         let chunks = input.chunks_exact(8);
         let remainder = chunks.into_remainder();
-        
+
         for (chunk_idx, chunk) in chunks.enumerate() {
             let chunk_vec = _mm256_loadu_ps(chunk.as_ptr());
-            
+
             // Compute prefix sum within chunk using horizontal adds
             let mut accumulator = _mm256_setzero_ps();
             let mut current = chunk_vec;
-            
+
             // Step 1: [a, b, c, d, e, f, g, h] -> [a, a+b, c, c+d, e, e+f, g, g+h]
             let shifted = _mm256_permute_ps(current, 0b10010011);
             let mask1 = _mm256_set_ps(0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0);
             let masked = _mm256_mul_ps(shifted, mask1);
             current = _mm256_add_ps(current, masked);
-            
+
             // Step 2: Add running sum to all elements
             let running_sum_vec = _mm256_set1_ps(running_sum);
             let result = _mm256_add_ps(current, running_sum_vec);
-            
+
             // Store result
             _mm256_storeu_ps(output[chunk_idx * 8..].as_mut_ptr(), result);
-            
+
             // Extract last element as new running sum
             let mut temp: [f32; 8] = [0.0; 8];
             _mm256_storeu_ps(temp.as_mut_ptr(), result);
             running_sum = temp[7];
         }
-        
+
         // Handle remainder
         let offset = chunks.len() * 8;
         for (i, &val) in remainder.iter().enumerate() {
@@ -204,19 +209,19 @@ mod simd_ops {
     unsafe fn find_sample_index_avx2(cumulative_probs: &[f32], random_val: f32) -> usize {
         let target = _mm256_set1_ps(random_val);
         let chunks = cumulative_probs.chunks_exact(8);
-        
+
         for (chunk_idx, chunk) in chunks.enumerate() {
             let probs = _mm256_loadu_ps(chunk.as_ptr());
             let cmp = _mm256_cmp_ps(probs, target, _CMP_GE_OQ);
             let mask = _mm256_movemask_ps(cmp);
-            
+
             if mask != 0 {
                 // Found match - get first set bit position
                 let first_bit = mask.trailing_zeros() as usize;
                 return chunk_idx * 8 + first_bit;
             }
         }
-        
+
         // Check remainder with scalar
         let offset = chunks.len() * 8;
         for (i, &prob) in cumulative_probs[offset..].iter().enumerate() {
@@ -224,7 +229,7 @@ mod simd_ops {
                 return offset + i;
             }
         }
-        
+
         cumulative_probs.len().saturating_sub(1)
     }
 }
@@ -553,7 +558,8 @@ impl CandleGenerator {
 
         // Initialize LogitsProcessor based on sampling configuration
         let composite_processor = sampling_config.build_processor()?;
-        let logits_processor: Option<Box<dyn LogitsProcessor>> = Some(Box::new(composite_processor));
+        let logits_processor: Option<Box<dyn LogitsProcessor>> =
+            Some(Box::new(composite_processor));
 
         // Initialize TokenOutputStream for streaming
         let (token_stream, _sender) = TokenOutputStream::new(streaming_config.clone())?;
@@ -583,88 +589,103 @@ impl CandleGenerator {
         } else {
             // Calculate exact capacity needed to avoid reallocations
             let mut total_capacity = request.system_prompt.len() + 2; // "\n\n"
-            
+
             // Pre-calculate message sizes for zero reallocation
             for msg in request.chat_history.iter() {
                 // Content is already a String, no UTF-8 validation needed
-                
+
                 // Calculate exact size for message: "MessageType: content\n"
                 // User/Assistant/System = 4-9 chars + ": " + content + "\n"
                 total_capacity += match msg.role {
-                    MessageRole::User => 4,             // "User"
-                    MessageRole::Assistant => 9,        // "Assistant" 
-                    MessageRole::System => 6,           // "System"
-                    MessageRole::Tool => 4,             // "Tool"
+                    MessageRole::User => 4,      // "User"
+                    MessageRole::Assistant => 9, // "Assistant"
+                    MessageRole::System => 6,    // "System"
+                    MessageRole::Tool => 4,      // "Tool"
                 };
                 total_capacity += msg.content.len();
                 total_capacity += 3; // ": " + "\n"
             }
-            
+
             // Stack allocation optimization for small prompts (< 1KB)
             const STACK_PROMPT_SIZE: usize = 1024;
             if total_capacity <= STACK_PROMPT_SIZE {
                 // Use stack-allocated ArrayVec for true zero heap allocation
                 let mut stack_prompt = ArrayVec::<u8, STACK_PROMPT_SIZE>::new();
-                stack_prompt.try_extend_from_slice(request.system_prompt.as_bytes())
+                stack_prompt
+                    .try_extend_from_slice(request.system_prompt.as_bytes())
                     .map_err(|_| CandleError::generation_failed("Stack prompt buffer overflow"))?;
-                stack_prompt.try_extend_from_slice(b"\n\n")
+                stack_prompt
+                    .try_extend_from_slice(b"\n\n")
                     .map_err(|_| CandleError::generation_failed("Stack prompt buffer overflow"))?;
-                
+
                 // Zero-allocation message formatting on stack
                 for msg in request.chat_history.iter() {
                     let content_str = &msg.content;
-                    
+
                     let message_type_bytes: &[u8] = match msg.role {
                         MessageRole::User => b"User",
                         MessageRole::Assistant => b"Assistant",
                         MessageRole::System => b"System",
                         MessageRole::Tool => b"Tool",
                     };
-                    
-                    stack_prompt.try_extend_from_slice(message_type_bytes)
-                        .map_err(|_| CandleError::generation_failed("Stack prompt buffer overflow"))?;
-                    stack_prompt.try_extend_from_slice(b": ")
-                        .map_err(|_| CandleError::generation_failed("Stack prompt buffer overflow"))?;
-                    stack_prompt.try_extend_from_slice(content_str.as_bytes())
-                        .map_err(|_| CandleError::generation_failed("Stack prompt buffer overflow"))?;
-                    stack_prompt.try_extend_from_slice(b"\n")
-                        .map_err(|_| CandleError::generation_failed("Stack prompt buffer overflow"))?;
+
+                    stack_prompt
+                        .try_extend_from_slice(message_type_bytes)
+                        .map_err(|_| {
+                            CandleError::generation_failed("Stack prompt buffer overflow")
+                        })?;
+                    stack_prompt.try_extend_from_slice(b": ").map_err(|_| {
+                        CandleError::generation_failed("Stack prompt buffer overflow")
+                    })?;
+                    stack_prompt
+                        .try_extend_from_slice(content_str.as_bytes())
+                        .map_err(|_| {
+                            CandleError::generation_failed("Stack prompt buffer overflow")
+                        })?;
+                    stack_prompt.try_extend_from_slice(b"\n").map_err(|_| {
+                        CandleError::generation_failed("Stack prompt buffer overflow")
+                    })?;
                 }
-                
+
                 // Convert stack buffer to string (single allocation)
-                return Ok(String::from_utf8(stack_prompt.to_vec())
-                    .map_err(|_| CandleError::invalid_input("Invalid UTF-8 in constructed prompt"))?);
+                return Ok(String::from_utf8(stack_prompt.to_vec()).map_err(|_| {
+                    CandleError::invalid_input("Invalid UTF-8 in constructed prompt")
+                })?);
             }
-            
+
             // Heap allocation path for large prompts - single allocation with exact capacity
             let mut prompt = String::with_capacity(total_capacity);
             prompt.push_str(&request.system_prompt);
             prompt.push_str("\n\n");
-            
+
             // Zero-allocation message formatting using direct string operations
             for msg in request.chat_history.iter() {
                 // Content is already a String
                 let content_str = &msg.content;
-                
+
                 // Zero-allocation message type formatting using match instead of Debug format
                 let message_type_str = match msg.role {
                     MessageRole::User => "User",
-                    MessageRole::Assistant => "Assistant", 
+                    MessageRole::Assistant => "Assistant",
                     MessageRole::System => "System",
                     MessageRole::Tool => "Tool",
                 };
-                
+
                 // Direct string operations - no format! allocations
                 prompt.push_str(message_type_str);
                 prompt.push_str(": ");
                 prompt.push_str(content_str);
                 prompt.push('\n');
             }
-            
+
             // Ensure we calculated capacity correctly (debug assertion)
-            debug_assert!(prompt.len() <= total_capacity, 
-                "Prompt capacity miscalculation: {} > {}", prompt.len(), total_capacity);
-            
+            debug_assert!(
+                prompt.len() <= total_capacity,
+                "Prompt capacity miscalculation: {} > {}",
+                prompt.len(),
+                total_capacity
+            );
+
             Ok(prompt)
         }
     }
@@ -694,7 +715,10 @@ impl CandleGenerator {
         let mut generated_text = String::new();
         let mut step = 0;
         const DEFAULT_MAX_TOKENS: u32 = 1000;
-        let max_tokens = request.max_tokens.map(|n| n.get() as u32).unwrap_or(DEFAULT_MAX_TOKENS);
+        let max_tokens = request
+            .max_tokens
+            .map(|n| n.get() as u32)
+            .unwrap_or(DEFAULT_MAX_TOKENS);
 
         while step < max_tokens && !state.is_complete() {
             let next_token = self.generate_next_token(&state.tokens, step).await?;
@@ -767,32 +791,38 @@ impl CandleGenerator {
 
         // Construct prompt from system prompt and chat history safely
         let prompt = self.construct_prompt_safe(request)?;
-        
+
         // Clone necessary data for the generation task
         let model = Arc::clone(&self.model);
         let tokenizer = Arc::clone(&self.tokenizer);
         let config = self.config.clone();
         let device = self.device.clone();
-        
+
         const DEFAULT_MAX_TOKENS: u32 = 1000;
-        let _max_tokens = request.max_tokens.map(|n| n.get() as u32).unwrap_or(DEFAULT_MAX_TOKENS);
+        let _max_tokens = request
+            .max_tokens
+            .map(|n| n.get() as u32)
+            .unwrap_or(DEFAULT_MAX_TOKENS);
 
         // Spawn generation task
         tokio::spawn(async move {
             let generator = CandleGenerator::new(model, tokenizer, config, device);
 
             // Create a temporary request for generation
-            let temp_request = match CompletionRequest::builder()
-                .system_prompt(&prompt)
-                .build() {
+            let temp_request = match CompletionRequest::builder().system_prompt(&prompt).build() {
                 Ok(req) => req,
                 Err(_) => {
-                    let _ = tx.send(Err(CompletionCoreError::GenerationFailed("Failed to build request".to_string())));
+                    let _ = tx.send(Err(CompletionCoreError::GenerationFailed(
+                        "Failed to build request".to_string(),
+                    )));
                     return;
                 }
             };
 
-            match generator.generate_stream_internal(&temp_request, tx.clone()).await {
+            match generator
+                .generate_stream_internal(&temp_request, tx.clone())
+                .await
+            {
                 Ok(_) => {}
                 Err(e) => {
                     // Send error as final chunk - convert CandleError to CompletionCoreError
@@ -826,7 +856,10 @@ impl CandleGenerator {
         let mut step = 0;
         let mut accumulated_text = String::new();
         const DEFAULT_MAX_TOKENS: u32 = 1000;
-        let max_tokens = request.max_tokens.map(|n| n.get() as u32).unwrap_or(DEFAULT_MAX_TOKENS);
+        let max_tokens = request
+            .max_tokens
+            .map(|n| n.get() as u32)
+            .unwrap_or(DEFAULT_MAX_TOKENS);
 
         while step < max_tokens && !state.is_complete() {
             let next_token = self.generate_next_token(&state.tokens, step).await?;
@@ -886,7 +919,9 @@ impl CandleGenerator {
         let token_text = match self.tokenizer.id_to_token(next_token_id) {
             Some(text) => text,
             None => {
-                let mut unknown_token = String::with_capacity(UNKNOWN_TOKEN_PREFIX.len() + 10 + UNKNOWN_TOKEN_SUFFIX.len());
+                let mut unknown_token = String::with_capacity(
+                    UNKNOWN_TOKEN_PREFIX.len() + 10 + UNKNOWN_TOKEN_SUFFIX.len(),
+                );
                 unknown_token.push_str(UNKNOWN_TOKEN_PREFIX);
                 unknown_token.push_str(&next_token_id.to_string());
                 unknown_token.push_str(UNKNOWN_TOKEN_SUFFIX);
@@ -917,14 +952,19 @@ impl CandleGenerator {
         // Apply temperature scaling using SIMD optimization
         let scaled_logits = if self.config.temperature != 1.0 {
             // Convert to CPU for SIMD processing
-            let cpu_logits = logits.to_device(&Device::Cpu).map_err(|e| CandleError::from(e))?;
-            let mut logits_vec = cpu_logits.to_vec1::<f32>().map_err(|e| CandleError::from(e))?;
-            
+            let cpu_logits = logits
+                .to_device(&Device::Cpu)
+                .map_err(|e| CandleError::from(e))?;
+            let mut logits_vec = cpu_logits
+                .to_vec1::<f32>()
+                .map_err(|e| CandleError::from(e))?;
+
             // Use SIMD-optimized temperature scaling
             simd_ops::scale_logits_by_temperature(&mut logits_vec, self.config.temperature);
-            
+
             // Convert back to tensor
-            Tensor::from_vec(logits_vec, logits.shape(), logits.device()).map_err(|e| CandleError::from(e))?
+            Tensor::from_vec(logits_vec, logits.shape(), logits.device())
+                .map_err(|e| CandleError::from(e))?
         } else {
             logits.clone()
         };
@@ -995,7 +1035,7 @@ impl CandleGenerator {
 
         // Sort probabilities in descending order using arg_sort
         let indices = probs
-            .arg_sort_last_dim(false)  // false for descending order
+            .arg_sort_last_dim(false) // false for descending order
             .map_err(|e| CandleError::from(e))?;
         let sorted_probs = probs
             .gather(&indices, candle_core::D::Minus1)
@@ -1053,7 +1093,7 @@ impl CandleGenerator {
         // SIMD-optimized multinomial sampling using vectorized cumulative sum
         let mut cumulative_probs = vec![0.0f32; prob_values.len()];
         simd_ops::cumulative_sum_f32(&prob_values, &mut cumulative_probs);
-        
+
         // SIMD-optimized index finding for sampling
         let sample_idx = simd_ops::find_sample_index(&cumulative_probs, random_val);
         Ok(sample_idx as u32)

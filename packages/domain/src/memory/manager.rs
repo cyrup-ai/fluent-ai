@@ -46,28 +46,40 @@ pub trait MemoryManagerTrait: Send + Sync {
 pub struct SurrealDBMemoryManager {
     _stub: (),
 }
-use once_cell::sync::Lazy;
 
-// Removed unused import: super::types_legacy::MemoryType
-use crate::memory::primitives::types::MemoryError;
-use crate::memory::primitives::MemoryNode;
-use crate::memory::primitives::node::MemoryNodeMetadata;
-use crate::memory::primitives::types::MemoryContent;
 // Removed unused import: parking_lot::Mutex
 // Removed unused import: smallvec::SmallVec
 
 // Removed unused import: crate::ZeroOneOrMany
 // Removed unused imports: AsyncTask, spawn_async
-use crate::async_task::AsyncStream;
-use futures_util::StreamExt;
+use fluent_ai_async::AsyncStream;
+use fluent_ai_async::async_stream_channel;
+use once_cell::sync::Lazy;
+
+use crate::memory::primitives::MemoryNode;
+use crate::memory::primitives::node::MemoryNodeMetadata;
+use crate::memory::primitives::types::MemoryContent;
+// Removed unused import: super::types_legacy::MemoryType
+use crate::memory::primitives::types::MemoryError;
 
 /// Memory stub that provides safe fallback for synchronous contexts
 ///
 /// This wrapper provides a safe alternative to unsafe memory operations when
-/// full initialization is not possible in synchronous contexts.
+/// Memory stub for lightweight operations when full initialization is not possible in synchronous contexts.
 #[allow(dead_code)] // TODO: Implement synchronous memory stub API
 pub struct MemoryStub {
-    config: MemoryConfig,
+    /// Memory unique identifier
+    pub id: String,
+    /// Memory content
+    pub content: String,
+    /// Optional vector embedding
+    pub embedding: Option<Vec<f32>>,
+    /// Additional metadata
+    pub metadata: std::collections::HashMap<String, String>,
+    /// Creation timestamp
+    pub timestamp: std::time::SystemTime,
+    /// Configuration
+    pub config: MemoryConfig,
 }
 
 impl MemoryStub {
@@ -82,7 +94,20 @@ impl MemoryStub {
     #[allow(dead_code)] // TODO: Implement memory stub constructor
     pub fn new() -> Self {
         let config = MemoryConfig::default();
-        Self { config }
+        let now = std::time::SystemTime::now();
+        Self {
+            id: format!(
+                "mem_{}",
+                now.duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos()
+            ),
+            content: String::new(),
+            embedding: None,
+            metadata: std::collections::HashMap::new(),
+            timestamp: now,
+            config,
+        }
     }
 
     /// Convert to Memory instance asynchronously
@@ -140,22 +165,25 @@ const TIMESTAMP_CACHE_REFRESH_INTERVAL_MICROS: u64 = 1000;
 #[allow(dead_code)] // TODO: Implement memory node pool initialization
 pub fn initialize_memory_node_pool(initial_size: usize, embedding_dim: usize) {
     // Validate embedding dimension
-    assert!(embedding_dim > 0 && embedding_dim <= 65536, 
-        "Embedding dimension must be between 1 and 65536, got: {}", embedding_dim);
+    assert!(
+        embedding_dim > 0 && embedding_dim <= 65536,
+        "Embedding dimension must be between 1 and 65536, got: {}",
+        embedding_dim
+    );
 
     for _ in 0..initial_size {
         let mut node = Box::new(MemoryNode::new(
             super::primitives::MemoryTypeEnum::Episodic,
             super::primitives::MemoryContent::text(""),
         ));
-        
+
         // Pre-allocate embedding vector with correct dimension
         let zero_embedding = vec![0.0f32; embedding_dim];
         if let Err(e) = node.set_embedding(zero_embedding) {
             log::error!("Failed to set embedding for pooled memory node: {}", e);
             // Continue anyway - this is pool initialization, not critical path
         }
-        
+
         MEMORY_NODE_POOL.push(node);
     }
     POOL_STATS.store(initial_size, Ordering::Relaxed);
@@ -280,17 +308,70 @@ pub fn is_timestamp_cache_fresh() -> bool {
 
     now - last_update <= TIMESTAMP_CACHE_REFRESH_INTERVAL_MICROS
 }
-/// Zero-allocation memory manager wrapper with lock-free operations (stub)
-#[derive(Clone)]
+/// Zero-allocation memory manager wrapper with lock-free operations
 pub struct Memory {
-    /// Shared memory manager instance for concurrent access (stub)
-    _memory: Arc<SurrealDBMemoryManager>,
+    /// Memory unique identifier
+    pub id: String,
+    /// Memory content
+    pub content: String,
+    /// Vector embedding
+    pub embedding: Vec<f32>,
+    /// Additional metadata
+    pub metadata: std::collections::HashMap<String, String>,
+    /// Creation timestamp
+    pub timestamp: std::time::SystemTime,
+    /// Optional summary
+    pub summary: Option<String>,
+    /// Tags for categorization
+    pub tags: Vec<String>,
+    /// Importance score (0.0 to 1.0)
+    pub importance: f32,
+    /// Access count tracker
+    pub access_count: AtomicU64,
+    /// Last accessed timestamp
+    pub last_accessed: std::time::SystemTime,
+}
+
+impl Clone for Memory {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id.clone(),
+            content: self.content.clone(),
+            embedding: self.embedding.clone(),
+            metadata: self.metadata.clone(),
+            timestamp: self.timestamp,
+            summary: self.summary.clone(),
+            tags: self.tags.clone(),
+            importance: self.importance,
+            access_count: AtomicU64::new(self.access_count.load(Ordering::Relaxed)),
+            last_accessed: self.last_accessed,
+        }
+    }
 }
 
 impl std::fmt::Debug for Memory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Memory")
-            .field("memory", &"SurrealDBMemoryManager (stub)")
+            .field("id", &self.id)
+            .field(
+                "content",
+                &format!(
+                    "{}...",
+                    if self.content.len() > 50 {
+                        &self.content[..50]
+                    } else {
+                        &self.content
+                    }
+                ),
+            )
+            .field("embedding_len", &self.embedding.len())
+            .field("metadata", &self.metadata)
+            .field("timestamp", &self.timestamp)
+            .field("summary", &self.summary)
+            .field("tags", &self.tags)
+            .field("importance", &self.importance)
+            .field("access_count", &self.access_count.load(Ordering::Relaxed))
+            .field("last_accessed", &self.last_accessed)
             .finish()
     }
 }
@@ -306,17 +387,31 @@ impl Memory {
     ///
     /// # Performance
     /// Zero allocation initialization with lock-free connection pooling
-    pub fn new(_config: MemoryConfig) -> AsyncStream<Self> {
-        let (sender, stream) = AsyncStream::channel();
-        
+    pub fn new(config: MemoryConfig) -> AsyncStream<Self> {
+        let (sender, stream) = async_stream_channel();
+
         tokio::spawn(async move {
-            // Stub implementation
-            let memory_instance = Self { 
-                _memory: Arc::new(SurrealDBMemoryManager { _stub: () })
+            let current_time = std::time::SystemTime::now();
+            let timestamp_nanos = current_time
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos() as u64)
+                .unwrap_or(0);
+
+            let memory_instance = Self {
+                id: format!("mem_{}", timestamp_nanos).into(),
+                content: String::new(),
+                embedding: vec![0.0; config.embedding_dimension],
+                metadata: std::collections::HashMap::new(),
+                timestamp: current_time,
+                summary: None,
+                tags: Vec::new(),
+                importance: 0.5,
+                access_count: AtomicU64::new(0),
+                last_accessed: current_time,
             };
-            let _ = sender.try_send(memory_instance);
+            let _ = sender.send(memory_instance);
         });
-        
+
         stream
     }
 
@@ -339,18 +434,15 @@ impl Memory {
     ///
     /// # Returns
     /// AsyncStream that completes when the memory is stored
-    pub fn store_memory(
-        &self,
-        _memory_node: &MemoryNode,
-    ) -> AsyncStream<Result<(), MemoryError>> {
+    pub fn store_memory(&self, _memory_node: &MemoryNode) -> AsyncStream<Result<(), MemoryError>> {
         let (sender, stream) = AsyncStream::channel();
-        
+
         tokio::spawn(async move {
             // Stub implementation - always return success
             let result = Ok(());
             let _ = sender.try_send(result);
         });
-        
+
         stream
     }
 
@@ -358,22 +450,6 @@ impl Memory {
     #[inline]
     pub fn create_stub() -> MemoryStub {
         MemoryStub::new()
-    }
-
-    /// Convert memory stub to full memory instance (async)
-    pub fn from_stub(stub: MemoryStub) -> AsyncStream<Self> {
-        let (sender, stream) = AsyncStream::channel();
-        
-        tokio::spawn(async move {
-            let memory_stream = stub.into_memory();
-            let mut stream_pin = Box::pin(memory_stream);
-            while let Some(memory) = StreamExt::next(&mut stream_pin).await {
-                let _ = sender.try_send(memory);
-                break;
-            }
-        });
-        
-        stream
     }
 
     /// Initialize memory system with optimizations
@@ -459,13 +535,17 @@ impl Memory {
 
     /// Create a memory record for serialization tracking
     #[inline]
-    pub fn create_memory_record(input: &str, output: &str, timestamp: u64) -> super::serialization::MemoryRecord {
+    pub fn create_memory_record(
+        input: &str,
+        output: &str,
+        timestamp: u64,
+    ) -> super::serialization::MemoryRecord {
         super::serialization::MemoryRecord::new(input, output, timestamp)
     }
 
     /// Serialize memory data with zero-allocation buffer
     #[inline]
-    pub fn serialize_with_buffer<F, R>(f: F) -> R 
+    pub fn serialize_with_buffer<F, R>(f: F) -> R
     where
         F: FnOnce(&mut super::serialization::SerializationBuffer) -> R,
     {

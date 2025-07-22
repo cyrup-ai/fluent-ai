@@ -8,18 +8,30 @@ license = "MIT"
 repository = "https://github.com/cyrusnimda/fluent-ai"
 
 [dependencies]
-# Core SIMD support
+# Core SIMD support and zero-allocation data structures
 wide = "0.7"
 arrayvec = "0.7"
 smallvec = "1.13"
 
+# Hash map for token tracking and statistics
+dashmap = "5.5"
+ahash = "0.8"
+
+# Atomic operations and synchronization
+parking_lot = "0.12"
+crossbeam-utils = "0.8"
+
 # Random number generation for sampling
 rand = "0.8"
+
+# Fast exponential functions for softmax
+libm = "0.2"
 
 # Error handling
 thiserror = "1.0"
 
-# Lazy static initialization
+# Lazy static initialization for runtime dispatch
+once_cell = "1.19"
 lazy_static = "1.4"
 
 # Optional candle integration

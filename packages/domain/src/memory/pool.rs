@@ -1,6 +1,4 @@
-use super::primitives::{
-    MemoryNode, MemoryTypeEnum as MemoryType, MemoryContent,
-};
+use super::primitives::{MemoryContent, MemoryNode, MemoryTypeEnum as MemoryType};
 
 /// Lock-free memory node pool for zero-allocation MemoryNode reuse
 pub struct MemoryNodePool {
@@ -23,12 +21,12 @@ impl MemoryNodePool {
         for _ in 0..capacity {
             let content = MemoryContent::text(String::with_capacity(1024)); // Pre-allocate string capacity
             let mut node = MemoryNode::new(MemoryType::Working, content); // Use Working type for pooled nodes
-            
+
             // Set embedding if requested
             if embedding_dimension > 0 {
                 let _ = node.set_embedding(vec![0.0; embedding_dimension]); // Pre-allocate embedding
             }
-            
+
             let _ = pool.available.push(node);
         }
 
@@ -42,12 +40,12 @@ impl MemoryNodePool {
             // Fallback: create new node if pool is empty
             let content = MemoryContent::text(String::with_capacity(1024));
             let mut node = MemoryNode::new(MemoryType::Working, content);
-            
+
             // Set embedding if requested
             if self.embedding_dimension > 0 {
                 let _ = node.set_embedding(vec![0.0; self.embedding_dimension]);
             }
-            
+
             node
         });
 
@@ -63,14 +61,14 @@ impl MemoryNodePool {
     fn release(&self, node: MemoryNode) {
         // Reset the node to a clean state for reuse
         // The modern MemoryNode doesn't allow direct mutation of its fields,
-        
+
         // The modern MemoryNode doesn't allow direct mutation of its fields,
         // so we'll just use it as-is for the pool. The creation of new nodes
         // handles the clean state.
-        
+
         // For a more efficient pool, we could add reset methods to MemoryNode,
         // but for now we'll accept the cost of recreation on acquire.
-        
+
         // Return to pool (ignore if pool is full)
         let _ = self.available.push(node);
     }
@@ -93,21 +91,17 @@ pub struct PooledMemoryNode<'a> {
 impl<'a> PooledMemoryNode<'a> {
     /// Initialize the pooled node with content
     #[inline(always)]
-    pub fn initialize(
-        &mut self,
-        content: String,
-        memory_type: MemoryType,
-    ) {
+    pub fn initialize(&mut self, content: String, memory_type: MemoryType) {
         if !self.taken {
             // For the current design, we replace the node entirely since
             // the modern MemoryNode doesn't expose mutable fields directly
             let new_content = MemoryContent::text(content);
             let mut new_node = MemoryNode::new(memory_type, new_content);
-            
+
             // Calculate base importance from memory type
             let importance = memory_type.base_importance();
             let _ = new_node.set_importance(importance);
-            
+
             // Replace the node
             let old_node = std::mem::replace(&mut self.node, std::mem::ManuallyDrop::new(new_node));
             std::mem::ManuallyDrop::into_inner(old_node); // Drop the old node
@@ -148,8 +142,8 @@ impl<'a> PooledMemoryNode<'a> {
             Some(std::mem::ManuallyDrop::into_inner(std::mem::replace(
                 &mut self.node,
                 std::mem::ManuallyDrop::new(MemoryNode::new(
-                    MemoryType::Working, 
-                    MemoryContent::text("")
+                    MemoryType::Working,
+                    MemoryContent::text(""),
                 )),
             )))
         }
@@ -181,8 +175,8 @@ impl<'a> Drop for PooledMemoryNode<'a> {
             let node = std::mem::ManuallyDrop::into_inner(std::mem::replace(
                 &mut self.node,
                 std::mem::ManuallyDrop::new(MemoryNode::new(
-                    MemoryType::Working, 
-                    MemoryContent::text("")
+                    MemoryType::Working,
+                    MemoryContent::text(""),
                 )),
             ));
             self.pool.release(node);

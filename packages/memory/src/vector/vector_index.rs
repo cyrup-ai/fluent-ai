@@ -7,9 +7,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use dashmap::DashMap;
+use fluent_ai_simd::cosine_similarity;
 use instant_distance::Builder;
 use serde::{Deserialize, Serialize};
-use fluent_ai_simd::cosine_similarity;
 
 use crate::utils::Result;
 use crate::vector::DistanceMetric;

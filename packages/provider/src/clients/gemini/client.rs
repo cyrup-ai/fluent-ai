@@ -12,27 +12,24 @@ use arrayvec::{ArrayString, ArrayVec};
 use atomic_counter::RelaxedCounter;
 use bytes::Bytes;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
+use fluent_ai_domain::PromptStruct as Prompt;
+use fluent_ai_domain::completion::{
+    self, CompletionCoreError, CompletionRequest, CompletionRequestBuilder,
+};
+use fluent_ai_domain::embedding::Embedding;
+use fluent_ai_domain::message::Message;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
+use tokio::sync::mpsc::channel;
+// Note: AsyncTask, spawn_async, channel from fluent_ai_domain may not exist - using tokio
+use tokio::{task::JoinHandle as AsyncTask, task::spawn as spawn_async};
 
 use super::completion::{CompletionModel, GEMINI_1_5_PRO};
 use super::embedding::EmbeddingModel;
 use super::transcription::TranscriptionModel;
-use crate::{
-    client::{CompletionClient, EmbeddingsClient, ProviderClient, TranscriptionClient},
-};
-use fluent_ai_domain::completion::{
-    self, CompletionCoreError, CompletionRequest, CompletionRequestBuilder,
-};
-use fluent_ai_domain::PromptStruct as Prompt;
-use fluent_ai_domain::embedding::Embedding;
+use crate::client::{CompletionClient, EmbeddingsClient, ProviderClient, TranscriptionClient};
 use crate::json_util;
-use fluent_ai_domain::message::Message;
-
-// Note: AsyncTask, spawn_async, channel from fluent_ai_domain may not exist - using tokio
-use tokio::{task::JoinHandle as AsyncTask, task::spawn as spawn_async};
-use tokio::sync::mpsc::channel;
 
 // ============================================================================
 // Google Gemini API Client with HTTP3 and zero-allocation patterns
@@ -222,7 +219,10 @@ impl Client {
             "Content-Type",
             ArrayString::from("application/json").unwrap_or_else(|_| ArrayString::new()),
         ));
-        headers.push(("Accept", ArrayString::from("text/event-stream").unwrap_or_else(|_| ArrayString::new())));
+        headers.push((
+            "Accept",
+            ArrayString::from("text/event-stream").unwrap_or_else(|_| ArrayString::new()),
+        ));
         headers.push((
             "User-Agent",
             ArrayString::from("fluent-ai-gemini/1.0").unwrap_or_else(|_| ArrayString::new()),
@@ -544,7 +544,10 @@ impl<'a> GeminiCompletionBuilder<'a, NeedsPrompt> {
 impl<'a> GeminiCompletionBuilder<'a, HasPrompt> {
     /// Build the completion request
     fn build_request(&self) -> Result<CompletionRequest, PromptError> {
-        let prompt = self.prompt.as_ref().ok_or_else(|| PromptError::MissingPrompt)?;
+        let prompt = self
+            .prompt
+            .as_ref()
+            .ok_or_else(|| PromptError::MissingPrompt)?;
 
         let mut builder =
             CompletionRequestBuilder::new(self.model_name.to_string(), prompt.clone())?;

@@ -11,26 +11,25 @@ use arc_swap::ArcSwap;
 use arrayvec::{ArrayString, ArrayVec};
 use atomic_counter::RelaxedCounter;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
+use fluent_ai_domain::AsyncTask;
+use fluent_ai_domain::PromptStruct as Prompt;
+use fluent_ai_domain::completion::{
+    self, CompletionCoreError as CompletionError, CompletionRequest, CompletionRequestBuilder,
+};
+use fluent_ai_domain::memory::workflow::PromptError;
+use fluent_ai_domain::message::Message;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
+use tokio::sync::mpsc::channel;
+// Note: AsyncTask, spawn_async, channel from fluent_ai_domain may not exist - using tokio
+use tokio::{task::JoinHandle as AsyncTaskHandle, task::spawn as spawn_async};
 
 use super::completion::{CompletionModel, GROK_3};
 use crate::{
     client::{CompletionClient, ProviderClient},
     json_util,
 };
-use fluent_ai_domain::completion::{
-    self, CompletionCoreError as CompletionError, CompletionRequest, CompletionRequestBuilder,
-};
-use fluent_ai_domain::PromptStruct as Prompt;
-use fluent_ai_domain::memory::workflow::PromptError;
-use fluent_ai_domain::message::Message;
-use fluent_ai_domain::AsyncTask;
-
-// Note: AsyncTask, spawn_async, channel from fluent_ai_domain may not exist - using tokio
-use tokio::{task::JoinHandle as AsyncTaskHandle, task::spawn as spawn_async};
-use tokio::sync::mpsc::channel;
 
 // ============================================================================
 // xAI API Client with HTTP3 and zero-allocation patterns
@@ -515,7 +514,9 @@ impl<'a> XAICompletionBuilder<'a, HasPrompt> {
         }
 
         AsyncTask::spawn(async move {
-            rx.recv().await.unwrap_or_else(|| Err(CompletionError::ResponseError("Channel closed".to_string())))
+            rx.recv().await.unwrap_or_else(|| {
+                Err(CompletionError::ResponseError("Channel closed".to_string()))
+            })
         })
     }
 
@@ -546,7 +547,9 @@ impl<'a> XAICompletionBuilder<'a, HasPrompt> {
         }
 
         AsyncTask::spawn(async move {
-            rx.recv().await.unwrap_or_else(|| Err(CompletionError::ResponseError("Channel closed".to_string())))
+            rx.recv().await.unwrap_or_else(|| {
+                Err(CompletionError::ResponseError("Channel closed".to_string()))
+            })
         })
     }
 }

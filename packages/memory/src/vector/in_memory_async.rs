@@ -33,9 +33,9 @@ impl RelaxedCounter {
 }
 
 use crossbeam_skiplist::SkipMap;
+use fluent_ai_simd::smart_cosine_similarity;
 use smallvec::SmallVec;
 use tokio::sync::oneshot;
-use fluent_ai_simd::smart_cosine_similarity;
 
 use super::{
     PendingEmbedding, PendingVectorOp, PendingVectorSearch, VectorSearchResult, VectorStore,

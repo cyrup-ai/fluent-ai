@@ -331,7 +331,7 @@ impl CompletionProvider for HuggingFaceCompletionBuilder {
     /// Terminal action - execute completion with user prompt (blazing-fast streaming)
     #[inline(always)]
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
-        let (sender, receiver) = crate::async_stream_channel();
+        let (sender, receiver) = crate::channel();
         let prompt_text = text.as_ref().to_string();
 
         spawn_async(async move {
@@ -413,7 +413,7 @@ impl HuggingFaceCompletionBuilder {
         }
 
         let sse_stream = response.sse();
-        let (chunk_sender, chunk_receiver) = crate::async_stream_channel();
+        let (chunk_sender, chunk_receiver) = crate::channel();
 
         spawn_async(async move {
             use futures_util::StreamExt;

@@ -58,17 +58,15 @@ pub trait EmbeddingModel: Clone + Send + Sync + 'static {
         let (tx, stream) = AsyncStream::channel();
         let text_owned = text.to_string();
         let mut texts_stream = self.embed_texts(std::iter::once(text_owned));
-        
+
         tokio::spawn(async move {
             let result = match texts_stream.next() {
-                Some(Ok(embeddings)) => {
-                    match embeddings.into_iter().next() {
-                        Some(embedding) => Ok(embedding),
-                        None => Err(EmbeddingError::Provider(
-                            "No embeddings returned from provider".to_string(),
-                        )),
-                    }
-                }
+                Some(Ok(embeddings)) => match embeddings.into_iter().next() {
+                    Some(embedding) => Ok(embedding),
+                    None => Err(EmbeddingError::Provider(
+                        "No embeddings returned from provider".to_string(),
+                    )),
+                },
                 Some(Err(e)) => Err(e),
                 None => Err(EmbeddingError::Provider(
                     "No response from provider".to_string(),
@@ -76,7 +74,7 @@ pub trait EmbeddingModel: Clone + Send + Sync + 'static {
             };
             let _ = tx.send(result);
         });
-        
+
         stream
     }
 }
@@ -137,13 +135,10 @@ pub trait ImageEmbeddingModel: Clone + Send + Sync + 'static {
     ) -> AsyncStream<Result<Vec<Embedding>, EmbeddingError>>;
 
     #[inline(always)]
-    fn embed_image(
-        &self,
-        bytes: &[u8],
-    ) -> AsyncStream<Result<Embedding, EmbeddingError>> {
+    fn embed_image(&self, bytes: &[u8]) -> AsyncStream<Result<Embedding, EmbeddingError>> {
         let bytes_owned = bytes.to_owned();
         let images_stream = self.embed_images(std::iter::once(bytes_owned));
-        
+
         let (tx, stream) = AsyncStream::channel();
         tokio::spawn(async move {
             let result = match images_stream.collect().into_iter().next() {

@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use arc_swap::ArcSwap;
 use arrayvec::ArrayVec;
-use candle_core::{Device, DType, Module, Tensor};
+use candle_core::{DType, Device, Module, Tensor};
 use memmap2::Mmap;
 use parking_lot::Mutex;
 
@@ -22,7 +22,7 @@ use crate::memory;
 use crate::model::{
     cache::{KVCacheConfig, KVCacheManager},
     loading::{ModelLoader, ModelMetadata, ProgressCallback, RecoveryStrategy},
-    metrics::{GenerationMetrics, ModelMetrics, ModelPerformanceStats},
+    metrics::ModelMetrics,
     types::{ModelConfig, ModelType, QuantizationType},
 };
 
@@ -98,7 +98,11 @@ impl CandleModel {
 
     /// Load model using sophisticated ModelLoader with progressive loading
     #[inline(always)]
-    pub async fn load_with_loader<P: AsRef<Path>>(&self, path: P, loader: ModelLoader) -> CandleResult<ModelMetadata> {
+    pub async fn load_with_loader<P: AsRef<Path>>(
+        &self,
+        path: P,
+        loader: ModelLoader,
+    ) -> CandleResult<ModelMetadata> {
         let (metadata, var_builder) = loader.load_model(path).await?;
 
         // Create model from var_builder based on detected architecture
@@ -108,9 +112,12 @@ impl CandleModel {
             "gemma" => self.create_gemma_model(var_builder, &metadata)?,
             "phi" => self.create_phi_model(var_builder, &metadata)?,
             "qwen" => self.create_qwen_model(var_builder, &metadata)?,
-            _ => return Err(CandleError::ModelLoadError(
-                format!("Unsupported architecture: {}", metadata.architecture)
-            )),
+            _ => {
+                return Err(CandleError::ModelLoadError(format!(
+                    "Unsupported architecture: {}",
+                    metadata.architecture
+                )))
+            }
         };
 
         // Create new model state
@@ -124,7 +131,8 @@ impl CandleModel {
         self.model_state.store(Arc::new(new_state));
 
         // Update memory usage tracking
-        self.memory_usage.store(metadata.model_size_bytes, Ordering::Relaxed);
+        self.memory_usage
+            .store(metadata.model_size_bytes, Ordering::Relaxed);
         memory::track_allocation(metadata.model_size_bytes as usize);
 
         self.loading_progress.store(100, Ordering::Relaxed);
@@ -170,7 +178,8 @@ impl CandleModel {
     #[inline(always)]
     pub fn start_sequence(&self) -> u64 {
         let sequence_id = self.cache_manager.new_sequence();
-        self.current_sequence_id.store(sequence_id, Ordering::Relaxed);
+        self.current_sequence_id
+            .store(sequence_id, Ordering::Relaxed);
         sequence_id
     }
 
@@ -183,13 +192,17 @@ impl CandleModel {
 
         // Convert input IDs to tensor
         let device = &self.device;
-        let input_tensor = Tensor::new(input_ids, device)
-            .map_err(|e| CandleError::TensorError(format!("Failed to create input tensor: {}", e)))?;
+        let input_tensor = Tensor::new(input_ids, device).map_err(|e| {
+            CandleError::TensorError(format!("Failed to create input tensor: {}", e))
+        })?;
 
         let batch_size = 1u32;
         let seq_len = input_ids.len() as u32;
-        let input_tensor = input_tensor.reshape(&[batch_size as usize, seq_len as usize])
-            .map_err(|e| CandleError::TensorError(format!("Failed to reshape input tensor: {}", e)))?;
+        let input_tensor = input_tensor
+            .reshape(&[batch_size as usize, seq_len as usize])
+            .map_err(|e| {
+                CandleError::TensorError(format!("Failed to reshape input tensor: {}", e))
+            })?;
 
         // Get current model state
         let model_state = self.model_state.load();
@@ -198,7 +211,9 @@ impl CandleModel {
         let start_time = std::time::Instant::now();
 
         // Forward pass through the model
-        let result = model_state.model.forward(&input_tensor)
+        let result = model_state
+            .model
+            .forward(&input_tensor)
             .map_err(|e| CandleError::ModelInferenceError(format!("Forward pass failed: {}", e)))?;
 
         // Update generation statistics
@@ -237,29 +252,30 @@ impl CandleModel {
     pub fn get_metrics(&self) -> ModelMetrics {
         let cache_stats = Some(self.cache_manager.get_stats());
         let model_memory = self.memory_usage.load(Ordering::Relaxed);
-        
-        let mut metrics = ModelMetrics::with_cache_stats(
-            cache_stats.as_ref().unwrap().clone(),
-            model_memory
-        );
+
+        let mut metrics =
+            ModelMetrics::with_cache_stats(cache_stats.as_ref().unwrap().clone(), model_memory);
 
         // Update with current generation stats
-        metrics.performance.total_tokens_generated = self.total_tokens_generated.load(Ordering::Relaxed);
-        metrics.performance.avg_tokens_per_second = self.avg_tokens_per_second.load(Ordering::Relaxed);
+        metrics.performance.total_tokens_generated =
+            self.total_tokens_generated.load(Ordering::Relaxed);
+        metrics.performance.avg_tokens_per_second =
+            self.avg_tokens_per_second.load(Ordering::Relaxed);
         metrics.performance.current_sequence_id = self.current_sequence_id.load(Ordering::Relaxed);
-        
+
         metrics.generation.current_sequence = self.current_sequence_id.load(Ordering::Relaxed);
         metrics.generation.total_tokens = self.total_tokens_generated.load(Ordering::Relaxed);
 
         metrics.cache_stats = cache_stats;
-        
+
         metrics
     }
 
     /// Clear cache for specific sequence
     #[inline(always)]
     pub fn clear_sequence_cache(&self, sequence_id: u64) -> CandleResult<()> {
-        self.cache_manager.clear_sequence(sequence_id)
+        self.cache_manager
+            .clear_sequence(sequence_id)
             .map_err(|e| CandleError::CacheError(format!("Failed to clear sequence cache: {}", e)))
     }
 
@@ -277,18 +293,19 @@ impl CandleModel {
 
     /// Update generation statistics atomically
     fn update_generation_stats(&self, tokens_generated: u64, duration_nanos: u64) {
-        self.total_tokens_generated.fetch_add(tokens_generated, Ordering::Relaxed);
-        
+        self.total_tokens_generated
+            .fetch_add(tokens_generated, Ordering::Relaxed);
+
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos() as u64;
-        
+
         self.last_generation_time.store(now, Ordering::Relaxed);
-        
+
         if duration_nanos > 0 {
             let tokens_per_second = (tokens_generated * 1_000_000_000) / duration_nanos;
-            
+
             // Update moving average
             let current_avg = self.avg_tokens_per_second.load(Ordering::Relaxed);
             let new_avg = if current_avg == 0 {
@@ -297,36 +314,56 @@ impl CandleModel {
                 // Exponential moving average with decay factor 0.9
                 ((current_avg as f64 * 0.9) + (tokens_per_second as f64 * 0.1)) as u64
             };
-            
+
             self.avg_tokens_per_second.store(new_avg, Ordering::Relaxed);
         }
     }
 
     // Placeholder model creation methods
     // In a real implementation, these would use specific model architectures
-    
-    fn create_llama_model(&self, _var_builder: candle_nn::VarBuilder, _metadata: &ModelMetadata) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
+
+    fn create_llama_model(
+        &self,
+        _var_builder: candle_nn::VarBuilder,
+        _metadata: &ModelMetadata,
+    ) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
         // Placeholder - real implementation would create LLaMA model from var_builder
         let config = ModelConfig::for_model_type(ModelType::Llama);
         Ok((Box::new(DummyModel), config))
     }
 
-    fn create_mistral_model(&self, _var_builder: candle_nn::VarBuilder, _metadata: &ModelMetadata) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
+    fn create_mistral_model(
+        &self,
+        _var_builder: candle_nn::VarBuilder,
+        _metadata: &ModelMetadata,
+    ) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
         let config = ModelConfig::for_model_type(ModelType::Mistral);
         Ok((Box::new(DummyModel), config))
     }
 
-    fn create_gemma_model(&self, _var_builder: candle_nn::VarBuilder, _metadata: &ModelMetadata) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
+    fn create_gemma_model(
+        &self,
+        _var_builder: candle_nn::VarBuilder,
+        _metadata: &ModelMetadata,
+    ) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
         let config = ModelConfig::for_model_type(ModelType::Gemma);
         Ok((Box::new(DummyModel), config))
     }
 
-    fn create_phi_model(&self, _var_builder: candle_nn::VarBuilder, _metadata: &ModelMetadata) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
+    fn create_phi_model(
+        &self,
+        _var_builder: candle_nn::VarBuilder,
+        _metadata: &ModelMetadata,
+    ) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
         let config = ModelConfig::for_model_type(ModelType::Phi);
         Ok((Box::new(DummyModel), config))
     }
 
-    fn create_qwen_model(&self, _var_builder: candle_nn::VarBuilder, _metadata: &ModelMetadata) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
+    fn create_qwen_model(
+        &self,
+        _var_builder: candle_nn::VarBuilder,
+        _metadata: &ModelMetadata,
+    ) -> CandleResult<(Box<dyn Module + Send + Sync>, ModelConfig)> {
         let config = ModelConfig::for_model_type(ModelType::Qwen);
         Ok((Box::new(DummyModel), config))
     }

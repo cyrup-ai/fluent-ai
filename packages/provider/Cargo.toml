@@ -11,7 +11,7 @@ fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 yyaml = { git = "https://github.com/cyrup-ai/yyaml", branch = "main"}
 serde = { version = "1.0.219", features = ["derive"] }
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["all"] }
-fluent_ai_core = { package = "fluent-ai-core", version = "0.1.0", path = "../fluent-ai-core" }
+fluent_ai_async = { package = "fluent-ai-async", version = "0.1.0", path = "../fluent-ai-async" }
 fluent_ai_domain = { version = "0.1.0", path = "../domain", default-features = false }
 fluent_ai_http3 = { path = "../http3" }
 # fluent_ai = { path = "../fluent-ai" } # Temporarily commented out to fix cyclic dependency

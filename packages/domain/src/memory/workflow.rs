@@ -12,7 +12,6 @@ pub trait OpTrait {
 }
 // use fluent_ai_memory::MemoryManager; // Temporarily disabled to break circular dependency
 use crate::memory::manager::MemoryManagerTrait;
-
 use crate::memory::primitives::MemoryError;
 
 /// Memory workflow operation implementation
@@ -25,7 +24,7 @@ pub struct MemoryWorkflowOp<M, P> {
 
 impl<M, P> OpTrait for MemoryWorkflowOp<M, P>
 where
-    M: MemoryManager + Clone,
+    M: MemoryManagerTrait + Clone,
     P: Prompt,
 {
     type Input = String;
@@ -77,7 +76,7 @@ pub struct MemoryEnhancedWorkflow<M, P> {
 
 impl<M, P> MemoryEnhancedWorkflow<M, P>
 where
-    M: MemoryManager + Clone,
+    M: MemoryManagerTrait + Clone,
     P: Prompt + Send + Sync,
 {
     #[allow(dead_code)] // TODO: Implement memory-enhanced workflow constructor

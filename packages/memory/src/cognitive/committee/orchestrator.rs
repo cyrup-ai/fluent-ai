@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use futures::stream::{FuturesUnordered, StreamExt};
+use futures_util::stream::{FuturesUnordered, StreamExt};
 use tokio::sync::{RwLock, Semaphore, mpsc};
 use tracing::{info, warn};
 

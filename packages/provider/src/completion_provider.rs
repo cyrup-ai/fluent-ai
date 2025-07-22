@@ -152,7 +152,7 @@ pub trait ModelPrompt: ModelInfo {
             Ok(provider) => provider,
             Err(e) => {
                 // Return error stream
-                let (sender, receiver) = crate::async_stream_channel();
+                let (sender, receiver) = crate::channel();
                 let _ = sender.send(CompletionChunk::error(&e.to_string()));
                 return receiver;
             }
@@ -163,7 +163,7 @@ pub trait ModelPrompt: ModelInfo {
             Some(key) => key,
             None => {
                 // Return error stream - discovery function already logged the error
-                let (sender, receiver) = crate::async_stream_channel();
+                let (sender, receiver) = crate::channel();
                 let _ = sender.send(CompletionChunk::error("Missing API key"));
                 return receiver;
             }
@@ -174,7 +174,7 @@ pub trait ModelPrompt: ModelInfo {
             Ok(provider) => provider.prompt(text),
             Err(e) => {
                 // Return error stream
-                let (sender, receiver) = crate::async_stream_channel();
+                let (sender, receiver) = crate::channel();
                 let _ = sender.send(CompletionChunk::error(&e.to_string()));
                 receiver
             }
@@ -283,7 +283,7 @@ pub trait ModelInfo {
 }
 
 /// Zero-allocation completion response wrapper
-/// 
+///
 /// Provides a unified interface for completion responses across all providers
 /// while maintaining zero-allocation semantics and lock-free access patterns.
 #[derive(Debug, Clone)]
@@ -342,7 +342,7 @@ impl<T> CompletionResponse<T> {
 }
 
 /// Zero-allocation streaming response wrapper
-/// 
+///
 /// Provides a unified streaming interface for real-time completion responses
 /// with lock-free channel communication and zero-copy token processing.
 pub struct StreamingResponse<T> {
@@ -357,7 +357,10 @@ pub struct StreamingResponse<T> {
 impl<T> StreamingResponse<T> {
     /// Create a new streaming response
     #[inline(always)]
-    pub fn new(raw_response: T, stream: AsyncStream<Result<CompletionChunk, CompletionError>>) -> Self {
+    pub fn new(
+        raw_response: T,
+        stream: AsyncStream<Result<CompletionChunk, CompletionError>>,
+    ) -> Self {
         Self {
             raw_response,
             stream,

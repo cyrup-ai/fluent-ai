@@ -1,5 +1,5 @@
 use async_stream::stream;
-use futures::StreamExt;
+use futures_util::StreamExt;
 use serde::Deserialize;
 
 use super::completion::{CompletionModel, create_request_body, gemini_api_types::ContentCandidate};

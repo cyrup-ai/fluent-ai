@@ -183,7 +183,7 @@ impl MemorySDK {
         let stream = self.completion_provider.prompt(&analysis_prompt);
         let mut response = String::new();
         
-        use futures::StreamExt;
+        use futures_util::StreamExt;
         let mut stream = stream;
         while let Some(chunk) = stream.next().await {
             if let Some(content) = chunk.content {
@@ -216,7 +216,7 @@ impl MemorySDK {
         let stream = self.completion_provider.prompt(&relationship_prompt);
         let mut response = String::new();
         
-        use futures::StreamExt;
+        use futures_util::StreamExt;
         let mut stream = stream;
         while let Some(chunk) = stream.next().await {
             if let Some(content) = chunk.content {
@@ -249,7 +249,7 @@ impl MemorySDK {
         let stream = self.completion_provider.prompt(&prompt);
         let mut response = String::new();
         
-        use futures::StreamExt;
+        use futures_util::StreamExt;
         let mut stream = stream;
         while let Some(chunk) = stream.next().await {
             if let Some(content) = chunk.content {
@@ -292,7 +292,7 @@ impl MemorySDK {
         let stream = self.completion_provider.prompt(&prompt);
         let mut response = String::new();
         
-        use futures::StreamExt;
+        use futures_util::StreamExt;
         let mut stream = stream;
         while let Some(chunk) = stream.next().await {
             if let Some(content) = chunk.content {

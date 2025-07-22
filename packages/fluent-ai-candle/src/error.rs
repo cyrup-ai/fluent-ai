@@ -2,7 +2,10 @@
 
 use std::fmt;
 
-use crate::domain_stubs::{ExtractionError, CompletionRequestError, CompletionCoreError};
+use fluent_ai_domain::{
+    completion::{CompletionCoreError, CompletionRequestError},
+    context::extraction::ExtractionError,
+};
 
 /// Result type alias for candle operations
 pub type CandleResult<T> = Result<T, CandleError>;
@@ -68,6 +71,18 @@ pub enum CandleError {
     Progress(String),
     /// Cache-related error
     Cache(String),
+    /// ProgressHub client initialization failed
+    InitializationError(String),
+    /// ProgressHub download error
+    ProgressHubError(String),
+    /// Backend selection error
+    BackendError(String),
+    /// Network error during download
+    NetworkError(String),
+    /// Validation error
+    ValidationError(String),
+    /// I/O operation failed
+    Io(String),
 }
 
 impl fmt::Display for CandleError {
@@ -110,13 +125,21 @@ impl fmt::Display for CandleError {
             Self::IncompatibleTokenizer(msg) => write!(f, "Incompatible tokenizer: {}", msg),
             Self::Progress(msg) => write!(f, "Progress tracking error: {}", msg),
             Self::Cache(msg) => write!(f, "Cache error: {}", msg),
+            Self::InitializationError(msg) => {
+                write!(f, "ProgressHub initialization error: {}", msg)
+            }
+            Self::ProgressHubError(msg) => write!(f, "ProgressHub error: {}", msg),
+            Self::BackendError(msg) => write!(f, "Backend selection error: {}", msg),
+            Self::NetworkError(msg) => write!(f, "Network error: {}", msg),
+            Self::ValidationError(msg) => write!(f, "Validation error: {}", msg),
+            Self::Io(msg) => write!(f, "I/O error: {}", msg),
         }
     }
 }
 
 impl std::error::Error for CandleError {}
 
-// Conversion to extraction error  
+// Conversion to extraction error
 impl From<CandleError> for ExtractionError {
     #[inline(always)]
     fn from(err: CandleError) -> Self {
@@ -163,7 +186,9 @@ impl From<CompletionRequestError> for CandleError {
     #[inline(always)]
     fn from(err: CompletionRequestError) -> Self {
         match err {
-            CompletionRequestError::InvalidParameter(_msg) => Self::InvalidInput("Invalid completion parameter"),
+            CompletionRequestError::InvalidParameter(_msg) => {
+                Self::InvalidInput("Invalid completion parameter")
+            }
             CompletionRequestError::Validation(_validation_err) => {
                 Self::Configuration("Completion request validation failed")
             }
@@ -176,16 +201,24 @@ impl From<CompletionCoreError> for CandleError {
     #[inline(always)]
     fn from(err: CompletionCoreError) -> Self {
         match err {
-            CompletionCoreError::InvalidRequest(_msg) => Self::InvalidInput("Invalid completion request"),
+            CompletionCoreError::InvalidRequest(_msg) => {
+                Self::InvalidInput("Invalid completion request")
+            }
             CompletionCoreError::ModelLoadingFailed(msg) => Self::ModelLoadError(msg),
-            CompletionCoreError::GenerationFailed(_msg) => Self::GenerationFailed("Generation failed"),
+            CompletionCoreError::GenerationFailed(_msg) => {
+                Self::GenerationFailed("Generation failed")
+            }
             CompletionCoreError::ContextLengthExceeded { current, max } => {
                 Self::ContextLengthExceeded { current, max }
             }
-            CompletionCoreError::ProviderUnavailable(_msg) => Self::DeviceAllocation("Provider unavailable"),
+            CompletionCoreError::ProviderUnavailable(_msg) => {
+                Self::DeviceAllocation("Provider unavailable")
+            }
             CompletionCoreError::RateLimitExceeded => Self::GenerationFailed("Rate limit exceeded"),
             CompletionCoreError::Timeout => Self::LoadingTimeout,
-            CompletionCoreError::Internal(_msg) => Self::TensorOperation("Internal completion error"),
+            CompletionCoreError::Internal(_msg) => {
+                Self::TensorOperation("Internal completion error")
+            }
         }
     }
 }
@@ -203,7 +236,7 @@ impl CandleError {
     pub fn model_load_error<S: Into<String>>(msg: S) -> Self {
         Self::ModelLoadError(msg.into())
     }
-    
+
     /// Create a model loading error (alias for model_load_error)
     #[inline(always)]
     pub fn model_loading<S: Into<String>>(msg: S) -> Self {
@@ -466,37 +499,82 @@ impl From<CandleError> for CompletionCoreError {
         match err {
             CandleError::ModelNotFound(msg) => CompletionCoreError::ModelLoadingFailed(msg),
             CandleError::ModelLoadError(msg) => CompletionCoreError::ModelLoadingFailed(msg),
-            CandleError::InvalidModelFormat(msg) => CompletionCoreError::ModelLoadingFailed(msg.to_string()),
-            CandleError::TensorOperation(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
-            CandleError::DeviceOperation(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
-            CandleError::MemoryAllocation(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
-            CandleError::GenerationFailed(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
-            CandleError::TokenizerError(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
-            CandleError::ConfigurationError(msg) => CompletionCoreError::InvalidRequest(msg.to_string()),
-            CandleError::UnsupportedOperation(msg) => CompletionCoreError::InvalidRequest(msg.to_string()),
+            CandleError::InvalidModelFormat(msg) => {
+                CompletionCoreError::ModelLoadingFailed(msg.to_string())
+            }
+            CandleError::TensorOperation(msg) => {
+                CompletionCoreError::GenerationFailed(msg.to_string())
+            }
+            CandleError::DeviceOperation(msg) => {
+                CompletionCoreError::GenerationFailed(msg.to_string())
+            }
+            CandleError::MemoryAllocation(msg) => {
+                CompletionCoreError::GenerationFailed(msg.to_string())
+            }
+            CandleError::GenerationFailed(msg) => {
+                CompletionCoreError::GenerationFailed(msg.to_string())
+            }
+            CandleError::TokenizerError(msg) => {
+                CompletionCoreError::GenerationFailed(msg.to_string())
+            }
+            CandleError::ConfigurationError(msg) => {
+                CompletionCoreError::InvalidRequest(msg.to_string())
+            }
+            CandleError::UnsupportedOperation(msg) => {
+                CompletionCoreError::InvalidRequest(msg.to_string())
+            }
             CandleError::ContextLengthExceeded { current, max } => {
                 CompletionCoreError::ContextLengthExceeded { current, max }
             }
             CandleError::VocabularyMismatch { expected, actual } => {
-                CompletionCoreError::GenerationFailed(format!("Vocabulary mismatch: expected {}, got {}", expected, actual))
+                CompletionCoreError::GenerationFailed(format!(
+                    "Vocabulary mismatch: expected {}, got {}",
+                    expected, actual
+                ))
             }
-            CandleError::IncompatibleTokenizer(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
-            CandleError::SafeTensors(msg) => CompletionCoreError::ModelLoadingFailed(msg.to_string()),
-            CandleError::Quantization(msg) => CompletionCoreError::ModelLoadingFailed(msg.to_string()),
+            CandleError::IncompatibleTokenizer(msg) => {
+                CompletionCoreError::GenerationFailed(msg.to_string())
+            }
+            CandleError::SafeTensors(msg) => {
+                CompletionCoreError::ModelLoadingFailed(msg.to_string())
+            }
+            CandleError::Quantization(msg) => {
+                CompletionCoreError::ModelLoadingFailed(msg.to_string())
+            }
             CandleError::Tokenizer(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
-            CandleError::MemoryMapping(msg) => CompletionCoreError::ModelLoadingFailed(msg.to_string()),
-            CandleError::LoadingTimeout => CompletionCoreError::ModelLoadingFailed("Model loading timeout".to_string()),
+            CandleError::MemoryMapping(msg) => {
+                CompletionCoreError::ModelLoadingFailed(msg.to_string())
+            }
+            CandleError::LoadingTimeout => {
+                CompletionCoreError::ModelLoadingFailed("Model loading timeout".to_string())
+            }
             CandleError::UnsupportedArchitecture(arch) => {
                 CompletionCoreError::InvalidRequest(format!("Unsupported architecture: {}", arch))
             }
             CandleError::Configuration(msg) => CompletionCoreError::InvalidRequest(msg.to_string()),
             // Handle missing patterns
-            CandleError::DeviceAllocation(msg) => CompletionCoreError::GenerationFailed(msg.to_string()),
+            CandleError::DeviceAllocation(msg) => {
+                CompletionCoreError::GenerationFailed(msg.to_string())
+            }
             CandleError::TokenizationError(msg) => CompletionCoreError::TokenizationFailed(msg),
-            CandleError::CacheOverflow => CompletionCoreError::GenerationFailed("Cache overflow".to_string()),
+            CandleError::CacheOverflow => {
+                CompletionCoreError::GenerationFailed("Cache overflow".to_string())
+            }
             CandleError::InvalidInput(msg) => CompletionCoreError::InvalidRequest(msg.to_string()),
             CandleError::Progress(msg) => CompletionCoreError::Internal(msg),
             CandleError::Cache(msg) => CompletionCoreError::GenerationFailed(msg),
+            CandleError::InitializationError(msg) => CompletionCoreError::Internal(msg),
+            CandleError::ProgressHubError(msg) => CompletionCoreError::GenerationFailed(msg),
+            CandleError::BackendError(msg) => CompletionCoreError::Internal(msg),
+            CandleError::NetworkError(msg) => CompletionCoreError::GenerationFailed(msg),
+            CandleError::ValidationError(msg) => CompletionCoreError::GenerationFailed(msg),
         }
+    }
+}
+
+// ProgressHub error mappings
+impl From<anyhow::Error> for CandleError {
+    fn from(err: anyhow::Error) -> Self {
+        CandleError::ProgressHubError(format!("ProgressHub error: {}", err))
     }
 }

@@ -341,12 +341,13 @@ impl WorkflowExecutor {
                 let input_clone = context.current_value.clone();
                 let context_clone = context.clone();
                 let op_ref = Arc::new(operation.clone());
-                
+
                 let (tx, stream) = AsyncStream::channel();
                 result_streams.push(stream);
-                
+
                 let handle = tokio::spawn(async move {
-                    let result = self.execute_operation_with_retry(op_ref.as_ref(), input_clone, &context_clone)
+                    let result = self
+                        .execute_operation_with_retry(op_ref.as_ref(), input_clone, &context_clone)
                         .await;
                     let _ = tx.send(result);
                 });
@@ -361,7 +362,7 @@ impl WorkflowExecutor {
                 results.push(result);
             }
         }
-        
+
         // Wait for all tasks to complete
         for handle in handles {
             let _ = handle.await;

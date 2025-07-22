@@ -4,6 +4,7 @@
 //! for all operations in the workspace-hack regeneration process.
 
 use std::path::PathBuf;
+
 use thiserror::Error;
 
 /// Main error type for all cargo-hakari-regenerate operations

@@ -9,7 +9,6 @@ use crossbeam_utils::CachePadded;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-
 /// Quantum-inspired cognitive state with atomic operations and lock-free queues
 ///
 /// Features:
@@ -559,7 +558,7 @@ impl QuantumSignature {
     #[inline]
     pub fn with_coherence(amplitudes: Vec<f32>, phases: Vec<f32>) -> Result<Self, CognitiveError> {
         let coherence_fingerprint = AlignedCoherenceFingerprint::new(amplitudes, phases)?;
-        
+
         Ok(Self {
             coherence_fingerprint,
             entanglement_bonds: Vec::new(),
@@ -620,7 +619,8 @@ impl QuantumSignature {
     /// Measure entanglement with another quantum signature
     #[inline]
     pub fn measure_entanglement(&self, other: &Self) -> Option<f32> {
-        self.coherence_fingerprint.entanglement_measure(&other.coherence_fingerprint)
+        self.coherence_fingerprint
+            .entanglement_measure(&other.coherence_fingerprint)
     }
 
     /// Check if quantum signature has valid coherence
@@ -631,7 +631,12 @@ impl QuantumSignature {
 
     /// Create entanglement bond with another quantum signature
     #[inline]
-    pub fn create_entanglement_bond(&mut self, target_id: Uuid, bond_strength: f32, entanglement_type: EntanglementType) {
+    pub fn create_entanglement_bond(
+        &mut self,
+        target_id: Uuid,
+        bond_strength: f32,
+        entanglement_type: EntanglementType,
+    ) {
         let bond = EntanglementBond::new(target_id, bond_strength, entanglement_type);
         self.entanglement_bonds.push(bond);
     }
@@ -732,8 +737,6 @@ impl Default for AtomicF32 {
         Self::new(0.0)
     }
 }
-
-
 
 /// Atomic f64 wrapper for concurrent operations
 #[derive(Debug)]
@@ -1048,7 +1051,8 @@ impl CognitiveState {
     /// Measure quantum entanglement with another cognitive state
     #[inline]
     pub fn measure_quantum_entanglement(&self, other: &Self) -> Option<f32> {
-        self.quantum_signature.measure_entanglement(&other.quantum_signature)
+        self.quantum_signature
+            .measure_entanglement(&other.quantum_signature)
     }
 
     /// Check if cognitive state has valid quantum coherence
@@ -1059,15 +1063,25 @@ impl CognitiveState {
 
     /// Add quantum entanglement bond to another cognitive state
     #[inline]
-    pub fn add_quantum_entanglement_bond(&self, target_id: Uuid, bond_strength: f32, entanglement_type: EntanglementType) -> bool {
+    pub fn add_quantum_entanglement_bond(
+        &self,
+        target_id: Uuid,
+        bond_strength: f32,
+        entanglement_type: EntanglementType,
+    ) -> bool {
         // Since QuantumSignature.entanglement_bonds is private and create_entanglement_bond requires &mut,
         // we'll implement this by creating a log entry and returning success for now
         // In a full implementation, this would modify the quantum signature's bonds
-        log::info!("Adding quantum entanglement bond to {} with strength {} and type {:?}", target_id, bond_strength, entanglement_type);
-        
+        log::info!(
+            "Adding quantum entanglement bond to {} with strength {} and type {:?}",
+            target_id,
+            bond_strength,
+            entanglement_type
+        );
+
         // Record the quantum operation for statistics
         self.stats.record_quantum_operation();
-        
+
         // Simulate successful entanglement creation
         true
     }
@@ -1080,9 +1094,12 @@ impl CognitiveState {
 
     /// Create cognitive state with custom quantum coherence
     #[inline]
-    pub fn with_quantum_coherence(amplitudes: Vec<f32>, phases: Vec<f32>) -> Result<Self, CognitiveError> {
+    pub fn with_quantum_coherence(
+        amplitudes: Vec<f32>,
+        phases: Vec<f32>,
+    ) -> Result<Self, CognitiveError> {
         let quantum_signature = Arc::new(QuantumSignature::with_coherence(amplitudes, phases)?);
-        
+
         Ok(Self {
             activation_pattern: AlignedActivationPattern::default(),
             attention_weights: default_attention_weights(),
@@ -1342,17 +1359,19 @@ impl CognitiveProcessor {
 
         // Generate pattern ID for caching
         let pattern_id = Uuid::new_v4();
-        
+
         // Check cache first
-        let pattern_match = if let Some(cached_result) = self.pattern_matcher.get_cached_result(&pattern_id) {
-            cached_result
-        } else {
-            // Match patterns
-            let match_result = self.pattern_matcher.match_pattern(input)?;
-            // Cache the result
-            self.pattern_matcher.cache_pattern_result(pattern_id, match_result);
-            match_result
-        };
+        let pattern_match =
+            if let Some(cached_result) = self.pattern_matcher.get_cached_result(&pattern_id) {
+                cached_result
+            } else {
+                // Match patterns
+                let match_result = self.pattern_matcher.match_pattern(input)?;
+                // Cache the result
+                self.pattern_matcher
+                    .cache_pattern_result(pattern_id, match_result);
+                match_result
+            };
 
         // Make decision
         let decision = self.decision_engine.make_decision(pattern_match)?;

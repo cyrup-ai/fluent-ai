@@ -12,6 +12,13 @@ use std::time::{Duration, Instant};
 use arrayvec::ArrayVec;
 // AtomicCounter trait no longer needed since we use local RelaxedCounter
 use crossbeam_queue::SegQueue;
+// Use domain types for traits and models
+use fluent_ai_domain::{
+    chat::Message,
+    completion::{CompletionError, CompletionProvider},
+};
+// Use provider clients for completion services
+use fluent_ai_provider::{anthropic::AnthropicClient, openai::OpenAIClient};
 use tokio::sync::{RwLock, Semaphore};
 use uuid::Uuid;
 
@@ -24,17 +31,6 @@ pub use crate::cognitive::committee::committee_evaluators_extension::{
     EvaluationSessionMetrics, EvaluationTask, EvaluatorPoolMetrics,
 };
 use crate::cognitive::types::OptimizationSpec;
-// Use domain types for traits and models  
-use fluent_ai_domain::{
-    completion::{CompletionProvider, CompletionError},
-    chat::Message,
-};
-
-// Use provider clients for completion services
-use fluent_ai_provider::{
-    openai::OpenAIClient,
-    anthropic::AnthropicClient,
-};
 
 /// Individual provider evaluator managing a single model instance
 #[derive(Debug)]
@@ -232,12 +228,12 @@ impl ProviderEvaluator {
 
         // Use the CompletionProvider streaming interface
         let stream = self.model.provider.prompt(&full_prompt);
-        
+
         // Collect streaming response into complete text
         let mut result = String::new();
         let mut stream = stream;
-        
-        use futures::StreamExt;
+
+        use futures_util::StreamExt;
         while let Some(chunk) = stream.next().await {
             if let Some(content) = chunk.content {
                 result.push_str(&content);
@@ -247,7 +243,9 @@ impl ProviderEvaluator {
         if result.is_empty() {
             Err(CommitteeError::ProviderError {
                 model_type: self.model.model_type.clone(),
-                source: Box::new(CompletionError::ProviderUnavailable("Empty response from provider".to_string())),
+                source: Box::new(CompletionError::ProviderUnavailable(
+                    "Empty response from provider".to_string(),
+                )),
             })
         } else {
             Ok(result)
@@ -479,7 +477,10 @@ impl EvaluatorPool {
 
     /// Add evaluator to the pool with zero allocation
     #[inline]
-    pub fn add_evaluator(&mut self, evaluator: Arc<ProviderEvaluator>) -> Result<(), CommitteeError> {
+    pub fn add_evaluator(
+        &mut self,
+        evaluator: Arc<ProviderEvaluator>,
+    ) -> Result<(), CommitteeError> {
         let model_type = evaluator.model_type().clone();
 
         let evaluators = self
@@ -611,7 +612,7 @@ impl EvaluationSession {
         }
 
         // Execute all futures concurrently
-        let results = futures::future::join_all(evaluation_futures).await;
+        let results = futures_util::future::join_all(evaluation_futures).await;
 
         // Convert Vec<Result> to ArrayVec<Result> with zero allocation
         let mut result_array = ArrayVec::new();

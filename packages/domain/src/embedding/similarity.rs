@@ -32,13 +32,13 @@ pub struct SimilarityResult {
     /// Similarity score (higher is more similar for similarity metrics,
     /// lower is more similar for distance metrics)
     pub score: f32,
-    
+
     /// Whether the score exceeds the configured threshold
     pub is_similar: bool,
-    
+
     /// Distance value (for distance-based metrics)
     pub distance: Option<f32>,
-    
+
     /// Metric used for the computation
     pub metric: SimilarityMetric,
 }
@@ -95,5 +95,3 @@ pub trait Similarity<T = Self> {
         self.similarity(other, metric).meets_threshold(threshold)
     }
 }
-
-

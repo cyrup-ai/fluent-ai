@@ -64,21 +64,20 @@
 //! ```
 
 pub mod config;
-pub mod text_encoder;
-pub mod sampling;
-pub mod vae;
 pub mod models;
+pub mod sampling;
+pub mod text_encoder;
+pub mod vae;
 
 // Re-export main types for convenience
-pub use config::{GenerationConfig, SD3ModelVariant, ModelLoadingConfig};
+pub use config::{GenerationConfig, ModelLoadingConfig, SD3ModelVariant};
+pub use models::{CompleteModel, ModelManager};
+pub use sampling::{SkipLayerGuidanceConfig, euler_sample};
 pub use text_encoder::StableDiffusion3TripleClipWithTokenizer;
-pub use sampling::{euler_sample, SkipLayerGuidanceConfig};
 pub use vae::{SD3VAEDecoder, build_sd3_vae_autoencoder};
-pub use models::{ModelManager, CompleteModel};
 
 // Re-export main generator
 pub use super::generation::CandleImageGenerator;
-
 // Re-export error types
 pub use super::generation::{GenerationError, GenerationResult};
 
@@ -86,7 +85,7 @@ pub use super::generation::{GenerationError, GenerationResult};
 pub mod info {
     /// Module version
     pub const VERSION: &str = "1.0.0";
-    
+
     /// Supported model variants
     pub const SUPPORTED_MODELS: &[&str] = &[
         "stabilityai/stable-diffusion-3-medium",
@@ -94,10 +93,10 @@ pub mod info {
         "stabilityai/stable-diffusion-3.5-large-turbo",
         "stabilityai/stable-diffusion-3.5-medium",
     ];
-    
+
     /// Default model variant
     pub const DEFAULT_MODEL: &str = "stabilityai/stable-diffusion-3-medium";
-    
+
     /// Module capabilities
     pub const CAPABILITIES: &[&str] = &[
         "text-to-image-generation",
@@ -113,12 +112,12 @@ pub mod info {
 /// Utility functions for generation module
 pub mod utils {
     use super::*;
-    
+
     /// Create default generation configuration
     pub fn default_generation_config() -> GenerationConfig {
         GenerationConfig::default()
     }
-    
+
     /// Create configuration for specific model variant
     pub fn config_for_model(variant: SD3ModelVariant) -> GenerationConfig {
         GenerationConfig {
@@ -128,7 +127,7 @@ pub mod utils {
             ..Default::default()
         }
     }
-    
+
     /// Validate generation parameters
     pub fn validate_generation_params(
         num_inference_steps: usize,
@@ -138,23 +137,27 @@ pub mod utils {
         if num_inference_steps == 0 || num_inference_steps > 1000 {
             return Err(format!("Invalid inference steps: {}", num_inference_steps));
         }
-        
+
         if cfg_scale < 1.0 || cfg_scale > 20.0 {
             return Err(format!("Invalid CFG scale: {}", cfg_scale));
         }
-        
-        if output_size.0 == 0 || output_size.1 == 0 || output_size.0 > 2048 || output_size.1 > 2048 {
-            return Err(format!("Invalid output size: {}x{}", output_size.0, output_size.1));
+
+        if output_size.0 == 0 || output_size.1 == 0 || output_size.0 > 2048 || output_size.1 > 2048
+        {
+            return Err(format!(
+                "Invalid output size: {}x{}",
+                output_size.0, output_size.1
+            ));
         }
-        
+
         Ok(())
     }
-    
+
     /// Calculate memory requirements for configuration
     pub fn calculate_memory_requirements(config: &GenerationConfig) -> usize {
         config::DeviceOptimization::calculate_memory_requirements(config)
     }
-    
+
     /// Get optimal batch size for available memory
     pub fn get_optimal_batch_size(
         variant: SD3ModelVariant,
@@ -169,7 +172,7 @@ pub mod utils {
 #[cfg(test)]
 pub mod test_utils {
     use super::*;
-    
+
     /// Create test configuration with minimal resource usage
     pub fn test_config() -> GenerationConfig {
         GenerationConfig {
@@ -183,7 +186,7 @@ pub mod test_utils {
             ..Default::default()
         }
     }
-    
+
     /// Create mock generator for testing
     pub fn create_test_generator() -> Result<CandleImageGenerator, GenerationError> {
         CandleImageGenerator::with_config(test_config())
@@ -196,34 +199,34 @@ pub mod features {
     pub fn has_flash_attention() -> bool {
         cfg!(feature = "flash-attn")
     }
-    
+
     /// Check if CUDA support is available
     pub fn has_cuda() -> bool {
         cfg!(feature = "cuda")
     }
-    
+
     /// Check if Metal support is available
     pub fn has_metal() -> bool {
         cfg!(feature = "metal")
     }
-    
+
     /// Check if image processing crate is available
     pub fn has_image_processing() -> bool {
         cfg!(feature = "image")
     }
-    
+
     /// Get available acceleration types
     pub fn available_acceleration() -> Vec<&'static str> {
         let mut types = vec!["cpu"];
-        
+
         if has_cuda() {
             types.push("cuda");
         }
-        
+
         if has_metal() {
             types.push("metal");
         }
-        
+
         types
     }
 }
@@ -232,28 +235,28 @@ pub mod features {
 pub mod constants {
     /// Default image size for generation
     pub const DEFAULT_IMAGE_SIZE: (u32, u32) = (1024, 1024);
-    
+
     /// Minimum image size
     pub const MIN_IMAGE_SIZE: (u32, u32) = (256, 256);
-    
+
     /// Maximum image size
     pub const MAX_IMAGE_SIZE: (u32, u32) = (2048, 2048);
-    
+
     /// Default inference steps
     pub const DEFAULT_INFERENCE_STEPS: usize = 28;
-    
+
     /// Default CFG scale
     pub const DEFAULT_CFG_SCALE: f64 = 7.0;
-    
+
     /// Default time shift
     pub const DEFAULT_TIME_SHIFT: f64 = 3.0;
-    
+
     /// Maximum batch size
     pub const MAX_BATCH_SIZE: usize = 16;
-    
+
     /// Model cache timeout in seconds
     pub const MODEL_CACHE_TIMEOUT: u64 = 3600;
-    
+
     /// Default model loading timeout
     pub const MODEL_LOADING_TIMEOUT: u64 = 300;
 }

@@ -4,8 +4,8 @@
 //! Implementation logic is in fluent_ai package.
 
 use std::fmt;
-use crate::async_task::AsyncStream;
 
+use fluent_ai_async::AsyncStream;
 use serde_json::Value;
 
 /// Core tool trait - base interface for all tools - NO FUTURES!

@@ -200,7 +200,7 @@ impl MemoryStream {
     }
 }
 
-impl futures::Stream for MemoryStream {
+impl futures_util::Stream for MemoryStream {
     type Item = Result<MemoryNode>;
 
     fn poll_next(
@@ -222,7 +222,7 @@ impl RelationshipStream {
     }
 }
 
-impl futures::Stream for RelationshipStream {
+impl futures_util::Stream for RelationshipStream {
     type Item = Result<MemoryRelationship>;
 
     fn poll_next(

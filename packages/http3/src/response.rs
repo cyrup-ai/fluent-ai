@@ -67,7 +67,7 @@ impl<T: serde::de::DeserializeOwned> JsonStream<T> {
 
     /// Collect JSON as Vec - returns Vec<T> directly (no futures)
     /// Users wanting "await" similar behavior call .collect()
-    #[inline] 
+    #[inline]
     pub fn collect_json(self) -> Vec<T> {
         match self.get() {
             Some(value) => vec![value],
@@ -161,7 +161,7 @@ impl HttpResponse {
 
     /// Get the body as text - returns String directly
     /// NO FUTURES - pure streaming, users call .collect() for await-like behavior
-    #[inline(always)] 
+    #[inline(always)]
     pub fn text(&self) -> String {
         String::from_utf8_lossy(&self.body).to_string()
     }
@@ -301,7 +301,8 @@ impl HttpResponse {
     /// This is set by CacheMiddleware and represents the effective cache expiration
     #[inline(always)]
     pub fn computed_expires(&self) -> Option<u64> {
-        self.header("x-computed-expires").and_then(|v| v.parse().ok())
+        self.header("x-computed-expires")
+            .and_then(|v| v.parse().ok())
     }
 
     /// Check if response is cacheable based on computed expires
@@ -318,7 +319,7 @@ impl HttpResponse {
                 .duration_since(std::time::UNIX_EPOCH)
                 .ok()?
                 .as_secs();
-            
+
             if expires > now {
                 Some(expires - now)
             } else {
@@ -486,5 +487,3 @@ impl HttpResponse {
         }
     }
 }
-
-

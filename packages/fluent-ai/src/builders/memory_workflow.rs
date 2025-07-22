@@ -248,7 +248,7 @@ where
         let memory_manager = self.memory_manager.clone();
         let prompt_model = self.prompt_model.clone();
         let context_limit = self.context_limit;
-        
+
         let (tx, stream) = fluent_ai_http3::async_task::AsyncStream::channel();
         tokio::spawn(async move {
             let result = async {
@@ -292,7 +292,11 @@ where
                 let response = match prompt_stream.next() {
                     Some(Ok(response)) => response,
                     Some(Err(e)) => return Err(WorkflowError::Prompt(e.to_string())),
-                    None => return Err(WorkflowError::Prompt("No response from prompt model".to_string())),
+                    None => {
+                        return Err(WorkflowError::Prompt(
+                            "No response from prompt model".to_string(),
+                        ));
+                    }
                 };
 
                 // Store response as semantic memory
@@ -301,8 +305,9 @@ where
                     .await;
 
                 Ok(response)
-            }.await;
-            
+            }
+            .await;
+
             let _ = tx.send(result);
         });
         stream

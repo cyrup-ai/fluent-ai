@@ -1,16 +1,13 @@
 //! Core domain types and traits
 
-use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
 
 use arc_swap::ArcSwap;
-use atomic_counter::{AtomicCounter, RelaxedCounter};
-use crossbeam_queue::SegQueue;
 use crossbeam_utils::CachePadded;
+use fluent_ai_http3::async_task::AsyncTask;
 use once_cell::sync::Lazy;
 
-use crate::async_task::AsyncTask;
 use crate::memory::MemoryError;
 
 /// Domain initialization error types with semantic error handling
@@ -63,20 +60,20 @@ impl<T> ChannelSender<T> {
 }
 
 /// Create a new channel for async communication
-pub fn channel<T>() -> (ChannelSender<T>, AsyncTask<std::result::Result<T, ChannelError>>) {
+pub fn channel<T>() -> (
+    ChannelSender<T>,
+    AsyncTask<std::result::Result<T, ChannelError>>,
+) {
     let (tx, rx) = tokio::sync::oneshot::channel();
     (
         ChannelSender { sender: tx },
-        AsyncTask::new(async move {
-            rx.await.map_err(|_| ChannelError::ReceiveError)
-        }),
+        AsyncTask::new(async move { rx.await.map_err(|_| ChannelError::ReceiveError) }),
     )
 }
 
 /// Global state for circuit breaker pattern
-static CIRCUIT_BREAKER: Lazy<ArcSwap<CircuitBreaker>> = Lazy::new(|| {
-    ArcSwap::from_pointee(CircuitBreaker::new())
-});
+static CIRCUIT_BREAKER: Lazy<ArcSwap<CircuitBreaker>> =
+    Lazy::new(|| ArcSwap::from_pointee(CircuitBreaker::new()));
 
 /// Circuit breaker state
 struct CircuitBreaker {

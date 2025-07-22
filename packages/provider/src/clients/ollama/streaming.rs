@@ -5,7 +5,7 @@
 // ============================================================================
 
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
-use futures::StreamExt;
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 
 use super::completion::{CompletionResponse, ProviderMessage};

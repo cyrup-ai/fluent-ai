@@ -6,16 +6,16 @@
 
 use std::sync::Arc;
 
-use futures::{FutureExt, Stream, StreamExt};
+use futures_util::{FutureExt, Stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{
+    OneOrMany,
     client::ProviderClient,
     completion::message::{AssistantContent, Message, ToolCall},
     runtime::{AsyncStream, AsyncTask},
     streaming::{StreamingCompletionResponse, StreamingResult},
-    OneOrMany,
 };
 
 // ================================================================
@@ -156,7 +156,8 @@ impl<M: CompletionModel> CompletionModel for &M {
     fn stream(
         &self,
         req: CompletionRequest,
-    ) -> AsyncTask<Result<StreamingCompletionResponse<Self::StreamingResponse>, CompletionError>> {
+    ) -> AsyncTask<Result<StreamingCompletionResponse<Self::StreamingResponse>, CompletionError>>
+    {
         // This is the key change: directly pass through the stream from the underlying model.
         // No more boxing, no more `AsyncStreamDyn`.
         (*self).stream(req)

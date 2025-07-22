@@ -92,15 +92,15 @@ impl ResponseFormatter {
     fn format_text(&self, output: &CommandOutput) -> Result<String, ResponseError> {
         let mut result = String::new();
 
-        // Add status indicator
-        if output.success {
+        // Add status indicator based on output type
+        if matches!(output.output_type, OutputType::Text) {
             result.push_str("✓ ");
         } else {
             result.push_str("✗ ");
         }
 
         // Add main message
-        result.push_str(&output.message);
+        result.push_str(&output.content);
 
         // Add execution time if metrics are enabled
         if self.include_metrics && output.execution_time > 0 {
@@ -120,15 +120,13 @@ impl ResponseFormatter {
     fn format_json(&self, output: &CommandOutput) -> Result<String, ResponseError> {
         let mut json_output = Map::new();
 
-        json_output.insert("success".to_string(), Value::Bool(output.success));
+        json_output.insert("success".to_string(), Value::Bool(matches!(output.output_type, OutputType::Text)));
         json_output.insert(
             "message".to_string(),
-            Value::String(output.message.to_string()),
+            Value::String(output.content.clone()),
         );
 
-        if let Some(data) = &output.data {
-            json_output.insert("data".to_string(), data.clone());
-        }
+        // Note: CommandOutput doesn't have a data field, so we'll skip this for now
 
         if self.include_metrics {
             let mut metrics = Map::new();
@@ -136,22 +134,24 @@ impl ResponseFormatter {
                 "execution_time_us".to_string(),
                 Value::Number(output.execution_time.into()),
             );
-            metrics.insert(
-                "memory_bytes".to_string(),
-                Value::Number(output.resource_usage.memory_bytes.into()),
-            );
-            metrics.insert(
-                "cpu_time_us".to_string(),
-                Value::Number(output.resource_usage.cpu_time_us.into()),
-            );
-            metrics.insert(
-                "network_requests".to_string(),
-                Value::Number(output.resource_usage.network_requests.into()),
-            );
-            metrics.insert(
-                "disk_operations".to_string(),
-                Value::Number(output.resource_usage.disk_operations.into()),
-            );
+            if let Some(ref usage) = output.resource_usage {
+                metrics.insert(
+                    "memory_bytes".to_string(),
+                    Value::Number(usage.memory_bytes.into()),
+                );
+                metrics.insert(
+                    "cpu_time_us".to_string(),
+                    Value::Number(usage.cpu_time_us.into()),
+                );
+                metrics.insert(
+                    "network_requests".to_string(),
+                    Value::Number(usage.network_requests.into()),
+                );
+                metrics.insert(
+                    "disk_operations".to_string(),
+                    Value::Number(usage.disk_operations.into()),
+                );
+            }
             json_output.insert("metrics".to_string(), Value::Object(metrics));
         }
 
@@ -205,22 +205,24 @@ impl ResponseFormatter {
         if self.include_metrics {
             result.push_str("Metrics:\n");
             result.push_str(&format!("  Execution Time: {}μs\n", output.execution_time));
-            result.push_str(&format!(
-                "  Memory Usage: {} bytes\n",
-                output.resource_usage.memory_bytes
-            ));
-            result.push_str(&format!(
-                "  CPU Time: {}μs\n",
-                output.resource_usage.cpu_time_us
-            ));
-            result.push_str(&format!(
-                "  Network Requests: {}\n",
-                output.resource_usage.network_requests
-            ));
-            result.push_str(&format!(
-                "  Disk Operations: {}\n",
-                output.resource_usage.disk_operations
-            ));
+            if let Some(ref usage) = output.resource_usage {
+                result.push_str(&format!(
+                    "  Memory Usage: {} bytes\n",
+                    usage.memory_bytes
+                ));
+                result.push_str(&format!(
+                    "  CPU Time: {}μs\n",
+                    usage.cpu_time_us
+                ));
+                result.push_str(&format!(
+                    "  Network Requests: {}\n",
+                    usage.network_requests
+                ));
+                result.push_str(&format!(
+                    "  Disk Operations: {}\n",
+                    usage.disk_operations
+                ));
+            }
         }
 
         // Timestamp
@@ -249,7 +251,7 @@ impl ResponseFormatter {
         );
 
         if let Some(data) = &output.data {
-            json_output.insert("data".to_string(), data.clone());
+            json_output.insert("data".to_string(), Value::String(data.clone()));
         }
 
         if self.include_timestamps {
@@ -266,16 +268,19 @@ impl ResponseFormatter {
     /// Format error response
     pub fn format_error(&self, error: &CommandError) -> Result<String, ResponseError> {
         let output = CommandOutput {
-            success: false,
-            message: Arc::from(error.to_string()),
-            data: None,
+            execution_id: 0,
+            content: error.to_string(),
+            output_type: OutputType::Text,
+            timestamp_nanos: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos() as u64)
+                .unwrap_or(0),
+            is_final: true,
             execution_time: 0,
-            resource_usage: ResourceUsage {
-                memory_bytes: 0,
-                cpu_time_us: 0,
-                network_requests: 0,
-                disk_operations: 0,
-            },
+            success: false,
+            message: error.to_string(),
+            data: None,
+            resource_usage: None,
         };
 
         self.format_output(&output)
@@ -298,7 +303,7 @@ impl ResponseFormatter {
         let mut categories: HashMap<Arc<str>, Vec<&CommandInfo>> = HashMap::new();
         for command in commands {
             categories
-                .entry(command.category.clone())
+                .entry(Arc::from(command.category.as_str()))
                 .or_insert_with(Vec::new)
                 .push(command);
         }

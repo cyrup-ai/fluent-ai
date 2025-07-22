@@ -9,7 +9,7 @@ use std::sync::Arc;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-use super::types::*;
+use super::types::ImmutableChatCommand;
 
 /// Command validator with comprehensive validation rules
 #[derive(Debug, Clone)]
@@ -59,19 +59,19 @@ impl CommandValidator {
     }
 
     /// Validate a command with comprehensive checks
-    pub fn validate_command(&self, command: &ChatCommand) -> Result<(), ValidationError> {
+    pub fn validate_command(&self, command: &ImmutableChatCommand) -> Result<(), ValidationError> {
         match command {
-            ChatCommand::Help { command, .. } => {
+            ImmutableChatCommand::Help { command, .. } => {
                 if let Some(cmd) = command {
                     self.validate_string_parameter("command", cmd, false)?;
                 }
             }
-            ChatCommand::Clear { keep_last, .. } => {
+            ImmutableChatCommand::Clear { keep_last, .. } => {
                 if let Some(n) = keep_last {
                     self.validate_integer_parameter("keep_last", *n as i64, Some(1), Some(1000))?;
                 }
             }
-            ChatCommand::Export { format, output, .. } => {
+            ImmutableChatCommand::Export { format, output, .. } => {
                 self.validate_enum_parameter(
                     "format",
                     format,
@@ -81,7 +81,7 @@ impl CommandValidator {
                     self.validate_path_parameter("output", path)?;
                 }
             }
-            ChatCommand::Config { key, value, .. } => {
+            ImmutableChatCommand::Config { key, value, .. } => {
                 if let Some(k) = key {
                     self.validate_config_key(k)?;
                 }
@@ -89,13 +89,13 @@ impl CommandValidator {
                     self.validate_config_value(v)?;
                 }
             }
-            ChatCommand::Search { query, limit, .. } => {
+            ImmutableChatCommand::Search { query, limit, .. } => {
                 self.validate_string_parameter("query", query, false)?;
                 if let Some(n) = limit {
                     self.validate_integer_parameter("limit", *n as i64, Some(1), Some(100))?;
                 }
             }
-            ChatCommand::Template {
+            ImmutableChatCommand::Template {
                 name,
                 content,
                 variables,
@@ -109,12 +109,12 @@ impl CommandValidator {
                 }
                 self.validate_variables(variables)?;
             }
-            ChatCommand::Macro { name, .. } => {
+            ImmutableChatCommand::Macro { name, .. } => {
                 if let Some(n) = name {
                     self.validate_name_parameter("name", n)?;
                 }
             }
-            ChatCommand::Branch { name, source, .. } => {
+            ImmutableChatCommand::Branch { name, source, .. } => {
                 if let Some(n) = name {
                     self.validate_name_parameter("name", n)?;
                 }
@@ -122,23 +122,23 @@ impl CommandValidator {
                     self.validate_name_parameter("source", s)?;
                 }
             }
-            ChatCommand::Session { name, .. } => {
+            ImmutableChatCommand::Session { name, .. } => {
                 if let Some(n) = name {
                     self.validate_name_parameter("name", n)?;
                 }
             }
-            ChatCommand::Tool { name, args, .. } => {
+            ImmutableChatCommand::Tool { name, args, .. } => {
                 if let Some(n) = name {
                     self.validate_name_parameter("name", n)?;
                 }
                 self.validate_tool_args(args)?;
             }
-            ChatCommand::Stats { period, .. } => {
+            ImmutableChatCommand::Stats { period, .. } => {
                 if let Some(p) = period {
                     self.validate_enum_parameter("period", p, &["day", "week", "month", "all"])?;
                 }
             }
-            ChatCommand::Theme {
+            ImmutableChatCommand::Theme {
                 name, properties, ..
             } => {
                 if let Some(n) = name {
@@ -146,7 +146,7 @@ impl CommandValidator {
                 }
                 self.validate_theme_properties(properties)?;
             }
-            ChatCommand::Debug { level, .. } => {
+            ImmutableChatCommand::Debug { level, .. } => {
                 if let Some(l) = level {
                     self.validate_enum_parameter(
                         "level",
@@ -155,7 +155,7 @@ impl CommandValidator {
                     )?;
                 }
             }
-            ChatCommand::History { limit, filter, .. } => {
+            ImmutableChatCommand::History { limit, filter, .. } => {
                 if let Some(n) = limit {
                     self.validate_integer_parameter("limit", *n as i64, Some(1), Some(10000))?;
                 }
@@ -163,7 +163,7 @@ impl CommandValidator {
                     self.validate_string_parameter("filter", f, false)?;
                 }
             }
-            ChatCommand::Save { name, location, .. } => {
+            ImmutableChatCommand::Save { name, location, .. } => {
                 if let Some(n) = name {
                     self.validate_name_parameter("name", n)?;
                 }
@@ -171,21 +171,21 @@ impl CommandValidator {
                     self.validate_path_parameter("location", l)?;
                 }
             }
-            ChatCommand::Load { name, location, .. } => {
+            ImmutableChatCommand::Load { name, location, .. } => {
                 self.validate_name_parameter("name", name)?;
                 if let Some(l) = location {
                     self.validate_path_parameter("location", l)?;
                 }
             }
-            ChatCommand::Import { source, .. } => {
+            ImmutableChatCommand::Import { source, .. } => {
                 self.validate_path_parameter("source", source)?;
             }
-            ChatCommand::Settings { key, .. } => {
+            ImmutableChatCommand::Settings { key, .. } => {
                 if let Some(k) = key {
                     self.validate_string_parameter("key", k, false)?;
                 }
             }
-            ChatCommand::Custom { name, .. } => {
+            ImmutableChatCommand::Custom { name, .. } => {
                 self.validate_string_parameter("name", name, false)?;
             }
         }
@@ -529,7 +529,7 @@ pub fn get_global_validator() -> &'static CommandValidator {
 }
 
 /// Validate command using global validator
-pub fn validate_global_command(command: &ChatCommand) -> Result<(), ValidationError> {
+pub fn validate_global_command(command: &ImmutableChatCommand) -> Result<(), ValidationError> {
     get_global_validator().validate_command(command)
 }
 

@@ -30,14 +30,6 @@
 //! - **Lock-Free**: Atomic operations for concurrent access
 //! - **Cache-Friendly**: Aligned data structures, hot/cold separation
 
-use crate::error::{CandleError, CandleResult as Result};
-use arrayvec::{ArrayString, ArrayVec};
-use candle_core::{DType, Device, Result as CandleCoreResult, Shape, Tensor};
-use candle_nn::{Init, VarBuilder};
-use crossbeam_skiplist::SkipMap;
-use safetensors::SafeTensors;
-use memmap2::Mmap;
-use smallvec::SmallVec;
 use std::{
     collections::HashMap,
     mem::MaybeUninit,
@@ -48,6 +40,16 @@ use std::{
     },
     time::{Duration, Instant},
 };
+
+use arrayvec::{ArrayString, ArrayVec};
+use candle_core::{DType, Device, Result as CandleCoreResult, Shape, Tensor};
+use candle_nn::{Init, VarBuilder};
+use crossbeam_skiplist::SkipMap;
+use memmap2::Mmap;
+use safetensors::SafeTensors;
+use smallvec::SmallVec;
+
+use crate::error::{CandleError, CandleResult as Result};
 
 /// Maximum tensor name length for stack allocation
 const MAX_TENSOR_NAME_LEN: usize = 256;
@@ -117,31 +119,31 @@ struct TensorMetadata {
 pub struct CandleVarBuilder<'a> {
     /// Core Candle VarBuilder (wrapped for safety)
     inner: VarBuilder<'a>,
-    
+
     /// Model metadata (stack allocated)
     metadata: ModelMetadata,
-    
+
     /// Configuration (stack allocated)
     config: VarBuilderConfig,
-    
+
     /// Loading statistics (atomic)
     stats: LoadingStats,
-    
+
     /// Initialization timestamp
     created_at_nanos: u64,
-    
+
     /// Safetensors data (memory-mapped or loaded)
     safetensors_data: Option<Arc<SafeTensors<'static>>>,
-    
+
     /// Memory-mapped file handle
     mmap: Option<Arc<Mmap>>,
-    
+
     /// Tensor metadata cache
     tensor_metadata: HashMap<String, TensorMetadata>,
-    
+
     /// Loaded tensor cache (lock-free)
     tensor_cache: SkipMap<String, Arc<Tensor>>,
-    
+
     /// File path for reloading
     file_path: Option<PathBuf>,
 }
@@ -155,16 +157,16 @@ pub struct CandleVarBuilder<'a> {
 pub struct VarBuilderConfig {
     /// Device for tensor loading
     device: Device,
-    
+
     /// Default data type
     dtype: DType,
-    
+
     /// Maximum file size for memory mapping (bytes)
     max_mmap_size: u64,
-    
+
     /// Tensor name prefix for scoping
     tensor_prefix: Option<String>,
-    
+
     /// Configuration flags (bit-packed)
     /// Bit 0: use_memory_mapping
     /// Bit 1: validate_tensors
@@ -189,152 +191,152 @@ impl VarBuilderConfig {
             flags: 0b1111111, // Enable all optimizations by default
         }
     }
-    
+
     /// Set device for tensor loading
     #[inline(always)]
     pub fn with_device(mut self, device: Device) -> Self {
         self.device = device;
         self
     }
-    
+
     /// Set default data type
     #[inline(always)]
     pub const fn with_dtype(mut self, dtype: DType) -> Self {
         self.dtype = dtype;
         self
     }
-    
+
     /// Set maximum memory mapping size
     #[inline(always)]
     pub const fn with_max_mmap_size(mut self, size: u64) -> Self {
         self.max_mmap_size = size;
         self
     }
-    
+
     /// Enable memory mapping
     #[inline(always)]
     pub const fn enable_memory_mapping(mut self) -> Self {
         self.flags |= 1;
         self
     }
-    
+
     /// Disable memory mapping
     #[inline(always)]
     pub const fn disable_memory_mapping(mut self) -> Self {
         self.flags &= !1;
         self
     }
-    
+
     /// Enable tensor validation
     #[inline(always)]
     pub const fn enable_validation(mut self) -> Self {
         self.flags |= 2;
         self
     }
-    
+
     /// Enable shape caching
     #[inline(always)]
     pub const fn enable_shape_caching(mut self) -> Self {
         self.flags |= 4;
         self
     }
-    
+
     /// Enable lazy loading
     #[inline(always)]
     pub const fn enable_lazy_loading(mut self) -> Self {
         self.flags |= 8;
         self
     }
-    
+
     /// Enable device placement optimization
     #[inline(always)]
     pub const fn enable_device_optimization(mut self) -> Self {
         self.flags |= 16;
         self
     }
-    
+
     /// Enable tensor fusion optimization
     #[inline(always)]
     pub const fn enable_tensor_fusion(mut self) -> Self {
         self.flags |= 32;
         self
     }
-    
+
     /// Enable tensor caching
     #[inline(always)]
     pub const fn enable_tensor_cache(mut self) -> Self {
         self.flags |= 64;
         self
     }
-    
+
     /// Disable tensor caching
     #[inline(always)]
     pub const fn disable_tensor_cache(mut self) -> Self {
         self.flags &= !64;
         self
     }
-    
+
     /// Set tensor name prefix
     #[inline(always)]
     pub fn with_tensor_prefix<S: Into<String>>(mut self, prefix: S) -> Self {
         self.tensor_prefix = Some(prefix.into());
         self
     }
-    
+
     /// Check if tensor caching is enabled
     #[inline(always)]
     pub const fn tensor_cache_enabled(&self) -> bool {
         (self.flags & 64) != 0
     }
-    
+
     /// Check if memory mapping is enabled
     #[inline(always)]
     pub const fn use_memory_mapping(&self) -> bool {
         (self.flags & 1) != 0
     }
-    
+
     /// Check if tensor validation is enabled
     #[inline(always)]
     pub const fn validate_tensors(&self) -> bool {
         (self.flags & 2) != 0
     }
-    
+
     /// Check if shape caching is enabled
     #[inline(always)]
     pub const fn cache_shapes(&self) -> bool {
         (self.flags & 4) != 0
     }
-    
+
     /// Check if lazy loading is enabled
     #[inline(always)]
     pub const fn lazy_loading(&self) -> bool {
         (self.flags & 8) != 0
     }
-    
+
     /// Check if device optimization is enabled
     #[inline(always)]
     pub const fn device_optimization(&self) -> bool {
         (self.flags & 16) != 0
     }
-    
+
     /// Check if tensor fusion is enabled
     #[inline(always)]
     pub const fn tensor_fusion(&self) -> bool {
         (self.flags & 32) != 0
     }
-    
+
     /// Get device reference
     #[inline(always)]
     pub const fn device(&self) -> &Device {
         &self.device
     }
-    
+
     /// Get data type
     #[inline(always)]
     pub const fn dtype(&self) -> DType {
         self.dtype
     }
-    
+
     /// Get maximum memory mapping size
     #[inline(always)]
     pub const fn max_mmap_size(&self) -> u64 {
@@ -358,19 +360,19 @@ impl Default for VarBuilderConfig {
 pub struct ModelMetadata {
     /// Model architecture name
     architecture: Option<ArrayString<64>>,
-    
+
     /// Total parameter count
     total_parameters: u64,
-    
+
     /// Model configuration entries (stack allocated)
     config_entries: ArrayVec<(ConfigKey, ConfigValue), MAX_CONFIG_ENTRIES>,
-    
+
     /// Tensor metadata entries (stack allocated)
     tensor_entries: ArrayVec<TensorEntry, MAX_TENSORS>,
-    
+
     /// Model creation timestamp
     created_at_nanos: u64,
-    
+
     /// Model hash for integrity checking
     model_hash: u64,
 }
@@ -388,7 +390,7 @@ impl ModelMetadata {
             model_hash: 0,
         }
     }
-    
+
     /// Get current high-precision timestamp
     #[inline(always)]
     fn current_time_nanos() -> u64 {
@@ -396,13 +398,13 @@ impl ModelMetadata {
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos() as u64)
     }
-    
+
     /// Set architecture name
     pub fn set_architecture(&mut self, arch: &str) -> Result<()> {
         if arch.len() > 64 {
             return Err(CandleError::ProcessingError("Architecture name too long"));
         }
-        
+
         let mut arch_string = ArrayString::new();
         if arch_string.try_push_str(arch).is_ok() {
             self.architecture = Some(arch_string);
@@ -411,42 +413,42 @@ impl ModelMetadata {
             Err(CandleError::ProcessingError("Failed to set architecture"))
         }
     }
-    
+
     /// Get architecture name
     #[inline(always)]
     pub fn architecture(&self) -> Option<&str> {
         self.architecture.as_ref().map(|s| s.as_str())
     }
-    
+
     /// Set total parameters
     #[inline(always)]
     pub fn set_total_parameters(&mut self, count: u64) {
         self.total_parameters = count;
     }
-    
+
     /// Get total parameters
     #[inline(always)]
     pub const fn total_parameters(&self) -> u64 {
         self.total_parameters
     }
-    
+
     /// Add configuration entry
     pub fn add_config_entry(&mut self, key: &str, value: &str) -> Result<()> {
         if self.config_entries.is_full() {
             return Err(CandleError::ProcessingError("Configuration entries full"));
         }
-        
+
         let mut config_key = ConfigKey::new();
         let mut config_value = ConfigValue::new();
-        
+
         if config_key.try_push_str(key).is_err() || config_value.try_push_str(value).is_err() {
             return Err(CandleError::ProcessingError("Configuration entry too long"));
         }
-        
+
         self.config_entries.push((config_key, config_value));
         Ok(())
     }
-    
+
     /// Get configuration value
     pub fn get_config_value(&self, key: &str) -> Option<&str> {
         self.config_entries
@@ -454,54 +456,54 @@ impl ModelMetadata {
             .find(|(k, _)| k.as_str() == key)
             .map(|(_, v)| v.as_str())
     }
-    
+
     /// Add tensor entry
     pub fn add_tensor_entry(&mut self, entry: TensorEntry) -> Result<()> {
         if self.tensor_entries.is_full() {
             return Err(CandleError::ProcessingError("Tensor entries full"));
         }
-        
+
         self.tensor_entries.push(entry);
         Ok(())
     }
-    
+
     /// Get tensor entry by name
     pub fn get_tensor_entry(&self, name: &str) -> Option<&TensorEntry> {
         self.tensor_entries
             .iter()
             .find(|entry| entry.name.as_str() == name)
     }
-    
+
     /// Get tensor count
     #[inline(always)]
     pub fn tensor_count(&self) -> usize {
         self.tensor_entries.len()
     }
-    
+
     /// Get configuration entry count
     #[inline(always)]
     pub fn config_count(&self) -> usize {
         self.config_entries.len()
     }
-    
+
     /// Get model hash
     #[inline(always)]
     pub const fn model_hash(&self) -> u64 {
         self.model_hash
     }
-    
+
     /// Set model hash
     #[inline(always)]
     pub fn set_model_hash(&mut self, hash: u64) {
         self.model_hash = hash;
     }
-    
+
     /// Get creation timestamp
     #[inline(always)]
     pub const fn created_at_nanos(&self) -> u64 {
         self.created_at_nanos
     }
-    
+
     /// Get model age in nanoseconds
     #[inline(always)]
     pub fn age_nanos(&self) -> u64 {
@@ -525,16 +527,16 @@ impl Default for ModelMetadata {
 pub struct TensorEntry {
     /// Tensor name (stack allocated)
     name: TensorName,
-    
+
     /// Tensor shape (stack allocated)
     shape: ArrayVec<usize, 8>, // Most tensors have <= 8 dimensions
-    
+
     /// Data type
     dtype: DType,
-    
+
     /// Size in bytes
     size_bytes: u64,
-    
+
     /// Tensor flags (bit-packed)
     /// Bit 0: is_parameter
     /// Bit 1: is_cached
@@ -542,7 +544,7 @@ pub struct TensorEntry {
     /// Bit 3: requires_grad
     /// Bits 4-31: Reserved
     flags: u32,
-    
+
     /// Device placement hint
     device_hint: DeviceHint,
 }
@@ -553,23 +555,25 @@ impl TensorEntry {
         if name.len() > MAX_TENSOR_NAME_LEN {
             return Err(CandleError::ProcessingError("Tensor name too long"));
         }
-        
+
         if shape.len() > 8 {
             return Err(CandleError::ProcessingError("Too many tensor dimensions"));
         }
-        
+
         let mut tensor_name = TensorName::new();
         if tensor_name.try_push_str(name).is_err() {
             return Err(CandleError::ProcessingError("Failed to create tensor name"));
         }
-        
+
         let mut tensor_shape = ArrayVec::new();
         for &dim in shape {
             if tensor_shape.try_push(dim).is_err() {
-                return Err(CandleError::ProcessingError("Failed to add shape dimension"));
+                return Err(CandleError::ProcessingError(
+                    "Failed to add shape dimension",
+                ));
             }
         }
-        
+
         Ok(Self {
             name: tensor_name,
             shape: tensor_shape,
@@ -579,37 +583,37 @@ impl TensorEntry {
             device_hint: DeviceHint::Auto,
         })
     }
-    
+
     /// Get tensor name
     #[inline(always)]
     pub fn name(&self) -> &str {
         self.name.as_str()
     }
-    
+
     /// Get tensor shape
     #[inline(always)]
     pub fn shape(&self) -> &[usize] {
         &self.shape
     }
-    
+
     /// Get data type
     #[inline(always)]
     pub const fn dtype(&self) -> DType {
         self.dtype
     }
-    
+
     /// Get size in bytes
     #[inline(always)]
     pub const fn size_bytes(&self) -> u64 {
         self.size_bytes
     }
-    
+
     /// Check if tensor is a parameter
     #[inline(always)]
     pub const fn is_parameter(&self) -> bool {
         (self.flags & 1) != 0
     }
-    
+
     /// Set parameter flag
     #[inline(always)]
     pub fn set_parameter(&mut self, is_param: bool) {
@@ -619,13 +623,13 @@ impl TensorEntry {
             self.flags &= !1;
         }
     }
-    
+
     /// Check if tensor is cached
     #[inline(always)]
     pub const fn is_cached(&self) -> bool {
         (self.flags & 2) != 0
     }
-    
+
     /// Set cached flag
     #[inline(always)]
     pub fn set_cached(&mut self, cached: bool) {
@@ -635,19 +639,19 @@ impl TensorEntry {
             self.flags &= !2;
         }
     }
-    
+
     /// Get device hint
     #[inline(always)]
     pub const fn device_hint(&self) -> DeviceHint {
         self.device_hint
     }
-    
+
     /// Set device hint
     #[inline(always)]
     pub fn set_device_hint(&mut self, hint: DeviceHint) {
         self.device_hint = hint;
     }
-    
+
     /// Calculate tensor element count
     #[inline(always)]
     pub fn element_count(&self) -> u64 {
@@ -674,25 +678,25 @@ pub enum DeviceHint {
 pub struct LoadingStats {
     /// Total tensors loaded
     total_tensors: AtomicUsize,
-    
+
     /// Total parameters loaded
     total_parameters: AtomicU64,
-    
+
     /// Total bytes loaded
     total_bytes: AtomicU64,
-    
+
     /// Loading start time
     start_time_nanos: u64,
-    
+
     /// Last loading activity
     last_activity_nanos: AtomicU64,
-    
+
     /// Error count
     error_count: AtomicUsize,
-    
+
     /// Cache hits
     cache_hits: AtomicUsize,
-    
+
     /// Cache misses
     cache_misses: AtomicUsize,
 }
@@ -713,7 +717,7 @@ impl LoadingStats {
             cache_misses: AtomicUsize::new(0),
         }
     }
-    
+
     /// Get current high-precision timestamp
     #[inline(always)]
     fn current_time_nanos() -> u64 {
@@ -721,72 +725,73 @@ impl LoadingStats {
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos() as u64)
     }
-    
+
     /// Record tensor loading
     #[inline(always)]
     pub fn record_tensor_load(&self, params: u64, bytes: u64) {
         self.total_tensors.fetch_add(1, Ordering::Relaxed);
         self.total_parameters.fetch_add(params, Ordering::Relaxed);
         self.total_bytes.fetch_add(bytes, Ordering::Relaxed);
-        self.last_activity_nanos.store(Self::current_time_nanos(), Ordering::Relaxed);
+        self.last_activity_nanos
+            .store(Self::current_time_nanos(), Ordering::Relaxed);
     }
-    
+
     /// Record error
     #[inline(always)]
     pub fn record_error(&self) {
         self.error_count.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Record cache hit
     #[inline(always)]
     pub fn record_cache_hit(&self) {
         self.cache_hits.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Record cache miss
     #[inline(always)]
     pub fn record_cache_miss(&self) {
         self.cache_misses.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Get total tensors loaded
     #[inline(always)]
     pub fn total_tensors(&self) -> usize {
         self.total_tensors.load(Ordering::Relaxed)
     }
-    
+
     /// Get total parameters loaded
     #[inline(always)]
     pub fn total_parameters(&self) -> u64 {
         self.total_parameters.load(Ordering::Relaxed)
     }
-    
+
     /// Get total bytes loaded
     #[inline(always)]
     pub fn total_bytes(&self) -> u64 {
         self.total_bytes.load(Ordering::Relaxed)
     }
-    
+
     /// Get error count
     #[inline(always)]
     pub fn error_count(&self) -> usize {
         self.error_count.load(Ordering::Relaxed)
     }
-    
+
     /// Get cache hit ratio
     #[inline(always)]
     pub fn cache_hit_ratio(&self) -> f64 {
         let hits = self.cache_hits.load(Ordering::Relaxed);
         let misses = self.cache_misses.load(Ordering::Relaxed);
         let total = hits + misses;
-        
+
         if total > 0 {
             hits as f64 / total as f64
         } else {
             0.0
         }
     }
-    
+
     /// Get loading throughput (tensors per second)
     #[inline(always)]
     pub fn tensors_per_second(&self) -> f64 {
@@ -797,7 +802,7 @@ impl LoadingStats {
             0.0
         }
     }
-    
+
     /// Get loading throughput (bytes per second)
     #[inline(always)]
     pub fn bytes_per_second(&self) -> f64 {
@@ -808,7 +813,7 @@ impl LoadingStats {
             0.0
         }
     }
-    
+
     /// Get uptime in nanoseconds
     #[inline(always)]
     pub fn uptime_nanos(&self) -> u64 {
@@ -841,14 +846,16 @@ impl<'a> CandleVarBuilder<'a> {
     }
 
     /// Create tensor metadata from a tensor map
-    fn create_tensor_metadata(tensors: &HashMap<String, Tensor>) -> HashMap<String, TensorMetadata> {
+    fn create_tensor_metadata(
+        tensors: &HashMap<String, Tensor>,
+    ) -> HashMap<String, TensorMetadata> {
         let mut metadata = HashMap::with_capacity(tensors.len());
-        
+
         for (name, tensor) in tensors {
             let shape = tensor.dims().to_vec();
             let dtype = tensor.dtype();
             let num_bytes = dtype.size_in_bytes() * tensor.shape().elem_count();
-            
+
             metadata.insert(
                 name.clone(),
                 TensorMetadata {
@@ -861,7 +868,7 @@ impl<'a> CandleVarBuilder<'a> {
                 },
             );
         }
-        
+
         metadata
     }
     /// Create VarBuilder from SafeTensors with memory mapping (safe version)
@@ -875,7 +882,11 @@ impl<'a> CandleVarBuilder<'a> {
 
         let path = &paths[0]; // For now, handle single file
         let file = std::fs::File::open(path).map_err(|e| {
-            CandleError::Io(format!("Failed to open file {}: {}", path.as_ref().display(), e))
+            CandleError::Io(format!(
+                "Failed to open file {}: {}",
+                path.as_ref().display(),
+                e
+            ))
         })?;
 
         // SAFETY: We hold the file handle and mmap for the lifetime of the builder
@@ -898,7 +909,8 @@ impl<'a> CandleVarBuilder<'a> {
                     shape: tensor_info.shape().to_vec(),
                     dtype: tensor_info.dtype(),
                     offset: tensor_info.data_offsets().start,
-                    length: (tensor_info.data_offsets().end - tensor_info.data_offsets().start) as u64,
+                    length: (tensor_info.data_offsets().end - tensor_info.data_offsets().start)
+                        as u64,
                     strategy: if config.use_memory_mapping() {
                         TensorLoadStrategy::MemoryMapped
                     } else {
@@ -910,7 +922,8 @@ impl<'a> CandleVarBuilder<'a> {
 
         // Create inner VarBuilder
         let inner = VarBuilder::from_tensors(
-            safetensors_arc.tensors()
+            safetensors_arc
+                .tensors()
                 .map(|(name, _)| (name.to_string(), safetensors_arc.tensor(name).unwrap()))
                 .collect(),
             config.dtype,
@@ -925,10 +938,10 @@ impl<'a> CandleVarBuilder<'a> {
 
         // Populate metadata
         builder.populate_metadata_safe(&builder.inner, &mut builder.metadata)?;
-        
+
         Ok(builder)
     }
-    
+
     /// Create VarBuilder from tensor map
     pub fn from_tensors(
         tensors: std::collections::HashMap<String, Tensor>,
@@ -936,29 +949,26 @@ impl<'a> CandleVarBuilder<'a> {
     ) -> Result<Self> {
         let inner = VarBuilder::from_tensors(tensors.clone(), config.dtype, &config.device)?;
         let tensor_metadata = Self::create_tensor_metadata(&tensors);
-        
+
         let mut builder = Self::new_internal(inner, config);
         builder.tensor_metadata = Arc::new(tensor_metadata);
-        
+
         // Populate metadata from tensors
         builder.populate_metadata_from_tensors(&tensors, &mut builder.metadata)?;
-        
+
         Ok(builder)
     }
-    
+
     /// Create VarBuilder from VarMap
-    pub fn from_varmap(
-        varmap: &candle_nn::VarMap,
-        config: VarBuilderConfig,
-    ) -> Self {
+    pub fn from_varmap(varmap: &candle_nn::VarMap, config: VarBuilderConfig) -> Self {
         let inner = VarBuilder::from_varmap(varmap, config.dtype, &config.device);
         Self::new_internal(inner, config)
     }
-    
+
     /// Get tensor with shape validation and device optimization
     pub fn get<S: Into<Shape>>(&self, shape: S, name: &str) -> Result<Tensor> {
         let shape = shape.into();
-        
+
         // Validate tensor existence if enabled
         if self.config.validate_tensors() {
             if !self.contains_tensor(name) {
@@ -966,40 +976,36 @@ impl<'a> CandleVarBuilder<'a> {
                 return Err(CandleError::ProcessingError(ERR_TENSOR_NOT_FOUND));
             }
         }
-        
+
         // Record cache statistics
         if self.metadata.get_tensor_entry(name).is_some() {
             self.stats.record_cache_hit();
         } else {
             self.stats.record_cache_miss();
         }
-        
+
         // Load tensor with error handling
-        let tensor = self.inner
-            .get(shape, name)
-            .map_err(|_| {
-                self.stats.record_error();
-                CandleError::ProcessingError(ERR_TENSOR_NOT_FOUND)
-            })?;
-        
+        let tensor = self.inner.get(shape, name).map_err(|_| {
+            self.stats.record_error();
+            CandleError::ProcessingError(ERR_TENSOR_NOT_FOUND)
+        })?;
+
         // Apply device optimization if enabled
         let optimized_tensor = if self.config.device_optimization() {
             self.optimize_tensor_placement(tensor, name)?
         } else {
             tensor
         };
-        
+
         // Record successful loading
         if let Some(entry) = self.metadata.get_tensor_entry(name) {
-            self.stats.record_tensor_load(
-                entry.element_count(),
-                entry.size_bytes(),
-            );
+            self.stats
+                .record_tensor_load(entry.element_count(), entry.size_bytes());
         }
-        
+
         Ok(optimized_tensor)
     }
-    
+
     /// Get tensor with initialization hints
     pub fn get_with_hints<S: Into<Shape>>(
         &self,
@@ -1008,151 +1014,167 @@ impl<'a> CandleVarBuilder<'a> {
         hints: Init,
     ) -> Result<Tensor> {
         let shape = shape.into();
-        
-        let tensor = self.inner
-            .get_with_hints(shape, name, hints)
-            .map_err(|_| {
-                self.stats.record_error();
-                CandleError::ProcessingError(ERR_TENSOR_NOT_FOUND)
-            })?;
-        
+
+        let tensor = self.inner.get_with_hints(shape, name, hints).map_err(|_| {
+            self.stats.record_error();
+            CandleError::ProcessingError(ERR_TENSOR_NOT_FOUND)
+        })?;
+
         // Apply optimizations
         let optimized_tensor = if self.config.device_optimization() {
             self.optimize_tensor_placement(tensor, name)?
         } else {
             tensor
         };
-        
+
         Ok(optimized_tensor)
     }
-    
+
     /// Check if tensor exists
     #[inline(always)]
     pub fn contains_tensor(&self, name: &str) -> bool {
         self.inner.contains_tensor(name)
     }
-    
+
     /// Get all tensor names (zero allocation)
     pub fn tensor_names(&self) -> ArrayVec<&str, MAX_TENSORS> {
         let mut names = ArrayVec::new();
-        
+
         for entry in &self.metadata.tensor_entries {
             if names.try_push(entry.name()).is_err() {
                 break; // Array full
             }
         }
-        
+
         names
     }
-    
+
     /// Push prefix for hierarchical access
     pub fn pp<S: ToString>(&self, prefix: S) -> CandleVarBuilder<'a> {
         let inner = self.inner.pp(prefix);
-        
+
         Self {
             inner,
             metadata: self.metadata.clone(),
             config: self.config.clone(),
             stats: LoadingStats::new(), // New stats for sub-builder
             created_at_nanos: LoadingStats::current_time_nanos(),
+            safetensors_data: self.safetensors_data.clone(),
+            mmap: self.mmap.clone(),
+            tensor_metadata: self.tensor_metadata.clone(),
+            tensor_cache: SkipMap::new(),
+            file_path: self.file_path.clone(),
         }
     }
-    
+
     /// Get device reference
     #[inline(always)]
     pub fn device(&self) -> &Device {
         self.inner.device()
     }
-    
+
     /// Get data type
     #[inline(always)]
     pub fn dtype(&self) -> DType {
         self.inner.dtype()
     }
-    
+
     /// Create variant with different data type
     pub fn to_dtype(&self, dtype: DType) -> CandleVarBuilder<'a> {
         let inner = self.inner.to_dtype(dtype);
         let mut config = self.config.clone();
         config.dtype = dtype;
-        
+
         Self {
             inner,
             metadata: self.metadata.clone(),
             config,
             stats: LoadingStats::new(), // New stats for dtype variant
             created_at_nanos: LoadingStats::current_time_nanos(),
+            safetensors_data: self.safetensors_data.clone(),
+            mmap: self.mmap.clone(),
+            tensor_metadata: self.tensor_metadata.clone(),
+            tensor_cache: SkipMap::new(),
+            file_path: self.file_path.clone(),
         }
     }
-    
+
     /// Get model metadata
     #[inline(always)]
     pub const fn metadata(&self) -> &ModelMetadata {
         &self.metadata
     }
-    
+
     /// Get configuration
     #[inline(always)]
     pub const fn config(&self) -> &VarBuilderConfig {
         &self.config
     }
-    
+
     /// Get loading statistics
     #[inline(always)]
     pub const fn stats(&self) -> &LoadingStats {
         &self.stats
     }
-    
+
     /// Get creation timestamp
     #[inline(always)]
     pub const fn created_at_nanos(&self) -> u64 {
         self.created_at_nanos
     }
-    
+
     /// Get age since creation
     #[inline(always)]
     pub fn age_nanos(&self) -> u64 {
         LoadingStats::current_time_nanos().saturating_sub(self.created_at_nanos)
     }
-    
+
     /// Populate metadata using safe operations only
-    fn populate_metadata_safe(
-        inner: &VarBuilder<'a>,
-        metadata: &mut ModelMetadata,
-    ) -> Result<()> {
-        // Since we can't directly access tensor information from VarBuilder,
-        // we'll create minimal metadata for now
-        metadata.set_architecture("unknown")?;
+    fn populate_metadata_safe(inner: &VarBuilder<'a>, metadata: &mut ModelMetadata) -> Result<()> {
+        // Extract metadata from VarBuilder's device and dtype information
+        let device_info = format!("{:?}", inner.device());
+        let dtype_info = format!("{:?}", inner.dtype());
+
+        // Set architecture based on device and dtype
+        let architecture = format!(
+            "candle-{}-{}",
+            device_info.to_lowercase(),
+            dtype_info.to_lowercase()
+        );
+        metadata.set_architecture(&architecture)?;
+
+        // For now, set parameters to 0 since we can't easily count from VarBuilder
+        // In a full implementation, this would traverse the variable map
         metadata.set_total_parameters(0);
-        
+
         Ok(())
     }
-    
+
     /// Populate metadata from tensor HashMap
     fn populate_metadata_from_tensors(
         tensors: &std::collections::HashMap<String, Tensor>,
         metadata: &mut ModelMetadata,
     ) -> Result<()> {
         let mut total_params = 0u64;
-        
+
         for (name, tensor) in tensors {
             let shape = tensor.shape().dims().to_vec();
             let dtype = tensor.dtype();
             let element_count = tensor.elem_count() as u64;
             let size_bytes = element_count * dtype.size_in_bytes() as u64;
-            
+
             total_params += element_count;
-            
+
             let mut entry = TensorEntry::new(name, &shape, dtype, size_bytes)?;
             entry.set_parameter(!name.contains("buffer"));
-            
+
             metadata.add_tensor_entry(entry)?;
         }
-        
+
         metadata.set_total_parameters(total_params);
         Ok(())
     }
-    
+
     /// Optimize tensor placement based on device hints
     fn optimize_tensor_placement(&self, tensor: Tensor, name: &str) -> Result<Tensor> {
         // For now, return tensor as-is
@@ -1169,44 +1191,45 @@ pub struct VarBuilderConfigBuilder {
 impl VarBuilderConfigBuilder {
     /// Create new configuration builder
     #[inline(always)]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             config: VarBuilderConfig::new(),
         }
     }
-    
+
     /// Set device
     #[inline(always)]
     pub fn device(mut self, device: Device) -> Self {
         self.config = self.config.with_device(device);
         self
     }
-    
+
     /// Set data type
     #[inline(always)]
     pub fn dtype(mut self, dtype: DType) -> Self {
         self.config = self.config.with_dtype(dtype);
         self
     }
-    
+
     /// Enable memory mapping
     #[inline(always)]
     pub fn enable_memory_mapping(mut self) -> Self {
         self.config = self.config.enable_memory_mapping();
         self
     }
-    
+
     /// Enable validation
     #[inline(always)]
     pub fn enable_validation(mut self) -> Self {
         self.config = self.config.enable_validation();
         self
     }
-    
+
     /// Enable all optimizations
     #[inline(always)]
     pub fn enable_all_optimizations(mut self) -> Self {
-        self.config = self.config
+        self.config = self
+            .config
             .enable_memory_mapping()
             .enable_validation()
             .enable_shape_caching()
@@ -1215,7 +1238,7 @@ impl VarBuilderConfigBuilder {
             .enable_tensor_fusion();
         self
     }
-    
+
     /// Build configuration
     #[inline(always)]
     pub fn build(self) -> VarBuilderConfig {
@@ -1233,7 +1256,7 @@ impl Default for VarBuilderConfigBuilder {
 /// Utility functions for VarBuilder operations
 pub mod utils {
     use super::*;
-    
+
     /// Create configuration optimized for inference
     #[inline(always)]
     pub fn inference_config(device: Device) -> VarBuilderConfig {
@@ -1243,7 +1266,7 @@ pub mod utils {
             .enable_all_optimizations()
             .build()
     }
-    
+
     /// Create configuration optimized for training
     #[inline(always)]
     pub fn training_config(device: Device) -> VarBuilderConfig {
@@ -1253,40 +1276,41 @@ pub mod utils {
             .enable_validation()
             .build()
     }
-    
+
     /// Estimate memory usage from metadata
     #[inline(always)]
     pub fn estimate_memory_usage(metadata: &ModelMetadata) -> u64 {
-        metadata.tensor_entries
+        metadata
+            .tensor_entries
             .iter()
             .map(|entry| entry.size_bytes())
             .sum()
     }
-    
+
     /// Get parameter count in millions
     #[inline(always)]
     pub fn parameters_millions(metadata: &ModelMetadata) -> f64 {
         metadata.total_parameters() as f64 / 1_000_000.0
     }
-    
+
     /// Get parameter count in billions  
     #[inline(always)]
     pub fn parameters_billions(metadata: &ModelMetadata) -> f64 {
         parameters_millions(metadata) / 1000.0
     }
-    
+
     /// Get memory usage in MB
     #[inline(always)]
     pub fn memory_usage_mb(metadata: &ModelMetadata) -> f64 {
         estimate_memory_usage(metadata) as f64 / (1024.0 * 1024.0)
     }
-    
+
     /// Get memory usage in GB
     #[inline(always)]
     pub fn memory_usage_gb(metadata: &ModelMetadata) -> f64 {
         memory_usage_mb(metadata) / 1024.0
     }
-    
+
     /// Validate architecture compatibility
     pub fn validate_architecture(metadata: &ModelMetadata, expected: &str) -> Result<()> {
         match metadata.architecture() {
@@ -1298,7 +1322,7 @@ pub mod utils {
             }
         }
     }
-    
+
     /// Create summary statistics
     pub fn create_summary(metadata: &ModelMetadata, stats: &LoadingStats) -> ModelSummary {
         ModelSummary {

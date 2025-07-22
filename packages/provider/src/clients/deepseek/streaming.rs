@@ -4,14 +4,14 @@
 // DeepSeek streaming implementation using HTTP3 client (OpenAI-compatible SSE format)
 // ============================================================================
 
+use fluent_ai_domain::completion::CompletionCoreError;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
-use futures::StreamExt;
+use futures_util::StreamExt;
+// Note: runtime module doesn't exist - using tokio equivalents
+use tokio::{self as runtime, task::JoinHandle as AsyncTask};
 
 // Re-export OpenAI streaming response type since DeepSeek uses the same format
 pub use crate::clients::openai::StreamingCompletionResponse;
-use fluent_ai_domain::completion::CompletionCoreError;
-// Note: runtime module doesn't exist - using tokio equivalents
-use tokio::{self as runtime, task::JoinHandle as AsyncTask};
 
 /// Send a streaming request to DeepSeek using HTTP3 client and return an AsyncStream
 pub fn send_deepseek_streaming_request(

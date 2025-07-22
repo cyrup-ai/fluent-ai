@@ -11,14 +11,13 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use arrayvec::ArrayVec;
+// Removed unused import: use fluent_ai_async::AsyncStream;
 use smallvec::SmallVec;
 use thiserror::Error;
 use tokio_stream::Stream;
 
-use crate::async_task::AsyncStream;
-
 use super::types::ModelParams;
-use super::{CompletionRequest, CompletionResponse, StreamingResponse};
+// Removed unused imports: use super::{CompletionRequest, CompletionResponse, StreamingResponse};
 
 /// Maximum prompt size in bytes (4KB stack allocation)
 pub const MAX_PROMPT_SIZE: usize = 4096;
@@ -220,15 +219,15 @@ impl<'a> CompletionCoreRequestBuilder<'a> {
     #[inline(always)]
     pub fn build(self) -> CompletionCoreResult<CompletionCoreRequest<'a>> {
         if self.prompt.is_empty() {
-            return Err(CompletionCoreError::InvalidRequest(
-                String::from("prompt cannot be empty"),
-            ));
+            return Err(CompletionCoreError::InvalidRequest(String::from(
+                "prompt cannot be empty",
+            )));
         }
 
         if self.max_tokens == 0 {
-            return Err(CompletionCoreError::InvalidRequest(
-                String::from("max_tokens must be > 0"),
-            ));
+            return Err(CompletionCoreError::InvalidRequest(String::from(
+                "max_tokens must be > 0",
+            )));
         }
 
         Ok(CompletionCoreRequest {
@@ -401,9 +400,9 @@ impl CompletionCoreResponseBuilder {
     #[inline(always)]
     pub fn build(self) -> CompletionCoreResult<CompletionCoreResponse> {
         if self.text.is_empty() {
-            return Err(CompletionCoreError::Internal(
-                String::from("response text cannot be empty"),
-            ));
+            return Err(CompletionCoreError::Internal(String::from(
+                "response text cannot be empty",
+            )));
         }
 
         Ok(CompletionCoreResponse {
@@ -416,8 +415,6 @@ impl CompletionCoreResponseBuilder {
         })
     }
 }
-
-
 
 /// Streaming response wrapper
 pub struct StreamingCoreResponse {
@@ -445,12 +442,13 @@ impl StreamingCoreResponse {
 impl Stream for StreamingCoreResponse {
     type Item = CompletionCoreResult<CompletionCoreResponse>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+    fn poll_next(
+        mut self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
         self.stream.as_mut().poll_next(cx)
     }
 }
-
-
 
 /// Zero-cost wrapper for stack-allocated collections
 #[inline(always)]

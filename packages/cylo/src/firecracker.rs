@@ -242,10 +242,11 @@ impl FirecrackerVM {
 
             // Clean up socket file
             if socket.exists()
-                && let Err(e) = fs::remove_file(socket) {
-                    warn!("Failed to remove socket file: {}", e);
-                    // Continue anyway
-                }
+                && let Err(e) = fs::remove_file(socket)
+            {
+                warn!("Failed to remove socket file: {}", e);
+                // Continue anyway
+            }
         }
 
         info!("Firecracker VM stopped successfully");

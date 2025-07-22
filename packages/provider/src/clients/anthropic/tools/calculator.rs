@@ -8,11 +8,10 @@ use std::{
     f64::consts::{E, PI, TAU},
 };
 
-use serde_json::{json, Value};
-
-use fluent_ai_core::channel::async_stream_channel;
-use fluent_ai_core::stream::AsyncStream;
+use fluent_ai_async::AsyncStream;
+use fluent_ai_async::channel;
 use fluent_ai_domain::tool::Tool;
+use serde_json::{Value, json};
 
 use super::{
     core::{AnthropicError, AnthropicResult},
@@ -28,7 +27,7 @@ impl ToolExecutor for CalculatorTool {
         input: Value,
         _context: &ToolExecutionContext,
     ) -> AsyncStream<AnthropicResult<Value>> {
-        let (tx, stream) = async_stream_channel();
+        let (tx, stream) = channel();
         tokio::spawn(async move {
             let result = async {
                 let expression = input

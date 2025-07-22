@@ -69,7 +69,7 @@ impl GeminiStreamProcessor {
             .header("Accept", "text/event-stream")
             .header("Cache-Control", "no-cache");
 
-        // Send request and get response - use tokio runtime internally for HTTP3 
+        // Send request and get response - use tokio runtime internally for HTTP3
         let response = {
             let rt = tokio::runtime::Handle::current();
             rt.block_on(async {
@@ -115,7 +115,7 @@ impl GeminiStreamProcessor {
         response: HttpResponse,
     ) -> GeminiResult<crate::AsyncStream<Result<CompletionChunk, CompletionError>>> {
         // Create high-throughput channel for chunks using the crate's async stream system
-        let (chunk_sender, chunk_receiver) = crate::async_stream_channel();
+        let (chunk_sender, chunk_receiver) = crate::channel();
 
         // Get SSE events from HTTP3 response - direct Vec<SseEvent> (no futures)
         let sse_events = response.sse();
@@ -195,7 +195,7 @@ pub struct StreamingResponse<S> {
 
 impl<S> StreamingResponse<S>
 where
-    S: futures::Stream<Item = Result<CompletionChunk, CompletionError>>,
+    S: futures_util::Stream<Item = Result<CompletionChunk, CompletionError>>,
 {
     /// Create new streaming response with metrics
     #[inline(always)]
@@ -226,9 +226,9 @@ where
     }
 }
 
-impl<S> futures::Stream for StreamingResponse<S>
+impl<S> futures_util::Stream for StreamingResponse<S>
 where
-    S: futures::Stream<Item = Result<CompletionChunk, CompletionError>> + Unpin,
+    S: futures_util::Stream<Item = Result<CompletionChunk, CompletionError>> + Unpin,
 {
     type Item = Result<CompletionChunk, CompletionError>;
 

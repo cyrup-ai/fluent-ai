@@ -2,10 +2,11 @@
 //!
 //! Contains the fundamental traits and interfaces for completion functionality.
 
+use fluent_ai_async::AsyncStream;
+
 use super::request::CompletionRequest;
 use super::response::CompletionResponse;
 use super::types::CompletionParams;
-use crate::async_task::AsyncStream;
 use crate::context::chunk::CompletionChunk;
 use crate::prompt::Prompt;
 
@@ -34,5 +35,5 @@ pub trait CompletionBackend: Send + Sync + 'static {
     fn submit_completion<'a>(
         &'a self,
         request: CompletionRequest<'a>,
-    ) -> crate::async_task::AsyncTask<CompletionResponse<'a>>;
+    ) -> fluent_ai_async::AsyncTask<CompletionResponse<'a>>;
 }

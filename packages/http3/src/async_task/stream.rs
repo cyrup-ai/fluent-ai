@@ -1,4 +1,3 @@
-//!
 //! ⚠️  DO NOT IMPORT FROM cyrup-agent - IT WILL BE DELETED! ⚠️
 //! All streaming primitives are now part of fluent-ai directly
 //!
@@ -22,10 +21,10 @@ impl<T> AsyncStream<T> {
     #[inline]
     pub fn channel() -> (AsyncStreamSender<T>, Self) {
         let (sender, receiver) = mpsc::unbounded_channel();
-        
+
         let sender = AsyncStreamSender { sender };
         let stream = Self { receiver };
-        
+
         (sender, stream)
     }
 
@@ -66,11 +65,11 @@ impl<T> AsyncStream<T> {
             Ok(handle) => handle,
             Err(_) => return None, // No runtime available
         };
-        
+
         rt.block_on(async { self.receiver.recv().await })
     }
 
-    /// Collect all items into a Vec - returns Vec<T> directly (no futures) 
+    /// Collect all items into a Vec - returns Vec<T> directly (no futures)
     /// Users wanting "await" similar behavior call .collect()
     #[inline]
     pub fn collect(mut self) -> Vec<T> {
@@ -133,7 +132,7 @@ impl<T> AsyncStreamExt<T> for AsyncStream<T> {
         U: Send + 'static,
     {
         let (sender, stream) = AsyncStream::channel();
-        
+
         // Use std::thread instead of tokio::spawn - NO FUTURES
         std::thread::spawn(move || {
             while let Some(item) = self.next() {
@@ -143,7 +142,7 @@ impl<T> AsyncStreamExt<T> for AsyncStream<T> {
                 }
             }
         });
-        
+
         stream
     }
 
@@ -153,7 +152,7 @@ impl<T> AsyncStreamExt<T> for AsyncStream<T> {
         T: Send + 'static,
     {
         let (sender, stream) = AsyncStream::channel();
-        
+
         // Use std::thread instead of tokio::spawn - NO FUTURES
         std::thread::spawn(move || {
             while let Some(item) = self.next() {
@@ -164,7 +163,7 @@ impl<T> AsyncStreamExt<T> for AsyncStream<T> {
                 }
             }
         });
-        
+
         stream
     }
 }

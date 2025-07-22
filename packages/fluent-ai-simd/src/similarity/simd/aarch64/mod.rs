@@ -2,4 +2,4 @@
 
 pub mod neon;
 
-pub use neon::{NeonSimilarity, is_neon_available};
+pub use neon::{is_neon_available, NeonSimilarity};

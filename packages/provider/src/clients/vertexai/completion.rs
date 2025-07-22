@@ -934,7 +934,7 @@ impl CompletionProvider for VertexAICompletionBuilder {
     #[inline(always)]
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
         let prompt = text.as_ref().to_string();
-        let (sender, receiver) = crate::async_stream_channel();
+        let (sender, receiver) = crate::channel();
 
         spawn_async(async move {
             match self.execute_streaming_completion(prompt).await {
@@ -1013,7 +1013,7 @@ impl VertexAICompletionBuilder {
     ) -> Result<AsyncStream<Result<CompletionChunk, CompletionError>>, CompletionError> {
         // TODO: Implement VertexAI OAuth2 authentication and HTTP request
         // For now, return a simple error stream
-        let (sender, receiver) = crate::async_stream_channel();
+        let (sender, receiver) = crate::channel();
         let _ = sender.send(Err(CompletionError::ProviderError));
         Ok(receiver)
     }

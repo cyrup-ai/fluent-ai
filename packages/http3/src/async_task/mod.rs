@@ -5,7 +5,7 @@
 pub mod task;
 pub use task::{AsyncTask, spawn_async};
 pub mod stream;
-pub use stream::{AsyncStream, AsyncStreamSender, AsyncStreamExt, channel};
+pub use stream::{AsyncStream, AsyncStreamExt, AsyncStreamSender, channel};
 pub mod thread_pool;
 
 // Keep our custom emitter and error handlers for fluent builder compatibility

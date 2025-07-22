@@ -12,9 +12,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::thread;
 
+use crossbeam_channel::{Receiver, Sender, unbounded};
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Value;
-use crossbeam_channel::{Receiver, Sender, unbounded};
 
 use crate::constants::SEARCH_TASK;
 use crate::utils::error::Result;
@@ -28,12 +28,11 @@ fn task_string(task: &'static str) -> Option<String> {
 }
 
 /// Type alias for keyword search function - SYNCHRONOUS OPERATIONS
-/// 
+///
 /// This function type represents a synchronous keyword search operation.
 /// For concurrent execution, wrap the function call in a thread.
-pub type KeywordSearchFn = Box<
-    dyn Fn(&str, Option<SearchOptions>) -> Result<Vec<SearchResult>> + Send + Sync,
->;
+pub type KeywordSearchFn =
+    Box<dyn Fn(&str, Option<SearchOptions>) -> Result<Vec<SearchResult>> + Send + Sync>;
 
 /// Search result with comprehensive metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,7 +100,7 @@ impl SearchResult {
 
     /// Memory usage estimation in bytes
     pub fn memory_usage(&self) -> usize {
-        self.id.len() + 
+        self.id.len() +
         self.vector.len() * std::mem::size_of::<f32>() +
         self.metadata.as_ref().map(|m| m.len() * 64).unwrap_or(0) + // Approximate metadata size
         std::mem::size_of::<Self>()
@@ -179,11 +178,11 @@ impl SearchOptions {
         if let Some(threshold) = self.min_similarity {
             if threshold < 0.0 || threshold > 1.0 {
                 return Err(crate::utils::error::Error::InvalidInput(
-                    "min_similarity must be between 0.0 and 1.0".to_string()
+                    "min_similarity must be between 0.0 and 1.0".to_string(),
                 ));
             }
         }
-        
+
         // Ensure reasonable limits
         if let Some(limit) = self.limit {
             if limit == 0 {
@@ -192,19 +191,19 @@ impl SearchOptions {
                 self.limit = Some(10000);
             }
         }
-        
+
         if let Some(candidate_limit) = self.candidate_limit {
             if candidate_limit == 0 {
                 self.candidate_limit = Some(100);
             }
         }
-        
+
         Ok(self)
     }
 }
 
 /// High-performance vector search implementation
-/// 
+///
 /// This implementation provides blazing-fast vector search using:
 /// - SIMD-optimized similarity calculations
 /// - Memory-efficient result processing
@@ -221,11 +220,11 @@ pub struct VectorSearch {
 
 impl VectorSearch {
     /// Create a new VectorSearch with default options
-    /// 
+    ///
     /// # Arguments
     /// * `store` - Vector store implementation
     /// * `embedding_model` - Embedding model for text processing
-    /// 
+    ///
     /// # Returns
     /// New VectorSearch instance
     pub fn new(store: Arc<dyn VectorStore>, embedding_model: Arc<dyn EmbeddingModel>) -> Self {
@@ -250,11 +249,11 @@ impl VectorSearch {
     }
 
     /// Search by text query (synchronous)
-    /// 
+    ///
     /// # Arguments
     /// * `text` - Text query to search for
     /// * `options` - Search options (uses defaults if None)
-    /// 
+    ///
     /// # Returns
     /// Result containing ranked search results
     pub fn search_by_text(
@@ -266,21 +265,20 @@ impl VectorSearch {
         if text.is_empty() {
             return Ok(Vec::new());
         }
-        
+
         // Generate embedding for the text (synchronous)
-        let embedding = self.embedding_model
-            .embed(text, task_string(SEARCH_TASK))?;
+        let embedding = self.embedding_model.embed(text, task_string(SEARCH_TASK))?;
 
         // Search by embedding
         self.search_by_embedding(&embedding, options)
     }
 
     /// Search by embedding vector (synchronous)
-    /// 
+    ///
     /// # Arguments
     /// * `embedding` - Query vector
     /// * `options` - Search options (uses defaults if None)
-    /// 
+    ///
     /// # Returns
     /// Result containing ranked search results
     pub fn search_by_embedding(
@@ -294,13 +292,13 @@ impl VectorSearch {
         // Validate embedding
         if embedding.is_empty() {
             return Err(crate::utils::error::Error::InvalidInput(
-                "Embedding vector cannot be empty".to_string()
+                "Embedding vector cannot be empty".to_string(),
             ));
         }
-        
+
         if embedding.iter().any(|&x| !x.is_finite()) {
             return Err(crate::utils::error::Error::InvalidInput(
-                "Embedding vector contains NaN or infinite values".to_string()
+                "Embedding vector contains NaN or infinite values".to_string(),
             ));
         }
 
@@ -366,11 +364,11 @@ impl VectorSearch {
     }
 
     /// Batch search by multiple texts (thread-based parallel processing)
-    /// 
+    ///
     /// # Arguments
     /// * `texts` - Vector of text queries
     /// * `options` - Search options applied to all queries
-    /// 
+    ///
     /// # Returns
     /// Result containing vector of search result vectors (one per input text)
     pub fn batch_search_by_text(
@@ -383,44 +381,45 @@ impl VectorSearch {
         }
 
         // Generate embeddings for all texts (synchronous batch operation)
-        let embeddings = self.embedding_model
+        let embeddings = self
+            .embedding_model
             .batch_embed(texts, task_string(SEARCH_TASK))?;
 
         // Parallel search using thread pool
         let (sender, receiver) = unbounded();
         let mut handles = Vec::new();
-        
+
         for (index, embedding) in embeddings.into_iter().enumerate() {
             let sender = sender.clone();
             let store = Arc::clone(&self.store);
             let options = options.clone();
-            
+
             let handle = thread::spawn(move || {
                 let search = VectorSearch {
                     store,
                     embedding_model: Arc::new(DummyEmbedding), // Not used in embedding search
                     default_options: SearchOptions::default(),
                 };
-                
+
                 let result = search.search_by_embedding(&embedding, options);
                 let _ = sender.send((index, result));
             });
-            
+
             handles.push(handle);
         }
-        
+
         // Drop the original sender so receiver can finish
         drop(sender);
-        
+
         // Wait for all threads and collect results
         for handle in handles {
             if handle.join().is_err() {
                 return Err(crate::utils::error::Error::Other(
-                    "Thread execution failed during batch search".to_string()
+                    "Thread execution failed during batch search".to_string(),
                 ));
             }
         }
-        
+
         // Collect results in original order
         let mut results = vec![Vec::new(); texts.len()];
         while let Ok((index, result)) = receiver.try_recv() {
@@ -460,24 +459,28 @@ struct DummyEmbedding;
 
 impl EmbeddingModel for DummyEmbedding {
     fn embed(&self, _text: &str, _task: Option<String>) -> Result<Vec<f32>> {
-        Err(crate::utils::error::Error::Other("Not implemented".to_string()))
+        Err(crate::utils::error::Error::Other(
+            "Not implemented".to_string(),
+        ))
     }
-    
+
     fn batch_embed(&self, _texts: &[String], _task: Option<String>) -> Result<Vec<Vec<f32>>> {
-        Err(crate::utils::error::Error::Other("Not implemented".to_string()))
+        Err(crate::utils::error::Error::Other(
+            "Not implemented".to_string(),
+        ))
     }
-    
+
     fn dimension(&self) -> usize {
         0 // Dummy implementation - no actual embeddings
     }
-    
+
     fn name(&self) -> &str {
         "dummy-embedding"
     }
 }
 
 /// Hybrid search combining vector and keyword search strategies
-/// 
+///
 /// This implementation provides sophisticated search capabilities by combining:
 /// - Vector similarity search for semantic matching
 /// - Keyword search for exact term matching
@@ -496,12 +499,12 @@ pub struct HybridSearch {
 
 impl HybridSearch {
     /// Create a new HybridSearch with custom keyword search function
-    /// 
+    ///
     /// # Arguments
     /// * `vector_search` - Vector search implementation
     /// * `keyword_search` - Synchronous keyword search function
     /// * `vector_weight` - Weight for vector results (0.0 to 1.0, default: 0.5)
-    /// 
+    ///
     /// # Returns
     /// New HybridSearch instance
     pub fn new(
@@ -521,51 +524,47 @@ impl HybridSearch {
     }
 
     /// Search using both vector and keyword strategies (synchronous)
-    /// 
+    ///
     /// # Arguments
     /// * `text` - Search query text
     /// * `options` - Search options applied to both strategies
-    /// 
+    ///
     /// # Returns
     /// Result containing merged and ranked search results
-    pub fn search(
-        &self,
-        text: &str,
-        options: Option<SearchOptions>,
-    ) -> Result<Vec<SearchResult>> {
+    pub fn search(&self, text: &str, options: Option<SearchOptions>) -> Result<Vec<SearchResult>> {
         if text.is_empty() {
             return Ok(Vec::new());
         }
 
         // Execute both searches in parallel using threads
         let (sender, receiver) = unbounded();
-        
+
         // Vector search thread
         let vector_sender = sender.clone();
         let vector_search = self.vector_search.clone_shallow();
         let text_for_vector = text.to_string();
         let options_for_vector = options.clone();
-        
+
         let vector_handle = thread::spawn(move || {
             let result = vector_search.search_by_text(&text_for_vector, options_for_vector);
             let _ = vector_sender.send(("vector", result));
         });
-        
+
         // Keyword search thread
         let keyword_sender = sender;
         let keyword_search = self.keyword_search.clone(); // This should be Arc<> wrapped
         let text_for_keyword = text.to_string();
         let options_for_keyword = options.clone();
-        
+
         let keyword_handle = thread::spawn(move || {
             let result = (keyword_search)(&text_for_keyword, options_for_keyword);
             let _ = keyword_sender.send(("keyword", result));
         });
-        
+
         // Wait for both results
         let mut vector_results = Vec::new();
         let mut keyword_results = Vec::new();
-        
+
         for _ in 0..2 {
             if let Ok((search_type, result)) = receiver.recv() {
                 match search_type {
@@ -575,11 +574,11 @@ impl HybridSearch {
                 }
             }
         }
-        
+
         // Wait for threads to complete
         if vector_handle.join().is_err() || keyword_handle.join().is_err() {
             return Err(crate::utils::error::Error::Other(
-                "Thread execution failed during hybrid search".to_string()
+                "Thread execution failed during hybrid search".to_string(),
             ));
         }
 
@@ -624,8 +623,9 @@ impl HybridSearch {
 
             if let Some(existing) = combined_map.remove(&result.id) {
                 // Merge with existing vector result
-                let new_combined_score = existing.combined_score.unwrap_or(0.0) + weighted_similarity;
-                
+                let new_combined_score =
+                    existing.combined_score.unwrap_or(0.0) + weighted_similarity;
+
                 combined_map.insert(
                     result.id.clone(),
                     SearchResult {
@@ -633,7 +633,7 @@ impl HybridSearch {
                         vector: existing.vector, // Prefer vector data
                         similarity: existing.similarity,
                         metadata: existing.metadata.or(result.metadata), // Merge metadata
-                        rank: None, // Will be recomputed
+                        rank: None,                                      // Will be recomputed
                         combined_score: Some(new_combined_score),
                     },
                 );
@@ -660,7 +660,7 @@ impl HybridSearch {
         combined_results.sort_by(|a, b| {
             let score_a = a.effective_score();
             let score_b = b.effective_score();
-            
+
             match (score_a.is_nan(), score_b.is_nan()) {
                 (true, true) => Ordering::Equal,
                 (true, false) => Ordering::Greater, // NaN goes to end
@@ -685,7 +685,7 @@ impl HybridSearch {
     }
 
     /// Update search weights
-    /// 
+    ///
     /// # Arguments
     /// * `vector_weight` - New weight for vector search (0.0 to 1.0)
     pub fn set_vector_weight(&mut self, weight: f32) {
@@ -712,7 +712,7 @@ impl HybridSearch {
 // Helper trait for shallow cloning of VectorSearch (for thread usage)
 impl VectorSearch {
     /// Create a shallow clone for thread-based usage
-    /// 
+    ///
     /// This creates a new VectorSearch instance that shares the same
     /// underlying store and embedding model references.
     fn clone_shallow(&self) -> Self {

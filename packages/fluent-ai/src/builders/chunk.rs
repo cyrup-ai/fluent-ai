@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use fluent_ai_domain::{
-    chunk::{ChatMessageChunk, DocumentChunk, FinishReason, CompletionChunk, Usage},
+    chunk::{ChatMessageChunk, CompletionChunk, DocumentChunk, FinishReason, Usage},
     message::MessageRole,
 };
 use serde_json::Value;

@@ -7,18 +7,15 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-
-use crate::async_task::{AsyncStream, AsyncStreamSender};
 
 /// Immutable message content with owned strings
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ImmutableMessageContent {
     /// Plain text content
-    Plain { 
-        text: String 
-    },
+    Plain { text: String },
     /// Markdown formatted content
     Markdown {
         content: String,
@@ -36,9 +33,7 @@ pub enum ImmutableMessageContent {
         styles: Vec<FormatStyle>,
     },
     /// Composite content with multiple parts
-    Composite { 
-        parts: Vec<ImmutableMessageContent> 
-    },
+    Composite { parts: Vec<ImmutableMessageContent> },
 }
 
 impl ImmutableMessageContent {
@@ -194,7 +189,10 @@ impl StyleType {
     /// Check if style requires additional data
     #[inline]
     pub fn requires_data(&self) -> bool {
-        matches!(self, Self::Link { .. } | Self::Color { .. } | Self::Background { .. })
+        matches!(
+            self,
+            Self::Link { .. } | Self::Color { .. } | Self::Background { .. }
+        )
     }
 }
 
@@ -440,10 +438,16 @@ impl ImmutableColorScheme {
     #[inline]
     pub fn validate(&self) -> FormatResult<()> {
         let colors = [
-            &self.primary_text, &self.secondary_text, &self.background,
-            &self.accent, &self.error, &self.warning, &self.success, &self.link,
+            &self.primary_text,
+            &self.secondary_text,
+            &self.background,
+            &self.accent,
+            &self.error,
+            &self.warning,
+            &self.success,
+            &self.link,
         ];
-        
+
         for color in &colors {
             if !Self::is_valid_color(color) {
                 return Err(FormatError::ConfigurationError {
@@ -559,7 +563,7 @@ impl ImmutableCustomFormatRule {
                 detail: "Rule pattern cannot be empty".to_string(),
             });
         }
-        
+
         Ok(Self {
             name,
             pattern,
@@ -658,10 +662,12 @@ impl StreamingMessageFormatter {
 
     /// Create formatter with event streaming
     #[inline]
-    pub fn with_streaming(options: ImmutableFormatOptions) -> FormatResult<(Self, AsyncStream<FormattingEvent>)> {
+    pub fn with_streaming(
+        options: ImmutableFormatOptions,
+    ) -> FormatResult<(Self, AsyncStream<FormattingEvent>)> {
         options.validate()?;
-        let (sender, stream) = crate::async_task::stream::channel();
-        let mut formatter = Self {
+        let (sender, stream) = AsyncStream::channel();
+        let formatter = Self {
             content_counter: AtomicU64::new(0),
             active_operations: AtomicUsize::new(0),
             total_operations: AtomicU64::new(0),
@@ -681,7 +687,7 @@ impl StreamingMessageFormatter {
 
         // Generate content ID
         let content_id = self.content_counter.fetch_add(1, Ordering::Relaxed);
-        
+
         // Update counters
         self.active_operations.fetch_add(1, Ordering::Relaxed);
         self.total_operations.fetch_add(1, Ordering::Relaxed);
@@ -799,7 +805,7 @@ mod tests {
     fn test_format_style_creation() {
         let style = FormatStyle::new(0, 5, StyleType::Bold).unwrap();
         assert_eq!(style.length(), 5);
-        
+
         let invalid_style = FormatStyle::new(5, 0, StyleType::Bold);
         assert!(invalid_style.is_err());
     }
@@ -808,7 +814,7 @@ mod tests {
     fn test_color_scheme_validation() {
         let valid_scheme = ImmutableColorScheme::default();
         assert!(valid_scheme.validate().is_ok());
-        
+
         let invalid_scheme = ImmutableColorScheme {
             primary_text: "invalid".to_string(),
             ..Default::default()

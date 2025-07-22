@@ -12,18 +12,18 @@ use arc_swap::ArcSwap;
 use arrayvec::{ArrayString, ArrayVec};
 use bytes::Bytes;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
+use fluent_ai_domain::completion::{self, CompletionRequest, CompletionRequestBuilder};
+use fluent_ai_domain::message::Message;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
 
+use crate::completion_provider::{CompletionError, CompletionProvider};
 // Removed invalid imports - EmbeddingModel and TranscriptionModel are not exported from submodules
 use crate::{
     client::{CompletionClient, EmbeddingsClient, ProviderClient, TranscriptionClient},
     clients::azure::completion::{CompletionModel, GPT_4O},
 };
-use fluent_ai_domain::completion::{self, CompletionRequest, CompletionRequestBuilder};
-use fluent_ai_domain::message::Message;
-use crate::completion_provider::{CompletionError, CompletionProvider};
 
 /// Azure OpenAI authentication with zero-allocation patterns
 #[derive(Clone, Debug)]
@@ -427,8 +427,9 @@ impl<'a, S> AzureCompletionBuilder<'a, S> {
     #[inline(always)]
     pub fn additional_params(mut self, p: serde_json::Value) -> Self {
         // Merge JSON values in-place
-        if let (serde_json::Value::Object(ref mut base), serde_json::Value::Object(other)) = 
-            (&mut self.additional_params, p) {
+        if let (serde_json::Value::Object(ref mut base), serde_json::Value::Object(other)) =
+            (&mut self.additional_params, p)
+        {
             base.extend(other);
         } else {
             self.additional_params = p;
@@ -467,10 +468,10 @@ impl<'a> AzureCompletionBuilder<'a, HasPrompt> {
     /// Build a `CompletionRequest` ready for `.send()` / `.stream()`.
     #[inline(always)]
     fn build(self) -> Result<CompletionRequest, fluent_ai_domain::memory::workflow::PromptError> {
-        let prompt = self.prompt.ok_or_else(|| {
-            fluent_ai_domain::memory::workflow::PromptError::MissingPrompt
-        })?;
-        
+        let prompt = self
+            .prompt
+            .ok_or_else(|| fluent_ai_domain::memory::workflow::PromptError::MissingPrompt)?;
+
         let mut req = CompletionRequestBuilder::new(
             CompletionModel::new(self.client.clone(), self.model_name),
             prompt,
@@ -495,11 +496,7 @@ impl<'a> AzureCompletionBuilder<'a, HasPrompt> {
     > {
         match self.build() {
             Ok(request) => request.send(),
-            Err(e) => {
-                AsyncTask::spawn(async move {
-                    Err(CompletionError::from(e))
-                })
-            }
+            Err(e) => AsyncTask::spawn(async move { Err(CompletionError::from(e)) }),
         }
     }
 
@@ -517,11 +514,7 @@ impl<'a> AzureCompletionBuilder<'a, HasPrompt> {
     > {
         match self.build() {
             Ok(request) => request.stream(),
-            Err(e) => {
-                AsyncTask::spawn(async move {
-                    Err(CompletionError::from(e))
-                })
-            }
+            Err(e) => AsyncTask::spawn(async move { Err(CompletionError::from(e)) }),
         }
     }
 
@@ -530,11 +523,7 @@ impl<'a> AzureCompletionBuilder<'a, HasPrompt> {
     pub fn chat(self, prompt: impl Into<String>) -> AsyncTask<Result<String, PromptError>> {
         match self.prompt(prompt.into()).build() {
             Ok(req) => CompletionModel::new(self.client.clone(), self.model_name).prompt(req),
-            Err(e) => {
-                AsyncTask::spawn(async move {
-                    Err(PromptError::from(e))
-                })
-            }
+            Err(e) => AsyncTask::spawn(async move { Err(PromptError::from(e)) }),
         }
     }
 }

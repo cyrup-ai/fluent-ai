@@ -9,6 +9,9 @@ use std::sync::Arc;
 use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
+use fluent_ai_domain::completion::{
+    self, CompletionCoreError as CompletionError, CompletionRequest,
+};
 use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{AsyncTask, Document, Message, spawn_async};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
@@ -19,7 +22,6 @@ use super::Client;
 use super::gemini_error::{GeminiError, GeminiResult};
 use super::gemini_streaming::{GeminiStreamProcessor, StreamingResponse};
 use super::gemini_types::*;
-use fluent_ai_domain::completion::{self, CompletionCoreError as CompletionError, CompletionRequest};
 use crate::{
     AsyncStream, OneOrMany,
     completion_provider::{ChunkHandler, CompletionProvider, ModelConfig, ModelInfo},
@@ -75,7 +77,7 @@ impl completion::CompletionModel for CompletionModel {
 
                     // Provider delegates HTTP operations to domain layer
                     let result = Err(CompletionError::ProviderError(
-                        "Provider delegates to domain layer for HTTP3 operations".to_string()
+                        "Provider delegates to domain layer for HTTP3 operations".to_string(),
                     ));
 
                     tx.finish(result);
@@ -104,8 +106,7 @@ impl completion::CompletionModel for CompletionModel {
 
         // Provider delegates to domain layer - NO FUTURES
         std::thread::spawn(move || {
-            let result = CompletionModel { client, model }
-                .stream_internal(request);
+            let result = CompletionModel { client, model }.stream_internal(request);
             tx.finish(result);
         });
 
@@ -123,7 +124,8 @@ impl CompletionModel {
     > {
         // Provider delegates to domain layer - NO FUTURES
         Err(CompletionError::ProviderError(
-            "Provider delegates streaming to domain layer - use GeminiCompletionBuilder instead".to_string(),
+            "Provider delegates streaming to domain layer - use GeminiCompletionBuilder instead"
+                .to_string(),
         ))
     }
 }
@@ -348,7 +350,7 @@ impl CompletionProvider for GeminiCompletionBuilder {
     /// Terminal action - execute completion with user prompt (blazing-fast streaming)
     #[inline(always)]
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
-        let (sender, receiver) = crate::async_stream_channel();
+        let (sender, receiver) = crate::channel();
         let prompt_text = text.as_ref().to_string();
 
         // Use std::thread instead of spawn_async - NO FUTURES
@@ -375,7 +377,10 @@ impl CompletionProvider for GeminiCompletionBuilder {
                                 }
                             }
                             Err(e) => {
-                                if sender.try_send(CompletionChunk::error(e.message())).is_err() {
+                                if sender
+                                    .try_send(CompletionChunk::error(e.message()))
+                                    .is_err()
+                                {
                                     break;
                                 }
                             }
@@ -409,8 +414,11 @@ impl GeminiCompletionBuilder {
         let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
 
         // Use the optimized streaming processor - direct call (no await)
-        self.streaming_processor
-            .execute_streaming_completion(request_body, self.model_name, auth_key)
+        self.streaming_processor.execute_streaming_completion(
+            request_body,
+            self.model_name,
+            auth_key,
+        )
     }
 
     /// Build Gemini request with zero allocation where possible

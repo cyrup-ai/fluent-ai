@@ -4,8 +4,9 @@
 //! in language model generation. Supports both frequency-based and presence-based penalties
 //! with efficient token frequency tracking and context-aware penalty application.
 
-use arrayvec::ArrayVec;
 use std::collections::HashMap;
+
+use arrayvec::ArrayVec;
 
 use crate::processing::traits::{LogitsProcessor, ProcessingResult};
 use crate::processing::{ProcessingContext, ProcessingError};
@@ -25,22 +26,22 @@ const MAX_STACK_TOKENS: usize = 1024;
 pub struct RepetitionPenaltyProcessor {
     /// Base repetition penalty (1.0 = no penalty, > 1.0 = more penalty)
     pub repetition_penalty: f32,
-    
+
     /// Frequency-based penalty coefficient (0.0 = disabled, > 0.0 = more penalty)
     pub frequency_penalty: f32,
-    
-    /// Presence-based penalty coefficient (0.0 = disabled, > 0.0 = more penalty) 
+
+    /// Presence-based penalty coefficient (0.0 = disabled, > 0.0 = more penalty)
     pub presence_penalty: f32,
-    
+
     /// Context window size for penalty application (0 = use full context)
     pub context_window: usize,
-    
+
     /// Fast token frequency map for stack-allocated common cases
     token_frequencies: ArrayVec<(u32, u32), MAX_STACK_TOKENS>,
-    
+
     /// Overflow frequency map for large vocabularies
     overflow_frequencies: HashMap<u32, u32>,
-    
+
     /// Cached identity state for optimization
     is_identity: bool,
 }
@@ -60,26 +61,29 @@ impl RepetitionPenaltyProcessor {
         context_window: usize,
     ) -> ProcessingResult<Self> {
         if repetition_penalty < 1.0 {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Repetition penalty must be >= 1.0, got {}", repetition_penalty)
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Repetition penalty must be >= 1.0, got {}",
+                repetition_penalty
+            )));
         }
 
         if frequency_penalty < 0.0 {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Frequency penalty must be >= 0.0, got {}", frequency_penalty)
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Frequency penalty must be >= 0.0, got {}",
+                frequency_penalty
+            )));
         }
 
         if presence_penalty < 0.0 {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Presence penalty must be >= 0.0, got {}", presence_penalty)
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Presence penalty must be >= 0.0, got {}",
+                presence_penalty
+            )));
         }
 
-        let is_identity = (repetition_penalty - 1.0).abs() < f32::EPSILON &&
-                         frequency_penalty.abs() < f32::EPSILON &&
-                         presence_penalty.abs() < f32::EPSILON;
+        let is_identity = (repetition_penalty - 1.0).abs() < f32::EPSILON
+            && frequency_penalty.abs() < f32::EPSILON
+            && presence_penalty.abs() < f32::EPSILON;
 
         Ok(Self {
             repetition_penalty,
@@ -114,7 +118,8 @@ impl RepetitionPenaltyProcessor {
         self.token_frequencies.clear();
         self.overflow_frequencies.clear();
 
-        let tokens = if self.context_window > 0 && self.context_window < context.token_history.len() {
+        let tokens = if self.context_window > 0 && self.context_window < context.token_history.len()
+        {
             // Use only recent tokens from context window
             let start_idx = context.token_history.len() - self.context_window;
             &context.token_history[start_idx..]
@@ -161,12 +166,19 @@ impl RepetitionPenaltyProcessor {
         }
 
         // Check overflow map
-        self.overflow_frequencies.get(&token_id).copied().unwrap_or(0)
+        self.overflow_frequencies
+            .get(&token_id)
+            .copied()
+            .unwrap_or(0)
     }
 
     /// Apply repetition penalties with numerical stability
     #[inline]
-    fn apply_penalties(&mut self, logits: &mut [f32], context: &ProcessingContext) -> ProcessingResult<()> {
+    fn apply_penalties(
+        &mut self,
+        logits: &mut [f32],
+        context: &ProcessingContext,
+    ) -> ProcessingResult<()> {
         if logits.is_empty() {
             return Ok(());
         }
@@ -194,12 +206,12 @@ impl RepetitionPenaltyProcessor {
                 // Apply frequency penalty (linear with frequency)
                 if self.frequency_penalty > 0.0 {
                     let freq_penalty = self.frequency_penalty * frequency as f32;
-                    penalty_factor *= (1.0 - freq_penalty.min(0.99)); // Prevent total elimination
+                    penalty_factor *= 1.0 - freq_penalty.min(0.99); // Prevent total elimination
                 }
 
                 // Apply presence penalty (fixed penalty for any presence)
                 if self.presence_penalty > 0.0 {
-                    penalty_factor *= (1.0 - self.presence_penalty.min(0.99)); // Prevent total elimination
+                    penalty_factor *= 1.0 - self.presence_penalty.min(0.99); // Prevent total elimination
                 }
 
                 // Apply combined penalty with numerical stability
@@ -213,9 +225,10 @@ impl RepetitionPenaltyProcessor {
     /// Update repetition penalty with validation
     pub fn set_repetition_penalty(&mut self, penalty: f32) -> ProcessingResult<()> {
         if penalty < 1.0 {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Repetition penalty must be >= 1.0, got {}", penalty)
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Repetition penalty must be >= 1.0, got {}",
+                penalty
+            )));
         }
 
         self.repetition_penalty = penalty;
@@ -226,9 +239,10 @@ impl RepetitionPenaltyProcessor {
     /// Update frequency penalty with validation
     pub fn set_frequency_penalty(&mut self, penalty: f32) -> ProcessingResult<()> {
         if penalty < 0.0 {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Frequency penalty must be >= 0.0, got {}", penalty)
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Frequency penalty must be >= 0.0, got {}",
+                penalty
+            )));
         }
 
         self.frequency_penalty = penalty;
@@ -239,9 +253,10 @@ impl RepetitionPenaltyProcessor {
     /// Update presence penalty with validation
     pub fn set_presence_penalty(&mut self, penalty: f32) -> ProcessingResult<()> {
         if penalty < 0.0 {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Presence penalty must be >= 0.0, got {}", penalty)
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Presence penalty must be >= 0.0, got {}",
+                penalty
+            )));
         }
 
         self.presence_penalty = penalty;
@@ -257,9 +272,9 @@ impl RepetitionPenaltyProcessor {
     /// Update cached identity state after parameter changes
     #[inline]
     fn update_identity_cache(&mut self) {
-        self.is_identity = (self.repetition_penalty - 1.0).abs() < f32::EPSILON &&
-                          self.frequency_penalty.abs() < f32::EPSILON &&
-                          self.presence_penalty.abs() < f32::EPSILON;
+        self.is_identity = (self.repetition_penalty - 1.0).abs() < f32::EPSILON
+            && self.frequency_penalty.abs() < f32::EPSILON
+            && self.presence_penalty.abs() < f32::EPSILON;
     }
 
     /// Get current repetition penalty
@@ -294,7 +309,11 @@ impl RepetitionPenaltyProcessor {
 
 impl LogitsProcessor for RepetitionPenaltyProcessor {
     #[inline]
-    fn process_logits(&mut self, logits: &mut [f32], context: &ProcessingContext) -> ProcessingResult<()> {
+    fn process_logits(
+        &mut self,
+        logits: &mut [f32],
+        context: &ProcessingContext,
+    ) -> ProcessingResult<()> {
         if self.is_identity {
             return Ok(()); // No-op when all penalties are disabled
         }
@@ -314,21 +333,24 @@ impl LogitsProcessor for RepetitionPenaltyProcessor {
 
     fn validate(&self) -> ProcessingResult<()> {
         if self.repetition_penalty < 1.0 {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Repetition penalty must be >= 1.0, got {}", self.repetition_penalty)
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Repetition penalty must be >= 1.0, got {}",
+                self.repetition_penalty
+            )));
         }
 
         if self.frequency_penalty < 0.0 {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Frequency penalty must be >= 0.0, got {}", self.frequency_penalty)
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Frequency penalty must be >= 0.0, got {}",
+                self.frequency_penalty
+            )));
         }
 
         if self.presence_penalty < 0.0 {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Presence penalty must be >= 0.0, got {}", self.presence_penalty)
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Presence penalty must be >= 0.0, got {}",
+                self.presence_penalty
+            )));
         }
 
         Ok(())
@@ -362,13 +384,13 @@ mod tests {
     #[test]
     fn test_token_frequency_tracking() {
         let mut processor = RepetitionPenaltyProcessor::new(1.2, 0.0, 0.0, 0).unwrap();
-        
+
         // Create context with repeated tokens
         let mut context = ProcessingContext::default();
         context.token_history = vec![1, 2, 3, 1, 2, 1]; // Token 1 appears 3 times, token 2 twice, token 3 once
-        
+
         processor.update_token_frequencies(&context);
-        
+
         assert_eq!(processor.get_token_frequency(1), 3);
         assert_eq!(processor.get_token_frequency(2), 2);
         assert_eq!(processor.get_token_frequency(3), 1);
@@ -378,12 +400,12 @@ mod tests {
     #[test]
     fn test_context_window() {
         let mut processor = RepetitionPenaltyProcessor::new(1.2, 0.0, 0.0, 3).unwrap(); // Window of 3
-        
+
         let mut context = ProcessingContext::default();
         context.token_history = vec![1, 2, 3, 4, 5, 1]; // Only last 3 tokens: [4, 5, 1]
-        
+
         processor.update_token_frequencies(&context);
-        
+
         assert_eq!(processor.get_token_frequency(1), 1); // Only count the last occurrence
         assert_eq!(processor.get_token_frequency(4), 1);
         assert_eq!(processor.get_token_frequency(5), 1);
@@ -394,15 +416,15 @@ mod tests {
     #[test]
     fn test_penalty_application() {
         let mut processor = RepetitionPenaltyProcessor::new(2.0, 0.1, 0.05, 0).unwrap();
-        
+
         let mut context = ProcessingContext::default();
         context.token_history = vec![0, 1, 0]; // Token 0 appears twice, token 1 once
-        
+
         let mut logits = vec![1.0, 0.5, 2.0]; // 3 tokens
         let original = logits.clone();
-        
+
         processor.process_logits(&mut logits, &context).unwrap();
-        
+
         // Token 0 and 1 should have penalties applied
         assert!(logits[0] < original[0], "Token 0 should be penalized");
         assert!(logits[1] < original[1], "Token 1 should be penalized");
@@ -415,34 +437,44 @@ mod tests {
         let mut freq_processor = RepetitionPenaltyProcessor::new(1.0, 0.1, 0.0, 0).unwrap();
         let mut context = ProcessingContext::default();
         context.token_history = vec![0, 0, 0, 1]; // Token 0 appears 3 times, token 1 once
-        
+
         let mut logits = vec![1.0, 1.0];
-        freq_processor.process_logits(&mut logits, &context).unwrap();
-        
+        freq_processor
+            .process_logits(&mut logits, &context)
+            .unwrap();
+
         // Token 0 should have larger penalty due to higher frequency
-        assert!(logits[0] < logits[1], "Higher frequency should result in larger penalty");
-        
+        assert!(
+            logits[0] < logits[1],
+            "Higher frequency should result in larger penalty"
+        );
+
         // Test presence penalty (fixed regardless of frequency)
         let mut pres_processor = RepetitionPenaltyProcessor::new(1.0, 0.0, 0.1, 0).unwrap();
         let mut logits2 = vec![1.0, 1.0];
-        pres_processor.process_logits(&mut logits2, &context).unwrap();
-        
+        pres_processor
+            .process_logits(&mut logits2, &context)
+            .unwrap();
+
         // Both tokens should have similar penalties (only presence matters)
         let diff = (logits2[0] - logits2[1]).abs();
-        assert!(diff < 0.01, "Presence penalty should not depend on frequency");
+        assert!(
+            diff < 0.01,
+            "Presence penalty should not depend on frequency"
+        );
     }
 
     #[test]
     fn test_identity_optimization() {
         let mut processor = RepetitionPenaltyProcessor::new(1.0, 0.0, 0.0, 0).unwrap();
         assert!(processor.is_identity());
-        
+
         let context = ProcessingContext::default();
         let mut logits = vec![1.0, 2.0, 3.0];
         let original = logits.clone();
-        
+
         processor.process_logits(&mut logits, &context).unwrap();
-        
+
         // Should be unchanged
         assert_eq!(logits, original);
     }
@@ -450,18 +482,18 @@ mod tests {
     #[test]
     fn test_parameter_updates() {
         let mut processor = RepetitionPenaltyProcessor::new(1.0, 0.0, 0.0, 0).unwrap();
-        
+
         // Test valid updates
         assert!(processor.set_repetition_penalty(1.5).is_ok());
         assert_eq!(processor.repetition_penalty(), 1.5);
         assert!(!processor.is_identity());
-        
+
         assert!(processor.set_frequency_penalty(0.1).is_ok());
         assert_eq!(processor.frequency_penalty(), 0.1);
-        
+
         assert!(processor.set_presence_penalty(0.05).is_ok());
         assert_eq!(processor.presence_penalty(), 0.05);
-        
+
         // Test invalid updates
         assert!(processor.set_repetition_penalty(0.5).is_err());
         assert!(processor.set_frequency_penalty(-0.1).is_err());
@@ -484,7 +516,9 @@ mod tests {
         // Empty context
         let empty_context = ProcessingContext::default();
         let mut logits = vec![1.0, 2.0, 3.0];
-        assert!(processor.process_logits(&mut logits, &empty_context).is_ok());
+        assert!(processor
+            .process_logits(&mut logits, &empty_context)
+            .is_ok());
     }
 
     #[test]
@@ -496,11 +530,11 @@ mod tests {
         let mut invalid = RepetitionPenaltyProcessor::new(1.0, 0.0, 0.0, 0).unwrap();
         invalid.repetition_penalty = 0.5; // Invalid
         assert!(invalid.validate().is_err());
-        
+
         invalid.repetition_penalty = 1.2;
         invalid.frequency_penalty = -0.1; // Invalid
         assert!(invalid.validate().is_err());
-        
+
         invalid.frequency_penalty = 0.1;
         invalid.presence_penalty = -0.1; // Invalid
         assert!(invalid.validate().is_err());

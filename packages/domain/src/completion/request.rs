@@ -5,16 +5,16 @@
 use std::borrow::Cow;
 use std::num::NonZeroU64;
 
+use fluent_ai_async::{AsyncStream, async_stream_channel};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
 use super::types::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE, ToolDefinition};
-use crate::model::{ValidationError, ValidationResult};
-use crate::{ZeroOneOrMany};
+use crate::ZeroOneOrMany;
+use crate::chat::Message as ChatMessage;
 use crate::context::Document;
-use crate::chat::{Message as ChatMessage};
-use crate::async_task::AsyncStream;
+use crate::model::{ValidationError, ValidationResult};
 
 /// A request for text completion
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,19 +164,19 @@ impl<'a> CompletionRequestBuilder<'a> {
 
     /// Set the temperature
     pub fn temperature(self, temp: f64) -> AsyncStream<Self> {
-        let (sender, stream) = AsyncStream::channel();
-        
+        let (sender, stream) = async_stream_channel();
+
         tokio::spawn(async move {
             let mut builder = self;
             if TEMPERATURE_RANGE.contains(&temp) {
                 builder.temperature = temp;
-                let _ = sender.try_send(builder);
+                let _ = sender.send(builder);
             } else {
                 // Emit the validation error as part of the stream - let on_chunk handler deal with it
-                let _ = sender.try_send(builder);
+                let _ = sender.send(builder);
             }
         });
-        
+
         stream
     }
 
@@ -188,14 +188,14 @@ impl<'a> CompletionRequestBuilder<'a> {
 
     /// Set the chunk size for streaming
     pub fn chunk_size(self, size: Option<usize>) -> AsyncStream<Self> {
-        let (sender, stream) = AsyncStream::channel();
-        
+        let (sender, stream) = async_stream_channel();
+
         tokio::spawn(async move {
             let mut builder = self;
             builder.chunk_size = size;
-            let _ = sender.try_send(builder);
+            let _ = sender.send(builder);
         });
-        
+
         stream
     }
 
@@ -207,8 +207,8 @@ impl<'a> CompletionRequestBuilder<'a> {
 
     /// Build the request
     pub fn build(self) -> AsyncStream<CompletionRequest<'a>> {
-        let (sender, stream) = AsyncStream::channel();
-        
+        let (sender, stream) = async_stream_channel();
+
         tokio::spawn(async move {
             let request = CompletionRequest {
                 system_prompt: self.system_prompt,
@@ -220,11 +220,11 @@ impl<'a> CompletionRequestBuilder<'a> {
                 chunk_size: self.chunk_size,
                 additional_params: self.additional_params,
             };
-            
+
             // Always emit the result - let on_chunk handler deal with validation
-            let _ = sender.try_send(request);
+            let _ = sender.send(request);
         });
-        
+
         stream
     }
 }

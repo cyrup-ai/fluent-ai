@@ -6,15 +6,15 @@
 
 #![allow(clippy::type_complexity)]
 
+use fluent_ai_domain::embedding::{self};
 use fluent_ai_domain::model::AnyEmbeddingCapable;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-
-use super::client::Client;
-use fluent_ai_domain::embedding::{self}; 
 // Note: EmbeddingError not available - needs custom error type
 // Note: runtime and AsyncTask need to be replaced with tokio equivalents
 use tokio::{self as rt, task::spawn as AsyncTask};
+
+use super::client::Client;
 
 // ───────────────────────────── public constants ──────────────────────────
 
@@ -115,8 +115,12 @@ impl super::super::client::EmbeddingModel for EmbeddingModel {
     fn embed_texts(
         &self,
         documents: impl IntoIterator<Item = String>,
-    ) -> AsyncTask<Result<Vec<fluent_ai_domain::embedding::Embedding>, anyhow::Error /* was fluent_ai_domain::embedding::EmbeddingError */>>
-    {
+    ) -> AsyncTask<
+        Result<
+            Vec<fluent_ai_domain::embedding::Embedding>,
+            anyhow::Error, // was fluent_ai_domain::embedding::EmbeddingError
+        >,
+    > {
         let documents: Vec<String> = documents.into_iter().collect();
         let this = self.clone();
         rt::spawn_async(async move { this.perform_embedding_batch(documents).await })
@@ -142,31 +146,33 @@ impl super::super::client::EmbeddingModel for EmbeddingModel {
         texts: cyrup_sugars::ZeroOneOrMany<String>,
     ) -> fluent_ai_domain::AsyncStream<fluent_ai_domain::chunk::EmbeddingChunk> {
         use fluent_ai_domain::AsyncStream;
-        use futures::stream::StreamExt;
+        use futures_util::stream::StreamExt;
 
         let this = self.clone();
         let text_vec: Vec<String> = texts.into_iter().collect();
 
         AsyncStream::from_stream(
-            futures::stream::iter(text_vec.into_iter().enumerate()).then(move |(index, text)| {
-                let this = this.clone();
-                async move {
-                    match this.perform_single_embedding(text.clone()).await {
-                        Ok(embedding_vec) => fluent_ai_domain::chunk::EmbeddingChunk {
-                            index,
-                            text,
-                            embedding: cyrup_sugars::ZeroOneOrMany::from_iter(
-                                embedding_vec.into_iter().map(|v| v as f32),
-                            ),
-                        },
-                        Err(_) => fluent_ai_domain::chunk::EmbeddingChunk {
-                            index,
-                            text,
-                            embedding: cyrup_sugars::ZeroOneOrMany::None,
-                        },
+            futures_util::stream::iter(text_vec.into_iter().enumerate()).then(
+                move |(index, text)| {
+                    let this = this.clone();
+                    async move {
+                        match this.perform_single_embedding(text.clone()).await {
+                            Ok(embedding_vec) => fluent_ai_domain::chunk::EmbeddingChunk {
+                                index,
+                                text,
+                                embedding: cyrup_sugars::ZeroOneOrMany::from_iter(
+                                    embedding_vec.into_iter().map(|v| v as f32),
+                                ),
+                            },
+                            Err(_) => fluent_ai_domain::chunk::EmbeddingChunk {
+                                index,
+                                text,
+                                embedding: cyrup_sugars::ZeroOneOrMany::None,
+                            },
+                        }
                     }
-                }
-            }),
+                },
+            ),
         )
     }
 }
@@ -180,7 +186,7 @@ impl EmbeddingModel {
         &self,
         text: String,
     ) -> Result<Vec<f64>, anyhow::Error /* was fluent_ai_domain::embedding::EmbeddingError */> {
-        use anyhow::Error /* was fluent_ai_domain::embedding::EmbeddingError */;
+        use anyhow::Error; // was fluent_ai_domain::embedding::EmbeddingError
         use fluent_ai_http3::{HttpClient, HttpRequest};
 
         // Pre-allocate request body to avoid reallocation
@@ -241,8 +247,11 @@ impl EmbeddingModel {
     async fn perform_embedding_batch(
         &self,
         documents: Vec<String>,
-    ) -> Result<Vec<fluent_ai_domain::embedding::Embedding>, anyhow::Error /* was fluent_ai_domain::embedding::EmbeddingError */> {
-        use anyhow::Error /* was fluent_ai_domain::embedding::EmbeddingError */;
+    ) -> Result<
+        Vec<fluent_ai_domain::embedding::Embedding>,
+        anyhow::Error, // was fluent_ai_domain::embedding::EmbeddingError
+    > {
+        use anyhow::Error; // was fluent_ai_domain::embedding::EmbeddingError
         use fluent_ai_http3::{HttpClient, HttpRequest};
 
         if documents.is_empty() {

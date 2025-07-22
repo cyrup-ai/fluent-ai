@@ -3,11 +3,12 @@
 //! Provides comprehensive support for OpenAI's function calling and tool use features
 //! with optimal performance patterns and full API compatibility.
 
-use crate::domain::completion::ToolDefinition;
-use super::{OpenAIError, OpenAIResult};
-use crate::ZeroOneOrMany;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+
+use super::{OpenAIError, OpenAIResult};
+use crate::ZeroOneOrMany;
+use crate::domain::completion::ToolDefinition;
 
 /// OpenAI tool definition for function calling
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,7 +84,11 @@ pub struct OpenAIFunctionContext {
 impl OpenAITool {
     /// Create new tool with function definition
     #[inline(always)]
-    pub fn function(name: impl Into<String>, description: impl Into<String>, parameters: Value) -> Self {
+    pub fn function(
+        name: impl Into<String>,
+        description: impl Into<String>,
+        parameters: Value,
+    ) -> Self {
         Self {
             tool_type: "function".to_string(),
             function: OpenAIFunction {
@@ -97,7 +102,11 @@ impl OpenAITool {
 
     /// Create tool with strict mode enabled (for structured outputs)
     #[inline(always)]
-    pub fn function_strict(name: impl Into<String>, description: impl Into<String>, parameters: Value) -> Self {
+    pub fn function_strict(
+        name: impl Into<String>,
+        description: impl Into<String>,
+        parameters: Value,
+    ) -> Self {
         Self {
             tool_type: "function".to_string(),
             function: OpenAIFunction {
@@ -141,16 +150,22 @@ impl OpenAITool {
     #[inline(always)]
     pub fn validate(&self) -> OpenAIResult<()> {
         if self.function.name.is_empty() {
-            return Err(OpenAIError::ToolError("Function name cannot be empty".to_string()));
+            return Err(OpenAIError::ToolError(
+                "Function name cannot be empty".to_string(),
+            ));
         }
 
         if self.function.description.is_empty() {
-            return Err(OpenAIError::ToolError("Function description cannot be empty".to_string()));
+            return Err(OpenAIError::ToolError(
+                "Function description cannot be empty".to_string(),
+            ));
         }
 
         // Validate parameters schema
         if !self.function.parameters.is_object() {
-            return Err(OpenAIError::ToolError("Function parameters must be a JSON object".to_string()));
+            return Err(OpenAIError::ToolError(
+                "Function parameters must be a JSON object".to_string(),
+            ));
         }
 
         Ok(())
@@ -178,7 +193,8 @@ impl OpenAITool {
     pub fn get_required_parameters(&self) -> Vec<String> {
         if let Some(required) = self.function.parameters.get("required") {
             if let Some(required_array) = required.as_array() {
-                return required_array.iter()
+                return required_array
+                    .iter()
                     .filter_map(|v| v.as_str())
                     .map(|s| s.to_string())
                     .collect();
@@ -212,9 +228,7 @@ impl OpenAIToolChoice {
     pub fn function(name: impl Into<String>) -> Self {
         Self::Specific {
             tool_type: "function".to_string(),
-            function: OpenAIFunctionChoice {
-                name: name.into(),
-            },
+            function: OpenAIFunctionChoice { name: name.into() },
         }
     }
 
@@ -225,7 +239,10 @@ impl OpenAIToolChoice {
             Self::Auto => Value::String("auto".to_string()),
             Self::None => Value::String("none".to_string()),
             Self::Required => Value::String("required".to_string()),
-            Self::Specific { tool_type, function } => {
+            Self::Specific {
+                tool_type,
+                function,
+            } => {
                 serde_json::json!({
                     "type": tool_type,
                     "function": {
@@ -278,20 +295,25 @@ impl OpenAIToolCall {
         }
 
         let arguments = self.parse_arguments()?;
-        
+
         // Validate required parameters
         static EMPTY_VEC: Vec<serde_json::Value> = Vec::new();
-        let required_params = function.parameters.get("required")
+        let required_params = function
+            .parameters
+            .get("required")
             .and_then(|r| r.as_array())
             .unwrap_or(&EMPTY_VEC);
 
         for required_param in required_params {
             if let Some(param_name) = required_param.as_str() {
-                if !arguments.as_object()
+                if !arguments
+                    .as_object()
                     .map(|obj| obj.contains_key(param_name))
-                    .unwrap_or(false) {
+                    .unwrap_or(false)
+                {
                     return Err(OpenAIError::ToolError(format!(
-                        "Required parameter '{}' is missing", param_name
+                        "Required parameter '{}' is missing",
+                        param_name
                     )));
                 }
             }
@@ -351,12 +373,12 @@ pub fn convert_tool_definition(tool: &ToolDefinition) -> OpenAIResult<OpenAITool
 
 /// Convert multiple tool definitions with batch optimization
 #[inline(always)]
-pub fn convert_tool_definitions(tools: &ZeroOneOrMany<ToolDefinition>) -> OpenAIResult<Vec<OpenAITool>> {
+pub fn convert_tool_definitions(
+    tools: &ZeroOneOrMany<ToolDefinition>,
+) -> OpenAIResult<Vec<OpenAITool>> {
     match tools {
         ZeroOneOrMany::None => Ok(Vec::new()),
-        ZeroOneOrMany::One(tool) => {
-            Ok(vec![convert_tool_definition(tool)?])
-        }
+        ZeroOneOrMany::One(tool) => Ok(vec![convert_tool_definition(tool)?]),
         ZeroOneOrMany::Many(tools) => {
             let mut result = Vec::with_capacity(tools.len());
             for tool in tools {
@@ -393,7 +415,7 @@ pub mod common_tools {
                     }
                 },
                 "required": ["query"]
-            })
+            }),
         )
     }
 
@@ -418,7 +440,7 @@ pub mod common_tools {
                     }
                 },
                 "required": ["location"]
-            })
+            }),
         )
     }
 
@@ -446,7 +468,7 @@ pub mod common_tools {
                     }
                 },
                 "required": ["operation", "path"]
-            })
+            }),
         )
     }
 
@@ -465,7 +487,7 @@ pub mod common_tools {
                     }
                 },
                 "required": ["expression"]
-            })
+            }),
         )
     }
 
@@ -488,7 +510,7 @@ pub mod common_tools {
                     }
                 },
                 "required": ["query"]
-            })
+            }),
         )
     }
 }

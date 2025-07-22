@@ -11,16 +11,13 @@ rkyv-serialization = ["rkyv"]
 
 [dependencies]
 fluent-ai-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
+fluent-ai-async = { path = "../fluent-ai-async" }
+
 serde = { version = "1.0.219", features = ["derive"] }
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["all"] }
 thiserror = "2.0.12"
 uuid = { version = "1.17.0", features = ["v4", "serde"] }
 serde_json = "1.0.141"
-tokio = { version = "1.46.1", features = ["full"] }
-tokio-stream = "0.1.17"
-futures = "0.3.31"
-async-stream = "0.3.6"
-async-trait = "0.1.84"
 log = "0.4.27"
 hashbrown = { version = "0.15.4", features = ["serde"] }
 glob = "0.3.2"
@@ -75,6 +72,9 @@ rkyv = { version = "0.8.10", optional = true }
 bincode = { version = "2.0.1", optional = true }
 reqwest = { version = "0.12.22", features = ["json"] }
 md5 = "0.8.0"
+tokio = { version = "1.46.1", features = ["full"] }
+tokio-stream = "0.1.17"
+async-stream = "0.3.6"
 
 [dev-dependencies]
 fluent_ai_provider = { path = "../provider" }

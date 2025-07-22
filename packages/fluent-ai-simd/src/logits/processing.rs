@@ -17,10 +17,7 @@ fn simd_available() -> bool {
 /// # Returns
 ///
 /// Returns `Ok(())` on success, or error if temperature is invalid
-pub fn apply_temperature_scaling_simd(
-    logits: &mut [f32],
-    temperature: f32,
-) -> SimdResult<()> {
+pub fn apply_temperature_scaling_simd(logits: &mut [f32], temperature: f32) -> SimdResult<()> {
     if temperature <= 0.0 {
         return Err(SimdError::InvalidInput(
             "Temperature must be positive".to_string(),
@@ -28,7 +25,7 @@ pub fn apply_temperature_scaling_simd(
     }
 
     let inv_temp = 1.0 / temperature;
-    
+
     if simd_available() {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         {
@@ -38,7 +35,7 @@ pub fn apply_temperature_scaling_simd(
                 return unsafe { apply_temperature_sse(logits, inv_temp) };
             }
         }
-        
+
         #[cfg(target_arch = "aarch64")]
         {
             if std::arch::is_aarch64_feature_detected!("neon") {
@@ -51,7 +48,7 @@ pub fn apply_temperature_scaling_simd(
     for x in logits.iter_mut() {
         *x *= inv_temp;
     }
-    
+
     Ok(())
 }
 
@@ -104,10 +101,10 @@ pub fn normalize_probabilities_simd(logits: &mut [f32]) -> SimdResult<()> {
 #[target_feature(enable = "avx2")]
 unsafe fn apply_temperature_avx2(logits: &mut [f32], inv_temp: f32) -> SimdResult<()> {
     use std::arch::x86_64::*;
-    
+
     let inv_temp_vec = _mm256_set1_ps(inv_temp);
     let mut i = 0;
-    
+
     // Process 8 elements at a time with AVX2
     let chunk_size = 8;
     while i + chunk_size <= logits.len() {
@@ -117,13 +114,13 @@ unsafe fn apply_temperature_avx2(logits: &mut [f32], inv_temp: f32) -> SimdResul
         _mm256_storeu_ps(ptr, scaled);
         i += chunk_size;
     }
-    
+
     // Process remaining elements
     while i < logits.len() {
         logits[i] *= inv_temp;
         i += 1;
     }
-    
+
     Ok(())
 }
 
@@ -131,10 +128,10 @@ unsafe fn apply_temperature_avx2(logits: &mut [f32], inv_temp: f32) -> SimdResul
 #[target_feature(enable = "sse4.1")]
 unsafe fn apply_temperature_sse(logits: &mut [f32], inv_temp: f32) -> SimdResult<()> {
     use std::arch::x86_64::*;
-    
+
     let inv_temp_vec = _mm_set1_ps(inv_temp);
     let mut i = 0;
-    
+
     // Process 4 elements at a time with SSE
     let chunk_size = 4;
     while i + chunk_size <= logits.len() {
@@ -144,13 +141,13 @@ unsafe fn apply_temperature_sse(logits: &mut [f32], inv_temp: f32) -> SimdResult
         _mm_storeu_ps(ptr, scaled);
         i += chunk_size;
     }
-    
+
     // Process remaining elements
     while i < logits.len() {
         logits[i] *= inv_temp;
         i += 1;
     }
-    
+
     Ok(())
 }
 
@@ -158,10 +155,10 @@ unsafe fn apply_temperature_sse(logits: &mut [f32], inv_temp: f32) -> SimdResult
 #[target_feature(enable = "neon")]
 unsafe fn apply_temperature_neon(logits: &mut [f32], inv_temp: f32) -> SimdResult<()> {
     use std::arch::aarch64::*;
-    
+
     let inv_temp_vec = vdupq_n_f32(inv_temp);
     let mut i = 0;
-    
+
     // Process 4 elements at a time with NEON
     let chunk_size = 4;
     while i + chunk_size <= logits.len() {
@@ -171,21 +168,22 @@ unsafe fn apply_temperature_neon(logits: &mut [f32], inv_temp: f32) -> SimdResul
         vst1q_f32(ptr, scaled);
         i += chunk_size;
     }
-    
+
     // Process remaining elements
     while i < logits.len() {
         logits[i] *= inv_temp;
         i += 1;
     }
-    
+
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use float_eq::assert_float_eq;
-    
+
+    use super::*;
+
     #[test]
     fn test_apply_temperature() {
         let mut logits = [1.0, 2.0, 3.0];
@@ -194,14 +192,14 @@ mod tests {
         assert_float_eq!(logits[1], 4.0, abs <= 1e-6);
         assert_float_eq!(logits[2], 6.0, abs <= 1e-6);
     }
-    
+
     #[test]
     fn test_apply_temperature_invalid() {
         let mut logits = [1.0, 2.0, 3.0];
         let result = apply_temperature_scaling_simd(&mut logits, 0.0);
         assert!(matches!(result, Err(SimdError::InvalidInput(_))));
     }
-    
+
     #[test]
     fn test_normalize_probabilities() {
         let mut logits = [1.0, 2.0, 3.0];
@@ -209,7 +207,7 @@ mod tests {
         let sum: f32 = logits.iter().sum();
         assert_float_eq!(sum, 1.0, abs <= 1e-6);
     }
-    
+
     #[test]
     fn test_normalize_empty() {
         let mut logits: [f32; 0] = [];

@@ -276,9 +276,10 @@ impl InstanceManager {
             .map_err(|e| CyloError::internal(format!("Failed to acquire write lock: {e}")))?;
 
         if let Some(managed) = instances.get_mut(instance_id)
-            && managed.ref_count > 0 {
-                managed.ref_count -= 1;
-            }
+            && managed.ref_count > 0
+        {
+            managed.ref_count -= 1;
+        }
 
         Ok(())
     }
@@ -472,9 +473,7 @@ impl InstanceManager {
                 if let Some(managed) = managed_instance {
                     // Perform cleanup
                     if let Err(e) = managed.backend.cleanup().await {
-                        eprintln!(
-                            "Warning: Failed to cleanup idle instance {instance_id}: {e}"
-                        );
+                        eprintln!("Warning: Failed to cleanup idle instance {instance_id}: {e}");
                     } else {
                         removed_count += 1;
                     }
@@ -503,7 +502,6 @@ impl InstanceManager {
                     CyloError::internal(format!("Failed to acquire write lock: {e}"))
                 })?;
 
-                
                 instances.drain().collect::<Vec<_>>()
             };
 
@@ -514,9 +512,7 @@ impl InstanceManager {
                 let id = instance_id.clone();
                 let cleanup_task = AsyncTaskBuilder::new(async move {
                     if let Err(e) = managed.backend.cleanup().await {
-                        eprintln!(
-                            "Warning: Failed to cleanup instance {id} during shutdown: {e}"
-                        );
+                        eprintln!("Warning: Failed to cleanup instance {id} during shutdown: {e}");
                     }
                 })
                 .spawn();

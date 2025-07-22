@@ -22,14 +22,15 @@
 //! - Perplexity Accuracy: ±0.01 relative error
 //! - Convergence: <10 tokens for stable tau
 
-use arrayvec::ArrayVec;
-use arraystring::{ArrayString, typenum::U64};
-use candle_core::{Result as CandleResult, Tensor};
-use fastrand::Rng;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::error::CandleError;
+use arraystring::{typenum::U64, ArrayString};
+use arrayvec::ArrayVec;
+use candle_core::{Result as CandleResult, Tensor};
+use fastrand::Rng;
+
 use super::LogitsProcessor;
+use crate::error::CandleError;
 use crate::logits::{ProcessingContext, SamplingConfig};
 
 /// Maximum perplexity history for moving average (stack allocated)
@@ -73,7 +74,7 @@ pub enum MirostatConfig {
     },
     /// Mirostat v2: Temperature-based adjustment
     V2 {
-        /// Target surprise (tau) 
+        /// Target surprise (tau)
         tau: f32,
         /// Eta parameter for temperature scaling
         eta: f32,
@@ -87,28 +88,30 @@ impl MirostatConfig {
         if tau < MIN_TAU || tau > MAX_TAU {
             return Err(CandleError::InvalidConfiguration("Tau out of valid range"));
         }
-        
+
         if learning_rate < MIN_LEARNING_RATE || learning_rate > MAX_LEARNING_RATE {
-            return Err(CandleError::InvalidConfiguration("Learning rate out of valid range"));
+            return Err(CandleError::InvalidConfiguration(
+                "Learning rate out of valid range",
+            ));
         }
-        
+
         Ok(Self::V1 { tau, learning_rate })
     }
-    
+
     /// Create Mirostat v2 configuration with validation
     #[inline(always)]
     pub const fn v2(tau: f32, eta: f32) -> CandleResult<Self> {
         if tau < MIN_TAU || tau > MAX_TAU {
             return Err(CandleError::InvalidConfiguration("Tau out of valid range"));
         }
-        
+
         if eta < MIN_ETA || eta > MAX_ETA {
             return Err(CandleError::InvalidConfiguration("Eta out of valid range"));
         }
-        
+
         Ok(Self::V2 { tau, eta })
     }
-    
+
     /// Get target tau value
     #[inline(always)]
     pub const fn tau(&self) -> f32 {
@@ -116,7 +119,7 @@ impl MirostatConfig {
             Self::V1 { tau, .. } | Self::V2 { tau, .. } => *tau,
         }
     }
-    
+
     /// Get variant name for debugging
     #[inline(always)]
     pub const fn variant_name(&self) -> &'static str {
@@ -167,21 +170,22 @@ impl PerplexityState {
             current_ema: 0.0,
         }
     }
-    
+
     /// Add new perplexity sample with exponential moving average
     #[inline(always)]
     fn add_sample(&mut self, perplexity: f32) {
         if !perplexity.is_finite() || perplexity <= 0.0 {
             return; // Skip invalid samples
         }
-        
+
         // Update exponential moving average
         if self.sample_count == 0 {
             self.current_ema = perplexity;
         } else {
-            self.current_ema = self.ema_alpha * perplexity + (1.0 - self.ema_alpha) * self.current_ema;
+            self.current_ema =
+                self.ema_alpha * perplexity + (1.0 - self.ema_alpha) * self.current_ema;
         }
-        
+
         // Add to circular buffer
         if self.history.is_full() {
             let pos = (self.position.load(Ordering::Relaxed) as usize) % MAX_PERPLEXITY_HISTORY;
@@ -194,10 +198,10 @@ impl PerplexityState {
             // Buffer overflow protection (should not happen)
             return;
         }
-        
+
         self.sample_count = self.sample_count.saturating_add(1);
     }
-    
+
     /// Get current moving average perplexity
     #[inline(always)]
     fn current_perplexity(&self) -> f32 {
@@ -207,25 +211,25 @@ impl PerplexityState {
             1.0 // Default perplexity
         }
     }
-    
+
     /// Get perplexity variance for stability assessment
     #[inline(always)]
     fn variance(&self) -> f32 {
         if self.history.len() < 2 {
             return 0.0;
         }
-        
+
         let mean = self.current_ema;
         let mut sum_squared_diff = 0.0;
-        
+
         for &value in &self.history {
             let diff = value - mean;
             sum_squared_diff += diff * diff;
         }
-        
+
         sum_squared_diff / (self.history.len() as f32)
     }
-    
+
     /// Reset state for new sequence
     #[inline(always)]
     fn reset(&mut self) {
@@ -271,7 +275,7 @@ impl MirostatProcessor {
             MirostatConfig::V1 { learning_rate, .. } => learning_rate * 0.5,
             MirostatConfig::V2 { eta, .. } => (eta * 0.1).clamp(0.01, 0.2),
         };
-        
+
         Ok(Self {
             config,
             state: PerplexityState::new(ema_alpha),
@@ -281,50 +285,52 @@ impl MirostatProcessor {
             avg_processing_time_nanos: 0.0,
         })
     }
-    
+
     /// Create Mirostat v1 processor with default parameters
     #[inline(always)]
     pub fn v1(tau: f32, learning_rate: f32) -> CandleResult<Self> {
         let config = MirostatConfig::v1(tau, learning_rate)?;
         Self::new(config)
     }
-    
+
     /// Create Mirostat v2 processor with default parameters
     #[inline(always)]
     pub fn v2(tau: f32, eta: f32) -> CandleResult<Self> {
         let config = MirostatConfig::v2(tau, eta)?;
         Self::new(config)
     }
-    
+
     /// Convert f32 to u64 for atomic storage
     #[inline(always)]
     fn f32_to_atomic_u64(value: f32) -> u64 {
         value.to_bits() as u64
     }
-    
+
     /// Convert u64 back to f32 from atomic storage
     #[inline(always)]
     fn atomic_u64_to_f32(value: u64) -> f32 {
         f32::from_bits(value as u32)
     }
-    
+
     /// Calculate perplexity from logits with numerical stability
     #[inline(always)]
     fn calculate_perplexity(&mut self, logits: &[f32]) -> CandleResult<f32> {
         if logits.is_empty() {
             return Err(CandleError::InvalidInput("Empty logits array"));
         }
-        
+
         // Find maximum for numerical stability
         let max_logit = logits.iter().fold(f32::NEG_INFINITY, |acc, &x| acc.max(x));
         if !max_logit.is_finite() {
-            return Err(CandleError::InvalidInput("Invalid logits contain non-finite values"));
+            return Err(CandleError::InvalidInput(
+                "Invalid logits contain non-finite values",
+            ));
         }
-        
+
         // Calculate softmax with stability
         self.temp_probs.clear();
         let mut sum_exp = 0.0_f64; // Use f64 for accumulation precision
-        
+
         for &logit in logits {
             let stable_exp = (logit - max_logit).exp();
             if self.temp_probs.try_push(stable_exp).is_err() {
@@ -332,36 +338,41 @@ impl MirostatProcessor {
             }
             sum_exp += stable_exp as f64;
         }
-        
+
         if sum_exp <= 0.0 || !sum_exp.is_finite() {
-            return Err(CandleError::ProcessingError("Invalid probability distribution"));
+            return Err(CandleError::ProcessingError(
+                "Invalid probability distribution",
+            ));
         }
-        
+
         // Calculate entropy (negative log-likelihood)
         let mut entropy = 0.0_f64;
         for &prob in &self.temp_probs {
             let normalized_prob = (prob as f64) / sum_exp;
-            if normalized_prob > 1e-12 { // Avoid log(0)
+            if normalized_prob > 1e-12 {
+                // Avoid log(0)
                 entropy -= normalized_prob * normalized_prob.ln();
             }
         }
-        
+
         // Perplexity is 2^entropy
         let perplexity = (entropy / std::f64::consts::LN_2).exp() as f32;
-        
+
         if perplexity.is_finite() && perplexity > 0.0 {
             Ok(perplexity)
         } else {
-            Err(CandleError::ProcessingError("Perplexity calculation resulted in invalid value"))
+            Err(CandleError::ProcessingError(
+                "Perplexity calculation resulted in invalid value",
+            ))
         }
     }
-    
+
     /// Update dynamic tau based on perplexity feedback
     #[inline(always)]
     fn update_tau(&mut self, current_perplexity: f32) {
         let target_tau = self.config.tau();
         let current_tau = Self::atomic_u64_to_f32(self.current_tau.load(Ordering::Relaxed));
-        
+
         let new_tau = match self.config {
             MirostatConfig::V1 { learning_rate, .. } => {
                 // Direct tau adjustment based on perplexity error
@@ -376,35 +387,39 @@ impl MirostatProcessor {
                     // Reduce tau to increase filtering
                     current_tau * (1.0 - eta * (ratio - 1.0)).clamp(0.5, 1.0)
                 } else {
-                    // Increase tau to reduce filtering  
+                    // Increase tau to reduce filtering
                     current_tau * (1.0 + eta * (1.0 - ratio)).clamp(1.0, 2.0)
                 }
             }
         };
-        
-        self.current_tau.store(Self::f32_to_atomic_u64(new_tau), Ordering::Relaxed);
+
+        self.current_tau
+            .store(Self::f32_to_atomic_u64(new_tau), Ordering::Relaxed);
     }
-    
+
     /// Apply Mirostat sampling to probability distribution
     #[inline(always)]
-    fn apply_mirostat_sampling(&self, logits: &Tensor) -> Result<Tensor, crate::sampling::SamplingError> {
+    fn apply_mirostat_sampling(
+        &self,
+        logits: &Tensor,
+    ) -> Result<Tensor, crate::sampling::SamplingError> {
         // For now, implement a simple passthrough until we can properly implement Mirostat with Tensors
         // TODO: Implement proper Mirostat sampling with Tensor operations
         Ok(logits.clone())
     }
-    
+
     /// Get current dynamic tau value
     #[inline(always)]
     pub fn current_tau(&self) -> f32 {
         Self::atomic_u64_to_f32(self.current_tau.load(Ordering::Relaxed))
     }
-    
+
     /// Get current perplexity estimate
     #[inline(always)]
     pub fn current_perplexity(&self) -> f32 {
         self.state.current_perplexity()
     }
-    
+
     /// Get processing statistics
     #[inline(always)]
     pub fn stats(&self) -> MirostatStats {
@@ -417,11 +432,14 @@ impl MirostatProcessor {
             config: self.config,
         }
     }
-    
+
     /// Reset processor state for new sequence
     pub fn reset(&mut self) {
         self.state.reset();
-        self.current_tau.store(Self::f32_to_atomic_u64(self.config.tau()), Ordering::Relaxed);
+        self.current_tau.store(
+            Self::f32_to_atomic_u64(self.config.tau()),
+            Ordering::Relaxed,
+        );
         self.tokens_processed = 0;
         self.avg_processing_time_nanos = 0.0;
     }
@@ -441,7 +459,7 @@ impl MirostatProcessor {
 //     fn name(&self) -> &'static str {
 //         match self.config {
 //             MirostatConfig::V1 { .. } => "MirostatV1",
-//             MirostatConfig::V2 { .. } => "MirostatV2", 
+//             MirostatConfig::V2 { .. } => "MirostatV2",
 //         }
 //     }
 // }
@@ -469,7 +487,7 @@ impl MirostatStats {
     pub fn is_stable(&self) -> bool {
         self.perplexity_variance < 1.0 && self.tokens_processed > 10
     }
-    
+
     /// Get convergence ratio (how close tau is to target)
     #[inline(always)]
     pub fn convergence_ratio(&self) -> f32 {
@@ -480,7 +498,7 @@ impl MirostatStats {
             0.0
         }
     }
-    
+
     /// Get human-readable summary
     pub fn summary(&self) -> String {
         format!(
@@ -499,39 +517,46 @@ impl MirostatStats {
 /// Utility functions for Mirostat sampling
 pub mod utils {
     use super::*;
-    
+
     /// Create optimized Mirostat v1 processor for creative writing
     #[inline(always)]
     pub fn creative_v1() -> CandleResult<MirostatProcessor> {
         MirostatProcessor::v1(8.0, 0.2) // Higher tau, faster learning
     }
-    
+
     /// Create optimized Mirostat v1 processor for coherent completion
     #[inline(always)]
     pub fn coherent_v1() -> CandleResult<MirostatProcessor> {
         MirostatProcessor::v1(3.0, 0.1) // Lower tau, slower learning
     }
-    
+
     /// Create optimized Mirostat v2 processor for balanced generation
     #[inline(always)]
     pub fn balanced_v2() -> CandleResult<MirostatProcessor> {
         MirostatProcessor::v2(5.0, 0.3) // Medium tau, moderate eta
     }
-    
+
     /// Create Mirostat processor from sampling configuration
     pub fn from_config(config: &SamplingConfig) -> CandleResult<MirostatProcessor> {
         // Extract Mirostat parameters from config if available
-        // Default to balanced v2 configuration
-        MirostatProcessor::v2(5.0, 0.3)
+        let tau = config.temperature.unwrap_or(5.0);
+        let eta = config.top_p.unwrap_or(0.3);
+
+        // Use top_k to determine Mirostat version (v1 if specified, v2 otherwise)
+        if config.top_k.is_some() {
+            MirostatProcessor::v1(tau, eta)
+        } else {
+            MirostatProcessor::v2(tau, eta)
+        }
     }
-    
+
     /// Calculate optimal tau for target perplexity
     #[inline(always)]
     pub fn optimal_tau_for_perplexity(target_perplexity: f32) -> f32 {
         // Empirical relationship between tau and perplexity
         (target_perplexity * 0.8).clamp(MIN_TAU, MAX_TAU)
     }
-    
+
     /// Estimate required learning rate for convergence time
     #[inline(always)]
     pub fn learning_rate_for_convergence(target_tokens: u32) -> f32 {
@@ -543,23 +568,23 @@ pub mod utils {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_mirostat_config_validation() {
         // Valid configurations
         assert!(MirostatConfig::v1(5.0, 0.1).is_ok());
         assert!(MirostatConfig::v2(3.0, 0.5).is_ok());
-        
+
         // Invalid tau
         assert!(MirostatConfig::v1(0.05, 0.1).is_err()); // Too low
-        assert!(MirostatConfig::v1(25.0, 0.1).is_err());  // Too high
-        
+        assert!(MirostatConfig::v1(25.0, 0.1).is_err()); // Too high
+
         // Invalid learning rate
-        assert!(MirostatConfig::v1(5.0, 0.0).is_err());  // Too low
-        assert!(MirostatConfig::v1(5.0, 2.0).is_err());  // Too high
-        
+        assert!(MirostatConfig::v1(5.0, 0.0).is_err()); // Too low
+        assert!(MirostatConfig::v1(5.0, 2.0).is_err()); // Too high
+
         // Invalid eta
-        assert!(MirostatConfig::v2(5.0, 0.0).is_err());   // Too low
-        assert!(MirostatConfig::v2(5.0, 15.0).is_err());  // Too high
+        assert!(MirostatConfig::v2(5.0, 0.0).is_err()); // Too low
+        assert!(MirostatConfig::v2(5.0, 15.0).is_err()); // Too high
     }
 }

@@ -67,25 +67,180 @@ impl CacheKey {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
 
         let (command_type, params) = match command {
-            ChatCommand::Help { command, extended } => ("help", format!("command:{:?},extended:{}", command, extended)),
-            ChatCommand::Clear { confirm, keep_last } => ("clear", format!("confirm:{},keep_last:{:?}", confirm, keep_last)),
-            ChatCommand::History { action, limit, filter } => ("history", format!("action:{:?},limit:{:?},filter:{:?}", action, limit, filter)),
-            ChatCommand::Save { name, include_config, location } => ("save", format!("name:{:?},config:{},location:{:?}", name, include_config, location)),
-            ChatCommand::Load { name, merge, location } => ("load", format!("name:{},merge:{},location:{:?}", name, merge, location)),
-            ChatCommand::Export { format, output, include_metadata } => ("export", format!("format:{},output:{:?},metadata:{}", format, output, include_metadata)),
-            ChatCommand::Import { import_type, source, options } => ("import", format!("type:{:?},source:{},options:{:?}", import_type, source, options)),
-            ChatCommand::Settings { category, key, value, show } => ("settings", format!("category:{:?},key:{:?},value:{:?},show:{}", category, key, value, show)),
-            ChatCommand::Debug { action, level, system_info } => ("debug", format!("action:{:?},level:{:?},system:{}", action, level, system_info)),
-            ChatCommand::Custom { name, args, metadata } => ("custom", format!("name:{},args:{:?},metadata:{:?}", name, args, metadata)),
-            ChatCommand::Config { key, value, show, reset } => ("config", format!("key:{:?},value:{:?},show:{},reset:{}", key, value, show, reset)),
-            ChatCommand::Template { action, name, content, variables } => ("template", format!("action:{:?},name:{:?},content:{:?},vars:{:?}", action, name, content, variables)),
-            ChatCommand::Macro { action, name, auto_execute } => ("macro", format!("action:{:?},name:{:?},auto:{}", action, name, auto_execute)),
-            ChatCommand::Search { query, scope, limit, include_context } => ("search", format!("query:{},scope:{:?},limit:{:?},context:{}", query, scope, limit, include_context)),
-            ChatCommand::Branch { action, name, source } => ("branch", format!("action:{:?},name:{:?},source:{:?}", action, name, source)),
-            ChatCommand::Session { action, name, include_config } => ("session", format!("action:{:?},name:{:?},config:{}", action, name, include_config)),
-            ChatCommand::Tool { action, name, args } => ("tool", format!("action:{:?},name:{:?},args:{:?}", action, name, args)),
-            ChatCommand::Stats { stat_type, period, detailed } => ("stats", format!("type:{:?},period:{:?},detailed:{}", stat_type, period, detailed)),
-            ChatCommand::Theme { action, name, properties } => ("theme", format!("action:{:?},name:{:?},props:{:?}", action, name, properties)),
+            ChatCommand::Help { command, extended } => (
+                "help",
+                format!("command:{:?},extended:{}", command, extended),
+            ),
+            ChatCommand::Clear { confirm, keep_last } => (
+                "clear",
+                format!("confirm:{},keep_last:{:?}", confirm, keep_last),
+            ),
+            ChatCommand::History {
+                action,
+                limit,
+                filter,
+            } => (
+                "history",
+                format!("action:{:?},limit:{:?},filter:{:?}", action, limit, filter),
+            ),
+            ChatCommand::Save {
+                name,
+                include_config,
+                location,
+            } => (
+                "save",
+                format!(
+                    "name:{:?},config:{},location:{:?}",
+                    name, include_config, location
+                ),
+            ),
+            ChatCommand::Load {
+                name,
+                merge,
+                location,
+            } => (
+                "load",
+                format!("name:{},merge:{},location:{:?}", name, merge, location),
+            ),
+            ChatCommand::Export {
+                format,
+                output,
+                include_metadata,
+            } => (
+                "export",
+                format!(
+                    "format:{},output:{:?},metadata:{}",
+                    format, output, include_metadata
+                ),
+            ),
+            ChatCommand::Import {
+                import_type,
+                source,
+                options,
+            } => (
+                "import",
+                format!(
+                    "type:{:?},source:{},options:{:?}",
+                    import_type, source, options
+                ),
+            ),
+            ChatCommand::Settings {
+                category,
+                key,
+                value,
+                show,
+            } => (
+                "settings",
+                format!(
+                    "category:{:?},key:{:?},value:{:?},show:{}",
+                    category, key, value, show
+                ),
+            ),
+            ChatCommand::Debug {
+                action,
+                level,
+                system_info,
+            } => (
+                "debug",
+                format!(
+                    "action:{:?},level:{:?},system:{}",
+                    action, level, system_info
+                ),
+            ),
+            ChatCommand::Custom {
+                name,
+                args,
+                metadata,
+            } => (
+                "custom",
+                format!("name:{},args:{:?},metadata:{:?}", name, args, metadata),
+            ),
+            ChatCommand::Config {
+                key,
+                value,
+                show,
+                reset,
+            } => (
+                "config",
+                format!(
+                    "key:{:?},value:{:?},show:{},reset:{}",
+                    key, value, show, reset
+                ),
+            ),
+            ChatCommand::Template {
+                action,
+                name,
+                content,
+                variables,
+            } => (
+                "template",
+                format!(
+                    "action:{:?},name:{:?},content:{:?},vars:{:?}",
+                    action, name, content, variables
+                ),
+            ),
+            ChatCommand::Macro {
+                action,
+                name,
+                auto_execute,
+            } => (
+                "macro",
+                format!("action:{:?},name:{:?},auto:{}", action, name, auto_execute),
+            ),
+            ChatCommand::Search {
+                query,
+                scope,
+                limit,
+                include_context,
+            } => (
+                "search",
+                format!(
+                    "query:{},scope:{:?},limit:{:?},context:{}",
+                    query, scope, limit, include_context
+                ),
+            ),
+            ChatCommand::Branch {
+                action,
+                name,
+                source,
+            } => (
+                "branch",
+                format!("action:{:?},name:{:?},source:{:?}", action, name, source),
+            ),
+            ChatCommand::Session {
+                action,
+                name,
+                include_config,
+            } => (
+                "session",
+                format!(
+                    "action:{:?},name:{:?},config:{}",
+                    action, name, include_config
+                ),
+            ),
+            ChatCommand::Tool { action, name, args } => (
+                "tool",
+                format!("action:{:?},name:{:?},args:{:?}", action, name, args),
+            ),
+            ChatCommand::Stats {
+                stat_type,
+                period,
+                detailed,
+            } => (
+                "stats",
+                format!(
+                    "type:{:?},period:{:?},detailed:{}",
+                    stat_type, period, detailed
+                ),
+            ),
+            ChatCommand::Theme {
+                action,
+                name,
+                properties,
+            } => (
+                "theme",
+                format!("action:{:?},name:{:?},props:{:?}", action, name, properties),
+            ),
         };
 
         params.hash(&mut hasher);
@@ -229,12 +384,11 @@ impl CommandMiddleware for CachingMiddleware {
         &'a self,
         command: &'a ChatCommand,
         context: &'a CommandContext,
-    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>>
-    {
+    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let cache = self.cache.clone();
         let command = command.clone();
-        
+
         tokio::spawn(async move {
             // Check cache for existing result
             if let Some(_cached_output) = cache.get(&command).await {
@@ -244,7 +398,7 @@ impl CommandMiddleware for CachingMiddleware {
             }
             let _ = tx.send(Ok(()));
         });
-        
+
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
@@ -253,13 +407,12 @@ impl CommandMiddleware for CachingMiddleware {
         command: &'a ChatCommand,
         _context: &'a CommandContext,
         result: &'a CommandResult<CommandOutput>,
-    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>>
-    {
+    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let cache = self.cache.clone();
         let command = command.clone();
         let result = result.clone();
-        
+
         tokio::spawn(async move {
             // Cache successful results
             if let Ok(output) = &result {
@@ -267,7 +420,7 @@ impl CommandMiddleware for CachingMiddleware {
             }
             let _ = tx.send(Ok(()));
         });
-        
+
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 

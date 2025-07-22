@@ -3,7 +3,7 @@
 // Stream-first primitives with .collect() for await-like behavior
 
 pub mod task;
-pub use task::{AsyncTask, spawn_task, spawn_stream};
+pub use task::{AsyncTask, spawn_stream, spawn_task};
 pub mod stream;
 pub use stream::{AsyncStream, AsyncStreamSender};
 pub mod thread_pool;

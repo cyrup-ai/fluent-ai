@@ -3,17 +3,16 @@
 //! From [xAI Reference](https://docs.x.ai/docs/api-reference#chat-completions)
 // ================================================================
 
-use fluent_ai_domain::completion::{self, CompletionRequest};
-use serde_json::{Value, json};
-use self::xai_api_types::{CompletionResponse, ToolDefinition};
-
 // Re-export the domain CompletionModel trait
 pub use fluent_ai_domain::completion::CompletionModel;
+use fluent_ai_domain::completion::{self, CompletionRequest};
+use serde_json::{Value, json};
 
+use self::xai_api_types::{CompletionResponse, ToolDefinition};
 use super::client::Client;
 use crate::completion_provider::{CompletionError, CompletionResponse as DomainCompletionResponse};
-use crate::streaming::StreamingCompletionResponse;
 use crate::json_util;
+use crate::streaming::StreamingCompletionResponse;
 
 /// xAI completion models as of 2025-06-04
 pub const GROK_2_1212: &str = "grok-2-1212";
@@ -41,9 +40,8 @@ impl XaiCompletionModel {
         completion_request: fluent_ai_domain::completion::CompletionRequest,
     ) -> Result<Value, CompletionError> {
         // Convert documents into user messages
-        let docs: Option<Vec<serde_json::Value>> = completion_request
-            .normalized_documents()
-            .map(|docs| {
+        let docs: Option<Vec<serde_json::Value>> =
+            completion_request.normalized_documents().map(|docs| {
                 docs.into_iter()
                     .map(|doc| serde_json::json!({"role": "user", "content": doc.content}))
                     .collect()
@@ -65,7 +63,9 @@ impl XaiCompletionModel {
                     fluent_ai_domain::message::Message::System(content) => {
                         serde_json::json!({"role": "system", "content": content})
                     }
-                    fluent_ai_domain::message::Message::ToolCall { name, arguments, .. } => {
+                    fluent_ai_domain::message::Message::ToolCall {
+                        name, arguments, ..
+                    } => {
                         serde_json::json!({
                             "role": "assistant",
                             "tool_calls": [{
@@ -156,8 +156,9 @@ impl completion::CompletionModel for XaiCompletionModel {
         if response.status().is_success() {
             // Use pure HTTP3 streaming - delegate to domain layer
             // Provider uses domain, domain uses HTTP3 directly
-            let completion: CompletionResponse = todo!("Delegate to domain layer for HTTP3 streaming");
-                
+            let completion: CompletionResponse =
+                todo!("Delegate to domain layer for HTTP3 streaming");
+
             Ok(DomainCompletionResponse {
                 raw_response: completion.clone(),
                 content: completion.try_into()?,
@@ -166,7 +167,9 @@ impl completion::CompletionModel for XaiCompletionModel {
             })
         } else {
             // Use pure HTTP3 streaming for error responses - delegate to domain
-            Err(CompletionError::ProviderError("HTTP error - delegate to domain layer".to_string()))
+            Err(CompletionError::ProviderError(
+                "HTTP error - delegate to domain layer".to_string(),
+            ))
         }
     }
 
@@ -177,7 +180,7 @@ impl completion::CompletionModel for XaiCompletionModel {
     ) -> Result<crate::streaming::StreamingResponse<Self::StreamingResponse>, CompletionError> {
         let mut request_json = self.create_completion_request(request)?;
         request_json["stream"] = serde_json::json!(true);
-        
+
         let request_body = serde_json::to_vec(&request_json)
             .map_err(|e| CompletionError::RequestError(format!("Serialization error: {}", e)))?;
 
@@ -189,29 +192,37 @@ impl completion::CompletionModel for XaiCompletionModel {
 
         if !response.status().is_success() {
             // Use pure HTTP3 streaming for error responses - delegate to domain
-            return Err(CompletionError::ProviderError("HTTP error - delegate to domain layer".to_string()));
+            return Err(CompletionError::ProviderError(
+                "HTTP error - delegate to domain layer".to_string(),
+            ));
         }
 
         // Create streaming response using the streaming module
         let sse_stream = response.sse();
-        Ok(crate::streaming::StreamingResponse::from_sse_stream(sse_stream))
+        Ok(crate::streaming::StreamingResponse::from_sse_stream(
+            sse_stream,
+        ))
     }
 }
 
-impl TryFrom<xai_api_types::CompletionResponse> for crate::completion_provider::ZeroOneOrMany<String> {
+impl TryFrom<xai_api_types::CompletionResponse>
+    for crate::completion_provider::ZeroOneOrMany<String>
+{
     type Error = CompletionError;
 
     fn try_from(response: xai_api_types::CompletionResponse) -> Result<Self, Self::Error> {
         let choice = response.choices.first().ok_or_else(|| {
             CompletionError::ResponseError("Response contained no choices".to_owned())
         })?;
-        
+
         // Extract text content from the response
         if let Some(content) = choice.message.get("content").and_then(|c| c.as_str()) {
-            Ok(crate::completion_provider::ZeroOneOrMany::One(content.to_string()))
+            Ok(crate::completion_provider::ZeroOneOrMany::One(
+                content.to_string(),
+            ))
         } else {
             Err(CompletionError::ResponseError(
-                "Response did not contain valid text content".to_string()
+                "Response did not contain valid text content".to_string(),
             ))
         }
     }

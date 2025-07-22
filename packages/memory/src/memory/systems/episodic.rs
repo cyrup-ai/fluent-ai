@@ -10,6 +10,8 @@ use std::sync::Arc;
 use arc_swap::ArcSwap;
 use chrono::{DateTime, Utc};
 use crossbeam_skiplist::SkipMap;
+use fluent_ai_async::AsyncStream;
+use fluent_ai_async::channel;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -17,10 +19,8 @@ use crate::memory::primitives::metadata::MemoryMetadata;
 use crate::memory::primitives::node::MemoryNode;
 use crate::memory::primitives::types::{BaseMemory, MemoryContent, MemoryType, MemoryTypeEnum};
 use crate::memory::repository::MemoryRepository;
-use crate::utils::error::Error;
 use crate::utils::Result;
-use fluent_ai_core::channel::async_stream_channel;
-use fluent_ai_core::stream::AsyncStream;
+use crate::utils::error::Error;
 
 /// Context for an episodic memory event
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -148,7 +148,11 @@ impl MemoryType for EpisodicMemory {
         let events: SkipMap<DateTime<Utc>, EpisodicEvent> = match &memory.content {
             MemoryContent::Json(val) => serde_json::from_value(val.clone())?,
             MemoryContent::Text(s) => serde_json::from_str(s)?,
-            _ => return Err(Error::MemoryError("Invalid content type for episodic memory".to_string())),
+            _ => {
+                return Err(Error::MemoryError(
+                    "Invalid content type for episodic memory".to_string(),
+                ));
+            }
         };
 
         Ok(Self {
@@ -160,7 +164,10 @@ impl MemoryType for EpisodicMemory {
     fn to_memory(&self) -> Result<BaseMemory> {
         let mut memory = self.base.clone();
         let events_guard = self.events.load();
-        let events_map: HashMap<_, _> = events_guard.iter().map(|entry| (entry.key().clone(), entry.value().clone())).collect();
+        let events_map: HashMap<_, _> = events_guard
+            .iter()
+            .map(|entry| (entry.key().clone(), entry.value().clone()))
+            .collect();
         memory.content = MemoryContent::Json(serde_json::to_value(events_map)?);
         Ok(memory)
     }
@@ -222,7 +229,7 @@ impl EpisodicMemory {
         name: &str,
         description: &str,
     ) -> AsyncStream<Result<EpisodicMemory>> {
-        let (tx, stream) = async_stream_channel();
+        let (tx, stream) = channel();
         let id_string = id.to_string();
         let name_string = name.to_string();
         let description_string = description.to_string();
@@ -240,7 +247,7 @@ impl EpisodicMemory {
                     Err(_) => {
                         return Err(crate::utils::error::Error::SerializationError(
                             "Failed to serialize episodic memory content".to_string(),
-                        ))
+                        ));
                     }
                 };
 

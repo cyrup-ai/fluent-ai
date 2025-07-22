@@ -9,9 +9,7 @@ pub struct EmitterBuilder<T> {
 
 /// Hidden trait for implementation - NO async/Future usage!
 pub trait EmitterImpl<T>: Send {
-    fn execute(
-        self: Box<Self>,
-    ) -> Result<Vec<T>, Box<dyn std::error::Error + Send>>;
+    fn execute(self: Box<Self>) -> Result<Vec<T>, Box<dyn std::error::Error + Send>>;
 }
 
 impl<T: Send + 'static> EmitterBuilder<T> {
@@ -29,17 +27,15 @@ impl<T: Send + 'static> EmitterBuilder<T> {
     {
         let (sender, stream) = AsyncStream::channel();
 
-        std::thread::spawn(move || {
-            match self.inner.execute() {
-                Ok(items) => {
-                    for item in on_ok(items) {
-                        if sender.try_send(item).is_err() {
-                            break;
-                        }
+        std::thread::spawn(move || match self.inner.execute() {
+            Ok(items) => {
+                for item in on_ok(items) {
+                    if sender.try_send(item).is_err() {
+                        break;
                     }
                 }
-                Err(e) => on_err(e),
             }
+            Err(e) => on_err(e),
         });
 
         stream

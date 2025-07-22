@@ -18,8 +18,8 @@ use std::sync::Arc;
 
 use fluent_ai_http3::async_task::AsyncStream;
 #[allow(unused_imports)] // used in downstream macro expansion
-use futures::join;
-use futures::stream;
+use futures_util::join;
+use futures_util::stream;
 
 use crate::prelude::*;
 use crate::{completion, vector_store};
@@ -81,9 +81,12 @@ where
         let step = self.step.clone();
 
         crate::async_task::spawn_async(async move {
-            match step.execute(input).await {
-                Ok(output) => output,
-                Err(e) => panic!("Workflow error: {}", e), // Error handler was already called
+            use futures_util::StreamExt;
+            let mut step_stream = step.execute(input);
+            match step_stream.next().await {
+                Some(Ok(output)) => output,
+                Some(Err(e)) => panic!("Workflow error: {}", e), /* Error handler was already called */
+                None => panic!("Workflow error: no output from step"), // Unexpected empty stream
             }
         })
     }
@@ -98,20 +101,23 @@ where
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         tokio::spawn(async move {
-            use futures::StreamExt;
+            use futures_util::StreamExt;
             let mut stream = inputs;
 
             while let Some(input) = stream.next().await {
                 let step = step.clone();
-                match step.execute(input).await {
-                    Ok(output) => {
-                        if tx.send(output).is_err() {
-                            break;
+                let mut step_stream = step.execute(input);
+                if let Some(result) = step_stream.next().await {
+                    match result {
+                        Ok(output) => {
+                            if tx.send(output).is_err() {
+                                break;
+                            }
                         }
-                    }
-                    Err(_) => {
-                        // Error already handled by error handler
-                        continue;
+                        Err(_) => {
+                            // Error already handled by error handler
+                            continue;
+                        }
                     }
                 }
             }
@@ -132,10 +138,20 @@ where
             let step1 = step1.clone();
             let step2 = step2.clone();
 
-            async move {
-                let result1 = step1.execute(input).await?;
-                step2.execute(result1).await
-            }
+            let (tx, stream) = AsyncStream::channel();
+            tokio::spawn(async move {
+                use futures_util::StreamExt;
+                let mut stream1 = step1.execute(input);
+                if let Some(Ok(result1)) = stream1.next().await {
+                    let mut stream2 = step2.execute(result1);
+                    if let Some(result2) = stream2.next().await {
+                        let _ = tx.send(result2);
+                    }
+                } else {
+                    let _ = tx.send(Err("First step failed".to_string()));
+                }
+            });
+            stream
         };
 
         Workflow {
@@ -165,17 +181,17 @@ pub trait Op: Send + Sync {
         let (tx, stream) = AsyncStream::channel();
         let inputs: Vec<_> = input.into_iter().collect();
         let op = self.clone();
-        
+
         tokio::spawn(async move {
             let mut results = Vec::with_capacity(inputs.len());
             let semaphore = Arc::new(tokio::sync::Semaphore::new(n));
-            
+
             let mut handles = Vec::new();
-            
+
             for input_item in inputs {
                 let permit = semaphore.clone().acquire_owned().await.unwrap();
                 let op_clone = op.clone();
-                
+
                 let handle = tokio::spawn(async move {
                     let mut call_stream = op_clone.call(input_item);
                     let result = call_stream.next();
@@ -184,16 +200,16 @@ pub trait Op: Send + Sync {
                 });
                 handles.push(handle);
             }
-            
+
             for handle in handles {
                 if let Ok(Some(result)) = handle.await {
                     results.push(result);
                 }
             }
-            
+
             let _ = tx.send(results);
         });
-        
+
         stream
     }
 
@@ -215,7 +231,7 @@ pub trait Op: Send + Sync {
     where
         Self: Sized,
         F: Fn(Self::Output) -> Fut + Send + Sync,
-        Fut: Future + Send,
+        Fut: std::future::Future + Send,
         Fut::Output: Send + Sync,
     {
         Sequential::new(self, Then::new(f))
@@ -265,8 +281,8 @@ impl<T: Op> Op for &T {
     type Output = T::Output;
 
     #[inline]
-    async fn call(&self, input: Self::Input) -> Self::Output {
-        (**self).call(input).await
+    fn call(&self, input: Self::Input) -> AsyncStream<Self::Output> {
+        (**self).call(input)
     }
 }
 
@@ -294,9 +310,22 @@ where
     type Output = B::Output;
 
     #[inline]
-    async fn call(&self, input: Self::Input) -> Self::Output {
-        let mid = self.a.call(input).await;
-        self.b.call(mid).await
+    fn call(&self, input: Self::Input) -> AsyncStream<Self::Output> {
+        let a = self.a.clone();
+        let b = self.b.clone();
+
+        let (tx, stream) = AsyncStream::channel();
+        tokio::spawn(async move {
+            use futures_util::StreamExt;
+            let mut a_stream = a.call(input);
+            if let Some(mid) = a_stream.next().await {
+                let mut b_stream = b.call(mid);
+                if let Some(result) = b_stream.next().await {
+                    let _ = tx.send(result);
+                }
+            }
+        });
+        stream
     }
 }
 
@@ -328,8 +357,13 @@ where
     type Output = Out;
 
     #[inline]
-    async fn call(&self, input: Self::Input) -> Self::Output {
-        (self.f)(input)
+    fn call(&self, input: Self::Input) -> AsyncStream<Self::Output> {
+        let (tx, stream) = AsyncStream::channel();
+        let result = (self.f)(input);
+        tokio::spawn(async move {
+            let _ = tx.send(result);
+        });
+        stream
     }
 }
 
@@ -361,15 +395,21 @@ impl<F, In, Fut> Op for Then<F, In>
 where
     F: Fn(In) -> Fut + Send + Sync,
     In: Send + Sync,
-    Fut: Future + Send,
+    Fut: std::future::Future + Send,
     Fut::Output: Send + Sync,
 {
     type Input = In;
     type Output = Fut::Output;
 
     #[inline]
-    async fn call(&self, input: Self::Input) -> Self::Output {
-        (self.f)(input).await
+    fn call(&self, input: Self::Input) -> AsyncStream<Self::Output> {
+        let (tx, stream) = AsyncStream::channel();
+        let fut = (self.f)(input);
+        tokio::spawn(async move {
+            let result = fut.await;
+            let _ = tx.send(result);
+        });
+        stream
     }
 }
 
@@ -377,7 +417,7 @@ pub fn then<F, In, Fut>(f: F) -> Then<F, In>
 where
     F: Fn(In) -> Fut + Send + Sync,
     In: Send + Sync,
-    Fut: Future + Send,
+    Fut: std::future::Future + Send,
     Fut::Output: Send + Sync,
 {
     Then::new(f)
@@ -398,8 +438,12 @@ impl<T: Send + Sync> Op for Passthrough<T> {
     type Output = T;
 
     #[inline]
-    async fn call(&self, input: Self::Input) -> Self::Output {
-        input
+    fn call(&self, input: Self::Input) -> AsyncStream<Self::Output> {
+        let (tx, stream) = AsyncStream::channel();
+        tokio::spawn(async move {
+            let _ = tx.send(input);
+        });
+        stream
     }
 }
 
@@ -449,10 +493,20 @@ where
             let prev = prev_step.clone();
             let next = next_step.clone();
 
-            async move {
-                let result = prev.execute(input).await?;
-                next.execute(result).await
-            }
+            let (tx, stream) = AsyncStream::channel();
+            tokio::spawn(async move {
+                use futures_util::StreamExt;
+                let mut prev_stream = prev.execute(input);
+                if let Some(Ok(result)) = prev_stream.next().await {
+                    let mut next_stream = next.execute(result);
+                    if let Some(next_result) = next_stream.next().await {
+                        let _ = tx.send(next_result);
+                    }
+                } else {
+                    let _ = tx.send(Err("Previous step failed".to_string()));
+                }
+            });
+            stream
         };
 
         WorkflowBuilder::new(composed)
@@ -470,10 +524,18 @@ where
             let prev = prev_step.clone();
             let mapper = f.clone();
 
-            async move {
-                let result = prev.execute(input).await?;
-                Ok(mapper(result))
-            }
+            let (tx, stream) = AsyncStream::channel();
+            tokio::spawn(async move {
+                use futures_util::StreamExt;
+                let mut prev_stream = prev.execute(input);
+                if let Some(Ok(result)) = prev_stream.next().await {
+                    let mapped_result = mapper(result);
+                    let _ = tx.send(Ok(mapped_result));
+                } else {
+                    let _ = tx.send(Err("Previous step failed".to_string()));
+                }
+            });
+            stream
         };
 
         WorkflowBuilder::new(mapped)
@@ -509,15 +571,23 @@ where
             let step = step.clone();
             let handler = error_handler.clone();
 
-            async move {
-                match step.execute(input).await {
-                    Ok(output) => Ok(output),
-                    Err(e) => {
-                        handler.lock()(e.clone());
-                        Err(e)
+            let (tx, stream) = AsyncStream::channel();
+            tokio::spawn(async move {
+                use futures_util::StreamExt;
+                let mut step_stream = step.execute(input);
+                if let Some(result) = step_stream.next().await {
+                    match result {
+                        Ok(output) => {
+                            let _ = tx.send(Ok(output));
+                        }
+                        Err(e) => {
+                            handler.lock()(e.clone());
+                            let _ = tx.send(Err(e));
+                        }
                     }
                 }
-            }
+            });
+            stream
         };
 
         Workflow {
@@ -547,18 +617,28 @@ impl Workflow<(), ()> {
         let task = Arc::new(std::sync::Mutex::new(Some(task)));
         let step = move |_: ()| {
             let task = task.clone();
-            async move {
+
+            let (tx, stream) = AsyncStream::channel();
+            tokio::spawn(async move {
                 let task = match task.lock() {
                     Ok(mut guard) => match guard.take() {
                         Some(t) => t,
-                        None => return Err("Task already consumed".to_string()),
+                        None => {
+                            let _ = tx.send(Err("Task already consumed".to_string()));
+                            return;
+                        }
                     },
-                    Err(_) => return Err("Failed to acquire task lock".to_string()),
+                    Err(_) => {
+                        let _ = tx.send(Err("Failed to acquire task lock".to_string()));
+                        return;
+                    }
                 };
 
                 // task.await returns T directly since AsyncTask handles errors internally
-                Ok(task.await)
-            }
+                let result = task.await;
+                let _ = tx.send(Ok(result));
+            });
+            stream
         };
         WorkflowBuilder::new(step)
     }
@@ -571,13 +651,21 @@ impl Workflow<(), ()> {
         let stream = Arc::new(std::sync::Mutex::new(Some(stream)));
         let step = move |_: ()| {
             let stream = stream.clone();
-            async move {
+
+            let (tx, result_stream) = AsyncStream::channel();
+            tokio::spawn(async move {
                 let stream = match stream.lock() {
                     Ok(mut guard) => match guard.take() {
                         Some(s) => s,
-                        None => return Err("Stream already consumed".to_string()),
+                        None => {
+                            let _ = tx.send(Err("Stream already consumed".to_string()));
+                            return;
+                        }
                     },
-                    Err(_) => return Err("Failed to acquire stream lock".to_string()),
+                    Err(_) => {
+                        let _ = tx.send(Err("Failed to acquire stream lock".to_string()));
+                        return;
+                    }
                 };
 
                 // Manually collect stream items since AsyncStream doesn't have collect()
@@ -587,8 +675,9 @@ impl Workflow<(), ()> {
                 while let Some(item) = pinned_stream.next().await {
                     items.push(item);
                 }
-                Ok(items)
-            }
+                let _ = tx.send(Ok(items));
+            });
+            result_stream
         };
         WorkflowBuilder::new(step)
     }
@@ -603,7 +692,12 @@ where
 {
     move |input: In| {
         let f = f.clone();
-        async move { Ok(f(input)) }
+        let (tx, stream) = AsyncStream::channel();
+        tokio::spawn(async move {
+            let result = f(input);
+            let _ = tx.send(Ok(result));
+        });
+        stream
     }
 }
 
@@ -611,7 +705,7 @@ where
 pub fn async_step<In, Out, F, Fut>(f: F) -> impl WorkflowStep<In, Out>
 where
     F: Fn(In) -> Fut + Send + Sync + 'static,
-    Fut: Future<Output = Result<Out, String>> + Send + 'static,
+    Fut: std::future::Future<Output = Result<Out, String>> + Send + 'static,
     In: Send + 'static,
     Out: Send + 'static,
 {

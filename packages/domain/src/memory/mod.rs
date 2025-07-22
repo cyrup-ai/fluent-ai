@@ -10,11 +10,15 @@ pub mod primitives;
 mod cognitive;
 
 /// High-performance configuration system
-mod config;
+pub mod config;
 
+// Re-export configuration types
+pub use config::llm::{LLMConfig, LLMProvider};
+// Re-export manager types
+pub use manager::{MemoryManagerTrait as MemoryManager, SurrealDBMemoryManager};
 
 /// Core memory management and configuration
-mod manager;
+pub mod manager;
 
 /// SIMD-optimized vector operations for high-performance memory processing
 mod ops;
@@ -34,13 +38,13 @@ mod serialization;
 /// Memory workflow management
 mod workflow;
 
-
 // Re-export all new domain types
 // Type aliases for migration compatibility
-use crate::async_task::AsyncStream;
 
 /// Compatibility mode for memory systems
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, Default,
+)]
 pub enum CompatibilityMode {
     /// Strict mode: Only allow exact matches
     Strict,
@@ -55,11 +59,10 @@ pub enum CompatibilityMode {
 pub use cognitive::{CognitiveMemory, CognitiveProcessor};
 pub use config::database::{DatabaseType, PoolConfig};
 pub use config::shared::RetryConfig;
-pub use config::vector::{
-    DistanceMetric, IndexConfig, IndexType, PerformanceConfig,
-    SimdConfig, VectorStoreType,
-};
 pub use config::shared::{EmbeddingConfig, EmbeddingModelType};
+pub use config::vector::{
+    DistanceMetric, IndexConfig, IndexType, PerformanceConfig, SimdConfig, VectorStoreType,
+};
 pub use config::{DatabaseConfig, MemoryConfig, VectorStoreConfig};
 // Conditional re-exports for cognitive features
 // Removed unexpected cfg condition "cognitive" - feature does not exist
@@ -231,11 +234,7 @@ impl MemorySystemConfig {
             .with_vector_config(
                 VectorStoreConfig::new(
                     VectorStoreType::FAISS,
-                    EmbeddingConfig::new(
-                        EmbeddingModelType::OpenAI,
-                        "text-embedding-3-large",
-                        3072,
-                    ),
+                    EmbeddingConfig::high_performance(),
                     3072,
                 )?
                 .with_distance_metric(DistanceMetric::Cosine)

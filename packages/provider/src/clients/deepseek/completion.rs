@@ -15,8 +15,8 @@
 use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
-use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::spawn_async;
+use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{Document, Message};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde::{Deserialize, Serialize};
@@ -329,7 +329,7 @@ impl CompletionProvider for DeepSeekCompletionBuilder {
     /// Terminal action - execute completion with user prompt (blazing-fast streaming)
     #[inline(always)]
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
-        let (sender, receiver) = crate::async_stream_channel();
+        let (sender, receiver) = crate::channel();
         let prompt_text = text.as_ref().to_string();
 
         spawn_async(async move {
@@ -408,7 +408,7 @@ impl DeepSeekCompletionBuilder {
         }
 
         let sse_stream = response.sse();
-        let (chunk_sender, chunk_receiver) = crate::async_stream_channel();
+        let (chunk_sender, chunk_receiver) = crate::channel();
 
         spawn_async(async move {
             use futures_util::StreamExt;
@@ -714,10 +714,5 @@ pub const DEEPSEEK_R1: &str = "deepseek-r1";
 
 #[inline(always)]
 pub const fn available_models() -> &'static [&'static str] {
-    &[
-        DEEPSEEK_CHAT,
-        DEEPSEEK_REASONER,
-        DEEPSEEK_V3,
-        DEEPSEEK_R1,
-    ]
+    &[DEEPSEEK_CHAT, DEEPSEEK_REASONER, DEEPSEEK_V3, DEEPSEEK_R1]
 }

@@ -3,13 +3,12 @@
 //! This module provides blazing-fast response parsing and validation with minimal allocations
 //! and no locking requirements.
 
-
+use fluent_ai_domain::completion::CompletionResponse;
+use fluent_ai_http3::HttpResponse;
 use serde_json;
 
-use fluent_ai_domain::completion::CompletionResponse;
 use super::error::{AnthropicError, AnthropicResult};
 use super::streaming::AnthropicStreamChunk;
-use fluent_ai_http3::HttpResponse;
 
 /// Content type constants for response validation
 const CONTENT_TYPE_JSON: &str = "application/json";
@@ -38,11 +37,9 @@ impl AnthropicResponseProcessor {
         Self::validate_json_content_type(&response)?;
 
         // Parse JSON response
-        let completion_response: CompletionResponse =
-            serde_json::from_slice(&response.body).map_err(|e| {
-                AnthropicError::DeserializationError {
-                    message: format!("Failed to parse completion response: {}", e),
-                }
+        let completion_response: CompletionResponse = serde_json::from_slice(&response.body)
+            .map_err(|e| AnthropicError::DeserializationError {
+                message: format!("Failed to parse completion response: {}", e),
             })?;
 
         // Validate response structure
@@ -82,12 +79,11 @@ impl AnthropicResponseProcessor {
         Self::validate_json_content_type(&response)?;
 
         // Try to parse as completion response to ensure it's valid
-        let _: CompletionResponse =
-            serde_json::from_slice(&response.body).map_err(|e| {
-                AnthropicError::DeserializationError {
-                    message: format!("Test response is not a valid completion response: {}", e),
-                }
-            })?;
+        let _: CompletionResponse = serde_json::from_slice(&response.body).map_err(|e| {
+            AnthropicError::DeserializationError {
+                message: format!("Test response is not a valid completion response: {}", e),
+            }
+        })?;
 
         Ok(())
     }
@@ -309,9 +305,7 @@ impl RateLimitInfo {
 
 /// Standalone function to process a completion response
 #[inline]
-pub fn process_completion_response(
-    response: HttpResponse,
-) -> AnthropicResult<CompletionResponse> {
+pub fn process_completion_response(response: HttpResponse) -> AnthropicResult<CompletionResponse> {
     AnthropicResponseProcessor::process_completion_response(response)
 }
 

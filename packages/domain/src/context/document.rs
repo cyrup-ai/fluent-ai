@@ -5,10 +5,9 @@
 
 use std::collections::HashMap;
 
+use fluent_ai_http3::async_task::error_handlers::BadTraitImpl;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
-use crate::async_task::error_handlers::BadTraitImpl;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Document {

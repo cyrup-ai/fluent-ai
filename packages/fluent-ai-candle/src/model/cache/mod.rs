@@ -90,8 +90,14 @@ pub struct KVCacheEntry {
 
 impl KVCacheEntry {
     #[inline(always)]
-    pub fn new(key_tensor: Tensor, value_tensor: Tensor, sequence_id: u64, layer_id: u32, 
-           position_start: u32, position_end: u32) -> Result<Self, CandleError> {
+    pub fn new(
+        key_tensor: Tensor,
+        value_tensor: Tensor,
+        sequence_id: u64,
+        layer_id: u32,
+        position_start: u32,
+        position_end: u32,
+    ) -> Result<Self, CandleError> {
         // Calculate memory usage for both tensors
         let key_bytes = key_tensor.elem_count() * key_tensor.dtype().size_in_bytes();
         let value_bytes = value_tensor.elem_count() * value_tensor.dtype().size_in_bytes();
@@ -295,16 +301,21 @@ impl KVCacheManager {
     }
 
     #[inline(always)]
-    pub fn insert_entry(&self, key: CacheKey, key_tensor: Tensor, value_tensor: Tensor) -> Result<Arc<KVCacheEntry>, CandleError> {
+    pub fn insert_entry(
+        &self,
+        key: CacheKey,
+        key_tensor: Tensor,
+        value_tensor: Tensor,
+    ) -> Result<Arc<KVCacheEntry>, CandleError> {
         let entry = KVCacheEntry::new(
-            key_tensor, 
-            value_tensor, 
-            key.sequence_id, 
-            key.layer_id, 
-            key.position_start, 
-            key.position_end
+            key_tensor,
+            value_tensor,
+            key.sequence_id,
+            key.layer_id,
+            key.position_start,
+            key.position_end,
         )?;
-        
+
         let memory_usage = entry.memory_usage();
         let arc_entry = Arc::new(entry);
 
@@ -315,12 +326,17 @@ impl KVCacheManager {
                 if current_seq_memory + memory_usage > self.config.max_memory_per_sequence {
                     self.evict_sequence_lru(&key.sequence_id)?;
                 }
-                seq_memory.value().fetch_add(memory_usage, Ordering::Relaxed);
+                seq_memory
+                    .value()
+                    .fetch_add(memory_usage, Ordering::Relaxed);
             }
         }
 
         // Check global memory limits
-        let new_total = self.total_memory_usage.fetch_add(memory_usage, Ordering::Relaxed) + memory_usage;
+        let new_total = self
+            .total_memory_usage
+            .fetch_add(memory_usage, Ordering::Relaxed)
+            + memory_usage;
         if new_total > (self.config.max_memory_bytes as f32 * self.config.high_water_mark) as u64 {
             // Trigger async eviction to reach low water mark
             self.evict_to_low_water_mark()?;
@@ -349,7 +365,8 @@ impl KVCacheManager {
         }
 
         // Update memory counters
-        self.total_memory_usage.fetch_sub(memory_freed, Ordering::Relaxed);
+        self.total_memory_usage
+            .fetch_sub(memory_freed, Ordering::Relaxed);
         if self.config.per_sequence_limits {
             self.sequence_memory.remove(&sequence_id);
         }
@@ -360,7 +377,8 @@ impl KVCacheManager {
 
     #[inline(always)]
     fn evict_sequence_lru(&self, sequence_id: &u64) -> Result<(), CandleError> {
-        let target_memory = (self.config.max_memory_per_sequence as f32 * self.config.low_water_mark) as u64;
+        let target_memory =
+            (self.config.max_memory_per_sequence as f32 * self.config.low_water_mark) as u64;
         let mut candidates: Vec<(CacheKey, u64)> = Vec::new();
 
         // Collect eviction candidates for this sequence
@@ -394,15 +412,19 @@ impl KVCacheManager {
         }
 
         // Update memory counters
-        self.total_memory_usage.fetch_sub(memory_freed, Ordering::Relaxed);
-        seq_memory.value().fetch_sub(memory_freed, Ordering::Relaxed);
+        self.total_memory_usage
+            .fetch_sub(memory_freed, Ordering::Relaxed);
+        seq_memory
+            .value()
+            .fetch_sub(memory_freed, Ordering::Relaxed);
 
         Ok(())
     }
 
     #[inline(always)]
     fn evict_to_low_water_mark(&self) -> Result<(), CandleError> {
-        let target_memory = (self.config.max_memory_bytes as f32 * self.config.low_water_mark) as u64;
+        let target_memory =
+            (self.config.max_memory_bytes as f32 * self.config.low_water_mark) as u64;
         let current_memory = self.total_memory_usage.load(Ordering::Relaxed);
 
         if current_memory <= target_memory {
@@ -424,7 +446,7 @@ impl KVCacheManager {
         // Evict entries in batches
         let mut memory_freed = 0u64;
         let memory_to_free = current_memory - target_memory;
-        
+
         for (key, _) in candidates {
             if memory_freed >= memory_to_free {
                 break;
@@ -433,22 +455,25 @@ impl KVCacheManager {
             if let Some(entry) = self.cache.get(&key) {
                 let entry_memory = entry.value().memory_usage();
                 let sequence_id = entry.key().sequence_id;
-                
+
                 self.cache.remove(&key);
                 memory_freed += entry_memory;
-                
+
                 // Update per-sequence memory tracking
                 if self.config.per_sequence_limits {
                     if let Some(seq_memory) = self.sequence_memory.get(&sequence_id) {
-                        seq_memory.value().fetch_sub(entry_memory, Ordering::Relaxed);
+                        seq_memory
+                            .value()
+                            .fetch_sub(entry_memory, Ordering::Relaxed);
                     }
                 }
-                
+
                 self.eviction_count.fetch_add(1, Ordering::Relaxed);
             }
         }
 
-        self.total_memory_usage.fetch_sub(memory_freed, Ordering::Relaxed);
+        self.total_memory_usage
+            .fetch_sub(memory_freed, Ordering::Relaxed);
         Ok(())
     }
 
@@ -470,7 +495,8 @@ impl KVCacheManager {
                 }
             },
             eviction_count: self.eviction_count.load(Ordering::Relaxed),
-            memory_utilization: self.total_memory_usage.load(Ordering::Relaxed) as f32 / self.config.max_memory_bytes as f32,
+            memory_utilization: self.total_memory_usage.load(Ordering::Relaxed) as f32
+                / self.config.max_memory_bytes as f32,
         }
     }
 

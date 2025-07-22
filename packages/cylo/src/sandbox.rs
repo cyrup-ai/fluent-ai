@@ -156,9 +156,10 @@ impl SandboxManager {
 
         // Ensure the base directory exists
         if !base_dir.exists()
-            && let Err(e) = fs::create_dir_all(&base_dir) {
-                error!("Failed to create sandbox base directory: {}", e);
-            }
+            && let Err(e) = fs::create_dir_all(&base_dir)
+        {
+            error!("Failed to create sandbox base directory: {}", e);
+        }
 
         Self {
             base_dir,
@@ -795,9 +796,10 @@ func main() {
         for env in &self.environments {
             debug!("Cleaning up environment at {:?}", env.path);
             if env.path.exists()
-                && let Err(e) = fs::remove_dir_all(&env.path) {
-                    warn!("Failed to clean up environment at {:?}: {}", env.path, e);
-                }
+                && let Err(e) = fs::remove_dir_all(&env.path)
+            {
+                warn!("Failed to clean up environment at {:?}: {}", env.path, e);
+            }
         }
         Ok(())
     }

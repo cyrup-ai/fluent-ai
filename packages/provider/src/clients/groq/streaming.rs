@@ -4,8 +4,11 @@
 // Groq streaming implementation (OpenAI-compatible SSE format)
 // ============================================================================
 
-use futures::StreamExt;
+use fluent_ai_domain::AsyncTask;
+use futures_util::Stream;
+use futures_util::StreamExt;
 use serde_json::Value;
+use tokio_stream;
 
 // Re-export OpenAI streaming response type since Groq uses the same format
 pub use crate::clients::openai::StreamingCompletionResponse;
@@ -14,9 +17,6 @@ use crate::{
     completion::CompletionError,
     http::{HttpClient, HttpRequest},
 };
-use fluent_ai_domain::AsyncTask;
-use futures::Stream;
-use tokio_stream;
 
 /// Send a streaming request to Groq and return an AsyncStream
 pub fn send_groq_streaming_request(
@@ -31,14 +31,17 @@ pub fn send_groq_streaming_request(
     let (task_tx, rx) = tokio::sync::oneshot::channel();
     let result_task = tokio::spawn(async move {
         // Create the AsyncStream channel using tokio mpsc
-        let (stream_tx, stream_rx) = tokio::sync::mpsc::channel::<Result<StreamingCompletionResponse, CompletionError>>(512);
+        let (stream_tx, stream_rx) =
+            tokio::sync::mpsc::channel::<Result<StreamingCompletionResponse, CompletionError>>(512);
 
         // Spawn the streaming task
         tokio::spawn(async move {
             let response = match client.send(request).await {
                 Ok(response) => response,
                 Err(e) => {
-                    let _ = stream_tx.send(Err(CompletionError::InvalidRequest(e.to_string()))).await;
+                    let _ = stream_tx
+                        .send(Err(CompletionError::InvalidRequest(e.to_string())))
+                        .await;
                     return;
                 }
             };
@@ -80,7 +83,9 @@ pub fn send_groq_streaming_request(
                     }
                     Err(e) => {
                         tracing::error!(target: "rig", "Groq streaming error: {}", e);
-                        let _ = stream_tx.send(Err(CompletionError::InvalidRequest(e.to_string()))).await;
+                        let _ = stream_tx
+                            .send(Err(CompletionError::InvalidRequest(e.to_string())))
+                            .await;
                         break;
                     }
                 }
@@ -89,12 +94,12 @@ pub fn send_groq_streaming_request(
 
         // Convert the receiver into a stream
         let stream = tokio_stream::wrappers::ReceiverStream::new(stream_rx);
-        
+
         let result = Ok(crate::streaming::StreamingCompletionResponse::new(
             Box::pin(stream),
         ));
         let _ = task_tx.send(result);
     });
-    
+
     AsyncTask::from_receiver(rx)
 }

@@ -205,8 +205,7 @@ impl<const N: usize> ZeroAllocMessage<N> {
     #[inline(always)]
     pub fn as_str(&self) -> &str {
         // Safe UTF-8 validation - returns valid UTF-8 or replacement string
-        std::str::from_utf8(&self.data[..self.len])
-            .unwrap_or("Invalid UTF-8 in error message")
+        std::str::from_utf8(&self.data[..self.len]).unwrap_or("Invalid UTF-8 in error message")
     }
 
     /// Check if message is empty
@@ -637,8 +636,16 @@ impl ErrorAggregator {
 
         Self {
             counters: [
-                create_counter(), create_counter(), create_counter(), create_counter(), create_counter(),
-                create_counter(), create_counter(), create_counter(), create_counter(), create_counter(),
+                create_counter(),
+                create_counter(),
+                create_counter(),
+                create_counter(),
+                create_counter(),
+                create_counter(),
+                create_counter(),
+                create_counter(),
+                create_counter(),
+                create_counter(),
             ],
             breakers: [
                 ErrorCircuitBreaker::new(10, Duration::from_secs(30)),

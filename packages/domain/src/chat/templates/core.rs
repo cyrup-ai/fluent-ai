@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -13,22 +14,22 @@ use thiserror::Error;
 pub enum TemplateError {
     #[error("Template not found: {name}")]
     NotFound { name: Arc<str> },
-    
+
     #[error("Parse error: {message}")]
     ParseError { message: Arc<str> },
-    
+
     #[error("Compile error: {message}")]
     CompileError { message: Arc<str> },
-    
+
     #[error("Render error: {message}")]
     RenderError { message: Arc<str> },
-    
+
     #[error("Variable error: {message}")]
     VariableError { message: Arc<str> },
-    
+
     #[error("Permission denied: {message}")]
     PermissionDenied { message: Arc<str> },
-    
+
     #[error("Storage error: {message}")]
     StorageError { message: Arc<str> },
 }
@@ -173,7 +174,10 @@ impl From<bool> for TemplateValue {
 #[derive(Clone)]
 pub struct TemplateContext {
     pub variables: HashMap<Arc<str>, TemplateValue>,
-    pub functions: HashMap<Arc<str>, Arc<dyn Fn(&[TemplateValue]) -> TemplateResult<TemplateValue> + Send + Sync>>,
+    pub functions: HashMap<
+        Arc<str>,
+        Arc<dyn Fn(&[TemplateValue]) -> TemplateResult<TemplateValue> + Send + Sync>,
+    >,
 }
 
 impl TemplateContext {
@@ -183,20 +187,24 @@ impl TemplateContext {
             functions: HashMap::new(),
         }
     }
-    
-    pub fn with_variable(mut self, name: impl Into<Arc<str>>, value: impl Into<TemplateValue>) -> Self {
+
+    pub fn with_variable(
+        mut self,
+        name: impl Into<Arc<str>>,
+        value: impl Into<TemplateValue>,
+    ) -> Self {
         self.variables.insert(name.into(), value.into());
         self
     }
-    
+
     pub fn set_variable(&mut self, name: impl Into<Arc<str>>, value: impl Into<TemplateValue>) {
         self.variables.insert(name.into(), value.into());
     }
-    
+
     pub fn get_variable(&self, name: &str) -> Option<&TemplateValue> {
         self.variables.get(name)
     }
-    
+
     /// Get all variables as a reference to the HashMap
     pub fn variables(&self) -> &HashMap<Arc<str>, TemplateValue> {
         &self.variables
@@ -245,7 +253,11 @@ pub struct CompiledTemplate {
 }
 
 impl CompiledTemplate {
-    pub fn new(metadata: TemplateMetadata, ast: TemplateAst, variables: Arc<[TemplateVariable]>) -> Self {
+    pub fn new(
+        metadata: TemplateMetadata,
+        ast: TemplateAst,
+        variables: Arc<[TemplateVariable]>,
+    ) -> Self {
         Self {
             metadata,
             ast,
@@ -253,11 +265,11 @@ impl CompiledTemplate {
             optimized: false,
         }
     }
-    
+
     pub fn render(&self, context: &TemplateContext) -> TemplateResult<Arc<str>> {
         self.render_ast(&self.ast, context)
     }
-    
+
     fn render_ast(&self, ast: &TemplateAst, context: &TemplateContext) -> TemplateResult<Arc<str>> {
         match ast {
             TemplateAst::Text(text) => Ok(text.clone()),
@@ -283,10 +295,16 @@ impl CompiledTemplate {
                 }
                 Ok(Arc::from(result))
             }
-            TemplateAst::Conditional { condition, if_true, if_false } => {
+            TemplateAst::Conditional {
+                condition,
+                if_true,
+                if_false,
+            } => {
                 let cond_result = self.render_ast(condition, context)?;
-                let is_truthy = !cond_result.is_empty() && cond_result.as_ref() != "false" && cond_result.as_ref() != "0";
-                
+                let is_truthy = !cond_result.is_empty()
+                    && cond_result.as_ref() != "false"
+                    && cond_result.as_ref() != "0";
+
                 if is_truthy {
                     self.render_ast(if_true, context)
                 } else if let Some(if_false_ast) = if_false {
@@ -310,7 +328,11 @@ pub struct ChatTemplate {
 }
 
 impl ChatTemplate {
-    pub fn new(metadata: TemplateMetadata, content: Arc<str>, variables: Arc<[TemplateVariable]>) -> Self {
+    pub fn new(
+        metadata: TemplateMetadata,
+        content: Arc<str>,
+        variables: Arc<[TemplateVariable]>,
+    ) -> Self {
         Self {
             metadata,
             content,
@@ -318,13 +340,13 @@ impl ChatTemplate {
             compiled: None,
         }
     }
-    
+
     pub fn render(&self, variables: &HashMap<Arc<str>, Arc<str>>) -> TemplateResult<Arc<str>> {
         let mut context = TemplateContext::new();
         for (key, value) in variables {
             context.set_variable(key.clone(), TemplateValue::String(value.clone()));
         }
-        
+
         if let Some(compiled) = &self.compiled {
             compiled.render(&context)
         } else {
@@ -336,47 +358,47 @@ impl ChatTemplate {
             Ok(Arc::from(result))
         }
     }
-    
+
     pub fn get_id(&self) -> &Arc<str> {
         &self.metadata.id
     }
-    
+
     pub fn get_name(&self) -> &Arc<str> {
         &self.metadata.name
     }
-    
+
     pub fn get_content(&self) -> &Arc<str> {
         &self.content
     }
-    
+
     pub fn get_variables(&self) -> &Arc<[TemplateVariable]> {
         &self.variables
     }
-    
+
     /// Get template name (alias for get_name for compatibility)
     pub fn name(&self) -> &Arc<str> {
         &self.metadata.name
     }
-    
+
     /// Validate the template
     pub fn validate(&self) -> TemplateResult<()> {
         // Basic validation
         if self.metadata.name.is_empty() {
             return Err(TemplateError::ParseError {
-                message: Arc::from("Template name cannot be empty")
+                message: Arc::from("Template name cannot be empty"),
             });
         }
-        
+
         if self.content.is_empty() {
             return Err(TemplateError::ParseError {
-                message: Arc::from("Template content cannot be empty")
+                message: Arc::from("Template content cannot be empty"),
             });
         }
-        
+
         // Additional validation can be added here
         Ok(())
     }
-    
+
     /// Get template info
     pub fn info(&self) -> TemplateInfo {
         TemplateInfo {
@@ -425,8 +447,6 @@ impl Default for TemplateConfig {
     }
 }
 
-
-
 /// Template example for documentation
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TemplateExample {
@@ -452,12 +472,12 @@ impl TemplateTag {
             description: None,
         }
     }
-    
+
     pub fn with_color(mut self, color: impl Into<Arc<str>>) -> Self {
         self.color = Some(color.into());
         self
     }
-    
+
     pub fn with_description(mut self, description: impl Into<Arc<str>>) -> Self {
         self.description = Some(description.into());
         self

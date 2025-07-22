@@ -15,7 +15,7 @@ use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use tokio::time::Instant;
 use thiserror::Error;
-use futures::StreamExt;
+use futures_util::StreamExt;
 
 use candle_core::{Device, Tensor, DType};
 use candle_nn::{VarBuilder, Module};
@@ -27,7 +27,7 @@ use fluent_ai_http3::{HttpClient, HttpRequest, HttpMethod, HttpConfig};
 use memmap2::Mmap;
 
 // Import provider's AsyncStream primitives
-use fluent_ai_provider::{AsyncStream, AsyncStreamSender, async_stream_channel};
+use fluent_ai_provider::{AsyncStream, AsyncStreamSender, channel};
 
 /// Maximum input sequence length
 const MAX_SEQUENCE_LENGTH: usize = 512;
@@ -555,7 +555,7 @@ impl LocalCandleProvider {
 
     /// Load model if not in cache - streaming-first architecture
     fn ensure_model_loaded(&self, model_type: SentenceTransformerModel) -> AsyncStream<Arc<CachedModel>> {
-        let (tx, stream) = async_stream_channel();
+        let (tx, stream) = channel();
         
         // Check cache first - immediate return if available
         if let Some(cached) = self.model_cache.get(model_type) {
@@ -761,7 +761,7 @@ impl LocalCandleProvider {
         cached_model: &CachedModel,
         token_ids: &[u32],
     ) -> AsyncStream<SmallVec<[f32; MAX_EMBEDDING_DIM]>> {
-        let (tx, stream) = async_stream_channel();
+        let (tx, stream) = channel();
         let start_time = Instant::now();
         
         // Convert tokens to tensor
@@ -843,7 +843,7 @@ impl LocalCandleProvider {
         text: &str,
         model_type: Option<SentenceTransformerModel>,
     ) -> AsyncStream<SmallVec<[f32; MAX_EMBEDDING_DIM]>> {
-        let (tx, stream) = async_stream_channel();
+        let (tx, stream) = channel();
         let model_type = model_type.unwrap_or(self.default_model);
         
         let text = text.to_string();
@@ -882,7 +882,7 @@ impl LocalCandleProvider {
         texts: &[&str],
         model_type: Option<SentenceTransformerModel>,
     ) -> AsyncStream<Vec<SmallVec<[f32; MAX_EMBEDDING_DIM]>>> {
-        let (tx, stream) = async_stream_channel();
+        let (tx, stream) = channel();
         
         if texts.is_empty() {
             // Empty batch - emit empty result immediately

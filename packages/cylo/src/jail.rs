@@ -46,10 +46,11 @@ fn is_apparmor_enabled() -> bool {
     let output = Command::new("aa-status").output();
 
     if let Ok(output) = output
-        && output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            return stdout.contains("apparmor module is loaded");
-        }
+        && output.status.success()
+    {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return stdout.contains("apparmor module is loaded");
+    }
 
     false
 }
@@ -186,10 +187,11 @@ pub fn watch_directory(path: PathBuf, tx: mpsc::Sender<PipelineEvent>) -> Result
                 for entry in entries.filter_map(Result::ok) {
                     if let Ok(metadata) = entry.metadata()
                         && let Ok(modified) = metadata.modified()
-                            && modified > last_modified {
-                                last_modified = modified;
-                                let _ = tx.send(PipelineEvent::FileChanged(entry.path()));
-                            }
+                        && modified > last_modified
+                    {
+                        last_modified = modified;
+                        let _ = tx.send(PipelineEvent::FileChanged(entry.path()));
+                    }
                 }
             }
         }

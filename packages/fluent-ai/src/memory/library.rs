@@ -241,9 +241,8 @@ pub trait LibraryExt {
     ) -> fluent_ai_domain::AsyncStream<LibraryServiceResult<Arc<Memory>>>;
 
     /// Create memory tool for this library
-    fn create_memory_tool(
-        &self,
-    ) -> fluent_ai_domain::AsyncStream<LibraryServiceResult<MemoryTool>>;
+    fn create_memory_tool(&self)
+    -> fluent_ai_domain::AsyncStream<LibraryServiceResult<MemoryTool>>;
 
     /// Create shared memory tool for this library
     fn create_shared_memory_tool(
@@ -252,51 +251,59 @@ pub trait LibraryExt {
 }
 
 impl LibraryExt for Library {
-    fn create_memory_namespace(&self) -> fluent_ai_domain::AsyncStream<LibraryServiceResult<Memory>> {
+    fn create_memory_namespace(
+        &self,
+    ) -> fluent_ai_domain::AsyncStream<LibraryServiceResult<Memory>> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let library = self.clone();
-        
+
         tokio::spawn(async move {
             let result = LibraryMemoryService::create_memory_namespace(&library).await;
             let _ = tx.send(result);
         });
-        
+
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
-    fn create_shared_memory(&self) -> fluent_ai_domain::AsyncStream<LibraryServiceResult<Arc<Memory>>> {
+    fn create_shared_memory(
+        &self,
+    ) -> fluent_ai_domain::AsyncStream<LibraryServiceResult<Arc<Memory>>> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let library = self.clone();
-        
+
         tokio::spawn(async move {
             let result = LibraryMemoryService::create_shared_memory(&library).await;
             let _ = tx.send(result);
         });
-        
+
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
-    fn create_memory_tool(&self) -> fluent_ai_domain::AsyncStream<LibraryServiceResult<MemoryTool>> {
+    fn create_memory_tool(
+        &self,
+    ) -> fluent_ai_domain::AsyncStream<LibraryServiceResult<MemoryTool>> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let library = self.clone();
-        
+
         tokio::spawn(async move {
             let result = LibraryMemoryService::create_memory_tool(&library).await;
             let _ = tx.send(result);
         });
-        
+
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
-    fn create_shared_memory_tool(&self) -> fluent_ai_domain::AsyncStream<LibraryServiceResult<MemoryTool>> {
+    fn create_shared_memory_tool(
+        &self,
+    ) -> fluent_ai_domain::AsyncStream<LibraryServiceResult<MemoryTool>> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let library = self.clone();
-        
+
         tokio::spawn(async move {
             let result = LibraryMemoryService::create_shared_memory_tool(&library).await;
             let _ = tx.send(result);
         });
-        
+
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 }

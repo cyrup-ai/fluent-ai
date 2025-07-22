@@ -30,21 +30,21 @@ pub fn run_benchmark<F>(name: &str, iterations: usize, mut operation: F) -> Benc
 where
     F: FnMut(usize),
 {
-    let start = Instant::now();
-    
+    let _start = Instant::now();
+
     // Warmup
     for i in 0..iterations.min(10) {
         operation(i);
     }
-    
+
     let start = Instant::now();
     for i in 0..iterations {
         operation(i);
     }
     let duration = start.elapsed();
-    
+
     let ops_per_sec = (iterations as f64) / duration.as_secs_f64();
-    
+
     BenchmarkResult {
         name: name.to_string(),
         operations: iterations,
@@ -56,47 +56,35 @@ where
 /// Benchmark logits processing functions
 pub fn benchmark_logits_processing() -> Vec<BenchmarkResult> {
     let mut results = Vec::new();
-    
+
     // Test with different input sizes
     for &size in &[128, 512, 2048, 8192] {
         let mut logits = vec![0.0f32; size];
-        
+
         // Initialize with random values
         for x in &mut logits {
             *x = rand::random::<f32>();
         }
-        
+
         // Benchmark temperature scaling
-        let temp_result = run_benchmark(
-            &format!("temperature_scaling_{}", size),
-            1000,
-            |_| {
-                let _ = crate::logits::processing::apply_temperature_scaling_simd(&mut logits, 0.7);
-            },
-        );
+        let temp_result = run_benchmark(&format!("temperature_scaling_{}", size), 1000, |_| {
+            let _ = crate::logits::processing::apply_temperature_scaling_simd(&mut logits, 0.7);
+        });
         results.push(temp_result);
-        
+
         // Benchmark top-k filtering
-        let topk_result = run_benchmark(
-            &format!("topk_filtering_{}", size),
-            1000,
-            |_| {
-                let _ = crate::logits::topk::topk_filtering_simd(&mut logits, size / 2);
-            },
-        );
+        let topk_result = run_benchmark(&format!("topk_filtering_{}", size), 1000, |_| {
+            let _ = crate::logits::topk::topk_filtering_simd(&mut logits, size / 2);
+        });
         results.push(topk_result);
-        
+
         // Benchmark normalization
-        let norm_result = run_benchmark(
-            &format!("normalization_{}", size),
-            1000,
-            |_| {
-                let _ = crate::logits::processing::normalize_probabilities_simd(&mut logits);
-            },
-        );
+        let norm_result = run_benchmark(&format!("normalization_{}", size), 1000, |_| {
+            let _ = crate::logits::processing::normalize_probabilities_simd(&mut logits);
+        });
         results.push(norm_result);
     }
-    
+
     results
 }
 
@@ -108,7 +96,7 @@ pub fn print_benchmark_results(results: &[BenchmarkResult]) {
         "Test", "Ops", "Time (ms)", "Ops/s"
     );
     println!("{:-<80}", "");
-    
+
     for result in results {
         println!(
             "{:<30} | {:>12} | {:>12.2} | {:>12.2}",
@@ -118,32 +106,32 @@ pub fn print_benchmark_results(results: &[BenchmarkResult]) {
             result.ops_per_sec
         );
     }
-    
+
     println!("\n=== End of Results ===\n");
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_benchmark_runner() {
         let result = run_benchmark("test", 1000, |i| {
             // Simple operation
             let _ = i * i;
         });
-        
+
         assert_eq!(result.name, "test");
         assert_eq!(result.operations, 1000);
         assert!(result.duration.as_secs_f64() > 0.0);
         assert!(result.ops_per_sec > 0.0);
     }
-    
+
     #[test]
     fn test_benchmark_logits_processing() {
         let results = benchmark_logits_processing();
         assert!(!results.is_empty());
-        
+
         // Just verify the structure, not the actual performance
         for result in results {
             assert!(!result.name.is_empty());

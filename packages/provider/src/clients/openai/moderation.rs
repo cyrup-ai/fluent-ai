@@ -3,12 +3,14 @@
 //! Provides comprehensive content safety analysis using OpenAI's moderation models
 //! with blazing-fast performance and no unsafe operations.
 
-use crate::AsyncTask;
-use super::{OpenAIError, OpenAIResult};
-use crate::ZeroOneOrMany;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
+use serde::{Deserialize, Serialize};
+
+use super::{OpenAIError, OpenAIResult};
+use crate::AsyncTask;
+use crate::ZeroOneOrMany;
 
 /// Content moderation request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -197,41 +199,59 @@ impl ModerationInput {
         match self {
             Self::Single(text) => {
                 if text.is_empty() {
-                    return Err(OpenAIError::ModerationError("Input text cannot be empty".to_string()));
+                    return Err(OpenAIError::ModerationError(
+                        "Input text cannot be empty".to_string(),
+                    ));
                 }
                 if text.len() > 32768 {
-                    return Err(OpenAIError::ModerationError("Input text exceeds 32K character limit".to_string()));
+                    return Err(OpenAIError::ModerationError(
+                        "Input text exceeds 32K character limit".to_string(),
+                    ));
                 }
             }
             Self::Array(texts) => match texts {
                 ZeroOneOrMany::None => {
-                    return Err(OpenAIError::ModerationError("Input array cannot be empty".to_string()));
+                    return Err(OpenAIError::ModerationError(
+                        "Input array cannot be empty".to_string(),
+                    ));
                 }
                 ZeroOneOrMany::One(text) => {
                     if text.is_empty() {
-                        return Err(OpenAIError::ModerationError("Input text cannot be empty".to_string()));
+                        return Err(OpenAIError::ModerationError(
+                            "Input text cannot be empty".to_string(),
+                        ));
                     }
                     if text.len() > 32768 {
-                        return Err(OpenAIError::ModerationError("Input text exceeds 32K character limit".to_string()));
+                        return Err(OpenAIError::ModerationError(
+                            "Input text exceeds 32K character limit".to_string(),
+                        ));
                     }
                 }
                 ZeroOneOrMany::Many(vec) => {
                     if vec.is_empty() {
-                        return Err(OpenAIError::ModerationError("Input array cannot be empty".to_string()));
+                        return Err(OpenAIError::ModerationError(
+                            "Input array cannot be empty".to_string(),
+                        ));
                     }
                     if vec.len() > 1000 {
-                        return Err(OpenAIError::ModerationError("Too many inputs in batch (max 1000)".to_string()));
+                        return Err(OpenAIError::ModerationError(
+                            "Too many inputs in batch (max 1000)".to_string(),
+                        ));
                     }
                     for text in vec {
                         if text.is_empty() {
-                            return Err(OpenAIError::ModerationError("Individual text cannot be empty".to_string()));
+                            return Err(OpenAIError::ModerationError(
+                                "Individual text cannot be empty".to_string(),
+                            ));
                         }
                         if text.len() > 32768 {
-                            return Err(OpenAIError::ModerationError("Input text exceeds 32K character limit".to_string()));
+                            return Err(OpenAIError::ModerationError(
+                                "Input text exceeds 32K character limit".to_string(),
+                            ));
                         }
                     }
                 }
-            }
+            },
         }
         Ok(())
     }
@@ -282,19 +302,45 @@ impl ModerationResult {
     pub fn get_triggered_categories(&self) -> ZeroOneOrMany<String> {
         let mut categories = Vec::new();
 
-        if self.categories.sexual { categories.push("sexual".to_string()); }
-        if self.categories.sexual_minors { categories.push("sexual/minors".to_string()); }
-        if self.categories.harassment { categories.push("harassment".to_string()); }
-        if self.categories.harassment_threatening { categories.push("harassment/threatening".to_string()); }
-        if self.categories.hate { categories.push("hate".to_string()); }
-        if self.categories.hate_threatening { categories.push("hate/threatening".to_string()); }
-        if self.categories.illicit { categories.push("illicit".to_string()); }
-        if self.categories.illicit_violent { categories.push("illicit/violent".to_string()); }
-        if self.categories.self_harm { categories.push("self-harm".to_string()); }
-        if self.categories.self_harm_intent { categories.push("self-harm/intent".to_string()); }
-        if self.categories.self_harm_instructions { categories.push("self-harm/instructions".to_string()); }
-        if self.categories.violence { categories.push("violence".to_string()); }
-        if self.categories.violence_graphic { categories.push("violence/graphic".to_string()); }
+        if self.categories.sexual {
+            categories.push("sexual".to_string());
+        }
+        if self.categories.sexual_minors {
+            categories.push("sexual/minors".to_string());
+        }
+        if self.categories.harassment {
+            categories.push("harassment".to_string());
+        }
+        if self.categories.harassment_threatening {
+            categories.push("harassment/threatening".to_string());
+        }
+        if self.categories.hate {
+            categories.push("hate".to_string());
+        }
+        if self.categories.hate_threatening {
+            categories.push("hate/threatening".to_string());
+        }
+        if self.categories.illicit {
+            categories.push("illicit".to_string());
+        }
+        if self.categories.illicit_violent {
+            categories.push("illicit/violent".to_string());
+        }
+        if self.categories.self_harm {
+            categories.push("self-harm".to_string());
+        }
+        if self.categories.self_harm_intent {
+            categories.push("self-harm/intent".to_string());
+        }
+        if self.categories.self_harm_instructions {
+            categories.push("self-harm/instructions".to_string());
+        }
+        if self.categories.violence {
+            categories.push("violence".to_string());
+        }
+        if self.categories.violence_graphic {
+            categories.push("violence/graphic".to_string());
+        }
 
         ZeroOneOrMany::from_vec(categories)
     }
@@ -317,7 +363,9 @@ impl ModerationResult {
             scores.self_harm_instructions,
             scores.violence,
             scores.violence_graphic,
-        ].iter().fold(0.0, |max, &score| if score > max { score } else { max })
+        ]
+        .iter()
+        .fold(0.0, |max, &score| if score > max { score } else { max })
     }
 
     /// Check against custom policy
@@ -331,23 +379,27 @@ impl ModerationResult {
         }
 
         // Check against thresholds
-        scores.sexual > policy.sexual_threshold ||
-        scores.harassment > policy.harassment_threshold ||
-        scores.harassment_threatening > policy.harassment_threshold ||
-        scores.hate > policy.hate_threshold ||
-        scores.hate_threatening > policy.hate_threshold ||
-        scores.violence > policy.violence_threshold ||
-        scores.violence_graphic > policy.violence_threshold ||
-        scores.self_harm > policy.self_harm_threshold ||
-        scores.self_harm_intent > policy.self_harm_threshold ||
-        scores.self_harm_instructions > policy.self_harm_threshold ||
-        scores.illicit > policy.illicit_threshold ||
-        scores.illicit_violent > policy.illicit_threshold
+        scores.sexual > policy.sexual_threshold
+            || scores.harassment > policy.harassment_threshold
+            || scores.harassment_threatening > policy.harassment_threshold
+            || scores.hate > policy.hate_threshold
+            || scores.hate_threatening > policy.hate_threshold
+            || scores.violence > policy.violence_threshold
+            || scores.violence_graphic > policy.violence_threshold
+            || scores.self_harm > policy.self_harm_threshold
+            || scores.self_harm_intent > policy.self_harm_threshold
+            || scores.self_harm_instructions > policy.self_harm_threshold
+            || scores.illicit > policy.illicit_threshold
+            || scores.illicit_violent > policy.illicit_threshold
     }
 
     /// Generate safety assessment
     #[inline(always)]
-    pub fn assess_safety(&self, policy: &ModerationPolicy, context: &AnalysisContext) -> SafetyAssessment {
+    pub fn assess_safety(
+        &self,
+        policy: &ModerationPolicy,
+        context: &AnalysisContext,
+    ) -> SafetyAssessment {
         let is_violation = self.violates_policy(policy);
         let highest_score = self.get_highest_score();
         let triggered_categories = self.get_triggered_categories();
@@ -668,44 +720,49 @@ async fn call_openai_moderation_api(
     // Create HTTP client with AI-optimized configuration
     let client = HttpClient::with_config(HttpConfig::ai_optimized())
         .map_err(|e| OpenAIError::HttpError(format!("Failed to create HTTP client: {}", e)))?;
-    
+
     // Build moderation request
     let moderation_request = ModerationRequest {
         input: ModerationInput::Single(text.to_string()),
         model: Some("text-moderation-latest".to_string()),
     };
-    
-    let request_body = serde_json::to_vec(&moderation_request)
-        .map_err(|e| OpenAIError::SerializationError(format!("Failed to serialize request: {}", e)))?;
-    
+
+    let request_body = serde_json::to_vec(&moderation_request).map_err(|e| {
+        OpenAIError::SerializationError(format!("Failed to serialize request: {}", e))
+    })?;
+
     // Get API key from environment
     let api_key = std::env::var("OPENAI_API_KEY")
         .map_err(|_| OpenAIError::AuthenticationError("OPENAI_API_KEY not set".to_string()))?;
-    
+
     // Create HTTP request
     let http_request = HttpRequest::post("https://api.openai.com/v1/moderations", request_body)
         .map_err(|e| OpenAIError::HttpError(format!("Failed to create request: {}", e)))?
         .header("Authorization", &format!("Bearer {}", api_key))
         .header("Content-Type", "application/json");
-    
+
     // Send request
-    let response = client.send(http_request).await
+    let response = client
+        .send(http_request)
+        .await
         .map_err(|e| OpenAIError::HttpError(format!("Request failed: {}", e)))?;
-    
+
     if !response.status().is_success() {
         return Err(OpenAIError::ApiError(format!(
-            "API request failed with status: {}", 
+            "API request failed with status: {}",
             response.status()
         )));
     }
-    
+
     // Parse response
-    let response_body = response.bytes().await
+    let response_body = response
+        .bytes()
+        .await
         .map_err(|e| OpenAIError::HttpError(format!("Failed to read response: {}", e)))?;
-    
+
     let moderation_response: ModerationResponse = serde_json::from_slice(&response_body)
         .map_err(|e| OpenAIError::SerializationError(format!("Failed to parse response: {}", e)))?;
-    
+
     // Convert OpenAI response to SafetyAssessment
     convert_moderation_response_to_assessment(moderation_response, policy, context)
 }
@@ -717,13 +774,18 @@ fn convert_moderation_response_to_assessment(
     _policy: &ModerationPolicy,
     _context: &AnalysisContext,
 ) -> Result<SafetyAssessment, OpenAIError> {
-    let result = response.results.into_iter().next()
+    let result = response
+        .results
+        .into_iter()
+        .next()
         .ok_or_else(|| OpenAIError::InvalidResponse("No moderation results".to_string()))?;
-    
+
     let flagged = result.flagged;
-    let highest_score = result.category_scores.values()
+    let highest_score = result
+        .category_scores
+        .values()
         .fold(0.0f32, |max, &score| max.max(score));
-    
+
     let triggered_categories = if flagged {
         let mut categories = Vec::new();
         for (category, &is_flagged) in result.categories.iter() {
@@ -735,7 +797,7 @@ fn convert_moderation_response_to_assessment(
     } else {
         ZeroOneOrMany::None
     };
-    
+
     let risk_level = if highest_score >= 0.8 {
         RiskLevel::High
     } else if highest_score >= 0.5 {
@@ -745,7 +807,7 @@ fn convert_moderation_response_to_assessment(
     } else {
         RiskLevel::Safe
     };
-    
+
     let recommendation = if flagged {
         if highest_score >= 0.8 {
             SafetyRecommendation::Block
@@ -755,7 +817,7 @@ fn convert_moderation_response_to_assessment(
     } else {
         SafetyRecommendation::Allow
     };
-    
+
     Ok(SafetyAssessment {
         is_safe: !flagged,
         risk_level,

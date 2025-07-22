@@ -5,10 +5,11 @@
 
 use std::sync::Arc;
 use std::time::Duration;
+
 use serde::{Deserialize, Serialize};
 
 /// Canonical retry configuration with exponential backoff and jitter
-/// 
+///
 /// This is the single source of truth for retry configuration across all memory subsystems.
 /// Combines fields from both database and LLM retry configurations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,7 +69,9 @@ impl RetryConfig {
             max_delay: Duration::from_secs(30),
             backoff_multiplier: 2.0,
             enable_jitter: true,
-            retryable_status_codes: vec![429, 500, 502, 503, 504, 408, 409, 423, 424, 425, 510, 511],
+            retryable_status_codes: vec![
+                429, 500, 502, 503, 504, 408, 409, 423, 424, 425, 510, 511,
+            ],
         }
     }
 
@@ -114,7 +117,9 @@ impl RetryConfig {
         }
 
         let base_delay = self.initial_delay.as_millis() as f64;
-        let multiplier = self.backoff_multiplier.powi(attempt.saturating_sub(1) as i32);
+        let multiplier = self
+            .backoff_multiplier
+            .powi(attempt.saturating_sub(1) as i32);
         let mut delay_ms = base_delay * multiplier;
 
         // Apply maximum delay limit
@@ -127,11 +132,11 @@ impl RetryConfig {
         if self.enable_jitter {
             use std::collections::hash_map::DefaultHasher;
             use std::hash::{Hash, Hasher};
-            
+
             let mut hasher = DefaultHasher::new();
             attempt.hash(&mut hasher);
             let hash = hasher.finish();
-            
+
             // Convert hash to a value between 0.75 and 1.25
             let jitter = 0.75 + (hash % 500) as f64 / 1000.0;
             delay_ms *= jitter;
@@ -169,7 +174,7 @@ impl Default for RetryConfig {
 }
 
 /// Canonical embedding configuration
-/// 
+///
 /// This is the single source of truth for embedding configuration across memory subsystems.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingConfig {

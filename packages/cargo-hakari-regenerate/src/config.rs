@@ -2,9 +2,11 @@
 //!
 //! This module provides configuration handling for hakari operations.
 
-use crate::error::{ConfigError, Result};
-use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+
+use serde::{Deserialize, Serialize};
+
+use crate::error::{ConfigError, Result};
 
 /// Main hakari configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use arc_swap::ArcSwap;
@@ -18,69 +18,69 @@ use tokio::sync::{RwLock, broadcast, mpsc};
 use tokio::time::{interval, sleep};
 
 // Removed unused import: uuid::Uuid
-use crate::chat::message::{Message, MessageType};
+use crate::chat::message::{Message, MessageRole};
 
 /// Real-time event types with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RealTimeEvent {
     /// User started typing
     TypingStarted {
-        user_id: Arc<str>,
-        session_id: Arc<str>,
+        user_id: String,
+        session_id: String,
         timestamp: u64,
     },
     /// User stopped typing
     TypingStopped {
-        user_id: Arc<str>,
-        session_id: Arc<str>,
+        user_id: String,
+        session_id: String,
         timestamp: u64,
     },
     /// New message received
     MessageReceived {
         message: Message,
-        session_id: Arc<str>,
+        session_id: String,
         timestamp: u64,
     },
     /// Message updated
     MessageUpdated {
-        message_id: Arc<str>,
-        content: Arc<str>,
-        session_id: Arc<str>,
+        message_id: String,
+        content: String,
+        session_id: String,
         timestamp: u64,
     },
     /// Message deleted
     MessageDeleted {
-        message_id: Arc<str>,
-        session_id: Arc<str>,
+        message_id: String,
+        session_id: String,
         timestamp: u64,
     },
     /// User joined session
     UserJoined {
-        user_id: Arc<str>,
-        session_id: Arc<str>,
+        user_id: String,
+        session_id: String,
         timestamp: u64,
     },
     /// User left session
     UserLeft {
-        user_id: Arc<str>,
-        session_id: Arc<str>,
+        user_id: String,
+        session_id: String,
         timestamp: u64,
     },
     /// Connection status changed
     ConnectionStatusChanged {
-        user_id: Arc<str>,
+        user_id: String,
         status: ConnectionStatus,
         timestamp: u64,
     },
     /// Heartbeat received
     HeartbeatReceived {
-        user_id: Arc<str>,
-        session_id: Arc<str>,
+        user_id: String,
+        session_id: String,
         timestamp: u64,
     },
     /// System notification
     SystemNotification {
-        message: Arc<str>,
+        message: String,
         level: NotificationLevel,
         timestamp: u64,
     },
@@ -107,6 +107,38 @@ pub enum ConnectionStatus {
     Unstable,
 }
 
+impl ConnectionStatus {
+    /// Convert to atomic representation (u8)
+    #[inline]
+    pub const fn to_atomic(&self) -> u8 {
+        match self {
+            Self::Connected => 0,
+            Self::Connecting => 1,
+            Self::Disconnected => 2,
+            Self::Error => 3,
+            Self::Reconnecting => 4,
+            Self::Failed => 5,
+            Self::Idle => 6,
+            Self::Unstable => 7,
+        }
+    }
+
+    /// Convert from atomic representation (u8)
+    #[inline]
+    pub const fn from_atomic(value: u8) -> Self {
+        match value {
+            0 => Self::Connected,
+            1 => Self::Connecting,
+            2 => Self::Disconnected,
+            3 => Self::Error,
+            4 => Self::Reconnecting,
+            5 => Self::Failed,
+            6 => Self::Idle,
+            _ => Self::Unstable, // Default fallback
+        }
+    }
+}
+
 /// Notification level enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NotificationLevel {
@@ -124,9 +156,9 @@ pub enum NotificationLevel {
 #[derive(Debug)]
 pub struct TypingState {
     /// User ID
-    pub user_id: Arc<str>,
+    pub user_id: String,
     /// Session ID
-    pub session_id: Arc<str>,
+    pub session_id: String,
     /// Last activity timestamp
     pub last_activity: AtomicU64,
     /// Is currently typing
@@ -137,7 +169,7 @@ pub struct TypingState {
 
 impl TypingState {
     /// Create a new typing state
-    pub fn new(user_id: Arc<str>, session_id: Arc<str>) -> Self {
+    pub fn new(user_id: String, session_id: String) -> Self {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -239,10 +271,10 @@ impl TypingIndicator {
     /// Start typing indicator
     pub fn start_typing(
         &self,
-        user_id: Arc<str>,
-        session_id: Arc<str>,
+        user_id: String,
+        session_id: String,
     ) -> Result<(), RealTimeError> {
-        let key = Arc::from(format!("{}:{}", user_id, session_id));
+        let key = format!("{}:{}", user_id, session_id);
 
         let typing_state = if let Some(existing) = self.typing_states.get(&key) {
             existing.value().clone()
@@ -274,10 +306,10 @@ impl TypingIndicator {
     /// Stop typing indicator
     pub fn stop_typing(
         &self,
-        user_id: Arc<str>,
-        session_id: Arc<str>,
+        user_id: String,
+        session_id: String,
     ) -> Result<(), RealTimeError> {
-        let key = Arc::from(format!("{}:{}", user_id, session_id));
+        let key = format!("{}:{}", user_id, session_id);
 
         if let Some(typing_state) = self.typing_states.get(&key) {
             typing_state.value().stop_typing();
@@ -300,12 +332,12 @@ impl TypingIndicator {
     }
 
     /// Get currently typing users
-    pub fn get_typing_users(&self, session_id: &str) -> Vec<Arc<str>> {
+    pub fn get_typing_users(&self, session_id: &str) -> Vec<String> {
         let mut typing_users = Vec::new();
 
         for entry in self.typing_states.iter() {
             let typing_state = entry.value();
-            if typing_state.session_id.as_ref() == session_id && typing_state.is_currently_typing()
+            if typing_state.session_id == session_id && typing_state.is_currently_typing()
             {
                 typing_users.push(typing_state.user_id.clone());
             }
@@ -394,8 +426,18 @@ impl std::fmt::Debug for TypingIndicator {
         f.debug_struct("TypingIndicator")
             .field("active_users", &self.active_users.get())
             .field("total_typing_events", &self.typing_events.get())
-            .field("expiry_duration", &self.expiry_duration.load(std::sync::atomic::Ordering::Relaxed))
-            .field("cleanup_interval", &self.cleanup_interval.load(std::sync::atomic::Ordering::Relaxed))
+            .field(
+                "expiry_duration",
+                &self
+                    .expiry_duration
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
+            .field(
+                "cleanup_interval",
+                &self
+                    .cleanup_interval
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
             .finish()
     }
 }
@@ -413,21 +455,21 @@ pub struct TypingStatistics {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LiveUpdateMessage {
     /// Message ID
-    pub id: Arc<str>,
+    pub id: String,
     /// Message content
-    pub content: Arc<str>,
+    pub content: String,
     /// Message type
-    pub message_type: Arc<str>,
+    pub message_type: String,
     /// Session ID
-    pub session_id: Arc<str>,
+    pub session_id: String,
     /// User ID
-    pub user_id: Arc<str>,
+    pub user_id: String,
     /// Timestamp
     pub timestamp: u64,
     /// Priority level
     pub priority: MessagePriority,
     /// Metadata
-    pub metadata: Option<Arc<str>>,
+    pub metadata: Option<String>,
 }
 
 /// Message priority levels
@@ -533,10 +575,9 @@ impl LiveUpdateSystem {
         let event = RealTimeEvent::MessageReceived {
             message: Message::new(
                 message.user_id.len() as u64, // Use user_id length as ID for now
-                MessageType::AgentChat,
+                MessageRole::Assistant,
                 message.content.as_bytes(),
-            )
-            .unwrap_or_else(|_| Message::new(0, MessageType::AgentChat, b"").unwrap()),
+            ),
             session_id: message.session_id.clone(),
             timestamp: message.timestamp,
         };
@@ -662,10 +703,25 @@ impl LiveUpdateSystem {
 impl std::fmt::Debug for LiveUpdateSystem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LiveUpdateSystem")
-            .field("message_counter", &self.message_counter.load(std::sync::atomic::Ordering::Relaxed))
+            .field(
+                "message_counter",
+                &self
+                    .message_counter
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
             .field("subscriber_counter", &self.subscriber_counter.get())
-            .field("queue_size_limit", &self.queue_size_limit.load(std::sync::atomic::Ordering::Relaxed))
-            .field("backpressure_threshold", &self.backpressure_threshold.load(std::sync::atomic::Ordering::Relaxed))
+            .field(
+                "queue_size_limit",
+                &self
+                    .queue_size_limit
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
+            .field(
+                "backpressure_threshold",
+                &self
+                    .backpressure_threshold
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
             .finish()
     }
 }
@@ -674,11 +730,11 @@ impl std::fmt::Debug for LiveUpdateSystem {
 #[derive(Debug)]
 pub struct ConnectionState {
     /// User ID
-    pub user_id: Arc<str>,
+    pub user_id: String,
     /// Session ID
-    pub session_id: Arc<str>,
-    /// Connection status
-    pub status: ArcSwap<ConnectionStatus>,
+    pub session_id: String,
+    /// Connection status (atomic enum representation)
+    pub status: AtomicU8,
     /// Last heartbeat timestamp
     pub last_heartbeat: AtomicU64,
     /// Connection established timestamp
@@ -693,7 +749,7 @@ pub struct ConnectionState {
 
 impl ConnectionState {
     /// Create a new connection state
-    pub fn new(user_id: Arc<str>, session_id: Arc<str>) -> Self {
+    pub fn new(user_id: String, session_id: String) -> Self {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -702,7 +758,7 @@ impl ConnectionState {
         Self {
             user_id,
             session_id,
-            status: ArcSwap::new(Arc::new(ConnectionStatus::Connected)),
+            status: AtomicU8::new(ConnectionStatus::Connected.to_atomic()),
             last_heartbeat: AtomicU64::new(now),
             connected_at: AtomicU64::new(now),
             heartbeat_count: AtomicU64::new(0),
@@ -739,12 +795,12 @@ impl ConnectionState {
 
     /// Set connection status
     pub fn set_status(&self, status: ConnectionStatus) {
-        self.status.store(Arc::new(status));
+        self.status.store(status.to_atomic(), Ordering::Relaxed);
     }
 
     /// Get connection status
     pub fn get_status(&self) -> ConnectionStatus {
-        (**self.status.load()).clone()
+        ConnectionStatus::from_atomic(self.status.load(Ordering::Relaxed))
     }
 
     /// Increment reconnection attempts
@@ -783,8 +839,8 @@ impl ConnectionState {
 /// Connection statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionStatistics {
-    pub user_id: Arc<str>,
-    pub session_id: Arc<str>,
+    pub user_id: String,
+    pub session_id: String,
     pub status: ConnectionStatus,
     pub last_heartbeat: u64,
     pub connection_duration: u64,
@@ -819,9 +875,22 @@ impl std::fmt::Debug for ConnectionManager {
             .field("connections_count", &self.connections.len())
             .field("connection_counter", &self.connection_counter.get())
             .field("heartbeat_counter", &self.heartbeat_counter.get())
-            .field("failed_connection_counter", &self.failed_connection_counter.get())
-            .field("heartbeat_timeout", &self.heartbeat_timeout.load(std::sync::atomic::Ordering::Relaxed))
-            .field("health_check_interval", &self.health_check_interval.load(std::sync::atomic::Ordering::Relaxed))
+            .field(
+                "failed_connection_counter",
+                &self.failed_connection_counter.get(),
+            )
+            .field(
+                "heartbeat_timeout",
+                &self
+                    .heartbeat_timeout
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
+            .field(
+                "health_check_interval",
+                &self
+                    .health_check_interval
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
             .finish()
     }
 }
@@ -857,8 +926,8 @@ impl ConnectionManager {
 
         // Broadcast user joined event
         let event = RealTimeEvent::UserJoined {
-            user_id,
-            session_id,
+            user_id: user_id.to_string(),
+            session_id: session_id.to_string(),
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
@@ -1196,21 +1265,21 @@ pub enum RealTimeError {
     BackpressureExceeded { current_size: usize, limit: usize },
     #[error("Connection not found: {user_id}:{session_id}")]
     ConnectionNotFound {
-        user_id: Arc<str>,
-        session_id: Arc<str>,
+        user_id: String,
+        session_id: String,
     },
     #[error("Subscription failed: {reason}")]
-    SubscriptionFailed { reason: Arc<str> },
+    SubscriptionFailed { reason: String },
     #[error("Message delivery failed: {reason}")]
-    MessageDeliveryFailed { reason: Arc<str> },
+    MessageDeliveryFailed { reason: String },
     #[error("System timeout: {operation}")]
-    SystemTimeout { operation: Arc<str> },
+    SystemTimeout { operation: String },
     #[error("Invalid message format: {details}")]
-    InvalidMessageFormat { details: Arc<str> },
+    InvalidMessageFormat { details: String },
     #[error("Rate limit exceeded: {current_rate}/{limit}")]
     RateLimitExceeded { current_rate: usize, limit: usize },
     #[error("System overload: {resource}")]
-    SystemOverload { resource: Arc<str> },
+    SystemOverload { resource: String },
 }
 
 /// Real-time system builder for ergonomic configuration
@@ -1420,7 +1489,10 @@ impl std::fmt::Debug for RealtimeChat {
             .field("rt_system", &self.rt_system)
             .field("connections", &"Arc<SkipMap<Arc<str>, RealtimeConnection>>")
             .field("message_broadcaster", &"broadcast::Sender<RealtimeMessage>")
-            .field("event_handlers", &"Arc<RwLock<HashMap<RealtimeEventType, Vec<Arc<dyn RealtimeEventHandler>>>>>")
+            .field(
+                "event_handlers",
+                &"Arc<RwLock<HashMap<RealtimeEventType, Vec<Arc<dyn RealtimeEventHandler>>>>>",
+            )
             .field("metrics", &"Arc<RealtimeChatMetrics>")
             .field("connection_task", &self.connection_task.is_some())
             .finish()
@@ -1431,23 +1503,23 @@ impl std::fmt::Debug for RealtimeChat {
 #[derive(Debug)]
 pub struct RealtimeConnection {
     /// Connection ID
-    pub connection_id: Arc<str>,
+    pub connection_id: String,
     /// User ID associated with connection
-    pub user_id: Arc<str>,
+    pub user_id: String,
     /// Session ID
-    pub session_id: Arc<str>,
+    pub session_id: String,
     /// Connection timestamp
     pub connected_at: u64,
     /// Last activity timestamp
     pub last_activity: AtomicU64,
-    /// Connection status
-    pub status: Arc<ArcSwap<ConnectionStatus>>,
+    /// Connection status (atomic enum representation)
+    pub status: AtomicU8,
     /// Message sender channel
     pub message_sender: mpsc::UnboundedSender<RealtimeMessage>,
     /// Typing status
     pub is_typing: AtomicBool,
-    /// Presence status
-    pub presence: Arc<ArcSwap<PresenceStatus>>,
+    /// Presence status (atomic enum representation)
+    pub presence: AtomicU8,
 }
 
 impl Clone for RealtimeConnection {
@@ -1457,12 +1529,51 @@ impl Clone for RealtimeConnection {
             user_id: self.user_id.clone(),
             session_id: self.session_id.clone(),
             connected_at: self.connected_at,
-            last_activity: AtomicU64::new(self.last_activity.load(std::sync::atomic::Ordering::Relaxed)),
-            status: self.status.clone(),
+            last_activity: AtomicU64::new(
+                self.last_activity
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            ),
+            status: AtomicU8::new(self.status.load(std::sync::atomic::Ordering::Relaxed)),
             message_sender: self.message_sender.clone(),
             is_typing: AtomicBool::new(self.is_typing.load(std::sync::atomic::Ordering::Relaxed)),
-            presence: self.presence.clone(),
+            presence: AtomicU8::new(self.presence.load(std::sync::atomic::Ordering::Relaxed)),
         }
+    }
+}
+
+impl RealtimeConnection {
+    /// Get connection status atomically
+    #[inline]
+    pub fn get_status(&self) -> ConnectionStatus {
+        ConnectionStatus::from_atomic(self.status.load(Ordering::Relaxed))
+    }
+
+    /// Set connection status atomically
+    #[inline]
+    pub fn set_status(&self, status: ConnectionStatus) {
+        self.status.store(status.to_atomic(), Ordering::Relaxed);
+    }
+
+    /// Get presence status atomically
+    #[inline]
+    pub fn get_presence(&self) -> PresenceStatus {
+        PresenceStatus::from_atomic(self.presence.load(Ordering::Relaxed))
+    }
+
+    /// Set presence status atomically
+    #[inline]
+    pub fn set_presence(&self, presence: PresenceStatus) {
+        self.presence.store(presence.to_atomic(), Ordering::Relaxed);
+    }
+
+    /// Update last activity timestamp
+    #[inline]
+    pub fn update_last_activity(&self) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or_default();
+        self.last_activity.store(now, Ordering::Relaxed);
     }
 }
 
@@ -1470,21 +1581,21 @@ impl Clone for RealtimeConnection {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RealtimeMessage {
     /// Message ID
-    pub id: Arc<str>,
+    pub id: String,
     /// Message type
     pub message_type: RealtimeMessageType,
     /// Message content
-    pub content: Arc<str>,
+    pub content: String,
     /// Sender user ID
-    pub sender_id: Arc<str>,
+    pub sender_id: String,
     /// Target user ID (for direct messages)
-    pub target_id: Option<Arc<str>>,
+    pub target_id: Option<String>,
     /// Session ID
-    pub session_id: Arc<str>,
+    pub session_id: String,
     /// Message timestamp
     pub timestamp: u64,
     /// Message metadata
-    pub metadata: HashMap<Arc<str>, serde_json::Value>,
+    pub metadata: HashMap<String, serde_json::Value>,
 }
 
 /// Real-time message types
@@ -1519,6 +1630,33 @@ pub enum PresenceStatus {
     Offline,
     /// Invisible
     Invisible,
+}
+
+impl PresenceStatus {
+    /// Convert to atomic representation (u8)
+    #[inline]
+    pub const fn to_atomic(&self) -> u8 {
+        match self {
+            Self::Online => 0,
+            Self::Away => 1,
+            Self::DoNotDisturb => 2,
+            Self::Offline => 3,
+            Self::Invisible => 4,
+        }
+    }
+
+    /// Convert from atomic representation (u8)
+    #[inline]
+    pub const fn from_atomic(value: u8) -> Self {
+        match value {
+            0 => Self::Online,
+            1 => Self::Away,
+            2 => Self::DoNotDisturb,
+            3 => Self::Offline,
+            4 => Self::Invisible,
+            _ => Self::Offline, // Default fallback
+        }
+    }
 }
 
 /// Real-time event types
@@ -1661,11 +1799,15 @@ impl RealtimeChat {
 
                 // Remove inactive connections
                 for conn_id in inactive_connections {
-                    connections.remove(&conn_id);
+                    connections.remove(&*conn_id);
                     // Decrement counter - AtomicUsize decrementation
-                    let current = metrics.active_connections.load(std::sync::atomic::Ordering::Relaxed);
+                    let current = metrics
+                        .active_connections
+                        .load(std::sync::atomic::Ordering::Relaxed);
                     if current > 0 {
-                        metrics.active_connections.store(current - 1, std::sync::atomic::Ordering::Relaxed);
+                        metrics
+                            .active_connections
+                            .store(current - 1, std::sync::atomic::Ordering::Relaxed);
                     }
                 }
             }
@@ -1690,39 +1832,38 @@ impl RealtimeChat {
     /// Add a new connection
     pub async fn add_connection(
         &self,
-        user_id: Arc<str>,
-        session_id: Arc<str>,
-    ) -> Result<Arc<str>, Box<dyn std::error::Error + Send + Sync>> {
+        user_id: String,
+        session_id: String,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         if self.connections.len() >= self.config.max_connections {
             return Err("Maximum connections exceeded".into());
         }
 
-        let connection_id: Arc<str> = Arc::from(uuid::Uuid::new_v4().to_string());
+        let connection_id = uuid::Uuid::new_v4().to_string();
         let (message_sender, _message_receiver) = mpsc::unbounded_channel();
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
 
         let connection = RealtimeConnection {
             connection_id: connection_id.clone(),
             user_id,
             session_id,
-            connected_at: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs(),
-            last_activity: AtomicU64::new(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs(),
-            ),
-            status: Arc::new(ArcSwap::new(Arc::new(ConnectionStatus::Connected))),
+            connected_at: now,
+            last_activity: AtomicU64::new(now),
+            status: AtomicU8::new(ConnectionStatus::Connected.to_atomic()),
             message_sender,
             is_typing: AtomicBool::new(false),
-            presence: Arc::new(ArcSwap::new(Arc::new(PresenceStatus::Online))),
+            presence: AtomicU8::new(PresenceStatus::Online.to_atomic()),
         };
 
-        self.connections.insert(connection_id.clone(), connection);
+        self.connections.insert(Arc::from(connection_id.as_str()), connection);
         self.metrics.total_connections.inc();
-        self.metrics.active_connections.fetch_add(1, Ordering::Relaxed);
+        self.metrics
+            .active_connections
+            .fetch_add(1, Ordering::Relaxed);
 
         Ok(connection_id)
     }
@@ -1734,7 +1875,9 @@ impl RealtimeChat {
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         if self.connections.remove(connection_id).is_some() {
             // Decrement AtomicUsize counter
-            self.metrics.active_connections.fetch_sub(1, Ordering::Relaxed);
+            self.metrics
+                .active_connections
+                .fetch_sub(1, Ordering::Relaxed);
             Ok(())
         } else {
             Err("Connection not found".into())
@@ -1809,17 +1952,8 @@ impl RealtimeChat {
         presence: PresenceStatus,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         if let Some(connection) = self.connections.get(connection_id) {
-            connection.value().presence.store(Arc::new(presence));
-
-            // Update last activity
-            connection.value().last_activity.store(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs(),
-                Ordering::Relaxed,
-            );
-
+            connection.value().set_presence(presence);
+            connection.value().update_last_activity();
             Ok(())
         } else {
             Err("Connection not found".into())

@@ -10,31 +10,31 @@ use arc_swap::ArcSwap;
 use arrayvec::{ArrayString, ArrayVec};
 use atomic_counter::RelaxedCounter;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
+use fluent_ai_domain::PromptStruct as Prompt;
+use fluent_ai_domain::completion::{
+    self, CompletionCoreError as CompletionError, CompletionRequest, CompletionRequestBuilder,
+};
+use fluent_ai_domain::memory::workflow::PromptError;
+use fluent_ai_domain::message::Message;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
 
 use super::completion::{CompletionModel, LLAMA_3_70B_8192};
-use crate::{
-    client::{CompletionClient, ProviderClient},
-};
-use fluent_ai_domain::completion::{
-    self, CompletionCoreError as CompletionError, CompletionRequest, CompletionRequestBuilder,
-};
-use fluent_ai_domain::PromptStruct as Prompt;
-use fluent_ai_domain::memory::workflow::PromptError;
-use fluent_ai_domain::message::Message;
+use crate::client::{CompletionClient, ProviderClient};
 
 /// Helper function to merge two JSON values
 fn merge_json_values(mut base: serde_json::Value, other: serde_json::Value) -> serde_json::Value {
-    if let (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) = (&mut base, other) {
+    if let (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) =
+        (&mut base, other)
+    {
         base_map.extend(other_map);
         base
     } else {
         other
     }
 }
-use fluent_ai_domain::{AsyncTask, spawn_async, channel};
+use fluent_ai_domain::{AsyncTask, channel, spawn_async};
 
 // ============================================================================
 // Groq API Client with HTTP3 and zero-allocation patterns

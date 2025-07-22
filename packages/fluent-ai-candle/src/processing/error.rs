@@ -7,14 +7,14 @@
 //! - Production-ready error handling without unwrap/expect
 
 /// Comprehensive error type for all processing operations
-/// 
+///
 /// Provides semantic error classification with rich context information.
 /// All processing operations return this error type for consistent
 /// error handling throughout the system.
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum ProcessingError {
     /// Invalid configuration parameter or setting
-    /// 
+    ///
     /// Covers configuration validation failures such as:
     /// - Invalid temperature values (≤ 0, NaN, infinite)
     /// - Invalid top-k values (0 or excessive)
@@ -25,7 +25,7 @@ pub enum ProcessingError {
     InvalidConfiguration(String),
 
     /// Processing context error
-    /// 
+    ///
     /// Covers issues with the processing context such as:
     /// - Context initialization failures
     /// - Token history management errors
@@ -35,7 +35,7 @@ pub enum ProcessingError {
     ContextError(String),
 
     /// Numerical stability or computational error
-    /// 
+    ///
     /// Covers mathematical and numerical computation issues such as:
     /// - NaN or infinite values in calculations
     /// - Overflow/underflow in operations
@@ -46,7 +46,7 @@ pub enum ProcessingError {
     NumericalError(String),
 
     /// Resource exhaustion or allocation failure
-    /// 
+    ///
     /// Covers resource management issues such as:
     /// - Memory allocation failures
     /// - Array capacity violations
@@ -56,7 +56,7 @@ pub enum ProcessingError {
     ResourceError(String),
 
     /// External dependency or integration error
-    /// 
+    ///
     /// Covers errors from external systems such as:
     /// - SIMD operation failures
     /// - Hardware acceleration errors
@@ -66,7 +66,7 @@ pub enum ProcessingError {
     ExternalError(String),
 
     /// Processor chain composition or execution error
-    /// 
+    ///
     /// Covers errors in processor chain management such as:
     /// - Chain construction failures
     /// - Processor compatibility issues
@@ -76,7 +76,7 @@ pub enum ProcessingError {
     ProcessorChainError(String),
 
     /// Validation failure for input data
-    /// 
+    ///
     /// Covers input validation errors such as:
     /// - Empty or malformed input arrays
     /// - Invalid token sequences
@@ -86,7 +86,7 @@ pub enum ProcessingError {
     ValidationError(String),
 
     /// Internal processing logic error
-    /// 
+    ///
     /// Covers unexpected internal errors that should not occur
     /// in normal operation but need handling for robustness:
     /// - Assertion failures in debug builds
@@ -210,13 +210,19 @@ impl ProcessingError {
     pub fn with_context<S: Into<String>>(self, context: S) -> Self {
         let context_str = context.into();
         match self {
-            Self::InvalidConfiguration(msg) => Self::InvalidConfiguration(format!("{}: {}", context_str, msg)),
+            Self::InvalidConfiguration(msg) => {
+                Self::InvalidConfiguration(format!("{}: {}", context_str, msg))
+            }
             Self::ContextError(msg) => Self::ContextError(format!("{}: {}", context_str, msg)),
             Self::NumericalError(msg) => Self::NumericalError(format!("{}: {}", context_str, msg)),
             Self::ResourceError(msg) => Self::ResourceError(format!("{}: {}", context_str, msg)),
             Self::ExternalError(msg) => Self::ExternalError(format!("{}: {}", context_str, msg)),
-            Self::ProcessorChainError(msg) => Self::ProcessorChainError(format!("{}: {}", context_str, msg)),
-            Self::ValidationError(msg) => Self::ValidationError(format!("{}: {}", context_str, msg)),
+            Self::ProcessorChainError(msg) => {
+                Self::ProcessorChainError(format!("{}: {}", context_str, msg))
+            }
+            Self::ValidationError(msg) => {
+                Self::ValidationError(format!("{}: {}", context_str, msg))
+            }
             Self::InternalError(msg) => Self::InternalError(format!("{}: {}", context_str, msg)),
         }
     }
@@ -242,7 +248,7 @@ impl ErrorCategory {
         match self {
             Self::Configuration => "configuration",
             Self::Context => "context",
-            Self::Numerical => "numerical", 
+            Self::Numerical => "numerical",
             Self::Resource => "resource",
             Self::External => "external",
             Self::ProcessorChain => "processor_chain",
@@ -400,23 +406,23 @@ impl ErrorContext {
 impl std::fmt::Display for ErrorContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Operation: {}", self.operation)?;
-        
+
         if let Some(ref processor) = self.processor {
             write!(f, ", Processor: {}", processor)?;
         }
-        
+
         if let Some(size) = self.array_size {
             write!(f, ", Array size: {}", size)?;
         }
-        
+
         if let Some(pos) = self.position {
             write!(f, ", Position: {}", pos)?;
         }
-        
+
         if !self.metadata.is_empty() {
             write!(f, ", Metadata: {:?}", self.metadata)?;
         }
-        
+
         Ok(())
     }
 }
@@ -441,9 +447,13 @@ impl ContextualError {
             error,
             context,
             timestamp: std::time::SystemTime::now(),
-            backtrace: std::env::var("RUST_BACKTRACE")
-                .ok()
-                .and_then(|val| if val == "1" { Some("backtrace".to_string()) } else { None }),
+            backtrace: std::env::var("RUST_BACKTRACE").ok().and_then(|val| {
+                if val == "1" {
+                    Some("backtrace".to_string())
+                } else {
+                    None
+                }
+            }),
         }
     }
 
@@ -475,11 +485,11 @@ impl ContextualError {
 impl std::fmt::Display for ContextualError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ({})", self.error, self.context)?;
-        
+
         if let Some(ref backtrace) = self.backtrace {
             write!(f, "\nBacktrace: {}", backtrace)?;
         }
-        
+
         Ok(())
     }
 }
@@ -496,19 +506,15 @@ pub mod utils {
 
     /// Validate configuration parameter range
     #[inline(always)]
-    pub fn validate_range<T>(
-        value: T, 
-        min: T, 
-        max: T, 
-        param_name: &str
-    ) -> ProcessingResult<()>
+    pub fn validate_range<T>(value: T, min: T, max: T, param_name: &str) -> ProcessingResult<()>
     where
-        T: PartialOrd + std::fmt::Display
+        T: PartialOrd + std::fmt::Display,
     {
         if value < min || value > max {
-            return Err(ProcessingError::configuration(
-                format!("{} value {} is outside valid range [{}, {}]", param_name, value, min, max)
-            ));
+            return Err(ProcessingError::configuration(format!(
+                "{} value {} is outside valid range [{}, {}]",
+                param_name, value, min, max
+            )));
         }
         Ok(())
     }
@@ -517,9 +523,10 @@ pub mod utils {
     #[inline(always)]
     pub fn validate_finite(value: f32, param_name: &str) -> ProcessingResult<()> {
         if !value.is_finite() {
-            return Err(ProcessingError::numerical(
-                format!("{} value {} is not finite", param_name, value)
-            ));
+            return Err(ProcessingError::numerical(format!(
+                "{} value {} is not finite",
+                param_name, value
+            )));
         }
         Ok(())
     }
@@ -528,9 +535,10 @@ pub mod utils {
     #[inline(always)]
     pub fn validate_not_empty<T>(array: &[T], array_name: &str) -> ProcessingResult<()> {
         if array.is_empty() {
-            return Err(ProcessingError::validation(
-                format!("{} array is empty", array_name)
-            ));
+            return Err(ProcessingError::validation(format!(
+                "{} array is empty",
+                array_name
+            )));
         }
         Ok(())
     }
@@ -538,26 +546,26 @@ pub mod utils {
     /// Validate array sizes match
     #[inline(always)]
     pub fn validate_array_sizes<T, U>(
-        array1: &[T], 
-        array2: &[U], 
-        name1: &str, 
-        name2: &str
+        array1: &[T],
+        array2: &[U],
+        name1: &str,
+        name2: &str,
     ) -> ProcessingResult<()> {
         if array1.len() != array2.len() {
-            return Err(ProcessingError::validation(
-                format!("{} size {} does not match {} size {}", 
-                        name1, array1.len(), name2, array2.len())
-            ));
+            return Err(ProcessingError::validation(format!(
+                "{} size {} does not match {} size {}",
+                name1,
+                array1.len(),
+                name2,
+                array2.len()
+            )));
         }
         Ok(())
     }
 
     /// Convert error to contextual error with operation info
     #[inline(always)]
-    pub fn with_operation_context(
-        error: ProcessingError, 
-        operation: &str
-    ) -> ContextualError {
+    pub fn with_operation_context(error: ProcessingError, operation: &str) -> ContextualError {
         let context = ErrorContext::new(operation);
         ContextualError::new(error, context)
     }
@@ -565,9 +573,9 @@ pub mod utils {
     /// Convert error to contextual error with processor info
     #[inline(always)]
     pub fn with_processor_context(
-        error: ProcessingError, 
-        operation: &str, 
-        processor: &str
+        error: ProcessingError,
+        operation: &str,
+        processor: &str,
     ) -> ContextualError {
         let context = ErrorContext::new(operation).processor(processor);
         ContextualError::new(error, context)
@@ -576,8 +584,8 @@ pub mod utils {
     /// Check if error should trigger system shutdown
     #[inline(always)]
     pub fn should_shutdown(error: &ProcessingError) -> bool {
-        matches!(error, ProcessingError::InternalError(_)) && 
-        error.severity() == ErrorSeverity::Critical
+        matches!(error, ProcessingError::InternalError(_))
+            && error.severity() == ErrorSeverity::Critical
     }
 
     /// Get retry delay based on error type

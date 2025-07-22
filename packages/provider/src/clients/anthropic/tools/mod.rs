@@ -17,13 +17,14 @@ pub use core::{
     AnthropicError, AnthropicResult, ChainControl, Emitter, ErrorHandler, InvocationHandler,
     Message, ResultHandler, SchemaType, ToolExecutionError, ToolRegistrationError,
 };
-// Re-export Tool from fluent_ai_domain
-pub use fluent_ai_domain::tool::{Tool};
+
 // Note: ToolError not available - using anyhow::Error instead
 
 // Re-export built-in tools
 pub use calculator::{CalculatorTool, ExpressionError, ExpressionEvaluator};
 pub use file_operations::FileOperationsTool;
+// Re-export Tool from fluent_ai_domain
+pub use fluent_ai_domain::tool::Tool;
 // Note: tool_builder may not exist in function_calling - removing for now
 // pub use function_calling::tool_builder;
 // Re-export function calling system

@@ -14,7 +14,7 @@ use std::sync::Arc;
 
 use cyrup_sugars::AsyncResult;
 use fluent_ai_domain::Provider;
-use futures::StreamExt;
+use futures_util::StreamExt;
 use thiserror::Error;
 
 use crate::clients::*;
@@ -203,18 +203,18 @@ impl UnifiedClient for OpenAIUnifiedClient {
                     message: format!("Streaming completion request failed: {}", e),
                 })?;
 
-            let (tx, rx) = crate::async_stream_channel();
-            
+            let (tx, rx) = crate::channel();
+
             tokio::spawn(async move {
-                use futures::StreamExt;
+                use futures_util::StreamExt;
                 let mut stream = stream;
                 while let Some(chunk_result) = stream.next().await {
                     let result = match chunk_result {
-                        Ok(chunk) => {
-                            serde_json::to_value(&chunk).map_err(|e| ClientFactoryError::ConfigurationError {
+                        Ok(chunk) => serde_json::to_value(&chunk).map_err(|e| {
+                            ClientFactoryError::ConfigurationError {
                                 message: format!("Failed to serialize chunk: {}", e),
-                            })
-                        }
+                            }
+                        }),
                         Err(e) => Err(ClientFactoryError::ConfigurationError {
                             message: format!("Stream chunk error: {}", e),
                         }),
@@ -374,18 +374,18 @@ impl UnifiedClient for AnthropicUnifiedClient {
                     message: format!("Streaming completion request failed: {}", e),
                 })?;
 
-            let (tx, rx) = crate::async_stream_channel();
-            
+            let (tx, rx) = crate::channel();
+
             tokio::spawn(async move {
-                use futures::StreamExt;
+                use futures_util::StreamExt;
                 let mut stream = stream;
                 while let Some(chunk_result) = stream.next().await {
                     let result = match chunk_result {
-                        Ok(chunk) => {
-                            serde_json::to_value(&chunk).map_err(|e| ClientFactoryError::ConfigurationError {
+                        Ok(chunk) => serde_json::to_value(&chunk).map_err(|e| {
+                            ClientFactoryError::ConfigurationError {
                                 message: format!("Failed to serialize chunk: {}", e),
-                            })
-                        }
+                            }
+                        }),
                         Err(e) => Err(ClientFactoryError::ConfigurationError {
                             message: format!("Stream chunk error: {}", e),
                         }),

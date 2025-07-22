@@ -63,10 +63,9 @@
 //! aggregator.finish_session("session-1")?;
 //! ```
 
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+
 use arrayvec::{ArrayString, ArrayVec};
-use std::{
-    sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
-};
 
 use crate::error::{CandleError, CandleResult as Result};
 
@@ -119,7 +118,7 @@ pub trait ProgressReporter: Send + Sync {
     ///
     /// Returns Ok(()) on success, error if reporting fails
     fn report_simple_progress(&self, stage: &str, progress: f32) -> Result<()>;
-    
+
     /// Report stage completion with timing information
     ///
     /// # Arguments
@@ -130,7 +129,7 @@ pub trait ProgressReporter: Send + Sync {
     ///
     /// Returns Ok(()) on success, error if reporting fails
     fn report_stage_completion(&self, stage: &str) -> Result<()>;
-    
+
     /// Report real-time generation metrics
     ///
     /// # Arguments
@@ -148,7 +147,7 @@ pub trait ProgressReporter: Send + Sync {
         cache_hit_rate: f64,
         latency_nanos: u64,
     ) -> Result<()>;
-    
+
     /// Report model loading statistics
     ///
     /// # Arguments
@@ -166,7 +165,7 @@ pub trait ProgressReporter: Send + Sync {
         loaded_bytes: u64,
         total_bytes: u64,
     ) -> Result<()>;
-    
+
     /// Report cache statistics
     ///
     /// # Arguments
@@ -186,7 +185,7 @@ pub trait ProgressReporter: Send + Sync {
         hit_rate: f64,
         eviction_count: u64,
     ) -> Result<()>;
-    
+
     /// Start progress session for concurrent operations
     ///
     /// # Arguments
@@ -201,7 +200,7 @@ pub trait ProgressReporter: Send + Sync {
         // Default implementation for backward compatibility
         Ok(())
     }
-    
+
     /// Finish progress session
     ///
     /// # Arguments
@@ -215,14 +214,14 @@ pub trait ProgressReporter: Send + Sync {
         // Default implementation for backward compatibility
         Ok(())
     }
-    
+
     /// Get reporter name for debugging
     fn name(&self) -> &'static str;
-    
+
     /// Report detailed progress with operation context
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `operation_type` - Type of operation (e.g., "hub_download", "model_loading")
     /// * `operation_key` - Unique key for this operation instance
     /// * `current_value` - Current progress value
@@ -250,11 +249,11 @@ pub trait ProgressReporter: Send + Sync {
         } else {
             0.0
         };
-        
+
         let stage_message = format!("{}: {}", operation_type, message);
         self.report_simple_progress(&stage_message, progress)
     }
-    
+
     /// Report detailed download progress with stage breakdown
     ///
     /// # Arguments
@@ -286,10 +285,10 @@ pub trait ProgressReporter: Send + Sync {
             DownloadStage::ValidatingChecksum => "Validating checksum",
             DownloadStage::CachingModel => "Caching model",
         };
-        
+
         self.report_simple_progress(stage_name, progress)
     }
-    
+
     /// Report detailed weight loading progress
     ///
     /// # Arguments
@@ -321,11 +320,11 @@ pub trait ProgressReporter: Send + Sync {
             WeightLoadingStage::LoadingNormalization => "Loading normalization",
             WeightLoadingStage::InitializingCache => "Initializing cache",
         };
-        
+
         let overall_progress = (layer_index as f32 + progress) / total_layers as f32;
         self.report_simple_progress(stage_name, overall_progress)
     }
-    
+
     /// Report quantization progress
     ///
     /// # Arguments
@@ -347,16 +346,27 @@ pub trait ProgressReporter: Send + Sync {
         total_layers: Option<usize>,
         compression_ratio: Option<f32>,
     ) -> Result<()> {
-        // Default implementation uses standard progress reporting
-        let stage_name = match quantization_stage {
+        // Build detailed progress message with quantization metrics
+        let mut stage_name = match quantization_stage {
             QuantizationStage::AnalyzingWeights => "Analyzing weights",
             QuantizationStage::ComputingScale => "Computing scale factors",
             QuantizationStage::QuantizingLayers => "Quantizing layers",
             QuantizationStage::OptimizingMemory => "Optimizing memory layout",
             QuantizationStage::ValidatingAccuracy => "Validating accuracy",
-        };
-        
-        self.report_simple_progress(stage_name, progress)
+        }
+        .to_string();
+
+        // Add layer progress information if available
+        if let (Some(quantized), Some(total)) = (quantized_layers, total_layers) {
+            stage_name.push_str(&format!(" ({}/{})", quantized, total));
+        }
+
+        // Add compression ratio information if available
+        if let Some(ratio) = compression_ratio {
+            stage_name.push_str(&format!(" - {:.1}x compression", ratio));
+        }
+
+        self.report_simple_progress(&stage_name, progress)
     }
 }
 
@@ -387,7 +397,7 @@ impl DownloadStage {
             DownloadStage::CachingModel => "Caching model",
         }
     }
-    
+
     /// Get estimated relative duration of this stage (0.0 to 1.0)
     #[inline]
     pub fn estimated_duration_weight(&self) -> f32 {
@@ -428,16 +438,16 @@ impl WeightLoadingStage {
             WeightLoadingStage::InitializingCache => "Initializing cache",
         }
     }
-    
+
     /// Get estimated relative duration of this stage (0.0 to 1.0)
     #[inline]
     pub fn estimated_duration_weight(&self) -> f32 {
         match self {
-            WeightLoadingStage::LoadingEmbeddings => 0.15,     // 15% of loading time
-            WeightLoadingStage::LoadingAttention => 0.50,      // 50% of loading time
-            WeightLoadingStage::LoadingMLP => 0.25,            // 25% of loading time
-            WeightLoadingStage::LoadingNormalization => 0.05,  // 5% of loading time
-            WeightLoadingStage::InitializingCache => 0.05,     // 5% of loading time
+            WeightLoadingStage::LoadingEmbeddings => 0.15, // 15% of loading time
+            WeightLoadingStage::LoadingAttention => 0.50,  // 50% of loading time
+            WeightLoadingStage::LoadingMLP => 0.25,        // 25% of loading time
+            WeightLoadingStage::LoadingNormalization => 0.05, // 5% of loading time
+            WeightLoadingStage::InitializingCache => 0.05, // 5% of loading time
         }
     }
 }
@@ -469,16 +479,16 @@ impl QuantizationStage {
             QuantizationStage::ValidatingAccuracy => "Validating accuracy",
         }
     }
-    
+
     /// Get estimated relative duration of this stage (0.0 to 1.0)
     #[inline]
     pub fn estimated_duration_weight(&self) -> f32 {
         match self {
-            QuantizationStage::AnalyzingWeights => 0.20,      // 20% of quantization time
-            QuantizationStage::ComputingScale => 0.15,        // 15% of quantization time
-            QuantizationStage::QuantizingLayers => 0.50,      // 50% of quantization time
-            QuantizationStage::OptimizingMemory => 0.10,      // 10% of quantization time
-            QuantizationStage::ValidatingAccuracy => 0.05,    // 5% of quantization time
+            QuantizationStage::AnalyzingWeights => 0.20, // 20% of quantization time
+            QuantizationStage::ComputingScale => 0.15,   // 15% of quantization time
+            QuantizationStage::QuantizingLayers => 0.50, // 50% of quantization time
+            QuantizationStage::OptimizingMemory => 0.10, // 10% of quantization time
+            QuantizationStage::ValidatingAccuracy => 0.05, // 5% of quantization time
         }
     }
 }
@@ -495,33 +505,33 @@ impl QuantizationStage {
 pub struct ProgressHubReporter {
     /// ProgressHub handle for TUI updates (placeholder for now)
     progress_handle: Option<()>,
-    
+
     /// Current progress state (atomic)
     current_progress: AtomicU64, // f32 as u64 for atomic access
-    
+
     /// Current stage (lock-free)
     current_stage: parking_lot::RwLock<StageName>,
-    
+
     /// Metrics state (atomic)
     tokens_per_second: AtomicU64,
     cache_hit_rate: AtomicU64,
     average_latency_nanos: AtomicU64,
-    
+
     /// Loading statistics (atomic)
     total_parameters: AtomicU64,
     loaded_bytes: AtomicU64,
     total_bytes: AtomicU64,
-    
+
     /// Cache statistics (atomic)
     cache_size: AtomicUsize,
     cache_capacity: AtomicUsize,
     cache_evictions: AtomicU64,
-    
+
     /// Reporter state
     is_active: AtomicBool,
     created_at_nanos: u64,
     last_update_nanos: AtomicU64,
-    
+
     /// Update batching
     pending_updates: AtomicUsize,
     update_threshold: usize,
@@ -532,7 +542,7 @@ impl ProgressHubReporter {
     pub fn new() -> Result<Self> {
         Self::with_config(ProgressHubConfig::default())
     }
-    
+
     /// Create ProgressHub reporter with custom configuration
     pub fn with_config(config: ProgressHubConfig) -> Result<Self> {
         let progress_handle = if config.enable_tui() {
@@ -543,9 +553,9 @@ impl ProgressHubReporter {
         } else {
             None
         };
-        
+
         let now = Self::current_time_nanos();
-        
+
         Ok(Self {
             progress_handle,
             current_progress: AtomicU64::new(0),
@@ -566,7 +576,7 @@ impl ProgressHubReporter {
             update_threshold: config.update_threshold(),
         })
     }
-    
+
     /// Get current high-precision timestamp
     #[inline(always)]
     fn current_time_nanos() -> u64 {
@@ -574,45 +584,42 @@ impl ProgressHubReporter {
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos() as u64)
     }
-    
+
     /// Convert f32 to u64 for atomic storage
     #[inline(always)]
     fn f32_to_atomic_u64(value: f32) -> u64 {
         value.to_bits() as u64
     }
-    
+
     /// Convert u64 back to f32 from atomic storage
     #[inline(always)]
     fn atomic_u64_to_f32(value: u64) -> f32 {
         f32::from_bits(value as u32)
     }
-    
+
     /// Update TUI if threshold reached (non-blocking)
     #[inline(always)]
     fn try_update_tui(&self) {
         let pending = self.pending_updates.fetch_add(1, Ordering::Relaxed);
-        
+
         if pending >= self.update_threshold {
             self.pending_updates.store(0, Ordering::Relaxed);
             self.force_update_tui();
         }
     }
-    
+
     /// Force TUI update (non-blocking)
     fn force_update_tui(&self) {
         if let Some(ref _handle) = self.progress_handle {
-            let current_progress = Self::atomic_u64_to_f32(
-                self.current_progress.load(Ordering::Relaxed)
-            );
-            
+            let current_progress =
+                Self::atomic_u64_to_f32(self.current_progress.load(Ordering::Relaxed));
+
             let stage = self.current_stage.read().as_str().to_string();
-            let tokens_per_sec = Self::atomic_u64_to_f32(
-                self.tokens_per_second.load(Ordering::Relaxed)
-            );
-            let cache_hit_rate = Self::atomic_u64_to_f32(
-                self.cache_hit_rate.load(Ordering::Relaxed)
-            );
-            
+            let tokens_per_sec =
+                Self::atomic_u64_to_f32(self.tokens_per_second.load(Ordering::Relaxed));
+            let cache_hit_rate =
+                Self::atomic_u64_to_f32(self.cache_hit_rate.load(Ordering::Relaxed));
+
             // Format progress message for future TUI integration
             let _message = format!(
                 "{} {:.1}% | {:.1} tok/s | {:.1}% cache",
@@ -621,53 +628,54 @@ impl ProgressHubReporter {
                 tokens_per_sec,
                 cache_hit_rate * 100.0
             );
-            
+
             // TODO: When ProgressHub TUI is available, update display here
             // For now, we just track the progress internally
         }
-        
-        self.last_update_nanos.store(Self::current_time_nanos(), Ordering::Relaxed);
+
+        self.last_update_nanos
+            .store(Self::current_time_nanos(), Ordering::Relaxed);
     }
-    
+
     /// Get current progress value
     #[inline(always)]
     pub fn current_progress(&self) -> f32 {
         Self::atomic_u64_to_f32(self.current_progress.load(Ordering::Relaxed))
     }
-    
+
     /// Get current stage name
     pub fn current_stage(&self) -> String {
         self.current_stage.read().as_str().to_string()
     }
-    
+
     /// Get current tokens per second
     #[inline(always)]
     pub fn tokens_per_second(&self) -> f64 {
         Self::atomic_u64_to_f32(self.tokens_per_second.load(Ordering::Relaxed)) as f64
     }
-    
+
     /// Get current cache hit rate
     #[inline(always)]
     pub fn cache_hit_rate(&self) -> f64 {
         Self::atomic_u64_to_f32(self.cache_hit_rate.load(Ordering::Relaxed)) as f64
     }
-    
+
     /// Get reporter uptime
     #[inline(always)]
     pub fn uptime_nanos(&self) -> u64 {
         Self::current_time_nanos().saturating_sub(self.created_at_nanos)
     }
-    
+
     /// Check if reporter is active
     #[inline(always)]
     pub fn is_active(&self) -> bool {
         self.is_active.load(Ordering::Relaxed)
     }
-    
+
     /// Deactivate reporter (stops TUI updates)
     pub fn deactivate(&self) {
         self.is_active.store(false, Ordering::Relaxed);
-        
+
         if let Some(ref _handle) = self.progress_handle {
             // TODO: When ProgressHub TUI is available, finish display here
             // For now, we just mark the reporter as inactive
@@ -680,9 +688,9 @@ impl ProgressReporter for ProgressHubReporter {
         if !self.is_active() {
             return Ok(()); // Reporter deactivated
         }
-        
+
         let clamped_progress = progress.clamp(0.0, 1.0);
-        
+
         // Update stage atomically
         {
             let mut current_stage = self.current_stage.write();
@@ -693,28 +701,26 @@ impl ProgressReporter for ProgressHubReporter {
                 let _ = current_stage.try_push_str(truncated);
             }
         }
-        
+
         // Update progress atomically
-        self.current_progress.store(
-            Self::f32_to_atomic_u64(clamped_progress),
-            Ordering::Relaxed,
-        );
-        
+        self.current_progress
+            .store(Self::f32_to_atomic_u64(clamped_progress), Ordering::Relaxed);
+
         // Try to update TUI (non-blocking)
         self.try_update_tui();
-        
+
         Ok(())
     }
-    
+
     fn report_stage_completion(&self, stage: &str) -> Result<()> {
         self.report_simple_progress(stage, 1.0)?;
-        
+
         // Force immediate TUI update for stage completion
         self.force_update_tui();
-        
+
         Ok(())
     }
-    
+
     fn report_generation_metrics(
         &self,
         tokens_per_second: f64,
@@ -724,18 +730,18 @@ impl ProgressReporter for ProgressHubReporter {
         if !self.is_active() {
             return Ok(());
         }
-        
+
         // Update metrics atomically
         self.tokens_per_second.store(
             Self::f32_to_atomic_u64(tokens_per_second as f32),
             Ordering::Relaxed,
         );
-        
+
         self.cache_hit_rate.store(
             Self::f32_to_atomic_u64(cache_hit_rate.clamp(0.0, 1.0) as f32),
             Ordering::Relaxed,
         );
-        
+
         // Update moving average latency
         let current_avg = self.average_latency_nanos.load(Ordering::Relaxed);
         let new_avg = if current_avg == 0 {
@@ -745,13 +751,13 @@ impl ProgressReporter for ProgressHubReporter {
             (current_avg * 9 + latency_nanos) / 10
         };
         self.average_latency_nanos.store(new_avg, Ordering::Relaxed);
-        
+
         // Try to update TUI (batched)
         self.try_update_tui();
-        
+
         Ok(())
     }
-    
+
     fn report_loading_stats(
         &self,
         total_parameters: u64,
@@ -761,23 +767,24 @@ impl ProgressReporter for ProgressHubReporter {
         if !self.is_active() {
             return Ok(());
         }
-        
-        self.total_parameters.store(total_parameters, Ordering::Relaxed);
+
+        self.total_parameters
+            .store(total_parameters, Ordering::Relaxed);
         self.loaded_bytes.store(loaded_bytes, Ordering::Relaxed);
         self.total_bytes.store(total_bytes, Ordering::Relaxed);
-        
+
         // Calculate loading progress
         let progress = if total_bytes > 0 {
             loaded_bytes as f32 / total_bytes as f32
         } else {
             0.0
         };
-        
+
         self.report_simple_progress("Loading model", progress)?;
-        
+
         Ok(())
     }
-    
+
     fn report_cache_stats(
         &self,
         cache_size: usize,
@@ -788,25 +795,26 @@ impl ProgressReporter for ProgressHubReporter {
         if !self.is_active() {
             return Ok(());
         }
-        
+
         self.cache_size.store(cache_size, Ordering::Relaxed);
         self.cache_capacity.store(cache_capacity, Ordering::Relaxed);
         self.cache_hit_rate.store(
             Self::f32_to_atomic_u64(hit_rate.clamp(0.0, 1.0) as f32),
             Ordering::Relaxed,
         );
-        self.cache_evictions.store(eviction_count, Ordering::Relaxed);
-        
+        self.cache_evictions
+            .store(eviction_count, Ordering::Relaxed);
+
         // Try to update TUI with cache info
         self.try_update_tui();
-        
+
         Ok(())
     }
-    
+
     fn name(&self) -> &'static str {
         "ProgressHubReporter"
     }
-    
+
     /// Enhanced download progress reporting with detailed stage breakdown
     fn report_download_progress(
         &self,
@@ -820,12 +828,13 @@ impl ProgressReporter for ProgressHubReporter {
         if !self.is_active() {
             return Ok(());
         }
-        
+
         let clamped_progress = progress.clamp(0.0, 1.0);
-        
+
         // Create detailed stage message with metrics
-        let stage_message = if let (Some(total), Some(downloaded), Some(rate), Some(eta)) = 
-            (total_bytes, downloaded_bytes, transfer_rate, eta_seconds) {
+        let stage_message = if let (Some(total), Some(downloaded), Some(rate), Some(eta)) =
+            (total_bytes, downloaded_bytes, transfer_rate, eta_seconds)
+        {
             format!(
                 "{} ({:.1}MB/{:.1}MB, {:.1}MB/s, ETA: {:.1}s)",
                 download_stage.name(),
@@ -837,7 +846,7 @@ impl ProgressReporter for ProgressHubReporter {
         } else {
             download_stage.name().to_string()
         };
-        
+
         // Update stage atomically with detailed message
         {
             let mut current_stage = self.current_stage.write();
@@ -848,25 +857,23 @@ impl ProgressReporter for ProgressHubReporter {
                 let _ = current_stage.try_push_str(download_stage.name());
             }
         }
-        
+
         // Update progress atomically
-        self.current_progress.store(
-            Self::f32_to_atomic_u64(clamped_progress),
-            Ordering::Relaxed,
-        );
-        
+        self.current_progress
+            .store(Self::f32_to_atomic_u64(clamped_progress), Ordering::Relaxed);
+
         // Update loading stats if available
         if let (Some(total), Some(downloaded)) = (total_bytes, downloaded_bytes) {
             self.total_bytes.store(total, Ordering::Relaxed);
             self.loaded_bytes.store(downloaded, Ordering::Relaxed);
         }
-        
+
         // Force TUI update for download stages (user feedback is critical)
         self.force_update_tui();
-        
+
         Ok(())
     }
-    
+
     /// Enhanced weight loading progress with layer-specific tracking
     fn report_weight_loading_progress(
         &self,
@@ -880,13 +887,13 @@ impl ProgressReporter for ProgressHubReporter {
         if !self.is_active() {
             return Ok(());
         }
-        
+
         let clamped_progress = progress.clamp(0.0, 1.0);
-        
+
         // Calculate overall progress across all layers
         let overall_progress = (layer_index as f32 + clamped_progress) / total_layers as f32;
         let overall_clamped = overall_progress.clamp(0.0, 1.0);
-        
+
         // Create detailed stage message with layer information
         let stage_message = if let Some(memory) = memory_used {
             format!(
@@ -904,7 +911,7 @@ impl ProgressReporter for ProgressHubReporter {
                 total_layers
             )
         };
-        
+
         // Update stage atomically with detailed message
         {
             let mut current_stage = self.current_stage.write();
@@ -912,28 +919,31 @@ impl ProgressReporter for ProgressHubReporter {
             if current_stage.try_push_str(&stage_message).is_err() {
                 // Message too long, use basic stage name with layer count
                 current_stage.clear();
-                let basic_msg = format!("{} ({}/{})", layer_stage.name(), layer_index + 1, total_layers);
+                let basic_msg = format!(
+                    "{} ({}/{})",
+                    layer_stage.name(),
+                    layer_index + 1,
+                    total_layers
+                );
                 let _ = current_stage.try_push_str(&basic_msg);
             }
         }
-        
+
         // Update progress atomically
-        self.current_progress.store(
-            Self::f32_to_atomic_u64(overall_clamped),
-            Ordering::Relaxed,
-        );
-        
+        self.current_progress
+            .store(Self::f32_to_atomic_u64(overall_clamped), Ordering::Relaxed);
+
         // Update parameter count if available
         if let Some(params) = total_parameters {
             self.total_parameters.store(params, Ordering::Relaxed);
         }
-        
+
         // Try to update TUI (batched for performance during weight loading)
         self.try_update_tui();
-        
+
         Ok(())
     }
-    
+
     /// Enhanced quantization progress with compression metrics
     fn report_quantization_progress(
         &self,
@@ -946,9 +956,9 @@ impl ProgressReporter for ProgressHubReporter {
         if !self.is_active() {
             return Ok(());
         }
-        
+
         let clamped_progress = progress.clamp(0.0, 1.0);
-        
+
         // Create detailed stage message with quantization metrics
         let stage_message = match (quantized_layers, total_layers, compression_ratio) {
             (Some(quantized), Some(total), Some(ratio)) => {
@@ -959,7 +969,7 @@ impl ProgressReporter for ProgressHubReporter {
                     total,
                     ratio
                 )
-            },
+            }
             (Some(quantized), Some(total), None) => {
                 format!(
                     "{} ({}/{} layers)",
@@ -967,17 +977,13 @@ impl ProgressReporter for ProgressHubReporter {
                     quantized,
                     total
                 )
-            },
+            }
             (None, None, Some(ratio)) => {
-                format!(
-                    "{} ({:.1}x compression)",
-                    quantization_stage.name(),
-                    ratio
-                )
-            },
+                format!("{} ({:.1}x compression)", quantization_stage.name(), ratio)
+            }
             _ => quantization_stage.name().to_string(),
         };
-        
+
         // Update stage atomically with detailed message
         {
             let mut current_stage = self.current_stage.write();
@@ -988,16 +994,14 @@ impl ProgressReporter for ProgressHubReporter {
                 let _ = current_stage.try_push_str(quantization_stage.name());
             }
         }
-        
+
         // Update progress atomically
-        self.current_progress.store(
-            Self::f32_to_atomic_u64(clamped_progress),
-            Ordering::Relaxed,
-        );
-        
+        self.current_progress
+            .store(Self::f32_to_atomic_u64(clamped_progress), Ordering::Relaxed);
+
         // Try to update TUI (batched for performance during quantization)
         self.try_update_tui();
-        
+
         Ok(())
     }
 }
@@ -1013,13 +1017,13 @@ impl Drop for ProgressHubReporter {
 pub struct ProgressHubConfig {
     /// Enable TUI integration
     enable_tui: bool,
-    
+
     /// Update threshold for batching
     update_threshold: usize,
-    
+
     /// Enable real-time metrics
     enable_metrics: bool,
-    
+
     /// Enable session tracking
     enable_sessions: bool,
 }
@@ -1035,47 +1039,47 @@ impl ProgressHubConfig {
             enable_sessions: true,
         }
     }
-    
+
     /// Enable TUI integration
     #[inline(always)]
     pub const fn enable_tui(mut self) -> Self {
         self.enable_tui = true;
         self
     }
-    
+
     /// Disable TUI integration
     #[inline(always)]
     pub const fn disable_tui(mut self) -> Self {
         self.enable_tui = false;
         self
     }
-    
+
     /// Set update threshold
     #[inline(always)]
     pub const fn with_update_threshold(mut self, threshold: usize) -> Self {
         self.update_threshold = threshold;
         self
     }
-    
+
     /// Enable metrics tracking
     #[inline(always)]
     pub const fn enable_metrics(mut self) -> Self {
         self.enable_metrics = true;
         self
     }
-    
+
     /// Check if TUI is enabled
     #[inline(always)]
     pub const fn enable_tui(&self) -> bool {
         self.enable_tui
     }
-    
+
     /// Get update threshold
     #[inline(always)]
     pub const fn update_threshold(&self) -> usize {
         self.update_threshold
     }
-    
+
     /// Check if metrics are enabled
     #[inline(always)]
     pub const fn metrics_enabled(&self) -> bool {
@@ -1098,13 +1102,13 @@ impl Default for ProgressHubConfig {
 pub struct MetricsAggregator {
     /// Active sessions (lock-free)
     active_sessions: parking_lot::RwLock<ArrayVec<SessionInfo, MAX_CONCURRENT_SESSIONS>>,
-    
+
     /// Global metrics (atomic)
     total_tokens_generated: AtomicU64,
     total_operations: AtomicU64,
     average_latency_nanos: AtomicU64,
     peak_tokens_per_second: AtomicU64,
-    
+
     /// Aggregator state
     created_at_nanos: u64,
 }
@@ -1121,7 +1125,7 @@ impl MetricsAggregator {
             created_at_nanos: Self::current_time_nanos(),
         }
     }
-    
+
     /// Get current timestamp
     #[inline(always)]
     fn current_time_nanos() -> u64 {
@@ -1129,48 +1133,49 @@ impl MetricsAggregator {
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos() as u64)
     }
-    
+
     /// Start new session
     pub fn start_session(&self, session_id: &str) -> Result<()> {
         if session_id.len() > MAX_SESSION_ID_LEN {
             return Err(CandleError::ProcessingError("Session ID too long"));
         }
-        
+
         let mut session_id_buf = SessionId::new();
         if session_id_buf.try_push_str(session_id).is_err() {
             return Err(CandleError::ProcessingError("Failed to create session ID"));
         }
-        
+
         let session_info = SessionInfo::new(session_id_buf);
-        
+
         {
             let mut sessions = self.active_sessions.write();
             if sessions.is_full() {
                 return Err(CandleError::ProcessingError("Too many concurrent sessions"));
             }
-            
+
             // Remove existing session with same ID
             sessions.retain(|s| s.session_id() != session_id);
-            
+
             if sessions.try_push(session_info).is_err() {
                 return Err(CandleError::ProcessingError("Failed to add session"));
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Update session metrics
     pub fn update_metrics(&self, session_id: &str, metrics: &InferenceMetrics) -> Result<()> {
         let mut sessions = self.active_sessions.write();
-        
+
         if let Some(session) = sessions.iter_mut().find(|s| s.session_id() == session_id) {
             session.update_metrics(metrics);
-            
+
             // Update global metrics
-            self.total_tokens_generated.fetch_add(metrics.tokens_generated, Ordering::Relaxed);
+            self.total_tokens_generated
+                .fetch_add(metrics.tokens_generated, Ordering::Relaxed);
             self.total_operations.fetch_add(1, Ordering::Relaxed);
-            
+
             // Update average latency
             let current_avg = self.average_latency_nanos.load(Ordering::Relaxed);
             let new_avg = if current_avg == 0 {
@@ -1179,51 +1184,52 @@ impl MetricsAggregator {
                 (current_avg * 7 + metrics.latency_nanos) / 8
             };
             self.average_latency_nanos.store(new_avg, Ordering::Relaxed);
-            
+
             // Update peak tokens per second
             let tokens_per_sec_u64 = (metrics.tokens_per_second as u64);
             let current_peak = self.peak_tokens_per_second.load(Ordering::Relaxed);
             if tokens_per_sec_u64 > current_peak {
-                self.peak_tokens_per_second.store(tokens_per_sec_u64, Ordering::Relaxed);
+                self.peak_tokens_per_second
+                    .store(tokens_per_sec_u64, Ordering::Relaxed);
             }
-            
+
             Ok(())
         } else {
             Err(CandleError::ProcessingError("Session not found"))
         }
     }
-    
+
     /// Finish session
     pub fn finish_session(&self, session_id: &str) -> Result<()> {
         let mut sessions = self.active_sessions.write();
-        
+
         let initial_len = sessions.len();
         sessions.retain(|s| s.session_id() != session_id);
-        
+
         if sessions.len() == initial_len {
             Err(CandleError::ProcessingError("Session not found"))
         } else {
             Ok(())
         }
     }
-    
+
     /// Get aggregated statistics
     pub fn get_aggregate_stats(&self) -> AggregateStats {
         let sessions = self.active_sessions.read();
-        
+
         let active_sessions = sessions.len();
         let total_tokens = self.total_tokens_generated.load(Ordering::Relaxed);
         let total_operations = self.total_operations.load(Ordering::Relaxed);
         let average_latency = self.average_latency_nanos.load(Ordering::Relaxed);
         let peak_tokens_per_sec = self.peak_tokens_per_second.load(Ordering::Relaxed) as f64;
-        
+
         let uptime_nanos = Self::current_time_nanos().saturating_sub(self.created_at_nanos);
         let operations_per_second = if uptime_nanos > 0 {
             (total_operations as f64) * 1_000_000_000.0 / (uptime_nanos as f64)
         } else {
             0.0
         };
-        
+
         AggregateStats {
             active_sessions,
             total_tokens_generated: total_tokens,
@@ -1234,16 +1240,17 @@ impl MetricsAggregator {
             uptime_nanos,
         }
     }
-    
+
     /// Get session count
     #[inline(always)]
     pub fn session_count(&self) -> usize {
         self.active_sessions.read().len()
     }
-    
+
     /// Check if session exists
     pub fn has_session(&self, session_id: &str) -> bool {
-        self.active_sessions.read()
+        self.active_sessions
+            .read()
             .iter()
             .any(|s| s.session_id() == session_id)
     }
@@ -1261,13 +1268,13 @@ impl Default for MetricsAggregator {
 struct SessionInfo {
     /// Session identifier
     session_id: SessionId,
-    
+
     /// Session start time
     start_time_nanos: u64,
-    
+
     /// Last update time
     last_update_nanos: u64,
-    
+
     /// Session metrics
     tokens_generated: u64,
     operations_count: u64,
@@ -1287,13 +1294,13 @@ impl SessionInfo {
             total_latency_nanos: 0,
         }
     }
-    
+
     /// Get session ID
     #[inline(always)]
     fn session_id(&self) -> &str {
         self.session_id.as_str()
     }
-    
+
     /// Update session metrics
     fn update_metrics(&mut self, metrics: &InferenceMetrics) {
         self.tokens_generated += metrics.tokens_generated;
@@ -1301,13 +1308,13 @@ impl SessionInfo {
         self.total_latency_nanos += metrics.latency_nanos;
         self.last_update_nanos = MetricsAggregator::current_time_nanos();
     }
-    
+
     /// Get session duration
     #[inline(always)]
     fn duration_nanos(&self) -> u64 {
         self.last_update_nanos.saturating_sub(self.start_time_nanos)
     }
-    
+
     /// Get average latency
     #[inline(always)]
     fn average_latency_nanos(&self) -> u64 {
@@ -1324,16 +1331,16 @@ impl SessionInfo {
 pub struct InferenceMetrics {
     /// Tokens generated in this operation
     pub tokens_generated: u64,
-    
+
     /// Operation latency in nanoseconds
     pub latency_nanos: u64,
-    
+
     /// Current tokens per second rate
     pub tokens_per_second: f64,
-    
+
     /// Cache hit rate for this operation
     pub cache_hit_rate: f64,
-    
+
     /// Memory usage in bytes
     pub memory_usage_bytes: u64,
 }
@@ -1356,7 +1363,7 @@ impl InferenceMetrics {
             memory_usage_bytes,
         }
     }
-    
+
     /// Create metrics with just basic information
     #[inline(always)]
     pub const fn basic(tokens_generated: u64, latency_nanos: u64) -> Self {
@@ -1375,22 +1382,22 @@ impl InferenceMetrics {
 pub struct AggregateStats {
     /// Number of active sessions
     pub active_sessions: usize,
-    
+
     /// Total tokens generated across all sessions
     pub total_tokens_generated: u64,
-    
+
     /// Total operations across all sessions
     pub total_operations: u64,
-    
+
     /// Average latency across all operations
     pub average_latency_nanos: u64,
-    
+
     /// Peak tokens per second observed
     pub peak_tokens_per_second: f64,
-    
+
     /// Operations per second rate
     pub operations_per_second: f64,
-    
+
     /// Aggregator uptime
     pub uptime_nanos: u64,
 }
@@ -1412,32 +1419,32 @@ impl AggregateStats {
 /// Utility functions for progress reporting
 pub mod utils {
     use super::*;
-    
+
     /// Create optimized reporter for inference workloads
     pub fn create_inference_reporter() -> Result<ProgressHubReporter> {
         let config = ProgressHubConfig::new()
             .enable_tui()
             .enable_metrics()
             .with_update_threshold(16); // Lower threshold for responsive updates
-        
+
         ProgressHubReporter::with_config(config)
     }
-    
+
     /// Create reporter for batch processing
     pub fn create_batch_reporter() -> Result<ProgressHubReporter> {
         let config = ProgressHubConfig::new()
             .enable_tui()
             .enable_metrics()
             .with_update_threshold(64); // Higher threshold for efficiency
-        
+
         ProgressHubReporter::with_config(config)
     }
-    
+
     /// Create no-op reporter for benchmarking
     pub fn create_noop_reporter() -> Result<NoOpReporter> {
         Ok(NoOpReporter::new())
     }
-    
+
     /// Calculate tokens per second from timing data
     #[inline(always)]
     pub fn calculate_tokens_per_second(token_count: u64, duration_nanos: u64) -> f64 {
@@ -1447,13 +1454,13 @@ pub mod utils {
             0.0
         }
     }
-    
+
     /// Calculate memory usage from model parameters
     #[inline(always)]
     pub fn calculate_memory_usage(parameters: u64, dtype_size: usize) -> u64 {
         parameters * dtype_size as u64
     }
-    
+
     /// Format latency for human readability
     pub fn format_latency(nanos: u64) -> String {
         if nanos < 1_000 {
@@ -1466,7 +1473,7 @@ pub mod utils {
             format!("{:.3}s", nanos as f64 / 1_000_000_000.0)
         }
     }
-    
+
     /// Format throughput for human readability
     pub fn format_throughput(tokens_per_second: f64) -> String {
         if tokens_per_second < 1000.0 {
@@ -1496,12 +1503,12 @@ impl ProgressReporter for NoOpReporter {
     fn report_simple_progress(&self, _stage: &str, _progress: f32) -> Result<()> {
         Ok(())
     }
-    
+
     #[inline(always)]
     fn report_stage_completion(&self, _stage: &str) -> Result<()> {
         Ok(())
     }
-    
+
     #[inline(always)]
     fn report_generation_metrics(
         &self,
@@ -1511,7 +1518,7 @@ impl ProgressReporter for NoOpReporter {
     ) -> Result<()> {
         Ok(())
     }
-    
+
     #[inline(always)]
     fn report_loading_stats(
         &self,
@@ -1521,7 +1528,7 @@ impl ProgressReporter for NoOpReporter {
     ) -> Result<()> {
         Ok(())
     }
-    
+
     #[inline(always)]
     fn report_cache_stats(
         &self,
@@ -1532,7 +1539,7 @@ impl ProgressReporter for NoOpReporter {
     ) -> Result<()> {
         Ok(())
     }
-    
+
     fn name(&self) -> &'static str {
         "NoOpReporter"
     }

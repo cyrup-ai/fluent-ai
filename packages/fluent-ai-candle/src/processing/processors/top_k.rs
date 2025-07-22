@@ -4,10 +4,11 @@
 //! zero-allocation patterns, and comprehensive edge case handling.
 
 use arrayvec::ArrayVec;
+
 use crate::processing::traits::{
-    LogitsProcessor, ProcessingResult,
-    ConfigurableProcessor, ZeroAllocationProcessor, NumericallyStableProcessor,
-    utils::{validate_logits, clamp_for_stability}
+    utils::{clamp_for_stability, validate_logits},
+    ConfigurableProcessor, LogitsProcessor, NumericallyStableProcessor, ProcessingResult,
+    ZeroAllocationProcessor,
 };
 use crate::processing::{ProcessingContext, ProcessingError};
 
@@ -18,7 +19,7 @@ const MAX_TOP_K: usize = 256;
 type TopKBuffer = ArrayVec<(usize, f32), MAX_TOP_K>;
 
 /// Top-K sampling processor for controlled vocabulary selection
-/// 
+///
 /// Filters logits to keep only the top-k highest values, setting others
 /// to negative infinity. Uses adaptive algorithms based on k size:
 /// - Small k: Binary heap for O(n + k log k) complexity
@@ -46,19 +47,20 @@ impl TopKProcessor {
     /// # Examples
     /// ```
     /// use fluent_ai_candle::processing::processors::TopKProcessor;
-    /// 
+    ///
     /// let processor = TopKProcessor::new(50)?;
     /// ```
     #[inline(always)]
     pub fn new(k: usize) -> ProcessingResult<Self> {
         if k > MAX_TOP_K {
-            return Err(ProcessingError::configuration(
-                format!("Top-k value {} exceeds maximum {}", k, MAX_TOP_K)
-            ));
+            return Err(ProcessingError::configuration(format!(
+                "Top-k value {} exceeds maximum {}",
+                k, MAX_TOP_K
+            )));
         }
-        
+
         let is_identity = k == 0; // k=0 means no filtering
-        
+
         Ok(Self { k, is_identity })
     }
 
@@ -87,7 +89,7 @@ impl TopKProcessor {
     }
 
     /// Apply top-k filtering to logits in-place
-    /// 
+    ///
     /// Uses adaptive algorithms based on k size for optimal performance:
     /// - Very small k (≤ 8): Linear scan with small buffer
     /// - Small k (≤ 32): Binary heap for efficient selection
@@ -100,7 +102,7 @@ impl TopKProcessor {
 
         // Validate input
         validate_logits(logits, "TopKProcessor")?;
-        
+
         // Apply numerical stability clamping
         clamp_for_stability(logits);
 
@@ -117,13 +119,13 @@ impl TopKProcessor {
     }
 
     /// Apply selection for very small k values using linear scan
-    /// 
+    ///
     /// For very small k, a simple linear scan with a small buffer
     /// is more efficient than complex algorithms due to lower overhead.
     fn apply_small_k_selection(&self, logits: &mut [f32]) -> ProcessingResult<()> {
         // Use stack-allocated buffer for very small k
         let mut top_k: ArrayVec<(usize, f32), 8> = ArrayVec::new();
-        
+
         // Find top k elements using linear scan
         for (idx, &logit) in logits.iter().enumerate() {
             if top_k.len() < self.k {
@@ -133,10 +135,11 @@ impl TopKProcessor {
                 }
             } else {
                 // Buffer full, check if current is better than worst
-                if let Some((worst_idx, &worst_score)) = top_k.iter()
-                    .enumerate()
-                    .min_by(|a, b| a.1.1.partial_cmp(&b.1.1).unwrap_or(std::cmp::Ordering::Equal))
-                {
+                if let Some((worst_idx, &worst_score)) = top_k.iter().enumerate().min_by(|a, b| {
+                    a.1 .1
+                        .partial_cmp(&b.1 .1)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                }) {
                     if logit > worst_score {
                         top_k[worst_idx] = (idx, logit);
                     }
@@ -145,7 +148,8 @@ impl TopKProcessor {
         }
 
         // Find threshold (minimum value in top-k)
-        let threshold = top_k.iter()
+        let threshold = top_k
+            .iter()
             .map(|(_, score)| *score)
             .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .ok_or_else(|| ProcessingError::internal("No threshold found for small k selection"))?;
@@ -161,12 +165,12 @@ impl TopKProcessor {
     }
 
     /// Apply selection using binary heap for medium k values
-    /// 
+    ///
     /// Uses a min-heap to efficiently maintain the top-k elements.
     /// More efficient than quickselect for moderate k values.
     fn apply_heap_selection(&self, logits: &mut [f32]) -> ProcessingResult<()> {
         let mut heap = TopKBuffer::new();
-        
+
         // Build heap with first k elements
         for (idx, &logit) in logits.iter().enumerate().take(self.k) {
             if heap.try_push((idx, logit)).is_err() {
@@ -183,21 +187,21 @@ impl TopKProcessor {
                 if logit > min_val {
                     // Replace minimum with current element
                     heap[0] = (idx, logit);
-                    
+
                     // Restore heap property (bubble down)
                     let mut pos = 0;
                     while pos * 2 + 1 < heap.len() {
                         let left_child = pos * 2 + 1;
                         let right_child = pos * 2 + 2;
                         let mut smallest = pos;
-                        
+
                         if left_child < heap.len() && heap[left_child].1 < heap[smallest].1 {
                             smallest = left_child;
                         }
                         if right_child < heap.len() && heap[right_child].1 < heap[smallest].1 {
                             smallest = right_child;
                         }
-                        
+
                         if smallest != pos {
                             heap.swap(pos, smallest);
                             pos = smallest;
@@ -210,7 +214,8 @@ impl TopKProcessor {
         }
 
         // Find threshold (minimum in heap)
-        let threshold = heap.iter()
+        let threshold = heap
+            .iter()
             .map(|(_, score)| *score)
             .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .ok_or_else(|| ProcessingError::internal("No threshold found in heap selection"))?;
@@ -226,12 +231,13 @@ impl TopKProcessor {
     }
 
     /// Apply selection using quickselect algorithm for large k values
-    /// 
+    ///
     /// Uses the quickselect algorithm to find the k-th largest element
     /// in O(n) average time. More efficient for large k values.
     fn apply_quickselect_selection(&self, logits: &mut [f32]) -> ProcessingResult<()> {
         // Create index-value pairs for sorting
-        let mut indexed_logits: Vec<(usize, f32)> = logits.iter()
+        let mut indexed_logits: Vec<(usize, f32)> = logits
+            .iter()
             .enumerate()
             .map(|(idx, &val)| (idx, val))
             .collect();
@@ -258,7 +264,7 @@ impl TopKProcessor {
     }
 
     /// Quickselect algorithm implementation
-    /// 
+    ///
     /// Finds the k-th smallest element in average O(n) time.
     /// We use it to find the threshold for top-k selection.
     fn quickselect(&self, arr: &mut [(usize, f32)], k: usize) -> ProcessingResult<()> {
@@ -271,7 +277,7 @@ impl TopKProcessor {
 
         while left < right {
             let pivot_idx = self.partition(arr, left, right)?;
-            
+
             if pivot_idx == k {
                 break;
             } else if pivot_idx < k {
@@ -285,9 +291,14 @@ impl TopKProcessor {
     }
 
     /// Partition function for quickselect
-    /// 
+    ///
     /// Partitions array around pivot, returning the pivot's final position.
-    fn partition(&self, arr: &mut [(usize, f32)], left: usize, right: usize) -> ProcessingResult<usize> {
+    fn partition(
+        &self,
+        arr: &mut [(usize, f32)],
+        left: usize,
+        right: usize,
+    ) -> ProcessingResult<usize> {
         if left >= arr.len() || right >= arr.len() || left > right {
             return Err(ProcessingError::internal("Invalid partition bounds"));
         }
@@ -295,12 +306,12 @@ impl TopKProcessor {
         // Use median-of-three pivot selection for better performance
         let pivot_idx = self.median_of_three(arr, left, right);
         let pivot_value = arr[pivot_idx].1;
-        
+
         // Move pivot to end
         arr.swap(pivot_idx, right);
-        
+
         let mut store_idx = left;
-        
+
         for i in left..right {
             // Sort by value (ascending)
             if arr[i].1 < pivot_value {
@@ -308,17 +319,17 @@ impl TopKProcessor {
                 store_idx += 1;
             }
         }
-        
+
         // Move pivot to its final position
         arr.swap(store_idx, right);
-        
+
         Ok(store_idx)
     }
 
     /// Median-of-three pivot selection for better quickselect performance
     fn median_of_three(&self, arr: &[(usize, f32)], left: usize, right: usize) -> usize {
         let mid = left + (right - left) / 2;
-        
+
         if arr[mid].1 < arr[left].1 {
             if arr[right].1 < arr[left].1 {
                 if arr[right].1 < arr[mid].1 {
@@ -343,38 +354,43 @@ impl TopKProcessor {
 
 impl LogitsProcessor for TopKProcessor {
     #[inline]
-    fn process_logits(&mut self, logits: &mut [f32], _context: &ProcessingContext) -> ProcessingResult<()> {
+    fn process_logits(
+        &mut self,
+        logits: &mut [f32],
+        _context: &ProcessingContext,
+    ) -> ProcessingResult<()> {
         self.apply_top_k_filtering(logits)
     }
-    
+
     #[inline(always)]
     fn name(&self) -> &'static str {
         "TopKProcessor"
     }
-    
+
     #[inline(always)]
     fn is_identity(&self) -> bool {
         self.is_identity
     }
-    
+
     #[inline(always)]
     fn is_enabled(&self) -> bool {
         !self.is_identity
     }
-    
+
     fn validate(&self) -> ProcessingResult<()> {
         if self.k > MAX_TOP_K {
-            return Err(ProcessingError::configuration(
-                format!("Top-k value {} exceeds maximum {}", self.k, MAX_TOP_K)
-            ));
+            return Err(ProcessingError::configuration(format!(
+                "Top-k value {} exceeds maximum {}",
+                self.k, MAX_TOP_K
+            )));
         }
         Ok(())
     }
-    
+
     fn config_summary(&self) -> String {
         format!("TopKProcessor(k={})", self.k)
     }
-    
+
     #[inline(always)]
     fn estimated_overhead(&self) -> f32 {
         if self.is_identity {
@@ -387,7 +403,7 @@ impl LogitsProcessor for TopKProcessor {
             2.0 // Quickselect has higher setup cost
         }
     }
-    
+
     #[inline(always)]
     fn priority(&self) -> u8 {
         super::priorities::FILTERING
@@ -402,16 +418,16 @@ pub struct TopKConfig {
 
 impl ConfigurableProcessor for TopKProcessor {
     type Config = TopKConfig;
-    
+
     fn update_config(&mut self, config: Self::Config) -> ProcessingResult<()> {
         let new_processor = Self::new(config.k)?;
-        
+
         self.k = new_processor.k;
         self.is_identity = new_processor.is_identity;
-        
+
         Ok(())
     }
-    
+
     fn get_config(&self) -> Self::Config {
         TopKConfig { k: self.k }
     }
@@ -433,42 +449,42 @@ impl TopKBuilder {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     /// Set k value
     #[inline(always)]
     pub fn k(mut self, k: usize) -> Self {
         self.k = Some(k);
         self
     }
-    
+
     /// Use small preset (k=20)
     #[inline(always)]
     pub fn small(mut self) -> Self {
         self.k = Some(20);
         self
     }
-    
+
     /// Use medium preset (k=50)
     #[inline(always)]
     pub fn medium(mut self) -> Self {
         self.k = Some(50);
         self
     }
-    
+
     /// Use large preset (k=100)
     #[inline(always)]
     pub fn large(mut self) -> Self {
         self.k = Some(100);
         self
     }
-    
+
     /// Disable top-k filtering
     #[inline(always)]
     pub fn disabled(mut self) -> Self {
         self.k = Some(0);
         self
     }
-    
+
     /// Build the top-k processor
     pub fn build(self) -> ProcessingResult<TopKProcessor> {
         let k = self.k.unwrap_or(0); // Default to disabled
@@ -482,7 +498,7 @@ pub mod utils {
     use crate::processing::ProcessingContext;
 
     /// Calculate adaptive top-k based on context
-    /// 
+    ///
     /// Adjusts k value based on generation context to balance
     /// diversity and quality. Uses context length and diversity
     /// metrics to determine optimal vocabulary size.
@@ -519,21 +535,18 @@ pub mod utils {
 
         // Clamp to valid range
         let final_k = (adjusted_k as usize).clamp(0, MAX_TOP_K);
-        
+
         Ok(final_k)
     }
 
     /// Find optimal k for target vocabulary coverage
-    /// 
+    ///
     /// Determines the k value that covers a specific fraction
     /// of the probability mass in the logits distribution.
-    pub fn k_for_coverage(
-        logits: &[f32],
-        target_coverage: f32,
-    ) -> ProcessingResult<usize> {
+    pub fn k_for_coverage(logits: &[f32], target_coverage: f32) -> ProcessingResult<usize> {
         if !(0.0..=1.0).contains(&target_coverage) {
             return Err(ProcessingError::configuration(
-                "Target coverage must be between 0.0 and 1.0"
+                "Target coverage must be between 0.0 and 1.0",
             ));
         }
 
@@ -542,7 +555,8 @@ pub mod utils {
         }
 
         // Create sorted index-value pairs
-        let mut indexed_logits: Vec<(usize, f32)> = logits.iter()
+        let mut indexed_logits: Vec<(usize, f32)> = logits
+            .iter()
             .enumerate()
             .map(|(idx, &val)| (idx, val))
             .collect();
@@ -562,7 +576,9 @@ pub mod utils {
         }
 
         if exp_sum <= 0.0 {
-            return Err(ProcessingError::numerical("Invalid probability distribution"));
+            return Err(ProcessingError::numerical(
+                "Invalid probability distribution",
+            ));
         }
 
         // Find k that achieves target coverage
@@ -579,13 +595,10 @@ pub mod utils {
     }
 
     /// Estimate effective vocabulary size after top-k filtering
-    /// 
+    ///
     /// Provides an estimate of how many tokens will have non-negligible
     /// probability after top-k filtering and softmax normalization.
-    pub fn estimate_effective_vocab_size(
-        logits: &[f32],
-        k: usize,
-    ) -> ProcessingResult<usize> {
+    pub fn estimate_effective_vocab_size(logits: &[f32], k: usize) -> ProcessingResult<usize> {
         if k == 0 || k >= logits.len() {
             return Ok(logits.len());
         }
@@ -610,14 +623,12 @@ pub mod utils {
     }
 
     /// Validate top-k configuration for given vocabulary size
-    pub fn validate_top_k_config(
-        k: usize,
-        vocab_size: usize,
-    ) -> ProcessingResult<()> {
+    pub fn validate_top_k_config(k: usize, vocab_size: usize) -> ProcessingResult<()> {
         if k > MAX_TOP_K {
-            return Err(ProcessingError::configuration(
-                format!("Top-k {} exceeds maximum {}", k, MAX_TOP_K)
-            ));
+            return Err(ProcessingError::configuration(format!(
+                "Top-k {} exceeds maximum {}",
+                k, MAX_TOP_K
+            )));
         }
 
         if k > vocab_size && k != 0 {

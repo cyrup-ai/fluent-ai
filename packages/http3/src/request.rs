@@ -168,7 +168,8 @@ impl HttpRequest {
             self.headers.insert("If-None-Match".to_string(), etag);
         }
         if let Some(last_modified) = last_modified {
-            self.headers.insert("If-Modified-Since".to_string(), last_modified);
+            self.headers
+                .insert("If-Modified-Since".to_string(), last_modified);
         }
         self
     }
@@ -230,7 +231,6 @@ impl HttpRequest {
             .insert("Connection".to_string(), "close".to_string());
         self
     }
-
 
     /// Add streaming-specific headers
     pub fn streaming(mut self) -> Self {

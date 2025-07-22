@@ -11,7 +11,7 @@
 
 pub mod client;
 pub mod constants;
-pub mod domain_stubs;
+// Domain stubs removed - using real fluent_ai_domain types
 pub mod error;
 pub mod generator;
 pub mod hub;
@@ -29,33 +29,38 @@ pub mod var_builder;
 // Re-export core types for ergonomic usage
 pub use client::{CandleClientBuilder, CandleClientConfig, CandleCompletionClient};
 pub use error::{CandleError, CandleResult};
-// Re-export completion types (temporarily from stubs)
-pub use domain_stubs::{
-    CompletionRequest, CompletionResponse, FinishReason,
+// Re-export completion types from real domain
+pub use fluent_ai_domain::completion::{
+    CompletionCoreError as CompletionError, CompletionCoreRequest as CompletionRequest,
+    CompletionCoreResponse as CompletionResponse, CompletionCoreResult as CompletionResult,
 };
+pub use fluent_ai_domain::model::FinishReason;
 pub use generator::{CandleGenerator, GenerationConfig};
-pub use model::CandleModel;
-pub use logits::{
-    LogitsProcessor, TemperatureProcessor, TopKProcessor, TopPProcessor, 
-    RepetitionPenaltyProcessor, CompositeProcessor, LogitsSampler,
-    ProcessingContext, SamplingConfig, SamplingMetrics, sampling_metrics
-};
-pub use streaming::{
-    TokenOutputStream, StreamingConfig, TokenStreamWrapper, TokenChunk, TokenMetadata, FlushPolicy, StreamingMetrics
-};
-pub use var_builder::{
-    CandleVarBuilder, VarBuilderConfig, VarBuilderConfigBuilder, ModelMetadata, TensorEntry, LoadingStats
+pub use hub::{
+    create_client, create_download_config, Backend, Client, DownloadConfig, DownloadEvent,
+    DownloadProgress, DownloadResult, ProgressData, ProgressHandler, ProgressHubConfig,
 };
 pub use kv_cache::{
-    KVCache, KVCacheBuilder, KVCacheConfig, KVCacheEntry, EvictionStrategy, CacheStats
+    CacheStats, EvictionStrategy, KVCache, KVCacheBuilder, KVCacheConfig, KVCacheEntry,
 };
-pub use hub::{
-    HubClient, HubConfig, DownloadProgress, DownloadStage, ModelMetadata as HubModelMetadata, HubStats
+pub use logits::{
+    sampling_metrics, CompositeProcessor, LogitsProcessor, LogitsSampler, ProcessingContext,
+    RepetitionPenaltyProcessor, SamplingConfig, SamplingMetrics, TemperatureProcessor,
+    TopKProcessor, TopPProcessor,
 };
+pub use model::CandleModel;
 pub use progress::{
-    ProgressReporter, ProgressHubReporter, MetricsAggregator, InferenceMetrics, AggregateStats
+    AggregateStats, InferenceMetrics, MetricsAggregator, ProgressHubReporter, ProgressReporter,
+};
+pub use streaming::{
+    FlushPolicy, StreamingConfig, StreamingMetrics, TokenChunk, TokenMetadata, TokenOutputStream,
+    TokenStreamWrapper,
 };
 pub use tokenizer::{CandleTokenizer, TokenizerConfig};
+pub use var_builder::{
+    CandleVarBuilder, LoadingStats, ModelMetadata, TensorEntry, VarBuilderConfig,
+    VarBuilderConfigBuilder,
+};
 
 /// Device utilities for optimal device selection
 pub mod device {
@@ -112,7 +117,9 @@ pub mod device {
 }
 
 // Memory utilities are now in the separate memory module
-pub use memory::{track_allocation, track_deallocation, current_usage, peak_usage, allocation_count, reset_stats};
+pub use memory::{
+    allocation_count, current_usage, peak_usage, reset_stats, track_allocation, track_deallocation,
+};
 
 /// Performance utilities for optimization
 pub mod perf {
@@ -213,7 +220,9 @@ pub mod tensor_utils {
                 // Find the k-th largest probability
                 let mut indices: Vec<usize> = (0..vocab_size).collect();
                 indices.sort_by(|&a, &b| {
-                    probs[b].partial_cmp(&probs[a]).unwrap_or(std::cmp::Ordering::Equal)
+                    probs[b]
+                        .partial_cmp(&probs[a])
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
 
                 // Zero out probabilities below top-k
@@ -227,7 +236,9 @@ pub mod tensor_utils {
         if let Some(p) = top_p {
             let mut indices: Vec<usize> = (0..vocab_size).collect();
             indices.sort_by(|&a, &b| {
-                probs[b].partial_cmp(&probs[a]).unwrap_or(std::cmp::Ordering::Equal)
+                probs[b]
+                    .partial_cmp(&probs[a])
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
 
             let mut cumulative_prob = 0.0;

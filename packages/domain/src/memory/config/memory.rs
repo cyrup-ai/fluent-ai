@@ -3,9 +3,9 @@
 use serde::{Deserialize, Serialize};
 
 use super::database::DatabaseConfig;
-use crate::completion::CompletionModel;
-use crate::chat::config::ModelConfig;
 use super::vector::VectorStoreConfig;
+use crate::chat::config::ModelConfig;
+// Removed unused import: use crate::completion::CompletionModel;
 use crate::memory::cognitive::{CognitiveMemoryConfig, CognitiveProcessorConfig};
 
 /// Comprehensive memory system configuration

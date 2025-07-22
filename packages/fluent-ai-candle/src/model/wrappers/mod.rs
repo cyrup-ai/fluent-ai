@@ -25,7 +25,10 @@ pub struct EnhancedLlamaWrapper {
 
 impl EnhancedLlamaWrapper {
     #[inline(always)]
-    pub fn new(model: candle_transformers::models::llama::Llama, cache: candle_transformers::models::llama::Cache) -> Self {
+    pub fn new(
+        model: candle_transformers::models::llama::Llama,
+        cache: candle_transformers::models::llama::Cache,
+    ) -> Self {
         Self {
             model,
             cache: Arc::new(parking_lot::Mutex::new(cache)),
@@ -65,16 +68,28 @@ impl CacheContext {
     }
 
     #[inline(always)]
-    pub fn get_cache_entry(&self, layer_id: u32, position_start: u32, position_end: u32) -> Option<Arc<KVCacheEntry>> {
+    pub fn get_cache_entry(
+        &self,
+        layer_id: u32,
+        position_start: u32,
+        position_end: u32,
+    ) -> Option<Arc<KVCacheEntry>> {
         let key = CacheKey::new(self.sequence_id, layer_id, position_start, position_end);
         self.cache_manager.get_entry(&key)
     }
 
     #[inline(always)]
-    pub fn insert_cache_entry(&self, layer_id: u32, position_start: u32, position_end: u32, 
-                             key_tensor: Tensor, value_tensor: Tensor) -> Result<Arc<KVCacheEntry>, CandleError> {
+    pub fn insert_cache_entry(
+        &self,
+        layer_id: u32,
+        position_start: u32,
+        position_end: u32,
+        key_tensor: Tensor,
+        value_tensor: Tensor,
+    ) -> Result<Arc<KVCacheEntry>, CandleError> {
         let key = CacheKey::new(self.sequence_id, layer_id, position_start, position_end);
-        self.cache_manager.insert_entry(key, key_tensor, value_tensor)
+        self.cache_manager
+            .insert_entry(key, key_tensor, value_tensor)
     }
 
     #[inline(always)]
@@ -100,9 +115,11 @@ pub struct LlamaWrapper {
 
 impl LlamaWrapper {
     #[inline(always)]
-    pub fn new(model: candle_transformers::models::llama::Llama, 
-           cache: candle_transformers::models::llama::Cache,
-           cache_manager: Arc<KVCacheManager>) -> Self {
+    pub fn new(
+        model: candle_transformers::models::llama::Llama,
+        cache: candle_transformers::models::llama::Cache,
+        cache_manager: Arc<KVCacheManager>,
+    ) -> Self {
         Self {
             model,
             internal_cache: ArcSwap::new(Arc::new(cache)),
@@ -125,13 +142,13 @@ impl Module for LlamaWrapper {
         let pos = self.index_pos.fetch_add(1, Ordering::Relaxed);
         let cache_arc = self.internal_cache.load();
         let mut cache_copy = (**cache_arc).clone();
-        
+
         let result = self.model.forward(xs, pos as usize, &mut cache_copy);
-        
+
         if result.is_ok() {
             self.internal_cache.store(Arc::new(cache_copy));
         }
-        
+
         result
     }
 }
@@ -147,7 +164,10 @@ pub struct MistralWrapper {
 
 impl MistralWrapper {
     #[inline(always)]
-    pub fn new(model: candle_transformers::models::mistral::Model, cache_manager: Arc<KVCacheManager>) -> Self {
+    pub fn new(
+        model: candle_transformers::models::mistral::Model,
+        cache_manager: Arc<KVCacheManager>,
+    ) -> Self {
         Self {
             model: Arc::new(model),
             cache_manager,
@@ -167,7 +187,7 @@ impl Module for MistralWrapper {
     #[inline(always)]
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
         let pos = self.position.fetch_add(1, Ordering::Relaxed);
-        
+
         // Create a mutable copy of the model for this forward pass
         // This is necessary because Mistral requires mutable access for KV cache
         let mut model_copy = (*self.model).clone();
@@ -186,7 +206,10 @@ pub struct GemmaWrapper {
 
 impl GemmaWrapper {
     #[inline(always)]
-    pub fn new(model: candle_transformers::models::gemma::Model, cache_manager: Arc<KVCacheManager>) -> Self {
+    pub fn new(
+        model: candle_transformers::models::gemma::Model,
+        cache_manager: Arc<KVCacheManager>,
+    ) -> Self {
         Self {
             model: Arc::new(model),
             cache_manager,
@@ -206,7 +229,7 @@ impl Module for GemmaWrapper {
     #[inline(always)]
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
         let pos = self.position.fetch_add(1, Ordering::Relaxed);
-        
+
         // Create a mutable copy of the model for this forward pass
         let mut model_copy = (*self.model).clone();
         model_copy.forward(xs, pos as usize)
@@ -223,7 +246,10 @@ pub struct PhiWrapper {
 
 impl PhiWrapper {
     #[inline(always)]
-    pub fn new(model: candle_transformers::models::phi::Model, cache_manager: Arc<KVCacheManager>) -> Self {
+    pub fn new(
+        model: candle_transformers::models::phi::Model,
+        cache_manager: Arc<KVCacheManager>,
+    ) -> Self {
         Self {
             model: Arc::new(model),
             cache_manager,
@@ -258,7 +284,10 @@ pub struct QwenWrapper {
 
 impl QwenWrapper {
     #[inline(always)]
-    pub fn new(model: candle_transformers::models::qwen2::Model, cache_manager: Arc<KVCacheManager>) -> Self {
+    pub fn new(
+        model: candle_transformers::models::qwen2::Model,
+        cache_manager: Arc<KVCacheManager>,
+    ) -> Self {
         Self {
             model: Arc::new(model),
             cache_manager,
@@ -278,7 +307,7 @@ impl Module for QwenWrapper {
     #[inline(always)]
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
         let pos = self.position.fetch_add(1, Ordering::Relaxed);
-        
+
         // Create a mutable copy of the model for this forward pass
         let mut model_copy = (*self.model).clone();
         model_copy.forward(xs, pos as usize, None)

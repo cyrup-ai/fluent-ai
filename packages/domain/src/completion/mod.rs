@@ -20,11 +20,11 @@ pub mod types;
 pub use core::{CompletionBackend, CompletionModel};
 
 pub use candle::{
-    CompletionCoreError, CompletionCoreRequest, CompletionCoreResponse,
-    CompletionCoreResult, StreamingCoreResponse,
+    CompletionCoreError, CompletionCoreRequest, CompletionCoreResponse, CompletionCoreResult,
+    StreamingCoreResponse,
 };
 
-// Type aliases for convenience  
+// Type aliases for convenience
 pub type CompletionResult<T> = CompletionCoreResult<T>;
 pub type StreamingResponse = StreamingCoreResponse;
 pub use request::{CompletionRequest, CompletionRequestBuilder, CompletionRequestError};

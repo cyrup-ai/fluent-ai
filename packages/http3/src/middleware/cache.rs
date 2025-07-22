@@ -43,7 +43,8 @@ impl CacheMiddleware {
             .unwrap_or(0);
 
         // Parse remote expires header if present
-        let remote_expires = response.expires()
+        let remote_expires = response
+            .expires()
             .and_then(|expires_str| parse_http_date_to_timestamp(expires_str));
 
         // Use user-provided expires if given
@@ -66,7 +67,7 @@ impl CacheMiddleware {
         let mut hasher = DefaultHasher::new();
         response.body().hash(&mut hasher);
         response.status().as_u16().hash(&mut hasher);
-        
+
         // Include content-type in hash for better cache differentiation
         if let Some(content_type) = response.content_type() {
             content_type.hash(&mut hasher);
@@ -83,10 +84,7 @@ impl Default for CacheMiddleware {
 }
 
 impl Middleware for CacheMiddleware {
-    fn process_response(
-        &self,
-        response: HttpResponse,
-    ) -> AsyncStream<HttpResult<HttpResponse>> {
+    fn process_response(&self, response: HttpResponse) -> AsyncStream<HttpResult<HttpResponse>> {
         let mut headers = response.headers().clone();
 
         // Add or ensure ETag header exists
@@ -101,9 +99,12 @@ impl Middleware for CacheMiddleware {
 
         // Compute effective expires timestamp
         let computed_expires = self.compute_expires(&response, user_expires_hours);
-        
+
         // Add computed expires as a custom header
-        headers.insert("x-computed-expires".to_string(), computed_expires.to_string());
+        headers.insert(
+            "x-computed-expires".to_string(),
+            computed_expires.to_string(),
+        );
 
         // Add human-readable expires if not present
         if response.expires().is_none() {
@@ -112,11 +113,8 @@ impl Middleware for CacheMiddleware {
         }
 
         // Create new response with updated headers
-        let updated_response = HttpResponse::from_cache(
-            response.status(),
-            headers,
-            response.body().to_vec(),
-        );
+        let updated_response =
+            HttpResponse::from_cache(response.status(), headers, response.body().to_vec());
 
         AsyncStream::from_single(Ok(updated_response))
     }
@@ -144,18 +142,27 @@ fn parse_rfc1123_to_timestamp(date_str: &str) -> Option<u64> {
 
     let day: u32 = parts[1].parse().ok()?;
     let month = match parts[2] {
-        "Jan" => 1, "Feb" => 2, "Mar" => 3, "Apr" => 4,
-        "May" => 5, "Jun" => 6, "Jul" => 7, "Aug" => 8,
-        "Sep" => 9, "Oct" => 10, "Nov" => 11, "Dec" => 12,
+        "Jan" => 1,
+        "Feb" => 2,
+        "Mar" => 3,
+        "Apr" => 4,
+        "May" => 5,
+        "Jun" => 6,
+        "Jul" => 7,
+        "Aug" => 8,
+        "Sep" => 9,
+        "Oct" => 10,
+        "Nov" => 11,
+        "Dec" => 12,
         _ => return None,
     };
     let year: u32 = parts[3].parse().ok()?;
-    
+
     let time_parts: Vec<&str> = parts[4].split(':').collect();
     if time_parts.len() != 3 {
         return None;
     }
-    
+
     let hour: u32 = time_parts[0].parse().ok()?;
     let minute: u32 = time_parts[1].parse().ok()?;
     let second: u32 = time_parts[2].parse().ok()?;
@@ -212,31 +219,42 @@ fn format_timestamp_as_http_date(timestamp: u64) -> String {
     // For production, use proper date library
     let days_since_epoch = timestamp / 86400;
     let seconds_in_day = timestamp % 86400;
-    
+
     let hours = seconds_in_day / 3600;
     let minutes = (seconds_in_day % 3600) / 60;
     let seconds = seconds_in_day % 60;
 
     // Convert days since epoch to year/month/day (simplified)
     let (year, month, day) = days_to_ymd(days_since_epoch);
-    
+
     let month_name = match month {
-        1 => "Jan", 2 => "Feb", 3 => "Mar", 4 => "Apr",
-        5 => "May", 6 => "Jun", 7 => "Jul", 8 => "Aug",
-        9 => "Sep", 10 => "Oct", 11 => "Nov", 12 => "Dec",
+        1 => "Jan",
+        2 => "Feb",
+        3 => "Mar",
+        4 => "Apr",
+        5 => "May",
+        6 => "Jun",
+        7 => "Jul",
+        8 => "Aug",
+        9 => "Sep",
+        10 => "Oct",
+        11 => "Nov",
+        12 => "Dec",
         _ => "Jan",
     };
 
     // RFC 1123 format: "Sun, 06 Nov 1994 08:49:37 GMT"
     // Note: Day of week calculation omitted for simplicity
-    format!("Mon, {:02} {} {} {:02}:{:02}:{:02} GMT", 
-            day, month_name, year, hours, minutes, seconds)
+    format!(
+        "Mon, {:02} {} {} {:02}:{:02}:{:02} GMT",
+        day, month_name, year, hours, minutes, seconds
+    )
 }
 
 /// Convert days since epoch to year/month/day (simplified calculation)
 fn days_to_ymd(mut days: u64) -> (u32, u32, u32) {
     let mut year = 1970u32;
-    
+
     // Find the year
     loop {
         let days_in_year = if is_leap_year(year) { 366 } else { 365 };
@@ -246,7 +264,7 @@ fn days_to_ymd(mut days: u64) -> (u32, u32, u32) {
         days -= days_in_year;
         year += 1;
     }
-    
+
     // Find the month
     let mut month = 1u32;
     for m in 1..=12 {
@@ -258,10 +276,10 @@ fn days_to_ymd(mut days: u64) -> (u32, u32, u32) {
             days -= days_in_m;
         }
     }
-    
+
     // Day is remaining days + 1
     let day = (days + 1) as u32;
-    
+
     (year, month, day)
 }
 
@@ -271,9 +289,8 @@ mod tests {
 
     #[test]
     fn test_cache_middleware() {
-        let middleware = CacheMiddleware::new()
-            .with_default_expires_hours(12);
-        
+        let middleware = CacheMiddleware::new().with_default_expires_hours(12);
+
         // Test would require mock HttpResponse
         // Implementation depends on test framework
     }

@@ -9,17 +9,17 @@
 //! - Comprehensive error recovery and configuration validation
 //! - Model metadata extraction and compatibility checking
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use std::collections::HashMap;
 
-use candle_core::{Device, DType};
-use candle_nn::VarBuilder;
 use candle_core::safetensors::MmapedSafetensors;
+use candle_core::{DType, Device};
+use candle_nn::VarBuilder;
 
 use crate::constants::MAX_MODEL_FILE_SIZE;
 use crate::error::{CandleError, CandleResult};
-use crate::model::types::{ModelConfig, ModelType, QuantizationType};
+use crate::model::types::QuantizationType;
 
 /// Progress callback function type for model loading
 pub type ProgressCallback = Arc<dyn Fn(f64) + Send + Sync>;
@@ -247,7 +247,7 @@ impl ModelLoader {
                 Ok(())
             }
             Device::Metal(_device_id) => {
-                // Basic Metal device validation  
+                // Basic Metal device validation
                 // In a real implementation, we would check Metal device availability
                 // For now, accept any Metal device as valid
                 Ok(())
@@ -256,7 +256,10 @@ impl ModelLoader {
     }
 
     /// Extract comprehensive model metadata from SafeTensors
-    fn extract_model_metadata(&self, safetensors: &MmapedSafetensors) -> CandleResult<ModelMetadata> {
+    fn extract_model_metadata(
+        &self,
+        safetensors: &MmapedSafetensors,
+    ) -> CandleResult<ModelMetadata> {
         self.report_progress(LoadingStage::TensorParsing, 0.0);
 
         let mut metadata = ModelMetadata::default();
@@ -268,7 +271,7 @@ impl ModelLoader {
             if let Ok(tensor_view) = safetensors.tensor(&tensor_name) {
                 let shape = tensor_view.shape().to_vec();
                 let dtype = tensor_view.dtype();
-                
+
                 // Calculate parameters for this tensor
                 let tensor_params = shape.iter().product::<usize>() as u64;
                 total_parameters += tensor_params;
@@ -277,12 +280,15 @@ impl ModelLoader {
                 let size_bytes = tensor_params as usize * dtype.size_in_bytes();
                 total_size_bytes += size_bytes as u64;
 
-                metadata.tensor_info.insert(tensor_name.clone(), TensorInfo {
-                    shape,
-                    dtype,
-                    size_bytes,
-                    name: tensor_name.clone(),
-                });
+                metadata.tensor_info.insert(
+                    tensor_name.clone(),
+                    TensorInfo {
+                        shape,
+                        dtype,
+                        size_bytes,
+                        name: tensor_name.clone(),
+                    },
+                );
             }
         }
 
@@ -290,7 +296,7 @@ impl ModelLoader {
         metadata.architecture = self.detect_architecture_from_tensors(&metadata.tensor_info);
         metadata.num_parameters = total_parameters;
         metadata.model_size_bytes = total_size_bytes;
-        
+
         // Estimate required memory (model + intermediate tensors + cache)
         metadata.required_memory_bytes = total_size_bytes * 2; // Conservative estimate
 
@@ -302,13 +308,22 @@ impl ModelLoader {
     }
 
     /// Detect model architecture from tensor naming patterns
-    fn detect_architecture_from_tensors(&self, tensor_info: &HashMap<String, TensorInfo>) -> String {
+    fn detect_architecture_from_tensors(
+        &self,
+        tensor_info: &HashMap<String, TensorInfo>,
+    ) -> String {
         let tensor_names: Vec<&String> = tensor_info.keys().collect();
-        
-        if tensor_names.iter().any(|name| name.contains("layers") && name.contains("attention")) {
+
+        if tensor_names
+            .iter()
+            .any(|name| name.contains("layers") && name.contains("attention"))
+        {
             if tensor_names.iter().any(|name| name.contains("gate_proj")) {
                 "llama".to_string()
-            } else if tensor_names.iter().any(|name| name.contains("k_proj") && name.contains("sliding_window")) {
+            } else if tensor_names
+                .iter()
+                .any(|name| name.contains("k_proj") && name.contains("sliding_window"))
+            {
                 "mistral".to_string()
             } else if tensor_names.iter().any(|name| name.contains("qkv_proj")) {
                 "phi".to_string()
@@ -346,36 +361,45 @@ impl ModelLoader {
     fn validate_model_compatibility(&self, metadata: &ModelMetadata) -> CandleResult<()> {
         // Check memory requirements
         if metadata.required_memory_bytes > self.memory_budget {
-            return Err(CandleError::configuration(
-                format!("Model requires {}MB but budget is {}MB", 
-                    metadata.required_memory_bytes / 1024 / 1024,
-                    self.memory_budget / 1024 / 1024)
-            ));
+            return Err(CandleError::configuration(format!(
+                "Model requires {}MB but budget is {}MB",
+                metadata.required_memory_bytes / 1024 / 1024,
+                self.memory_budget / 1024 / 1024
+            )));
         }
 
         // Check quantization compatibility
-        if self.enable_quantization && !metadata.supported_quantizations.contains(&self.quantization_type) {
-            return Err(CandleError::configuration(
-                format!("Quantization {:?} not supported for architecture {}", 
-                    self.quantization_type, metadata.architecture)
-            ));
+        if self.enable_quantization
+            && !metadata
+                .supported_quantizations
+                .contains(&self.quantization_type)
+        {
+            return Err(CandleError::configuration(format!(
+                "Quantization {:?} not supported for architecture {}",
+                self.quantization_type, metadata.architecture
+            )));
         }
 
         // Check model size limits
         if metadata.model_size_bytes > self.max_model_size {
-            return Err(CandleError::configuration("Model exceeds maximum allowed size"));
+            return Err(CandleError::configuration(
+                "Model exceeds maximum allowed size",
+            ));
         }
 
         Ok(())
     }
 
     /// Load model with sophisticated VarBuilder pattern and progressive loading
-    pub async fn load_model<P: AsRef<Path>>(&self, path: P) -> CandleResult<(ModelMetadata, VarBuilder<'_>)> {
+    pub async fn load_model<P: AsRef<Path>>(
+        &self,
+        path: P,
+    ) -> CandleResult<(ModelMetadata, VarBuilder<'_>)> {
         let path = path.as_ref();
 
         // Stage 1: Validation (0-10%)
         self.report_progress(LoadingStage::Validation, 0.0);
-        
+
         // Validate device compatibility
         if self.validate_compatibility {
             self.validate_device_compatibility()?;
@@ -395,8 +419,9 @@ impl ModelLoader {
         self.report_progress(LoadingStage::MemoryMapping, 0.0);
 
         // Use MmapedSafetensors for sophisticated memory mapping
-        let mmaped_safetensors = unsafe { MmapedSafetensors::new(path) }
-            .map_err(|e| CandleError::ModelLoadError(format!("Failed to memory map SafeTensors: {}", e)))?;
+        let mmaped_safetensors = unsafe { MmapedSafetensors::new(path) }.map_err(|e| {
+            CandleError::ModelLoadError(format!("Failed to memory map SafeTensors: {}", e))
+        })?;
 
         self.report_progress(LoadingStage::MemoryMapping, 1.0);
 
@@ -420,7 +445,11 @@ impl ModelLoader {
             self.create_device_aware_varbuilder(&mmaped_safetensors)?
         } else {
             // Use from_backend for existing MmapedSafetensors (more efficient than re-mapping)
-            VarBuilder::from_backend(Box::new(mmaped_safetensors.clone()), self.dtype, self.device.clone())
+            VarBuilder::from_backend(
+                Box::new(mmaped_safetensors.clone()),
+                self.dtype,
+                self.device.clone(),
+            )
         };
 
         self.report_progress(LoadingStage::VarBuilderInit, 1.0);
@@ -433,13 +462,16 @@ impl ModelLoader {
     }
 
     /// Create device-aware CandleVarBuilder with optimized memory allocation
-    fn create_device_aware_varbuilder(&self, mmaped_safetensors: &MmapedSafetensors) -> CandleResult<VarBuilder> {
+    fn create_device_aware_varbuilder(
+        &self,
+        mmaped_safetensors: &MmapedSafetensors,
+    ) -> CandleResult<VarBuilder> {
         // Create VarBuilder from existing MmapedSafetensors
         // This avoids the need to re-mmap files and is more efficient
         let var_builder = VarBuilder::from_backend(
-            Box::new(mmaped_safetensors.clone()), 
-            self.dtype, 
-            &self.device
+            Box::new(mmaped_safetensors.clone()),
+            self.dtype,
+            &self.device,
         );
         Ok(var_builder)
     }

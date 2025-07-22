@@ -4,7 +4,7 @@
 //! with streaming-first HTTP/3 architecture and SIMD optimizations.
 //!
 //! The unified system provides:
-//! - Production-grade sampling implementations 
+//! - Production-grade sampling implementations
 //! - Zero allocation where possible
 //! - Numerically stable algorithms
 //! - Composable processor chains
@@ -12,54 +12,53 @@
 //! - High-performance tensor operations
 
 use candle_core::{Result as CandleResult, Tensor};
-use rand::{distr::Distribution, SeedableRng};
-
 /// Re-export canonical Candle LogitsProcessor and Sampling enums
 pub use candle_transformers::generation::{LogitsProcessor, Sampling};
+use rand::{distr::Distribution, SeedableRng};
 
 // Legacy modules maintained for compatibility
-pub mod temperature;
-pub mod nucleus;
-pub mod topk;
-pub mod repetition;
 pub mod composite;
 pub mod gumbel;
-pub mod typical;
 pub mod mirostat;
+pub mod nucleus;
+pub mod repetition;
 pub mod simd;
+pub mod temperature;
+pub mod topk;
+pub mod typical;
 
 /// Errors that can occur during logits processing - DEPRECATED
-/// 
+///
 /// Use `crate::processing::error::ProcessingError` for the unified error system.
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum SamplingError {
     #[error("Invalid temperature: {0} (must be > 0.0)")]
     InvalidTemperature(f64),
-    
+
     #[error("Invalid top-p value: {0} (must be in [0.0, 1.0])")]
     InvalidTopP(f64),
-    
+
     #[error("Invalid top-k value: {0} (must be > 0)")]
     InvalidTopK(usize),
-    
+
     #[error("Invalid repetition penalty: {0} (must be >= 1.0)")]
     InvalidRepetitionPenalty(f64),
-    
+
     #[error("Logits tensor error: {0}")]
     TensorError(String),
-    
+
     #[error("Numerical instability detected: {0}")]
     NumericalInstability(String),
-    
+
     #[error("Empty vocabulary: cannot sample from zero-length logits")]
     EmptyVocabulary,
-    
+
     #[error("Empty logits: no valid logits found for processing")]
     EmptyLogits,
-    
+
     #[error("Processing failed: {0}")]
     ProcessingFailed(String),
-    
+
     #[error("Processor chain error: {0}")]
     ProcessorChainError(String),
 }
@@ -138,10 +137,22 @@ impl SamplingConfig {
     /// Build canonical Candle Sampling enum from configuration
     pub fn build_sampling(&self) -> Sampling {
         match (self.top_k, self.top_p) {
-            (None, None) => Sampling::All { temperature: self.temperature },
-            (Some(k), None) => Sampling::TopK { k, temperature: self.temperature },
-            (None, Some(p)) => Sampling::TopP { p, temperature: self.temperature },
-            (Some(k), Some(p)) => Sampling::TopKThenTopP { k, p, temperature: self.temperature },
+            (None, None) => Sampling::All {
+                temperature: self.temperature,
+            },
+            (Some(k), None) => Sampling::TopK {
+                k,
+                temperature: self.temperature,
+            },
+            (None, Some(p)) => Sampling::TopP {
+                p,
+                temperature: self.temperature,
+            },
+            (Some(k), Some(p)) => Sampling::TopKThenTopP {
+                k,
+                p,
+                temperature: self.temperature,
+            },
         }
     }
 
@@ -201,11 +212,12 @@ impl Default for LogitsProcessorBuilder {
 }
 
 /// Utility functions for logits processing - DEPRECATED
-/// 
+///
 /// Use `crate::processing::utils` for modern utility functions.
 pub mod utils {
-    use super::*;
     use candle_core::Device;
+
+    use super::*;
 
     /// Apply softmax with temperature scaling and numerical stability - DEPRECATED
     #[inline(always)]
@@ -233,17 +245,14 @@ pub mod utils {
 
     /// Sample from categorical distribution using efficient algorithms - DEPRECATED
     #[inline(always)]
-    pub fn categorical_sample(
-        probs: &Tensor,
-        rng: &mut impl rand::Rng,
-    ) -> CandleResult<u32> {
+    pub fn categorical_sample(probs: &Tensor, rng: &mut impl rand::Rng) -> CandleResult<u32> {
         let probs_vec = probs.to_vec1::<f32>()?;
-        
+
         // Validate probabilities
         let sum: f32 = probs_vec.iter().sum();
         if !sum.is_finite() || sum <= 0.0 {
             return Err(candle_core::Error::Msg(
-                "Invalid probability distribution".to_string()
+                "Invalid probability distribution".to_string(),
             ));
         }
 
@@ -279,7 +288,8 @@ pub mod utils {
     pub fn argsort_descending(values: &[f32]) -> Vec<usize> {
         let mut indices: Vec<usize> = (0..values.len()).collect();
         indices.sort_by(|&a, &b| {
-            values[b].partial_cmp(&values[a])
+            values[b]
+                .partial_cmp(&values[a])
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
         indices
@@ -294,10 +304,13 @@ mod tests {
     fn test_sampling_configuration_validation() {
         // Valid configuration
         let config = SamplingConfig::new()
-            .temperature(0.8).expect("valid temperature")
-            .top_p(0.9).expect("valid top-p")
-            .top_k(50).expect("valid top-k");
-        
+            .temperature(0.8)
+            .expect("valid temperature")
+            .top_p(0.9)
+            .expect("valid top-p")
+            .top_k(50)
+            .expect("valid top-k");
+
         assert!((config.temperature - 0.8).abs() < f64::EPSILON);
         assert!((config.top_p.unwrap() - 0.9).abs() < f64::EPSILON);
         assert_eq!(config.top_k.unwrap(), 50);
@@ -328,16 +341,20 @@ mod tests {
     fn test_builder_pattern() {
         let builder = LogitsProcessorBuilder::new();
         let _processor = builder
-            .temperature(0.8).expect("valid temperature")
-            .top_k(40).expect("valid top-k")
+            .temperature(0.8)
+            .expect("valid temperature")
+            .top_k(40)
+            .expect("valid top-k")
             .build();
     }
 
     #[test]
     fn test_canonical_sampling_integration() {
         let config = SamplingConfig::new()
-            .temperature(0.8).expect("valid temperature")
-            .top_k(40).expect("valid top-k");
+            .temperature(0.8)
+            .expect("valid temperature")
+            .top_k(40)
+            .expect("valid top-k");
 
         let sampling = config.build_sampling();
         match sampling {
@@ -355,7 +372,7 @@ mod tests {
     fn test_utils_argsort() {
         let values = vec![0.1, 0.8, 0.3, 0.9, 0.2];
         let sorted_indices = utils::argsort_descending(&values);
-        
+
         // Should be sorted in descending order: 0.9, 0.8, 0.3, 0.2, 0.1
         assert_eq!(sorted_indices, vec![3, 1, 2, 4, 0]);
     }

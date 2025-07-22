@@ -5,7 +5,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use futures::stream::StreamExt;
+use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 

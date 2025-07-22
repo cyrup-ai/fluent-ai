@@ -3,12 +3,14 @@
 //! High-performance tokenization using HuggingFace tokenizers with direct Hub integration,
 //! special token handling, and zero-allocation patterns for production ML inference.
 
-use crate::error::{CandleError, CandleResult};
-use arrayvec::ArrayVec;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
+
+use arrayvec::ArrayVec;
 use tokenizers::Tokenizer;
+
+use crate::error::{CandleError, CandleResult};
 
 /// Maximum token buffer size for zero-allocation patterns
 const MAX_TOKEN_BUFFER: usize = 4096;
@@ -123,23 +125,36 @@ impl CandleTokenizer {
     pub fn new(tokenizer: Tokenizer, config: TokenizerConfig) -> CandleResult<Self> {
         let tokenizer = Arc::new(tokenizer);
         let vocab_size = tokenizer.get_vocab_size(false) as u32;
-        
+
         // Extract special tokens from tokenizer
         let mut special_tokens = HashMap::new();
-        
+
         // Common special tokens
         let token_candidates = [
-            "<pad>", "[PAD]", "<unk>", "[UNK]", "<s>", "[BOS]", 
-            "</s>", "[EOS]", "<cls>", "[CLS]", "<sep>", "[SEP]",
-            "<mask>", "[MASK]", "<|endoftext|>", "<|startoftext|>",
+            "<pad>",
+            "[PAD]",
+            "<unk>",
+            "[UNK]",
+            "<s>",
+            "[BOS]",
+            "</s>",
+            "[EOS]",
+            "<cls>",
+            "[CLS]",
+            "<sep>",
+            "[SEP]",
+            "<mask>",
+            "[MASK]",
+            "<|endoftext|>",
+            "<|startoftext|>",
         ];
-        
+
         for token in token_candidates {
             if let Some(token_id) = tokenizer.token_to_id(token) {
                 special_tokens.insert(token.to_string(), token_id);
             }
         }
-        
+
         Ok(Self {
             tokenizer,
             config,
@@ -150,47 +165,61 @@ impl CandleTokenizer {
 
     /// Load tokenizer from file path
     pub fn from_file<P: AsRef<Path>>(path: P, config: TokenizerConfig) -> CandleResult<Self> {
-        let tokenizer = Tokenizer::from_file(path)
-            .map_err(|e| CandleError::tokenization(format!("Failed to load tokenizer from file: {}", e)))?;
-        
+        let tokenizer = Tokenizer::from_file(path).map_err(|e| {
+            CandleError::tokenization(format!("Failed to load tokenizer from file: {}", e))
+        })?;
+
         Self::new(tokenizer, config)
     }
 
-    /// Load tokenizer from HuggingFace Hub with authentication support
+    /// Load tokenizer using ProgressHub directly - no abstractions
     pub async fn from_hub(model_id: &str, config: TokenizerConfig) -> CandleResult<Self> {
-        use crate::hub::{HubClient, HubConfig};
-        
-        // Create HubClient with default configuration
-        let hub_config = HubConfig::default();
-        let hub_client = HubClient::new(hub_config).await?;
+        use std::path::PathBuf;
 
-        // Try to download tokenizer files in order of preference
-        let tokenizer_files = ["tokenizer.json", "tokenizer.model", "vocab.json"];
-        let mut tokenizer_path = None;
-        
-        for filename in tokenizer_files {
-            match hub_client.download_model(model_id, filename, None).await {
-                Ok(path) => {
-                    tokenizer_path = Some(path);
-                    break;
+        use crate::hub::{create_client, create_download_config, Backend};
+
+        // Create ProgressHub client directly
+        let client = create_client(Backend::Auto)?;
+        let cache_dir = PathBuf::from("/tmp/fluent_ai_cache"); // TODO: make configurable
+        let download_config = create_download_config(cache_dir);
+
+        // Use ProgressHub's download_model_auto directly
+        match client
+            .download_model_auto(model_id, &download_config, None)
+            .await
+        {
+            Ok(result) => {
+                // Try to find tokenizer files in the downloaded model
+                let tokenizer_files = ["tokenizer.json", "tokenizer.model", "vocab.json"];
+                let mut tokenizer_path = None;
+
+                for filename in tokenizer_files {
+                    let file_path = result.destination.join(filename);
+                    if file_path.exists() {
+                        tokenizer_path = Some(file_path);
+                        break;
+                    }
                 }
-                Err(_) => continue,
+
+                let tokenizer_path = tokenizer_path.ok_or_else(|| {
+                    CandleError::tokenization(format!(
+                        "No tokenizer file found in model {}",
+                        model_id
+                    ))
+                })?;
+
+                Self::from_file(tokenizer_path, config)
             }
+            Err(e) => Err(CandleError::InitializationError(e.to_string())),
         }
-
-        let tokenizer_path = tokenizer_path.ok_or_else(|| {
-            CandleError::tokenization(format!("No tokenizer file found in model {}", model_id))
-        })?;
-
-        Self::from_file(tokenizer_path, config)
     }
 
     /// Load tokenizer from HuggingFace Hub with specific revision
     /// Note: Revision support is not yet implemented in HubClient - using main revision
     pub async fn from_hub_with_revision(
-        model_id: &str, 
-        _revision: &str, 
-        config: TokenizerConfig
+        model_id: &str,
+        _revision: &str,
+        config: TokenizerConfig,
     ) -> CandleResult<Self> {
         // For now, use the main revision - revision support can be added to HubClient later
         Self::from_hub(model_id, config).await
@@ -198,7 +227,8 @@ impl CandleTokenizer {
 
     /// Encode text to token IDs with configuration support
     pub fn encode(&self, text: &str, add_special_tokens: bool) -> CandleResult<Vec<u32>> {
-        let encoding = self.tokenizer
+        let encoding = self
+            .tokenizer
             .encode(text, add_special_tokens)
             .map_err(|e| CandleError::tokenization(format!("Encoding failed: {}", e)))?;
 
@@ -211,7 +241,7 @@ impl CandleTokenizer {
             }
         }
 
-        // Apply EOS token if configured  
+        // Apply EOS token if configured
         if self.config.add_eos_token && add_special_tokens {
             if let Some(eos_id) = self.get_special_token_id("eos") {
                 tokens.push(eos_id);
@@ -229,15 +259,20 @@ impl CandleTokenizer {
     }
 
     /// Encode text with zero-allocation token buffer
-    pub fn encode_to_buffer(&self, text: &str, add_special_tokens: bool) -> CandleResult<ArrayVec<u32, MAX_TOKEN_BUFFER>> {
+    pub fn encode_to_buffer(
+        &self,
+        text: &str,
+        add_special_tokens: bool,
+    ) -> CandleResult<ArrayVec<u32, MAX_TOKEN_BUFFER>> {
         let tokens = self.encode(text, add_special_tokens)?;
-        
+
         let mut buffer = ArrayVec::new();
         for token in tokens {
-            buffer.try_push(token)
+            buffer
+                .try_push(token)
                 .map_err(|_| CandleError::tokenization("Token buffer overflow"))?;
         }
-        
+
         Ok(buffer)
     }
 
@@ -249,24 +284,32 @@ impl CandleTokenizer {
     }
 
     /// Batch encode multiple texts efficiently
-    pub fn encode_batch(&self, texts: &[&str], add_special_tokens: bool) -> CandleResult<Vec<Vec<u32>>> {
+    pub fn encode_batch(
+        &self,
+        texts: &[&str],
+        add_special_tokens: bool,
+    ) -> CandleResult<Vec<Vec<u32>>> {
         let mut results = Vec::with_capacity(texts.len());
-        
+
         for text in texts {
             results.push(self.encode(text, add_special_tokens)?);
         }
-        
+
         Ok(results)
     }
 
     /// Batch decode multiple token sequences efficiently
-    pub fn decode_batch(&self, token_sequences: &[&[u32]], skip_special_tokens: bool) -> CandleResult<Vec<String>> {
+    pub fn decode_batch(
+        &self,
+        token_sequences: &[&[u32]],
+        skip_special_tokens: bool,
+    ) -> CandleResult<Vec<String>> {
         let mut results = Vec::with_capacity(token_sequences.len());
-        
+
         for tokens in token_sequences {
             results.push(self.decode(tokens, skip_special_tokens)?);
         }
-        
+
         Ok(results)
     }
 
@@ -291,43 +334,43 @@ impl CandleTokenizer {
     /// Get special token ID by type
     pub fn get_special_token_id(&self, token_type: &str) -> Option<u32> {
         match token_type.to_lowercase().as_str() {
-            "bos" | "start" => {
-                self.special_tokens.get("<s>")
-                    .or_else(|| self.special_tokens.get("[BOS]"))
-                    .or_else(|| self.special_tokens.get("<|startoftext|>"))
-                    .copied()
-            }
-            "eos" | "end" => {
-                self.special_tokens.get("</s>")
-                    .or_else(|| self.special_tokens.get("[EOS]"))
-                    .or_else(|| self.special_tokens.get("<|endoftext|>"))
-                    .copied()
-            }
-            "pad" | "padding" => {
-                self.special_tokens.get("<pad>")
-                    .or_else(|| self.special_tokens.get("[PAD]"))
-                    .copied()
-            }
-            "unk" | "unknown" => {
-                self.special_tokens.get("<unk>")
-                    .or_else(|| self.special_tokens.get("[UNK]"))
-                    .copied()
-            }
-            "cls" | "class" => {
-                self.special_tokens.get("<cls>")
-                    .or_else(|| self.special_tokens.get("[CLS]"))
-                    .copied()
-            }
-            "sep" | "separator" => {
-                self.special_tokens.get("<sep>")
-                    .or_else(|| self.special_tokens.get("[SEP]"))
-                    .copied()
-            }
-            "mask" => {
-                self.special_tokens.get("<mask>")
-                    .or_else(|| self.special_tokens.get("[MASK]"))
-                    .copied()
-            }
+            "bos" | "start" => self
+                .special_tokens
+                .get("<s>")
+                .or_else(|| self.special_tokens.get("[BOS]"))
+                .or_else(|| self.special_tokens.get("<|startoftext|>"))
+                .copied(),
+            "eos" | "end" => self
+                .special_tokens
+                .get("</s>")
+                .or_else(|| self.special_tokens.get("[EOS]"))
+                .or_else(|| self.special_tokens.get("<|endoftext|>"))
+                .copied(),
+            "pad" | "padding" => self
+                .special_tokens
+                .get("<pad>")
+                .or_else(|| self.special_tokens.get("[PAD]"))
+                .copied(),
+            "unk" | "unknown" => self
+                .special_tokens
+                .get("<unk>")
+                .or_else(|| self.special_tokens.get("[UNK]"))
+                .copied(),
+            "cls" | "class" => self
+                .special_tokens
+                .get("<cls>")
+                .or_else(|| self.special_tokens.get("[CLS]"))
+                .copied(),
+            "sep" | "separator" => self
+                .special_tokens
+                .get("<sep>")
+                .or_else(|| self.special_tokens.get("[SEP]"))
+                .copied(),
+            "mask" => self
+                .special_tokens
+                .get("<mask>")
+                .or_else(|| self.special_tokens.get("[MASK]"))
+                .copied(),
             _ => self.special_tokens.get(token_type).copied(),
         }
     }
@@ -365,7 +408,7 @@ impl CandleTokenizer {
         // More accurate than simple character division
         let word_count = text.split_whitespace().count();
         let char_count = text.chars().count();
-        
+
         // Average tokens per word is roughly 1.3 for English
         // Add some tokens for punctuation and special cases
         ((word_count as f32 * 1.3) + (char_count as f32 * 0.1)) as usize
@@ -380,7 +423,7 @@ impl CandleTokenizer {
         // This would use the tokenizer's chat template functionality
         // For now, implement a basic chat format
         let mut formatted = String::new();
-        
+
         for message in messages {
             match message.role.as_str() {
                 "system" => formatted.push_str(&format!("<|system|>\n{}\n", message.content)),
@@ -389,11 +432,11 @@ impl CandleTokenizer {
                 _ => formatted.push_str(&format!("<|{}|>\n{}\n", message.role, message.content)),
             }
         }
-        
+
         if add_generation_prompt {
             formatted.push_str("<|assistant|>\n");
         }
-        
+
         Ok(formatted)
     }
 
@@ -430,7 +473,7 @@ impl ChatMessage {
     }
 
     /// Create user message
-    #[inline(always)]  
+    #[inline(always)]
     pub fn user(content: impl Into<String>) -> Self {
         Self::new("user", content)
     }
@@ -512,14 +555,19 @@ pub mod utils {
     pub async fn load_popular_tokenizer(name: &str) -> CandleResult<CandleTokenizer> {
         let model_id = match name.to_lowercase().as_str() {
             "gpt2" => "gpt2",
-            "bert" => "bert-base-uncased", 
+            "bert" => "bert-base-uncased",
             "roberta" => "roberta-base",
             "t5" => "t5-small",
             "llama" => "meta-llama/Llama-2-7b-hf",
             "mistral" => "mistralai/Mistral-7B-v0.1",
             "phi" => "microsoft/phi-2",
             "gemma" => "google/gemma-7b",
-            _ => return Err(CandleError::tokenization(format!("Unknown tokenizer: {}", name))),
+            _ => {
+                return Err(CandleError::tokenization(format!(
+                    "Unknown tokenizer: {}",
+                    name
+                )))
+            }
         };
 
         CandleTokenizer::from_hub(model_id, TokenizerConfig::default()).await
@@ -551,12 +599,16 @@ pub mod utils {
     pub fn validate_tokenizer(tokenizer: &CandleTokenizer) -> CandleResult<()> {
         // Check minimum requirements
         if tokenizer.vocab_size() == 0 {
-            return Err(CandleError::tokenization("Tokenizer has zero vocabulary size"));
+            return Err(CandleError::tokenization(
+                "Tokenizer has zero vocabulary size",
+            ));
         }
 
         // Check for essential special tokens
         if tokenizer.get_special_token_id("unk").is_none() {
-            tracing::warn!("Tokenizer missing UNK token - may cause issues with out-of-vocabulary words");
+            tracing::warn!(
+                "Tokenizer missing UNK token - may cause issues with out-of-vocabulary words"
+            );
         }
 
         Ok(())

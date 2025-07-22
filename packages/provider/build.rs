@@ -149,7 +149,7 @@ pub fn get_provider_configs() -> std::collections::HashMap<String, ProviderConfi
     configs
 }
 "#;
-    
+
     let providers_path = dest_path.join("providers.rs");
     fs::write(&providers_path, providers_content)?;
 
@@ -337,10 +337,13 @@ pub fn get_available_models(provider: &str) -> Vec<GeneratedModelInfo> {
         .collect()
 }
 "#;
-    
+
     let models_path = dest_path.join("models.rs");
     fs::write(&models_path, models_content)?;
 
-    println!("cargo:warning=Generated providers.rs and models.rs with {} providers", 6);
+    println!(
+        "cargo:warning=Generated providers.rs and models.rs with {} providers",
+        6
+    );
     Ok(())
 }

@@ -4,7 +4,7 @@
 //! architecture. The engine routes requests to appropriate AI providers using atomic
 //! operations and borrowed data to eliminate allocations in hot paths.
 
-use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -144,26 +144,26 @@ impl EngineConfig {
     pub fn validate(&self) -> EngineResult<()> {
         if self.model_name.is_empty() {
             return Err(EngineError::ConfigurationError(
-                "Model name cannot be empty".to_string()
+                "Model name cannot be empty".to_string(),
             ));
         }
 
         if self.provider.is_empty() {
             return Err(EngineError::ConfigurationError(
-                "Provider cannot be empty".to_string()
+                "Provider cannot be empty".to_string(),
             ));
         }
 
         if self.timeout_seconds == 0 {
             return Err(EngineError::ConfigurationError(
-                "Timeout must be greater than 0".to_string()
+                "Timeout must be greater than 0".to_string(),
             ));
         }
 
         if let Some(temp) = self.temperature {
             if !(0.0..=1.0).contains(&temp) {
                 return Err(EngineError::ConfigurationError(
-                    "Temperature must be between 0.0 and 1.0".to_string()
+                    "Temperature must be between 0.0 and 1.0".to_string(),
                 ));
             }
         }
@@ -248,7 +248,7 @@ impl Engine {
     #[inline]
     pub fn new(config: EngineConfig) -> EngineResult<Self> {
         config.validate()?;
-        
+
         Ok(Self {
             config,
             request_count: AtomicU64::new(0),
@@ -303,7 +303,10 @@ impl Engine {
 
     /// Process completion request with zero allocations in hot path
     #[inline]
-    pub fn process_completion(&self, request: CompletionRequest<'_>) -> AsyncTask<EngineResult<CompletionResponse<'static>>> {
+    pub fn process_completion(
+        &self,
+        request: CompletionRequest<'_>,
+    ) -> AsyncTask<EngineResult<CompletionResponse<'static>>> {
         // Validate request first
         if let Err(e) = request.validate() {
             return spawn_task(async move { Err(e) });
@@ -326,7 +329,11 @@ impl Engine {
         // Convert borrowed request data to owned for async processing
         let prompt = request.prompt.to_string();
         let system_prompt = request.system_prompt.map(|s| s.to_string());
-        let history: Vec<String> = request.conversation_history.iter().map(|s| s.to_string()).collect();
+        let history: Vec<String> = request
+            .conversation_history
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
         let tools: Vec<String> = request.tools.iter().map(|s| s.to_string()).collect();
         let metadata = request.metadata.map(|s| s.to_string());
 
@@ -351,11 +358,12 @@ impl Engine {
                 history,
                 tools,
                 metadata,
-            ).await;
+            )
+            .await;
 
             // Update metrics atomically
             active_requests.fetch_sub(1, Ordering::Relaxed);
-            
+
             match &result {
                 Ok(_) => {
                     successful_requests.fetch_add(1, Ordering::Relaxed);
@@ -442,6 +450,4 @@ impl EngineStats {
     }
 }
 
-// Implement Send and Sync for Engine (safe due to atomic operations)
-unsafe impl Send for Engine {}
-unsafe impl Sync for Engine {}
+// Engine is automatically Send + Sync due to atomic operations - no unsafe impl needed

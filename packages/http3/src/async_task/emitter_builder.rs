@@ -1,7 +1,6 @@
 //! EmitterBuilder - builds AsyncStream with error handling
 //! NO FUTURES - pure streaming architecture
 
-
 use super::AsyncStream;
 
 /// Builder that emits AsyncStream after handling Result
@@ -36,14 +35,14 @@ impl<T: Send + 'static> EmitterBuilder<T> {
             Ok(items) => {
                 let processed_items = on_ok(items);
                 let (sender, stream) = AsyncStream::channel();
-                
+
                 // Emit all items to stream
                 for item in processed_items {
                     if sender.try_send(item).is_err() {
                         break; // Stream closed
                     }
                 }
-                
+
                 stream
             }
             Err(e) => {

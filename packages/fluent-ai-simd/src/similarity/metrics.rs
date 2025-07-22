@@ -29,8 +29,7 @@ impl SimilarityMetrics {
     pub(crate) fn get_metrics(&self) -> SimilarityMetricsSnapshot {
         SimilarityMetricsSnapshot {
             total_calculations: self.total_calculations.load(Ordering::Relaxed),
-            total_elements_processed: self.total_elements_processed
-                .load(Ordering::Relaxed),
+            total_elements_processed: self.total_elements_processed.load(Ordering::Relaxed),
             simd_time_ns: self.simd_time_ns.load(Ordering::Relaxed),
         }
     }
@@ -100,8 +99,9 @@ impl Drop for MetricsGuard<'_> {
 }
 
 // Global metrics instance
-use lazy_static::lazy_static;
 use std::sync::Arc;
+
+use lazy_static::lazy_static;
 
 lazy_static! {
     static ref GLOBAL_METRICS: Arc<SimilarityMetrics> = Arc::new(SimilarityMetrics::default());

@@ -53,6 +53,7 @@ pub enum ModelArchitecture {
     CodeLlama = 2,
     Phi3 = 3,
     Gemma = 4,
+    Kimi = 5,
 }
 
 /// Zero-allocation model metadata with cache-aligned fields

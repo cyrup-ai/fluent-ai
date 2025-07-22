@@ -8,13 +8,13 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use fluent_ai_http3::{HttpClient, HttpRequest, HttpConfig, HttpMethod};
-use futures::StreamExt;
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tracing::{debug, error, info, instrument, warn};
 
 // Import provider's AsyncStream primitives
-use crate::{AsyncStream, AsyncStreamSender, async_stream_channel};
+use crate::{AsyncStream, AsyncStreamSender, channel};
 
 use super::errors::{BuildError, BuildResult};
 use super::yaml_processor::{YamlProcessor, ProviderInfo};

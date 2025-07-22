@@ -56,6 +56,15 @@ impl GlobalExecutor {
     }
 }
 
-lazy_static::lazy_static! {
-    pub static ref GLOBAL_EXECUTOR: GlobalExecutor = GlobalExecutor::new();
+impl Default for GlobalExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// Static instance for global access - SAFE, no mutable static
+static GLOBAL_EXECUTOR_INSTANCE: std::sync::OnceLock<GlobalExecutor> = std::sync::OnceLock::new();
+
+pub fn global_executor() -> &'static GlobalExecutor {
+    GLOBAL_EXECUTOR_INSTANCE.get_or_init(|| GlobalExecutor::new())
 }

@@ -8,9 +8,12 @@ use std::hash::Hash;
 // Removed unused import: std::sync::Arc
 use ahash::RandomState;
 use dashmap::DashMap;
+use fluent_ai_async::AsyncStream;
+use futures_util::StreamExt;
 // Removed unused import: once_cell::sync::Lazy
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use strsim;
 
 use crate::model::error::{ModelError, Result};
 use crate::model::info::ModelInfo;
@@ -18,8 +21,6 @@ use crate::model::registry::ModelRegistry;
 // Removed unused import: strsim::jaro_winkler
 use crate::model::registry::RegisteredModel;
 use crate::model::traits::Model;
-use crate::async_task::AsyncStream;
-use futures_util::StreamExt;
 
 /// A pattern that can be used to match model names
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -133,35 +134,35 @@ pub enum RuleCondition {
 
 /// A model resolution result
 #[derive(Debug, Clone)]
-pub struct ModelResolution<'a> {
+pub struct ModelResolution {
     /// The resolved provider name
-    pub provider: &'a str,
+    pub provider: String,
 
     /// The resolved model name
-    pub model: &'a str,
+    pub model: String,
 
     /// The model info (if available)
-    pub info: Option<&'a ModelInfo>,
+    pub info: Option<ModelInfo>,
 
     /// The rule that was used for resolution (if any)
-    pub rule: Option<&'a ModelResolutionRule>,
+    pub rule: Option<ModelResolutionRule>,
 
     /// The score of the match (higher is better)
     pub score: f64,
 }
 
-impl<'a> ModelResolution<'a> {
+impl ModelResolution {
     /// Create a new resolution result
     pub fn new(
-        provider: &'a str,
-        model: &'a str,
-        info: Option<&'a ModelInfo>,
-        rule: Option<&'a ModelResolutionRule>,
+        provider: impl Into<String>,
+        model: impl Into<String>,
+        info: Option<ModelInfo>,
+        rule: Option<ModelResolutionRule>,
         score: f64,
     ) -> Self {
         Self {
-            provider,
-            model,
+            provider: provider.into(),
+            model: model.into(),
             info,
             rule,
             score,
@@ -234,14 +235,14 @@ impl ModelResolver {
         &self,
         model_name: &str,
         provider: Option<&str>,
-    ) -> AsyncStream<ModelResolution<'static>> {
+    ) -> AsyncStream<ModelResolution> {
         let (sender, stream) = AsyncStream::channel();
-        
+
         let registry = self.registry.clone();
         let resolver = self.clone();
         let model_name = model_name.to_string();
         let provider = provider.map(|s| s.to_string());
-        
+
         tokio::spawn(async move {
             match resolver.resolve_with_registry::<M>(&registry, &model_name, provider.as_deref()) {
                 Ok(resolution) => {
@@ -249,18 +250,13 @@ impl ModelResolver {
                 }
                 Err(_) => {
                     // Provide a fallback resolution
-                    let fallback = ModelResolution::new(
-                        "fallback",
-                        &model_name,
-                        None,
-                        None,
-                        0.0,
-                    );
+                    let fallback =
+                        ModelResolution::new("fallback", model_name.clone(), None, None, 0.0);
                     let _ = sender.try_send(fallback);
                 }
             }
         });
-        
+
         stream
     }
 
@@ -270,14 +266,14 @@ impl ModelResolver {
         registry: &'a ModelRegistry,
         model_name: &'a str,
         provider: Option<&'a str>,
-    ) -> Result<ModelResolution<'a>> {
+    ) -> Result<ModelResolution> {
         // Check for exact match first (provider:model)
         if let Some(provider) = provider {
             if let Ok(Some(model)) = registry.get::<M>(provider, model_name) {
                 return Ok(ModelResolution::new(
-                    provider,
-                    model_name,
-                    Some(model.info()),
+                    provider.to_string(),
+                    model_name.to_string(),
+                    Some(model.info().clone()),
                     None,
                     1.0,
                 ));
@@ -288,9 +284,9 @@ impl ModelResolver {
         if let Some(default_provider) = self.get_default_provider() {
             if let Ok(Some(model)) = registry.get::<M>(default_provider, model_name) {
                 return Ok(ModelResolution::new(
-                    default_provider,
-                    model_name,
-                    Some(model.info()),
+                    default_provider.to_string(),
+                    model_name.to_string(),
+                    Some(model.info().clone()),
                     None,
                     0.9,
                 ));
@@ -302,9 +298,9 @@ impl ModelResolver {
             let (provider, model_name_alias) = alias_entry;
             if let Ok(Some(model)) = registry.get::<M>(provider, model_name_alias) {
                 return Ok(ModelResolution::new(
-                    provider,
-                    model_name_alias,
-                    Some(model.info()),
+                    provider.clone(),
+                    model_name_alias.clone(),
+                    Some(model.info().clone()),
                     None,
                     0.8,
                 ));
@@ -322,10 +318,10 @@ impl ModelResolver {
 
                 if let Ok(Some(model)) = registry.get::<M>(&rule.provider, &rule.target) {
                     return Ok(ModelResolution::new(
-                        &rule.provider,
-                        &rule.target,
-                        Some(model.info()),
-                        Some(rule),
+                        rule.provider.clone(),
+                        rule.target.clone(),
+                        Some(model.info().clone()),
+                        Some(rule.clone()),
                         0.7,
                     ));
                 }
@@ -343,18 +339,21 @@ impl ModelResolver {
         provider: Option<&str>,
     ) -> AsyncStream<Option<RegisteredModel<M>>> {
         let (sender, stream) = AsyncStream::channel();
-        
+
         let resolver = self.clone();
         let model_name = model_name.to_string();
         let provider = provider.map(|s| s.to_string());
-        
+
         tokio::spawn(async move {
             let resolution_stream = resolver.resolve::<M>(&model_name, provider.as_deref());
             let mut stream_pin = Box::pin(resolution_stream);
-            
+
             if let Some(resolution) = StreamExt::next(&mut stream_pin).await {
                 if resolution.is_valid() {
-                    if let Ok(model) = resolver.registry.get::<M>(resolution.provider, resolution.model) {
+                    if let Ok(model) = resolver
+                        .registry
+                        .get::<M>(&resolution.provider, &resolution.model)
+                    {
                         let _ = sender.try_send(model);
                     } else {
                         let _ = sender.try_send(None);
@@ -366,7 +365,7 @@ impl ModelResolver {
                 let _ = sender.try_send(None);
             }
         });
-        
+
         stream
     }
 
@@ -402,7 +401,7 @@ impl ModelResolver {
         registry: &ModelRegistry,
         model_name: &str,
         provider: Option<&str>,
-    ) -> Result<ModelResolution<'static>> {
+    ) -> Result<ModelResolution> {
         let all_models = registry.find_all::<M>();
         // Find the best match using Jaro-Winkler similarity
         let best_match = all_models
@@ -417,9 +416,9 @@ impl ModelResolver {
 
         if let Some((info, score)) = best_match {
             Ok(ModelResolution::new(
-                info.provider(),
-                info.name(),
-                Some(info),
+                info.provider().to_string(),
+                info.name().to_string(),
+                Some(info.clone()),
                 None,
                 score,
             ))

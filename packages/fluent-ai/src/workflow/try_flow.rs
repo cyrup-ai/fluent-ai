@@ -7,9 +7,8 @@
 // ============================================================================
 
 use fluent_ai_http3::async_task::AsyncStream;
-
-use futures::stream::{self, StreamExt, TryStreamExt};
-use futures::{join, try_join};
+use futures_util::stream::{self, StreamExt, TryStreamExt};
+use futures_util::{join, try_join};
 
 use super::{Map, Op, Then};
 
@@ -22,10 +21,7 @@ pub trait TryOp: Send + Sync {
     type Output: Send + Sync;
     type Error: Send + Sync;
 
-    fn try_call(
-        &self,
-        input: Self::Input,
-    ) -> AsyncStream<Result<Self::Output, Self::Error>>;
+    fn try_call(&self, input: Self::Input) -> AsyncStream<Result<Self::Output, Self::Error>>;
 
     // ---------- fan-out with bounded parallelism ----------
     #[inline]
@@ -42,17 +38,17 @@ pub trait TryOp: Send + Sync {
         let (tx, stream) = AsyncStream::channel();
         let inputs: Vec<_> = input.into_iter().collect();
         let op = self.clone();
-        
+
         tokio::spawn(async move {
             let mut results = Vec::with_capacity(inputs.len());
             let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(concurrency));
-            
+
             let mut handles = Vec::new();
-            
+
             for input_item in inputs {
                 let permit = semaphore.clone().acquire_owned().await.unwrap();
                 let op_clone = op.clone();
-                
+
                 let handle = tokio::spawn(async move {
                     let mut call_stream = op_clone.try_call(input_item);
                     let result = call_stream.next();
@@ -61,10 +57,10 @@ pub trait TryOp: Send + Sync {
                 });
                 handles.push(handle);
             }
-            
+
             let mut final_results = Vec::new();
             let mut has_error = None;
-            
+
             for handle in handles {
                 match handle.await {
                     Ok(Some(Ok(value))) => final_results.push(value),
@@ -75,14 +71,14 @@ pub trait TryOp: Send + Sync {
                     _ => continue,
                 }
             }
-            
+
             let result = match has_error {
                 Some(error) => Err(error),
                 None => Ok(final_results),
             };
             let _ = tx.send(result);
         });
-        
+
         stream
     }
 

@@ -23,17 +23,17 @@ use arrayvec::{ArrayString, ArrayVec};
 use async_stream::stream;
 use atomic_counter::RelaxedCounter;
 use crossbeam_skiplist::SkipMap;
-use fluent_ai_domain::context::chunk::CompletionChunk;
-use fluent_ai_domain::message::ToolCall;
 use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, CompletionRequest};
+use fluent_ai_domain::context::chunk::CompletionChunk;
 use fluent_ai_domain::context::chunk::FinishReason;
-use fluent_ai_http3::{HttpClient, HttpError};
+use fluent_ai_domain::message::ToolCall;
 use fluent_ai_http3::stream::SseEvent;
+use fluent_ai_http3::{HttpClient, HttpError};
 use futures_util::{Stream, StreamExt};
 use smallvec::{SmallVec, smallvec};
 use thiserror::Error;
 
-use crate::{AsyncStream, AsyncStreamSender, async_stream_channel};
+use crate::{AsyncStream, AsyncStreamSender, channel};
 
 // ================================================================================================
 // Streaming Types
@@ -1335,12 +1335,12 @@ impl SIMDCapabilities {
             avx2_available: is_x86_feature_detected!("avx2"),
             #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
             avx2_available: false,
-            
+
             #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             avx512_available: is_x86_feature_detected!("avx512f"),
             #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
             avx512_available: false,
-            
+
             #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             sse42_available: is_x86_feature_detected!("sse4.2"),
             #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
@@ -1950,6 +1950,5 @@ static OPTIMIZATION_STRATEGIES: [OptimizationStrategy; 5] = [
         cost_score: 3,
     },
 ];
-
 
 use serde::{Deserialize, Serialize};

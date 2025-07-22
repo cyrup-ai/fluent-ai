@@ -206,7 +206,7 @@ impl Tool for McpToolImpl {
             };
             let _ = tx.send(result);
         });
-        
+
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 }

@@ -9,10 +9,13 @@ use fluent_ai_memory::cognitive::{
     committee::CommitteeEvent,
     mcts::CodeState,
     performance::PerformanceAnalyzer,
-    quantum_mcts::QuantumMCTS,
     quantum::QuantumConfig,
+    quantum_mcts::QuantumMCTS,
     quantum_orchestrator::{QuantumOrchestrationConfig, QuantumOrchestrator},
-    types::{ContentCategory, ContentType, EvolutionRules, OptimizationSpec, OptimizationType, Restrictions, SecurityLevel},
+    types::{
+        ContentCategory, ContentType, EvolutionRules, OptimizationSpec, OptimizationType,
+        Restrictions, SecurityLevel,
+    },
 };
 use tokio::sync::mpsc;
 
@@ -314,7 +317,10 @@ fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
         objective: "Optimize matrix multiplication with cache efficiency".to_string(),
         improvement_threshold: 0.2,
         constraints: vec!["cache_friendly".to_string(), "vectorizable".to_string()],
-        success_criteria: vec!["cache_efficiency_improved".to_string(), "performance_boost".to_string()],
+        success_criteria: vec![
+            "cache_efficiency_improved".to_string(),
+            "performance_boost".to_string(),
+        ],
         optimization_type: OptimizationType::Efficiency,
         timeout_ms: Some(10000),
         max_iterations: Some(200),

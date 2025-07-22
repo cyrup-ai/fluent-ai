@@ -1,5 +1,5 @@
 //! Zero-allocation embedding interfaces
-//! 
+//!
 //! This module provides blazing-fast, SIMD-optimized embedding operations
 //! with zero-allocation vector handling and consistent interfaces across
 //! all provider implementations.
@@ -13,7 +13,7 @@ use serde_json::Value;
 
 use crate::AsyncStream;
 
-/// Trait for types that can be embedded 
+/// Trait for types that can be embedded
 pub trait Embed: Send + Sync {
     fn text(&self) -> String;
 }
@@ -127,57 +127,57 @@ pub enum EmbeddingError {
 pub type Result<T> = std::result::Result<T, EmbeddingError>;
 
 /// Universal embedding provider trait
-/// 
+///
 /// Provides zero-allocation embedding generation with SIMD optimization
 /// and consistent interfaces across all AI providers.
 pub trait EmbeddingProvider: Send + Sync {
     /// The type of raw embedding response from the provider
     type Response: Send + Sync;
-    
+
     /// Generate embeddings for a single text input
-    /// 
+    ///
     /// This method provides zero-allocation embedding generation with
     /// inline optimization for single text inputs.
     async fn embed_text(&self, text: &str) -> Result<EmbeddingResponse<Self::Response>>;
-    
+
     /// Generate embeddings for multiple text inputs (batch processing)
-    /// 
+    ///
     /// This method provides efficient batch processing with SIMD optimization
     /// for handling multiple texts in a single request.
     async fn embed_texts(&self, texts: &[&str]) -> Result<BatchEmbeddingResponse<Self::Response>>;
-    
+
     /// Generate embeddings with streaming for large inputs
-    /// 
+    ///
     /// This method provides streaming embedding generation for large text
     /// inputs that need to be processed in chunks.
     async fn embed_stream(&self, text: &str) -> Result<StreamingEmbeddingResponse<Self::Response>>;
-    
+
     /// Get the embedding dimensions for this model
-    /// 
+    ///
     /// Returns the number of dimensions in the embedding vectors
     /// produced by this model.
     fn dimensions(&self) -> usize;
-    
+
     /// Get the maximum input token length for this model
-    /// 
+    ///
     /// Returns the maximum number of tokens that can be processed
     /// in a single embedding request.
     fn max_tokens(&self) -> usize;
-    
+
     /// Check if the model supports batch processing
-    /// 
+    ///
     /// Returns true if the model can efficiently process multiple
     /// texts in a single request.
     fn supports_batch(&self) -> bool {
         true // Most models support batch processing
     }
-    
+
     /// Get the model name/identifier
     fn model_name(&self) -> &str;
 }
 
 /// Zero-allocation embedding response wrapper
-/// 
+///
 /// Provides a unified interface for embedding responses across all providers
 /// while maintaining zero-allocation semantics and SIMD-optimized vector operations.
 #[derive(Debug, Clone)]
@@ -265,7 +265,7 @@ impl<T> EmbeddingResponse<T> {
         }
 
         let mut sum = 0.0;
-        
+
         // Manual SIMD-friendly loop
         for i in 0..self.embedding.len() {
             let diff = self.embedding[i] - other[i];
@@ -334,7 +334,7 @@ impl<T> BatchEmbeddingResponse<T> {
     }
 
     /// Calculate similarity matrix (SIMD-optimized)
-    /// 
+    ///
     /// Returns a matrix where element (i, j) is the cosine similarity
     /// between embeddings i and j.
     pub fn similarity_matrix(&self) -> Vec<Vec<f32>> {
@@ -420,8 +420,8 @@ impl<T> StreamingEmbeddingResponse<T> {
     /// Collect all chunks into a single embedding vector
     pub async fn collect(mut self) -> Result<Vec<f32>> {
         let mut embedding = Vec::new();
-        
-        while let Some(chunk_result) = futures::StreamExt::next(&mut self.stream).await {
+
+        while let Some(chunk_result) = futures_util::StreamExt::next(&mut self.stream).await {
             match chunk_result {
                 Ok(chunk) => {
                     embedding.extend_from_slice(&chunk.vector);
@@ -429,7 +429,7 @@ impl<T> StreamingEmbeddingResponse<T> {
                 Err(e) => return Err(e),
             }
         }
-        
+
         Ok(embedding)
     }
 }
@@ -523,7 +523,7 @@ impl EmbeddingMetadata {
     }
 }
 
+pub use BatchEmbeddingResponse as DefaultBatchEmbeddingResponse;
 /// Re-exports for convenience
 pub use EmbeddingResponse as DefaultEmbeddingResponse;
-pub use BatchEmbeddingResponse as DefaultBatchEmbeddingResponse;
 pub use StreamingEmbeddingResponse as DefaultStreamingEmbeddingResponse;

@@ -3,11 +3,13 @@
 //! Applies exponential penalty to recently generated tokens to reduce repetitive outputs.
 //! Maintains efficient token history with configurable context window.
 
+use std::collections::HashMap;
+
+use arrayvec::ArrayVec;
+use candle_core::Tensor;
+
 use super::SamplingError;
 use crate::processing::traits::LogitsProcessor;
-use candle_core::Tensor;
-use std::collections::HashMap;
-use arrayvec::ArrayVec;
 
 /// Maximum context size for repetition tracking (bounded for performance)
 const MAX_REPETITION_CONTEXT: usize = 2048;
@@ -44,7 +46,7 @@ impl RepetitionPenaltyProcessor {
 
         let is_identity = (penalty - 1.0).abs() < f64::EPSILON;
         let capped_context = context_size.min(MAX_REPETITION_CONTEXT);
-        
+
         // Pre-compute common penalty powers for performance
         let mut penalty_powers = ArrayVec::new();
         if !is_identity {
@@ -81,7 +83,7 @@ impl RepetitionPenaltyProcessor {
 
         self.penalty = penalty;
         self.is_identity = (penalty - 1.0).abs() < f64::EPSILON;
-        
+
         // Recompute penalty powers
         self.penalty_powers.clear();
         if !self.is_identity {
@@ -91,7 +93,7 @@ impl RepetitionPenaltyProcessor {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -153,7 +155,7 @@ impl RepetitionPenaltyProcessor {
     #[inline(always)]
     fn count_token_frequencies(&self, context_tokens: &[u32]) -> HashMap<u32, u32> {
         let mut counts = HashMap::with_capacity(context_tokens.len().min(256));
-        
+
         for &token_id in context_tokens {
             *counts.entry(token_id).or_insert(0) += 1;
         }
@@ -168,13 +170,14 @@ impl RepetitionPenaltyProcessor {
         logits: &mut Tensor,
         token_counts: &HashMap<u32, u32>,
     ) -> Result<(), SamplingError> {
-        let mut logits_vec = logits.to_vec1::<f32>()
+        let mut logits_vec = logits
+            .to_vec1::<f32>()
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
 
         // Apply penalties to each token that appears in context
         for (&token_id, &count) in token_counts {
             let token_idx = token_id as usize;
-            
+
             // Bounds check for safety
             if token_idx >= logits_vec.len() {
                 continue; // Skip invalid token IDs
@@ -182,7 +185,7 @@ impl RepetitionPenaltyProcessor {
 
             // Calculate penalty factor efficiently
             let penalty_factor = self.calculate_penalty_factor(count);
-            
+
             // Apply penalty: logit = logit / penalty_factor
             // In log space: logit = logit - log(penalty_factor)
             let log_penalty = penalty_factor.ln() as f32;
@@ -216,18 +219,25 @@ impl RepetitionPenaltyProcessor {
 
     /// Validate penalty application for debugging
     #[cfg(test)]
-    fn validate_penalty_application(&self, original_logits: &[f32], penalized_logits: &[f32], token_counts: &HashMap<u32, u32>) -> bool {
+    fn validate_penalty_application(
+        &self,
+        original_logits: &[f32],
+        penalized_logits: &[f32],
+        token_counts: &HashMap<u32, u32>,
+    ) -> bool {
         for (&token_id, &count) in token_counts {
-            if count == 0 { continue; }
-            
+            if count == 0 {
+                continue;
+            }
+
             let token_idx = token_id as usize;
             if token_idx >= original_logits.len() || token_idx >= penalized_logits.len() {
                 continue;
             }
-            
+
             let expected_penalty = self.calculate_penalty_factor(count).ln() as f32;
             let actual_change = original_logits[token_idx] - penalized_logits[token_idx];
-            
+
             if (actual_change - expected_penalty).abs() > f32::EPSILON * 10.0 {
                 return false;
             }
@@ -258,27 +268,31 @@ impl RepetitionPenaltyProcessor {
 // Implement common traits for ergonomics
 impl std::fmt::Display for RepetitionPenaltyProcessor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "RepetitionPenalty({}, ctx={})", self.penalty, self.context_size)
+        write!(
+            f,
+            "RepetitionPenalty({}, ctx={})",
+            self.penalty, self.context_size
+        )
     }
 }
 
 impl PartialEq for RepetitionPenaltyProcessor {
     fn eq(&self, other: &Self) -> bool {
-        (self.penalty - other.penalty).abs() < f64::EPSILON && 
-        self.context_size == other.context_size
+        (self.penalty - other.penalty).abs() < f64::EPSILON
+            && self.context_size == other.context_size
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use candle_core::{DType, Device};
+
     use super::*;
-    use candle_core::{Device, DType};
 
     fn create_test_logits() -> Tensor {
         let device = Device::Cpu;
         // Create logits for 5 tokens
-        Tensor::from_vec(vec![1.0f32, 2.0, 3.0, 4.0, 5.0], (5,), &device)
-            .expect("tensor creation")
+        Tensor::from_vec(vec![1.0f32, 2.0, 3.0, 4.0, 5.0], (5,), &device).expect("tensor creation")
     }
 
     #[test]
@@ -308,7 +322,9 @@ mod tests {
         let original_vec = logits.to_vec1::<f32>().expect("conversion");
 
         let token_ids = vec![0, 1, 2];
-        processor.process(&mut logits, &token_ids, 3).expect("processing succeeds");
+        processor
+            .process(&mut logits, &token_ids, 3)
+            .expect("processing succeeds");
 
         let processed_vec = logits.to_vec1::<f32>().expect("conversion");
 
@@ -321,42 +337,46 @@ mod tests {
     #[test]
     fn test_repetition_penalty_application() {
         let processor = RepetitionPenaltyProcessor::new(2.0, 64).expect("valid penalty");
-        
+
         let mut logits = create_test_logits();
         let original_vec = logits.to_vec1::<f32>().expect("conversion");
 
         // Token history with repetitions: token 1 appears twice
         let token_ids = vec![0, 1, 2, 1, 3];
-        processor.process(&mut logits, &token_ids, 5).expect("processing succeeds");
+        processor
+            .process(&mut logits, &token_ids, 5)
+            .expect("processing succeeds");
 
         let processed_vec = logits.to_vec1::<f32>().expect("conversion");
 
         // Token 1 should be penalized more than others
         let penalty_factor = 2.0_f64.powi(2).ln() as f32; // penalty^count
         let expected_logit_1 = original_vec[1] - penalty_factor;
-        
+
         assert!((processed_vec[1] - expected_logit_1).abs() < f32::EPSILON * 10.0);
-        
+
         // Tokens that appeared once should have smaller penalties
         let single_penalty = 2.0_f64.ln() as f32;
-        assert!((processed_vec[0] - (original_vec[0] - single_penalty)).abs() < f32::EPSILON * 10.0);
+        assert!(
+            (processed_vec[0] - (original_vec[0] - single_penalty)).abs() < f32::EPSILON * 10.0
+        );
     }
 
     #[test]
     fn test_context_window() {
         let processor = RepetitionPenaltyProcessor::new(1.5, 3).expect("valid penalty");
-        
+
         // Test with long token history, only last 3 should matter
         let long_history = vec![0, 0, 0, 1, 2, 3]; // Only [1, 2, 3] should be considered
         let context = processor.get_context_window(&long_history, 6);
-        
+
         assert_eq!(context, &[1, 2, 3]);
     }
 
     #[test]
     fn test_processor_trait_methods() {
         let processor = RepetitionPenaltyProcessor::new(1.3, 128).expect("valid penalty");
-        
+
         assert_eq!(processor.name(), "RepetitionPenaltyProcessor");
         assert!(processor.validate().is_ok());
         assert!(!processor.is_identity());

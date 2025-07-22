@@ -36,7 +36,9 @@ where
     /// This is the primary method for await-like usage
     #[inline]
     pub fn collect(self) -> T {
-        self.rx.recv().expect("AsyncTask sender dropped without sending")
+        self.rx
+            .recv()
+            .expect("AsyncTask sender dropped without sending")
     }
 
     /// Non-blocking try to receive result

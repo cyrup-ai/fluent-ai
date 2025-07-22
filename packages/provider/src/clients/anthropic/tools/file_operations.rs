@@ -6,12 +6,12 @@
 use std::path::Path;
 
 use bytes::Bytes;
-use fluent_ai_core::channel::async_stream_channel;
-use fluent_ai_core::stream::AsyncStream;
+use fluent_ai_async::AsyncStream;
+use fluent_ai_async::channel;
 use fluent_ai_domain::tool::Tool;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::fs;
 
 use super::{
@@ -88,7 +88,7 @@ impl ToolExecutor for FileOperationsTool {
         input: Value,
         context: &ToolExecutionContext,
     ) -> AsyncStream<AnthropicResult<ToolOutput>> {
-        let (tx, stream) = async_stream_channel();
+        let (tx, stream) = channel();
         let api_key = match Self::get_api_key(context) {
             Ok(key) => key.to_string(),
             Err(e) => {

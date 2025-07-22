@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::{debug, error, info, instrument, trace, warn};
 
-use crate::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
 use super::{
     client::OpenAIClient,
     error::OpenAIError,
@@ -18,6 +17,7 @@ use super::{
         model_supports_vision,
     },
 };
+use crate::discovery::{DiscoveryError, DiscoveryResult, ProviderModelDiscovery};
 use crate::model::{
     error::ModelError,
     info::{ModelCapability, ModelInfo, ModelInfoBuilder},

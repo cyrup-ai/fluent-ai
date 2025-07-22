@@ -16,7 +16,7 @@
 //! **Similarity Operations:**
 //! ```rust,no_run
 //! use fluent_ai_simd::similarity::smart_cosine_similarity;
-//! 
+//!
 //! let a = vec![1.0, 2.0, 3.0, 4.0];
 //! let b = vec![4.0, 3.0, 2.0, 1.0];
 //! let similarity = smart_cosine_similarity(&a, &b);
@@ -33,20 +33,26 @@ pub mod constants;
 pub mod context;
 pub mod error;
 pub mod logits;
-pub mod logits_simd;
+pub mod ops;
+pub mod runtime;
 pub mod similarity;
 pub mod utils;
 
 // Re-export core types for ergonomic usage
-pub use error::{SimdError, SimdResult};
-pub use similarity::{smart_cosine_similarity, simd_cosine_similarity, cosine_similarity};
-pub use utils::simd_available;
-
-// Re-export logits SIMD types
-pub use logits_simd::{SimdProcessor, SimdSoftmaxProcessor, SimdTopKProcessor, SimdStats, SimdBenchmarkResult};
-
 // Re-export constants
 pub use constants::{SIMD_WIDTH_8, VERSION};
+pub use error::{SimdError, SimdResult};
+// Logits operations are handled by the ops module
+// Re-export ops (temperature and softmax operations)
+pub use ops::{
+    apply_temperature_scaling, apply_temperature_scaling_inplace, compute_log_softmax,
+    compute_softmax, compute_softmax_inplace, SoftmaxProcessor, SoftmaxStats, TemperatureProcessor,
+    TemperatureStats,
+};
+// Re-export runtime CPU detection
+pub use runtime::{get_cpu_features, get_cpu_info, should_use_simd, CpuFeatures, CpuInfo};
+pub use similarity::{cosine_similarity, simd_cosine_similarity, smart_cosine_similarity};
+pub use utils::simd_available;
 
 #[cfg(test)]
 mod tests {

@@ -4,10 +4,12 @@
 //! with copy-on-write semantics for zero-allocation access patterns.
 
 use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 
 use crate::init::globals::{CONFIG_CACHE, LOCAL_CONFIG};
-use super::memory::MemoryConfig;
+use crate::memory::SurrealDBMemoryManager;
+use crate::memory::manager::MemoryConfig;
 
 /// Memory metadata for pool management with zero-allocation patterns
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,7 +38,7 @@ impl MemoryMetadata {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos() as u64)
             .unwrap_or(0);
-            
+
         Self {
             id: id.into(),
             memory_type: memory_type.into(),
@@ -93,12 +95,13 @@ pub fn update_config_cache(new_config: MemoryConfig) {
 
 /// Get memory from connection pool with lock-free access
 #[inline(always)]
-pub fn get_pooled_memory() -> Option<Arc<MemoryMetadata>> {
-    use crate::init::globals::{CONNECTION_POOL, POOL_STATS};
+pub fn get_pooled_memory() -> Option<Arc<SurrealDBMemoryManager>> {
     use std::sync::atomic::Ordering;
-    
+
+    use crate::init::globals::{CONNECTION_POOL, POOL_STATS};
+
     if let Some(memory) = CONNECTION_POOL.pop() {
-        POOL_STATS.load().fetch_sub(1, Ordering::Relaxed);
+        POOL_STATS.fetch_sub(1, Ordering::Relaxed);
         Some(memory)
     } else {
         None
@@ -107,18 +110,20 @@ pub fn get_pooled_memory() -> Option<Arc<MemoryMetadata>> {
 
 /// Return memory to connection pool
 #[inline(always)]
-pub fn return_pooled_memory(memory: Arc<MemoryMetadata>) {
-    use crate::init::globals::{CONNECTION_POOL, POOL_STATS};
+pub fn return_pooled_memory(memory: Arc<SurrealDBMemoryManager>) {
     use std::sync::atomic::Ordering;
-    
+
+    use crate::init::globals::{CONNECTION_POOL, POOL_STATS};
+
     CONNECTION_POOL.push(memory);
-    POOL_STATS.load().fetch_add(1, Ordering::Relaxed);
+    POOL_STATS.fetch_add(1, Ordering::Relaxed);
 }
 
 /// Get current pool statistics
 pub fn get_pool_stats() -> usize {
-    use crate::init::globals::POOL_STATS;
     use std::sync::atomic::Ordering;
-    
-    POOL_STATS.load().load(Ordering::Relaxed)
+
+    use crate::init::globals::POOL_STATS;
+
+    POOL_STATS.load(Ordering::Relaxed)
 }

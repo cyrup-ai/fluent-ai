@@ -3,27 +3,17 @@
 
 use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
-
-// Use domain types for traits and models
-use fluent_ai_domain::{
-    completion::CompletionProvider,
-    model::ModelConfig,
-    chat::Message,
-};
-
-// Use provider clients for completion services
-use fluent_ai_provider::{
-    openai::OpenAIClient,
-    anthropic::AnthropicClient,
-};
-
-use fluent_ai_domain::async_task::AsyncStream;
 // Removed fluent_ai_domain import to break circular dependency
 // Define local types instead of importing from domain
 
 // Import response types from cyrup_sugars
-use cyrup_sugars::{CompletionResponse, TokenUsage, ResponseMetadata};
+use cyrup_sugars::{CompletionResponse, ResponseMetadata, TokenUsage};
+use fluent_ai_domain::async_task::AsyncStream;
+// Use domain types for traits and models
+use fluent_ai_domain::{chat::Message, completion::CompletionProvider, model::ModelConfig};
+// Use provider clients for completion services
+use fluent_ai_provider::{anthropic::AnthropicClient, openai::OpenAIClient};
+use serde::{Deserialize, Serialize};
 
 /// Message type for completion interactions
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -78,8 +68,12 @@ impl ModelType {
 
     pub fn provider_name(&self) -> &'static str {
         match self {
-            ModelType::Gpt35Turbo | ModelType::Gpt4 | ModelType::Gpt4O | ModelType::Gpt4Turbo => "openai",
-            ModelType::Claude3Opus | ModelType::Claude3Sonnet | ModelType::Claude3Haiku => "anthropic",
+            ModelType::Gpt35Turbo | ModelType::Gpt4 | ModelType::Gpt4O | ModelType::Gpt4Turbo => {
+                "openai"
+            }
+            ModelType::Claude3Opus | ModelType::Claude3Sonnet | ModelType::Claude3Haiku => {
+                "anthropic"
+            }
             ModelType::GeminiPro => "google",
             ModelType::Mixtral8x7B | ModelType::Llama270B | ModelType::Llama3 => "huggingface",
         }
@@ -102,7 +96,7 @@ impl Model {
             ModelType::Gpt35Turbo | ModelType::Gpt4 | ModelType::Gpt4O | ModelType::Gpt4Turbo => {
                 let api_key = std::env::var("OPENAI_API_KEY")
                     .map_err(|_| "OPENAI_API_KEY environment variable not set")?;
-                
+
                 let client = OpenAIClient::new(api_key, model_type.display_name())
                     .map_err(|e| format!("Failed to create OpenAI client: {}", e))?;
                 Arc::new(client)
@@ -110,7 +104,7 @@ impl Model {
             ModelType::Claude3Opus | ModelType::Claude3Sonnet | ModelType::Claude3Haiku => {
                 let api_key = std::env::var("ANTHROPIC_API_KEY")
                     .map_err(|_| "ANTHROPIC_API_KEY environment variable not set")?;
-                
+
                 let client = AnthropicClient::new(api_key, model_type.display_name())
                     .map_err(|e| format!("Failed to create Anthropic client: {}", e))?;
                 Arc::new(client)
@@ -151,15 +145,15 @@ impl Model {
             .filter(|msg| msg.role == "user")
             .last()
             .ok_or("No user message found in completion request")?;
-        
+
         // Use completion provider streaming interface
         let stream = self.provider.prompt(&user_message.content);
-        
+
         // Collect all chunks to form complete response
         let mut collected_text = String::new();
         let mut stream = stream;
-        
-        use futures::StreamExt;
+
+        use futures_util::StreamExt;
         while let Some(chunk) = stream.next().await {
             if let Some(content) = chunk.content {
                 collected_text.push_str(&content);
@@ -168,10 +162,12 @@ impl Model {
 
         Ok(CompletionResponse::new(
             collected_text.clone(),
-            cyrup_sugars::ZeroOneOrMany::One(collected_text)
+            cyrup_sugars::ZeroOneOrMany::One(collected_text),
         )
         .with_token_usage(TokenUsage::new(0, 0)) // Placeholder - would need actual tracking
-        .with_metadata(ResponseMetadata::new().with_model(self.model_type.display_name().to_string())))
+        .with_metadata(
+            ResponseMetadata::new().with_model(self.model_type.display_name().to_string()),
+        ))
     }
 
     /// Simple prompt interface
@@ -181,11 +177,11 @@ impl Model {
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         // Use provider streaming interface and collect result
         let stream = self.provider.prompt(prompt);
-        
+
         let mut result = String::new();
         let mut stream = stream;
-        
-        use futures::StreamExt;
+
+        use futures_util::StreamExt;
         while let Some(chunk) = stream.next().await {
             if let Some(content) = chunk.content {
                 result.push_str(&content);

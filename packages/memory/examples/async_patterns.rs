@@ -6,7 +6,7 @@
 use fluent_ai_memory::memory::{
     MemoryManager, MemoryNode, MemoryRelationship, MemoryTypeEnum, SurrealDBMemoryManager,
 };
-use futures::StreamExt;
+use futures_util::StreamExt;
 use surrealdb::{
     Surreal,
     engine::{

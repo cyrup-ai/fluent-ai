@@ -1,18 +1,16 @@
-// IMPORTANT: Pure streaming primitives - NO Future/async/await!
-// ⚠️  ALL FUTURE USAGE ELIMINATED - PURE ASYNCSTREAM ARCHITECTURE ⚠️
-// Stream-first primitives with .collect() for await-like behavior
+//! Zero-allocation streaming primitives for the fluent-ai ecosystem
+//!
+//! Provides core streaming types and utilities that enforce the streams-only architecture.
+//! All asynchronous operations must return AsyncStream<T> of unwrapped values.
+//! Errors are handled via on_chunk patterns, not Result<T, E> inside streams.
 
-pub mod task;
-pub use task::{AsyncTask, spawn_task, spawn_stream};
 pub mod stream;
-pub use stream::{AsyncStream, AsyncStreamSender};
+pub mod task;
 pub mod thread_pool;
 
-// Keep our custom emitter and error handlers for fluent builder compatibility
-pub mod emitter_builder;
-pub use emitter_builder::*;
-pub mod error_handlers;
-pub use error_handlers::*;
+// Re-export core types
+pub use stream::{AsyncStream, AsyncStreamSender, async_stream_channel};
+pub use task::{spawn_stream, spawn_task, AsyncTask};
 
 /// Marker trait ensuring types cannot contain Result types
 ///

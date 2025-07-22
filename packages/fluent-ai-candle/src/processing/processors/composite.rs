@@ -22,10 +22,10 @@ use crate::processing::{ProcessingContext, ProcessingError};
 pub struct CompositeProcessor {
     /// Chain of processors to apply in order
     processors: Vec<Box<dyn LogitsProcessor>>,
-    
+
     /// Cached identity state (optimization)
     is_identity: bool,
-    
+
     /// Processing chain name for debugging
     name: String,
 }
@@ -43,11 +43,11 @@ impl CompositeProcessor {
     /// Create composite processor with initial processors
     pub fn with_processors(processors: Vec<Box<dyn LogitsProcessor>>) -> ProcessingResult<Self> {
         let mut composite = Self::new();
-        
+
         for processor in processors {
             composite.add_processor(processor)?;
         }
-        
+
         Ok(composite)
     }
 
@@ -55,62 +55,70 @@ impl CompositeProcessor {
     pub fn add_processor(&mut self, processor: Box<dyn LogitsProcessor>) -> ProcessingResult<()> {
         // Validate processor before adding
         processor.validate()?;
-        
+
         // Update identity cache
         if !processor.is_identity() {
             self.is_identity = false;
         }
-        
+
         // Add processor to chain
         self.processors.push(processor);
-        
+
         // Update composite name for debugging
         self.update_name();
-        
+
         Ok(())
     }
 
     /// Insert processor at specific position in the chain
-    pub fn insert_processor(&mut self, index: usize, processor: Box<dyn LogitsProcessor>) -> ProcessingResult<()> {
+    pub fn insert_processor(
+        &mut self,
+        index: usize,
+        processor: Box<dyn LogitsProcessor>,
+    ) -> ProcessingResult<()> {
         if index > self.processors.len() {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Insert index {} exceeds chain length {}", index, self.processors.len())
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Insert index {} exceeds chain length {}",
+                index,
+                self.processors.len()
+            )));
         }
 
         // Validate processor before inserting
         processor.validate()?;
-        
+
         // Update identity cache
         if !processor.is_identity() {
             self.is_identity = false;
         }
-        
+
         // Insert processor at specified position
         self.processors.insert(index, processor);
-        
+
         // Update composite name
         self.update_name();
-        
+
         Ok(())
     }
 
     /// Remove processor at specific index
     pub fn remove_processor(&mut self, index: usize) -> ProcessingResult<Box<dyn LogitsProcessor>> {
         if index >= self.processors.len() {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Remove index {} exceeds chain length {}", index, self.processors.len())
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Remove index {} exceeds chain length {}",
+                index,
+                self.processors.len()
+            )));
         }
 
         let removed_processor = self.processors.remove(index);
-        
+
         // Recalculate identity state
         self.recalculate_identity();
-        
+
         // Update composite name
         self.update_name();
-        
+
         Ok(removed_processor)
     }
 
@@ -146,16 +154,16 @@ impl CompositeProcessor {
     /// Create optimized processing chain by removing identity processors
     pub fn optimize(&mut self) -> usize {
         let original_len = self.processors.len();
-        
+
         // Remove identity processors
         self.processors.retain(|p| !p.is_identity());
-        
+
         // Recalculate identity state
         self.recalculate_identity();
-        
+
         // Update name
         self.update_name();
-        
+
         original_len - self.processors.len() // Return number removed
     }
 
@@ -163,9 +171,12 @@ impl CompositeProcessor {
     pub fn validate_chain(&self) -> ProcessingResult<()> {
         for (i, processor) in self.processors.iter().enumerate() {
             processor.validate().map_err(|e| {
-                ProcessingError::ProcessorChainError(
-                    format!("Processor {} ({}) validation failed: {}", i, processor.name(), e)
-                )
+                ProcessingError::ProcessorChainError(format!(
+                    "Processor {} ({}) validation failed: {}",
+                    i,
+                    processor.name(),
+                    e
+                ))
             })?;
         }
         Ok(())
@@ -173,7 +184,11 @@ impl CompositeProcessor {
 
     /// Apply all processors in sequence with error handling
     #[inline]
-    fn apply_processor_chain(&mut self, logits: &mut [f32], context: &ProcessingContext) -> ProcessingResult<()> {
+    fn apply_processor_chain(
+        &mut self,
+        logits: &mut [f32],
+        context: &ProcessingContext,
+    ) -> ProcessingResult<()> {
         if self.is_identity {
             return Ok(()); // Fast path for identity chains
         }
@@ -187,9 +202,12 @@ impl CompositeProcessor {
 
             // Apply processor with detailed error context
             processor.process_logits(logits, context).map_err(|e| {
-                ProcessingError::ProcessorChainError(
-                    format!("Processor {} ({}) failed: {}", i, processor.name(), e)
-                )
+                ProcessingError::ProcessorChainError(format!(
+                    "Processor {} ({}) failed: {}",
+                    i,
+                    processor.name(),
+                    e
+                ))
             })?;
         }
 
@@ -210,8 +228,8 @@ impl CompositeProcessor {
 
     /// Recalculate identity state after modifications
     fn recalculate_identity(&mut self) {
-        self.is_identity = self.processors.is_empty() || 
-                          self.processors.iter().all(|p| p.is_identity());
+        self.is_identity =
+            self.processors.is_empty() || self.processors.iter().all(|p| p.is_identity());
     }
 
     /// Create a builder for composing processors fluently
@@ -229,7 +247,11 @@ impl Default for CompositeProcessor {
 
 impl LogitsProcessor for CompositeProcessor {
     #[inline]
-    fn process_logits(&mut self, logits: &mut [f32], context: &ProcessingContext) -> ProcessingResult<()> {
+    fn process_logits(
+        &mut self,
+        logits: &mut [f32],
+        context: &ProcessingContext,
+    ) -> ProcessingResult<()> {
         self.apply_processor_chain(logits, context)
     }
 
@@ -304,10 +326,8 @@ macro_rules! composite_processor {
 mod tests {
     use super::*;
     use crate::processing::processors::{
-        temperature::TemperatureProcessor,
-        top_k::TopKProcessor,
-        top_p::TopPProcessor,
-        repetition_penalty::RepetitionPenaltyProcessor,
+        repetition_penalty::RepetitionPenaltyProcessor, temperature::TemperatureProcessor,
+        top_k::TopKProcessor, top_p::TopPProcessor,
     };
 
     /// Mock identity processor for testing
@@ -315,14 +335,18 @@ mod tests {
     struct IdentityProcessor;
 
     impl LogitsProcessor for IdentityProcessor {
-        fn process_logits(&mut self, _logits: &mut [f32], _context: &ProcessingContext) -> ProcessingResult<()> {
+        fn process_logits(
+            &mut self,
+            _logits: &mut [f32],
+            _context: &ProcessingContext,
+        ) -> ProcessingResult<()> {
             Ok(())
         }
-        
+
         fn name(&self) -> &'static str {
             "IdentityProcessor"
         }
-        
+
         fn is_identity(&self) -> bool {
             true
         }
@@ -333,16 +357,24 @@ mod tests {
     struct FailingProcessor;
 
     impl LogitsProcessor for FailingProcessor {
-        fn process_logits(&mut self, _logits: &mut [f32], _context: &ProcessingContext) -> ProcessingResult<()> {
-            Err(ProcessingError::ProcessingFailed("Mock failure".to_string()))
+        fn process_logits(
+            &mut self,
+            _logits: &mut [f32],
+            _context: &ProcessingContext,
+        ) -> ProcessingResult<()> {
+            Err(ProcessingError::ProcessingFailed(
+                "Mock failure".to_string(),
+            ))
         }
-        
+
         fn name(&self) -> &'static str {
             "FailingProcessor"
         }
-        
+
         fn validate(&self) -> ProcessingResult<()> {
-            Err(ProcessingError::InvalidConfiguration("Mock validation failure".to_string()))
+            Err(ProcessingError::InvalidConfiguration(
+                "Mock validation failure".to_string(),
+            ))
         }
     }
 
@@ -352,11 +384,11 @@ mod tests {
         assert!(processor.is_empty());
         assert_eq!(processor.len(), 0);
         assert!(processor.is_identity());
-        
+
         let context = ProcessingContext::default();
         let mut logits = vec![1.0, 2.0, 3.0];
         let original = logits.clone();
-        
+
         assert!(processor.process_logits(&mut logits, &context).is_ok());
         assert_eq!(logits, original); // Should be unchanged
     }
@@ -365,11 +397,11 @@ mod tests {
     fn test_single_processor() {
         let mut processor = CompositeProcessor::new();
         let temp_processor = TemperatureProcessor::new(0.5).unwrap();
-        
+
         assert!(processor.add_processor(Box::new(temp_processor)).is_ok());
         assert_eq!(processor.len(), 1);
         assert!(!processor.is_identity());
-        
+
         let names = processor.processor_names();
         assert_eq!(names, vec!["TemperatureProcessor"]);
     }
@@ -380,14 +412,17 @@ mod tests {
         builder = builder.add(TemperatureProcessor::new(0.8).unwrap());
         builder = builder.add(TopKProcessor::new(40).unwrap());
         builder = builder.add(TopPProcessor::new(0.9).unwrap());
-        
+
         let mut processor = builder.build().unwrap();
         assert_eq!(processor.len(), 3);
         assert!(!processor.is_identity());
-        
+
         let names = processor.processor_names();
-        assert_eq!(names, vec!["TemperatureProcessor", "TopKProcessor", "TopPProcessor"]);
-        
+        assert_eq!(
+            names,
+            vec!["TemperatureProcessor", "TopKProcessor", "TopPProcessor"]
+        );
+
         // Test processing
         let context = ProcessingContext::default();
         let mut logits = vec![1.0, 2.0, 3.0, 0.5, 0.1];
@@ -397,19 +432,27 @@ mod tests {
     #[test]
     fn test_identity_optimization() {
         let mut processor = CompositeProcessor::new();
-        
+
         // Add mix of identity and non-identity processors
-        processor.add_processor(Box::new(TemperatureProcessor::new(0.8).unwrap())).unwrap();
-        processor.add_processor(Box::new(IdentityProcessor)).unwrap();
-        processor.add_processor(Box::new(TopKProcessor::new(40).unwrap())).unwrap();
-        processor.add_processor(Box::new(IdentityProcessor)).unwrap();
-        
+        processor
+            .add_processor(Box::new(TemperatureProcessor::new(0.8).unwrap()))
+            .unwrap();
+        processor
+            .add_processor(Box::new(IdentityProcessor))
+            .unwrap();
+        processor
+            .add_processor(Box::new(TopKProcessor::new(40).unwrap()))
+            .unwrap();
+        processor
+            .add_processor(Box::new(IdentityProcessor))
+            .unwrap();
+
         assert_eq!(processor.len(), 4);
-        
+
         let removed_count = processor.optimize();
         assert_eq!(removed_count, 2); // Should remove 2 identity processors
         assert_eq!(processor.len(), 2);
-        
+
         let names = processor.processor_names();
         assert_eq!(names, vec!["TemperatureProcessor", "TopKProcessor"]);
     }
@@ -417,28 +460,41 @@ mod tests {
     #[test]
     fn test_processor_insertion_removal() {
         let mut processor = CompositeProcessor::new();
-        
+
         // Add initial processors
-        processor.add_processor(Box::new(TemperatureProcessor::new(0.8).unwrap())).unwrap();
-        processor.add_processor(Box::new(TopKProcessor::new(40).unwrap())).unwrap();
-        
+        processor
+            .add_processor(Box::new(TemperatureProcessor::new(0.8).unwrap()))
+            .unwrap();
+        processor
+            .add_processor(Box::new(TopKProcessor::new(40).unwrap()))
+            .unwrap();
+
         // Insert at beginning
-        processor.insert_processor(0, Box::new(RepetitionPenaltyProcessor::with_repetition_penalty(1.2).unwrap())).unwrap();
+        processor
+            .insert_processor(
+                0,
+                Box::new(RepetitionPenaltyProcessor::with_repetition_penalty(1.2).unwrap()),
+            )
+            .unwrap();
         assert_eq!(processor.len(), 3);
         assert_eq!(processor.processor_names()[0], "RepetitionPenaltyProcessor");
-        
+
         // Insert in middle
-        processor.insert_processor(2, Box::new(TopPProcessor::new(0.9).unwrap())).unwrap();
+        processor
+            .insert_processor(2, Box::new(TopPProcessor::new(0.9).unwrap()))
+            .unwrap();
         assert_eq!(processor.len(), 4);
         assert_eq!(processor.processor_names()[2], "TopPProcessor");
-        
+
         // Remove from middle
         let removed = processor.remove_processor(1).unwrap();
         assert_eq!(removed.name(), "TemperatureProcessor");
         assert_eq!(processor.len(), 3);
-        
+
         // Test invalid indices
-        assert!(processor.insert_processor(10, Box::new(IdentityProcessor)).is_err());
+        assert!(processor
+            .insert_processor(10, Box::new(IdentityProcessor))
+            .is_err());
         assert!(processor.remove_processor(10).is_err());
     }
 
@@ -447,16 +503,18 @@ mod tests {
         // Test validation failure during add
         let mut processor = CompositeProcessor::new();
         assert!(processor.add_processor(Box::new(FailingProcessor)).is_err());
-        
+
         // Test chain validation
         let mut processor = CompositeProcessor::new();
-        processor.add_processor(Box::new(TemperatureProcessor::new(0.8).unwrap())).unwrap();
+        processor
+            .add_processor(Box::new(TemperatureProcessor::new(0.8).unwrap()))
+            .unwrap();
         // Manually add invalid processor (bypassing validation)
         processor.processors.push(Box::new(FailingProcessor));
         processor.recalculate_identity();
-        
+
         assert!(processor.validate_chain().is_err());
-        
+
         // Test processing error propagation
         let context = ProcessingContext::default();
         let mut logits = vec![1.0, 2.0, 3.0];
@@ -466,12 +524,16 @@ mod tests {
     #[test]
     fn test_clear() {
         let mut processor = CompositeProcessor::new();
-        processor.add_processor(Box::new(TemperatureProcessor::new(0.8).unwrap())).unwrap();
-        processor.add_processor(Box::new(TopKProcessor::new(40).unwrap())).unwrap();
-        
+        processor
+            .add_processor(Box::new(TemperatureProcessor::new(0.8).unwrap()))
+            .unwrap();
+        processor
+            .add_processor(Box::new(TopKProcessor::new(40).unwrap()))
+            .unwrap();
+
         assert_eq!(processor.len(), 2);
         assert!(!processor.is_identity());
-        
+
         processor.clear();
         assert_eq!(processor.len(), 0);
         assert!(processor.is_identity());
@@ -486,11 +548,14 @@ mod tests {
             .add(TopPProcessor::new(0.9).unwrap())
             .build()
             .unwrap();
-        
+
         assert_eq!(processor.len(), 3);
-        
+
         let names = processor.processor_names();
-        assert_eq!(names, vec!["TemperatureProcessor", "TopKProcessor", "TopPProcessor"]);
+        assert_eq!(
+            names,
+            vec!["TemperatureProcessor", "TopKProcessor", "TopPProcessor"]
+        );
     }
 
     #[test]
@@ -502,9 +567,9 @@ mod tests {
             .add(IdentityProcessor)
             .build_optimized()
             .unwrap();
-        
+
         assert_eq!(processor.len(), 2); // Identity processors should be removed
-        
+
         let names = processor.processor_names();
         assert_eq!(names, vec!["TemperatureProcessor", "TopKProcessor"]);
     }
@@ -518,18 +583,18 @@ mod tests {
             .add(TopPProcessor::new(0.9).unwrap())
             .build()
             .unwrap();
-        
+
         let mut context = ProcessingContext::default();
         context.token_history = vec![1, 2, 3, 1, 2]; // Some repeated tokens
-        
+
         let mut logits = vec![2.0, 1.5, 1.0, 0.5, 0.1, 0.05, 0.01];
         let original = logits.clone();
-        
+
         assert!(processor.process_logits(&mut logits, &context).is_ok());
-        
+
         // Verify that processing occurred (logits should be modified)
         assert_ne!(logits, original);
-        
+
         // Verify that the chain applied all processors
         assert_eq!(processor.len(), 4);
     }

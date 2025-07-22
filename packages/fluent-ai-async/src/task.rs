@@ -1,12 +1,11 @@
-//! IMPORTANT: Pure streaming primitives - NO Future/async/await!
+//! Pure streaming task primitives - NO Future/async/await!
 //!
-//! ⚠️  ALL FUTURE USAGE ELIMINATED - PURE ASYNCSTREAM ARCHITECTURE ⚠️
-//! Stream-first design with .collect() for await-like behavior
-//!
-//! Zero-allocation, crossbeam-based streaming primitives with proven performance
-//! No NotResult constraints - errors handled internally
+//! Zero-allocation, crossbeam-based streaming primitives with proven performance.
+//! Stream-first design with .collect() for await-like behavior.
 
-use crossbeam_channel::{Receiver, Sender, bounded};
+use crossbeam_channel::{bounded, Receiver, Sender};
+
+use crate::stream::{AsyncStream, AsyncStreamSender};
 
 /// Pure streaming task - NO Future implementation!
 /// Zero-allocation one-shot streaming built on crossbeam
@@ -36,7 +35,9 @@ where
     /// This is the primary method for await-like usage
     #[inline]
     pub fn collect(self) -> T {
-        self.rx.recv().expect("AsyncTask sender dropped without sending")
+        self.rx
+            .recv()
+            .expect("AsyncTask sender dropped without sending")
     }
 
     /// Non-blocking try to receive result
@@ -49,6 +50,12 @@ where
     #[inline]
     pub fn into_receiver(self) -> Receiver<T> {
         self.rx
+    }
+
+    /// Check if task is ready (non-blocking)
+    #[inline]
+    pub fn is_ready(&self) -> bool {
+        !self.rx.is_empty()
     }
 }
 
@@ -64,7 +71,7 @@ where
 
     std::thread::spawn(move || {
         let result = f();
-        let _ = tx.send(result); // ignore error – receiver may be gone
+        let _ = tx.send(result); // Ignore error – receiver may be gone
     });
 
     AsyncTask { rx }
@@ -72,12 +79,28 @@ where
 
 /// Spawn a closure that produces multiple values as a stream
 #[inline]
-pub fn spawn_stream<F, T>(f: F) -> super::AsyncStream<T>
+pub fn spawn_stream<F, T>(f: F) -> AsyncStream<T>
 where
-    F: FnOnce(super::AsyncStreamSender<T>) + Send + 'static,
+    F: FnOnce(AsyncStreamSender<T>) + Send + 'static,
     T: Send + 'static,
 {
-    let (sender, stream) = super::AsyncStream::channel();
+    let (sender, stream) = AsyncStream::channel();
+
+    std::thread::spawn(move || {
+        f(sender);
+    });
+
+    stream
+}
+
+/// Spawn a closure with custom stream capacity
+#[inline]
+pub fn spawn_stream_with_capacity<F, T, const CAP: usize>(f: F) -> AsyncStream<T, CAP>
+where
+    F: FnOnce(AsyncStreamSender<T, CAP>) + Send + 'static,
+    T: Send + 'static,
+{
+    let (sender, stream) = AsyncStream::channel();
 
     std::thread::spawn(move || {
         f(sender);

@@ -11,6 +11,7 @@ use arc_swap::ArcSwap;
 use arrayvec::{ArrayString, ArrayVec};
 use atomic_counter::RelaxedCounter;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
+use fluent_ai_domain::{AsyncTask, channel, spawn_async};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
@@ -24,7 +25,6 @@ use crate::{
     json_util,
     message::Message,
 };
-use fluent_ai_domain::{AsyncTask, spawn_async, channel};
 
 // ============================================================================
 // OpenRouter API Client with HTTP3 and zero-allocation patterns
@@ -418,7 +418,10 @@ impl<'a> OpenRouterCompletionBuilder<'a, NeedsPrompt> {
 impl<'a> OpenRouterCompletionBuilder<'a, HasPrompt> {
     /// Build the completion request
     fn build_request(&self) -> Result<CompletionRequest, PromptError> {
-        let prompt = self.prompt.as_ref().ok_or_else(|| PromptError::MissingPrompt)?;
+        let prompt = self
+            .prompt
+            .as_ref()
+            .ok_or_else(|| PromptError::MissingPrompt)?;
 
         let mut builder =
             CompletionRequestBuilder::new(self.model_name.to_string(), prompt.clone())?;

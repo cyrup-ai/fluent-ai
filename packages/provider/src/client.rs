@@ -58,7 +58,10 @@ pub trait CompletionModel: Send + Sync + Clone {
     type Error: Send + Sync + 'static;
 
     /// Generate completion from prompt using the domain pattern
-    fn prompt(&self, prompt: fluent_ai_domain::prompt::Prompt) -> Box<dyn AsyncStream<CompletionChunk>>;
+    fn prompt(
+        &self,
+        prompt: fluent_ai_domain::prompt::Prompt,
+    ) -> Box<dyn AsyncStream<CompletionChunk>>;
 
     /// Perform completion
     fn completion(

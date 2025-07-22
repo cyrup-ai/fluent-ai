@@ -8,20 +8,22 @@
 
 use std::{convert::Infallible, str::FromStr};
 
+use fluent_ai_domain::completion::CompletionRequest;
+use fluent_ai_domain::completion::StreamingCoreResponse;
+use fluent_ai_domain::completion::{
+    self, CompletionCoreError, StreamingCoreResponse as RigStreaming,
+};
+use fluent_ai_domain::message::{self, MessageError};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio::runtime::{self as rt};
+use tokio::task::spawn as AsyncTask;
 
 use super::client::Client;
 use crate::{
     OneOrMany,
     clients::openai::{self, TranscriptionResponse, send_compatible_streaming_request},
 };
-use fluent_ai_domain::completion::CompletionRequest;
-use fluent_ai_domain::completion::{self, CompletionCoreError, StreamingCoreResponse as RigStreaming};
-use fluent_ai_domain::message::{self, MessageError};
-use tokio::runtime::{self as rt};
-use tokio::task::spawn as AsyncTask;
-use fluent_ai_domain::completion::StreamingCoreResponse;
 
 // ───────────────────────────── public constants ──────────────────────────
 

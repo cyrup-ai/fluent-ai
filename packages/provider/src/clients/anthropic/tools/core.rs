@@ -3,13 +3,12 @@
 //! Foundational types and traits for the Anthropic tool system with
 //! optimal performance, lock-free operations, and elegant ergonomics.
 
-
 use std::collections::HashMap;
-use fluent_ai_domain::AsyncStream;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use bytes::Bytes;
 use crossbeam_channel as channel;
+use fluent_ai_domain::AsyncStream;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -27,9 +26,8 @@ pub enum SchemaType {
 }
 
 /// Zero-allocation closure storage types for event handlers
-pub type InvocationHandler<D, Req, Res> = Box<
-    dyn Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<AnthropicResult<()>> + Send + Sync,
->;
+pub type InvocationHandler<D, Req, Res> =
+    Box<dyn Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<AnthropicResult<()>> + Send + Sync>;
 pub type ErrorHandler<D> =
     Box<dyn Fn(&Conversation, &ChainControl, AnthropicError, &D) + Send + Sync>;
 pub type ResultHandler<D, Res> =

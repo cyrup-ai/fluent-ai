@@ -1,9 +1,9 @@
 use std::time::SystemTime;
 use crate::ZeroOneOrMany;
-use crate::async_task::{AsyncTask, spawn_async};
+use fluent_ai_async::{AsyncTask, spawn_task as spawn_async};
 use serde_json::Value;
 use std::sync::atomic::{AtomicU64, Ordering};
-use crate::async_task::AsyncStream;
+use fluent_ai_async::AsyncStream;
 
 #[derive(Debug)]
 pub enum VectorStoreError {

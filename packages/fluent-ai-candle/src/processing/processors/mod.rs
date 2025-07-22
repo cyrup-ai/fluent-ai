@@ -7,33 +7,33 @@
 //! - Numerical stability guarantees
 //! - Composable architecture for complex sampling strategies
 
+pub mod composite;
+pub mod repetition_penalty;
 pub mod temperature;
 pub mod top_k;
 pub mod top_p;
-pub mod repetition_penalty;
-pub mod composite;
 
 // Re-export all processors for convenience
+pub use composite::{CompositeProcessor, CompositeProcessorBuilder};
+pub use repetition_penalty::RepetitionPenaltyProcessor;
 pub use temperature::TemperatureProcessor;
 pub use top_k::TopKProcessor;
 pub use top_p::TopPProcessor;
-pub use repetition_penalty::RepetitionPenaltyProcessor;
-pub use composite::{CompositeProcessor, CompositeProcessorBuilder};
 
 /// Processor priority constants for automatic ordering
 pub mod priorities {
     /// Context-dependent processors (highest priority)
     pub const CONTEXT_DEPENDENT: u8 = 10;
-    
+
     /// Distribution modifiers (high priority)
     pub const DISTRIBUTION_MODIFIER: u8 = 20;
-    
+
     /// Filtering processors (medium priority)
     pub const FILTERING: u8 = 30;
-    
+
     /// Post-processing (low priority)
     pub const POST_PROCESSING: u8 = 40;
-    
+
     /// Custom processors (lowest priority)
     pub const CUSTOM: u8 = 50;
 }
@@ -41,7 +41,7 @@ pub mod priorities {
 /// Common processor configurations for different use cases
 pub mod presets {
     use super::*;
-    use crate::processing::{ProcessingResult, ProcessingError, traits::LogitsProcessor};
+    use crate::processing::{traits::LogitsProcessor, ProcessingError, ProcessingResult};
 
     /// Create standard text generation processor chain
     pub fn text_generation(
@@ -54,7 +54,9 @@ pub mod presets {
 
         // Add repetition penalty first (context-dependent)
         if let Some(penalty) = repetition_penalty {
-            processors.push(Box::new(RepetitionPenaltyProcessor::new(penalty, 0.0, 0.0, 0)?));
+            processors.push(Box::new(RepetitionPenaltyProcessor::new(
+                penalty, 0.0, 0.0, 0,
+            )?));
         }
 
         // Add temperature scaling
@@ -76,30 +78,30 @@ pub mod presets {
     /// Create creative writing processor chain
     pub fn creative_writing() -> ProcessingResult<CompositeProcessor> {
         text_generation(
-            0.85,        // Higher temperature for creativity
-            None,        // No top-k limit
-            Some(0.92),  // Nucleus sampling
-            Some(1.15),  // Moderate repetition penalty
+            0.85,       // Higher temperature for creativity
+            None,       // No top-k limit
+            Some(0.92), // Nucleus sampling
+            Some(1.15), // Moderate repetition penalty
         )
     }
 
     /// Create code generation processor chain
     pub fn code_generation() -> ProcessingResult<CompositeProcessor> {
         text_generation(
-            0.2,         // Low temperature for precision
-            Some(20),    // Focused vocabulary
-            Some(0.95),  // High nucleus threshold
-            Some(1.05),  // Minimal repetition penalty
+            0.2,        // Low temperature for precision
+            Some(20),   // Focused vocabulary
+            Some(0.95), // High nucleus threshold
+            Some(1.05), // Minimal repetition penalty
         )
     }
 
     /// Create conversational processor chain
     pub fn conversation() -> ProcessingResult<CompositeProcessor> {
         text_generation(
-            0.7,         // Balanced temperature
-            Some(40),    // Moderate vocabulary focus
-            Some(0.9),   // Standard nucleus sampling
-            Some(1.1),   // Standard repetition penalty
+            0.7,       // Balanced temperature
+            Some(40),  // Moderate vocabulary focus
+            Some(0.9), // Standard nucleus sampling
+            Some(1.1), // Standard repetition penalty
         )
     }
 
@@ -123,28 +125,31 @@ pub mod presets {
 /// Utility functions for processor management
 pub mod utils {
     use super::*;
-    use crate::processing::{ProcessingResult, ProcessingError, traits::LogitsProcessor};
+    use crate::processing::{traits::LogitsProcessor, ProcessingError, ProcessingResult};
 
     /// Validate processor compatibility
-    /// 
+    ///
     /// Checks if processors can be safely composed together.
     /// Some processors may have conflicting behavior or requirements.
     pub fn validate_processor_compatibility(
-        processors: &[&dyn LogitsProcessor]
+        processors: &[&dyn LogitsProcessor],
     ) -> ProcessingResult<()> {
         if processors.is_empty() {
-            return Err(ProcessingError::InvalidConfiguration("Empty processor list".to_string()));
+            return Err(ProcessingError::InvalidConfiguration(
+                "Empty processor list".to_string(),
+            ));
         }
 
         // Check for duplicate processor types
         let mut processor_names: std::collections::HashSet<&str> = std::collections::HashSet::new();
-        
+
         for processor in processors {
             let name = processor.name();
             if processor_names.contains(name) {
-                return Err(ProcessingError::InvalidConfiguration(
-                    format!("Duplicate processor type: {}", name)
-                ));
+                return Err(ProcessingError::InvalidConfiguration(format!(
+                    "Duplicate processor type: {}",
+                    name
+                )));
             }
             processor_names.insert(name);
         }
@@ -158,25 +163,24 @@ pub mod utils {
     }
 
     /// Find processor by name in chain
-    /// 
+    ///
     /// Returns the index of the first processor matching the given name.
     pub fn find_processor_by_name(
-        processors: &[&dyn LogitsProcessor], 
-        name: &str
+        processors: &[&dyn LogitsProcessor],
+        name: &str,
     ) -> Option<usize> {
-        processors.iter()
-            .position(|p| p.name() == name)
+        processors.iter().position(|p| p.name() == name)
     }
 
     /// Check if processor chain is identity (no-op)
-    /// 
+    ///
     /// Returns true if all processors in the chain are identity operations.
     pub fn is_identity_chain(processors: &[&dyn LogitsProcessor]) -> bool {
         processors.iter().all(|p| p.is_identity())
     }
 
     /// Generate processor chain summary
-    /// 
+    ///
     /// Creates a human-readable summary of the processor chain configuration.
     pub fn chain_summary(processors: &[&dyn LogitsProcessor]) -> String {
         if processors.is_empty() {
@@ -188,25 +192,26 @@ pub mod utils {
     }
 
     /// Validate logits for basic correctness
-    /// 
+    ///
     /// Performs basic validation to ensure logits are in a valid state.
     pub fn validate_logits(logits: &[f32], context: &str) -> ProcessingResult<()> {
         if logits.is_empty() {
-            return Err(ProcessingError::InvalidInput(
-                format!("Empty logits array in context: {}", context)
-            ));
+            return Err(ProcessingError::InvalidInput(format!(
+                "Empty logits array in context: {}",
+                context
+            )));
         }
 
         // Check for invalid values
         for (i, &logit) in logits.iter().enumerate() {
             if !logit.is_finite() {
-                return Err(ProcessingError::NumericalError(
-                    format!("Non-finite logit at index {} in context {}: {}", i, context, logit)
-                ));
+                return Err(ProcessingError::NumericalError(format!(
+                    "Non-finite logit at index {} in context {}: {}",
+                    i, context, logit
+                )));
             }
         }
 
         Ok(())
     }
 }
-

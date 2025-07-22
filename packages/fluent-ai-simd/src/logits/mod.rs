@@ -23,23 +23,23 @@ pub enum LogitsError {
     /// Invalid input length for logits processing
     #[error("Invalid input length: {0}")]
     InvalidInputLength(usize),
-    
+
     /// Numerical computation error during processing
     #[error("Numerical error: {0}")]
     NumericalError(String),
-    
+
     /// Unsupported operation requested
     #[error("Unsupported operation: {0}")]
     UnsupportedOperation(String),
-    
+
     /// Error during sampling process
     #[error("Sampling error: {0}")]
     SamplingError(String),
-    
+
     /// Configuration validation error
     #[error("Configuration error: {0}")]
     ConfigError(String),
-    
+
     /// SIMD processing error
     #[error("SIMD error: {0}")]
     SimdError(#[from] crate::error::SimdError),
@@ -51,15 +51,11 @@ pub type LogitsResult<T> = Result<T, LogitsError>;
 /// Trait for logits processing operations
 pub trait LogitsProcessor: Send + Sync {
     /// Process logits in-place
-    fn process(
-        &mut self,
-        logits: &mut [f32],
-        context: &ProcessingContext,
-    ) -> LogitsResult<()>;
-    
+    fn process(&mut self, logits: &mut [f32], context: &ProcessingContext) -> LogitsResult<()>;
+
     /// Get the current configuration
     fn config(&self) -> &ProcessorConfig;
-    
+
     /// Get a mutable reference to the configuration
     fn config_mut(&mut self) -> &mut ProcessorConfig;
 }
@@ -87,7 +83,7 @@ pub fn process_logits_scalar(
             // Find the k-th largest element
             let mut sorted: Vec<f32> = logits.iter().copied().collect();
             sorted.sort_unstable_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
-            
+
             // Set all elements below the k-th to negative infinity
             let threshold = sorted[k];
             for x in logits.iter_mut() {
@@ -104,17 +100,18 @@ pub fn process_logits_scalar(
             // Sort logits in descending order
             let mut sorted_indices: Vec<usize> = (0..logits.len()).collect();
             sorted_indices.sort_unstable_by(|&i, &j| {
-                logits[j].partial_cmp(&logits[i])
+                logits[j]
+                    .partial_cmp(&logits[i])
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
-            
+
             // Calculate cumulative probability
             let mut cumulative = 0.0;
             let mut cutoff = logits.len();
-            
+
             // First, get the logits values for the sorted indices
             let sorted_values: Vec<f32> = sorted_indices.iter().map(|&i| logits[i]).collect();
-            
+
             // Find the cutoff point where cumulative probability exceeds p
             for (i, &value) in sorted_values.iter().enumerate() {
                 cumulative += value.exp();
@@ -123,55 +120,56 @@ pub fn process_logits_scalar(
                     break;
                 }
             }
-            
+
             // Set all elements after cutoff to negative infinity
             for &idx in &sorted_indices[cutoff..] {
                 logits[idx] = f32::NEG_INFINITY;
             }
         }
     }
-    
+
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
-    
+
+    use super::*;
+
     #[test]
     fn test_temperature_scaling() {
         let mut logits = vec![1.0, 2.0, 3.0];
         let context = ProcessingContext::new().with_temperature(0.5);
         let config = ProcessorConfig::default();
-        
+
         process_logits_scalar(&mut logits, &context, &config).unwrap();
         assert_relative_eq!(logits[0], 2.0);
         assert_relative_eq!(logits[1], 4.0);
         assert_relative_eq!(logits[2], 6.0);
     }
-    
+
     #[test]
     fn test_topk_filtering() {
         let mut logits = vec![3.0, 1.0, 4.0, 1.0, 5.0];
         let context = ProcessingContext::new().with_top_k(Some(2));
         let config = ProcessorConfig::default();
-        
+
         process_logits_scalar(&mut logits, &context, &config).unwrap();
-        
+
         // Only top 2 values should remain non-negative infinity
-        let mut non_inf = logits.iter().filter(|&&x| x > f32::NEG_INFINITY).count();
+        let non_inf = logits.iter().filter(|&&x| x > f32::NEG_INFINITY).count();
         assert_eq!(non_inf, 2);
     }
-    
+
     #[test]
     fn test_nucleus_sampling() {
         let mut logits = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let context = ProcessingContext::new().with_top_p(Some(0.6));
         let config = ProcessorConfig::default();
-        
+
         process_logits_scalar(&mut logits, &context, &config).unwrap();
-        
+
         // At least one value should be set to negative infinity
         let has_inf = logits.iter().any(|&x| x == f32::NEG_INFINITY);
         assert!(has_inf);

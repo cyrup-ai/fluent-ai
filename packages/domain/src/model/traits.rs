@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::{info::ModelInfo, Usage};
+use crate::model::{Usage, info::ModelInfo};
 
 /// Core trait for all AI models
 ///

@@ -3,6 +3,7 @@
 //! Contains pure data structures for audio processing.
 //! Builder implementations are in the fluent_ai package.
 
+use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 
 /// Represents audio data with format and media type information
@@ -10,10 +11,10 @@ use serde::{Deserialize, Serialize};
 pub struct Audio {
     /// The audio data (can be base64-encoded, raw bytes, or a URL)
     pub data: String,
-    
+
     /// The format of the audio data
     pub format: Option<ContentFormat>,
-    
+
     /// The media type of the audio
     pub media_type: Option<AudioMediaType>,
 }
@@ -23,10 +24,10 @@ pub struct Audio {
 pub enum ContentFormat {
     /// Base64-encoded audio data
     Base64,
-    
+
     /// Raw binary audio data
     Raw,
-    
+
     /// URL pointing to audio resource
     Url,
 }
@@ -36,16 +37,16 @@ pub enum ContentFormat {
 pub enum AudioMediaType {
     /// MP3 audio format
     MP3,
-    
+
     /// WAV audio format
     WAV,
-    
+
     /// OGG audio format
     OGG,
-    
+
     /// M4A audio format
     M4A,
-    
+
     /// FLAC audio format
     FLAC,
 }
@@ -66,41 +67,43 @@ impl Audio {
             media_type: None,
         }
     }
-    
+
     /// Set the format of the audio data
     pub fn with_format(mut self, format: ContentFormat) -> Self {
         self.format = Some(format);
         self
     }
-    
+
     /// Set the media type of the audio
     pub fn with_media_type(mut self, media_type: AudioMediaType) -> Self {
         self.media_type = Some(media_type);
         self
     }
-    
+
     /// Check if the audio is in base64 format
     pub fn is_base64(&self) -> bool {
         self.format == Some(ContentFormat::Base64)
     }
-    
+
     /// Check if the audio is raw binary data
     pub fn is_raw(&self) -> bool {
         self.format == Some(ContentFormat::Raw)
     }
-    
+
     /// Check if the audio is a URL
     pub fn is_url(&self) -> bool {
         self.format == Some(ContentFormat::Url)
     }
-    
+
     /// Get the audio data as bytes
-    /// 
+    ///
     /// # Errors
     /// Returns an error if the data is not in base64 format
     pub fn as_bytes(&self) -> Result<Vec<u8>, String> {
         if self.is_base64() {
-            base64::decode(&self.data).map_err(|e| e.to_string())
+            general_purpose::STANDARD
+                .decode(&self.data)
+                .map_err(|e| e.to_string())
         } else if self.is_raw() {
             Ok(self.data.as_bytes().to_vec())
         } else {
@@ -112,7 +115,7 @@ impl Audio {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_audio_creation() {
         let audio = Audio::new("test");
@@ -120,24 +123,24 @@ mod tests {
         assert!(audio.format.is_none());
         assert!(audio.media_type.is_none());
     }
-    
+
     #[test]
     fn test_audio_builder_pattern() {
         let audio = Audio::new("test")
             .with_format(ContentFormat::Base64)
             .with_media_type(AudioMediaType::MP3);
-            
+
         assert_eq!(audio.data, "test");
         assert_eq!(audio.format, Some(ContentFormat::Base64));
         assert_eq!(audio.media_type, Some(AudioMediaType::MP3));
     }
-    
+
     #[test]
     fn test_audio_format_checks() {
         let base64_audio = Audio::new("dGVzdA==").with_format(ContentFormat::Base64);
         let raw_audio = Audio::new("raw").with_format(ContentFormat::Raw);
         let url_audio = Audio::new("https://example.com/audio.mp3").with_format(ContentFormat::Url);
-        
+
         assert!(base64_audio.is_base64());
         assert!(raw_audio.is_raw());
         assert!(url_audio.is_url());

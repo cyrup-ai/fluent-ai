@@ -10,8 +10,9 @@ pub mod message_processing;
 
 /// Core message types
 pub mod types {
-    use serde::{Deserialize, Serialize};
     use std::fmt;
+
+    use serde::{Deserialize, Serialize};
 
     /// Represents a chat message with role and content
     #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,10 +48,12 @@ pub mod types {
                 role,
                 content: String::from_utf8_lossy(content).to_string(),
                 id: Some(id.to_string()),
-                timestamp: Some(std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs()),
+                timestamp: Some(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                ),
             }
         }
     }
@@ -107,15 +110,17 @@ pub mod processing {
     use super::types::*;
 
     /// Process a message in place, applying transformations
-    pub fn process_message(message: &mut Message) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub fn process_message(
+        message: &mut Message,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Trim whitespace
         message.content = message.content.trim().to_string();
-        
+
         // Validate message isn't empty after trimming
         if message.content.is_empty() {
             return Err("Message cannot be empty after processing".into());
         }
-        
+
         Ok(())
     }
 

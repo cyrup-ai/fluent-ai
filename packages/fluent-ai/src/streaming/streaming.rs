@@ -13,7 +13,7 @@ use core::{
     task::{Context, Poll},
 };
 
-use futures::{Stream, StreamExt};
+use futures_util::{Stream, StreamExt};
 use serde_json::Value;
 
 use crate::{

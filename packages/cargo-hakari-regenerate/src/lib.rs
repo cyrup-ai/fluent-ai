@@ -6,10 +6,10 @@
 pub mod config;
 pub mod error;
 
+use std::process::Command;
+
 pub use config::{HakariConfig, OmittedDependency, PackageInfo, WorkspaceConfig};
 pub use error::{HakariRegenerateError, Result};
-
-use std::process::Command;
 
 /// Main regenerator for workspace-hack operations
 pub struct HakariRegenerator {

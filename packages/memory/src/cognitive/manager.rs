@@ -10,25 +10,17 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
 use std::thread;
-use crossbeam::channel::{bounded, unbounded, Receiver, Sender};
+use std::time::{Duration, Instant};
 
 use anyhow::Result;
+use crossbeam::channel::{Receiver, Sender, bounded, unbounded};
+// Use domain types for traits and models
+use fluent_ai_domain::{chat::Message, completion::CompletionProvider, model::ModelConfig};
+// Use provider clients for completion services
+use fluent_ai_provider::{anthropic::AnthropicClient, openai::OpenAIClient};
 use fluent_ai_simd::smart_cosine_similarity;
 
-// Use domain types for traits and models
-use fluent_ai_domain::{
-    completion::CompletionProvider,
-    model::ModelConfig,
-    chat::Message,
-};
-
-// Use provider clients for completion services
-use fluent_ai_provider::{
-    openai::OpenAIClient,
-    anthropic::AnthropicClient,
-};
 use crate::cognitive::quantum::types::EnhancedQuery;
 use crate::cognitive::quantum::types::QueryIntent;
 use crate::cognitive::types::{CognitiveMemoryNode, CognitiveSettings, CognitiveState};
@@ -49,7 +41,7 @@ use crate::memory::{
 use crate::{Error, memory::manager::SurrealDBMemoryManager};
 
 /// Production-quality cognitive memory manager with thread-safe operations
-/// 
+///
 /// Features:
 /// - Thread-based concurrent processing
 /// - Advanced cognitive state management
@@ -109,20 +101,18 @@ pub enum WorkRequest {
     },
 }
 
-
-
 impl CognitiveMemoryManager {
     /// Create a new production-quality cognitive memory manager
-    /// 
+    ///
     /// # Arguments
     /// * `surreal_url` - SurrealDB connection URL
     /// * `namespace` - Database namespace
     /// * `database` - Database name
     /// * `settings` - Cognitive processing settings
-    /// 
+    ///
     /// # Returns
     /// Result containing configured cognitive memory manager
-    /// 
+    ///
     /// # Errors
     /// - `Config` if database connection fails
     /// - `InitializationError` if cognitive components fail to initialize
@@ -133,10 +123,10 @@ impl CognitiveMemoryManager {
         settings: CognitiveSettings,
     ) -> Result<Self> {
         // Initialize legacy manager with synchronous connection
-        let db = futures::executor::block_on(surrealdb::engine::any::connect(surreal_url))
+        let db = futures_util::executor::block_on(surrealdb::engine::any::connect(surreal_url))
             .map_err(|e| Error::Config(format!("Failed to connect to SurrealDB: {}", e)))?;
 
-        futures::executor::block_on(db.use_ns(namespace).use_db(database))
+        futures_util::executor::block_on(db.use_ns(namespace).use_db(database))
             .map_err(|e| Error::Config(format!("Failed to use namespace/database: {}", e)))?;
 
         let legacy_manager = Arc::new(SurrealDBMemoryManager::new(db));
@@ -172,9 +162,10 @@ impl CognitiveMemoryManager {
             ..Default::default()
         };
 
-        let quantum_router = Arc::new(
-            futures::executor::block_on(QuantumRouter::new(state_manager, quantum_config))?
-        );
+        let quantum_router = Arc::new(futures_util::executor::block_on(QuantumRouter::new(
+            state_manager,
+            quantum_config,
+        ))?);
 
         let evolution_engine = Arc::new(RwLock::new(EvolutionEngine::new(
             settings.evolution_mutation_rate.into(),
@@ -194,17 +185,21 @@ impl CognitiveMemoryManager {
     }
 
     /// Create production completion provider with synchronous configuration
-    /// 
+    ///
     /// # Arguments
     /// * `settings` - Cognitive settings for provider configuration
-    /// 
+    ///
     /// # Returns
     /// Result containing configured completion provider
-    fn create_completion_provider(settings: &CognitiveSettings) -> Result<Arc<dyn CompletionProvider>> {
+    fn create_completion_provider(
+        settings: &CognitiveSettings,
+    ) -> Result<Arc<dyn CompletionProvider>> {
         // Use Provider package with automatic API key discovery
         let api_key = std::env::var("OPENAI_API_KEY")
             .or_else(|_| std::env::var("ANTHROPIC_API_KEY"))
-            .map_err(|_| anyhow::anyhow!("No API key found. Set OPENAI_API_KEY or ANTHROPIC_API_KEY"))?;
+            .map_err(|_| {
+                anyhow::anyhow!("No API key found. Set OPENAI_API_KEY or ANTHROPIC_API_KEY")
+            })?;
 
         // Create REAL OpenAI client as default (can be extended to support provider selection)
         let provider = OpenAIClient::new(api_key, "gpt-4")
@@ -214,10 +209,10 @@ impl CognitiveMemoryManager {
     }
 
     /// Enhance memory with cognitive features using thread-based processing
-    /// 
+    ///
     /// # Arguments
     /// * `memory` - Base memory node to enhance
-    /// 
+    ///
     /// # Returns
     /// Result containing cognitively enhanced memory node
     pub fn enhance_memory_cognitively(&self, memory: MemoryNode) -> Result<CognitiveMemoryNode> {
@@ -228,15 +223,19 @@ impl CognitiveMemoryManager {
         }
 
         // Generate cognitive state using thread-safe processing
-        let cognitive_state = self.cognitive_mesh.analyze_memory_state(&cognitive_memory.base_memory)?;
+        let cognitive_state = self
+            .cognitive_mesh
+            .analyze_memory_state(&cognitive_memory.base_memory)?;
         cognitive_memory.cognitive_state = cognitive_state;
 
         // Create quantum signature using synchronous operations
-        cognitive_memory.quantum_signature = 
+        cognitive_memory.quantum_signature =
             Some(self.generate_quantum_signature(&cognitive_memory)?);
 
         // Initialize evolution metadata with current state
-        let evolution_state = self.evolution_engine.read()
+        let evolution_state = self
+            .evolution_engine
+            .read()
             .map_err(|e| Error::Config(format!("Failed to read evolution state: {}", e)))?;
         let mut evolution_metadata = EvolutionMetadata::new();
         evolution_metadata.generation = evolution_state.generation();
@@ -244,7 +243,8 @@ impl CognitiveMemoryManager {
         cognitive_memory.evolution_metadata = Some(evolution_metadata);
 
         // Generate attention weights using thread-safe mechanism
-        let attention_weights = self.cognitive_mesh
+        let attention_weights = self
+            .cognitive_mesh
             .calculate_attention_weights(&cognitive_memory.base_memory)?;
         cognitive_memory.attention_weights = attention_weights;
 
@@ -252,18 +252,21 @@ impl CognitiveMemoryManager {
     }
 
     /// Generate quantum signature for memory using synchronous operations
-    /// 
+    ///
     /// # Arguments
     /// * `memory` - Cognitive memory node to generate signature for
-    /// 
+    ///
     /// # Returns
     /// Result containing quantum signature
     fn generate_quantum_signature(&self, memory: &CognitiveMemoryNode) -> Result<QuantumSignature> {
-        let embedding = self.cognitive_mesh.completion_provider
+        let embedding = self
+            .cognitive_mesh
+            .completion_provider
             .embed(&memory.base_memory.content)
             .unwrap_or_else(|_| {
                 // Fallback to content-based embedding
-                self.cognitive_mesh.generate_content_based_embedding(&memory.base_memory.content)
+                self.cognitive_mesh
+                    .generate_content_based_embedding(&memory.base_memory.content)
             });
 
         let enhanced_query = EnhancedQuery {
@@ -279,9 +282,9 @@ impl CognitiveMemoryManager {
         };
 
         // Generate quantum signature using synchronous router
-        let quantum_result = futures::executor::block_on(
-            self.quantum_router.route_query(&enhanced_query)
-        ).map_err(|e| Error::Config(format!("Quantum routing failed: {}", e)))?;
+        let quantum_result =
+            futures_util::executor::block_on(self.quantum_router.route_query(&enhanced_query))
+                .map_err(|e| Error::Config(format!("Quantum routing failed: {}", e)))?;
 
         Ok(QuantumSignature {
             coherence_fingerprint: embedding,
@@ -295,11 +298,11 @@ impl CognitiveMemoryManager {
     }
 
     /// Store cognitive metadata with production-grade thread-safe persistence
-    /// 
+    ///
     /// # Arguments
     /// * `memory_id` - Memory identifier
     /// * `cognitive_memory` - Enhanced memory with cognitive metadata
-    /// 
+    ///
     /// # Returns
     /// Result indicating success or failure
     pub fn store_cognitive_metadata(
@@ -315,15 +318,12 @@ impl CognitiveMemoryManager {
         let mut metadata_fields: ArrayVec<(&str, Value), 16> = ArrayVec::new();
 
         // Build cognitive metadata with atomic operations for thread safety
-        let enhancement_level = AtomicCell::new(
-            cognitive_memory.enhancement_level().unwrap_or(0.0) as f32
-        );
-        let confidence_score = AtomicCell::new(
-            cognitive_memory.confidence_score().unwrap_or(0.0) as f32
-        );
-        let complexity_estimate = AtomicCell::new(
-            cognitive_memory.complexity_estimate().unwrap_or(0.0) as f32
-        );
+        let enhancement_level =
+            AtomicCell::new(cognitive_memory.enhancement_level().unwrap_or(0.0) as f32);
+        let confidence_score =
+            AtomicCell::new(cognitive_memory.confidence_score().unwrap_or(0.0) as f32);
+        let complexity_estimate =
+            AtomicCell::new(cognitive_memory.complexity_estimate().unwrap_or(0.0) as f32);
 
         // Serialize cognitive metadata efficiently
         metadata_fields.push(("memory_id", Value::Strand(memory_id.into())));
@@ -333,7 +333,7 @@ impl CognitiveMemoryManager {
             Value::Number(enhancement_level.load().into()),
         ));
         metadata_fields.push((
-            "confidence_score", 
+            "confidence_score",
             Value::Number(confidence_score.load().into()),
         ));
         metadata_fields.push((
@@ -345,20 +345,18 @@ impl CognitiveMemoryManager {
         // Add cognitive embeddings if available
         if let Some(embedding) = cognitive_memory.get_cognitive_embedding() {
             let embedding_bytes = bincode::encode_to_vec(&embedding, bincode::config::standard())
-                .map_err(|e| Error::SerializationError(
-                    format!("Failed to serialize embedding: {}", e)
-                ))?;
+                .map_err(|e| {
+                Error::SerializationError(format!("Failed to serialize embedding: {}", e))
+            })?;
             metadata_fields.push(("embedding", Value::Bytes(embedding_bytes.into())));
         }
 
         // Add attention patterns if available
         if let Some(attention_data) = cognitive_memory.get_attention_patterns() {
-            let attention_bytes = bincode::encode_to_vec(
-                &attention_data,
-                bincode::config::standard(),
-            ).map_err(|e| Error::SerializationError(
-                format!("Failed to serialize attention: {}", e)
-            ))?;
+            let attention_bytes =
+                bincode::encode_to_vec(&attention_data, bincode::config::standard()).map_err(
+                    |e| Error::SerializationError(format!("Failed to serialize attention: {}", e)),
+                )?;
             metadata_fields.push(("attention_patterns", Value::Bytes(attention_bytes.into())));
         }
 
@@ -384,15 +382,13 @@ impl CognitiveMemoryManager {
             query = query.bind((key, value));
         }
 
-        let mut response = futures::executor::block_on(query)
-            .map_err(|e| Error::DatabaseError(
-                format!("Failed to store cognitive metadata: {}", e)
-            ))?;
+        let mut response = futures_util::executor::block_on(query).map_err(|e| {
+            Error::DatabaseError(format!("Failed to store cognitive metadata: {}", e))
+        })?;
 
-        let result: Option<Thing> = response.take(0)
-            .map_err(|e| Error::DatabaseError(
-                format!("Failed to parse storage result: {}", e)
-            ))?;
+        let result: Option<Thing> = response
+            .take(0)
+            .map_err(|e| Error::DatabaseError(format!("Failed to parse storage result: {}", e)))?;
 
         match result {
             Some(_) => {
@@ -415,18 +411,17 @@ impl CognitiveMemoryManager {
     }
 
     /// Advanced cognitive search with thread-based processing
-    /// 
+    ///
     /// # Arguments
     /// * `query` - Enhanced query with cognitive context
     /// * `limit` - Maximum number of results to return
-    /// 
+    ///
     /// # Returns
     /// Result containing ranked memory nodes
     pub fn cognitive_search(&self, query: &EnhancedQuery, limit: usize) -> Result<Vec<MemoryNode>> {
         // Use quantum router to determine search strategy
-        let routing_decision = futures::executor::block_on(
-            self.quantum_router.route_query(query)
-        )?;
+        let routing_decision =
+            futures_util::executor::block_on(self.quantum_router.route_query(query))?;
 
         tracing::debug!(
             "Cognitive search routing: strategy={:?}, confidence={:.3}, context={}",
@@ -437,31 +432,31 @@ impl CognitiveMemoryManager {
 
         // Calculate effective search limit based on routing strategy
         let effective_limit = self.calculate_effective_limit(
-            limit, 
-            &routing_decision.strategy, 
-            routing_decision.confidence
+            limit,
+            &routing_decision.strategy,
+            routing_decision.confidence,
         );
 
         // Get memories using synchronous legacy manager
-        let memory_results = self.legacy_manager.search_by_content_sync(&query.original, effective_limit)?;
-        
+        let memory_results = self
+            .legacy_manager
+            .search_by_content_sync(&query.original, effective_limit)?;
+
         // Score memories using attention mechanism with thread-safe operations
-        let scored_memories = self.score_memories_with_attention(
-            &memory_results,
-            &query.context_embedding
-        )?;
+        let scored_memories =
+            self.score_memories_with_attention(&memory_results, &query.context_embedding)?;
 
         // Return top results up to the requested limit
         Ok(scored_memories.into_iter().take(limit).collect())
     }
 
     /// Calculate effective search limit based on routing strategy
-    /// 
+    ///
     /// # Arguments
     /// * `base_limit` - Base limit requested by caller
     /// * `strategy` - Routing strategy from quantum router
     /// * `confidence` - Confidence score from routing
-    /// 
+    ///
     /// # Returns
     /// Calculated effective limit for search
     fn calculate_effective_limit(
@@ -484,11 +479,11 @@ impl CognitiveMemoryManager {
     }
 
     /// Score memories using attention mechanism with SIMD optimization
-    /// 
+    ///
     /// # Arguments
     /// * `memories` - Vector of memory nodes to score
     /// * `query_embedding` - Query embedding for similarity calculation
-    /// 
+    ///
     /// # Returns
     /// Result containing sorted memories by relevance score
     fn score_memories_with_attention(
@@ -496,19 +491,24 @@ impl CognitiveMemoryManager {
         memories: &[MemoryNode],
         query_embedding: &[f32],
     ) -> Result<Vec<MemoryNode>> {
-        let mut attention = self.cognitive_mesh.attention_mechanism.write()
+        let mut attention = self
+            .cognitive_mesh
+            .attention_mechanism
+            .write()
             .map_err(|e| anyhow::anyhow!("Failed to acquire attention lock: {}", e))?;
 
         // Generate embeddings for all memories with caching
         let mut memory_embeddings = Vec::with_capacity(memories.len());
         for memory in memories {
-            let embedding = self.cognitive_mesh.get_or_generate_embedding(&memory.content)?;
+            let embedding = self
+                .cognitive_mesh
+                .get_or_generate_embedding(&memory.content)?;
             memory_embeddings.push((memory.id.clone(), embedding));
         }
 
         // Score memories using attention mechanism
-        let scored = futures::executor::block_on(
-            attention.score_memories(query_embedding, &memory_embeddings)
+        let scored = futures_util::executor::block_on(
+            attention.score_memories(query_embedding, &memory_embeddings),
         );
 
         // Sort memories by relevance score using SIMD-optimized similarity
@@ -522,19 +522,24 @@ impl CognitiveMemoryManager {
         scored_memories.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
 
         // Extract sorted memories
-        Ok(scored_memories.into_iter().map(|(_, memory)| memory.clone()).collect())
+        Ok(scored_memories
+            .into_iter()
+            .map(|(_, memory)| memory.clone())
+            .collect())
     }
 
     /// Learn from search results using evolution engine
-    /// 
+    ///
     /// # Arguments
     /// * `query` - Enhanced query that was processed
     /// * `results` - Search results for learning
-    /// 
+    ///
     /// # Returns
     /// Result indicating success or failure of learning process
     pub fn learn_from_search(&self, _query: &EnhancedQuery, results: &[MemoryNode]) -> Result<()> {
-        let mut evolution = self.evolution_engine.write()
+        let mut evolution = self
+            .evolution_engine
+            .write()
             .map_err(|e| anyhow::anyhow!("Failed to acquire evolution lock: {}", e))?;
 
         // Record performance metrics for evolution
@@ -552,7 +557,9 @@ impl CognitiveMemoryManager {
         evolution.record_fitness(metrics);
 
         // Trigger evolution if needed using synchronous operations
-        if let Some(evolution_result) = futures::executor::block_on(evolution.evolve_if_needed()) {
+        if let Some(evolution_result) =
+            futures_util::executor::block_on(evolution.evolve_if_needed())
+        {
             tracing::info!(
                 "System evolution triggered: generation={}, predicted_improvement={}",
                 evolution_result.generation,
@@ -564,10 +571,10 @@ impl CognitiveMemoryManager {
     }
 
     /// Estimate retrieval accuracy based on result quality metrics
-    /// 
+    ///
     /// # Arguments
     /// * `results` - Search results to evaluate
-    /// 
+    ///
     /// # Returns
     /// Accuracy estimate as a float between 0.0 and 1.0
     fn estimate_accuracy(results: &[MemoryNode]) -> f64 {
@@ -592,7 +599,9 @@ impl CognitiveMemoryManager {
             let metadata_completeness = if memory.metadata.is_empty() { 0.5 } else { 1.0 };
 
             // Recency factor for relevance estimation
-            let age_seconds = (chrono::Utc::now() - memory.created_at).num_seconds().max(0) as u64;
+            let age_seconds = (chrono::Utc::now() - memory.created_at)
+                .num_seconds()
+                .max(0) as u64;
             let recency_factor = if age_seconds < 86400 {
                 1.0
             } else if age_seconds < 604800 {
@@ -602,7 +611,7 @@ impl CognitiveMemoryManager {
             };
 
             // Combined relevance score with weighted factors
-            let relevance_score = 
+            let relevance_score =
                 (content_quality * 0.4) + (metadata_completeness * 0.3) + (recency_factor * 0.3);
             total_relevance += relevance_score;
         }
@@ -611,11 +620,11 @@ impl CognitiveMemoryManager {
     }
 
     /// Get related memories using thread-safe operations
-    /// 
+    ///
     /// # Arguments
     /// * `id` - Memory ID to find relations for
     /// * `limit` - Maximum number of related memories
-    /// 
+    ///
     /// # Returns
     /// Result containing related memory nodes
     pub fn get_related_memories(&self, id: &str, limit: usize) -> Result<Vec<MemoryNode>, Error> {
@@ -639,8 +648,8 @@ impl CognitiveMemoryManager {
         // Fetch actual memory nodes
         let mut related_memories = Vec::new();
         for related_id in related_ids {
-            if let Ok(Some(memory)) = 
-                futures::executor::block_on(self.legacy_manager.get_memory(&related_id)) 
+            if let Ok(Some(memory)) =
+                futures_util::executor::block_on(self.legacy_manager.get_memory(&related_id))
             {
                 related_memories.push(memory);
                 if related_memories.len() >= limit {
@@ -655,10 +664,10 @@ impl CognitiveMemoryManager {
 
 impl CognitiveMesh {
     /// Analyze memory state using cognitive state manager
-    /// 
+    ///
     /// # Arguments
     /// * `memory` - Memory node to analyze
-    /// 
+    ///
     /// # Returns
     /// Result containing cognitive state analysis
     fn analyze_memory_state(&self, memory: &MemoryNode) -> Result<CognitiveState> {
@@ -678,26 +687,28 @@ impl CognitiveMesh {
             domain_tags: vec![format!("{:?}", memory.memory_type)],
             abstraction_level: crate::cognitive::state::AbstractionLevel::Intermediate,
         };
-        
+
         let tracking_state = crate::cognitive::state::CognitiveState::new(semantic_context);
-        let state_id = futures::executor::block_on(self.state_manager.add_state(tracking_state));
-        
+        let state_id =
+            futures_util::executor::block_on(self.state_manager.add_state(tracking_state));
+
         tracing::debug!("Added cognitive state {} for memory analysis", state_id);
 
         Ok(cognitive_state)
     }
 
     /// Calculate attention weights for memory using SIMD optimization
-    /// 
+    ///
     /// # Arguments
     /// * `memory` - Memory node to calculate weights for
-    /// 
+    ///
     /// # Returns
     /// Result containing attention weight vector
     fn calculate_attention_weights(&self, memory: &MemoryNode) -> Result<Vec<f32>> {
         // Find related cognitive states
-        let related_states = futures::executor::block_on(
-            self.state_manager.find_by_concept(&format!("{:?}", memory.memory_type))
+        let related_states = futures_util::executor::block_on(
+            self.state_manager
+                .find_by_concept(&format!("{:?}", memory.memory_type)),
         );
 
         // Generate embedding for memory content
@@ -707,22 +718,22 @@ impl CognitiveMesh {
         let memory_embeddings: Vec<_> = related_states
             .iter()
             .enumerate()
-            .map(|(i, state)| {
-                (format!("state_{}", i), vec![state.activation_level; 512])
-            })
+            .map(|(i, state)| (format!("state_{}", i), vec![state.activation_level; 512]))
             .collect();
 
         // Use attention mechanism with thread-safe operations
-        let mut attention = self.attention_mechanism.write()
+        let mut attention = self
+            .attention_mechanism
+            .write()
             .map_err(|e| anyhow::anyhow!("Failed to acquire attention lock: {}", e))?;
-        
-        let scored_weights = futures::executor::block_on(
-            attention.score_memories(&memory_embedding, &memory_embeddings)
+
+        let scored_weights = futures_util::executor::block_on(
+            attention.score_memories(&memory_embedding, &memory_embeddings),
         );
 
         // Extract and normalize weights
         let mut weights: Vec<f32> = scored_weights.iter().map(|(_, score)| *score).collect();
-        
+
         if weights.is_empty() {
             weights.push(1.0);
         }
@@ -737,23 +748,25 @@ impl CognitiveMesh {
             "Calculated {} attention weights for memory using SIMD optimization",
             weights.len()
         );
-        
+
         Ok(weights)
     }
 
     /// Get or generate embedding with caching for performance
-    /// 
+    ///
     /// # Arguments
     /// * `text` - Text to get or generate embedding for
-    /// 
+    ///
     /// # Returns
     /// Result containing embedding vector
     fn get_or_generate_embedding(&self, text: &str) -> Result<Vec<f32>> {
         // Check cache first
         let cache_key = format!("{:x}", md5::compute(text.as_bytes()));
-        
+
         {
-            let cache = self.embedding_cache.read()
+            let cache = self
+                .embedding_cache
+                .read()
                 .map_err(|e| anyhow::anyhow!("Failed to read embedding cache: {}", e))?;
             if let Some(embedding) = cache.get(&cache_key) {
                 return Ok(embedding.clone());
@@ -761,13 +774,16 @@ impl CognitiveMesh {
         }
 
         // Generate new embedding using completion provider
-        let embedding = self.completion_provider.embed(text).unwrap_or_else(|_| {
-            self.generate_content_based_embedding(text)
-        });
+        let embedding = self
+            .completion_provider
+            .embed(text)
+            .unwrap_or_else(|_| self.generate_content_based_embedding(text));
 
         // Cache the result
         {
-            let mut cache = self.embedding_cache.write()
+            let mut cache = self
+                .embedding_cache
+                .write()
                 .map_err(|e| anyhow::anyhow!("Failed to write embedding cache: {}", e))?;
             cache.insert(cache_key, embedding.clone());
         }
@@ -776,17 +792,17 @@ impl CognitiveMesh {
     }
 
     /// Generate high-quality content-based embedding using SIMD optimization
-    /// 
+    ///
     /// # Arguments
     /// * `content` - Text content to generate embedding for
-    /// 
+    ///
     /// # Returns
     /// Optimized embedding vector using SIMD operations where possible
     fn generate_content_based_embedding(&self, content: &str) -> Vec<f32> {
         use std::collections::HashMap;
 
         let mut embedding = vec![0.0f32; 512];
-        
+
         if content.is_empty() {
             return embedding;
         }
@@ -910,20 +926,48 @@ impl CognitiveMesh {
         }
 
         // Code patterns
-        output[0] = if content.contains("fn ") || content.contains("function") { 1.0 } else { 0.0 };
-        output[1] = if content.contains("import ") || content.contains("#include") { 1.0 } else { 0.0 };
-        output[2] = if content.contains("//") || content.contains("/*") { 1.0 } else { 0.0 };
+        output[0] = if content.contains("fn ") || content.contains("function") {
+            1.0
+        } else {
+            0.0
+        };
+        output[1] = if content.contains("import ") || content.contains("#include") {
+            1.0
+        } else {
+            0.0
+        };
+        output[2] = if content.contains("//") || content.contains("/*") {
+            1.0
+        } else {
+            0.0
+        };
 
         // Documentation patterns
         if output.len() > 3 {
-            output[3] = if content.contains("# ") || content.contains("## ") { 1.0 } else { 0.0 };
-            output[4] = if content.contains("```") || content.contains("~~~") { 1.0 } else { 0.0 };
+            output[3] = if content.contains("# ") || content.contains("## ") {
+                1.0
+            } else {
+                0.0
+            };
+            output[4] = if content.contains("```") || content.contains("~~~") {
+                1.0
+            } else {
+                0.0
+            };
         }
 
         // Data patterns
         if output.len() > 5 {
-            output[5] = if content.contains(":") && content.contains("{") { 1.0 } else { 0.0 };
-            output[6] = if content.contains("=") && content.contains("[") { 1.0 } else { 0.0 };
+            output[5] = if content.contains(":") && content.contains("{") {
+                1.0
+            } else {
+                0.0
+            };
+            output[6] = if content.contains("=") && content.contains("[") {
+                1.0
+            } else {
+                0.0
+            };
         }
     }
 
@@ -941,10 +985,10 @@ impl CognitiveMesh {
 
 impl WorkerPool {
     /// Create new worker pool with specified number of threads
-    /// 
+    ///
     /// # Arguments
     /// * `num_workers` - Number of worker threads to create
-    /// 
+    ///
     /// # Returns
     /// Result containing configured worker pool
     fn new(num_workers: usize) -> Result<Self> {
@@ -958,8 +1002,10 @@ impl WorkerPool {
                 .spawn(move || {
                     Self::worker_thread(worker_id, receiver);
                 })
-                .map_err(|e| anyhow::anyhow!("Failed to spawn worker thread {}: {}", worker_id, e))?;
-            
+                .map_err(|e| {
+                    anyhow::anyhow!("Failed to spawn worker thread {}: {}", worker_id, e)
+                })?;
+
             worker_handles.push(handle);
         }
 
@@ -970,7 +1016,7 @@ impl WorkerPool {
     }
 
     /// Worker thread main loop for processing cognitive requests
-    /// 
+    ///
     /// # Arguments
     /// * `worker_id` - Unique worker identifier
     /// * `receiver` - Channel receiver for work requests
@@ -979,17 +1025,27 @@ impl WorkerPool {
 
         while let Ok(request) = receiver.recv() {
             match request {
-                WorkRequest::EnhanceMemory { memory, response_sender } => {
+                WorkRequest::EnhanceMemory {
+                    memory,
+                    response_sender,
+                } => {
                     // Process memory enhancement request
                     let result = Self::process_memory_enhancement(memory);
                     let _ = response_sender.send(result);
                 }
-                WorkRequest::CognitiveSearch { query, limit, response_sender } => {
+                WorkRequest::CognitiveSearch {
+                    query,
+                    limit,
+                    response_sender,
+                } => {
                     // Process cognitive search request
                     let result = Self::process_cognitive_search(query, limit);
                     let _ = response_sender.send(result);
                 }
-                WorkRequest::GenerateEmbedding { text, response_sender } => {
+                WorkRequest::GenerateEmbedding {
+                    text,
+                    response_sender,
+                } => {
                     // Process embedding generation request
                     let result = Self::process_embedding_generation(text);
                     let _ = response_sender.send(result);
@@ -1001,16 +1057,16 @@ impl WorkerPool {
     }
 
     /// Process memory enhancement in worker thread
-    /// 
+    ///
     /// # Arguments
     /// * `memory` - Memory node to enhance
-    /// 
+    ///
     /// # Returns
     /// Result containing enhanced cognitive memory
     fn process_memory_enhancement(memory: MemoryNode) -> Result<CognitiveMemoryNode> {
         // Basic cognitive enhancement without full manager context
         let mut cognitive_memory = CognitiveMemoryNode::from(memory);
-        
+
         // Add basic cognitive state
         cognitive_memory.cognitive_state = CognitiveState {
             activation_pattern: vec![1.0, 0.8, 0.6],
@@ -1025,11 +1081,11 @@ impl WorkerPool {
     }
 
     /// Process cognitive search in worker thread
-    /// 
+    ///
     /// # Arguments
     /// * `query` - Enhanced query for cognitive search
     /// * `limit` - Maximum number of results
-    /// 
+    ///
     /// # Returns
     /// Result containing search results
     fn process_cognitive_search(_query: EnhancedQuery, _limit: usize) -> Result<Vec<MemoryNode>> {
@@ -1038,10 +1094,10 @@ impl WorkerPool {
     }
 
     /// Process embedding generation in worker thread
-    /// 
+    ///
     /// # Arguments
     /// * `text` - Text to generate embedding for
-    /// 
+    ///
     /// # Returns
     /// Result containing generated embedding
     fn process_embedding_generation(text: String) -> Result<Vec<f32>> {
@@ -1051,18 +1107,20 @@ impl WorkerPool {
     }
 
     /// Generate basic embedding for text content
-    /// 
+    ///
     /// # Arguments
     /// * `text` - Text content to process
-    /// 
+    ///
     /// # Returns
     /// Generated embedding vector
     fn generate_basic_embedding(text: &str) -> Vec<f32> {
         let mut embedding = vec![0.0; 512];
-        
+
         // Simple character frequency based embedding
         for (i, byte) in text.bytes().enumerate() {
-            if i >= 512 { break; }
+            if i >= 512 {
+                break;
+            }
             embedding[i % 512] += (byte as f32) / 255.0;
         }
 
@@ -1085,12 +1143,15 @@ impl MemoryManager for CognitiveMemoryManager {
         thread::spawn(move || {
             let result = (|| -> Result<MemoryNode, Error> {
                 // Enhance memory with cognitive features
-                let cognitive_memory = manager.enhance_memory_cognitively(memory)
+                let cognitive_memory = manager
+                    .enhance_memory_cognitively(memory)
                     .map_err(|e| Error::Config(format!("Cognitive enhancement failed: {}", e)))?;
 
                 // Store base memory
-                let stored = futures::executor::block_on(
-                    manager.legacy_manager.create_memory(cognitive_memory.base_memory.clone())
+                let stored = futures_util::executor::block_on(
+                    manager
+                        .legacy_manager
+                        .create_memory(cognitive_memory.base_memory.clone()),
                 )?;
 
                 // Store cognitive metadata
@@ -1110,7 +1171,7 @@ impl MemoryManager for CognitiveMemoryManager {
         let (sender, receiver) = bounded(1);
 
         thread::spawn(move || {
-            let result = futures::executor::block_on(legacy_result)
+            let result = futures_util::executor::block_on(legacy_result)
                 .map_err(|e| Error::Config(format!("Memory retrieval failed: {}", e)));
             let _ = sender.send(result);
         });
@@ -1125,14 +1186,17 @@ impl MemoryManager for CognitiveMemoryManager {
         thread::spawn(move || {
             let result = (|| -> Result<MemoryNode, Error> {
                 // Update base memory
-                let updated = futures::executor::block_on(
-                    manager.legacy_manager.update_memory(memory.clone())
+                let updated = futures_util::executor::block_on(
+                    manager.legacy_manager.update_memory(memory.clone()),
                 )?;
 
                 // Re-enhance if cognitive features are enabled
                 if manager.settings.enabled {
-                    let cognitive_memory = manager.enhance_memory_cognitively(updated.clone())
-                        .map_err(|e| Error::Config(format!("Cognitive re-enhancement failed: {}", e)))?;
+                    let cognitive_memory = manager
+                        .enhance_memory_cognitively(updated.clone())
+                        .map_err(|e| {
+                            Error::Config(format!("Cognitive re-enhancement failed: {}", e))
+                        })?;
                     manager.store_cognitive_metadata(&updated.id, &cognitive_memory)?;
                 }
 
@@ -1182,10 +1246,10 @@ pub struct CognitiveQueryEnhancer {
 
 impl CognitiveQueryEnhancer {
     /// Create new cognitive query enhancer
-    /// 
+    ///
     /// # Arguments
     /// * `completion_provider` - Completion provider for query enhancement
-    /// 
+    ///
     /// # Returns
     /// Configured query enhancer instance
     pub fn new(completion_provider: Arc<dyn CompletionProvider>) -> Self {
@@ -1195,10 +1259,10 @@ impl CognitiveQueryEnhancer {
     }
 
     /// Enhance query with cognitive context using synchronous operations
-    /// 
+    ///
     /// # Arguments
     /// * `query` - Query text to enhance
-    /// 
+    ///
     /// # Returns
     /// Result containing enhanced query with cognitive metadata
     pub fn enhance_query(&self, query: &str) -> Result<EnhancedQuery> {

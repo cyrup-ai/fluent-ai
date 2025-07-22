@@ -9,7 +9,7 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use futures::StreamExt;
+use futures_util::StreamExt;
 
 use super::models::{CreateMemoryRequest, HealthResponse, MemoryResponse, SearchRequest};
 use crate::SurrealMemoryManager;

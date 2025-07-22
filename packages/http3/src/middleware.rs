@@ -11,26 +11,17 @@ pub mod cache;
 /// HTTP middleware trait using AsyncStream ONLY - NO Futures!
 pub trait Middleware: Send + Sync {
     /// Process request before sending
-    fn process_request(
-        &self,
-        request: HttpRequest,
-    ) -> AsyncStream<HttpResult<HttpRequest>> {
+    fn process_request(&self, request: HttpRequest) -> AsyncStream<HttpResult<HttpRequest>> {
         AsyncStream::from_single(Ok(request))
     }
 
     /// Process response after receiving
-    fn process_response(
-        &self,
-        response: HttpResponse,
-    ) -> AsyncStream<HttpResult<HttpResponse>> {
+    fn process_response(&self, response: HttpResponse) -> AsyncStream<HttpResult<HttpResponse>> {
         AsyncStream::from_single(Ok(response))
     }
 
     /// Handle errors
-    fn handle_error(
-        &self,
-        error: HttpError,
-    ) -> AsyncStream<HttpResult<HttpError>> {
+    fn handle_error(&self, error: HttpError) -> AsyncStream<HttpResult<HttpError>> {
         AsyncStream::from_single(Ok(error))
     }
 }
@@ -69,7 +60,10 @@ impl MiddlewareChain {
 
     /// Process response through all middlewares  
     /// NO FUTURES - pure streaming with collect() for await-like behavior
-    pub fn process_response(&self, response: HttpResponse) -> AsyncStream<HttpResult<HttpResponse>> {
+    pub fn process_response(
+        &self,
+        response: HttpResponse,
+    ) -> AsyncStream<HttpResult<HttpResponse>> {
         // For now, just return single processed response
         // In full implementation, would chain all middleware processing
         if let Some(middleware) = self.middlewares.first() {
@@ -168,7 +162,11 @@ impl Middleware for LoggingMiddleware {
 
     fn process_response(&self, response: HttpResponse) -> AsyncStream<HttpResult<HttpResponse>> {
         if self.enabled {
-            println!("HTTP Response: {} - {} bytes", response.status(), response.body().len());
+            println!(
+                "HTTP Response: {} - {} bytes",
+                response.status(),
+                response.body().len()
+            );
         }
         AsyncStream::from_single(Ok(response))
     }

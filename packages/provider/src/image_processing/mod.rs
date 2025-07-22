@@ -5,6 +5,7 @@
 //! The default backend uses Candle ML framework for high-performance computer vision.
 
 use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -23,31 +24,31 @@ pub use generation::{CandleImageGenerator, GenerationConfig, SD3ModelVariant};
 pub enum ImageProcessingError {
     #[error("Backend initialization failed: {0}")]
     BackendInitializationError(String),
-    
+
     #[error("Device selection failed: {0}")]
     DeviceSelectionError(String),
-    
+
     #[error("Image preprocessing failed: {0}")]
     PreprocessingError(String),
-    
+
     #[error("Feature extraction failed: {0}")]
     FeatureExtractionError(String),
-    
+
     #[error("Image generation failed: {0}")]
     GenerationError(String),
-    
+
     #[error("Model loading failed: {0}")]
     ModelLoadingError(String),
-    
+
     #[error("Unsupported image format: {0}")]
     UnsupportedImageFormat(String),
-    
+
     #[error("Configuration error: {0}")]
     ConfigurationError(String),
-    
+
     #[error("Resource allocation failed: {0}")]
     ResourceAllocationError(String),
-    
+
     #[error("Backend not available: {0}")]
     BackendNotAvailable(String),
 }
@@ -234,19 +235,22 @@ pub struct ImageGenerationMetadata {
 pub trait ImageProcessingBackend: Send + Sync {
     /// Get backend name
     fn name(&self) -> &'static str;
-    
+
     /// Check if backend is available on current system
     fn is_available(&self) -> bool;
-    
+
     /// Initialize backend with configuration
-    fn initialize(&mut self, config: &HashMap<String, serde_json::Value>) -> ImageProcessingResult<()>;
-    
+    fn initialize(
+        &mut self,
+        config: &HashMap<String, serde_json::Value>,
+    ) -> ImageProcessingResult<()>;
+
     /// Get supported image formats
     fn supported_formats(&self) -> Vec<ImageFormat>;
-    
+
     /// Get maximum supported image size
     fn max_image_size(&self) -> Option<(u32, u32)>;
-    
+
     /// Get backend capabilities
     fn capabilities(&self) -> BackendCapabilities;
 }
@@ -289,17 +293,17 @@ pub trait ImageEmbeddingProvider: ImageProcessingBackend {
         image: &ImageData,
         config: Option<&ImageEmbeddingConfig>,
     ) -> ImageProcessingResult<ImageEmbeddingResult>;
-    
+
     /// Generate embeddings for multiple images
     fn embed_image_batch(
         &self,
         images: &[ImageData],
         config: Option<&ImageEmbeddingConfig>,
     ) -> ImageProcessingResult<Vec<ImageEmbeddingResult>>;
-    
+
     /// Get embedding dimensions for this provider
     fn embedding_dimensions(&self) -> usize;
-    
+
     /// Get model information
     fn model_info(&self) -> ImageModelInfo;
 }
@@ -313,17 +317,17 @@ pub trait ImageGenerationProvider: ImageProcessingBackend {
         prompt: &str,
         config: Option<&ImageGenerationConfig>,
     ) -> ImageProcessingResult<ImageGenerationResult>;
-    
+
     /// Generate multiple images from text prompt
     fn generate_image_batch(
         &self,
         prompts: &[String],
         config: Option<&ImageGenerationConfig>,
     ) -> ImageProcessingResult<Vec<ImageGenerationResult>>;
-    
+
     /// Get supported generation models
     fn supported_models(&self) -> Vec<String>;
-    
+
     /// Load specific generation model
     fn load_model(&mut self, model_name: &str) -> ImageProcessingResult<()>;
 }
@@ -385,13 +389,13 @@ impl Default for DeviceConfig {
 /// Utility functions for image processing
 pub mod utils {
     use super::*;
-    
+
     /// Detect image format from file signature
     pub fn detect_image_format(data: &[u8]) -> Option<ImageFormat> {
         if data.len() < 8 {
             return None;
         }
-        
+
         // Check for common image file signatures
         if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
             Some(ImageFormat::Jpeg)
@@ -403,20 +407,21 @@ pub mod utils {
             Some(ImageFormat::Gif)
         } else if data.starts_with(b"BM") {
             Some(ImageFormat::Bmp)
-        } else if data.starts_with(&[0x49, 0x49, 0x2A, 0x00]) || data.starts_with(&[0x4D, 0x4D, 0x00, 0x2A]) {
+        } else if data.starts_with(&[0x49, 0x49, 0x2A, 0x00])
+            || data.starts_with(&[0x4D, 0x4D, 0x00, 0x2A])
+        {
             Some(ImageFormat::Tiff)
         } else {
             None
         }
     }
-    
+
     /// Create ImageData from raw bytes with format detection
     pub fn create_image_data(data: Vec<u8>) -> ImageProcessingResult<ImageData> {
-        let format = detect_image_format(&data)
-            .ok_or_else(|| ImageProcessingError::UnsupportedImageFormat(
-                "Unrecognized image format".to_string()
-            ))?;
-        
+        let format = detect_image_format(&data).ok_or_else(|| {
+            ImageProcessingError::UnsupportedImageFormat("Unrecognized image format".to_string())
+        })?;
+
         #[cfg(feature = "image")]
         {
             // Extract actual image dimensions using the image crate
@@ -424,18 +429,21 @@ pub mod utils {
                 Ok(img) => Some((img.width(), img.height())),
                 Err(_) => None,
             };
-            
+
             // Generate metadata
             let mut metadata = HashMap::new();
             metadata.insert("format_detected".to_string(), format!("{:?}", format));
             metadata.insert("size_bytes".to_string(), data.len().to_string());
-            
+
             if let Some((width, height)) = dimensions {
                 metadata.insert("dimensions".to_string(), format!("{}x{}", width, height));
-                metadata.insert("aspect_ratio".to_string(), format!("{:.3}", width as f32 / height as f32));
+                metadata.insert(
+                    "aspect_ratio".to_string(),
+                    format!("{:.3}", width as f32 / height as f32),
+                );
                 metadata.insert("total_pixels".to_string(), (width * height).to_string());
             }
-            
+
             Ok(ImageData {
                 data,
                 format,
@@ -443,14 +451,14 @@ pub mod utils {
                 metadata,
             })
         }
-        
+
         #[cfg(not(feature = "image"))]
         {
             // Without image crate, create basic metadata
             let mut metadata = HashMap::new();
             metadata.insert("format_detected".to_string(), format!("{:?}", format));
             metadata.insert("size_bytes".to_string(), data.len().to_string());
-            
+
             Ok(ImageData {
                 data,
                 format,
@@ -459,17 +467,16 @@ pub mod utils {
             })
         }
     }
-    
+
     /// Load image from file path
     pub async fn load_image_from_path(path: &str) -> ImageProcessingResult<ImageData> {
-        let data = tokio::fs::read(path).await
-            .map_err(|e| ImageProcessingError::PreprocessingError(
-                format!("Failed to read image file: {}", e)
-            ))?;
-        
+        let data = tokio::fs::read(path).await.map_err(|e| {
+            ImageProcessingError::PreprocessingError(format!("Failed to read image file: {}", e))
+        })?;
+
         create_image_data(data)
     }
-    
+
     /// Validate image dimensions against constraints
     pub fn validate_image_dimensions(
         dimensions: (u32, u32),
@@ -483,16 +490,16 @@ pub mod utils {
                 )));
             }
         }
-        
+
         if dimensions.0 == 0 || dimensions.1 == 0 {
             return Err(ImageProcessingError::ConfigurationError(
-                "Image dimensions cannot be zero".to_string()
+                "Image dimensions cannot be zero".to_string(),
             ));
         }
-        
+
         Ok(())
     }
-    
+
     /// Calculate optimal batch size based on available memory
     pub fn calculate_optimal_batch_size(
         available_memory_mb: usize,
@@ -502,14 +509,14 @@ pub mod utils {
     ) -> usize {
         let available_bytes = available_memory_mb * 1024 * 1024;
         let safe_bytes = (available_bytes as f32 * safety_factor) as usize;
-        
+
         let pixels_per_image = avg_image_size.0 * avg_image_size.1 * channels;
         let bytes_per_image = pixels_per_image * std::mem::size_of::<f32>() as u32;
-        
+
         if bytes_per_image == 0 {
             return 1;
         }
-        
+
         (safe_bytes / bytes_per_image as usize).max(1).min(256)
     }
 }

@@ -9,7 +9,7 @@ mod model;
 
 // Re-export the main types
 pub use error::ExtractionError;
-pub use extractor::{Extractor, ExtractorImpl, AgentCompletionModel};
+pub use extractor::{AgentCompletionModel, Extractor, ExtractorImpl};
 pub use model::{ExtractionConfig, ExtractionRequest, ExtractionResult};
 
 /// Result type for extraction operations
@@ -17,8 +17,9 @@ pub type Result<T> = std::result::Result<T, ExtractionError>;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde::Deserialize;
+
+    use super::*;
     use crate::agent::Agent;
 
     #[derive(Debug, Deserialize, PartialEq)]

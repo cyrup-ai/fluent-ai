@@ -19,18 +19,201 @@ pub enum CandleModel {
     Mistral_7B,
     /// Code Llama 7B parameter model
     CodeLlama_7B,
-    /// Phi-3 Mini model
+    /// Phi-3 Mini parameter model
     Phi3_Mini,
-    /// Gemma 2B model
+    /// Gemma 2B parameter model
     Gemma_2B,
-    /// Gemma 7B model
+    /// Gemma 7B parameter model
     Gemma_7B,
+    /// Kimi-K2 FP16 parameter model
+    KimiK2_FP16,
+    /// Kimi-K2 FP8 parameter model
+    KimiK2_FP8,
 }
 
-// Static model info constants  
 const DEVSTRAL_22B_INFO: ModelInfo = ModelInfo {
     provider_name: "candle",
-    name: "devstral-22b", 
+    name: "devstral-22b",
+    max_input_tokens: NonZeroU32::new(32768),
+    max_output_tokens: NonZeroU32::new(32768),
+    input_price: None,
+    output_price: None,
+    supports_vision: false,
+    supports_function_calling: true,
+    supports_streaming: true,
+    supports_embeddings: false,
+    requires_max_tokens: false,
+    supports_thinking: true,
+    optimal_thinking_budget: Some(4096),
+    system_prompt_prefix: None,
+    real_name: None,
+    model_type: None,
+    patch: None,
+};
+
+const LLAMA2_7B_INFO: ModelInfo = ModelInfo {
+    provider_name: "candle",
+    name: "llama2-7b",
+    max_input_tokens: NonZeroU32::new(4096),
+    max_output_tokens: NonZeroU32::new(4096),
+    input_price: None,
+    output_price: None,
+    supports_vision: false,
+    supports_function_calling: false,
+    supports_streaming: true,
+    supports_embeddings: false,
+    requires_max_tokens: false,
+    supports_thinking: false,
+    optimal_thinking_budget: None,
+    system_prompt_prefix: None,
+    real_name: None,
+    model_type: None,
+    patch: None,
+};
+
+const LLAMA2_13B_INFO: ModelInfo = ModelInfo {
+    provider_name: "candle",
+    name: "llama2-13b",
+    max_input_tokens: NonZeroU32::new(4096),
+    max_output_tokens: NonZeroU32::new(4096),
+    input_price: None,
+    output_price: None,
+    supports_vision: false,
+    supports_function_calling: false,
+    supports_streaming: true,
+    supports_embeddings: false,
+    requires_max_tokens: false,
+    supports_thinking: false,
+    optimal_thinking_budget: None,
+    system_prompt_prefix: None,
+    real_name: None,
+    model_type: None,
+    patch: None,
+};
+
+const MISTRAL_7B_INFO: ModelInfo = ModelInfo {
+    provider_name: "candle",
+    name: "mistral-7b",
+    max_input_tokens: NonZeroU32::new(8192),
+    max_output_tokens: NonZeroU32::new(8192),
+    input_price: None,
+    output_price: None,
+    supports_vision: false,
+    supports_function_calling: true,
+    supports_streaming: true,
+    supports_embeddings: false,
+    requires_max_tokens: false,
+    supports_thinking: false,
+    optimal_thinking_budget: None,
+    system_prompt_prefix: None,
+    real_name: None,
+    model_type: None,
+    patch: None,
+};
+
+const CODELLAMA_7B_INFO: ModelInfo = ModelInfo {
+    provider_name: "candle",
+    name: "codellama-7b",
+    max_input_tokens: NonZeroU32::new(16384),
+    max_output_tokens: NonZeroU32::new(16384),
+    input_price: None,
+    output_price: None,
+    supports_vision: false,
+    supports_function_calling: false,
+    supports_streaming: true,
+    supports_embeddings: false,
+    requires_max_tokens: false,
+    supports_thinking: false,
+    optimal_thinking_budget: None,
+    system_prompt_prefix: None,
+    real_name: None,
+    model_type: None,
+    patch: None,
+};
+
+const PHI3_MINI_INFO: ModelInfo = ModelInfo {
+    provider_name: "candle",
+    name: "phi3-mini",
+    max_input_tokens: NonZeroU32::new(4096),
+    max_output_tokens: NonZeroU32::new(4096),
+    input_price: None,
+    output_price: None,
+    supports_vision: false,
+    supports_function_calling: true,
+    supports_streaming: true,
+    supports_embeddings: false,
+    requires_max_tokens: false,
+    supports_thinking: false,
+    optimal_thinking_budget: None,
+    system_prompt_prefix: None,
+    real_name: None,
+    model_type: None,
+    patch: None,
+};
+
+const GEMMA_2B_INFO: ModelInfo = ModelInfo {
+    provider_name: "candle",
+    name: "gemma-2b",
+    max_input_tokens: NonZeroU32::new(8192),
+    max_output_tokens: NonZeroU32::new(8192),
+    input_price: None,
+    output_price: None,
+    supports_vision: false,
+    supports_function_calling: false,
+    supports_streaming: true,
+    supports_embeddings: false,
+    requires_max_tokens: false,
+    supports_thinking: false,
+    optimal_thinking_budget: None,
+    system_prompt_prefix: None,
+    real_name: None,
+    model_type: None,
+    patch: None,
+};
+
+const GEMMA_7B_INFO: ModelInfo = ModelInfo {
+    provider_name: "candle",
+    name: "gemma-7b",
+    max_input_tokens: NonZeroU32::new(8192),
+    max_output_tokens: NonZeroU32::new(8192),
+    input_price: None,
+    output_price: None,
+    supports_vision: false,
+    supports_function_calling: false,
+    supports_streaming: true,
+    supports_embeddings: false,
+    requires_max_tokens: false,
+    supports_thinking: false,
+    optimal_thinking_budget: None,
+    system_prompt_prefix: None,
+    real_name: None,
+    model_type: None,
+    patch: None,
+};
+
+const KIMI_K2_FP16_INFO: ModelInfo = ModelInfo {
+    provider_name: "candle",
+    name: "kimi-k2-fp16",
+    max_input_tokens: NonZeroU32::new(32768),
+    max_output_tokens: NonZeroU32::new(32768),
+    input_price: None,
+    output_price: None,
+    supports_vision: false,
+    supports_function_calling: true,
+    supports_streaming: true,
+    supports_embeddings: false,
+    requires_max_tokens: false,
+    supports_thinking: true,
+    optimal_thinking_budget: Some(4096),
+    system_prompt_prefix: None,
+    real_name: None,
+    model_type: None,
+    patch: None,
+};
+
+const KIMI_K2_FP8_INFO: ModelInfo = ModelInfo {
+    provider_name: "candle",
+    name: "kimi-k2-fp8",
     max_input_tokens: NonZeroU32::new(32768),
     max_output_tokens: NonZeroU32::new(32768),
     input_price: None,
@@ -52,100 +235,16 @@ impl Model for CandleModel {
     fn info(&self) -> &'static ModelInfo {
         match self {
             CandleModel::Devstral_22B => &DEVSTRAL_22B_INFO,
-            CandleModel::Llama2_7B => ModelInfoData {
-                provider_name: "candle".to_string(),
-                name: "llama2-7b".to_string(),
-                max_input_tokens: Some(4096),
-                max_output_tokens: Some(4096),
-                input_price: None, // Local inference - no API costs
-                output_price: None,
-                supports_vision: Some(false),
-                supports_function_calling: Some(false),
-                require_max_tokens: Some(false),
-                supports_thinking: Some(false),
-                optimal_thinking_budget: None,
-            },
-            CandleModel::Llama2_13B => ModelInfoData {
-                provider_name: "candle".to_string(),
-                name: "llama2-13b".to_string(),
-                max_input_tokens: Some(4096),
-                max_output_tokens: Some(4096),
-                input_price: None,
-                output_price: None,
-                supports_vision: Some(false),
-                supports_function_calling: Some(false),
-                require_max_tokens: Some(false),
-                supports_thinking: Some(false),
-                optimal_thinking_budget: None,
-            },
-            CandleModel::Mistral_7B => ModelInfoData {
-                provider_name: "candle".to_string(),
-                name: "mistral-7b".to_string(),
-                max_input_tokens: Some(8192),
-                max_output_tokens: Some(8192),
-                input_price: None,
-                output_price: None,
-                supports_vision: Some(false),
-                supports_function_calling: Some(true),
-                require_max_tokens: Some(false),
-                supports_thinking: Some(false),
-                optimal_thinking_budget: None,
-            },
-            CandleModel::CodeLlama_7B => ModelInfoData {
-                provider_name: "candle".to_string(),
-                name: "codellama-7b".to_string(),
-                max_input_tokens: Some(16384),
-                max_output_tokens: Some(16384),
-                input_price: None,
-                output_price: None,
-                supports_vision: Some(false),
-                supports_function_calling: Some(false),
-                require_max_tokens: Some(false),
-                supports_thinking: Some(false),
-                optimal_thinking_budget: None,
-            },
-            CandleModel::Phi3_Mini => ModelInfoData {
-                provider_name: "candle".to_string(),
-                name: "phi3-mini".to_string(),
-                max_input_tokens: Some(4096),
-                max_output_tokens: Some(4096),
-                input_price: None,
-                output_price: None,
-                supports_vision: Some(false),
-                supports_function_calling: Some(true),
-                require_max_tokens: Some(false),
-                supports_thinking: Some(false),
-                optimal_thinking_budget: None,
-            },
-            CandleModel::Gemma_2B => ModelInfoData {
-                provider_name: "candle".to_string(),
-                name: "gemma-2b".to_string(),
-                max_input_tokens: Some(8192),
-                max_output_tokens: Some(8192),
-                input_price: None,
-                output_price: None,
-                supports_vision: Some(false),
-                supports_function_calling: Some(false),
-                require_max_tokens: Some(false),
-                supports_thinking: Some(false),
-                optimal_thinking_budget: None,
-            },
-            CandleModel::Gemma_7B => ModelInfoData {
-                provider_name: "candle".to_string(),
-                name: "gemma-7b".to_string(),
-                max_input_tokens: Some(8192),
-                max_output_tokens: Some(8192),
-                input_price: None,
-                output_price: None,
-                supports_vision: Some(false),
-                supports_function_calling: Some(false),
-                require_max_tokens: Some(false),
-                supports_thinking: Some(false),
-                optimal_thinking_budget: None,
-            },
-        };
-
-        ModelInfo::from_data(data)
+            CandleModel::Llama2_7B => &LLAMA2_7B_INFO,
+            CandleModel::Llama2_13B => &LLAMA2_13B_INFO,
+            CandleModel::Mistral_7B => &MISTRAL_7B_INFO,
+            CandleModel::CodeLlama_7B => &CODELLAMA_7B_INFO,
+            CandleModel::Phi3_Mini => &PHI3_MINI_INFO,
+            CandleModel::Gemma_2B => &GEMMA_2B_INFO,
+            CandleModel::Gemma_7B => &GEMMA_7B_INFO,
+            CandleModel::KimiK2_FP16 => &KIMI_K2_FP16_INFO,
+            CandleModel::KimiK2_FP8 => &KIMI_K2_FP8_INFO,
+        }
     }
 }
 
@@ -160,6 +259,8 @@ impl std::fmt::Display for CandleModel {
             CandleModel::Phi3_Mini => "Phi-3 Mini",
             CandleModel::Gemma_2B => "Gemma 2B",
             CandleModel::Gemma_7B => "Gemma 7B",
+            CandleModel::KimiK2_FP16 => "Kimi-K2 FP16",
+            CandleModel::KimiK2_FP8 => "Kimi-K2 FP8",
         };
         write!(f, "{}", name)
     }
@@ -168,50 +269,5 @@ impl std::fmt::Display for CandleModel {
 impl Default for CandleModel {
     fn default() -> Self {
         CandleModel::Devstral_22B
-    }
-}
-
-/// Candle model information wrapper
-// CandleModelInfo is now imported from fluent_ai_domain::model
-// Removed duplicated CandleModelInfo struct - use canonical domain type
-#[derive(Debug, Clone)]
-pub struct CandleModelInfo {
-    /// Model path
-    pub model_path: String,
-    /// Tokenizer path
-    pub tokenizer_path: Option<String>,
-    /// Device to use for inference
-    pub device: CandleDevice,
-}
-
-/// Candle device options
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CandleDevice {
-    /// CPU inference
-    Cpu,
-    /// CUDA GPU inference
-    Cuda(u32),
-    /// Metal GPU inference (macOS)
-    Metal(u32),
-}
-
-impl Default for CandleDevice {
-    fn default() -> Self {
-        // Default to Metal on macOS, CPU otherwise
-        #[cfg(target_os = "macos")]
-        return CandleDevice::Metal(0);
-
-        #[cfg(not(target_os = "macos"))]
-        CandleDevice::Cpu
-    }
-}
-
-impl std::fmt::Display for CandleDevice {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CandleDevice::Cpu => write!(f, "CPU"),
-            CandleDevice::Cuda(id) => write!(f, "CUDA:{}", id),
-            CandleDevice::Metal(id) => write!(f, "Metal:{}", id),
-        }
     }
 }

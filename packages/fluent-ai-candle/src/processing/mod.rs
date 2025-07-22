@@ -7,28 +7,22 @@
 //! - Composable processor architecture
 //! - Production-ready numerical stability
 
-pub mod error;
-pub mod traits;
 pub mod context;
+pub mod error;
 pub mod processors;
+pub mod traits;
 
 // Core trait definitions
-pub use traits::{LogitsProcessor, ProcessingResult};
-
+// Context integration
+pub use context::{ContextBuilder, ProcessingContext};
 // Error system
 pub use error::ProcessingError;
-
-// Context integration
-pub use context::{ProcessingContext, ContextBuilder};
-
 // Processor implementations
 pub use processors::{
-    TemperatureProcessor,
-    TopKProcessor, 
+    CompositeProcessor, RepetitionPenaltyProcessor, TemperatureProcessor, TopKProcessor,
     TopPProcessor,
-    RepetitionPenaltyProcessor,
-    CompositeProcessor,
 };
+pub use traits::{LogitsProcessor, ProcessingResult};
 
 /// Processing module version for compatibility tracking
 pub const VERSION: &str = "1.0.0";
@@ -58,9 +52,10 @@ impl ProcessingEngine {
     #[inline(always)]
     pub fn new(vocab_size: usize) -> Result<Self, ProcessingError> {
         if vocab_size > MAX_VOCABULARY_SIZE {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Vocabulary size {} exceeds maximum {}", vocab_size, MAX_VOCABULARY_SIZE)
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Vocabulary size {} exceeds maximum {}",
+                vocab_size, MAX_VOCABULARY_SIZE
+            )));
         }
 
         let context = ProcessingContext::new(vocab_size, DEFAULT_CONTEXT_SIZE)?;
@@ -75,18 +70,23 @@ impl ProcessingEngine {
     }
 
     /// Create processing engine with custom context size
-    #[inline(always)]  
-    pub fn with_context_size(vocab_size: usize, context_size: usize) -> Result<Self, ProcessingError> {
+    #[inline(always)]
+    pub fn with_context_size(
+        vocab_size: usize,
+        context_size: usize,
+    ) -> Result<Self, ProcessingError> {
         if vocab_size > MAX_VOCABULARY_SIZE {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Vocabulary size {} exceeds maximum {}", vocab_size, MAX_VOCABULARY_SIZE)
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Vocabulary size {} exceeds maximum {}",
+                vocab_size, MAX_VOCABULARY_SIZE
+            )));
         }
 
         if context_size > MAX_CONTEXT_WINDOW {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Context size {} exceeds maximum {}", context_size, MAX_CONTEXT_WINDOW)
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Context size {} exceeds maximum {}",
+                context_size, MAX_CONTEXT_WINDOW
+            )));
         }
 
         let context = ProcessingContext::new(vocab_size, context_size)?;
@@ -113,10 +113,11 @@ impl ProcessingEngine {
 
         // Validate logits array
         if logits.len() != self.context.vocab_size() {
-            return Err(ProcessingError::InvalidConfiguration(
-                format!("Logits array size {} does not match vocabulary size {}", 
-                        logits.len(), self.context.vocab_size())
-            ));
+            return Err(ProcessingError::InvalidConfiguration(format!(
+                "Logits array size {} does not match vocabulary size {}",
+                logits.len(),
+                self.context.vocab_size()
+            )));
         }
 
         // Process through the pipeline
@@ -185,35 +186,43 @@ impl ProcessingMetrics {
     /// Record a processing operation
     #[inline(always)]
     pub fn record_processing(&self, duration: std::time::Duration) {
-        self.total_operations.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.total_operations
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         self.total_processing_time.fetch_add(
-            duration.as_nanos() as u64, 
-            std::sync::atomic::Ordering::Relaxed
+            duration.as_nanos() as u64,
+            std::sync::atomic::Ordering::Relaxed,
         );
     }
 
     /// Record a token generation
     #[inline(always)]
     pub fn record_token(&self) {
-        self.total_tokens.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        self.sequence_length.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.total_tokens
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.sequence_length
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Reset sequence-level metrics
     #[inline(always)]
     pub fn reset_sequence(&self) {
-        self.sequence_length.store(0, std::sync::atomic::Ordering::Relaxed);
+        self.sequence_length
+            .store(0, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Get average processing time per operation
     #[inline(always)]
     pub fn average_processing_time(&self) -> std::time::Duration {
-        let total_ops = self.total_operations.load(std::sync::atomic::Ordering::Relaxed);
+        let total_ops = self
+            .total_operations
+            .load(std::sync::atomic::Ordering::Relaxed);
         if total_ops == 0 {
             return std::time::Duration::ZERO;
         }
-        
-        let total_time = self.total_processing_time.load(std::sync::atomic::Ordering::Relaxed);
+
+        let total_time = self
+            .total_processing_time
+            .load(std::sync::atomic::Ordering::Relaxed);
         std::time::Duration::from_nanos(total_time / total_ops)
     }
 
@@ -221,8 +230,10 @@ impl ProcessingMetrics {
     #[inline(always)]
     pub fn tokens_per_second(&self) -> f64 {
         let total_tokens = self.total_tokens.load(std::sync::atomic::Ordering::Relaxed);
-        let total_time = self.total_processing_time.load(std::sync::atomic::Ordering::Relaxed);
-        
+        let total_time = self
+            .total_processing_time
+            .load(std::sync::atomic::Ordering::Relaxed);
+
         if total_time == 0 {
             return 0.0;
         }
@@ -233,13 +244,15 @@ impl ProcessingMetrics {
     /// Get current sequence length
     #[inline(always)]
     pub fn sequence_length(&self) -> u32 {
-        self.sequence_length.load(std::sync::atomic::Ordering::Relaxed)
+        self.sequence_length
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Get total operations count
     #[inline(always)]
     pub fn total_operations(&self) -> u64 {
-        self.total_operations.load(std::sync::atomic::Ordering::Relaxed)
+        self.total_operations
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Get total tokens processed
@@ -313,13 +326,15 @@ impl ProcessingEngineBuilder {
     /// Add repetition penalty processor
     #[inline(always)]
     pub fn repetition_penalty(
-        self, 
-        penalty: f32, 
-        frequency_penalty: f32, 
-        presence_penalty: f32
+        self,
+        penalty: f32,
+        frequency_penalty: f32,
+        presence_penalty: f32,
     ) -> ProcessingResult<Self> {
         let processor = Box::new(RepetitionPenaltyProcessor::new(
-            penalty, frequency_penalty, presence_penalty
+            penalty,
+            frequency_penalty,
+            presence_penalty,
         )?);
         Ok(self.add_processor(processor))
     }
@@ -328,7 +343,7 @@ impl ProcessingEngineBuilder {
     pub fn build(self) -> ProcessingResult<ProcessingEngine> {
         let context_size = self.context_size.unwrap_or(DEFAULT_CONTEXT_SIZE);
         let mut engine = ProcessingEngine::with_context_size(self.vocab_size, context_size)?;
-        
+
         if !self.processors.is_empty() {
             let composite = CompositeProcessor::new(self.processors)?;
             engine.set_processor(composite);
@@ -366,7 +381,7 @@ pub mod utils {
             builder = builder.top_k(k)?;
         }
 
-        // Add top-p nucleus sampling  
+        // Add top-p nucleus sampling
         if let Some(p) = top_p {
             builder = builder.top_p(p)?;
         }
@@ -379,10 +394,10 @@ pub mod utils {
     pub fn creative_writing(vocab_size: usize) -> ProcessingResult<ProcessingEngine> {
         standard_text_generation(
             vocab_size,
-            0.85,        // Higher temperature for creativity
-            None,        // No top-k limit
-            Some(0.92),  // Nucleus sampling
-            Some(1.15),  // Moderate repetition penalty
+            0.85,       // Higher temperature for creativity
+            None,       // No top-k limit
+            Some(0.92), // Nucleus sampling
+            Some(1.15), // Moderate repetition penalty
         )
     }
 
@@ -391,10 +406,10 @@ pub mod utils {
     pub fn code_generation(vocab_size: usize) -> ProcessingResult<ProcessingEngine> {
         standard_text_generation(
             vocab_size,
-            0.2,         // Low temperature for precision
-            Some(20),    // Focused vocabulary
-            Some(0.95),  // High nucleus threshold
-            Some(1.05),  // Minimal repetition penalty
+            0.2,        // Low temperature for precision
+            Some(20),   // Focused vocabulary
+            Some(0.95), // High nucleus threshold
+            Some(1.05), // Minimal repetition penalty
         )
     }
 
@@ -403,10 +418,10 @@ pub mod utils {
     pub fn conversation(vocab_size: usize) -> ProcessingResult<ProcessingEngine> {
         standard_text_generation(
             vocab_size,
-            0.7,         // Balanced temperature
-            Some(40),    // Moderate vocabulary focus
-            Some(0.9),   // Standard nucleus sampling
-            Some(1.1),   // Standard repetition penalty
+            0.7,       // Balanced temperature
+            Some(40),  // Moderate vocabulary focus
+            Some(0.9), // Standard nucleus sampling
+            Some(1.1), // Standard repetition penalty
         )
     }
 
@@ -415,16 +430,17 @@ pub mod utils {
     pub fn validate_logits(logits: &[f32]) -> ProcessingResult<()> {
         if logits.is_empty() {
             return Err(ProcessingError::InvalidConfiguration(
-                "Empty logits array".to_string()
+                "Empty logits array".to_string(),
             ));
         }
 
         // Check for NaN or infinite values
         for (i, &logit) in logits.iter().enumerate() {
             if !logit.is_finite() {
-                return Err(ProcessingError::NumericalError(
-                    format!("Non-finite logit at index {}: {}", i, logit)
-                ));
+                return Err(ProcessingError::NumericalError(format!(
+                    "Non-finite logit at index {}: {}",
+                    i, logit
+                )));
             }
         }
 
@@ -437,22 +453,24 @@ pub mod utils {
         validate_logits(logits)?;
 
         // Find max for numerical stability
-        let max_logit = logits.iter()
+        let max_logit = logits
+            .iter()
             .copied()
             .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .ok_or_else(|| ProcessingError::NumericalError("No valid logits found".to_string()))?;
 
         // Compute softmax with stability
-        let exp_sum: f32 = logits.iter()
-            .map(|&x| (x - max_logit).exp())
-            .sum();
+        let exp_sum: f32 = logits.iter().map(|&x| (x - max_logit).exp()).sum();
 
         if exp_sum <= 0.0 {
-            return Err(ProcessingError::NumericalError("Invalid softmax normalization".to_string()));
+            return Err(ProcessingError::NumericalError(
+                "Invalid softmax normalization".to_string(),
+            ));
         }
 
         // Calculate entropy: -Σ(p * log(p))
-        let entropy: f32 = logits.iter()
+        let entropy: f32 = logits
+            .iter()
             .map(|&x| {
                 let prob = (x - max_logit).exp() / exp_sum;
                 if prob > 0.0 {

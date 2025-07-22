@@ -42,47 +42,51 @@ impl CommandRegistry {
         // Validate command info
         if info.name.is_empty() {
             return Err(CommandError::ConfigurationError {
-                detail: Arc::from("Command name cannot be empty"),
+                detail: "Command name cannot be empty".to_string(),
             });
         }
 
         if info.description.is_empty() {
             return Err(CommandError::ConfigurationError {
-                detail: Arc::from("Command description cannot be empty"),
+                detail: "Command description cannot be empty".to_string(),
             });
         }
 
         // Check for duplicate command names
-        if self.commands.contains_key(&info.name) {
+        let command_name = Arc::from(info.name.as_str());
+        if self.commands.contains_key(&command_name) {
             return Err(CommandError::ConfigurationError {
-                detail: Arc::from(format!("Command '{}' already registered", info.name)),
+                detail: format!("Command '{}' already registered", info.name),
             });
         }
 
         // Check for duplicate aliases
         for alias in &info.aliases {
-            if self.aliases.contains_key(alias) {
+            let alias_key = Arc::from(alias.as_str());
+            if self.aliases.contains_key(&alias_key) {
                 return Err(CommandError::ConfigurationError {
-                    detail: Arc::from(format!("Alias '{}' already registered", alias)),
+                    detail: format!("Alias '{}' already registered", alias),
                 });
             }
         }
 
         // Register command
-        self.commands.insert(info.name.clone(), info.clone());
+        self.commands.insert(command_name.clone(), info.clone());
 
         // Register aliases
         for alias in &info.aliases {
-            self.aliases.insert(alias.clone(), info.name.clone());
+            self.aliases.insert(Arc::from(alias.as_str()), command_name.clone());
         }
 
         // Update category index
-        if let Some(existing) = self.categories.get(&info.category) {
+        let category_key = Arc::from(info.category.as_str());
+        if let Some(existing) = self.categories.get(&category_key) {
             let mut category_list = existing.value().clone();
-            category_list.push(info.name.clone());
-            self.categories.insert(info.category.clone(), category_list);
+            category_list.push(command_name.clone());
+            self.categories.insert(category_key, category_list);
         } else {
-            self.categories.insert(info.category.clone(), vec![info.name.clone()]);
+            self.categories
+                .insert(category_key, vec![command_name.clone()]);
         }
 
         Ok(())
@@ -97,7 +101,7 @@ impl CommandRegistry {
             .commands
             .get(&command_name)
             .ok_or_else(|| CommandError::UnknownCommand {
-                command: command_name.clone(),
+                command: command_name.to_string(),
             })?
             .value()
             .clone();
@@ -107,17 +111,19 @@ impl CommandRegistry {
 
         // Remove aliases
         for alias in &info.aliases {
-            self.aliases.remove(alias);
+            let alias_key = Arc::from(alias.as_str());
+            self.aliases.remove(&alias_key);
         }
 
         // Update category index
-        if let Some(existing) = self.categories.get(&info.category) {
+        let category_key = Arc::from(info.category.as_str());
+        if let Some(existing) = self.categories.get(&category_key) {
             let mut category_list = existing.value().clone();
             category_list.retain(|cmd| cmd != &command_name);
             if category_list.is_empty() {
-                self.categories.remove(&info.category);
+                self.categories.remove(&category_key);
             } else {
-                self.categories.insert(info.category.clone(), category_list);
+                self.categories.insert(category_key, category_list);
             }
         }
 
@@ -249,11 +255,11 @@ impl CommandRegistry {
             let command_name = alias_entry.value();
             if !self.commands.contains_key(command_name) {
                 errors.push(CommandError::ConfigurationError {
-                    detail: Arc::from(format!(
+                    detail: format!(
                         "Orphaned alias '{}' points to non-existent command '{}'",
                         alias_entry.key(),
                         command_name
-                    )),
+                    ),
                 });
             }
         }
@@ -262,7 +268,7 @@ impl CommandRegistry {
         for category_entry in self.categories.iter() {
             if category_entry.value().is_empty() {
                 errors.push(CommandError::ConfigurationError {
-                    detail: Arc::from(format!("Empty category '{}'", category_entry.key())),
+                    detail: format!("Empty category '{}'", category_entry.key()),
                 });
             }
         }
@@ -273,10 +279,10 @@ impl CommandRegistry {
             for param in &info.parameters {
                 if param.name.is_empty() {
                     errors.push(CommandError::ConfigurationError {
-                        detail: Arc::from(format!(
+                        detail: format!(
                             "Command '{}' has parameter with empty name",
                             info.name
-                        )),
+                        ),
                     });
                 }
             }
@@ -310,7 +316,7 @@ impl CommandRegistry {
     pub fn export_to_json(&self) -> Result<String, CommandError> {
         let commands: Vec<CommandInfo> = self.list_commands();
         serde_json::to_string_pretty(&commands).map_err(|e| CommandError::ConfigurationError {
-            detail: Arc::from(format!("Failed to export registry: {}", e)),
+            detail: format!("Failed to export registry: {}", e),
         })
     }
 
@@ -318,7 +324,7 @@ impl CommandRegistry {
     pub fn import_from_json(&self, json: &str) -> Result<(), CommandError> {
         let commands: Vec<CommandInfo> =
             serde_json::from_str(json).map_err(|e| CommandError::ConfigurationError {
-                detail: Arc::from(format!("Failed to import registry: {}", e)),
+                detail: format!("Failed to import registry: {}", e),
             })?;
 
         // Clear existing registry

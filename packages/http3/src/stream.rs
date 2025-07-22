@@ -1,9 +1,10 @@
 //! HTTP streaming utilities - Zero futures, pure unwrapped value streams
 
+use std::path::Path;
+
 use bytes::Bytes;
 
 use crate::{HttpError, HttpResult};
-use std::path::Path;
 
 /// HTTP response stream wrapper that provides zero-allocation streaming
 /// Returns pure unwrapped Bytes values - no Result wrapping, no futures
@@ -56,7 +57,7 @@ impl HttpStream {
         let end_pos = std::cmp::min(self.position + self.chunk_size, self.body.len());
         let chunk = Bytes::copy_from_slice(&self.body[self.position..end_pos]);
         self.position = end_pos;
-        
+
         Some(chunk)
     }
 
@@ -105,10 +106,7 @@ impl LinesStream {
     /// Create a new lines stream - returns unwrapped String values
     pub fn new(stream: HttpStream) -> Self {
         let body = String::from_utf8_lossy(&stream.body).to_string();
-        Self {
-            body,
-            position: 0,
-        }
+        Self { body, position: 0 }
     }
 
     /// Get next line - returns unwrapped String directly
@@ -351,7 +349,7 @@ impl DownloadStream {
         let end_pos = std::cmp::min(self.position + self.chunk_size, self.body.len());
         let chunk_data = Bytes::copy_from_slice(&self.body[self.position..end_pos]);
         let chunk_size = chunk_data.len() as u64;
-        
+
         self.bytes_downloaded += chunk_size;
         let chunk_number = self.chunk_number;
         self.chunk_number += 1;
@@ -393,7 +391,6 @@ impl DownloadStream {
         chunks
     }
 }
-
 
 /// JSON lines stream that parses each line as JSON - returns unwrapped T values  
 pub struct JsonLinesStream<T> {
@@ -487,13 +484,12 @@ impl CachedDownloadStream {
         computed_expires: Option<u64>,
     ) -> HttpResult<Self> {
         let file_path = path.as_ref().to_path_buf();
-        
+
         // Read file data synchronously
-        let file_data = std::fs::read(&file_path)
-            .map_err(|e| HttpError::IoError {
-                message: format!("Failed to read file: {}", e),
-            })?;
-            
+        let file_data = std::fs::read(&file_path).map_err(|e| HttpError::IoError {
+            message: format!("Failed to read file: {}", e),
+        })?;
+
         let total_size = file_data.len() as u64;
         let now = std::time::Instant::now();
 
@@ -528,7 +524,7 @@ impl CachedDownloadStream {
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_secs())
                 .unwrap_or(0);
-            
+
             now >= expires
         } else {
             false
@@ -550,7 +546,7 @@ impl CachedDownloadStream {
         let end_pos = std::cmp::min(self.position + self.chunk_size, self.file_data.len());
         let chunk_data = Bytes::copy_from_slice(&self.file_data[self.position..end_pos]);
         let chunk_size = chunk_data.len() as u64;
-        
+
         self.bytes_downloaded += chunk_size;
         let chunk_number = self.chunk_number;
         self.chunk_number += 1;
@@ -558,7 +554,10 @@ impl CachedDownloadStream {
         self.last_chunk_time = std::time::Instant::now();
 
         // Calculate download speed (from cache is very fast)
-        let elapsed = self.last_chunk_time.duration_since(self.start_time).as_secs_f64();
+        let elapsed = self
+            .last_chunk_time
+            .duration_since(self.start_time)
+            .as_secs_f64();
         let speed = if elapsed > 0.0 {
             Some(self.bytes_downloaded as f64 / elapsed)
         } else {

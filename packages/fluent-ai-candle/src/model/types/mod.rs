@@ -1,7 +1,7 @@
 //! Model configuration types and enumerations
 //!
 //! This module provides core type definitions for:
-//! - Model architecture types 
+//! - Model architecture types
 //! - Quantization options
 //! - Model configuration structures
 //! - Default values for different architectures
@@ -85,7 +85,7 @@ impl QuantizationType {
         match self {
             Self::None => 1.0,
             Self::Q4_0 | Self::Q4_1 => 0.25, // ~4x reduction
-            Self::Q8_0 => 0.5, // ~2x reduction
+            Self::Q8_0 => 0.5,               // ~2x reduction
         }
     }
 
@@ -95,7 +95,7 @@ impl QuantizationType {
         match self {
             Self::None => 1.0,
             Self::Q4_0 | Self::Q4_1 => 1.2, // Slight overhead
-            Self::Q8_0 => 1.1, // Minimal overhead
+            Self::Q8_0 => 1.1,              // Minimal overhead
         }
     }
 }
@@ -150,7 +150,7 @@ impl ModelConfig {
         let mut config = Self::default();
         config.model_type = model_type;
         config.context_length = model_type.default_context_length();
-        
+
         // Adjust defaults based on model type
         match model_type {
             ModelType::Mistral => {
@@ -179,7 +179,7 @@ impl ModelConfig {
                 // Use defaults
             }
         }
-        
+
         config
     }
 
@@ -188,24 +188,27 @@ impl ModelConfig {
         let param_count = self.estimate_parameter_count();
         let bytes_per_param = match self.quantization.memory_factor() {
             f if f <= 0.25 => 1, // Q4
-            f if f <= 0.5 => 1,  // Q8 
-            _ => 4, // F32
+            f if f <= 0.5 => 1,  // Q8
+            _ => 4,              // F32
         };
-        
+
         // Model weights + KV cache + intermediate activations
         let model_size = param_count * bytes_per_param as u64;
-        let kv_cache_size = (self.num_layers as u64 * self.hidden_size as u64 * self.context_length as u64 * 2) / 1024; // Rough estimate
+        let kv_cache_size =
+            (self.num_layers as u64 * self.hidden_size as u64 * self.context_length as u64 * 2)
+                / 1024; // Rough estimate
         let activation_size = self.hidden_size as u64 * 1024; // Working memory
-        
+
         model_size + kv_cache_size + activation_size
     }
 
     /// Estimate parameter count
     pub fn estimate_parameter_count(&self) -> u64 {
         let embedding_params = self.vocab_size as u64 * self.hidden_size as u64;
-        let layer_params = self.num_layers as u64 * self.hidden_size as u64 * self.hidden_size as u64 * 4; // Rough estimate
+        let layer_params =
+            self.num_layers as u64 * self.hidden_size as u64 * self.hidden_size as u64 * 4; // Rough estimate
         let output_params = self.hidden_size as u64 * self.vocab_size as u64;
-        
+
         embedding_params + layer_params + output_params
     }
 }

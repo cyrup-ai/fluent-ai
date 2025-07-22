@@ -48,7 +48,7 @@
 //!
 //! // Store key-value pairs for attention
 //! cache.store(head_idx, seq_pos, key_tensor, value_tensor)?;
-//! 
+//!
 //! // Retrieve with zero-copy access
 //! if let Some((key, value)) = cache.get(head_idx, seq_pos) {
 //!     // Use cached tensors directly
@@ -74,10 +74,11 @@
 //! cache.store_batch(&head_indices, &seq_positions, &keys, &values)?;
 //! ```
 
-use arrayvec::ArrayVec;
-use candle_core::{Device, Tensor};
-use smallvec::SmallVec;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+
+use arrayvec::ArrayVec;
+use candle_core::Tensor;
+use smallvec::SmallVec;
 
 use crate::error::{CandleError, CandleResult as Result};
 
@@ -121,25 +122,25 @@ pub type CacheKey = u64; // Packed: head_idx (8 bits) + seq_pos (24 bits) + hash
 pub struct KVCache {
     /// Cache configuration (immutable after creation)
     config: KVCacheConfig,
-    
+
     /// Cache entries storage (pre-allocated)
     entries: ArrayVec<KVCacheEntry, { MAX_ATTENTION_HEADS * MAX_CACHE_ENTRIES_PER_HEAD }>,
-    
+
     /// Head-indexed entry lookup (cache-friendly)
     head_tables: ArrayVec<HeadTable, MAX_ATTENTION_HEADS>,
-    
+
     /// Memory pools for different tensor sizes
     memory_pools: ArrayVec<MemoryPool, MAX_MEMORY_POOLS>,
-    
+
     /// Performance statistics (atomic)
     stats: CacheStats,
-    
+
     /// Eviction manager
     eviction: EvictionManager,
-    
+
     /// Cache creation timestamp
     created_at_nanos: u64,
-    
+
     /// Generation counter for ordering
     generation: AtomicU64,
 }
@@ -148,18 +149,18 @@ impl KVCache {
     /// Create new KV cache with configuration
     pub fn with_config(config: KVCacheConfig) -> Result<Self> {
         let mut head_tables = ArrayVec::new();
-        
+
         // Initialize per-head tables
         for _ in 0..config.num_heads() {
             if head_tables.try_push(HeadTable::new()).is_err() {
                 return Err(CandleError::ProcessingError("Too many attention heads"));
             }
         }
-        
+
         // Initialize memory pools for common tensor sizes
         let mut memory_pools = ArrayVec::new();
         let common_sizes = [64, 128, 256, 512, 1024, 2048, 4096, 8192];
-        
+
         for &size in &common_sizes {
             if memory_pools.is_full() {
                 break;
@@ -167,9 +168,9 @@ impl KVCache {
             let pool = MemoryPool::new(size, config.memory_pool_size());
             let _ = memory_pools.try_push(pool);
         }
-        
+
         let eviction_strategy = config.eviction_strategy();
-        
+
         Ok(Self {
             config,
             entries: ArrayVec::new(),
@@ -181,13 +182,13 @@ impl KVCache {
             generation: AtomicU64::new(0),
         })
     }
-    
+
     /// Create KV cache using builder pattern
     #[inline(always)]
     pub fn builder() -> KVCacheBuilder {
         KVCacheBuilder::new()
     }
-    
+
     /// Store key-value pair for specific head and position
     pub fn store(
         &mut self,
@@ -201,31 +202,31 @@ impl KVCache {
             self.stats.record_error();
             return Err(CandleError::ProcessingError(ERR_INVALID_HEAD));
         }
-        
+
         if seq_pos >= self.config.max_sequence_length() {
             self.stats.record_error();
             return Err(CandleError::ProcessingError(ERR_INVALID_POSITION));
         }
-        
+
         // Check tensor compatibility
         if !key_tensor.device().same_device(value_tensor.device()) {
             self.stats.record_error();
             return Err(CandleError::ProcessingError(ERR_DEVICE_MISMATCH));
         }
-        
+
         if key_tensor.shape() != value_tensor.shape() {
             self.stats.record_error();
             return Err(CandleError::ProcessingError(ERR_TENSOR_MISMATCH));
         }
-        
+
         // Create cache key
         let cache_key = self.create_cache_key(head_idx, seq_pos);
-        
+
         // Check if we need eviction
         if self.entries.is_full() {
             self.evict_entries()?;
         }
-        
+
         // Create cache entry
         let generation = self.generation.fetch_add(1, Ordering::Relaxed);
         let entry = KVCacheEntry::new(
@@ -236,24 +237,24 @@ impl KVCache {
             value_tensor,
             generation,
         )?;
-        
+
         // Store in cache
         if self.entries.try_push(entry).is_err() {
             self.stats.record_error();
             return Err(CandleError::ProcessingError(ERR_CACHE_FULL));
         }
-        
+
         // Update head table
         let entry_idx = self.entries.len() - 1;
         self.head_tables[head_idx].add_entry(seq_pos, entry_idx)?;
-        
+
         // Update statistics
         self.stats.record_store();
         self.eviction.record_access(cache_key);
-        
+
         Ok(())
     }
-    
+
     /// Retrieve key-value pair for specific head and position
     pub fn get(&self, head_idx: usize, seq_pos: usize) -> Option<(&Tensor, &Tensor)> {
         // Validate inputs
@@ -261,24 +262,24 @@ impl KVCache {
             self.stats.record_error();
             return None;
         }
-        
+
         let cache_key = self.create_cache_key(head_idx, seq_pos);
-        
+
         // Look up in head table
         if let Some(entry_idx) = self.head_tables[head_idx].get_entry(seq_pos) {
             if let Some(entry) = self.entries.get(entry_idx) {
                 // Update access statistics
                 self.stats.record_hit();
                 self.eviction.record_access(cache_key);
-                
+
                 return Some((&entry.key_tensor, &entry.value_tensor));
             }
         }
-        
+
         self.stats.record_miss();
         None
     }
-    
+
     /// Store multiple key-value pairs in batch (SIMD optimized)
     pub fn store_batch(
         &mut self,
@@ -293,29 +294,32 @@ impl KVCache {
         {
             return Err(CandleError::ProcessingError("Batch size mismatch"));
         }
-        
+
         let mut stored_count = 0;
-        
+
         // Process in batches for SIMD optimization
         for chunk in head_indices.chunks(8) {
             for (i, &head_idx) in chunk.iter().enumerate() {
                 if i >= seq_positions.len() {
                     break;
                 }
-                
+
                 let seq_pos = seq_positions[i];
                 let key_tensor = &key_tensors[i];
                 let value_tensor = &value_tensors[i];
-                
-                if self.store(head_idx, seq_pos, key_tensor.clone(), value_tensor.clone()).is_ok() {
+
+                if self
+                    .store(head_idx, seq_pos, key_tensor.clone(), value_tensor.clone())
+                    .is_ok()
+                {
                     stored_count += 1;
                 }
             }
         }
-        
+
         Ok(stored_count)
     }
-    
+
     /// Get batch of key-value pairs (SIMD optimized)
     pub fn get_batch(
         &self,
@@ -323,27 +327,27 @@ impl KVCache {
         seq_positions: &[usize],
     ) -> ArrayVec<Option<(&Tensor, &Tensor)>, 256> {
         let mut results = ArrayVec::new();
-        
+
         for (&head_idx, &seq_pos) in head_indices.iter().zip(seq_positions.iter()) {
             if results.is_full() {
                 break;
             }
-            
+
             let result = self.get(head_idx, seq_pos);
             let _ = results.try_push(result);
         }
-        
+
         results
     }
-    
+
     /// Clear cache entries for specific head
     pub fn clear_head(&mut self, head_idx: usize) -> Result<usize> {
         if head_idx >= self.config.num_heads() {
             return Err(CandleError::ProcessingError(ERR_INVALID_HEAD));
         }
-        
+
         let mut cleared_count = 0;
-        
+
         // Remove entries from this head
         let mut i = 0;
         while i < self.entries.len() {
@@ -354,64 +358,64 @@ impl KVCache {
                 i += 1;
             }
         }
-        
+
         // Clear head table
         self.head_tables[head_idx].clear();
-        
+
         // Update statistics
         self.stats.record_evictions(cleared_count);
-        
+
         Ok(cleared_count)
     }
-    
+
     /// Clear all cache entries
     pub fn clear_all(&mut self) {
         let cleared_count = self.entries.len();
-        
+
         self.entries.clear();
         for head_table in &mut self.head_tables {
             head_table.clear();
         }
-        
+
         self.stats.record_evictions(cleared_count);
     }
-    
+
     /// Get cache statistics
     #[inline(always)]
     pub const fn stats(&self) -> &CacheStats {
         &self.stats
     }
-    
+
     /// Get cache configuration
     #[inline(always)]
     pub const fn config(&self) -> &KVCacheConfig {
         &self.config
     }
-    
+
     /// Get current cache size
     #[inline(always)]
     pub fn size(&self) -> usize {
         self.entries.len()
     }
-    
+
     /// Get cache capacity
     #[inline(always)]
     pub fn capacity(&self) -> usize {
         self.entries.capacity()
     }
-    
+
     /// Check if cache is empty
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
-    
+
     /// Check if cache is full
     #[inline(always)]
     pub fn is_full(&self) -> bool {
         self.entries.is_full()
     }
-    
+
     /// Get cache load factor
     #[inline(always)]
     pub fn load_factor(&self) -> f64 {
@@ -421,13 +425,13 @@ impl KVCache {
             0.0
         }
     }
-    
+
     /// Get cache age in nanoseconds
     #[inline(always)]
     pub fn age_nanos(&self) -> u64 {
         Self::current_time_nanos().saturating_sub(self.created_at_nanos)
     }
-    
+
     /// Get current high-precision timestamp
     #[inline(always)]
     fn current_time_nanos() -> u64 {
@@ -435,7 +439,7 @@ impl KVCache {
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos() as u64)
     }
-    
+
     /// Create cache key from head index and sequence position
     #[inline(always)]
     fn create_cache_key(&self, head_idx: usize, seq_pos: usize) -> CacheKey {
@@ -443,7 +447,7 @@ impl KVCache {
         let hash = self.hash_position(head_idx, seq_pos);
         ((head_idx as u64) << 56) | ((seq_pos as u64) << 32) | (hash as u64)
     }
-    
+
     /// Simple hash function for position
     #[inline(always)]
     fn hash_position(&self, head_idx: usize, seq_pos: usize) -> u32 {
@@ -455,24 +459,24 @@ impl KVCache {
         hash = hash.wrapping_mul(16777619);
         hash
     }
-    
+
     /// Perform cache eviction based on strategy
     fn evict_entries(&mut self) -> Result<()> {
         let evict_count = self.config.eviction_batch_size();
         let candidates = self.eviction.select_victims(evict_count, &self.entries);
-        
+
         // Remove selected entries
         let mut evicted = 0;
         for &entry_idx in &candidates {
             if entry_idx < self.entries.len() {
                 let entry = self.entries.swap_remove(entry_idx);
-                
+
                 // Update head table
                 self.head_tables[entry.head_idx()].remove_entry(entry.seq_pos());
                 evicted += 1;
             }
         }
-        
+
         self.stats.record_evictions(evicted);
         Ok(())
     }
@@ -486,19 +490,19 @@ impl KVCache {
 pub struct KVCacheEntry {
     /// Cache key (packed identifier)
     cache_key: CacheKey,
-    
+
     /// Attention head index
     head_idx: u16,
-    
+
     /// Sequence position
     seq_pos: u32,
-    
+
     /// Key tensor
     key_tensor: Tensor,
-    
+
     /// Value tensor
     value_tensor: Tensor,
-    
+
     /// Entry metadata (bit-packed)
     /// Bits 0-31: Access count
     /// Bits 32-63: Generation/timestamp
@@ -518,11 +522,11 @@ impl KVCacheEntry {
         if head_idx > u16::MAX as usize {
             return Err(CandleError::ProcessingError("Head index too large"));
         }
-        
+
         if seq_pos > u32::MAX as usize {
             return Err(CandleError::ProcessingError("Sequence position too large"));
         }
-        
+
         Ok(Self {
             cache_key,
             head_idx: head_idx as u16,
@@ -532,49 +536,49 @@ impl KVCacheEntry {
             metadata: generation << 32, // Store generation in upper bits
         })
     }
-    
+
     /// Get cache key
     #[inline(always)]
     pub const fn cache_key(&self) -> CacheKey {
         self.cache_key
     }
-    
+
     /// Get attention head index
     #[inline(always)]
     pub const fn head_idx(&self) -> usize {
         self.head_idx as usize
     }
-    
+
     /// Get sequence position
     #[inline(always)]
     pub const fn seq_pos(&self) -> usize {
         self.seq_pos as usize
     }
-    
+
     /// Get key tensor reference
     #[inline(always)]
     pub const fn key_tensor(&self) -> &Tensor {
         &self.key_tensor
     }
-    
+
     /// Get value tensor reference
     #[inline(always)]
     pub const fn value_tensor(&self) -> &Tensor {
         &self.value_tensor
     }
-    
+
     /// Get access count
     #[inline(always)]
     pub fn access_count(&self) -> u32 {
         (self.metadata & 0xFFFFFFFF) as u32
     }
-    
+
     /// Get generation/timestamp
     #[inline(always)]
     pub fn generation(&self) -> u32 {
         (self.metadata >> 32) as u32
     }
-    
+
     /// Increment access count (atomic)
     #[inline(always)]
     pub fn increment_access(&mut self) {
@@ -582,12 +586,13 @@ impl KVCacheEntry {
         let generation = self.generation() as u64;
         self.metadata = (generation << 32) | (count as u64);
     }
-    
+
     /// Get tensor memory usage in bytes
     #[inline(always)]
     pub fn memory_usage(&self) -> u64 {
         let key_bytes = self.key_tensor.elem_count() * self.key_tensor.dtype().size_in_bytes();
-        let value_bytes = self.value_tensor.elem_count() * self.value_tensor.dtype().size_in_bytes();
+        let value_bytes =
+            self.value_tensor.elem_count() * self.value_tensor.dtype().size_in_bytes();
         (key_bytes + value_bytes) as u64
     }
 }
@@ -607,24 +612,24 @@ impl HeadTable {
             entries: ArrayVec::new(),
         }
     }
-    
+
     /// Add entry mapping
     fn add_entry(&mut self, seq_pos: usize, entry_idx: usize) -> Result<()> {
         if self.entries.is_full() {
             return Err(CandleError::ProcessingError("Head table full"));
         }
-        
+
         // Remove existing entry for this position if present
         self.entries.retain(|(pos, _)| *pos != seq_pos as u32);
-        
+
         // Add new entry
         if self.entries.try_push((seq_pos as u32, entry_idx)).is_err() {
             return Err(CandleError::ProcessingError("Failed to add entry"));
         }
-        
+
         Ok(())
     }
-    
+
     /// Get entry index for sequence position
     fn get_entry(&self, seq_pos: usize) -> Option<usize> {
         self.entries
@@ -632,12 +637,12 @@ impl HeadTable {
             .find(|(pos, _)| *pos == seq_pos as u32)
             .map(|(_, idx)| *idx)
     }
-    
+
     /// Remove entry for sequence position
     fn remove_entry(&mut self, seq_pos: usize) {
         self.entries.retain(|(pos, _)| *pos != seq_pos as u32);
     }
-    
+
     /// Clear all entries
     fn clear(&mut self) {
         self.entries.clear();
@@ -649,10 +654,10 @@ impl HeadTable {
 struct MemoryPool {
     /// Block size in bytes
     block_size: usize,
-    
+
     /// Available blocks
     available_blocks: AtomicUsize,
-    
+
     /// Total blocks allocated
     total_blocks: AtomicUsize,
 }
@@ -666,32 +671,37 @@ impl MemoryPool {
             total_blocks: AtomicUsize::new(capacity),
         }
     }
-    
+
     /// Get block size
     #[inline(always)]
     fn block_size(&self) -> usize {
         self.block_size
     }
-    
+
     /// Get available blocks
     #[inline(always)]
     fn available_blocks(&self) -> usize {
         self.available_blocks.load(Ordering::Relaxed)
     }
-    
+
     /// Try to allocate a block
     #[inline(always)]
     fn try_allocate(&self) -> bool {
         let available = self.available_blocks.load(Ordering::Acquire);
         if available > 0 {
             self.available_blocks
-                .compare_exchange_weak(available, available - 1, Ordering::AcqRel, Ordering::Relaxed)
+                .compare_exchange_weak(
+                    available,
+                    available - 1,
+                    Ordering::AcqRel,
+                    Ordering::Relaxed,
+                )
                 .is_ok()
         } else {
             false
         }
     }
-    
+
     /// Deallocate a block
     #[inline(always)]
     fn deallocate(&self) {
@@ -708,19 +718,19 @@ impl MemoryPool {
 pub struct KVCacheConfig {
     /// Number of attention heads
     num_heads: u16,
-    
+
     /// Head dimension size
     head_dim: u16,
-    
+
     /// Maximum sequence length
     max_sequence_length: u32,
-    
+
     /// Memory pool size per pool
     memory_pool_size: u32,
-    
+
     /// Eviction batch size
     eviction_batch_size: u16,
-    
+
     /// Configuration flags (bit-packed)
     /// Bit 0: enable_compression
     /// Bit 1: enable_prefetch
@@ -729,7 +739,7 @@ pub struct KVCacheConfig {
     /// Bit 4: enable_batch_operations
     /// Bits 5-15: Reserved
     flags: u16,
-    
+
     /// Eviction strategy
     eviction_strategy: EvictionStrategy,
 }
@@ -748,7 +758,7 @@ impl KVCacheConfig {
             eviction_strategy: EvictionStrategy::AdaptiveLRU,
         }
     }
-    
+
     /// Set number of attention heads
     #[inline(always)]
     pub const fn with_num_heads(mut self, num_heads: usize) -> Self {
@@ -759,7 +769,7 @@ impl KVCacheConfig {
         };
         self
     }
-    
+
     /// Set head dimension
     #[inline(always)]
     pub const fn with_head_dim(mut self, head_dim: usize) -> Self {
@@ -770,7 +780,7 @@ impl KVCacheConfig {
         };
         self
     }
-    
+
     /// Set maximum sequence length
     #[inline(always)]
     pub const fn with_max_sequence_length(mut self, length: usize) -> Self {
@@ -781,90 +791,90 @@ impl KVCacheConfig {
         };
         self
     }
-    
+
     /// Set eviction strategy
     #[inline(always)]
     pub const fn with_eviction_strategy(mut self, strategy: EvictionStrategy) -> Self {
         self.eviction_strategy = strategy;
         self
     }
-    
+
     /// Enable compression
     #[inline(always)]
     pub const fn enable_compression(mut self) -> Self {
         self.flags |= 1;
         self
     }
-    
+
     /// Enable prefetching
     #[inline(always)]
     pub const fn enable_prefetch(mut self) -> Self {
         self.flags |= 2;
         self
     }
-    
+
     /// Enable statistics collection
     #[inline(always)]
     pub const fn enable_statistics(mut self) -> Self {
         self.flags |= 4;
         self
     }
-    
+
     /// Enable all optimizations
     #[inline(always)]
     pub const fn enable_all_optimizations(mut self) -> Self {
         self.flags = 0b11111;
         self
     }
-    
+
     /// Get number of heads
     #[inline(always)]
     pub const fn num_heads(&self) -> usize {
         self.num_heads as usize
     }
-    
+
     /// Get head dimension
     #[inline(always)]
     pub const fn head_dim(&self) -> usize {
         self.head_dim as usize
     }
-    
+
     /// Get maximum sequence length
     #[inline(always)]
     pub const fn max_sequence_length(&self) -> usize {
         self.max_sequence_length as usize
     }
-    
+
     /// Get memory pool size
     #[inline(always)]
     pub const fn memory_pool_size(&self) -> usize {
         self.memory_pool_size as usize
     }
-    
+
     /// Get eviction batch size
     #[inline(always)]
     pub const fn eviction_batch_size(&self) -> usize {
         self.eviction_batch_size as usize
     }
-    
+
     /// Get eviction strategy
     #[inline(always)]
     pub const fn eviction_strategy(&self) -> EvictionStrategy {
         self.eviction_strategy
     }
-    
+
     /// Check if compression is enabled
     #[inline(always)]
     pub const fn compression_enabled(&self) -> bool {
         (self.flags & 1) != 0
     }
-    
+
     /// Check if prefetch is enabled
     #[inline(always)]
     pub const fn prefetch_enabled(&self) -> bool {
         (self.flags & 2) != 0
     }
-    
+
     /// Check if statistics are enabled
     #[inline(always)]
     pub const fn statistics_enabled(&self) -> bool {
@@ -885,22 +895,22 @@ impl Default for KVCacheConfig {
 pub enum EvictionStrategy {
     /// Least Recently Used
     LRU = 0,
-    
+
     /// Least Frequently Used
     LFU = 1,
-    
+
     /// First In, First Out
     FIFO = 2,
-    
+
     /// Random eviction
     Random = 3,
-    
+
     /// Adaptive LRU with frequency consideration
     AdaptiveLRU = 4,
-    
+
     /// Adaptive LFU with recency consideration
     AdaptiveLFU = 5,
-    
+
     /// Time-based eviction
     TTL = 6,
 }
@@ -919,16 +929,16 @@ impl EvictionManager {
             access_tracker: AccessTracker::new(),
         }
     }
-    
+
     /// Record cache access
     fn record_access(&self, cache_key: CacheKey) {
         self.access_tracker.record_access(cache_key);
     }
-    
+
     /// Select victims for eviction
     fn select_victims(&self, count: usize, entries: &[KVCacheEntry]) -> SmallVec<usize, 32> {
         let mut victims = SmallVec::new();
-        
+
         match self.strategy {
             EvictionStrategy::LRU | EvictionStrategy::AdaptiveLRU => {
                 self.select_lru_victims(count, entries, &mut victims);
@@ -946,10 +956,10 @@ impl EvictionManager {
                 self.select_ttl_victims(count, entries, &mut victims);
             }
         }
-        
+
         victims
     }
-    
+
     /// Select LRU victims
     fn select_lru_victims(
         &self,
@@ -959,16 +969,16 @@ impl EvictionManager {
     ) {
         // Sort by generation (oldest first)
         let mut candidates: SmallVec<[(usize, u32); 64]> = SmallVec::new();
-        
+
         for (idx, entry) in entries.iter().enumerate() {
             if candidates.is_full() {
                 break;
             }
             let _ = candidates.try_push((idx, entry.generation()));
         }
-        
+
         candidates.sort_by_key(|(_, gen)| *gen);
-        
+
         for (idx, _) in candidates.into_iter().take(count) {
             if victims.is_full() {
                 break;
@@ -976,7 +986,7 @@ impl EvictionManager {
             let _ = victims.try_push(idx);
         }
     }
-    
+
     /// Select LFU victims
     fn select_lfu_victims(
         &self,
@@ -986,16 +996,16 @@ impl EvictionManager {
     ) {
         // Sort by access count (least accessed first)
         let mut candidates: SmallVec<[(usize, u32); 64]> = SmallVec::new();
-        
+
         for (idx, entry) in entries.iter().enumerate() {
             if candidates.is_full() {
                 break;
             }
             let _ = candidates.try_push((idx, entry.access_count()));
         }
-        
+
         candidates.sort_by_key(|(_, count)| *count);
-        
+
         for (idx, _) in candidates.into_iter().take(count) {
             if victims.is_full() {
                 break;
@@ -1003,7 +1013,7 @@ impl EvictionManager {
             let _ = victims.try_push(idx);
         }
     }
-    
+
     /// Select FIFO victims
     fn select_fifo_victims(
         &self,
@@ -1019,7 +1029,7 @@ impl EvictionManager {
             let _ = victims.try_push(idx);
         }
     }
-    
+
     /// Select random victims
     fn select_random_victims(
         &self,
@@ -1038,7 +1048,7 @@ impl EvictionManager {
             }
             idx += 1;
         }
-        
+
         // Fill remaining slots if needed
         while victims.len() < count && victims.len() < entries.len() {
             if victims.try_push(victims.len()).is_err() {
@@ -1046,7 +1056,7 @@ impl EvictionManager {
             }
         }
     }
-    
+
     /// Select TTL victims
     fn select_ttl_victims(
         &self,
@@ -1056,12 +1066,12 @@ impl EvictionManager {
     ) {
         // For now, use generation-based aging
         let current_time = entries.len() as u32; // Proxy for current time
-        
+
         for (idx, entry) in entries.iter().enumerate() {
             if victims.len() >= count {
                 break;
             }
-            
+
             // Consider entries older than threshold
             if current_time.saturating_sub(entry.generation()) > 100 {
                 if victims.try_push(idx).is_err() {
@@ -1085,7 +1095,7 @@ impl AccessTracker {
             _phantom: std::marker::PhantomData,
         }
     }
-    
+
     fn record_access(&self, _cache_key: CacheKey) {
         // Record access for eviction algorithms
         // Implementation would track frequency, recency, etc.
@@ -1097,22 +1107,22 @@ impl AccessTracker {
 pub struct CacheStats {
     /// Total cache hits
     hits: AtomicU64,
-    
+
     /// Total cache misses
     misses: AtomicU64,
-    
+
     /// Total stores
     stores: AtomicU64,
-    
+
     /// Total evictions
     evictions: AtomicU64,
-    
+
     /// Total errors
     errors: AtomicU64,
-    
+
     /// Creation timestamp
     created_at_nanos: u64,
-    
+
     /// Last activity timestamp
     last_activity_nanos: AtomicU64,
 }
@@ -1132,7 +1142,7 @@ impl CacheStats {
             last_activity_nanos: AtomicU64::new(now),
         }
     }
-    
+
     /// Get current timestamp
     #[inline(always)]
     fn current_time_nanos() -> u64 {
@@ -1140,96 +1150,99 @@ impl CacheStats {
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos() as u64)
     }
-    
+
     /// Record cache hit
     #[inline(always)]
     pub fn record_hit(&self) {
         self.hits.fetch_add(1, Ordering::Relaxed);
-        self.last_activity_nanos.store(Self::current_time_nanos(), Ordering::Relaxed);
+        self.last_activity_nanos
+            .store(Self::current_time_nanos(), Ordering::Relaxed);
     }
-    
+
     /// Record cache miss
     #[inline(always)]
     pub fn record_miss(&self) {
         self.misses.fetch_add(1, Ordering::Relaxed);
-        self.last_activity_nanos.store(Self::current_time_nanos(), Ordering::Relaxed);
+        self.last_activity_nanos
+            .store(Self::current_time_nanos(), Ordering::Relaxed);
     }
-    
+
     /// Record store operation
     #[inline(always)]
     pub fn record_store(&self) {
         self.stores.fetch_add(1, Ordering::Relaxed);
-        self.last_activity_nanos.store(Self::current_time_nanos(), Ordering::Relaxed);
+        self.last_activity_nanos
+            .store(Self::current_time_nanos(), Ordering::Relaxed);
     }
-    
+
     /// Record evictions
     #[inline(always)]
     pub fn record_evictions(&self, count: usize) {
         self.evictions.fetch_add(count as u64, Ordering::Relaxed);
     }
-    
+
     /// Record error
     #[inline(always)]
     pub fn record_error(&self) {
         self.errors.fetch_add(1, Ordering::Relaxed);
     }
-    
+
     /// Get hit count
     #[inline(always)]
     pub fn hits(&self) -> u64 {
         self.hits.load(Ordering::Relaxed)
     }
-    
+
     /// Get miss count
     #[inline(always)]
     pub fn misses(&self) -> u64 {
         self.misses.load(Ordering::Relaxed)
     }
-    
+
     /// Get store count
     #[inline(always)]
     pub fn stores(&self) -> u64 {
         self.stores.load(Ordering::Relaxed)
     }
-    
+
     /// Get eviction count
     #[inline(always)]
     pub fn evictions(&self) -> u64 {
         self.evictions.load(Ordering::Relaxed)
     }
-    
+
     /// Get error count
     #[inline(always)]
     pub fn errors(&self) -> u64 {
         self.errors.load(Ordering::Relaxed)
     }
-    
+
     /// Get hit ratio
     #[inline(always)]
     pub fn hit_ratio(&self) -> f64 {
         let hits = self.hits();
         let total = hits + self.misses();
-        
+
         if total > 0 {
             hits as f64 / total as f64
         } else {
             0.0
         }
     }
-    
+
     /// Get operations per second
     #[inline(always)]
     pub fn operations_per_second(&self) -> f64 {
         let total_ops = self.hits() + self.misses() + self.stores();
         let elapsed_nanos = Self::current_time_nanos().saturating_sub(self.created_at_nanos);
-        
+
         if elapsed_nanos > 0 {
             (total_ops as f64) * 1_000_000_000.0 / (elapsed_nanos as f64)
         } else {
             0.0
         }
     }
-    
+
     /// Get uptime in nanoseconds
     #[inline(always)]
     pub fn uptime_nanos(&self) -> u64 {
@@ -1257,49 +1270,49 @@ impl KVCacheBuilder {
             config: KVCacheConfig::new(),
         }
     }
-    
+
     /// Set maximum cache entries
     #[inline(always)]
     pub const fn max_entries(mut self, entries: usize) -> Self {
         // Max entries affects memory allocation
         self
     }
-    
+
     /// Set number of attention heads
     #[inline(always)]
     pub const fn num_heads(mut self, heads: usize) -> Self {
         self.config = self.config.with_num_heads(heads);
         self
     }
-    
+
     /// Set head dimension
     #[inline(always)]
     pub const fn head_dim(mut self, dim: usize) -> Self {
         self.config = self.config.with_head_dim(dim);
         self
     }
-    
+
     /// Set eviction strategy
     #[inline(always)]
     pub const fn eviction_strategy(mut self, strategy: EvictionStrategy) -> Self {
         self.config = self.config.with_eviction_strategy(strategy);
         self
     }
-    
+
     /// Enable compression
     #[inline(always)]
     pub const fn enable_compression(mut self) -> Self {
         self.config = self.config.enable_compression();
         self
     }
-    
+
     /// Enable all optimizations
     #[inline(always)]
     pub const fn enable_all_optimizations(mut self) -> Self {
         self.config = self.config.enable_all_optimizations();
         self
     }
-    
+
     /// Build KV cache
     pub fn build(self) -> Result<KVCache> {
         KVCache::with_config(self.config)

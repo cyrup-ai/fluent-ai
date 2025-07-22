@@ -3,12 +3,15 @@
 //! Provides complete message conversion and handling for OpenAI's chat completion API
 //! with support for text, images, audio, tool calls, and function calls.
 
-use crate::domain::{Message as DomainMessage, MessageRole, ToolCall as DomainToolCall, ToolFunction};
-use super::{OpenAIError, OpenAIResult};
-use crate::ZeroOneOrMany;
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use base64::Engine;
+
+use super::{OpenAIError, OpenAIResult};
+use crate::ZeroOneOrMany;
+use crate::domain::{
+    Message as DomainMessage, MessageRole, ToolCall as DomainToolCall, ToolFunction,
+};
 
 /// OpenAI message structure for chat completions
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,7 +61,7 @@ pub struct OpenAIImageUrl {
 /// Audio content for speech models
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIAudioContent {
-    pub data: String, // base64 encoded audio
+    pub data: String,   // base64 encoded audio
     pub format: String, // "mp3", "wav", "flac", etc.
 }
 
@@ -127,7 +130,11 @@ impl OpenAIMessage {
 
     /// Create user message with image URL (for vision models)
     #[inline(always)]
-    pub fn user_with_image(text: impl Into<String>, image_url: impl Into<String>, detail: Option<String>) -> Self {
+    pub fn user_with_image(
+        text: impl Into<String>,
+        image_url: impl Into<String>,
+        detail: Option<String>,
+    ) -> Self {
         let content_parts = vec![
             OpenAIContentPart {
                 content_type: "text".to_string(),
@@ -159,22 +166,26 @@ impl OpenAIMessage {
     /// Create user message with base64 image data
     #[inline(always)]
     pub fn user_with_image_data(
-        text: impl Into<String>, 
-        image_data: &[u8], 
+        text: impl Into<String>,
+        image_data: &[u8],
         mime_type: impl Into<String>,
-        detail: Option<String>
+        detail: Option<String>,
     ) -> Self {
         let base64_data = base64::engine::general_purpose::STANDARD.encode(image_data);
         let data_url = format!("data:{};base64,{}", mime_type.into(), base64_data);
-        
+
         Self::user_with_image(text, data_url, detail)
     }
 
     /// Create user message with audio content
     #[inline(always)]
-    pub fn user_with_audio(text: impl Into<String>, audio_data: &[u8], format: impl Into<String>) -> Self {
+    pub fn user_with_audio(
+        text: impl Into<String>,
+        audio_data: &[u8],
+        format: impl Into<String>,
+    ) -> Self {
         let base64_audio = base64::engine::general_purpose::STANDARD.encode(audio_data);
-        
+
         let content_parts = vec![
             OpenAIContentPart {
                 content_type: "text".to_string(),
@@ -205,7 +216,10 @@ impl OpenAIMessage {
 
     /// Create assistant message with tool calls
     #[inline(always)]
-    pub fn assistant_with_tool_calls(content: Option<String>, tool_calls: Vec<OpenAIToolCall>) -> Self {
+    pub fn assistant_with_tool_calls(
+        content: Option<String>,
+        tool_calls: Vec<OpenAIToolCall>,
+    ) -> Self {
         Self {
             role: "assistant".to_string(),
             content: content.map(OpenAIContent::Text),
@@ -264,7 +278,8 @@ impl OpenAIMessage {
         match &self.content {
             Some(OpenAIContent::Text(text)) => Some(text.clone()),
             Some(OpenAIContent::Array(parts)) => {
-                let text_parts: Vec<String> = parts.iter()
+                let text_parts: Vec<String> = parts
+                    .iter()
                     .filter_map(|part| part.text.as_ref())
                     .cloned()
                     .collect();
@@ -307,7 +322,9 @@ fn extract_tool_calls_from_content(content: &str) -> Option<Vec<DomainToolCall>>
         if let Some(tool_calls_array) = parsed.get("tool_calls").and_then(|v| v.as_array()) {
             let mut tool_calls = Vec::new();
             for tool_call_value in tool_calls_array {
-                if let Ok(tool_call) = serde_json::from_value::<DomainToolCall>(tool_call_value.clone()) {
+                if let Ok(tool_call) =
+                    serde_json::from_value::<DomainToolCall>(tool_call_value.clone())
+                {
                     tool_calls.push(tool_call);
                 }
             }
@@ -324,7 +341,7 @@ fn extract_tool_calls_from_content(content: &str) -> Option<Vec<DomainToolCall>>
 pub fn convert_message(message: &Message) -> OpenAIResult<OpenAIMessage> {
     let role = match message.role {
         MessageRole::System => "system",
-        MessageRole::User => "user", 
+        MessageRole::User => "user",
         MessageRole::Assistant => "assistant",
         MessageRole::Tool => "tool",
     };
@@ -336,15 +353,15 @@ pub fn convert_message(message: &Message) -> OpenAIResult<OpenAIMessage> {
         // Check if content contains structured tool calls
         if let Some(domain_tool_calls) = extract_tool_calls_from_content(&message.content) {
             // Convert domain tool calls to OpenAI format
-            let openai_tool_calls: Result<Vec<_>, _> = domain_tool_calls
-                .iter()
-                .map(convert_tool_call)
-                .collect();
-            
+            let openai_tool_calls: Result<Vec<_>, _> =
+                domain_tool_calls.iter().map(convert_tool_call).collect();
+
             match openai_tool_calls {
                 Ok(calls) if !calls.is_empty() => {
                     // If we have tool calls, content might be empty or contain additional text
-                    let content = if message.content.trim().starts_with('{') && message.content.trim().ends_with('}') {
+                    let content = if message.content.trim().starts_with('{')
+                        && message.content.trim().ends_with('}')
+                    {
                         // Content is pure JSON with tool calls, no additional text content
                         None
                     } else {
@@ -379,9 +396,7 @@ pub fn convert_message(message: &Message) -> OpenAIResult<OpenAIMessage> {
 pub fn convert_messages(messages: &ZeroOneOrMany<Message>) -> OpenAIResult<Vec<OpenAIMessage>> {
     match messages {
         ZeroOneOrMany::None => Ok(Vec::new()),
-        ZeroOneOrMany::One(message) => {
-            Ok(vec![convert_message(message)?])
-        }
+        ZeroOneOrMany::One(message) => Ok(vec![convert_message(message)?]),
         ZeroOneOrMany::Many(messages) => {
             let mut result = Vec::with_capacity(messages.len());
             for message in messages {
@@ -437,31 +452,51 @@ pub fn validate_message_for_model(message: &OpenAIMessage, model: &str) -> OpenA
 /// Check if model supports vision features
 #[inline(always)]
 pub fn is_vision_model(model: &str) -> bool {
-    matches!(model,
-        "gpt-4o" | "gpt-4o-mini" | "gpt-4-vision-preview" | "gpt-4-turbo" |
-        "gpt-4-turbo-2024-04-09" | "gpt-4-1106-vision-preview" |
-        "chatgpt-4o-latest" | "gpt-4o-search-preview" | "gpt-4o-mini-search-preview"
+    matches!(
+        model,
+        "gpt-4o"
+            | "gpt-4o-mini"
+            | "gpt-4-vision-preview"
+            | "gpt-4-turbo"
+            | "gpt-4-turbo-2024-04-09"
+            | "gpt-4-1106-vision-preview"
+            | "chatgpt-4o-latest"
+            | "gpt-4o-search-preview"
+            | "gpt-4o-mini-search-preview"
     )
 }
 
 /// Check if model supports audio features  
 #[inline(always)]
 pub fn is_audio_model(model: &str) -> bool {
-    matches!(model,
-        "gpt-4o" | "gpt-4o-mini" | "chatgpt-4o-latest" |
-        "whisper-1" | "tts-1" | "tts-1-hd"
+    matches!(
+        model,
+        "gpt-4o" | "gpt-4o-mini" | "chatgpt-4o-latest" | "whisper-1" | "tts-1" | "tts-1-hd"
     )
 }
 
 /// Check if model supports tool/function calling
 #[inline(always)]
 pub fn is_tool_calling_model(model: &str) -> bool {
-    matches!(model,
-        "gpt-4" | "gpt-4-0613" | "gpt-4-1106-preview" | "gpt-4-turbo" |
-        "gpt-4-turbo-2024-04-09" | "gpt-4o" | "gpt-4o-mini" |
-        "gpt-3.5-turbo" | "gpt-3.5-turbo-0613" | "gpt-3.5-turbo-1106" |
-        "chatgpt-4o-latest" | "o3" | "o3-mini" | "o4-mini" |
-        "gpt-4-1" | "gpt-4-1-mini" | "gpt-4-1-nano"
+    matches!(
+        model,
+        "gpt-4"
+            | "gpt-4-0613"
+            | "gpt-4-1106-preview"
+            | "gpt-4-turbo"
+            | "gpt-4-turbo-2024-04-09"
+            | "gpt-4o"
+            | "gpt-4o-mini"
+            | "gpt-3.5-turbo"
+            | "gpt-3.5-turbo-0613"
+            | "gpt-3.5-turbo-1106"
+            | "chatgpt-4o-latest"
+            | "o3"
+            | "o3-mini"
+            | "o4-mini"
+            | "gpt-4-1"
+            | "gpt-4-1-mini"
+            | "gpt-4-1-nano"
     )
 }
 

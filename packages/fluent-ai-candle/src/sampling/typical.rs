@@ -1,19 +1,20 @@
 //! Typical sampling processor for controlling text surprise
-//! 
+//!
 //! Production-quality typical sampling implementation that selects tokens based on
 //! their surprisal (negative log probability) relative to the distribution's entropy.
 
-use candle_core::{Result as CandleResult, Tensor, DType, D};
+use candle_core::{DType, Result as CandleResult, Tensor, D};
 use candle_nn::ops;
+
 use super::SamplingError;
 use crate::processing::traits::LogitsProcessor;
 
 /// Typical sampling processor for surprise-based token selection
-/// 
+///
 /// Typical sampling selects tokens that are "typical" in terms of their information content,
 /// measured by their surprisal relative to the entropy of the distribution. This helps
 /// generate text that is neither too predictable nor too random.
-/// 
+///
 /// The algorithm:
 /// 1. Compute probabilities from logits
 /// 2. Calculate entropy H = -Σ(p * log(p))  
@@ -43,15 +44,18 @@ impl TypicalSamplingProcessor {
     pub const DEFAULT_MIN_ENTROPY: f64 = 1e-8;
 
     /// Create a new typical sampling processor
-    /// 
+    ///
     /// # Arguments
     /// * `typical_p` - Typical probability mass (must be in [0.0, 1.0])
-    /// 
+    ///
     /// # Returns
     /// * `Ok(TypicalSamplingProcessor)` - Successfully created processor
     /// * `Err(SamplingError)` - Invalid typical_p value
     pub fn new(typical_p: f64) -> Result<Self, SamplingError> {
-        if !typical_p.is_finite() || typical_p < Self::MIN_TYPICAL_P || typical_p > Self::MAX_TYPICAL_P {
+        if !typical_p.is_finite()
+            || typical_p < Self::MIN_TYPICAL_P
+            || typical_p > Self::MAX_TYPICAL_P
+        {
             return Err(SamplingError::InvalidTopP(typical_p));
         }
 
@@ -70,19 +74,22 @@ impl TypicalSamplingProcessor {
         max_surprisal_diff: f64,
         use_approximation: bool,
     ) -> Result<Self, SamplingError> {
-        if !typical_p.is_finite() || typical_p < Self::MIN_TYPICAL_P || typical_p > Self::MAX_TYPICAL_P {
+        if !typical_p.is_finite()
+            || typical_p < Self::MIN_TYPICAL_P
+            || typical_p > Self::MAX_TYPICAL_P
+        {
             return Err(SamplingError::InvalidTopP(typical_p));
         }
 
         if !min_entropy.is_finite() || min_entropy < 0.0 {
             return Err(SamplingError::NumericalInstability(
-                "Invalid minimum entropy".to_string()
+                "Invalid minimum entropy".to_string(),
             ));
         }
 
         if !max_surprisal_diff.is_finite() || max_surprisal_diff <= 0.0 {
             return Err(SamplingError::NumericalInstability(
-                "Invalid maximum surprisal difference".to_string()
+                "Invalid maximum surprisal difference".to_string(),
             ));
         }
 
@@ -102,7 +109,10 @@ impl TypicalSamplingProcessor {
 
     /// Update typical_p value
     pub fn set_typical_p(&mut self, typical_p: f64) -> Result<(), SamplingError> {
-        if !typical_p.is_finite() || typical_p < Self::MIN_TYPICAL_P || typical_p > Self::MAX_TYPICAL_P {
+        if !typical_p.is_finite()
+            || typical_p < Self::MIN_TYPICAL_P
+            || typical_p > Self::MAX_TYPICAL_P
+        {
             return Err(SamplingError::InvalidTopP(typical_p));
         }
         self.typical_p = typical_p;
@@ -114,15 +124,16 @@ impl TypicalSamplingProcessor {
         // Convert to probabilities with numerical stability
         let probabilities = ops::softmax(logits, D::Minus1)
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
-            
-        let prob_vec = probabilities.to_vec1::<f32>()
+
+        let prob_vec = probabilities
+            .to_vec1::<f32>()
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
 
         // Validate probabilities
         let sum: f32 = prob_vec.iter().sum();
         if !sum.is_finite() || sum <= 0.0 {
             return Err(SamplingError::NumericalInstability(
-                "Invalid probability distribution".to_string()
+                "Invalid probability distribution".to_string(),
             ));
         }
 
@@ -135,7 +146,7 @@ impl TypicalSamplingProcessor {
 
         // Calculate entropy: H = -Σ(p * log(p))
         let entropy = self.calculate_entropy(&normalized_probs);
-        
+
         if entropy < self.min_entropy {
             // Distribution too peaked, return original logits
             return Ok(logits.clone());
@@ -143,7 +154,7 @@ impl TypicalSamplingProcessor {
 
         // Calculate surprisal for each token and find typical tokens
         let typical_indices = self.find_typical_tokens(&normalized_probs, entropy)?;
-        
+
         // Create filtered logits
         self.create_filtered_logits(logits, &typical_indices)
     }
@@ -151,7 +162,8 @@ impl TypicalSamplingProcessor {
     /// Calculate entropy of probability distribution
     #[inline]
     fn calculate_entropy(&self, probabilities: &[f32]) -> f64 {
-        probabilities.iter()
+        probabilities
+            .iter()
             .filter(|&&p| p > 0.0)
             .map(|&p| {
                 let p_f64 = p as f64;
@@ -162,18 +174,19 @@ impl TypicalSamplingProcessor {
 
     /// Find tokens that are typical based on surprisal analysis
     fn find_typical_tokens(
-        &self, 
-        probabilities: &[f32], 
-        entropy: f64
+        &self,
+        probabilities: &[f32],
+        entropy: f64,
     ) -> Result<Vec<usize>, SamplingError> {
         // Calculate surprisal and distance from entropy for each token
-        let mut token_analysis: Vec<(usize, f32, f64)> = probabilities.iter()
+        let mut token_analysis: Vec<(usize, f32, f64)> = probabilities
+            .iter()
             .enumerate()
             .filter_map(|(i, &p)| {
                 if p > 0.0 {
                     let surprisal = -(p as f64).ln();
                     let entropy_diff = (surprisal - entropy).abs();
-                    
+
                     // Filter out tokens with excessive surprisal difference
                     if entropy_diff <= self.max_surprisal_diff {
                         Some((i, p, entropy_diff))
@@ -188,7 +201,7 @@ impl TypicalSamplingProcessor {
 
         if token_analysis.is_empty() {
             return Err(SamplingError::NumericalInstability(
-                "No valid tokens for typical sampling".to_string()
+                "No valid tokens for typical sampling".to_string(),
             ));
         }
 
@@ -208,7 +221,7 @@ impl TypicalSamplingProcessor {
         for (token_idx, prob, _entropy_diff) in token_analysis {
             cumulative_prob += prob as f64;
             selected_indices.push(token_idx);
-            
+
             if cumulative_prob >= self.typical_p {
                 break;
             }
@@ -218,9 +231,11 @@ impl TypicalSamplingProcessor {
         if selected_indices.is_empty() && has_tokens {
             // If we have tokens but none were selected, select the first one
             // We need to rebuild the token analysis to get the first token
-            if let Some(first_token_idx) = probabilities.iter()
-                .enumerate()
-                .find_map(|(i, &p)| if p > 0.0 { Some(i) } else { None })
+            if let Some(first_token_idx) =
+                probabilities
+                    .iter()
+                    .enumerate()
+                    .find_map(|(i, &p)| if p > 0.0 { Some(i) } else { None })
             {
                 selected_indices.push(first_token_idx);
             } else {
@@ -234,16 +249,17 @@ impl TypicalSamplingProcessor {
 
     /// Create filtered logits with only typical tokens
     fn create_filtered_logits(
-        &self, 
-        original_logits: &Tensor, 
-        typical_indices: &[usize]
+        &self,
+        original_logits: &Tensor,
+        typical_indices: &[usize],
     ) -> Result<Tensor, SamplingError> {
-        let logits_vec = original_logits.to_vec1::<f32>()
+        let logits_vec = original_logits
+            .to_vec1::<f32>()
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
 
         // Create filtered logits with negative infinity for non-typical tokens
         let mut filtered_logits = vec![f32::NEG_INFINITY; logits_vec.len()];
-        
+
         for &idx in typical_indices {
             if idx < filtered_logits.len() {
                 filtered_logits[idx] = logits_vec[idx];
@@ -254,28 +270,34 @@ impl TypicalSamplingProcessor {
         let has_finite = filtered_logits.iter().any(|&x| x.is_finite());
         if !has_finite {
             return Err(SamplingError::NumericalInstability(
-                "All typical tokens have infinite logits".to_string()
+                "All typical tokens have infinite logits".to_string(),
             ));
         }
 
-        Tensor::from_vec(filtered_logits, original_logits.shape(), original_logits.device())
-            .map_err(|e| SamplingError::TensorError(e.to_string()))
+        Tensor::from_vec(
+            filtered_logits,
+            original_logits.shape(),
+            original_logits.device(),
+        )
+        .map_err(|e| SamplingError::TensorError(e.to_string()))
     }
 
     /// Calculate typical sampling statistics for debugging
-    pub fn analyze_distribution(&self, logits: &Tensor) -> Result<TypicalSamplingStats, SamplingError> {
+    pub fn analyze_distribution(
+        &self,
+        logits: &Tensor,
+    ) -> Result<TypicalSamplingStats, SamplingError> {
         let probabilities = ops::softmax(logits, D::Minus1)
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
-            
-        let prob_vec = probabilities.to_vec1::<f32>()
+
+        let prob_vec = probabilities
+            .to_vec1::<f32>()
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
 
         let entropy = self.calculate_entropy(&prob_vec);
         let typical_indices = self.find_typical_tokens(&prob_vec, entropy)?;
 
-        let selected_mass: f64 = typical_indices.iter()
-            .map(|&i| prob_vec[i] as f64)
-            .sum();
+        let selected_mass: f64 = typical_indices.iter().map(|&i| prob_vec[i] as f64).sum();
 
         Ok(TypicalSamplingStats {
             entropy,
@@ -387,10 +409,14 @@ impl TypicalSamplingBuilder {
 
     /// Build the processor
     pub fn build(self) -> Result<TypicalSamplingProcessor, SamplingError> {
-        let typical_p = self.typical_p.unwrap_or(TypicalSamplingProcessor::DEFAULT_TYPICAL_P);
-        let min_entropy = self.min_entropy.unwrap_or(TypicalSamplingProcessor::DEFAULT_MIN_ENTROPY);
+        let typical_p = self
+            .typical_p
+            .unwrap_or(TypicalSamplingProcessor::DEFAULT_TYPICAL_P);
+        let min_entropy = self
+            .min_entropy
+            .unwrap_or(TypicalSamplingProcessor::DEFAULT_MIN_ENTROPY);
         let max_surprisal_diff = self.max_surprisal_diff.unwrap_or(10.0);
-        
+
         TypicalSamplingProcessor::with_config(
             typical_p,
             min_entropy,
@@ -409,8 +435,9 @@ impl Default for TypicalSamplingBuilder {
 
 #[cfg(test)]
 mod tests {
+    use candle_core::{DType, Device};
+
     use super::*;
-    use candle_core::{Device, DType};
 
     #[test]
     fn test_typical_sampling_creation() -> Result<(), Box<dyn std::error::Error>> {
@@ -424,7 +451,7 @@ mod tests {
         // Valid typical_p
         assert!(TypicalSamplingProcessor::new(0.9).is_ok());
         assert!(TypicalSamplingProcessor::new(0.1).is_ok());
-        
+
         // Invalid typical_p
         assert!(TypicalSamplingProcessor::new(0.0).is_err());
         assert!(TypicalSamplingProcessor::new(1.5).is_err());
@@ -434,13 +461,13 @@ mod tests {
     #[test]
     fn test_entropy_calculation() -> Result<(), Box<dyn std::error::Error>> {
         let processor = TypicalSamplingProcessor::new(0.9)?;
-        
+
         // Uniform distribution entropy
         let uniform_probs = vec![0.25, 0.25, 0.25, 0.25];
         let entropy = processor.calculate_entropy(&uniform_probs);
         let expected_entropy = 4.0 * 0.25 * (0.25_f64).ln().abs();
         assert!((entropy - expected_entropy).abs() < 1e-10);
-        
+
         Ok(())
     }
 
@@ -451,9 +478,9 @@ mod tests {
             .min_entropy(1e-6)
             .use_approximation()
             .build()?;
-            
+
         assert_eq!(processor.typical_p(), 0.8);
-        
+
         Ok(())
     }
 
@@ -461,10 +488,10 @@ mod tests {
     fn test_identity_check() -> Result<(), Box<dyn std::error::Error>> {
         let identity_processor = TypicalSamplingProcessor::new(1.0)?;
         assert!(identity_processor.is_identity());
-        
+
         let non_identity_processor = TypicalSamplingProcessor::new(0.9)?;
         assert!(!non_identity_processor.is_identity());
-        
+
         Ok(())
     }
 }

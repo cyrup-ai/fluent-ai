@@ -1,9 +1,10 @@
 //! Concurrency primitives and utilities
 
 use std::sync::Arc;
-use tokio::sync::{mpsc, oneshot, Mutex};
 
-use crate::async_task::AsyncTask;
+use fluent_ai_async::AsyncTask;
+use tokio::sync::{Mutex, mpsc, oneshot};
+
 use crate::core::ChannelError;
 
 /// A multi-producer, single-consumer channel for sending values between tasks
@@ -50,7 +51,9 @@ impl<T: Send + 'static> Channel<T> {
     }
 
     /// Create a new receiver that can be used to receive values from this channel
-    pub fn subscribe(&self) -> impl futures::Stream<Item = Result<T, ChannelError>> + Send + 'static {
+    pub fn subscribe(
+        &self,
+    ) -> impl futures_util::Stream<Item = Result<T, ChannelError>> + Send + 'static {
         let receiver = self.receiver.clone();
         async_stream::stream! {
             let mut receiver = receiver.lock().await;

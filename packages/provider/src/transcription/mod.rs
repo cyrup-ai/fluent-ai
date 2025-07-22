@@ -1,5 +1,5 @@
 //! Zero-allocation audio transcription interfaces
-//! 
+//!
 //! This module provides blazing-fast, streaming audio transcription
 //! with zero-allocation audio processing and consistent interfaces
 //! across all provider implementations.
@@ -345,15 +345,15 @@ impl fmt::Display for Language {
 }
 
 /// Universal transcription provider trait
-/// 
+///
 /// Provides zero-allocation audio transcription with streaming support
 /// and consistent interfaces across all AI providers.
 pub trait TranscriptionProvider: Send + Sync {
     /// The type of raw transcription response from the provider
     type Response: Send + Sync;
-    
+
     /// Transcribe audio from a file path
-    /// 
+    ///
     /// This method provides zero-allocation file-based transcription
     /// with automatic format detection and optimized file handling.
     async fn transcribe_file<P: AsRef<Path> + Send>(
@@ -361,9 +361,9 @@ pub trait TranscriptionProvider: Send + Sync {
         path: P,
         options: TranscriptionOptions,
     ) -> Result<TranscriptionResponse<Self::Response>>;
-    
+
     /// Transcribe audio from raw bytes
-    /// 
+    ///
     /// This method provides zero-allocation transcription from audio
     /// data already loaded in memory.
     async fn transcribe_bytes(
@@ -372,9 +372,9 @@ pub trait TranscriptionProvider: Send + Sync {
         format: AudioFormat,
         options: TranscriptionOptions,
     ) -> Result<TranscriptionResponse<Self::Response>>;
-    
+
     /// Transcribe audio from a stream (for large files)
-    /// 
+    ///
     /// This method provides streaming transcription for large audio files
     /// that cannot be loaded entirely in memory.
     async fn transcribe_stream<R: AsyncRead + Send + Unpin>(
@@ -383,29 +383,29 @@ pub trait TranscriptionProvider: Send + Sync {
         format: AudioFormat,
         options: TranscriptionOptions,
     ) -> Result<StreamingTranscriptionResponse<Self::Response>>;
-    
+
     /// Get supported audio formats for this provider
     fn supported_formats(&self) -> &[AudioFormat];
-    
+
     /// Get supported languages for this provider
     fn supported_languages(&self) -> &[Language];
-    
+
     /// Get the maximum file size allowed (in bytes)
     fn max_file_size(&self) -> u64;
-    
+
     /// Get the model name/identifier
     fn model_name(&self) -> &str;
-    
+
     /// Check if the provider supports real-time streaming
     fn supports_streaming(&self) -> bool {
         false // Most providers don't support real-time streaming yet
     }
-    
+
     /// Check if the provider supports timestamps
     fn supports_timestamps(&self) -> bool {
         true // Most providers support timestamps
     }
-    
+
     /// Check if the provider supports speaker diarization
     fn supports_speaker_diarization(&self) -> bool {
         false // Advanced feature, not all providers support it
@@ -680,19 +680,19 @@ impl<T> StreamingTranscriptionResponse<T> {
         let mut detected_language = None;
         let mut overall_confidence = None;
 
-        while let Some(chunk_result) = futures::StreamExt::next(&mut self.stream).await {
+        while let Some(chunk_result) = futures_util::StreamExt::next(&mut self.stream).await {
             match chunk_result {
                 Ok(chunk) => {
                     full_text.push_str(&chunk.text);
-                    
+
                     if let Some(segment) = chunk.segment {
                         segments.push(segment);
                     }
-                    
+
                     if detected_language.is_none() {
                         detected_language = chunk.language;
                     }
-                    
+
                     if let Some(conf) = chunk.confidence {
                         overall_confidence = Some(conf);
                     }
@@ -702,21 +702,21 @@ impl<T> StreamingTranscriptionResponse<T> {
         }
 
         let mut response = TranscriptionResponse::new(self.raw_response, full_text);
-        
+
         if !segments.is_empty() {
             response = response.with_segments(segments);
         }
-        
+
         if let Some(lang) = detected_language {
             response = response.with_language(lang);
         }
-        
+
         if let Some(conf) = overall_confidence {
             response = response.with_confidence(conf);
         }
-        
+
         response = response.with_metadata(self.metadata);
-        
+
         Ok(response)
     }
 }
@@ -803,6 +803,6 @@ impl TranscriptionMetadata {
     }
 }
 
+pub use StreamingTranscriptionResponse as DefaultStreamingTranscriptionResponse;
 /// Re-exports for convenience
 pub use TranscriptionResponse as DefaultTranscriptionResponse;
-pub use StreamingTranscriptionResponse as DefaultStreamingTranscriptionResponse;

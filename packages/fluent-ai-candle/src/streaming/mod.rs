@@ -10,7 +10,7 @@
 use std::{
     pin::Pin,
     sync::{
-        atomic::{AtomicU64, AtomicBool, Ordering as AtomicOrdering},
+        atomic::{AtomicBool, AtomicU64, Ordering as AtomicOrdering},
         Arc,
     },
     task::{Context, Poll},
@@ -18,13 +18,14 @@ use std::{
 };
 
 use arrayvec::ArrayString;
-// Temporarily use domain stubs for compilation testing
-use crate::domain_stubs::{FinishReason, StreamingResponse};
-use crossbeam_channel::{bounded, Sender, Receiver, TrySendError, TryRecvError};
+use candle_core::Tensor;
+use crossbeam_channel::{bounded, Receiver, Sender, TryRecvError, TrySendError};
+use fluent_ai_domain::{
+    completion::StreamingCoreResponse as StreamingResponse, model::FinishReason,
+};
 use futures_util::Stream;
 
 use crate::error::{CandleError, CandleResult};
-use candle_core::Tensor;
 
 /// Maximum text length per token chunk for bounded memory usage
 pub const MAX_CHUNK_TEXT_SIZE: usize = 512;
@@ -96,9 +97,7 @@ impl TokenChunk {
                     0.0
                 } else {
                     // Find the maximum logit as a simple approximation
-                    logits_vec.iter()
-                        .copied()
-                        .fold(f32::NEG_INFINITY, f32::max)
+                    logits_vec.iter().copied().fold(f32::NEG_INFINITY, f32::max)
                 }
             }
             Err(_) => 0.0,
@@ -141,10 +140,13 @@ impl TokenChunk {
     #[inline(always)]
     pub fn try_merge(&mut self, other: &TokenChunk) -> CandleResult<()> {
         if self.text.len() + other.text.len() > MAX_CHUNK_TEXT_SIZE {
-            return Err(CandleError::streaming_error("Cannot merge chunks: would exceed size limit"));
+            return Err(CandleError::streaming_error(
+                "Cannot merge chunks: would exceed size limit",
+            ));
         }
 
-        self.text.try_push_str(&other.text)
+        self.text
+            .try_push_str(&other.text)
             .map_err(|_| CandleError::streaming_error("Failed to merge token chunks"))?;
 
         // Update metadata to reflect merged state
@@ -207,17 +209,19 @@ impl TokenMetadata {
     pub fn merge(&mut self, other: &TokenMetadata) {
         // Keep earliest position
         self.position = self.position.min(other.position);
-        
+
         // Average log probabilities (approximate)
         self.logprob = (self.logprob + other.logprob) / 2.0;
-        
+
         // Use other's finish reason if present
         if other.finish_reason.is_some() {
             self.finish_reason = other.finish_reason.clone();
         }
-        
+
         // Accumulate processing latency
-        self.processing_latency_nanos = self.processing_latency_nanos.saturating_add(other.processing_latency_nanos);
+        self.processing_latency_nanos = self
+            .processing_latency_nanos
+            .saturating_add(other.processing_latency_nanos);
     }
 }
 
@@ -264,7 +268,9 @@ impl StreamingConfig {
             return Err(CandleError::configuration("Buffer size cannot be zero"));
         }
         if size > MAX_BUFFER_SIZE {
-            return Err(CandleError::configuration("Buffer size exceeds maximum allowed"));
+            return Err(CandleError::configuration(
+                "Buffer size exceeds maximum allowed",
+            ));
         }
         self.buffer_size = size;
         Ok(self)
@@ -317,7 +323,9 @@ impl StreamingConfig {
             return Err(CandleError::configuration("Max chunk size cannot be zero"));
         }
         if self.max_merge_attempts == 0 {
-            return Err(CandleError::configuration("Max merge attempts cannot be zero"));
+            return Err(CandleError::configuration(
+                "Max merge attempts cannot be zero",
+            ));
         }
 
         Ok(())
@@ -379,7 +387,7 @@ impl Default for StreamingMetrics {
                 SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .map(|d| d.as_nanos() as u64)
-                    .unwrap_or(0)
+                    .unwrap_or(0),
             ),
         }
     }
@@ -390,7 +398,8 @@ impl StreamingMetrics {
     #[inline(always)]
     pub fn record_token_sent(&self, latency_nanos: u64) {
         self.tokens_sent.fetch_add(1, AtomicOrdering::Relaxed);
-        self.total_latency_nanos.fetch_add(latency_nanos, AtomicOrdering::Relaxed);
+        self.total_latency_nanos
+            .fetch_add(latency_nanos, AtomicOrdering::Relaxed);
     }
 
     /// Record chunk sent
@@ -442,9 +451,9 @@ impl StreamingMetrics {
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_nanos() as u64)
             .unwrap_or(start_nanos);
-        
+
         let duration_secs = (current_nanos.saturating_sub(start_nanos)) as f64 / 1_000_000_000.0;
-        
+
         if duration_secs > 0.0 {
             tokens / duration_secs
         } else {
@@ -456,7 +465,7 @@ impl StreamingMetrics {
     pub fn average_latency_nanos(&self) -> f64 {
         let total_latency = self.total_latency_nanos.load(AtomicOrdering::Relaxed) as f64;
         let tokens = self.tokens_sent.load(AtomicOrdering::Relaxed) as f64;
-        
+
         if tokens > 0.0 {
             total_latency / tokens
         } else {
@@ -468,7 +477,7 @@ impl StreamingMetrics {
     pub fn buffer_overflow_rate(&self) -> f64 {
         let overflows = self.buffer_overflows.load(AtomicOrdering::Relaxed) as f64;
         let chunks = self.chunks_sent.load(AtomicOrdering::Relaxed) as f64;
-        
+
         if chunks > 0.0 {
             overflows / chunks
         } else {
@@ -525,7 +534,7 @@ impl TokenOutputStream {
 
         // Create bounded channel with specified capacity
         let (sender, receiver) = bounded::<TokenChunk>(config.buffer_size);
-        
+
         let terminated = Arc::new(AtomicBool::new(false));
         let metrics = Arc::new(StreamingMetrics::default());
 
@@ -538,12 +547,8 @@ impl TokenOutputStream {
             sequence_counter: AtomicU64::new(0),
         };
 
-        let stream_sender = TokenStreamSender::new(
-            sender,
-            terminated.clone(),
-            metrics.clone(), 
-            config.clone(),
-        );
+        let stream_sender =
+            TokenStreamSender::new(sender, terminated.clone(), metrics.clone(), config.clone());
 
         Ok((token_stream, stream_sender))
     }
@@ -617,7 +622,7 @@ pub struct TokenStreamSender {
     /// Stream configuration
     config: StreamingConfig,
     /// Sequence counter for ordering
-    sequence_counter: AtomicU64,
+    sequence_counter: Arc<AtomicU64>,
 }
 
 impl TokenStreamSender {
@@ -633,7 +638,7 @@ impl TokenStreamSender {
             terminated,
             metrics,
             config,
-            sequence_counter: AtomicU64::new(0),
+            sequence_counter: Arc::new(AtomicU64::new(0)),
         }
     }
 
@@ -646,7 +651,7 @@ impl TokenStreamSender {
 
         let start_time = Instant::now();
         let sequence_id = self.sequence_counter.fetch_add(1, AtomicOrdering::Relaxed);
-        
+
         let chunk = TokenChunk::new(text, metadata, sequence_id)?;
 
         match self.sender.try_send(chunk) {
@@ -654,7 +659,7 @@ impl TokenStreamSender {
                 let latency_nanos = start_time.elapsed().as_nanos() as u64;
                 self.metrics.record_token_sent(latency_nanos);
                 self.metrics.record_chunk_sent();
-                
+
                 // Update buffer usage estimate
                 let current_usage = self.sender.len() as u64;
                 self.metrics.update_peak_buffer_usage(current_usage);
@@ -662,8 +667,12 @@ impl TokenStreamSender {
                 Ok(())
             }
             Err(TrySendError::Full(chunk)) => {
-                // Channel is full, handle overflow
-                Err(CandleError::streaming_error("Stream buffer overflow"))
+                // Channel is full, handle overflow with chunk information
+                let chunk_info = format!(
+                    "Stream buffer overflow - failed to send chunk of {} bytes",
+                    std::mem::size_of_val(&chunk)
+                );
+                Err(CandleError::streaming_error(&chunk_info))
             }
             Err(TrySendError::Disconnected(_)) => {
                 Err(CandleError::streaming_error("Stream receiver disconnected"))
@@ -682,16 +691,20 @@ impl TokenStreamSender {
     /// Terminate stream gracefully
     #[inline(always)]
     pub fn terminate(&self, reason: FinishReason) -> CandleResult<()> {
-        if !self.terminated.compare_exchange(
-            false,
-            true,
-            AtomicOrdering::Relaxed,
-            AtomicOrdering::Relaxed,
-        ).unwrap_or(true) {
+        if !self
+            .terminated
+            .compare_exchange(
+                false,
+                true,
+                AtomicOrdering::Relaxed,
+                AtomicOrdering::Relaxed,
+            )
+            .unwrap_or(true)
+        {
             // Send terminal chunk
             let sequence_id = self.sequence_counter.fetch_add(1, AtomicOrdering::Relaxed);
             let terminal_chunk = TokenChunk::new("", TokenMetadata::terminal(reason), sequence_id)?;
-            
+
             match self.sender.try_send(terminal_chunk) {
                 Ok(()) => Ok(()),
                 Err(_) => {
@@ -722,7 +735,7 @@ impl Stream for TokenOutputStream {
     type Item = CandleResult<TokenChunk>;
 
     #[inline(always)]
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         // Check for termination first
         if self.terminated.load(AtomicOrdering::Relaxed) && self.receiver.is_empty() {
             return Poll::Ready(None);
@@ -738,7 +751,8 @@ impl Stream for TokenOutputStream {
                 }
 
                 // Update buffer usage
-                let current_usage = (self.receiver.len() * std::mem::size_of::<TokenChunk>()) as u64;
+                let current_usage =
+                    (self.receiver.len() * std::mem::size_of::<TokenChunk>()) as u64;
                 self.metrics.update_peak_buffer_usage(current_usage);
 
                 Poll::Ready(Some(Ok(chunk)))
@@ -785,7 +799,7 @@ impl Drop for TokenStreamSender {
 impl Into<StreamingResponse> for TokenOutputStream {
     fn into(mut self) -> StreamingResponse {
         use futures_util::stream::{unfold, Stream};
-        
+
         // Create a stream that yields strings by consuming TokenChunks
         let stream = unfold(Some(self), |mut token_stream_opt| async move {
             match token_stream_opt.take() {
@@ -818,10 +832,10 @@ impl Into<StreamingResponse> for TokenOutputStream {
                         }
                     }
                 }
-                None => (None, None)
+                None => (None, None),
             }
         });
-        
+
         StreamingResponse::new(Box::pin(stream))
     }
 }
@@ -836,17 +850,17 @@ impl TokenStreamWrapper {
     pub fn new(stream: TokenOutputStream) -> Self {
         Self { inner: stream }
     }
-    
+
     /// Get reference to inner stream
     pub fn inner(&self) -> &TokenOutputStream {
         &self.inner
     }
-    
+
     /// Get mutable reference to inner stream
     pub fn inner_mut(&mut self) -> &mut TokenOutputStream {
         &mut self.inner
     }
-    
+
     /// Consume wrapper and return inner stream
     pub fn into_inner(self) -> TokenOutputStream {
         self.inner

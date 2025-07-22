@@ -58,9 +58,7 @@ impl AppleBackend {
         if !Self::is_valid_image_format(&image) {
             return Err(BackendError::InvalidConfig {
                 backend: "Apple",
-                details: format!(
-                    "Invalid image format: {image}. Expected format: 'name:tag'"
-                ),
+                details: format!("Invalid image format: {image}. Expected format: 'name:tag'"),
             });
         }
 
@@ -259,15 +257,16 @@ impl AppleBackend {
 
             // Write input if provided
             if let Some(input) = &request.input
-                && let Some(stdin) = child.stdin.take() {
-                    use std::io::Write;
-                    let mut stdin = stdin;
-                    stdin
-                        .write_all(input.as_bytes())
-                        .map_err(|e| BackendError::ProcessFailed {
-                            details: format!("Failed to write to container stdin: {e}"),
-                        })?;
-                }
+                && let Some(stdin) = child.stdin.take()
+            {
+                use std::io::Write;
+                let mut stdin = stdin;
+                stdin
+                    .write_all(input.as_bytes())
+                    .map_err(|e| BackendError::ProcessFailed {
+                        details: format!("Failed to write to container stdin: {e}"),
+                    })?;
+            }
 
             // Wait for completion with timeout
             let timeout_duration = request.timeout;
@@ -431,10 +430,9 @@ impl ExecutionBackend for AppleBackend {
             // Execute in container
             match Self::execute_in_container(image, request).await {
                 Ok(Ok(result)) => result,
-                Ok(Err(e)) => ExecutionResult::failure(
-                    -1,
-                    format!("{backend_name} execution failed: {e}"),
-                ),
+                Ok(Err(e)) => {
+                    ExecutionResult::failure(-1, format!("{backend_name} execution failed: {e}"))
+                }
                 Err(e) => ExecutionResult::failure(
                     -1,
                     format!("{backend_name} execution task failed: {e}"),
@@ -478,10 +476,8 @@ impl ExecutionBackend for AppleBackend {
                         .with_metric("test_execution", "failed")
                         .with_metric("exit_code", result.exit_code.to_string())
                 }
-                Ok(Err(e)) => {
-                    HealthStatus::unhealthy(format!("Health check execution error: {e}"))
-                        .with_metric("test_execution", "error")
-                }
+                Ok(Err(e)) => HealthStatus::unhealthy(format!("Health check execution error: {e}"))
+                    .with_metric("test_execution", "error"),
                 Err(e) => HealthStatus::unhealthy(format!("Health check task error: {e}"))
                     .with_metric("test_execution", "task_error"),
             }
@@ -504,16 +500,17 @@ impl ExecutionBackend for AppleBackend {
                 .output();
 
             if let Ok(output) = cleanup_result
-                && output.status.success() {
-                    let container_names = String::from_utf8_lossy(&output.stdout);
-                    for name in container_names.lines() {
-                        if !name.trim().is_empty() {
-                            let _ = Command::new("container")
-                                .args(["rm", "-f", name.trim()])
-                                .status();
-                        }
+                && output.status.success()
+            {
+                let container_names = String::from_utf8_lossy(&output.stdout);
+                for name in container_names.lines() {
+                    if !name.trim().is_empty() {
+                        let _ = Command::new("container")
+                            .args(["rm", "-f", name.trim()])
+                            .status();
                     }
                 }
+            }
 
             Ok(())
         })

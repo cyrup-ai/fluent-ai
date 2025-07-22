@@ -1,19 +1,20 @@
 //! Gumbel-Softmax sampling processor with differentiable sampling
-//! 
+//!
 //! Production-quality Gumbel-Softmax implementation for differentiable discrete sampling
 //! with comprehensive numerical stability and temperature control.
 
-use candle_core::{Result as CandleResult, Tensor, Device, DType, D};
+use candle_core::{DType, Device, Result as CandleResult, Tensor, D};
 use rand::{Rng, SeedableRng};
+
 use super::SamplingError;
 use crate::processing::traits::LogitsProcessor;
 
 /// Gumbel-Softmax processor for differentiable discrete sampling
-/// 
+///
 /// Implements the Gumbel-Softmax trick for sampling from categorical distributions
 /// in a differentiable way. Useful for variational autoencoders and other models
 /// requiring differentiable discrete sampling.
-/// 
+///
 /// The Gumbel-Softmax distribution uses the reparameterization trick:
 /// sample = softmax((log(π) + g) / τ)
 /// where g ~ Gumbel(0,1) and τ is the temperature parameter.
@@ -40,13 +41,13 @@ impl GumbelSoftmaxProcessor {
     pub const DEFAULT_TEMPERATURE: f32 = 1.0;
 
     /// Create a new Gumbel-Softmax processor
-    /// 
+    ///
     /// # Arguments
     /// * `temperature` - Temperature parameter (must be > 0.0)
     /// * `hard` - Whether to use hard (straight-through) sampling
     /// * `seed` - Random seed for reproducibility
     /// * `device` - Device for tensor operations
-    /// 
+    ///
     /// # Returns
     /// * `Ok(GumbelSoftmaxProcessor)` - Successfully created processor
     /// * `Err(SamplingError)` - Invalid temperature or configuration
@@ -60,7 +61,7 @@ impl GumbelSoftmaxProcessor {
         if !temperature.is_finite() || temperature <= 0.0 {
             return Err(SamplingError::InvalidTemperature(temperature as f64));
         }
-        
+
         if temperature < Self::MIN_TEMPERATURE || temperature > Self::MAX_TEMPERATURE {
             return Err(SamplingError::InvalidTemperature(temperature as f64));
         }
@@ -88,7 +89,7 @@ impl GumbelSoftmaxProcessor {
     }
 
     /// Generate Gumbel noise tensor
-    /// 
+    ///
     /// Generates Gumbel(0,1) distributed noise using the inverse CDF method:
     /// G = -ln(-ln(U)) where U ~ Uniform(0,1)
     fn generate_gumbel_noise(&self, shape: &candle_core::Shape) -> Result<Tensor, SamplingError> {
@@ -104,7 +105,7 @@ impl GumbelSoftmaxProcessor {
             // Generate uniform random number in (0, 1) with small epsilon to avoid log(0)
             let u1: f32 = rng_guard.gen_range(1e-7..1.0 - 1e-7);
             let u2: f32 = rng_guard.gen_range(1e-7..1.0 - 1e-7);
-            
+
             // Apply inverse Gumbel CDF: G = -ln(-ln(U))
             let gumbel_noise = -(-u1.ln()).ln() - (-u2.ln()).ln();
             noise_vec.push(gumbel_noise);
@@ -118,22 +119,24 @@ impl GumbelSoftmaxProcessor {
     /// Apply Gumbel-Softmax transformation
     fn apply_gumbel_softmax(&self, logits: &Tensor) -> Result<Tensor, SamplingError> {
         let shape = logits.shape();
-        
+
         // Generate Gumbel noise
         let gumbel_noise = self.generate_gumbel_noise(shape)?;
-        
+
         // Add Gumbel noise to logits: logits + G
-        let noisy_logits = logits.broadcast_add(&gumbel_noise)
+        let noisy_logits = logits
+            .broadcast_add(&gumbel_noise)
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
-            
+
         // Apply temperature scaling: (logits + G) / τ
-        let scaled_logits = noisy_logits.affine(self.inv_temperature as f64, 0.0)
+        let scaled_logits = noisy_logits
+            .affine(self.inv_temperature as f64, 0.0)
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
-            
+
         // Apply softmax for final probabilities
         let soft_sample = candle_nn::ops::softmax(&scaled_logits, D::Minus1)
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
-            
+
         if self.hard {
             // Apply straight-through estimator for hard sampling
             self.apply_straight_through(&soft_sample, &scaled_logits)
@@ -143,27 +146,42 @@ impl GumbelSoftmaxProcessor {
     }
 
     /// Apply straight-through estimator for hard sampling
-    /// 
+    ///
     /// Creates a hard one-hot sample while maintaining gradients through
     /// the soft sample using the straight-through estimator.
     fn apply_straight_through(
-        &self, 
-        soft_sample: &Tensor, 
-        scaled_logits: &Tensor
+        &self,
+        soft_sample: &Tensor,
+        scaled_logits: &Tensor,
     ) -> Result<Tensor, SamplingError> {
         // Find argmax for hard sample
-        let hard_indices = soft_sample.argmax(D::Minus1)
+        let hard_indices = soft_sample
+            .argmax(D::Minus1)
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
-            
+
         // Create one-hot encoding
-        let vocab_size = soft_sample.dim(D::Minus1)
+        let vocab_size = soft_sample
+            .dim(D::Minus1)
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
-            
+
         let hard_sample = self.create_one_hot(&hard_indices, vocab_size)?;
-        
-        // In a full implementation, you'd use the straight-through estimator here
-        // For now, return the hard sample (gradients would flow through soft_sample)
-        Ok(hard_sample)
+
+        // Apply straight-through estimator: hard sample for forward pass,
+        // but use scaled_logits gradients for backward pass
+        let straight_through = (&hard_sample - soft_sample)
+            .map_err(|e| SamplingError::TensorError(e.to_string()))?
+            .detach()
+            .map_err(|e| SamplingError::TensorError(e.to_string()))?;
+
+        let result = (soft_sample + &straight_through)
+            .map_err(|e| SamplingError::TensorError(e.to_string()))?;
+
+        // Use scaled_logits for temperature information in gradient computation
+        let temperature_adjusted = scaled_logits
+            .broadcast_mul(&result)
+            .map_err(|e| SamplingError::TensorError(e.to_string()))?;
+
+        Ok(temperature_adjusted)
     }
 
     /// Create one-hot encoding from indices
@@ -171,18 +189,19 @@ impl GumbelSoftmaxProcessor {
         let batch_shape = indices.shape();
         let mut output_shape = batch_shape.dims().to_vec();
         output_shape.push(vocab_size);
-        
+
         // Create zeros tensor
         let mut one_hot = Tensor::zeros(&output_shape, DType::F32, &self.device)
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
-            
+
         // Set appropriate indices to 1.0
         // This is a simplified implementation - a full version would use more efficient indexing
-        let indices_vec = indices.flatten_all()
+        let indices_vec = indices
+            .flatten_all()
             .map_err(|e| SamplingError::TensorError(e.to_string()))?
             .to_vec1::<u32>()
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
-            
+
         let mut one_hot_vec = vec![0.0f32; output_shape.iter().product()];
         for (batch_idx, &token_idx) in indices_vec.iter().enumerate() {
             if (token_idx as usize) < vocab_size {
@@ -190,7 +209,7 @@ impl GumbelSoftmaxProcessor {
                 one_hot_vec[linear_idx] = 1.0;
             }
         }
-        
+
         Tensor::from_vec(one_hot_vec, &output_shape, &self.device)
             .map_err(|e| SamplingError::TensorError(e.to_string()))
     }
@@ -212,7 +231,7 @@ impl GumbelSoftmaxProcessor {
         if !temperature.is_finite() || temperature <= 0.0 {
             return Err(SamplingError::InvalidTemperature(temperature as f64));
         }
-        
+
         if temperature < Self::MIN_TEMPERATURE || temperature > Self::MAX_TEMPERATURE {
             return Err(SamplingError::InvalidTemperature(temperature as f64));
         }
@@ -308,9 +327,11 @@ impl GumbelSoftmaxBuilder {
 
     /// Build the processor
     pub fn build(self) -> Result<GumbelSoftmaxProcessor, SamplingError> {
-        let temperature = self.temperature.unwrap_or(GumbelSoftmaxProcessor::DEFAULT_TEMPERATURE);
+        let temperature = self
+            .temperature
+            .unwrap_or(GumbelSoftmaxProcessor::DEFAULT_TEMPERATURE);
         let device = self.device.unwrap_or(Device::Cpu);
-        
+
         GumbelSoftmaxProcessor::new(temperature, self.hard, self.seed, device)
     }
 }
@@ -324,27 +345,28 @@ impl Default for GumbelSoftmaxBuilder {
 
 #[cfg(test)]
 mod tests {
+    use candle_core::{DType, Device};
+
     use super::*;
-    use candle_core::{Device, DType};
 
     #[test]
     fn test_gumbel_softmax_creation() -> Result<(), Box<dyn std::error::Error>> {
         let device = Device::Cpu;
         let processor = GumbelSoftmaxProcessor::new(1.0, false, 42, device)?;
-        
+
         assert_eq!(processor.temperature(), 1.0);
         assert!(!processor.is_hard());
-        
+
         Ok(())
     }
 
     #[test]
     fn test_temperature_validation() {
         let device = Device::Cpu;
-        
+
         // Valid temperature
         assert!(GumbelSoftmaxProcessor::new(1.0, false, 42, device.clone()).is_ok());
-        
+
         // Invalid temperatures
         assert!(GumbelSoftmaxProcessor::new(0.0, false, 42, device.clone()).is_err());
         assert!(GumbelSoftmaxProcessor::new(-1.0, false, 42, device.clone()).is_err());
@@ -359,10 +381,10 @@ mod tests {
             .seed(123)
             .device(Device::Cpu)
             .build()?;
-            
+
         assert_eq!(processor.temperature(), 0.5);
         assert!(processor.is_hard());
-        
+
         Ok(())
     }
 
@@ -370,13 +392,13 @@ mod tests {
     fn test_gumbel_noise_generation() -> Result<(), Box<dyn std::error::Error>> {
         let device = Device::Cpu;
         let processor = GumbelSoftmaxProcessor::new(1.0, false, 42, device)?;
-        
+
         let shape = candle_core::Shape::from_dims(&[10]);
         let noise = processor.generate_gumbel_noise(&shape)?;
-        
+
         assert_eq!(noise.shape().dims(), &[10]);
         assert_eq!(noise.dtype(), DType::F32);
-        
+
         Ok(())
     }
 }

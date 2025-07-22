@@ -5,10 +5,10 @@ use std::sync::{Arc, atomic::AtomicUsize};
 use crossbeam_utils::CachePadded;
 use serde_json::Value;
 
-use crate::memory::config::MemoryConfig;
-
 use crate::ZeroOneOrMany;
 use crate::context::Document;
+use crate::memory::config::memory::MemoryConfig;
+use crate::memory::manager::MemoryConfig as StubMemoryConfig;
 use crate::memory::{Memory, MemoryError, MemoryTool, MemoryToolError};
 use crate::model::Model;
 use crate::tool::McpToolData;
@@ -35,6 +35,9 @@ pub enum AgentError {
     /// Configuration error
     #[error("Configuration error: {0}")]
     Config(String),
+    /// Agent initialization error
+    #[error("Agent initialization failed: {0}")]
+    InitializationError(String),
 }
 
 /// Agent data structure with automatic memory tool injection
@@ -69,18 +72,30 @@ impl Agent {
         system_prompt: impl Into<String>,
     ) -> Result<Self, AgentError> {
         // Initialize memory system with cognitive settings optimized for performance
-        let memory_config = MemoryConfig::default();
-        let memory = Memory::new(memory_config).collect().await?;
+        let comprehensive_config = MemoryConfig::default();
+        // Convert comprehensive config to stub config for Memory::new()
+        let stub_config = StubMemoryConfig {
+            database_url: comprehensive_config.database.connection_string.to_string(),
+            embedding_dimension: comprehensive_config.vector_store.dimension,
+        };
+        let memory_stream = Memory::new(stub_config);
+        // Use streaming-only pattern to get the Memory instance
+        let mut stream = memory_stream;
+        let memory = match stream.try_next() {
+            Some(memory) => memory,
+            None => return Err(AgentError::Config("Failed to initialize memory: no memory returned".to_string())),
+        };
 
         // Create memory tool with zero-allocation initialization
-        let memory_tool = MemoryTool::new(&memory);
+        let memory_arc = Arc::new(memory);
+        let memory_tool = MemoryTool::new(memory_arc.clone());
 
         Ok(Self {
             model,
             system_prompt: system_prompt.into(),
             context: ZeroOneOrMany::None,
             tools: ZeroOneOrMany::None,
-            memory: Some((*memory).clone()),
+            memory: Some((*memory_arc).clone()),
             memory_tool: Some(memory_tool),
             temperature: None,
             max_tokens: None,
@@ -107,17 +122,29 @@ impl Agent {
         memory_config: MemoryConfig,
     ) -> Result<Self, AgentError> {
         // Initialize memory system with custom configuration
-        let memory = Memory::new(memory_config).collect().await?;
+        // Convert comprehensive config to stub config for Memory::new()
+        let stub_config = StubMemoryConfig {
+            database_url: memory_config.database.connection_string.to_string(),
+            embedding_dimension: memory_config.vector_store.dimension,
+        };
+        let memory_stream = Memory::new(stub_config);
+        // Use streaming-only pattern to get the Memory instance
+        let mut stream = memory_stream;
+        let memory = match stream.try_next() {
+            Some(memory) => memory,
+            None => return Err(AgentError::Config("Failed to initialize memory: no memory returned".to_string())),
+        };
 
         // Create memory tool with zero-allocation initialization
-        let memory_tool = MemoryTool::new(&memory);
+        let memory_arc = Arc::new(memory);
+        let memory_tool = MemoryTool::new(memory_arc.clone());
 
         Ok(Self {
             model,
             system_prompt: system_prompt.into(),
             context: ZeroOneOrMany::None,
             tools: ZeroOneOrMany::None,
-            memory: Some((*memory).clone()),
+            memory: Some((*memory_arc).clone()),
             memory_tool: Some(memory_tool),
             temperature: None,
             max_tokens: None,
@@ -141,17 +168,18 @@ impl Agent {
     pub async fn with_shared_memory(
         model: &'static dyn Model,
         system_prompt: impl Into<String>,
-        memory: Arc<Memory>,
+        memory: Memory,
     ) -> Result<Self, AgentError> {
         // Create memory tool with zero-allocation initialization
-        let memory_tool = MemoryTool::new(&memory);
+        let memory_arc = Arc::new(memory);
+        let memory_tool = MemoryTool::new(memory_arc.clone());
 
         Ok(Self {
             model,
             system_prompt: system_prompt.into(),
             context: ZeroOneOrMany::None,
             tools: ZeroOneOrMany::None,
-            memory: Some((*memory).clone()),
+            memory: Some((*memory_arc).clone()),
             memory_tool: Some(memory_tool),
             temperature: None,
             max_tokens: None,

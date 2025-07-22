@@ -198,7 +198,7 @@ impl Client {
 
         let test_body_bytes = serde_json::to_vec(&test_body)
             .map_err(|e| CompletionError::SerializationError(e.to_string()))?;
-        
+
         let response = self
             .make_request("chat/completions", test_body_bytes)
             .await

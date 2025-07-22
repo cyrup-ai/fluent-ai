@@ -70,7 +70,7 @@ impl ModelPerformanceStats {
     /// Update token generation statistics
     pub fn update_token_stats(&mut self, tokens_generated: u64, duration_nanos: u64) {
         self.total_tokens_generated += tokens_generated;
-        
+
         if duration_nanos > 0 {
             let tokens_per_second = (tokens_generated * 1_000_000_000) / duration_nanos;
             // Calculate moving average
@@ -78,13 +78,19 @@ impl ModelPerformanceStats {
                 self.avg_tokens_per_second = tokens_per_second;
             } else {
                 // Weighted average with decay factor of 0.9
-                self.avg_tokens_per_second = ((self.avg_tokens_per_second as f64 * 0.9) + (tokens_per_second as f64 * 0.1)) as u64;
+                self.avg_tokens_per_second = ((self.avg_tokens_per_second as f64 * 0.9)
+                    + (tokens_per_second as f64 * 0.1))
+                    as u64;
             }
         }
     }
 
     /// Get tokens per second for the current generation
-    pub fn current_tokens_per_second(&self, tokens_in_window: u64, window_duration_nanos: u64) -> u64 {
+    pub fn current_tokens_per_second(
+        &self,
+        tokens_in_window: u64,
+        window_duration_nanos: u64,
+    ) -> u64 {
         if window_duration_nanos == 0 {
             return 0;
         }
@@ -143,7 +149,7 @@ impl GenerationMetrics {
     pub fn update_token_generation(&mut self, tokens_generated: u64, generation_time_nanos: u64) {
         self.total_tokens += tokens_generated;
         self.time_since_last_generation_nanos = generation_time_nanos;
-        
+
         if generation_time_nanos > 0 {
             self.tokens_per_second = (tokens_generated * 1_000_000_000) / generation_time_nanos;
         }
@@ -192,11 +198,17 @@ impl ModelMetrics {
     }
 
     /// Update all metrics
-    pub fn update(&mut self, cache_stats: Option<KVCacheStats>, model_memory_bytes: u64, 
-                  tokens_generated: u64, generation_duration_nanos: u64) {
+    pub fn update(
+        &mut self,
+        cache_stats: Option<KVCacheStats>,
+        model_memory_bytes: u64,
+        tokens_generated: u64,
+        generation_duration_nanos: u64,
+    ) {
         // Update performance stats
-        self.performance.update_token_stats(tokens_generated, generation_duration_nanos);
-        
+        self.performance
+            .update_token_stats(tokens_generated, generation_duration_nanos);
+
         if let Some(stats) = cache_stats {
             self.performance.cache_memory_usage = stats.total_memory_bytes;
             self.performance.cache_hit_rate = stats.hit_rate;
@@ -206,9 +218,10 @@ impl ModelMetrics {
             self.performance.total_memory_usage = model_memory_bytes + stats.total_memory_bytes;
             self.cache_stats = Some(stats);
         }
-        
+
         // Update generation metrics
-        self.generation.update_token_generation(tokens_generated, generation_duration_nanos);
+        self.generation
+            .update_token_generation(tokens_generated, generation_duration_nanos);
     }
 
     /// Get summary statistics

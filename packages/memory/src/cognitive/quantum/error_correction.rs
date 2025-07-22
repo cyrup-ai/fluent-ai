@@ -657,7 +657,10 @@ mod tests {
         assert!(code_names.contains(&"steane-7-1-3"));
 
         // Verify Steane code properties
-        let steane = codes.iter().find(|c| c.name == "steane-7-1-3").expect("Failed to find steane-7-1-3 code in test");
+        let steane = codes
+            .iter()
+            .find(|c| c.name == "steane-7-1-3")
+            .expect("Failed to find steane-7-1-3 code in test");
         assert_eq!(steane.physical_qubits, 7);
         assert_eq!(steane.logical_qubits, 1);
         assert_eq!(steane.code_distance, 3);
@@ -669,7 +672,9 @@ mod tests {
         let qec = QuantumErrorCorrection::new(0.01);
         let code = &qec.error_correction_codes[0]; // 3-qubit bit flip
 
-        let circuit = qec.generate_encoding_circuit(code).expect("Failed to generate encoding circuit in test");
+        let circuit = qec
+            .generate_encoding_circuit(code)
+            .expect("Failed to generate encoding circuit in test");
         assert_eq!(circuit.qubit_count, 3);
         assert_eq!(circuit.gates.len(), 2); // Two CNOT gates
     }
@@ -689,7 +694,10 @@ mod tests {
                 crate::cognitive::quantum::measurement::MeasurementMetadata::default(),
         };
 
-        let syndrome = qec.extract_syndrome(&measurement_result).await.expect("Failed to extract syndrome in test");
+        let syndrome = qec
+            .extract_syndrome(&measurement_result)
+            .await
+            .expect("Failed to extract syndrome in test");
         assert_eq!(syndrome.len(), 2); // Two syndrome bits for default detector
     }
 }

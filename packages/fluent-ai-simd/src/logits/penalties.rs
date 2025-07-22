@@ -1,9 +1,10 @@
 //! Penalty application for logits processing
 
+use smallvec::SmallVec;
+
+use crate::config::ProcessorConfig;
 use crate::context::ProcessingContext;
 use crate::logits::LogitsResult;
-use smallvec::SmallVec;
-use crate::config::ProcessorConfig;
 
 /// Apply penalties to logits
 pub fn apply_penalties_simd(
@@ -83,7 +84,7 @@ fn apply_presence_penalty(
 ) -> LogitsResult<()> {
     // Use a set to track unique tokens
     let mut seen = std::collections::HashSet::new();
-    
+
     // Apply penalty for each unique token in history
     for &token in token_history {
         if (token as usize) < logits.len() && seen.insert(token) {
@@ -96,42 +97,43 @@ fn apply_presence_penalty(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use float_eq::assert_float_eq;
-    
+
+    use super::*;
+
     #[test]
     fn test_repetition_penalty() {
         let mut logits = vec![1.0, 2.0, 3.0];
         let history = vec![0, 2];
         apply_repetition_penalty(&mut logits, &history, 2.0).unwrap();
-        
+
         // First and third elements should be penalized
-        assert_float_eq!(logits[0], 0.5, abs <= 1e-6);  // 1.0 / 2.0
-        assert_float_eq!(logits[1], 2.0, abs <= 1e-6);  // No penalty
-        assert_float_eq!(logits[2], 1.5, abs <= 1e-6);  // 3.0 / 2.0
+        assert_float_eq!(logits[0], 0.5, abs <= 1e-6); // 1.0 / 2.0
+        assert_float_eq!(logits[1], 2.0, abs <= 1e-6); // No penalty
+        assert_float_eq!(logits[2], 1.5, abs <= 1e-6); // 3.0 / 2.0
     }
-    
+
     #[test]
     fn test_frequency_penalty() {
         let mut logits = vec![1.0, 2.0, 3.0];
         let history = vec![0, 0, 1]; // Token 0 appears twice, token 1 once
         apply_frequency_penalty(&mut logits, &history, 0.5).unwrap();
-        
+
         // Penalty is frequency * penalty
-        assert_float_eq!(logits[0], 0.0, abs <= 1e-6);  // 1.0 - (2 * 0.5)
-        assert_float_eq!(logits[1], 1.5, abs <= 1e-6);  // 2.0 - (1 * 0.5)
-        assert_float_eq!(logits[2], 3.0, abs <= 1e-6);  // No penalty
+        assert_float_eq!(logits[0], 0.0, abs <= 1e-6); // 1.0 - (2 * 0.5)
+        assert_float_eq!(logits[1], 1.5, abs <= 1e-6); // 2.0 - (1 * 0.5)
+        assert_float_eq!(logits[2], 3.0, abs <= 1e-6); // No penalty
     }
-    
+
     #[test]
     fn test_presence_penalty() {
         let mut logits = vec![1.0, 2.0, 3.0];
         let history = vec![0, 0, 1]; // Tokens 0 and 1 (unique)
         apply_presence_penalty(&mut logits, &history, 0.5).unwrap();
-        
+
         // Each unique token gets penalty applied once
-        assert_float_eq!(logits[0], 0.5, abs <= 1e-6);  // 1.0 - 0.5
-        assert_float_eq!(logits[1], 1.5, abs <= 1e-6);  // 2.0 - 0.5
-        assert_float_eq!(logits[2], 3.0, abs <= 1e-6);  // No penalty
+        assert_float_eq!(logits[0], 0.5, abs <= 1e-6); // 1.0 - 0.5
+        assert_float_eq!(logits[1], 1.5, abs <= 1e-6); // 2.0 - 0.5
+        assert_float_eq!(logits[2], 3.0, abs <= 1e-6); // No penalty
     }
 }

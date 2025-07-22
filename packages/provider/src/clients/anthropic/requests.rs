@@ -6,11 +6,11 @@
 use std::collections::HashMap;
 
 use bytes::Bytes;
+use fluent_ai_http3::{HttpClient, HttpError, HttpMethod, HttpRequest, HttpResponse};
 
 use super::completion::AnthropicCompletionRequest;
 use super::config::AnthropicConfig;
 use super::error::{AnthropicError, AnthropicResult};
-use fluent_ai_http3::{HttpClient, HttpError, HttpMethod, HttpRequest, HttpResponse};
 
 /// HTTP method constants for zero-allocation header building
 const METHOD_POST: &str = "POST";
@@ -89,8 +89,7 @@ impl<'a> AnthropicRequestBuilder<'a> {
         })?;
 
         // Build HTTP request
-        let mut http_request = HttpRequest::new(HttpMethod::Post, url.to_string())
-            .with_body(body);
+        let mut http_request = HttpRequest::new(HttpMethod::Post, url.to_string()).with_body(body);
 
         // Add headers
         let headers = self.build_headers();
@@ -140,8 +139,7 @@ impl<'a> AnthropicRequestBuilder<'a> {
         })?;
 
         // Build HTTP request
-        let mut http_request = HttpRequest::new(HttpMethod::Post, url.to_string())
-            .with_body(body);
+        let mut http_request = HttpRequest::new(HttpMethod::Post, url.to_string()).with_body(body);
 
         // Add headers
         let headers = self.build_headers();
@@ -201,8 +199,7 @@ impl<'a> AnthropicRequestBuilder<'a> {
             })?;
 
         // Build HTTP request
-        let mut http_request = HttpRequest::new(HttpMethod::Post, url.to_string())
-            .with_body(body);
+        let mut http_request = HttpRequest::new(HttpMethod::Post, url.to_string()).with_body(body);
 
         // Add headers
         let headers = self.build_headers();

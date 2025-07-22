@@ -4,4 +4,4 @@
 
 pub mod store;
 
-pub use store::{TemplateStore, MemoryStore};
+pub use store::{MemoryStore, TemplateStore};

@@ -8,6 +8,7 @@
 // ============================================================================
 
 use std::future::IntoFuture;
+
 use fluent_ai_http3::async_task::AsyncStream;
 
 use crate::{
@@ -63,7 +64,7 @@ where
         let query = input.into();
         let n = self.n;
         let index = self.index.clone();
-        
+
         let (tx, stream) = AsyncStream::channel();
         tokio::spawn(async move {
             let result = index.top_n::<T>(&query, n).await;
@@ -182,7 +183,7 @@ where
     fn call(&self, input: Self::Input) -> AsyncStream<Self::Output> {
         let message = input.into();
         let extractor = self.extractor.clone();
-        
+
         let (tx, stream) = AsyncStream::channel();
         tokio::spawn(async move {
             let result = extractor.extract(message).await;

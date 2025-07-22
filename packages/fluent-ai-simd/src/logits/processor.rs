@@ -30,11 +30,7 @@ impl DefaultLogitsProcessor {
     }
 
     /// Process logits with the given context
-    pub fn process(
-        &mut self,
-        logits: &mut [f32],
-        context: &ProcessingContext,
-    ) -> LogitsResult<()> {
+    pub fn process(&mut self, logits: &mut [f32], context: &ProcessingContext) -> LogitsResult<()> {
         if logits.is_empty() {
             return Ok(());
         }
@@ -88,50 +84,51 @@ impl DefaultLogitsProcessor {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use float_eq::assert_float_eq;
+
+    use super::*;
 
     #[test]
     fn test_temperature_scaling() {
         let mut processor = DefaultLogitsProcessor::new();
         let mut logits = vec![1.0, 2.0, 3.0];
         let context = ProcessingContext::new().with_temperature(0.5);
-        
+
         processor.process(&mut logits, &context).unwrap();
-        
+
         assert_float_eq!(logits[0], 2.0, abs <= 1e-6);
         assert_float_eq!(logits[1], 4.0, abs <= 1e-6);
         assert_float_eq!(logits[2], 6.0, abs <= 1e-6);
     }
-    
+
     #[test]
     fn test_topk_processing() {
         let mut processor = DefaultLogitsProcessor::new();
         let mut logits = vec![1.0, 5.0, 2.0, 4.0, 3.0];
         let context = ProcessingContext::new().with_top_k(Some(2));
-        
+
         processor.process(&mut logits, &context).unwrap();
-        
+
         // Only top 2 values should remain non-negative infinity
         let non_inf = logits.iter().filter(|&&x| x > f32::NEG_INFINITY).count();
         assert_eq!(non_inf, 2);
         assert!(logits[1] > f32::NEG_INFINITY); // 5.0
         assert!(logits[3] > f32::NEG_INFINITY); // 4.0
     }
-    
+
     #[test]
     fn test_nucleus_processing() {
         let mut processor = DefaultLogitsProcessor::new();
         let mut logits = vec![1.0, 2.0, 3.0, 4.0];
         let context = ProcessingContext::new().with_top_p(Some(0.7));
-        
+
         processor.process(&mut logits, &context).unwrap();
-        
+
         // At least one value should be set to negative infinity
         let has_inf = logits.iter().any(|&x| x == f32::NEG_INFINITY);
         assert!(has_inf);
     }
-    
+
     #[test]
     fn test_penalties() {
         let mut processor = DefaultLogitsProcessor::with_config(ProcessorConfig {
@@ -140,13 +137,12 @@ mod tests {
             presence_penalty: 0.1,
             ..Default::default()
         });
-        
+
         let mut logits = vec![1.0, 2.0, 3.0];
-        let context = ProcessingContext::new()
-            .with_token_history(vec![0, 0, 1]); // Token 0 appears twice, token 1 once
-        
+        let context = ProcessingContext::new().with_token_history(vec![0, 0, 1]); // Token 0 appears twice, token 1 once
+
         processor.process(&mut logits, &context).unwrap();
-        
+
         // Verify penalties were applied
         // Original: [1.0, 2.0, 3.0]
         // After repetition penalty (divide by 2.0 for tokens 0 and 1): [0.5, 1.0, 3.0]

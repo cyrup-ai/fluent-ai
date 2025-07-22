@@ -10,9 +10,9 @@
 use std::collections::VecDeque;
 
 use arrayvec::ArrayString;
+use fluent_ai_domain::AsyncStream;
 use fluent_ai_domain::chunk::CompletionChunk;
 use fluent_ai_domain::usage::Usage;
-use fluent_ai_domain::AsyncStream;
 use fluent_ai_http3::HttpResponse;
 use serde_json::Value;
 

@@ -244,8 +244,12 @@ impl ModelRegistry {
                 ))
             }
             None => Err(ModelError::InvalidConfiguration(
-                format!("Model '{}' from provider '{}' is not of the requested type", name, provider).into()
-            ))
+                format!(
+                    "Model '{}' from provider '{}' is not of the requested type",
+                    name, provider
+                )
+                .into(),
+            )),
         }
     }
 
@@ -277,9 +281,10 @@ impl ModelRegistry {
 
         // Attempt to convert the handle to a boxed trait object
         // This is complex for ?Sized types and requires careful implementation
-        Err(ModelError::InvalidConfiguration(
-            Cow::Owned(format!("Boxed trait object conversion for model '{}' from provider '{}' requires additional implementation for ?Sized types", name, provider))
-        ))
+        Err(ModelError::InvalidConfiguration(Cow::Owned(format!(
+            "Boxed trait object conversion for model '{}' from provider '{}' requires additional implementation for ?Sized types",
+            name, provider
+        ))))
     }
 
     /// Get a model as a specific trait object, returning an error if not found

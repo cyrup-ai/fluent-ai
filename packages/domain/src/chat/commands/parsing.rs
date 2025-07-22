@@ -4,50 +4,49 @@
 //! Uses blazing-fast parsing algorithms with ergonomic APIs and production-ready error messages.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
-// Removed unused imports: Deserialize, Serialize
+// Removed unused imports: Deserialize, Serialize, Arc
 use thiserror::Error;
 
 use super::types::*;
 
-/// Command parsing errors
+/// Command parsing errors with owned strings
 #[derive(Error, Debug, Clone)]
 pub enum ParseError {
     #[error("Invalid command syntax: {detail}")]
-    InvalidSyntax { detail: Arc<str> },
+    InvalidSyntax { detail: String },
 
     #[error("Missing required parameter: {parameter}")]
-    MissingParameter { parameter: Arc<str> },
+    MissingParameter { parameter: String },
 
     #[error("Invalid parameter value: {parameter} = {value}")]
     InvalidParameterValue {
-        parameter: Arc<str>,
-        value: Arc<str>,
+        parameter: String,
+        value: String,
     },
 
     #[error("Unknown parameter: {parameter}")]
-    UnknownParameter { parameter: Arc<str> },
+    UnknownParameter { parameter: String },
 
     #[error("Parameter type mismatch: expected {expected}, got {actual}")]
     TypeMismatch {
-        expected: Arc<str>,
-        actual: Arc<str>,
+        expected: String,
+        actual: String,
     },
 }
 
 /// Result type for parsing operations
 pub type ParseResult<T> = Result<T, ParseError>;
 
-/// Zero-allocation command parser
+/// Zero-allocation command parser with owned strings
 #[derive(Debug, Clone)]
 pub struct CommandParser {
     /// Registered commands
-    commands: HashMap<Arc<str>, CommandInfo>,
+    commands: HashMap<String, CommandInfo>,
     /// Command aliases
-    aliases: HashMap<Arc<str>, Arc<str>>,
+    aliases: HashMap<String, String>,
     /// Command history for auto-completion
-    history: Vec<Arc<str>>,
+    history: Vec<String>,
 }
 
 impl Default for CommandParser {
@@ -68,190 +67,299 @@ impl CommandParser {
         parser
     }
 
+    /// Parse command from input string (zero-allocation)
+    pub fn parse_command(&self, input: &str) -> Result<ImmutableChatCommand, CommandError> {
+        let input = input.trim();
+        if input.is_empty() {
+            return Err(CommandError::InvalidSyntax {
+                detail: "Empty command".to_string(),
+            });
+        }
+
+        // Remove leading slash if present
+        let input = if input.starts_with('/') {
+            &input[1..]
+        } else {
+            input
+        };
+
+        // Split command and arguments
+        let parts: Vec<&str> = input.split_whitespace().collect();
+        if parts.is_empty() {
+            return Err(CommandError::InvalidSyntax {
+                detail: "No command specified".to_string(),
+            });
+        }
+
+        let command_name = parts[0].to_lowercase();
+        let args = &parts[1..];
+
+        // Parse based on command name
+        match command_name.as_str() {
+            "help" | "h" | "?" => {
+                let command = if args.len() > 0 && !args[0].starts_with("--") {
+                    Some(args[0].to_string())
+                } else {
+                    None
+                };
+                let extended = args.contains(&"--extended");
+                Ok(ImmutableChatCommand::Help { command, extended })
+            }
+            "clear" => {
+                let confirm = args.contains(&"--confirm");
+                let keep_last = args.iter()
+                    .position(|&arg| arg == "--keep-last")
+                    .and_then(|i| args.get(i + 1))
+                    .and_then(|s| s.parse().ok());
+                Ok(ImmutableChatCommand::Clear { confirm, keep_last })
+            }
+            "export" => {
+                let format = args.iter()
+                    .position(|&arg| arg == "--format")
+                    .and_then(|i| args.get(i + 1))
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "json".to_string());
+                let output = args.iter()
+                    .position(|&arg| arg == "--output")
+                    .and_then(|i| args.get(i + 1))
+                    .map(|s| s.to_string());
+                let include_metadata = args.contains(&"--metadata");
+                Ok(ImmutableChatCommand::Export { format, output, include_metadata })
+            }
+            "config" => {
+                let show = args.contains(&"--show");
+                let reset = args.contains(&"--reset");
+                let key = args.iter()
+                    .find(|&&arg| !arg.starts_with("--"))
+                    .map(|s| s.to_string());
+                let value = if let Some(key_pos) = args.iter().position(|&arg| !arg.starts_with("--")) {
+                    if let Some(&arg) = args.get(key_pos + 1) {
+                        if !arg.starts_with("--") {
+                            Some(arg.to_string())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                Ok(ImmutableChatCommand::Config { key, value, show, reset })
+            }
+            "search" => {
+                let query = args.iter()
+                    .find(|&&arg| !arg.starts_with("--"))
+                    .map(|s| s.to_string())
+                    .unwrap_or_default();
+                let scope = if args.contains(&"--current") {
+                    SearchScope::Current
+                } else if args.contains(&"--recent") {
+                    SearchScope::Recent
+                } else if args.contains(&"--bookmarked") {
+                    SearchScope::Bookmarked
+                } else {
+                    SearchScope::All
+                };
+                let limit = args.iter()
+                    .position(|&arg| arg == "--limit")
+                    .and_then(|i| args.get(i + 1))
+                    .and_then(|s| s.parse().ok());
+                let include_context = args.contains(&"--context");
+                Ok(ImmutableChatCommand::Search { query, scope, limit, include_context })
+            }
+            _ => {
+                Err(CommandError::UnknownCommand {
+                    command: command_name,
+                })
+            }
+        }
+    }
+
     /// Register built-in commands
     pub fn register_builtin_commands(&mut self) {
         // Help command
         self.register_command(CommandInfo {
-            name: Arc::from("help"),
-            description: Arc::from("Show help information"),
-            usage: Arc::from("/help [command] [--extended]"),
+            name: "help".to_string(),
+            description: "Show help information".to_string(),
+            usage: "/help [command] [--extended]".to_string(),
             parameters: vec![
                 ParameterInfo {
-                    name: Arc::from("command"),
-                    description: Arc::from("Optional command to get help for"),
+                    name: "command".to_string(),
+                    description: "Optional command to get help for".to_string(),
                     parameter_type: ParameterType::String,
                     required: false,
                     default_value: None,
                 },
                 ParameterInfo {
-                    name: Arc::from("extended"),
-                    description: Arc::from("Show extended help"),
+                    name: "extended".to_string(),
+                    description: "Show extended help".to_string(),
                     parameter_type: ParameterType::Boolean,
                     required: false,
-                    default_value: Some(Arc::from("false")),
+                    default_value: Some("false".to_string()),
                 },
             ],
-            aliases: vec![Arc::from("h"), Arc::from("?")],
-            category: Arc::from("General"),
+            aliases: vec!["h".to_string(), "?".to_string()],
+            category: "General".to_string(),
             examples: vec![
-                Arc::from("/help"),
-                Arc::from("/help config"),
-                Arc::from("/help --extended"),
+                "/help".to_string(),
+                "/help config".to_string(),
+                "/help --extended".to_string(),
             ],
         });
 
         // Clear command
         self.register_command(CommandInfo {
-            name: Arc::from("clear"),
-            description: Arc::from("Clear chat history"),
-            usage: Arc::from("/clear [--confirm] [--keep-last N]"),
+            name: "clear".to_string(),
+            description: "Clear chat history".to_string(),
+            usage: "/clear [--confirm] [--keep-last N]".to_string(),
             parameters: vec![
                 ParameterInfo {
-                    name: Arc::from("confirm"),
-                    description: Arc::from("Confirm the action"),
+                    name: "confirm".to_string(),
+                    description: "Confirm the action".to_string(),
                     parameter_type: ParameterType::Boolean,
                     required: false,
-                    default_value: Some(Arc::from("false")),
+                    default_value: Some("false".to_string()),
                 },
                 ParameterInfo {
-                    name: Arc::from("keep-last"),
-                    description: Arc::from("Keep last N messages"),
+                    name: "keep-last".to_string(),
+                    description: "Keep last N messages".to_string(),
                     parameter_type: ParameterType::Integer,
                     required: false,
                     default_value: None,
                 },
             ],
-            aliases: vec![Arc::from("cls"), Arc::from("reset")],
-            category: Arc::from("History"),
+            aliases: vec!["cls".to_string(), "reset".to_string()],
+            category: "History".to_string(),
             examples: vec![
-                Arc::from("/clear"),
-                Arc::from("/clear --confirm"),
-                Arc::from("/clear --keep-last 10"),
+                "/clear".to_string(),
+                "/clear --confirm".to_string(),
+                "/clear --keep-last 10".to_string(),
             ],
         });
 
         // Export command
         self.register_command(CommandInfo {
-            name: Arc::from("export"),
-            description: Arc::from("Export conversation"),
-            usage: Arc::from("/export --format FORMAT [--output FILE] [--include-metadata]"),
+            name: "export".to_string(),
+            description: "Export conversation".to_string(),
+            usage: "/export --format FORMAT [--output FILE] [--include-metadata]".to_string(),
             parameters: vec![
                 ParameterInfo {
-                    name: Arc::from("format"),
-                    description: Arc::from("Export format (json, markdown, pdf, html)"),
+                    name: "format".to_string(),
+                    description: "Export format (json, markdown, pdf, html)".to_string(),
                     parameter_type: ParameterType::Enum,
                     required: true,
                     default_value: None,
                 },
                 ParameterInfo {
-                    name: Arc::from("output"),
-                    description: Arc::from("Output file path"),
+                    name: "output".to_string(),
+                    description: "Output file path".to_string(),
                     parameter_type: ParameterType::Path,
                     required: false,
                     default_value: None,
                 },
                 ParameterInfo {
-                    name: Arc::from("include-metadata"),
-                    description: Arc::from("Include metadata in export"),
+                    name: "include-metadata".to_string(),
+                    description: "Include metadata in export".to_string(),
                     parameter_type: ParameterType::Boolean,
                     required: false,
-                    default_value: Some(Arc::from("true")),
+                    default_value: Some("true".to_string()),
                 },
             ],
-            aliases: vec![Arc::from("save")],
-            category: Arc::from("Export"),
+            aliases: vec!["save".to_string()],
+            category: "Export".to_string(),
             examples: vec![
-                Arc::from("/export --format json"),
-                Arc::from("/export --format markdown --output chat.md"),
-                Arc::from("/export --format pdf --include-metadata"),
+                "/export --format json".to_string(),
+                "/export --format markdown --output chat.md".to_string(),
+                "/export --format pdf --include-metadata".to_string(),
             ],
         });
 
         // Config command
         self.register_command(CommandInfo {
-            name: Arc::from("config"),
-            description: Arc::from("Modify configuration"),
-            usage: Arc::from("/config [KEY] [VALUE] [--show] [--reset]"),
+            name: "config".to_string(),
+            description: "Modify configuration".to_string(),
+            usage: "/config [KEY] [VALUE] [--show] [--reset]".to_string(),
             parameters: vec![
                 ParameterInfo {
-                    name: Arc::from("key"),
-                    description: Arc::from("Configuration key"),
+                    name: "key".to_string(),
+                    description: "Configuration key".to_string(),
                     parameter_type: ParameterType::String,
                     required: false,
                     default_value: None,
                 },
                 ParameterInfo {
-                    name: Arc::from("value"),
-                    description: Arc::from("Configuration value"),
+                    name: "value".to_string(),
+                    description: "Configuration value".to_string(),
                     parameter_type: ParameterType::String,
                     required: false,
                     default_value: None,
                 },
                 ParameterInfo {
-                    name: Arc::from("show"),
-                    description: Arc::from("Show current configuration"),
+                    name: "show".to_string(),
+                    description: "Show current configuration".to_string(),
                     parameter_type: ParameterType::Boolean,
                     required: false,
-                    default_value: Some(Arc::from("false")),
+                    default_value: Some("false".to_string()),
                 },
                 ParameterInfo {
-                    name: Arc::from("reset"),
-                    description: Arc::from("Reset to defaults"),
+                    name: "reset".to_string(),
+                    description: "Reset to defaults".to_string(),
                     parameter_type: ParameterType::Boolean,
                     required: false,
-                    default_value: Some(Arc::from("false")),
+                    default_value: Some("false".to_string()),
                 },
             ],
-            aliases: vec![Arc::from("cfg"), Arc::from("settings")],
-            category: Arc::from("Configuration"),
+            aliases: vec!["cfg".to_string(), "settings".to_string()],
+            category: "Configuration".to_string(),
             examples: vec![
-                Arc::from("/config --show"),
-                Arc::from("/config theme dark"),
-                Arc::from("/config --reset"),
+                "/config --show".to_string(),
+                "/config theme dark".to_string(),
+                "/config --reset".to_string(),
             ],
         });
 
         // Search command
         self.register_command(CommandInfo {
-            name: Arc::from("search"),
-            description: Arc::from("Search chat history"),
-            usage: Arc::from("/search QUERY [--scope SCOPE] [--limit N] [--include-context]"),
+            name: "search".to_string(),
+            description: "Search chat history".to_string(),
+            usage: "/search QUERY [--scope SCOPE] [--limit N] [--include-context]".to_string(),
             parameters: vec![
                 ParameterInfo {
-                    name: Arc::from("query"),
-                    description: Arc::from("Search query"),
+                    name: "query".to_string(),
+                    description: "Search query".to_string(),
                     parameter_type: ParameterType::String,
                     required: true,
                     default_value: None,
                 },
                 ParameterInfo {
-                    name: Arc::from("scope"),
-                    description: Arc::from("Search scope (all, current, recent)"),
+                    name: "scope".to_string(),
+                    description: "Search scope (all, current, recent)".to_string(),
                     parameter_type: ParameterType::Enum,
                     required: false,
-                    default_value: Some(Arc::from("all")),
+                    default_value: Some("all".to_string()),
                 },
                 ParameterInfo {
-                    name: Arc::from("limit"),
-                    description: Arc::from("Maximum results"),
+                    name: "limit".to_string(),
+                    description: "Maximum results".to_string(),
                     parameter_type: ParameterType::Integer,
                     required: false,
-                    default_value: Some(Arc::from("10")),
+                    default_value: Some("10".to_string()),
                 },
                 ParameterInfo {
-                    name: Arc::from("include-context"),
-                    description: Arc::from("Include context in results"),
+                    name: "include-context".to_string(),
+                    description: "Include context in results".to_string(),
                     parameter_type: ParameterType::Boolean,
                     required: false,
-                    default_value: Some(Arc::from("true")),
+                    default_value: Some("true".to_string()),
                 },
             ],
-            aliases: vec![Arc::from("find"), Arc::from("grep")],
-            category: Arc::from("Search"),
+            aliases: vec!["find".to_string(), "grep".to_string()],
+            category: "Search".to_string(),
             examples: vec![
-                Arc::from("/search rust"),
-                Arc::from("/search \"error handling\" --scope recent"),
-                Arc::from("/search async --limit 5 --include-context"),
+                "/search rust".to_string(),
+                "/search \"error handling\" --scope recent".to_string(),
+                "/search async --limit 5 --include-context".to_string(),
             ],
         });
     }
@@ -268,13 +376,13 @@ impl CommandParser {
     }
 
     /// Parse a command string with zero-allocation patterns
-    pub fn parse(&self, input: &str) -> ParseResult<ChatCommand> {
+    pub fn parse(&self, input: &str) -> ParseResult<ImmutableChatCommand> {
         let input = input.trim();
 
         // Check if it's a command (starts with /)
         if !input.starts_with('/') {
             return Err(ParseError::InvalidSyntax {
-                detail: Arc::from("Commands must start with '/'"),
+                detail: "Commands must start with '/'".to_string(),
             });
         }
 
@@ -285,7 +393,7 @@ impl CommandParser {
         let parts: Vec<&str> = input.split_whitespace().collect();
         if parts.is_empty() {
             return Err(ParseError::InvalidSyntax {
-                detail: Arc::from("Empty command"),
+                detail: "Empty command".to_string(),
             });
         }
 
@@ -293,24 +401,23 @@ impl CommandParser {
         let args = &parts[1..];
 
         // Resolve aliases
-        let default_name = Arc::from(command_name);
-        let resolved_name = self.aliases.get(command_name).unwrap_or(&default_name);
+        let resolved_name = self.aliases.get(command_name).map(|s| s.as_str()).unwrap_or(command_name);
 
         // Parse based on command type
-        match resolved_name.as_ref() {
+        match resolved_name {
             "help" => self.parse_help_command(args),
             "clear" => self.parse_clear_command(args),
             "export" => self.parse_export_command(args),
             "config" => self.parse_config_command(args),
             "search" => self.parse_search_command(args),
             _ => Err(ParseError::InvalidSyntax {
-                detail: Arc::from(format!("Unknown command: {}", command_name)),
+                detail: format!("Unknown command: {}", command_name),
             }),
         }
     }
 
     /// Parse help command
-    fn parse_help_command(&self, args: &[&str]) -> ParseResult<ChatCommand> {
+    fn parse_help_command(&self, args: &[&str]) -> ParseResult<ImmutableChatCommand> {
         let mut command = None;
         let mut extended = false;
 
@@ -318,21 +425,21 @@ impl CommandParser {
         while i < args.len() {
             match args[i] {
                 "--extended" => extended = true,
-                arg if !arg.starts_with('-') => command = Some(Arc::from(arg)),
+                arg if !arg.starts_with('-') => command = Some(arg.to_string()),
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: Arc::from(args[i]),
+                        parameter: args[i].to_string(),
                     });
                 }
             }
             i += 1;
         }
 
-        Ok(ChatCommand::Help { command, extended })
+        Ok(ImmutableChatCommand::Help { command, extended })
     }
 
     /// Parse clear command
-    fn parse_clear_command(&self, args: &[&str]) -> ParseResult<ChatCommand> {
+    fn parse_clear_command(&self, args: &[&str]) -> ParseResult<ImmutableChatCommand> {
         let mut confirm = false;
         let mut keep_last = None;
 
@@ -344,7 +451,7 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: Arc::from("keep-last"),
+                            parameter: "keep-last".to_string(),
                         });
                     }
                     keep_last =
@@ -352,25 +459,25 @@ impl CommandParser {
                             args[i]
                                 .parse()
                                 .map_err(|_| ParseError::InvalidParameterValue {
-                                    parameter: Arc::from("keep-last"),
-                                    value: Arc::from(args[i]),
+                                    parameter: "keep-last".to_string(),
+                                    value: args[i].to_string(),
                                 })?,
                         );
                 }
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: Arc::from(args[i]),
+                        parameter: args[i].to_string(),
                     });
                 }
             }
             i += 1;
         }
 
-        Ok(ChatCommand::Clear { confirm, keep_last })
+        Ok(ImmutableChatCommand::Clear { confirm, keep_last })
     }
 
     /// Parse export command
-    fn parse_export_command(&self, args: &[&str]) -> ParseResult<ChatCommand> {
+    fn parse_export_command(&self, args: &[&str]) -> ParseResult<ImmutableChatCommand> {
         let mut format = None;
         let mut output = None;
         let mut include_metadata = false;
@@ -382,24 +489,24 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: Arc::from("format"),
+                            parameter: "format".to_string(),
                         });
                     }
-                    format = Some(Arc::from(args[i]));
+                    format = Some(args[i].to_string());
                 }
                 "--output" => {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: Arc::from("output"),
+                            parameter: "output".to_string(),
                         });
                     }
-                    output = Some(Arc::from(args[i]));
+                    output = Some(args[i].to_string());
                 }
                 "--include-metadata" => include_metadata = true,
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: Arc::from(args[i]),
+                        parameter: args[i].to_string(),
                     });
                 }
             }
@@ -407,10 +514,10 @@ impl CommandParser {
         }
 
         let format = format.ok_or_else(|| ParseError::MissingParameter {
-            parameter: Arc::from("format"),
+            parameter: "format".to_string(),
         })?;
 
-        Ok(ChatCommand::Export {
+        Ok(ImmutableChatCommand::Export {
             format,
             output,
             include_metadata,
@@ -418,7 +525,7 @@ impl CommandParser {
     }
 
     /// Parse config command
-    fn parse_config_command(&self, args: &[&str]) -> ParseResult<ChatCommand> {
+    fn parse_config_command(&self, args: &[&str]) -> ParseResult<ImmutableChatCommand> {
         let mut key = None;
         let mut value = None;
         let mut show = false;
@@ -431,25 +538,25 @@ impl CommandParser {
                 "--reset" => reset = true,
                 arg if !arg.starts_with('-') => {
                     if key.is_none() {
-                        key = Some(Arc::from(arg));
+                        key = Some(arg.to_string());
                     } else if value.is_none() {
-                        value = Some(Arc::from(arg));
+                        value = Some(arg.to_string());
                     } else {
                         return Err(ParseError::InvalidSyntax {
-                            detail: Arc::from("Too many positional arguments"),
+                            detail: "Too many positional arguments".to_string(),
                         });
                     }
                 }
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: Arc::from(args[i]),
+                        parameter: args[i].to_string(),
                     });
                 }
             }
             i += 1;
         }
 
-        Ok(ChatCommand::Config {
+        Ok(ImmutableChatCommand::Config {
             key,
             value,
             show,
@@ -458,7 +565,7 @@ impl CommandParser {
     }
 
     /// Parse search command
-    fn parse_search_command(&self, args: &[&str]) -> ParseResult<ChatCommand> {
+    fn parse_search_command(&self, args: &[&str]) -> ParseResult<ImmutableChatCommand> {
         let mut query = None;
         let mut scope = SearchScope::All;
         let mut limit = None;
@@ -471,7 +578,7 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: Arc::from("scope"),
+                            parameter: "scope".to_string(),
                         });
                     }
                     scope = match args[i] {
@@ -480,8 +587,8 @@ impl CommandParser {
                         "recent" => SearchScope::Recent,
                         _ => {
                             return Err(ParseError::InvalidParameterValue {
-                                parameter: Arc::from("scope"),
-                                value: Arc::from(args[i]),
+                                parameter: "scope".to_string(),
+                                value: args[i].to_string(),
                             });
                         }
                     };
@@ -490,7 +597,7 @@ impl CommandParser {
                     i += 1;
                     if i >= args.len() {
                         return Err(ParseError::MissingParameter {
-                            parameter: Arc::from("limit"),
+                            parameter: "limit".to_string(),
                         });
                     }
                     limit =
@@ -498,24 +605,24 @@ impl CommandParser {
                             args[i]
                                 .parse()
                                 .map_err(|_| ParseError::InvalidParameterValue {
-                                    parameter: Arc::from("limit"),
-                                    value: Arc::from(args[i]),
+                                    parameter: "limit".to_string(),
+                                    value: args[i].to_string(),
                                 })?,
                         );
                 }
                 "--include-context" => include_context = true,
                 arg if !arg.starts_with('-') => {
                     if query.is_none() {
-                        query = Some(Arc::from(arg));
+                        query = Some(arg.to_string());
                     } else {
                         return Err(ParseError::InvalidSyntax {
-                            detail: Arc::from("Multiple query arguments not supported"),
+                            detail: "Multiple query arguments not supported".to_string(),
                         });
                     }
                 }
                 _ => {
                     return Err(ParseError::UnknownParameter {
-                        parameter: Arc::from(args[i]),
+                        parameter: args[i].to_string(),
                     });
                 }
             }
@@ -523,10 +630,10 @@ impl CommandParser {
         }
 
         let query = query.ok_or_else(|| ParseError::MissingParameter {
-            parameter: Arc::from("query"),
+            parameter: "query".to_string(),
         })?;
 
-        Ok(ChatCommand::Search {
+        Ok(ImmutableChatCommand::Search {
             query,
             scope,
             limit,
@@ -535,24 +642,24 @@ impl CommandParser {
     }
 
     /// Validate command parameters
-    pub fn validate_command(&self, command: &ChatCommand) -> ParseResult<()> {
+    pub fn validate_command(&self, command: &ImmutableChatCommand) -> ParseResult<()> {
         match command {
-            ChatCommand::Export { format, .. } => {
+            ImmutableChatCommand::Export { format, .. } => {
                 let valid_formats = ["json", "markdown", "pdf", "html"];
-                if !valid_formats.contains(&format.as_ref()) {
+                if !valid_formats.contains(&format.as_str()) {
                     return Err(ParseError::InvalidParameterValue {
-                        parameter: Arc::from("format"),
+                        parameter: "format".to_string(),
                         value: format.clone(),
                     });
                 }
             }
-            ChatCommand::Clear {
+            ImmutableChatCommand::Clear {
                 keep_last: Some(n), ..
             } => {
                 if *n == 0 {
                     return Err(ParseError::InvalidParameterValue {
-                        parameter: Arc::from("keep-last"),
-                        value: Arc::from("0"),
+                        parameter: "keep-last".to_string(),
+                        value: "0".to_string(),
                     });
                 }
             }
@@ -562,7 +669,7 @@ impl CommandParser {
     }
 
     /// Get command suggestions for auto-completion
-    pub fn get_suggestions(&self, prefix: &str) -> Vec<Arc<str>> {
+    pub fn get_suggestions(&self, prefix: &str) -> Vec<String> {
         let mut suggestions = Vec::new();
 
         // Add command names
@@ -593,12 +700,12 @@ impl CommandParser {
     }
 
     /// Get command history
-    pub fn get_history(&self) -> Vec<Arc<str>> {
+    pub fn get_history(&self) -> Vec<String> {
         self.history.clone()
     }
 
     /// Add command to history
-    pub fn add_to_history(&mut self, command: Arc<str>) {
+    pub fn add_to_history(&mut self, command: String) {
         self.history.push(command);
         // Keep only last 100 commands
         if self.history.len() > 100 {

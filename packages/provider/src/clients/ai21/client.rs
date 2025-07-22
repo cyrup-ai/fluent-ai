@@ -348,7 +348,7 @@ impl AI21Client {
     
     /// Test connection to AI21 API - returns immediate AsyncStream with unwrapped connection results
     pub fn test_connection(&self) -> AsyncStream<()> {
-        let (sender, receiver) = crate::async_stream_channel();
+        let (sender, receiver) = crate::channel();
         
         // Check circuit breaker immediately
         if !self.circuit_breaker.is_request_allowed() {

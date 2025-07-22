@@ -709,7 +709,7 @@ impl Default for MemoryConfig {
 }
 
 // Use shared EmbeddingConfig from super::shared
-use super::shared::{EmbeddingConfig, EmbeddingModelType, NormalizationStrategy};
+use super::shared::EmbeddingConfig;
 
 impl VectorStoreConfig {
     /// Create new vector store configuration with validation

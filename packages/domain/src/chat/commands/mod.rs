@@ -41,36 +41,34 @@ pub fn get_command_executor() -> Option<CommandExecutor> {
 }
 
 /// Parse command using global executor - PURE SYNC (no futures)
-pub fn parse_command(input: &str) -> CommandResult<ChatCommand> {
+pub fn parse_command(input: &str) -> CommandResult<ImmutableChatCommand> {
     if let Some(executor) = get_command_executor() {
         executor
             .parser()
             .parse(input)
-            .map_err(|e| CommandError::ParseError {
-                detail: Arc::from(e.to_string()),
-            })
+            .map_err(|e| CommandError::ParseError(e.to_string()))
     } else {
-        Err(CommandError::ConfigurationError {
-            detail: Arc::from("Command executor not initialized"),
-        })
+        Err(CommandError::ConfigurationError(
+            "Command executor not initialized".to_string(),
+        ))
     }
 }
 
 /// Execute command using global executor - PURE SYNC (no futures)
-pub fn execute_command(command: ChatCommand) -> CommandResult<CommandOutput> {
+pub fn execute_command(command: ImmutableChatCommand) -> CommandResult<CommandOutput> {
     if let Some(executor) = get_command_executor() {
         // Use AsyncTask sync methods instead of await
         let task = executor.execute(command);
         match task.wait() {
             Some(result) => result,
-            None => Err(CommandError::ExecutionFailed {
-                reason: Arc::from("Command execution task closed without result"),
-            }),
+            None => Err(CommandError::ExecutionFailed(
+                "Command execution task closed without result".to_string(),
+            )),
         }
     } else {
-        Err(CommandError::ConfigurationError {
-            detail: Arc::from("Command executor not initialized"),
-        })
+        Err(CommandError::ConfigurationError(
+            "Command executor not initialized".to_string(),
+        ))
     }
 }
 
@@ -86,8 +84,8 @@ pub fn parse_and_execute_command(input: &str) -> CommandResult<CommandOutput> {
             }),
         }
     } else {
-        Err(CommandError::ConfigurationError {
-            detail: Arc::from("Command executor not initialized"),
-        })
+        Err(CommandError::ConfigurationError(
+            "Command executor not initialized".to_string(),
+        ))
     }
 }

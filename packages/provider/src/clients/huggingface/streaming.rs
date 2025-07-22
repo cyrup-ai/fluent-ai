@@ -9,7 +9,9 @@ use super::completion::CompletionModel;
 use crate::clients::openai::{StreamingCompletionResponse, send_compatible_streaming_request};
 /// Helper function to merge JSON values in-place
 fn merge_inplace(base: &mut serde_json::Value, other: serde_json::Value) {
-    if let (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) = (base, other) {
+    if let (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) =
+        (base, other)
+    {
         base_map.extend(other_map);
     } else {
         *base = other;

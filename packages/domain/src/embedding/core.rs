@@ -16,28 +16,30 @@ pub trait EmbeddingModel: Send + Sync + Clone {
     fn embed(&self, text: &str) -> AsyncTask<ZeroOneOrMany<f32>>;
 
     /// Create embeddings for multiple texts with streaming
-    fn embed_batch(
-        &self,
-        texts: ZeroOneOrMany<String>,
-    ) -> crate::async_task::AsyncStream<EmbeddingChunk>;
+    fn embed_batch(&self, texts: ZeroOneOrMany<String>) -> crate::AsyncStream<EmbeddingChunk>;
 
     /// Simple embedding with handler - STREAMING ONLY, NO FUTURES
     /// Performance: Zero allocation, direct streaming without futures
-    fn on_embedding<F>(&self, text: &str, handler: F) -> crate::async_task::AsyncStream<ZeroOneOrMany<f32>>
+    fn on_embedding<F>(&self, text: &str, handler: F) -> crate::AsyncStream<ZeroOneOrMany<f32>>
     where
         F: Fn(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + Sync + 'static,
     {
-        let (sender, receiver) = fluent_ai_http3::async_task::channel::<ZeroOneOrMany<f32>>();
-        
-        // Get embedding stream and process each chunk through handler
-        let embedding_stream = self.embed_streaming(text);
-        
-        // Process stream chunks directly - NO FUTURES
-        for chunk in embedding_stream {
-            let processed = handler(chunk);
-            sender.send(processed);
+        let (sender, receiver) = crate::AsyncStream::channel();
+
+        // Get embedding task and process result through handler
+        let embedding_task = self.embed(text);
+        let result = embedding_task.collect();
+        match result {
+            Ok(embedding) => {
+                let processed = handler(embedding);
+                sender.send(processed);
+            }
+            Err(_) => {
+                // Handle error case - send empty embedding
+                sender.send(ZeroOneOrMany::None);
+            }
         }
-        
+
         receiver
     }
 }

@@ -5,8 +5,8 @@
 use std::time::Duration;
 
 use fluent_ai_memory::cognitive::state::{
-    AbstractionLevel, AssociationType, CognitiveState, CognitiveStateManager,
-    EmotionalValence, SemanticContext,
+    AbstractionLevel, AssociationType, CognitiveState, CognitiveStateManager, EmotionalValence,
+    SemanticContext,
 };
 use uuid::Uuid;
 

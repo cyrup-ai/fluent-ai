@@ -6,7 +6,7 @@ use fluent_ai::domain::tool::{ExecToText, Tool};
 use fluent_ai::json_map;
 use fluent_ai::prelude::*;
 use fluent_ai_provider::Models;
-use futures::StreamExt;
+use futures_util::StreamExt;
 // use cyrup_sugars::*;
 // use cyrup_sugars::*;
 

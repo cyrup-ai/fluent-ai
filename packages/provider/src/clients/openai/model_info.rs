@@ -3,10 +3,11 @@
 //! Compile-time model configurations for blazing-fast zero-allocation initialization
 //! All configurations are const and embedded in the binary for optimal performance
 
-use crate::completion_provider::{ModelConfig, ModelInfo, ModelPrompt, CompletionProvider};
-use crate::clients::openai::completion::OpenAICompletionBuilder;
-use crate::AsyncStream;
 use fluent_ai_domain::chunk::CompletionChunk;
+
+use crate::AsyncStream;
+use crate::clients::openai::completion::OpenAICompletionBuilder;
+use crate::completion_provider::{CompletionProvider, ModelConfig, ModelInfo, ModelPrompt};
 
 /// GPT-4o model information
 #[derive(Debug, Clone, Copy)]
@@ -120,7 +121,7 @@ pub fn get_model_config(model_name: &'static str) -> &'static ModelConfig {
 pub const fn model_name_from_variant(variant: &str) -> &'static str {
     match variant {
         "OpenaiGpt4o" => "gpt-4o",
-        "OpenaiGpt4oMini" => "gpt-4o-mini", 
+        "OpenaiGpt4oMini" => "gpt-4o-mini",
         "OpenaiGpt4Turbo" => "gpt-4-turbo",
         "OpenaiGpt35Turbo" => "gpt-3.5-turbo",
         _ => "gpt-4o", // Default fallback

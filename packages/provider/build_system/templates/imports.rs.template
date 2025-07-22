@@ -8,4 +8,4 @@ use serde::{Deserialize, Serialize};
 
 // Provider-specific imports
 use crate::completion_provider::{CompletionProvider, CompletionError};
-use crate::{AsyncStream, AsyncStreamSender, async_stream_channel};
+use crate::{AsyncStream, AsyncStreamSender, channel};

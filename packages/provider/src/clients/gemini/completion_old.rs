@@ -32,6 +32,9 @@ use std::convert::TryFrom;
 use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage};
+use fluent_ai_domain::completion::{
+    self, CompletionCoreError as CompletionError, CompletionRequest,
+};
 use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{AsyncTask, spawn_async};
 use fluent_ai_domain::{Document, Message};
@@ -45,7 +48,6 @@ use serde_json::{Map, Value};
 use self::gemini_api_types::Schema;
 use super::Client;
 use super::streaming::StreamingCompletionResponse;
-use fluent_ai_domain::completion::{self, CompletionCoreError as CompletionError, CompletionRequest};
 use crate::{
     AsyncStream, OneOrMany,
     completion_provider::{ChunkHandler, CompletionProvider, ModelConfig, ModelInfo},
@@ -125,7 +127,10 @@ impl completion::CompletionModel for CompletionModel {
                                 }
                             } else {
                                 // Domain uses HTTP3, provider delegates to domain layer
-                                Err(CompletionError::ProviderError("HTTP error - domain layer handles HTTP3 operations".to_string()))
+                                Err(CompletionError::ProviderError(
+                                    "HTTP error - domain layer handles HTTP3 operations"
+                                        .to_string(),
+                                ))
                             }
                         }
                         Err(e) => Err(CompletionError::RequestError(e.to_string())),
@@ -383,7 +388,7 @@ impl CompletionProvider for GeminiCompletionBuilder {
     /// Terminal action - execute completion with user prompt (blazing-fast streaming)
     #[inline(always)]
     fn prompt(self, text: impl AsRef<str>) -> AsyncStream<CompletionChunk> {
-        let (sender, receiver) = crate::async_stream_channel();
+        let (sender, receiver) = crate::channel();
         let prompt_text = text.as_ref().to_string();
 
         spawn_async(async move {
@@ -469,7 +474,7 @@ impl GeminiCompletionBuilder {
         }
 
         let sse_stream = response.sse();
-        let (chunk_sender, chunk_receiver) = crate::async_stream_channel();
+        let (chunk_sender, chunk_receiver) = crate::channel();
 
         spawn_async(async move {
             use futures_util::StreamExt;
@@ -844,14 +849,14 @@ impl TryFrom<GenerateContentResponse> for completion::CompletionResponse<Generat
 pub mod gemini_api_types {
     use std::{collections::HashMap, convert::Infallible, str::FromStr};
 
+    use fluent_ai_domain::completion::CompletionCoreError as CompletionError;
+    use fluent_ai_domain::message::{self, MimeType as _};
     // =================================================================
     // Gemini API Types
     // =================================================================
     use serde::{Deserialize, Serialize};
     use serde_json::Value;
 
-    use fluent_ai_domain::completion::CompletionCoreError as CompletionError;
-    use fluent_ai_domain::message::{self, MimeType as _};
     use crate::OneOrMany;
 
     /// Response from the model supporting multiple candidate responses.
@@ -1624,10 +1629,10 @@ pub mod gemini_api_types {
 
 #[cfg(test)]
 mod tests {
+    use fluent_ai_domain::message;
     use serde_json::json;
 
     use super::*;
-    use fluent_ai_domain::message;
 
     #[test]
     fn test_deserialize_message_user() {
@@ -1671,7 +1676,12 @@ mod tests {
         if let Part::FunctionCall(function_call) = &parts[2] {
             assert_eq!(function_call.name, "test_function");
             assert_eq!(
-                function_call.args.as_object().expect("Failed to get function call args as object in test").get("arg1").expect("Failed to get arg1 from function call args in test"),
+                function_call
+                    .args
+                    .as_object()
+                    .expect("Failed to get function call args as object in test")
+                    .get("arg1")
+                    .expect("Failed to get arg1 from function call args in test"),
                 "value1"
             );
         } else {
@@ -1694,7 +1704,13 @@ mod tests {
         }
 
         if let Part::FileData(file_data) = &parts[4] {
-            assert_eq!(file_data.mime_type.as_ref().expect("Failed to get file data mime type in test"), "application/pdf");
+            assert_eq!(
+                file_data
+                    .mime_type
+                    .as_ref()
+                    .expect("Failed to get file data mime type in test"),
+                "application/pdf"
+            );
             assert_eq!(file_data.file_uri, "http://example.com/file.pdf");
         } else {
             panic!("Expected file data part");
@@ -1708,7 +1724,10 @@ mod tests {
 
         if let Part::CodeExecutionResult(code_execution_result) = &parts[6] {
             assert_eq!(
-                code_execution_result.clone().output.expect("Failed to get code execution result output in test"),
+                code_execution_result
+                    .clone()
+                    .output
+                    .expect("Failed to get code execution result output in test"),
                 "Hello, world!"
             );
         } else {
@@ -1723,7 +1742,8 @@ mod tests {
             "role": "model"
         });
 
-        let content: Content = serde_json::from_value(json_data).expect("Failed to deserialize content from JSON in test");
+        let content: Content = serde_json::from_value(json_data)
+            .expect("Failed to deserialize content from JSON in test");
         assert_eq!(content.role, Some(Role::Model));
         assert_eq!(content.parts.len(), 1);
         if let Part::Text(text) = &content.parts.first() {
@@ -1736,7 +1756,9 @@ mod tests {
     #[test]
     fn test_message_conversion_user() {
         let msg = message::Message::user("Hello, world!");
-        let content: Content = msg.try_into().expect("Failed to convert user message to content in test");
+        let content: Content = msg
+            .try_into()
+            .expect("Failed to convert user message to content in test");
         assert_eq!(content.role, Some(Role::User));
         assert_eq!(content.parts.len(), 1);
         if let Part::Text(text) = &content.parts.first() {
@@ -1750,7 +1772,9 @@ mod tests {
     fn test_message_conversion_model() {
         let msg = message::Message::assistant("Hello, user!");
 
-        let content: Content = msg.try_into().expect("Failed to convert assistant message to content in test");
+        let content: Content = msg
+            .try_into()
+            .expect("Failed to convert assistant message to content in test");
         assert_eq!(content.role, Some(Role::Model));
         assert_eq!(content.parts.len(), 1);
         if let Part::Text(text) = &content.parts.first() {
@@ -1774,13 +1798,20 @@ mod tests {
             content: OneOrMany::one(message::AssistantContent::ToolCall(tool_call)),
         };
 
-        let content: Content = msg.try_into().expect("Failed to convert tool call message to content in test");
+        let content: Content = msg
+            .try_into()
+            .expect("Failed to convert tool call message to content in test");
         assert_eq!(content.role, Some(Role::Model));
         assert_eq!(content.parts.len(), 1);
         if let Part::FunctionCall(function_call) = &content.parts.first() {
             assert_eq!(function_call.name, "test_function");
             assert_eq!(
-                function_call.args.as_object().expect("Failed to get function call args as object in tool call test").get("arg1").expect("Failed to get arg1 from function call args in tool call test"),
+                function_call
+                    .args
+                    .as_object()
+                    .expect("Failed to get function call args as object in tool call test")
+                    .get("arg1")
+                    .expect("Failed to get arg1 from function call args in tool call test"),
                 "value1"
             );
         } else {

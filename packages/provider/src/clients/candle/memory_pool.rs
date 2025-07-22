@@ -8,8 +8,8 @@ use std::ptr::NonNull;
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
-use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError, bounded};
 use crossbeam::atomic::AtomicCell;
+use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError, bounded};
 use smallvec::SmallVec;
 
 use super::error::{CandleError, CandleResult};

@@ -11,26 +11,19 @@
 //! - Composable architecture for complex sampling strategies
 
 use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
+
 use arrayvec::ArrayVec;
 
 use crate::error::{CandleError, CandleResult};
-
 // Re-export the new unified system for compatibility
 pub use crate::processing::{
-    ProcessingContext,
-    ProcessingEngine,
-    ProcessingResult,
-    traits::LogitsProcessor,
-    processors::{
-        TemperatureProcessor,
-        TopKProcessor,
-        TopPProcessor,
-        RepetitionPenaltyProcessor,
-        CompositeProcessor,
-        CompositeProcessorBuilder,
-        presets,
-    },
     error::ProcessingError,
+    processors::{
+        presets, CompositeProcessor, CompositeProcessorBuilder, RepetitionPenaltyProcessor,
+        TemperatureProcessor, TopKProcessor, TopPProcessor,
+    },
+    traits::LogitsProcessor,
+    ProcessingContext, ProcessingEngine, ProcessingResult,
 };
 
 /// Maximum vocabulary size for zero-allocation processing
@@ -41,7 +34,7 @@ const MAX_TOP_K: usize = 100;
 const MAX_SEQUENCE_LENGTH: usize = 8192;
 
 /// Legacy sampling configuration - DEPRECATED
-/// 
+///
 /// Use `crate::processing::processors::presets` for new configurations.
 #[derive(Debug, Clone)]
 pub struct SamplingConfig {
@@ -81,19 +74,27 @@ impl SamplingConfig {
     #[inline(always)]
     pub fn validate(&self) -> CandleResult<()> {
         if self.temperature < 0.0 {
-            return Err(CandleError::configuration("Temperature must be non-negative"));
+            return Err(CandleError::configuration(
+                "Temperature must be non-negative",
+            ));
         }
         if self.top_k > MAX_TOP_K {
             return Err(CandleError::configuration("Top-k value exceeds maximum"));
         }
         if self.top_p < 0.0 || self.top_p > 1.0 {
-            return Err(CandleError::configuration("Top-p must be between 0.0 and 1.0"));
+            return Err(CandleError::configuration(
+                "Top-p must be between 0.0 and 1.0",
+            ));
         }
         if self.repetition_penalty < 0.0 {
-            return Err(CandleError::configuration("Repetition penalty must be non-negative"));
+            return Err(CandleError::configuration(
+                "Repetition penalty must be non-negative",
+            ));
         }
         if self.min_probability < 0.0 || self.min_probability > 1.0 {
-            return Err(CandleError::configuration("Minimum probability must be between 0.0 and 1.0"));
+            return Err(CandleError::configuration(
+                "Minimum probability must be between 0.0 and 1.0",
+            ));
         }
         Ok(())
     }
@@ -101,13 +102,13 @@ impl SamplingConfig {
     /// Check if any processing is needed (optimization for identity configs)
     #[inline(always)]
     pub fn needs_processing(&self) -> bool {
-        self.temperature != 1.0 ||
-        self.top_k > 0 ||
-        self.top_p < 1.0 ||
-        self.repetition_penalty != 1.0 ||
-        self.frequency_penalty != 0.0 ||
-        self.presence_penalty != 0.0 ||
-        self.min_probability > 0.0
+        self.temperature != 1.0
+            || self.top_k > 0
+            || self.top_p < 1.0
+            || self.repetition_penalty != 1.0
+            || self.frequency_penalty != 0.0
+            || self.presence_penalty != 0.0
+            || self.min_probability > 0.0
     }
 
     /// Convert to unified processing system configuration
@@ -117,15 +118,27 @@ impl SamplingConfig {
         // Use the unified presets system with converted parameters
         presets::text_generation(
             self.temperature,
-            if self.top_k > 0 { Some(self.top_k) } else { None },
-            if self.top_p < 1.0 { Some(self.top_p) } else { None },
-            if self.repetition_penalty != 1.0 { Some(self.repetition_penalty) } else { None },
+            if self.top_k > 0 {
+                Some(self.top_k)
+            } else {
+                None
+            },
+            if self.top_p < 1.0 {
+                Some(self.top_p)
+            } else {
+                None
+            },
+            if self.repetition_penalty != 1.0 {
+                Some(self.repetition_penalty)
+            } else {
+                None
+            },
         )
     }
 }
 
 /// High-level sampling interface - DEPRECATED
-/// 
+///
 /// Use `crate::processing::ProcessingEngine` for new implementations.
 #[derive(Debug)]
 pub struct LogitsSampler {
@@ -137,34 +150,33 @@ pub struct LogitsSampler {
 
 impl LogitsSampler {
     /// Create new sampler with configuration - DEPRECATED
-    /// 
+    ///
     /// Use `ProcessingEngine::new()` directly for better performance.
     #[inline(always)]
     pub fn new(vocab_size: usize, config: SamplingConfig) -> CandleResult<Self> {
         config.validate()?;
-        
+
         // Convert to unified processor
-        let processor = config.to_unified_processor()
+        let processor = config
+            .to_unified_processor()
             .map_err(|e| CandleError::configuration(&e.to_string()))?;
-        
+
         let mut engine = ProcessingEngine::new(processor);
-        
+
         // Initialize context
         let mut context = ProcessingContext::new(vocab_size);
         engine.set_context(context);
 
-        Ok(Self {
-            engine,
-            config,
-        })
+        Ok(Self { engine, config })
     }
 
     /// Process logits with all configured sampling strategies - DEPRECATED
-    /// 
+    ///
     /// Use `ProcessingEngine::process_logits()` directly for better performance.
     #[inline(always)]
     pub fn process_logits(&mut self, logits: &mut [f32]) -> CandleResult<()> {
-        self.engine.process_logits(logits)
+        self.engine
+            .process_logits(logits)
             .map_err(|e| CandleError::generation_failed(&e.to_string()))
     }
 
@@ -191,11 +203,12 @@ impl LogitsSampler {
     #[inline(always)]
     pub fn update_config(&mut self, config: SamplingConfig) -> CandleResult<()> {
         config.validate()?;
-        
+
         // Convert to unified processor
-        let processor = config.to_unified_processor()
+        let processor = config
+            .to_unified_processor()
             .map_err(|e| CandleError::configuration(&e.to_string()))?;
-        
+
         self.engine.set_processor(processor);
         self.config = config;
         Ok(())
@@ -215,7 +228,7 @@ impl LogitsSampler {
 }
 
 /// Performance metrics for sampling operations - DEPRECATED
-/// 
+///
 /// Use `ProcessingEngine::metrics()` for comprehensive metrics.
 #[derive(Debug)]
 pub struct SamplingMetrics {
@@ -242,7 +255,8 @@ impl SamplingMetrics {
     #[inline(always)]
     pub fn record_sample(&self, processing_time_ns: u64) {
         self.total_samples.fetch_add(1, AtomicOrdering::Relaxed);
-        self.total_processing_time_ns.fetch_add(processing_time_ns, AtomicOrdering::Relaxed);
+        self.total_processing_time_ns
+            .fetch_add(processing_time_ns, AtomicOrdering::Relaxed);
     }
 
     /// Record a cache hit
@@ -275,7 +289,7 @@ impl SamplingMetrics {
 }
 
 /// Global sampling metrics instance - DEPRECATED
-static SAMPLING_METRICS: std::sync::LazyLock<SamplingMetrics> = 
+static SAMPLING_METRICS: std::sync::LazyLock<SamplingMetrics> =
     std::sync::LazyLock::new(SamplingMetrics::new);
 
 /// Get reference to global sampling metrics - DEPRECATED
@@ -285,11 +299,12 @@ pub fn sampling_metrics() -> &'static SamplingMetrics {
 }
 
 /// Utility functions for numerical stability in sampling operations - DEPRECATED
-/// 
+///
 /// Use `crate::processing::utils` for modern utility functions.
 pub mod utils {
-    use super::*;
     use std::cmp::Ordering;
+
+    use super::*;
 
     /// Compute softmax with numerical stability using log-sum-exp trick - DEPRECATED
     #[inline(always)]
@@ -319,7 +334,9 @@ pub mod utils {
                 *logit *= inv_sum;
             }
         } else {
-            return Err(CandleError::generation_failed("Softmax normalization failed"));
+            return Err(CandleError::generation_failed(
+                "Softmax normalization failed",
+            ));
         }
 
         Ok(())
@@ -329,13 +346,13 @@ pub mod utils {
     #[inline(always)]
     pub fn find_top_k_indices(logits: &[f32], k: usize) -> ArrayVec<usize, MAX_TOP_K> {
         let mut indices: ArrayVec<usize, MAX_TOP_K> = ArrayVec::new();
-        
+
         if k == 0 || logits.is_empty() {
             return indices;
         }
 
         let k = k.min(logits.len()).min(MAX_TOP_K);
-        
+
         // Create index-value pairs
         let mut pairs: ArrayVec<(usize, f32), MAX_TOP_K> = ArrayVec::new();
         for (i, &value) in logits.iter().enumerate().take(k) {
@@ -359,7 +376,7 @@ pub mod utils {
 
         // Sort by value descending and extract indices
         pairs.sort_by(|(_, a), (_, b)| b.partial_cmp(a).unwrap_or(Ordering::Equal));
-        
+
         for (idx, _) in pairs {
             if indices.try_push(idx).is_err() {
                 break;
@@ -372,8 +389,8 @@ pub mod utils {
     /// Compute cumulative probability for nucleus sampling - DEPRECATED
     #[inline(always)]
     pub fn cumulative_probability_threshold(
-        probabilities: &[(usize, f32)], 
-        nucleus_p: f32
+        probabilities: &[(usize, f32)],
+        nucleus_p: f32,
     ) -> usize {
         let mut cumulative = 0.0f32;
         for (count, (_, prob)) in probabilities.iter().enumerate() {

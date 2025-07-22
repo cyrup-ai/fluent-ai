@@ -5,7 +5,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use futures::Stream;
+use futures_util::Stream;
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 
@@ -29,7 +29,7 @@ pub enum GraphError {
 
     #[error("Conversion error: {0}")]
     ConversionError(String),
-    
+
     #[error("Other error: {0}")]
     Other(String),
 }

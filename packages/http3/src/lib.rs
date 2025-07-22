@@ -45,7 +45,7 @@
 //!
 //! ```rust
 //! use fluent_ai_http3::{HttpClient, DownloadChunk};
-//! use futures::StreamExt;
+//! use futures_util::StreamExt;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -102,10 +102,12 @@ pub use cache::CacheEntry;
 pub use client::{ClientStats, HttpClient, Ready, RequestBuilder};
 pub use config::HttpConfig;
 pub use error::{HttpError, HttpResult};
-pub use middleware::{cache::CacheMiddleware, Middleware, MiddlewareChain};
+pub use middleware::{Middleware, MiddlewareChain, cache::CacheMiddleware};
 pub use request::{HttpMethod, HttpRequest};
 pub use response::{HttpResponse, JsonStream, SseEvent};
-pub use stream::{CachedDownloadStream, DownloadChunk, DownloadStream, HttpStream, LinesStream, SseStream};
+pub use stream::{
+    CachedDownloadStream, DownloadChunk, DownloadStream, HttpStream, LinesStream, SseStream,
+};
 
 /// Global HTTP client instance with connection pooling
 /// Uses the Default implementation which provides graceful fallback handling
@@ -170,5 +172,3 @@ pub fn init_global_client(_config: HttpConfig) -> HttpResult<()> {
     // Users should create their own client instances if they need custom configuration
     Ok(())
 }
-
-

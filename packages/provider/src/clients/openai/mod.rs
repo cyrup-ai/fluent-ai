@@ -31,12 +31,17 @@
 pub use audio::{OpenAIAudioClient, TranscriptionResponse};
 // Re-export all public types with zero allocation
 pub use client::{OpenAIClient, OpenAIProvider};
-pub use completion::{OpenAICompletionBuilder, CompletionResponse, OpenAICompletionRequest, OpenAICompletionResponse};
+pub use completion::{
+    CompletionResponse, OpenAICompletionBuilder, OpenAICompletionRequest, OpenAICompletionResponse,
+};
 pub use discovery::OpenAIDiscovery;
 pub use embeddings::OpenAIEmbeddingClient;
 pub use error::{OpenAIError, Result as OpenAIResult};
-pub use messages::{Message, OpenAIMessage, AssistantContent};
-pub use streaming::{OpenAIStream, StreamingCompletionResponse, StreamingChoice, StreamingMessage, send_compatible_streaming_request};
+pub use messages::{AssistantContent, Message, OpenAIMessage};
+pub use streaming::{
+    OpenAIStream, StreamingChoice, StreamingCompletionResponse, StreamingMessage,
+    send_compatible_streaming_request,
+};
 pub use vision::OpenAIVisionClient;
 
 use crate::client::{CompletionClient, ProviderClient};
@@ -489,10 +494,6 @@ impl models {
         }
     }
 }
-
-
-
-
 
 /// Endpoint routing utilities with compile-time optimization
 pub mod endpoints {

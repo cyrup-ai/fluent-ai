@@ -20,7 +20,7 @@
 ///   and allocates at most **once** for the task list.
 use std::collections::HashMap;
 
-use futures::{
+use futures_util::{
     StreamExt, TryStreamExt,
     stream::{self, FuturesUnordered},
 };

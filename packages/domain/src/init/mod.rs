@@ -4,11 +4,14 @@ pub mod globals;
 
 use std::sync::Arc;
 
-use crate::core::DomainInitError;
+// Removed unused import: use futures_util::StreamExt;
+
 // use fluent_ai_memory::{MemoryConfig, SurrealDBMemoryManager}; // Commented out due to circular dependency
 // use fluent_ai_memory::memory::MemoryMetadata; // Commented out due to circular dependency
-use crate::async_task::AsyncStream;
-use futures_util::StreamExt;
+use fluent_ai_async::AsyncStream;
+// use fluent_ai_async::channel; // Returns UnboundedReceiverStream, not AsyncStream
+
+use crate::core::DomainInitError;
 
 /// Placeholder memory manager type to avoid circular dependency
 pub struct PlaceholderMemoryManager;
@@ -19,13 +22,13 @@ pub struct PlaceholderMemoryConfig;
 /// Initialize the domain with default configuration
 pub fn initialize_domain() -> AsyncStream<Arc<PlaceholderMemoryManager>> {
     let (sender, stream) = AsyncStream::channel();
-    
+
     tokio::spawn(async move {
         let _config = get_default_memory_config();
         let manager = Arc::new(PlaceholderMemoryManager);
-        let _ = sender.try_send(manager);
+        let _ = sender.send(manager);
     });
-    
+
     stream
 }
 
@@ -34,22 +37,22 @@ pub fn initialize_domain_with_config(
     config: PlaceholderMemoryConfig,
 ) -> AsyncStream<Arc<PlaceholderMemoryManager>> {
     let (sender, stream) = AsyncStream::channel();
-    
+
     tokio::spawn(async move {
         match initialize_domain_impl(config).await {
             Ok(memory) => {
-                let _ = sender.try_send(memory);
+                let _ = sender.send(memory);
             }
             Err(_) => {
                 // Fallback to stub memory manager
                 let fallback_config = PlaceholderMemoryConfig;
                 if let Ok(fallback_memory) = initialize_domain_impl(fallback_config).await {
-                    let _ = sender.try_send(fallback_memory);
+                    let _ = sender.send(fallback_memory);
                 }
             }
         }
     });
-    
+
     stream
 }
 

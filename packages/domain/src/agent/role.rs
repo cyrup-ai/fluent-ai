@@ -254,8 +254,11 @@ pub struct AgentWithHistory {
     #[allow(dead_code)] // TODO: Use for accessing agent role configuration during chat
     inner: Box<dyn std::any::Any + Send + Sync>,
     #[allow(dead_code)] // TODO: Implement chunk processing in streaming system
-    chunk_handler:
-        Box<dyn Fn(crate::context::chunk::ChatMessageChunk) -> crate::context::chunk::ChatMessageChunk + Send + Sync>,
+    chunk_handler: Box<
+        dyn Fn(crate::context::chunk::ChatMessageChunk) -> crate::context::chunk::ChatMessageChunk
+            + Send
+            + Sync,
+    >,
     #[allow(dead_code)] // TODO: Use for loading previous conversation context during chat
     conversation_history: Option<ZeroOneOrMany<(MessageRole, String)>>,
 }

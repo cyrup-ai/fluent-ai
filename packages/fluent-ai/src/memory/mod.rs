@@ -10,7 +10,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use futures::Stream;
+use futures_util::Stream;
 pub use library::{LibraryExt, LibraryMemoryService, LibraryServiceError, LibraryServiceResult};
 use parking_lot::RwLock;
 // Re-export key types from sweetmcp-memory
@@ -374,7 +374,7 @@ impl QueryMemory {
         match self.query_type {
             QueryType::All => {
                 tokio::spawn(async move {
-                    use futures::StreamExt;
+                    use futures_util::StreamExt;
                     let mut stream = manager.query_by_type(MemoryType::Semantic);
                     while let Some(result) = stream.next().await {
                         match result {
@@ -393,7 +393,7 @@ impl QueryMemory {
             }
             QueryType::ByType(memory_type) => {
                 tokio::spawn(async move {
-                    use futures::StreamExt;
+                    use futures_util::StreamExt;
                     let mut stream = manager.query_by_type(memory_type);
                     while let Some(result) = stream.next().await {
                         match result {
@@ -412,7 +412,7 @@ impl QueryMemory {
             }
             QueryType::ByContent(query) => {
                 tokio::spawn(async move {
-                    use futures::StreamExt;
+                    use futures_util::StreamExt;
                     let mut stream = manager.search_by_content(&query);
                     while let Some(result) = stream.next().await {
                         match result {
@@ -431,7 +431,7 @@ impl QueryMemory {
             }
             QueryType::ByVector(vector) => {
                 tokio::spawn(async move {
-                    use futures::StreamExt;
+                    use futures_util::StreamExt;
                     let mut stream = manager.search_by_vector(vector, limit);
                     while let Some(result) = stream.next().await {
                         match result {
@@ -457,7 +457,7 @@ impl QueryMemory {
     pub fn collect(self) -> AsyncTask<ZeroOneOrMany<MemoryNode>> {
         let mut stream = self.recall();
         crate::async_task::spawn_async(async move {
-            use futures::StreamExt;
+            use futures_util::StreamExt;
             let mut pinned_stream = std::pin::Pin::new(&mut stream);
 
             let mut results = Vec::new();

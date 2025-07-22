@@ -4,15 +4,14 @@
 //! and efficient chunk processing with minimal memory allocation using HTTP3 client.
 //! PURE STREAMING - NO FUTURES ARCHITECTURE
 
+use fluent_ai_http3::async_task::AsyncStream;
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
 // NO FUTURES - pure streaming HTTP3 architecture
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::messages::ContentBlock;
 use super::AnthropicResult;
-
-use fluent_ai_http3::async_task::AsyncStream;
+use super::messages::ContentBlock;
 
 /// Streaming completion chunk from Anthropic API
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -144,11 +143,13 @@ impl AnthropicStreamingProcessor {
     pub fn process_streaming_request(
         &self,
         http3_request: Http3Request,
-    ) -> AnthropicResult<AsyncStream<Result<AnthropicStreamChunk, crate::providers::anthropic::AnthropicError>>> {
+    ) -> AnthropicResult<
+        AsyncStream<Result<AnthropicStreamChunk, crate::providers::anthropic::AnthropicError>>,
+    > {
         let client = self.client.clone();
 
         // Create high-throughput channel for chunks
-        let (tx, stream) = crate::async_stream_channel();
+        let (tx, stream) = crate::channel();
 
         // Use std::thread instead of spawn_async - NO FUTURES
         std::thread::spawn(move || {
@@ -167,8 +168,9 @@ impl AnthropicStreamingProcessor {
                 };
 
                 rt.block_on(async {
-                    client.send(http3_request).await
-                        .map_err(|e| crate::providers::anthropic::AnthropicError::RequestError(e.to_string()))
+                    client.send(http3_request).await.map_err(|e| {
+                        crate::providers::anthropic::AnthropicError::RequestError(e.to_string())
+                    })
                 })
             };
 
@@ -197,9 +199,11 @@ impl AnthropicStreamingProcessor {
                     let chunk = match serde_json::from_str::<StreamingChunk>(&data) {
                         Ok(chunk) => chunk,
                         Err(e) => {
-                            let _ = tx.try_send(Err(crate::providers::anthropic::AnthropicError::DeserializationError(
-                                format!("Failed to parse Anthropic SSE chunk: {}", e)
-                            )));
+                            let _ = tx.try_send(Err(
+                                crate::providers::anthropic::AnthropicError::DeserializationError(
+                                    format!("Failed to parse Anthropic SSE chunk: {}", e),
+                                ),
+                            ));
                             continue;
                         }
                     };

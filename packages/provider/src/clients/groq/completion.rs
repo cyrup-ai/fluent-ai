@@ -6,13 +6,19 @@
 
 use arrayvec::ArrayVec;
 use cyrup_sugars::ZeroOneOrMany;
+use fluent_ai_domain::AsyncTask;
 use fluent_ai_domain::chunk::{CompletionChunk, FinishReason, Usage as DomainUsage};
+use fluent_ai_domain::completion::{
+    self, CompletionCoreError as CompletionError, CompletionRequest,
+};
+use fluent_ai_domain::message::{self, MessageError};
 use fluent_ai_domain::tool::ToolDefinition as DomainToolDefinition;
 use fluent_ai_domain::{Document, Message};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
-use futures::{self, StreamExt};
+use futures_util::{self, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use tokio::task;
 use tokio_stream;
 
 use super::client::Client;
@@ -24,14 +30,12 @@ use crate::{
     },
     streaming::StreamingCompletionResponse,
 };
-use fluent_ai_domain::completion::{self, CompletionCoreError as CompletionError, CompletionRequest};
-use fluent_ai_domain::message::{self, MessageError};
-use fluent_ai_domain::AsyncTask;
-use tokio::task;
 
 /// Helper function to merge two JSON values
 fn merge_json_values(mut base: serde_json::Value, other: serde_json::Value) -> serde_json::Value {
-    if let (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) = (&mut base, other) {
+    if let (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) =
+        (&mut base, other)
+    {
         base_map.extend(other_map);
         base
     } else {

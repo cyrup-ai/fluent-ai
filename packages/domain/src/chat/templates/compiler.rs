@@ -2,9 +2,7 @@
 //!
 //! Provides template compilation with optimization passes.
 
-use crate::chat::templates::core::{
-    ChatTemplate, CompiledTemplate, TemplateAst, TemplateResult
-};
+use crate::chat::templates::core::{ChatTemplate, CompiledTemplate, TemplateAst, TemplateResult};
 
 /// Template compiler configuration
 #[derive(Debug, Clone)]
@@ -47,11 +45,15 @@ impl TemplateCompiler {
     pub fn compile(&self, template: &ChatTemplate) -> TemplateResult<CompiledTemplate> {
         // For now, just create a simple AST from the content
         let ast = TemplateAst::Text(template.get_content().clone());
-        
+
         // Use the template's existing variables
         let variables = template.variables.clone();
-        
-        Ok(CompiledTemplate::new(template.metadata.clone(), ast, variables))
+
+        Ok(CompiledTemplate::new(
+            template.metadata.clone(),
+            ast,
+            variables,
+        ))
     }
 
     /// Get compiler configuration

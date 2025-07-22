@@ -1,6 +1,7 @@
 [workspace]
-resolver = "3"
+resolver = "2"
 members = [
+    "packages/fluent-ai-async",
     "packages/fluent-ai",
     "packages/provider",
     "packages/domain", 
@@ -8,12 +9,10 @@ members = [
     "packages/http3",
     "packages/cylo",
     "packages/termcolor",
-
     "packages/fluent-ai-candle",
     "packages/fluent-ai-simd",
     "packages/cargo-hakari-regenerate",
-    "packages/fluent-ai-core",
-    "workspace-hack"
+    "workspace-hack",
 ]
 exclude = ["tmp/rig", "tmp/cyrup-agent", "tmp/cyrup-sugars", "tmp/candle"]
 

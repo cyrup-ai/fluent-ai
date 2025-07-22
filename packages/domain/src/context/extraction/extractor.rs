@@ -1,15 +1,16 @@
 use std::fmt;
 use std::marker::PhantomData;
 
+use fluent_ai_async::AsyncStream;
+use tokio_stream::StreamExt;
 use serde::de::DeserializeOwned;
 
+use super::error::ExtractionError;
 use crate::agent::Agent;
 use crate::completion::{CompletionModel, CompletionParams, CompletionRequest};
-use crate::context::chunk::{CompletionChunk, FinishReason};
+use crate::chat::message::MessageRole;
 use crate::prompt::Prompt;
-use crate::{AsyncTask, spawn_async};
-
-use super::error::ExtractionError;
+use crate::context::chunk::{CompletionChunk, FinishReason};
 
 /// Trait defining the core extraction interface
 pub trait Extractor<T>: Send + Sync + fmt::Debug + Clone
@@ -23,7 +24,7 @@ where
     fn system_prompt(&self) -> Option<&str>;
 
     /// Extract structured data from text with comprehensive error handling
-    fn extract_from(&self, text: &str) -> AsyncTask<Result<T, ExtractionError>>;
+    fn extract_from(&self, text: &str) -> AsyncStream<T>;
 
     /// Create new extractor with agent
     fn new(agent: Agent) -> Self;
@@ -40,7 +41,9 @@ pub struct ExtractorImpl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone 
     _marker: PhantomData<T>,
 }
 
-impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor<T> for ExtractorImpl<T> {
+impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor<T>
+    for ExtractorImpl<T>
+{
     fn agent(&self) -> &Agent {
         &self.agent
     }
@@ -62,14 +65,19 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
         self
     }
 
-    fn extract_from(&self, text: &str) -> AsyncTask<Result<T, ExtractionError>> {
+    fn extract_from(&self, text: &str) -> AsyncStream<T> {
         let agent = self.agent.clone();
         let system_prompt = self.system_prompt.clone();
         let text = text.to_string();
 
-        spawn_async(async move {
+        let (sender, stream) = AsyncStream::channel();
+        
+        tokio::spawn(async move {
             let prompt = if let Some(sys_prompt) = system_prompt {
-                format!("{}\n\nExtract information from the following text:\n{}", sys_prompt, text)
+                format!(
+                    "{}\n\nExtract information from the following text:\n{}",
+                    sys_prompt, text
+                )
             } else {
                 format!("Extract information from the following text:\n{}", text)
             };
@@ -79,8 +87,18 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
                 .with_temperature(0.2)
                 .with_max_tokens(1000);
 
-            Self::execute_extraction(agent, completion_request, text).await
-        })
+            match Self::execute_extraction(agent, completion_request, text).await {
+                Ok(result) => {
+                    let _ = sender.send(result);
+                }
+                Err(_) => {
+                    // In streams-only architecture, errors are handled via on_chunk pattern
+                    // The stream will close without sending a value
+                }
+            }
+        });
+        
+        stream
     }
 }
 
@@ -88,33 +106,42 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
     async fn execute_extraction(
         agent: Agent,
         completion_request: CompletionRequest<'_>,
-        text_input: String,
+        _text_input: String,
     ) -> Result<T, ExtractionError> {
         let model = AgentCompletionModel::new(agent);
-        let mut stream = model.prompt(
-            completion_request.prompt.clone().into(),
-            &completion_request.params,
-        );
+        let prompt = Prompt {
+            content: completion_request.system_prompt.to_string(),
+            role: MessageRole::System,
+        };
+        let params = CompletionParams {
+            temperature: completion_request.temperature,
+            max_tokens: completion_request.max_tokens,
+            n: std::num::NonZeroU8::new(1).unwrap(),
+            stream: true,
+        };
+        let mut stream = model.prompt(prompt, &params);
 
         let mut full_response = String::new();
         let mut finish_reason = None;
 
         while let Some(chunk) = stream.next().await {
             match chunk {
-                Ok(chunk) => {
-                    if let Some(text) = chunk.text() {
-                        full_response.push_str(&text);
-                    }
-                    if let Some(reason) = chunk.finish_reason() {
-                        finish_reason = Some(reason);
-                        break;
-                    }
+                CompletionChunk::Text(text) => {
+                    full_response.push_str(&text);
                 }
-                Err(e) => {
+                CompletionChunk::Complete { text, finish_reason: reason, .. } => {
+                    full_response.push_str(&text);
+                    finish_reason = reason;
+                    break;
+                }
+                CompletionChunk::Error(error) => {
                     return Err(ExtractionError::CompletionError(format!(
-                        "Stream error: {}",
-                        e
-                    )))
+                        "Completion error: {}",
+                        error
+                    )));
+                }
+                _ => {
+                    // Handle other chunk types (tool calls, etc.) if needed
                 }
             }
         }
@@ -139,8 +166,11 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
 
         // If that fails, try to find JSON in the response
         let json_start = response.find('{').unwrap_or(0);
-        let json_end = response.rfind('}').map(|i| i + 1).unwrap_or_else(|| response.len());
-        
+        let json_end = response
+            .rfind('}')
+            .map(|i| i + 1)
+            .unwrap_or_else(|| response.len());
+
         if json_start < json_end {
             let json_str = &response[json_start..json_end];
             serde_json::from_str(json_str).map_err(ExtractionError::from)
@@ -170,10 +200,10 @@ impl CompletionModel for AgentCompletionModel {
         &'a self,
         prompt: Prompt,
         params: &'a CompletionParams,
-    ) -> crate::async_task::AsyncStream<CompletionChunk> {
+    ) -> fluent_ai_async::AsyncStream<CompletionChunk> {
         let agent = self.agent.clone();
         let params = params.clone();
-        
+
         Box::pin(async_stream::stream! {
             let mut request = CompletionRequest::new()
                 .with_prompt(prompt.to_string())

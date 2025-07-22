@@ -6,16 +6,14 @@
 
 #![allow(clippy::type_complexity)]
 
-use serde_json::json;
-
-use super::completion::CompletionModel;
-use crate::{
-    clients::openai::{self, send_compatible_streaming_request},
-};
+use fluent_ai_domain::completion::StreamingCoreResponse as RigStreaming;
 use fluent_ai_domain::completion::{CompletionCoreError, CompletionRequest};
 use serde_json; // Note: merge function needs to be implemented if needed
+use serde_json::json;
 use tokio::{self as rt, task::spawn as AsyncTask};
-use fluent_ai_domain::completion::StreamingCoreResponse as RigStreaming;
+
+use super::completion::CompletionModel;
+use crate::clients::openai::{self, send_compatible_streaming_request};
 
 // ─────────────────────────── streaming response type ───────────────────
 

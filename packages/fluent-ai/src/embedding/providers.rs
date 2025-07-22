@@ -593,12 +593,18 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
                         // Parse Cohere response and extract embeddings
                         match response.bytes().await {
                             Ok(response_bytes) => {
-                                match serde_json::from_slice::<CohereEmbeddingResponse>(&response_bytes) {
+                                match serde_json::from_slice::<CohereEmbeddingResponse>(
+                                    &response_bytes,
+                                ) {
                                     Ok(cohere_response) => {
-                                        if let Some(embedding) = cohere_response.embeddings.into_iter().next() {
+                                        if let Some(embedding) =
+                                            cohere_response.embeddings.into_iter().next()
+                                        {
                                             if config.normalize {
                                                 let mut normalized_embedding = embedding;
-                                                crate::embedding::normalization::normalize_vector(&mut normalized_embedding);
+                                                crate::embedding::normalization::normalize_vector(
+                                                    &mut normalized_embedding,
+                                                );
                                                 ZeroOneOrMany::from_vec(normalized_embedding)
                                             } else {
                                                 ZeroOneOrMany::from_vec(embedding)
@@ -660,7 +666,8 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
                 Err(_) => return ZeroOneOrMany::None,
             };
 
-            let http_request = provider.client
+            let http_request = provider
+                .client
                 .post(&url)
                 .header("Authorization", &format!("Bearer {}", provider.api_key))
                 .header("Content-Type", "application/json")
@@ -671,16 +678,20 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
                     if response.status().is_success() {
                         match response.bytes().await {
                             Ok(response_bytes) => {
-                                match serde_json::from_slice::<CohereEmbeddingResponse>(&response_bytes) {
+                                match serde_json::from_slice::<CohereEmbeddingResponse>(
+                                    &response_bytes,
+                                ) {
                                     Ok(cohere_response) => {
                                         let mut embeddings = cohere_response.embeddings;
-                                        
+
                                         if config.normalize {
                                             for embedding in &mut embeddings {
-                                                crate::embedding::normalization::normalize_vector(embedding);
+                                                crate::embedding::normalization::normalize_vector(
+                                                    embedding,
+                                                );
                                             }
                                         }
-                                        
+
                                         let embeddings_zero_one_many = embeddings
                                             .into_iter()
                                             .map(ZeroOneOrMany::from_vec)
@@ -697,13 +708,6 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
                     }
                 }
                 Err(_) => ZeroOneOrMany::None,
-            }
-            } else {
-                let embeddings_zero_one_many = embeddings
-                    .into_iter()
-                    .map(|vec| ZeroOneOrMany::from_vec(vec))
-                    .collect::<Vec<_>>();
-                ZeroOneOrMany::from_vec(embeddings_zero_one_many)
             }
         })
     }
@@ -748,6 +752,8 @@ impl EnhancedEmbeddingModel for CohereEmbeddingProvider {
 
                                 if tx.send(chunk).is_err() {
                                     break;
+                                }
+                            }
                         }
                     }
                 }
@@ -838,8 +844,6 @@ pub trait CognitiveMemoryManagerTrait: Send + Sync {
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 }
-
-
 
 /// Trait for quantum router integration - NO FUTURES!
 pub trait QuantumRouterTrait: Send + Sync {
@@ -973,10 +977,7 @@ pub trait HNSWIndexTrait: Send + Sync {
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
 
-    fn remove_vector(
-        &self,
-        id: &str,
-    ) -> fluent_ai_domain::AsyncStream<Result<bool, String>> {
+    fn remove_vector(&self, id: &str) -> fluent_ai_domain::AsyncStream<Result<bool, String>> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         tokio::spawn(async move {
             let _ = tx.send(Ok(false));
@@ -1319,14 +1320,20 @@ impl MultiLayerCache {
         if let Err(e) = self
             .l2_storage
             .store_embedding(&key, &embedding, &metadata)
-            .collect().await
+            .collect()
+            .await
         {
             // L2 storage failure is not critical, log and continue
             eprintln!("Warning: L2 cache storage failed: {}", e);
         }
 
         // Store in L3 (HNSW) for similarity search
-        if let Err(e) = self.l3_vector_index.add_vector(key, &embedding).collect().await {
+        if let Err(e) = self
+            .l3_vector_index
+            .add_vector(key, &embedding)
+            .collect()
+            .await
+        {
             // L3 storage failure is not critical, log and continue
             eprintln!("Warning: L3 vector index storage failed: {}", e);
         }
@@ -1348,7 +1355,8 @@ impl MultiLayerCache {
         let results = self
             .l3_vector_index
             .search_nearest(query_embedding, k)
-            .collect().await?;
+            .collect()
+            .await?;
 
         // Filter by similarity threshold
         let filtered_results: Vec<(String, f32)> = results
@@ -1452,7 +1460,8 @@ impl CognitiveEmbeddingProvider {
         let mut embedding = match self
             .cognitive_manager
             .embed_with_cognitive_enhancement(text, intent)
-            .collect().await
+            .collect()
+            .await
         {
             Ok(emb) => emb,
             Err(e) => {
@@ -1469,14 +1478,16 @@ impl CognitiveEmbeddingProvider {
             match self
                 .quantum_router
                 .calculate_quantum_coherence(text, &embedding)
-                .collect().await
+                .collect()
+                .await
             {
                 Ok(coherence) => {
                     if coherence >= self.config.coherence_threshold {
                         if let Ok(enhanced_coherence) = self
                             .quantum_router
                             .enhance_embedding_with_quantum_coherence(&mut embedding, coherence)
-                            .collect().await
+                            .collect()
+                            .await
                         {
                             self.metrics
                                 .quantum_enhancements
@@ -1588,7 +1599,8 @@ impl CognitiveEmbeddingProvider {
             let batch_embeddings = match self
                 .cognitive_manager
                 .batch_embed_with_cognitive_enhancement(batch, &intents)
-                .collect().await
+                .collect()
+                .await
             {
                 Ok(embeddings) => embeddings,
                 Err(e) => return Err(format!("Batch cognitive embedding failed: {}", e)),
@@ -1643,7 +1655,8 @@ impl CognitiveEmbeddingProvider {
             let handle = tokio::spawn(async move {
                 llm_provider
                     .analyze_intent(&text_clone)
-                    .collect().await
+                    .collect()
+                    .await
                     .unwrap_or(QueryIntent::Retrieval) // Default fallback
             });
 
@@ -1677,7 +1690,8 @@ impl CognitiveEmbeddingProvider {
                 // Calculate coherence
                 let coherence = quantum_router
                     .calculate_quantum_coherence(&text_clone, &embedding_clone)
-                    .collect().await
+                    .collect()
+                    .await
                     .unwrap_or(0.0);
 
                 // Enhance if above threshold
@@ -1685,7 +1699,8 @@ impl CognitiveEmbeddingProvider {
                     // Use a reasonable threshold
                     if let Ok(_enhanced_coherence) = quantum_router
                         .enhance_embedding_with_quantum_coherence(&mut embedding_clone, coherence)
-                        .collect().await
+                        .collect()
+                        .await
                     {
                         // Quantum enhancement applied
                     }

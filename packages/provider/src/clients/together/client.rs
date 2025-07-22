@@ -10,6 +10,7 @@ use arc_swap::ArcSwap;
 use arrayvec::{ArrayString, ArrayVec};
 use atomic_counter::RelaxedCounter;
 use fluent_ai_domain::AsyncTask as DomainAsyncTask;
+use fluent_ai_domain::{AsyncTask, channel, spawn_async};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::json;
 use smallvec::{SmallVec, smallvec};
@@ -26,7 +27,6 @@ use crate::{
     json_util,
     message::Message,
 };
-use fluent_ai_domain::{AsyncTask, spawn_async, channel};
 
 // ============================================================================
 // Together AI API Client with HTTP3 and dual-endpoint optimization
@@ -288,7 +288,10 @@ impl CompletionClient for Client {
 
     #[inline]
     fn completion_model(&self, model: &str) -> Self::Model {
-        Ok(completion::TogetherCompletionModel::new(self.clone(), model))
+        Ok(completion::TogetherCompletionModel::new(
+            self.clone(),
+            model,
+        ))
     }
 }
 

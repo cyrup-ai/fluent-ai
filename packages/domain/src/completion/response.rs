@@ -5,10 +5,10 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
+use fluent_ai_async::{AsyncStream, async_stream_channel};
 use serde::{Deserialize, Serialize};
 
 use crate::model::Usage;
-use crate::async_task::AsyncStream;
 
 /// A response from a text completion request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -277,8 +277,8 @@ impl<'a> CompactCompletionResponseBuilder<'a> {
 
     /// Build the compact response
     pub fn build(self) -> AsyncStream<CompactCompletionResponse<'a>> {
-        let (sender, stream) = AsyncStream::channel();
-        
+        let (sender, stream) = async_stream_channel();
+
         tokio::spawn(async move {
             let response = CompactCompletionResponse {
                 content: self.content.unwrap_or_else(|| Arc::from("")),
@@ -289,10 +289,10 @@ impl<'a> CompactCompletionResponseBuilder<'a> {
                 response_time_ms: self.response_time_ms,
                 _marker: std::marker::PhantomData,
             };
-            
-            let _ = sender.try_send(response);
+
+            let _ = sender.send(response);
         });
-        
+
         stream
     }
 }

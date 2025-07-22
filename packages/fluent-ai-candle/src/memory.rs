@@ -12,11 +12,12 @@ static ALLOCATION_COUNT: AtomicUsize = AtomicUsize::new(0);
 pub fn track_allocation(size: usize) {
     let current = TOTAL_ALLOCATED.fetch_add(size, Ordering::Relaxed) + size;
     ALLOCATION_COUNT.fetch_add(1, Ordering::Relaxed);
-    
+
     // Update peak usage atomically
     let mut peak = PEAK_USAGE.load(Ordering::Relaxed);
     while current > peak {
-        match PEAK_USAGE.compare_exchange_weak(peak, current, Ordering::Relaxed, Ordering::Relaxed) {
+        match PEAK_USAGE.compare_exchange_weak(peak, current, Ordering::Relaxed, Ordering::Relaxed)
+        {
             Ok(_) => break,
             Err(x) => peak = x,
         }

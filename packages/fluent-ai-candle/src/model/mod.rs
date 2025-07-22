@@ -8,22 +8,23 @@
 //! - `metrics` - Performance metrics and statistics
 //! - `core` - Main CandleModel implementation with atomic state management
 
-pub mod loading;
-pub mod wrappers;
 pub mod cache;
-pub mod types;
-pub mod metrics;
 pub mod core;
+pub mod loading;
+pub mod metrics;
+pub mod types;
+pub mod wrappers;
 
 // Re-export key types for backward compatibility
+pub use core::CandleModel;
+
+pub use cache::{CacheKey, KVCacheConfig, KVCacheEntry, KVCacheManager, KVCacheStats};
 pub use loading::{
     LoadingStage, ModelLoader, ModelMetadata, ProgressCallback, RecoveryStrategy, TensorInfo,
 };
+pub use metrics::{GenerationMetrics, ModelMetrics, ModelPerformanceStats};
+pub use types::{ModelConfig, ModelType, QuantizationType};
 pub use wrappers::{
     CacheContext, EnhancedLlamaWrapper, GemmaWrapper, LlamaWrapper, MistralWrapper, PhiWrapper,
     QwenWrapper,
 };
-pub use cache::{CacheKey, KVCacheConfig, KVCacheEntry, KVCacheManager, KVCacheStats};
-pub use types::{ModelConfig, ModelType, QuantizationType};
-pub use metrics::{GenerationMetrics, ModelMetrics, ModelPerformanceStats};
-pub use core::CandleModel;

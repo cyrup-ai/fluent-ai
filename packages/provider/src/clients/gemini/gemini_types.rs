@@ -922,9 +922,9 @@ impl From<GeminiFinishReason> for fluent_ai_domain::chunk::FinishReason {
         match reason {
             GeminiFinishReason::Stop => Self::Stop,
             GeminiFinishReason::MaxTokens => Self::Length,
-            GeminiFinishReason::Safety | GeminiFinishReason::Blocklist | GeminiFinishReason::ProhibitedContent => {
-                Self::ContentFilter
-            }
+            GeminiFinishReason::Safety
+            | GeminiFinishReason::Blocklist
+            | GeminiFinishReason::ProhibitedContent => Self::ContentFilter,
             _ => Self::Stop,
         }
     }

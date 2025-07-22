@@ -17,7 +17,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 // Removed unused import: wide::f32x8
-use crate::chat::message::SearchChatMessage;
+use crate::chat::message::{SearchChatMessage, MessageRole};
 
 /// Search query with advanced filtering options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -177,14 +177,33 @@ pub struct ChatSearchIndex {
 impl std::fmt::Debug for ChatSearchIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ChatSearchIndex")
-            .field("inverted_index", &format!("SkipMap with {} entries", self.inverted_index.len()))
-            .field("document_store", &format!("SkipMap with {} entries", self.document_store.len()))
-            .field("term_frequencies", &format!("SkipMap with {} entries", self.term_frequencies.len()))
-            .field("document_count", &self.document_count.load(std::sync::atomic::Ordering::Relaxed))
+            .field(
+                "inverted_index",
+                &format!("SkipMap with {} entries", self.inverted_index.len()),
+            )
+            .field(
+                "document_store",
+                &format!("SkipMap with {} entries", self.document_store.len()),
+            )
+            .field(
+                "term_frequencies",
+                &format!("SkipMap with {} entries", self.term_frequencies.len()),
+            )
+            .field(
+                "document_count",
+                &self
+                    .document_count
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
             .field("query_counter", &"ConsistentCounter")
             .field("index_update_counter", &"ConsistentCounter")
             .field("statistics", &"Arc<RwLock<SearchStatistics>>")
-            .field("simd_threshold", &self.simd_threshold.load(std::sync::atomic::Ordering::Relaxed))
+            .field(
+                "simd_threshold",
+                &self
+                    .simd_threshold
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            )
             .finish()
     }
 }
@@ -213,14 +232,14 @@ impl ChatSearchIndex {
 
     /// Add message to search index
     pub async fn add_message(&self, message: SearchChatMessage) -> Result<(), SearchError> {
-        let doc_id: Arc<str> = Arc::from(message.timestamp.to_string());
+        let doc_id: Arc<str> = Arc::from(message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string()));
 
         // Store the document
         self.document_store.insert(doc_id.clone(), message.clone());
         self.document_count.fetch_add(1, Ordering::Relaxed);
 
         // Tokenize and index the content
-        let tokens = self.tokenize_with_simd(&message.content);
+        let tokens = self.tokenize_with_simd(&message.message.content);
         let total_tokens = tokens.len();
 
         // Calculate term frequencies
@@ -287,17 +306,12 @@ impl ChatSearchIndex {
         let _scores: HashMap<Arc<str>, f64> = HashMap::new();
 
         let results = match query.operator {
-            QueryOperator::And => {
-                self.search_and(&query.terms, query.fuzzy_matching).await?
-            }
-            QueryOperator::Or => {
-                self.search_or(&query.terms, query.fuzzy_matching).await?
-            }
-            QueryOperator::Not => {
-                self.search_not(&query.terms, query.fuzzy_matching).await?
-            }
+            QueryOperator::And => self.search_and(&query.terms, query.fuzzy_matching).await?,
+            QueryOperator::Or => self.search_or(&query.terms, query.fuzzy_matching).await?,
+            QueryOperator::Not => self.search_not(&query.terms, query.fuzzy_matching).await?,
             QueryOperator::Phrase => {
-                self.search_phrase(&query.terms, query.fuzzy_matching).await?
+                self.search_phrase(&query.terms, query.fuzzy_matching)
+                    .await?
             }
             QueryOperator::Proximity { distance } => {
                 self.search_proximity(&query.terms, distance, query.fuzzy_matching)
@@ -416,7 +430,7 @@ impl ChatSearchIndex {
         // Remove duplicates and merge scores
         let mut unique_results = HashMap::new();
         for result in all_results {
-            let key = result.message.timestamp.to_string();
+            let key = result.message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string());
             if let Some(existing) = unique_results.get_mut(&key) {
                 let existing_result: &mut SearchResult = existing;
                 existing_result.relevance_score =
@@ -445,7 +459,7 @@ impl ChatSearchIndex {
             };
 
             for result in term_results {
-                excluded_docs.insert(result.message.timestamp.to_string());
+                excluded_docs.insert(result.message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string()));
             }
         }
 
@@ -480,7 +494,7 @@ impl ChatSearchIndex {
 
         for entry in self.document_store.iter() {
             let message = entry.value();
-            let content = message.content.to_lowercase();
+            let content = message.message.content.to_lowercase();
             let phrase = terms
                 .iter()
                 .map(|t| t.as_ref())
@@ -530,7 +544,7 @@ impl ChatSearchIndex {
 
         for entry in self.document_store.iter() {
             let message = entry.value();
-            let tokens = self.tokenize_with_simd(&message.content);
+            let tokens = self.tokenize_with_simd(&message.message.content);
 
             if self.check_proximity(&tokens, terms, distance) {
                 let relevance_score = if fuzzy { 0.7 } else { 0.9 };
@@ -539,7 +553,7 @@ impl ChatSearchIndex {
                     relevance_score,
                     matching_terms: terms.to_vec(),
                     highlighted_content: Some(Arc::from(
-                        self.highlight_terms(&message.content, terms),
+                        self.highlight_terms(&message.message.content, terms),
                     )),
                     tags: vec![],
                     context: vec![],
@@ -570,7 +584,7 @@ impl ChatSearchIndex {
                         relevance_score: tf_idf,
                         matching_terms: vec![term.clone()],
                         highlighted_content: Some(Arc::from(
-                            self.highlight_text(&message.value().content, term),
+                            self.highlight_text(&message.value().message.content, term),
                         )),
                         tags: vec![],
                         context: vec![],
@@ -655,11 +669,11 @@ impl ChatSearchIndex {
         let mut intersection = Vec::new();
         let ids2: std::collections::HashSet<_> = results2
             .iter()
-            .map(|r| r.message.timestamp.to_string())
+            .map(|r| r.message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string()))
             .collect();
 
         for result in results1 {
-            if ids2.contains(&result.message.timestamp.to_string()) {
+            if ids2.contains(&result.message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string())) {
                 intersection.push(result);
             }
         }
@@ -726,23 +740,34 @@ impl ChatSearchIndex {
         // Date range filter
         if let Some(date_range) = &query.date_range {
             results.retain(|r| {
-                r.message.timestamp >= date_range.start && r.message.timestamp <= date_range.end
+                if let Some(timestamp) = r.message.message.timestamp {
+                    timestamp >= date_range.start && timestamp <= date_range.end
+                } else {
+                    false
+                }
             });
         }
 
         // User filter
         if let Some(user_filter) = &query.user_filter {
-            results.retain(|r| &*r.message.role == &**user_filter);
+            let role_filter = match user_filter.as_ref() {
+                "system" => MessageRole::System,
+                "user" => MessageRole::User,
+                "assistant" => MessageRole::Assistant,
+                "tool" => MessageRole::Tool,
+                _ => MessageRole::User, // Default fallback
+            };
+            results.retain(|r| r.message.message.role == role_filter);
         }
 
         // Content type filter
         if let Some(content_type) = &query.content_type_filter {
             results.retain(|r| {
+                // Since Message doesn't have metadata field, check content instead
                 r.message
-                    .metadata
-                    .as_ref()
-                    .map(|m| m.contains(content_type.as_ref()))
-                    .unwrap_or(false)
+                    .message
+                    .content
+                    .contains(content_type.as_ref())
             });
         }
 
@@ -760,10 +785,10 @@ impl ChatSearchIndex {
                 });
             }
             SortOrder::DateDescending => {
-                results.sort_by(|a, b| b.message.timestamp.cmp(&a.message.timestamp));
+                results.sort_by(|a, b| b.message.message.timestamp.cmp(&a.message.message.timestamp));
             }
             SortOrder::DateAscending => {
-                results.sort_by(|a, b| a.message.timestamp.cmp(&b.message.timestamp));
+                results.sort_by(|a, b| a.message.message.timestamp.cmp(&b.message.message.timestamp));
             }
             SortOrder::UserAscending => {
                 results.sort_by(|a, b| a.message.role.cmp(&b.message.role));
@@ -966,7 +991,7 @@ impl ConversationTagger {
         message: &SearchChatMessage,
     ) -> Result<Vec<Arc<str>>, SearchError> {
         let mut suggested_tags = Vec::new();
-        let content = message.content.to_lowercase();
+        let content = message.message.content.to_lowercase();
 
         let rules = self.auto_tagging_rules.read().await;
         for (pattern, tag_ids) in rules.iter() {
@@ -1205,12 +1230,25 @@ impl HistoryExporter {
     ) -> Result<Vec<SearchChatMessage>, SearchError> {
         // Date range filter
         if let Some(date_range) = &options.date_range {
-            messages.retain(|m| m.timestamp >= date_range.start && m.timestamp <= date_range.end);
+            messages.retain(|m| {
+                if let Some(timestamp) = m.message.timestamp {
+                    timestamp >= date_range.start && timestamp <= date_range.end
+                } else {
+                    false
+                }
+            });
         }
 
         // User filter
         if let Some(user_filter) = &options.user_filter {
-            messages.retain(|m| &*m.role == &**user_filter);
+            let role_filter = match user_filter.as_ref() {
+                "system" => MessageRole::System,
+                "user" => MessageRole::User,
+                "assistant" => MessageRole::Assistant,
+                "tool" => MessageRole::Tool,
+                _ => MessageRole::User, // Default fallback
+            };
+            messages.retain(|m| m.message.role == role_filter);
         }
 
         Ok(messages)
@@ -1226,19 +1264,20 @@ impl HistoryExporter {
 
         for message in messages {
             let mut json_obj = serde_json::json!({
-                "role": message.role,
-                "content": message.content,
-                "tokens": message.tokens,
+                "role": message.message.role,
+                "content": message.message.content,
+                "relevance_score": message.relevance_score,
             });
 
             if options.include_timestamps {
-                json_obj["timestamp"] = serde_json::Value::Number(message.timestamp.into());
+                if let Some(timestamp) = message.message.timestamp {
+                    json_obj["timestamp"] = serde_json::Value::Number(timestamp.into());
+                }
             }
 
             if options.include_metadata {
-                if let Some(metadata) = &message.metadata {
-                    json_obj["metadata"] = serde_json::Value::String(metadata.to_string());
-                }
+                // Note: Message struct doesn't have metadata field, using relevance_score instead
+                json_obj["relevance_score"] = serde_json::Value::from(message.relevance_score);
             }
 
             json_messages.push(json_obj);
@@ -1282,19 +1321,21 @@ impl HistoryExporter {
 
         // Data rows
         for message in messages {
-            let escaped_content = message.content.replace(',', "\\,").replace('\n', "\\n");
-            let timestamp_str = message.timestamp.to_string();
-            let tokens_str = message.tokens.to_string();
+            let escaped_content = message.message.content.replace(',', "\\,").replace('\n', "\\n");
+            let timestamp_str = message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string());
+            let tokens_str = "0"; // tokens field not available in Message struct
+            let role_str = message.message.role.to_string();
+            let relevance_str = message.relevance_score.to_string();
 
-            let mut row = vec![message.role.as_str(), &escaped_content, &tokens_str];
+            let mut row = vec![role_str.as_str(), &escaped_content, tokens_str];
 
             if options.include_timestamps {
                 row.push(&timestamp_str);
             }
 
             if options.include_metadata {
-                let metadata_str = message.metadata.as_ref().map(|m| m.as_str()).unwrap_or("");
-                row.push(metadata_str);
+                // Note: Message struct doesn't have metadata field, using relevance_score instead
+                row.push(&relevance_str);
             }
 
             csv_output.push_str(&row.join(","));
@@ -1325,17 +1366,19 @@ impl HistoryExporter {
         }
 
         for message in messages {
-            markdown_output.push_str(&format!("## {}\n\n", message.role));
-            markdown_output.push_str(&format!("{}\n\n", message.content));
+            markdown_output.push_str(&format!("## {}\n\n", message.message.role));
+            markdown_output.push_str(&format!("{}\n\n", message.message.content));
 
             if options.include_timestamps {
-                markdown_output.push_str(&format!("*Timestamp: {}*\n\n", message.timestamp));
+                let timestamp_str = message.message.timestamp.map_or_else(|| "Unknown".to_string(), |t| t.to_string());
+                markdown_output.push_str(&format!("*Timestamp: {}*\n\n", timestamp_str));
             }
 
-            if options.include_metadata && message.metadata.is_some() {
+            // Note: metadata field not available in Message struct - using relevance_score instead
+            if options.include_metadata {
                 markdown_output.push_str(&format!(
-                    "*Metadata: {}*\n\n",
-                    message.metadata.as_ref().unwrap()
+                    "*Relevance Score: {:.2}*\n\n",
+                    message.relevance_score
                 ));
             }
 
@@ -1368,23 +1411,25 @@ impl HistoryExporter {
 
         for message in messages {
             html_output.push_str("<div class=\"message\">\n");
-            html_output.push_str(&format!("<div class=\"role\">{}</div>\n", message.role));
+            html_output.push_str(&format!("<div class=\"role\">{}</div>\n", message.message.role));
             html_output.push_str(&format!(
                 "<div class=\"content\">{}</div>\n",
-                message.content.replace('<', "&lt;").replace('>', "&gt;")
+                message.message.content.replace('<', "&lt;").replace('>', "&gt;")
             ));
 
             if options.include_timestamps {
+                let timestamp_str = message.message.timestamp.map_or_else(|| "Unknown".to_string(), |t| t.to_string());
                 html_output.push_str(&format!(
                     "<div class=\"timestamp\">Timestamp: {}</div>\n",
-                    message.timestamp
+                    timestamp_str
                 ));
             }
 
-            if options.include_metadata && message.metadata.is_some() {
+            // Note: metadata field not available in Message struct - using relevance_score instead
+            if options.include_metadata {
                 html_output.push_str(&format!(
-                    "<div class=\"metadata\">Metadata: {}</div>\n",
-                    message.metadata.as_ref().unwrap()
+                    "<div class=\"metadata\">Relevance Score: {:.2}</div>\n",
+                    message.relevance_score
                 ));
             }
 
@@ -1419,24 +1464,26 @@ impl HistoryExporter {
 
         for message in messages {
             xml_output.push_str("  <message>\n");
-            xml_output.push_str(&format!("    <role>{}</role>\n", message.role));
+            xml_output.push_str(&format!("    <role>{}</role>\n", message.message.role));
             xml_output.push_str(&format!(
                 "    <content>{}</content>\n",
-                message.content.replace('<', "&lt;").replace('>', "&gt;")
+                message.message.content.replace('<', "&lt;").replace('>', "&gt;")
             ));
-            xml_output.push_str(&format!("    <tokens>{}</tokens>\n", message.tokens));
+            xml_output.push_str("    <tokens>0</tokens>\n"); // tokens field not available in Message struct
 
             if options.include_timestamps {
+                let timestamp_str = message.message.timestamp.map_or_else(|| "Unknown".to_string(), |t| t.to_string());
                 xml_output.push_str(&format!(
                     "    <timestamp>{}</timestamp>\n",
-                    message.timestamp
+                    timestamp_str
                 ));
             }
 
-            if options.include_metadata && message.metadata.is_some() {
+            // Note: metadata field not available in Message struct - using relevance_score instead
+            if options.include_metadata {
                 xml_output.push_str(&format!(
-                    "    <metadata>{}</metadata>\n",
-                    message.metadata.as_ref().unwrap()
+                    "    <relevance_score>{:.2}</relevance_score>\n",
+                    message.relevance_score
                 ));
             }
 
@@ -1460,16 +1507,18 @@ impl HistoryExporter {
         text_output.push_str("===================\n\n");
 
         for message in messages {
-            text_output.push_str(&format!("{}: {}\n", message.role, message.content));
+            text_output.push_str(&format!("{}: {}\n", message.message.role, message.message.content));
 
             if options.include_timestamps {
-                text_output.push_str(&format!("Timestamp: {}\n", message.timestamp));
+                let timestamp_str = message.message.timestamp.map_or_else(|| "Unknown".to_string(), |t| t.to_string());
+                text_output.push_str(&format!("Timestamp: {}\n", timestamp_str));
             }
 
-            if options.include_metadata && message.metadata.is_some() {
+            // Note: metadata field not available in Message struct - using relevance_score instead
+            if options.include_metadata {
                 text_output.push_str(&format!(
-                    "Metadata: {}\n",
-                    message.metadata.as_ref().unwrap()
+                    "Relevance Score: {:.2}\n",
+                    message.relevance_score
                 ));
             }
 
@@ -1586,7 +1635,7 @@ impl EnhancedHistoryManager {
         // Auto-tag message
         let suggested_tags = self.tagger.auto_tag_message(&message).await?;
         if !suggested_tags.is_empty() {
-            let message_id = Arc::from(message.timestamp.to_string());
+            let message_id = Arc::from(message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string()));
             self.tagger.tag_message(message_id, suggested_tags).await?;
         }
 
@@ -1606,7 +1655,7 @@ impl EnhancedHistoryManager {
 
         // Add tag information to results
         for result in &mut results {
-            let message_id = Arc::from(result.message.timestamp.to_string());
+            let message_id = Arc::from(result.message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string()));
             result.tags = self.tagger.get_message_tags(&message_id);
         }
 

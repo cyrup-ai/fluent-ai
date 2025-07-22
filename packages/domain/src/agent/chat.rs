@@ -1,11 +1,11 @@
 //! Chat functionality for memory-enhanced agent conversations
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
 
 use arrayvec::ArrayVec;
 use atomic_counter::RelaxedCounter;
 use crossbeam_utils::CachePadded;
+use futures_util::StreamExt;
 use once_cell::sync::Lazy;
 
 use crate::agent::role::AgentRoleImpl;
@@ -75,13 +75,14 @@ impl AgentRoleImpl {
     pub async fn chat(
         &self,
         message: impl Into<String>,
-        memory: Arc<Memory>,
+        memory: &Memory,
         memory_tool: &MemoryTool,
     ) -> Result<MemoryEnhancedChatResponse, ChatError> {
         let message = message.into();
 
         // Inject relevant memory context with zero-allocation processing
-        let context_injection = self.inject_memory_context(&message, &memory).await?;
+        let memory_arc = Arc::new(memory.clone());
+        let context_injection = self.inject_memory_context(&message, &memory_arc).await?;
 
         // TODO: Integrate with actual completion provider for response generation
         // For now, return a placeholder response
@@ -157,13 +158,15 @@ impl AgentRoleImpl {
             _ => "", // Non-text content gets empty string for comparison
         };
         let memory_len = memory_content.len();
-        
+
         // Basic content length similarity (normalized)
-        let length_similarity = 1.0 - ((message_len as f64 - memory_len as f64).abs() / (message_len.max(memory_len) as f64 + 1.0));
-        
+        let length_similarity = 1.0
+            - ((message_len as f64 - memory_len as f64).abs()
+                / (message_len.max(memory_len) as f64 + 1.0));
+
         // Memory node importance factor
         let importance_factor = memory_node.importance() as f64;
-        
+
         // Time decay factor based on last access
         let time_factor = if let Ok(elapsed) = memory_node.last_accessed().elapsed() {
             // Decay over 24 hours, minimum 0.1
@@ -171,9 +174,10 @@ impl AgentRoleImpl {
         } else {
             0.5 // Default if time calculation fails
         };
-        
+
         // Combined relevance score (weighted average)
-        let score = (length_similarity * 0.3 + importance_factor * 0.5 + time_factor * 0.2).min(1.0);
+        let score =
+            (length_similarity * 0.3 + importance_factor * 0.5 + time_factor * 0.2).min(1.0);
 
         Ok(score)
     }
@@ -206,14 +210,15 @@ impl AgentRoleImpl {
             .map_err(|e| ChatError::Memory(e.into()))?;
 
         // Store user memory with zero-allocation error handling - PURE STREAMING
-        let store_result = memory_tool
+        let store_stream = memory_tool
             .memory()
-            .store_memory(&user_memory)
-            .collect()
-            .into_iter()
-            .next()
-            .unwrap_or(Err(MemoryError::OperationFailed("Store memory stream closed without result".to_string())));
-        store_result.map_err(|e| ChatError::Memory(e))?;
+            .store_memory(&user_memory);
+        
+        // Use StreamExt to properly consume AsyncStream
+        let mut stream = store_stream;
+        if let Some(store_result) = stream.next().await {
+            store_result.map_err(|e| ChatError::Memory(e))?;
+        }
 
         if memorized_nodes.try_push(user_memory).is_err() {
             return Err(ChatError::System(
@@ -228,14 +233,15 @@ impl AgentRoleImpl {
         );
 
         // Store assistant memory with zero-allocation error handling - PURE STREAMING
-        let store_result = memory_tool
+        let store_stream = memory_tool
             .memory()
-            .store_memory(&assistant_memory)
-            .collect()
-            .into_iter()
-            .next()
-            .unwrap_or(Err(MemoryError::OperationFailed("Store memory stream closed without result".to_string())));
-        store_result.map_err(|e| ChatError::Memory(e))?;
+            .store_memory(&assistant_memory);
+        
+        // Use StreamExt to properly consume AsyncStream
+        let mut stream = store_stream;
+        if let Some(store_result) = stream.next().await {
+            store_result.map_err(|e| ChatError::Memory(e))?;
+        }
 
         if memorized_nodes.try_push(assistant_memory).is_err() {
             return Err(ChatError::System(
@@ -253,14 +259,15 @@ impl AgentRoleImpl {
         );
 
         // Store context memory with zero-allocation error handling - PURE STREAMING
-        let store_result = memory_tool
+        let store_stream = memory_tool
             .memory()
-            .store_memory(&context_memory)
-            .collect()
-            .into_iter()
-            .next()
-            .unwrap_or(Err(MemoryError::OperationFailed("Store memory stream closed without result".to_string())));
-        store_result.map_err(|e| ChatError::Memory(e))?;
+            .store_memory(&context_memory);
+        
+        // Use StreamExt to properly consume AsyncStream
+        let mut stream = store_stream;
+        if let Some(store_result) = stream.next().await {
+            store_result.map_err(|e| ChatError::Memory(e))?;
+        }
 
         if memorized_nodes.try_push(context_memory).is_err() {
             return Err(ChatError::System(

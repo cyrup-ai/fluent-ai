@@ -7,10 +7,11 @@
 use std::fmt;
 use std::future::Future;
 use std::pin::Pin;
+
 use serde_json::Value;
 
 /// Base trait for successful HTTP3 streaming operations
-/// 
+///
 /// Provides core functionality for HTTP streaming chunks with zero allocation
 /// and lock-free access patterns. All implementations must be object-safe.
 pub trait HttpChunk: Send + Sync {
@@ -18,26 +19,26 @@ pub trait HttpChunk: Send + Sync {
     /// Zero-allocation access to underlying data
     #[inline(always)]
     fn data(&self) -> &[u8];
-    
+
     /// Get current progress as percentage (0.0-100.0)
     /// Returns None if progress is not applicable/available
     #[inline(always)]
     fn progress(&self) -> Option<f32>;
-    
+
     /// Check if this is the final chunk in the stream
     #[inline(always)]
     fn is_final(&self) -> bool;
-    
+
     /// Get chunk metadata as JSON value
     /// Returns None if no metadata is available
     fn metadata(&self) -> Option<&Value>;
-    
+
     /// Get chunk size in bytes
     #[inline(always)]
     fn size(&self) -> usize {
         self.data().len()
     }
-    
+
     /// Check if chunk has data
     #[inline(always)]
     fn is_empty(&self) -> bool {
@@ -52,16 +53,16 @@ pub trait HttpChunk: Send + Sync {
 pub trait BadHttpChunk: Send + Sync + fmt::Display + fmt::Debug {
     /// Get the error kind/category
     fn error_kind(&self) -> HttpErrorKind;
-    
+
     /// Get human-readable error message
     fn message(&self) -> &str;
-    
+
     /// Get error code if available
     fn code(&self) -> Option<u32>;
-    
+
     /// Check if error is retryable
     fn is_retryable(&self) -> bool;
-    
+
     /// Get structured error details as JSON
     fn details(&self) -> Option<&Value>;
 }
@@ -104,25 +105,25 @@ impl fmt::Display for HttpErrorKind {
 }
 
 /// File/model download operations with progress tracking
-/// 
+///
 /// Specialized chunk type for downloads with progress reporting,
 /// metadata access, and caching integration.
 pub trait DownloadChunk: HttpChunk {
     /// Get the filename being downloaded
     fn filename(&self) -> &str;
-    
+
     /// Get downloaded bytes so far
     fn downloaded_bytes(&self) -> u64;
-    
+
     /// Get total bytes to download (if known)
     fn total_bytes(&self) -> Option<u64>;
-    
+
     /// Get download speed in bytes/second
     fn speed_bps(&self) -> Option<u64>;
-    
+
     /// Get estimated time remaining in seconds
     fn eta_seconds(&self) -> Option<u64>;
-    
+
     /// Get file metadata/headers
     fn file_metadata(&self) -> Option<&Value>;
 }
@@ -131,7 +132,7 @@ pub trait DownloadChunk: HttpChunk {
 pub trait BadDownloadChunk: BadHttpChunk {
     /// Get the filename that failed to download
     fn filename(&self) -> &str;
-    
+
     /// Get partially downloaded bytes (if any)
     fn partial_bytes(&self) -> u64;
 }
@@ -143,16 +144,16 @@ pub trait BadDownloadChunk: BadHttpChunk {
 pub trait TranscriptionChunk: HttpChunk {
     /// Get transcribed text content
     fn text(&self) -> &str;
-    
+
     /// Get confidence score (0.0-1.0)
     fn confidence(&self) -> Option<f32>;
-    
+
     /// Get speaker ID if available
     fn speaker_id(&self) -> Option<&str>;
-    
+
     /// Get timestamp information (start, end in seconds)
     fn timestamp(&self) -> Option<(f32, f32)>;
-    
+
     /// Check if this is a partial/interim result
     fn is_partial(&self) -> bool;
 }
@@ -161,7 +162,7 @@ pub trait TranscriptionChunk: HttpChunk {
 pub trait BadTranscriptionChunk: BadHttpChunk {
     /// Get the audio format that caused the error
     fn audio_format(&self) -> Option<&str>;
-    
+
     /// Get audio duration if known
     fn audio_duration(&self) -> Option<f32>;
 }
@@ -173,19 +174,19 @@ pub trait BadTranscriptionChunk: BadHttpChunk {
 pub trait CompletionChunk: HttpChunk {
     /// Get the completion text/tokens
     fn text(&self) -> &str;
-    
+
     /// Get finish reason if completion is done
     fn finish_reason(&self) -> Option<&str>;
-    
+
     /// Get token usage information
     fn token_usage(&self) -> Option<TokenUsage>;
-    
+
     /// Get model name used for completion
     fn model(&self) -> Option<&str>;
-    
+
     /// Check if this chunk contains tool calls
     fn has_tool_calls(&self) -> bool;
-    
+
     /// Get tool call information if available
     fn tool_calls(&self) -> Option<&[ToolCall]>;
 }
@@ -194,7 +195,7 @@ pub trait CompletionChunk: HttpChunk {
 pub trait BadCompletionChunk: BadHttpChunk {
     /// Get the model that caused the error
     fn model(&self) -> Option<&str>;
-    
+
     /// Get partial completion if any
     fn partial_text(&self) -> Option<&str>;
 }
@@ -206,39 +207,39 @@ pub trait BadCompletionChunk: BadHttpChunk {
 pub trait EmbeddingChunk: HttpChunk {
     /// Get embedding vector as f32 slice
     fn vector(&self) -> &[f32];
-    
+
     /// Get embedding dimensions
     #[inline(always)]
     fn dimensions(&self) -> usize {
         self.vector().len()
     }
-    
+
     /// Get input text that was embedded
     fn input_text(&self) -> Option<&str>;
-    
+
     /// Get model used for embedding
     fn model(&self) -> Option<&str>;
-    
+
     /// Calculate cosine similarity with another vector
     fn cosine_similarity(&self, other: &[f32]) -> f32 {
         let a = self.vector();
         let b = other;
-        
+
         if a.len() != b.len() {
             return 0.0;
         }
-        
+
         let mut dot = 0.0;
         let mut norm_a = 0.0;
         let mut norm_b = 0.0;
-        
+
         // SIMD-friendly loop for auto-vectorization
         for i in 0..a.len() {
             dot += a[i] * b[i];
             norm_a += a[i] * a[i];
             norm_b += b[i] * b[i];
         }
-        
+
         if norm_a == 0.0 || norm_b == 0.0 {
             0.0
         } else {
@@ -251,10 +252,10 @@ pub trait EmbeddingChunk: HttpChunk {
 pub trait BadEmbeddingChunk: BadHttpChunk {
     /// Get the input text that failed to embed
     fn input_text(&self) -> Option<&str>;
-    
+
     /// Get model that caused the error
     fn model(&self) -> Option<&str>;
-    
+
     /// Get expected dimensions if known
     fn expected_dimensions(&self) -> Option<usize>;
 }
@@ -280,7 +281,7 @@ impl TokenUsage {
             total_tokens: prompt_tokens + completion_tokens,
         }
     }
-    
+
     /// Check if usage is empty
     #[inline(always)]
     pub const fn is_empty(&self) -> bool {
@@ -309,7 +310,7 @@ impl ToolCall {
             id: None,
         }
     }
-    
+
     /// Set tool call ID
     #[inline(always)]
     pub fn with_id(mut self, id: String) -> Self {
@@ -325,7 +326,7 @@ impl ToolCall {
 /// Concrete implementation of TranscriptionChunk
 pub struct TranscriptionChunkImpl {
     transcribed_text: Option<String>,
-    language: Option<String>, 
+    language: Option<String>,
     confidence: Option<f32>,
     data: Vec<u8>,
     progress: Option<f32>,
@@ -350,17 +351,17 @@ impl TranscriptionChunkImpl {
             metadata: None,
         }
     }
-    
+
     pub fn with_progress(mut self, progress: f32) -> Self {
         self.progress = Some(progress);
         self
     }
-    
+
     pub fn with_final(mut self, is_final: bool) -> Self {
         self.is_final = is_final;
         self
     }
-    
+
     pub fn with_metadata(mut self, metadata: Value) -> Self {
         self.metadata = Some(metadata);
         self
@@ -371,11 +372,11 @@ impl TranscriptionChunk for TranscriptionChunkImpl {
     fn transcribed_text(&self) -> Option<&str> {
         self.transcribed_text.as_deref()
     }
-    
+
     fn language(&self) -> Option<&str> {
         self.language.as_deref()
     }
-    
+
     fn confidence(&self) -> Option<f32> {
         self.confidence
     }
@@ -385,15 +386,15 @@ impl HttpChunk for TranscriptionChunkImpl {
     fn data(&self) -> &[u8] {
         &self.data
     }
-    
+
     fn progress(&self) -> Option<f32> {
         self.progress
     }
-    
+
     fn is_final(&self) -> bool {
         self.is_final
     }
-    
+
     fn metadata(&self) -> Option<&Value> {
         self.metadata.as_ref()
     }
@@ -410,11 +411,7 @@ pub struct DownloadChunkImpl {
 }
 
 impl DownloadChunkImpl {
-    pub fn new(
-        data: Vec<u8>,
-        filename: Option<String>,
-        mime_type: Option<String>,
-    ) -> Self {
+    pub fn new(data: Vec<u8>, filename: Option<String>, mime_type: Option<String>) -> Self {
         Self {
             data,
             filename,
@@ -424,17 +421,17 @@ impl DownloadChunkImpl {
             metadata: None,
         }
     }
-    
+
     pub fn with_progress(mut self, progress: f32) -> Self {
         self.progress = Some(progress);
         self
     }
-    
+
     pub fn with_final(mut self, is_final: bool) -> Self {
         self.is_final = is_final;
         self
     }
-    
+
     pub fn with_metadata(mut self, metadata: Value) -> Self {
         self.metadata = Some(metadata);
         self
@@ -445,11 +442,11 @@ impl DownloadChunk for DownloadChunkImpl {
     fn filename(&self) -> Option<&str> {
         self.filename.as_deref()
     }
-    
+
     fn mime_type(&self) -> Option<&str> {
         self.mime_type.as_deref()
     }
-    
+
     fn file_size(&self) -> Option<u64> {
         Some(self.data.len() as u64)
     }
@@ -459,15 +456,15 @@ impl HttpChunk for DownloadChunkImpl {
     fn data(&self) -> &[u8] {
         &self.data
     }
-    
+
     fn progress(&self) -> Option<f32> {
         self.progress
     }
-    
+
     fn is_final(&self) -> bool {
         self.is_final
     }
-    
+
     fn metadata(&self) -> Option<&Value> {
         self.metadata.as_ref()
     }

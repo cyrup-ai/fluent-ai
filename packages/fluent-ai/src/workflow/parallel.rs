@@ -11,7 +11,7 @@
 // Every public function is `#[inline]` to let LLVM fuse trivial layers.
 // ============================================================================
 
-use futures::{join, try_join};
+use futures_util::{join, try_join};
 
 use super::{Op, TryOp};
 

@@ -7,8 +7,10 @@
 use std::fmt;
 use std::path::PathBuf;
 
+use fluent_ai_async::AsyncTask;
+use fluent_ai_async::{AsyncStream, async_stream_channel};
+
 use crate::ZeroOneOrMany;
-use crate::{AsyncTask, spawn_async};
 
 /// Trait defining the core file loading interface
 pub trait Loader<T>: Send + Sync + fmt::Debug + Clone
@@ -24,18 +26,18 @@ where
     /// Load all files matching the criteria
     fn load_all(&self) -> AsyncTask<ZeroOneOrMany<T>>
     where
-        T: crate::async_task::NotResult;
+        T: fluent_ai_async::NotResult;
 
     /// Stream files one by one
-    fn stream_files(&self) -> crate::async_task::AsyncStream<T>
+    fn stream_files(&self) -> AsyncStream<T>
     where
-        T: crate::async_task::NotResult;
+        T: fluent_ai_http3::async_task::NotResult;
 
     /// Process each file with a processor function
     fn process_each<F, U>(&self, processor: F) -> AsyncTask<ZeroOneOrMany<U>>
     where
         F: Fn(&T) -> U + Send + Sync + 'static,
-        U: Send + Sync + fmt::Debug + Clone + 'static + crate::async_task::NotResult;
+        U: Send + Sync + fmt::Debug + Clone + 'static + fluent_ai_http3::async_task::NotResult;
 
     /// Create new loader with pattern
     fn new(pattern: impl Into<String>) -> Self;
@@ -96,10 +98,10 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
 
     fn load_all(&self) -> AsyncTask<ZeroOneOrMany<PathBuf>>
     where
-        PathBuf: crate::async_task::NotResult,
+        PathBuf: fluent_ai_async::NotResult,
     {
         let pattern = self.pattern.clone();
-        spawn_async(async move {
+        fluent_ai_async::spawn_task(move || {
             let results: Vec<PathBuf> = match pattern {
                 Some(p) => {
                     match glob::glob(&p) {
@@ -126,18 +128,18 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
         })
     }
 
-    fn stream_files(&self) -> crate::async_task::AsyncStream<PathBuf>
+    fn stream_files(&self) -> AsyncStream<PathBuf>
     where
-        PathBuf: crate::async_task::NotResult,
+        PathBuf: fluent_ai_async::NotResult,
     {
         let pattern = self.pattern.clone();
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let (sender, stream) = async_stream_channel();
 
-        tokio::spawn(async move {
+        std::thread::spawn(move || {
             if let Some(p) = pattern {
                 if let Ok(paths) = glob::glob(&p) {
                     for path in paths.filter_map(Result::ok) {
-                        if tx.send(path).is_err() {
+                        if sender.send(path).is_err() {
                             break;
                         }
                     }
@@ -145,20 +147,17 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
             }
         });
 
-        crate::async_task::AsyncStream::new(rx)
+        stream
     }
 
     fn process_each<F, U>(&self, processor: F) -> AsyncTask<ZeroOneOrMany<U>>
     where
         F: Fn(&PathBuf) -> U + Send + Sync + 'static,
-        U: Send + Sync + fmt::Debug + Clone + 'static + crate::async_task::NotResult,
+        U: Send + Sync + fmt::Debug + Clone + 'static + fluent_ai_async::NotResult,
     {
         let load_task = self.load_all();
-        spawn_async(async move {
-            let paths = match load_task.await {
-                Ok(paths) => paths,
-                Err(_) => return ZeroOneOrMany::None, // Handle JoinError
-            };
+        fluent_ai_async::spawn_task(move || {
+            let paths = load_task.collect();
             let results: Vec<U> = match paths {
                 ZeroOneOrMany::None => Vec::new(),
                 ZeroOneOrMany::One(path) => vec![processor(&path)],

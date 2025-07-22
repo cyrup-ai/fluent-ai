@@ -199,7 +199,10 @@ impl ChatExporter {
     }
 
     /// Export as JSON format
-    fn export_as_json(&self, messages: &[crate::chat::message::Message]) -> Result<String, ExportError> {
+    fn export_as_json(
+        &self,
+        messages: &[crate::chat::message::Message],
+    ) -> Result<String, ExportError> {
         serde_json::to_string_pretty(messages).map_err(|e| ExportError::SerializationError {
             detail: Arc::from(e.to_string()),
         })
@@ -242,7 +245,10 @@ impl ChatExporter {
     }
 
     /// Export as plain text format
-    fn export_as_text(&self, messages: &[crate::chat::message::Message]) -> Result<String, ExportError> {
+    fn export_as_text(
+        &self,
+        messages: &[crate::chat::message::Message],
+    ) -> Result<String, ExportError> {
         let mut output = String::new();
 
         for message in messages {
@@ -259,7 +265,10 @@ impl ChatExporter {
     }
 
     /// Export as CSV format
-    fn export_as_csv(&self, messages: &[crate::chat::message::Message]) -> Result<String, ExportError> {
+    fn export_as_csv(
+        &self,
+        messages: &[crate::chat::message::Message],
+    ) -> Result<String, ExportError> {
         let mut output = String::new();
 
         // CSV header
@@ -278,7 +287,10 @@ impl ChatExporter {
             // Escape CSV content
             let content_str = std::str::from_utf8(&message.content).unwrap_or("<invalid utf8>");
             let escaped_content = content_str.replace("\"", "\"\"");
-            output.push_str(&format!("\"{:?}\",\"{}\"\n", message.message_type, escaped_content));
+            output.push_str(&format!(
+                "\"{:?}\",\"{}\"\n",
+                message.message_type, escaped_content
+            ));
         }
 
         Ok(output)
@@ -357,7 +369,8 @@ fn export_to_markdown(
         output.push_str("\n\n");
 
         if config.include_timestamps {
-            let timestamp_str = message.timestamp
+            let timestamp_str = message
+                .timestamp
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or(std::time::Duration::from_secs(0))
                 .as_secs();
@@ -385,7 +398,8 @@ fn export_to_text(
         output.push_str(&format!("{}: {}\n", message.role, message.content));
 
         if config.include_timestamps {
-            let timestamp_str = message.timestamp
+            let timestamp_str = message
+                .timestamp
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or(std::time::Duration::from_secs(0))
                 .as_secs();
@@ -420,7 +434,8 @@ fn export_to_csv(
     for message in limited_messages {
         let escaped_content = message.content.replace('"', "\"\"");
         if config.include_timestamps {
-            let timestamp_str = message.timestamp
+            let timestamp_str = message
+                .timestamp
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or(std::time::Duration::from_secs(0))
                 .as_secs();

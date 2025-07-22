@@ -3,8 +3,10 @@
 //! This module provides functionality for processing, validating, and transforming
 //! chat messages in a production environment using async streaming patterns.
 
-use crate::async_task::AsyncStream;
 // Removed unused import: use crate::error::ZeroAllocResult;
+use fluent_ai_async::AsyncStream;
+use fluent_ai_async::async_stream_channel;
+
 use super::types::Message;
 
 /// Processes a message before it's sent to the chat system using async streaming.
@@ -16,18 +18,18 @@ use super::types::Message;
 /// Returns an AsyncStream that will emit the processed message.
 /// The on_chunk handler should validate the processed message.
 pub fn process_message(message: Message) -> AsyncStream<Message> {
-    let (sender, stream) = AsyncStream::channel();
-    
+    let (sender, stream) = channel();
+
     tokio::spawn(async move {
         let mut processed_message = message;
-        
+
         // Trim whitespace from the message content
         processed_message.content = processed_message.content.trim().to_string();
-        
+
         // Always emit the processed message - validation handled by on_chunk handler
-        let _ = sender.try_send(processed_message);
+        let _ = sender.send(processed_message);
     });
-    
+
     stream
 }
 
@@ -40,13 +42,13 @@ pub fn process_message(message: Message) -> AsyncStream<Message> {
 /// Returns an AsyncStream that will emit the message if valid.
 /// Invalid messages will be handled by the on_chunk error handler.
 pub fn validate_message(message: Message) -> AsyncStream<Message> {
-    let (sender, stream) = AsyncStream::channel();
-    
+    let (sender, stream) = channel();
+
     tokio::spawn(async move {
         // Always emit the message - the on_chunk handler decides validation behavior
-        let _ = sender.try_send(message);
+        let _ = sender.send(message);
     });
-    
+
     stream
 }
 
@@ -89,8 +91,8 @@ pub fn validate_message_sync(message: &Message) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::types::{Message, MessageRole};
+    use super::*;
 
     #[test]
     fn test_process_message() {
@@ -113,18 +115,18 @@ mod tests {
             id: None,
             timestamp: None,
         };
-        
+
         let empty_message = Message {
             role: MessageRole::User,
             content: "   ".to_string(),
             id: None,
             timestamp: None,
         };
-        
+
         assert!(validate_message(&valid_message).is_ok());
         assert!(validate_message(&empty_message).is_err());
     }
-    
+
     #[test]
     fn test_sanitize_content() {
         assert_eq!(sanitize_content("  Hello, world!  "), "Hello, world!");

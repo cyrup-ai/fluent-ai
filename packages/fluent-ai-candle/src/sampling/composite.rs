@@ -1,14 +1,15 @@
 //! Composite processor for chaining multiple logits processors
-//! 
+//!
 //! Provides sophisticated processor composition with zero-allocation patterns,
 //! comprehensive error handling, and performance optimizations.
 
 use candle_core::Tensor;
+
 use super::SamplingError;
 use crate::processing::traits::LogitsProcessor;
 
 /// Composite processor that chains multiple logits processors in sequence
-/// 
+///
 /// Executes processors in the order they were added, with each processor
 /// operating on the output of the previous processor. Includes optimizations
 /// for identity processors and comprehensive error handling.
@@ -24,38 +25,39 @@ pub struct CompositeProcessor {
 
 impl CompositeProcessor {
     /// Create a new composite processor
-    /// 
+    ///
     /// # Arguments
     /// * `processors` - Vector of processors to chain in execution order
-    /// 
+    ///
     /// # Returns
     /// * `Ok(CompositeProcessor)` - Successfully created composite
     /// * `Err(SamplingError)` - Invalid processor configuration
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use fluent_ai_candle::sampling::{CompositeProcessor, TemperatureProcessor, TopKProcessor};
-    /// 
+    ///
     /// let processors: Vec<Box<dyn LogitsProcessor>> = vec![
     ///     Box::new(TemperatureProcessor::new(0.8)?),
     ///     Box::new(TopKProcessor::new(50)?),
     /// ];
-    /// 
+    ///
     /// let composite = CompositeProcessor::new(processors)?;
     /// ```
     pub fn new(processors: Vec<Box<dyn LogitsProcessor>>) -> Result<Self, SamplingError> {
         if processors.is_empty() {
             return Err(SamplingError::ProcessorChainError(
-                "Cannot create empty composite processor".to_string()
+                "Cannot create empty composite processor".to_string(),
             ));
         }
 
         // Validate all processors
         for (i, processor) in processors.iter().enumerate() {
             processor.validate().map_err(|e| {
-                SamplingError::ProcessorChainError(
-                    format!("Processor {} failed validation: {}", i, e)
-                )
+                SamplingError::ProcessorChainError(format!(
+                    "Processor {} failed validation: {}",
+                    i, e
+                ))
             })?;
         }
 
@@ -115,18 +117,23 @@ impl CompositeProcessor {
             }
 
             // Execute processor with comprehensive error context
-            processor.process(logits, token_ids, position).map_err(|e| {
-                SamplingError::ProcessorChainError(
-                    format!("Processor {} ({}) failed: {}", i, processor.name(), e)
-                )
-            })?;
+            processor
+                .process(logits, token_ids, position)
+                .map_err(|e| {
+                    SamplingError::ProcessorChainError(format!(
+                        "Processor {} ({}) failed: {}",
+                        i,
+                        processor.name(),
+                        e
+                    ))
+                })?;
 
             // Validate tensor integrity after each processor
             if let Err(validation_error) = self.validate_tensor_integrity(logits) {
-                return Err(SamplingError::ProcessorChainError(
-                    format!("Tensor validation failed after processor {}: {}", 
-                            i, validation_error)
-                ));
+                return Err(SamplingError::ProcessorChainError(format!(
+                    "Tensor validation failed after processor {}: {}",
+                    i, validation_error
+                )));
             }
         }
 
@@ -221,9 +228,9 @@ impl CompositeProcessorBuilder {
     /// Add repetition penalty processor
     #[inline(always)]
     pub fn repetition_penalty(
-        self, 
-        penalty: f64, 
-        context_size: usize
+        self,
+        penalty: f64,
+        context_size: usize,
     ) -> Result<Self, SamplingError> {
         use super::repetition::RepetitionPenaltyProcessor;
         let processor = RepetitionPenaltyProcessor::new(penalty, context_size)?;
@@ -271,7 +278,7 @@ impl CompositeProcessorBuilder {
 }
 
 /// Parallel composite processor for independent processors
-/// 
+///
 /// Executes processors in parallel where they don't depend on each other's output.
 /// Useful for processors that only read logits without modifying them, or for
 /// applying independent transformations that can be merged.
@@ -302,16 +309,17 @@ impl ParallelCompositeProcessor {
     ) -> Result<Self, SamplingError> {
         if processors.is_empty() {
             return Err(SamplingError::ProcessorChainError(
-                "Cannot create empty parallel composite processor".to_string()
+                "Cannot create empty parallel composite processor".to_string(),
             ));
         }
 
         // Validate all processors
         for (i, processor) in processors.iter().enumerate() {
             processor.validate().map_err(|e| {
-                SamplingError::ProcessorChainError(
-                    format!("Parallel processor {} failed validation: {}", i, e)
-                )
+                SamplingError::ProcessorChainError(format!(
+                    "Parallel processor {} failed validation: {}",
+                    i, e
+                ))
             })?;
         }
 
@@ -342,7 +350,7 @@ pub mod utils {
     use super::*;
 
     /// Create a standard text generation processor chain
-    /// 
+    ///
     /// Includes temperature scaling, repetition penalty, top-k, and top-p filtering
     /// in the optimal order for text generation.
     pub fn standard_text_generation_chain(
@@ -375,7 +383,7 @@ pub mod utils {
     }
 
     /// Create a creative writing processor chain
-    /// 
+    ///
     /// Optimized for creative text generation with higher randomness
     /// and sophisticated repetition avoidance.
     pub fn creative_writing_chain() -> Result<CompositeProcessor, SamplingError> {
@@ -387,7 +395,7 @@ pub mod utils {
     }
 
     /// Create a code generation processor chain
-    /// 
+    ///
     /// Optimized for code generation with lower randomness
     /// and precise token selection.
     pub fn code_generation_chain() -> Result<CompositeProcessor, SamplingError> {
@@ -400,7 +408,7 @@ pub mod utils {
     }
 
     /// Create a balanced conversation chain
-    /// 
+    ///
     /// Optimized for conversational AI with moderate creativity
     /// and coherence maintenance.
     pub fn conversation_chain() -> Result<CompositeProcessor, SamplingError> {
@@ -415,15 +423,15 @@ pub mod utils {
 
 #[cfg(test)]
 mod tests {
+    use candle_core::{DType, Device, Tensor};
+
     use super::*;
     use crate::sampling::temperature::TemperatureProcessor;
-    use candle_core::{Device, DType, Tensor};
 
     #[test]
     fn test_composite_processor_creation() -> Result<(), Box<dyn std::error::Error>> {
-        let processors: Vec<Box<dyn LogitsProcessor>> = vec![
-            Box::new(TemperatureProcessor::new(0.8)?),
-        ];
+        let processors: Vec<Box<dyn LogitsProcessor>> =
+            vec![Box::new(TemperatureProcessor::new(0.8)?)];
 
         let composite = CompositeProcessor::new(processors)?;
         assert_eq!(composite.len(), 1);
@@ -473,9 +481,7 @@ mod tests {
 
     #[test]
     fn test_processor_validation() -> Result<(), Box<dyn std::error::Error>> {
-        let composite = CompositeProcessorBuilder::new()
-            .temperature(0.8)?
-            .build()?;
+        let composite = CompositeProcessorBuilder::new().temperature(0.8)?.build()?;
 
         // Should validate successfully
         assert!(composite.validate().is_ok());

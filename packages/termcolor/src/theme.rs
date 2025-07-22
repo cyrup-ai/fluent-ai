@@ -269,8 +269,7 @@ impl SemanticColor {
 }
 
 /// Theme configuration options
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub enum ThemeConfig {
     /// Use default Cyrup.ai theme
     #[default]
@@ -288,7 +287,6 @@ pub enum ThemeConfig {
     /// Subtle professional theme for production
     Production,
 }
-
 
 impl ThemeConfig {
     /// Get the actual theme for this configuration

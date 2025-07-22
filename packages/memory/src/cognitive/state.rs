@@ -9,10 +9,10 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
 use std::thread;
-use crossbeam::channel::{bounded, unbounded, Receiver, Sender};
+use std::time::{Duration, Instant};
 
+use crossbeam::channel::{Receiver, Sender, bounded, unbounded};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -100,7 +100,7 @@ pub enum AssociationType {
 }
 
 /// Production-quality thread-safe cognitive state manager
-/// 
+///
 /// Features:
 /// - Zero-allocation state indexing
 /// - High-performance concurrent access
@@ -159,10 +159,10 @@ pub enum StateWorkRequest {
 
 impl CognitiveState {
     /// Create a new cognitive state with specified semantic context
-    /// 
+    ///
     /// # Arguments
     /// * `semantic_context` - Semantic context information for the state
-    /// 
+    ///
     /// # Returns
     /// New cognitive state instance with default values
     pub fn new(semantic_context: SemanticContext) -> Self {
@@ -178,10 +178,10 @@ impl CognitiveState {
     }
 
     /// Check if cognitive state is still active based on decay parameters
-    /// 
+    ///
     /// # Arguments
     /// * `decay_time` - Time period for activation decay
-    /// 
+    ///
     /// # Returns
     /// True if state is still considered active
     pub fn is_active(&self, decay_time: Duration) -> bool {
@@ -191,7 +191,7 @@ impl CognitiveState {
     }
 
     /// Add an association to another cognitive state
-    /// 
+    ///
     /// # Arguments
     /// * `target_id` - UUID of target state to associate with
     /// * `strength` - Association strength (0.0 to 1.0)
@@ -204,24 +204,25 @@ impl CognitiveState {
     ) {
         // Remove existing association to same target if present
         self.associations.retain(|a| a.target_id != target_id);
-        
+
         // Add new association with clamped strength
         self.associations.push(Association {
             target_id,
             strength: strength.clamp(0.0, 1.0),
             association_type,
         });
-        
+
         // Limit total associations for performance
         if self.associations.len() > 100 {
             // Sort by strength and keep strongest associations
-            self.associations.sort_by(|a, b| b.strength.partial_cmp(&a.strength).unwrap());
+            self.associations
+                .sort_by(|a, b| b.strength.partial_cmp(&a.strength).unwrap());
             self.associations.truncate(100);
         }
     }
 
     /// Activate the cognitive state with specified boost
-    /// 
+    ///
     /// # Arguments
     /// * `boost` - Activation boost amount to apply
     pub fn activate(&mut self, boost: f32) {
@@ -230,10 +231,10 @@ impl CognitiveState {
     }
 
     /// Calculate similarity to another cognitive state
-    /// 
+    ///
     /// # Arguments
     /// * `other` - Other cognitive state to compare with
-    /// 
+    ///
     /// # Returns
     /// Similarity score between 0.0 and 1.0
     pub fn calculate_similarity(&self, other: &CognitiveState) -> f32 {
@@ -256,7 +257,9 @@ impl CognitiveState {
         factors += 1;
 
         // Temporal similarity (recency)
-        let time_diff = (self.timestamp.elapsed().as_secs_f64() - other.timestamp.elapsed().as_secs_f64()).abs();
+        let time_diff = (self.timestamp.elapsed().as_secs_f64()
+            - other.timestamp.elapsed().as_secs_f64())
+        .abs();
         let temporal_similarity = (1.0 / (1.0 + time_diff / 3600.0)) as f32; // Decay over hours
         similarity += temporal_similarity * 0.1;
         factors += 1;
@@ -269,22 +272,25 @@ impl CognitiveState {
     }
 
     /// Calculate semantic similarity with another semantic context
-    /// 
+    ///
     /// # Arguments
     /// * `other_context` - Other semantic context to compare with
-    /// 
+    ///
     /// # Returns
     /// Semantic similarity score between 0.0 and 1.0
     fn calculate_semantic_similarity(&self, other_context: &SemanticContext) -> f32 {
-        let my_concepts: std::collections::HashSet<&String> = 
-            self.semantic_context.primary_concepts.iter()
-                .chain(self.semantic_context.secondary_concepts.iter())
-                .collect();
+        let my_concepts: std::collections::HashSet<&String> = self
+            .semantic_context
+            .primary_concepts
+            .iter()
+            .chain(self.semantic_context.secondary_concepts.iter())
+            .collect();
 
-        let other_concepts: std::collections::HashSet<&String> = 
-            other_context.primary_concepts.iter()
-                .chain(other_context.secondary_concepts.iter())
-                .collect();
+        let other_concepts: std::collections::HashSet<&String> = other_context
+            .primary_concepts
+            .iter()
+            .chain(other_context.secondary_concepts.iter())
+            .collect();
 
         let intersection_size = my_concepts.intersection(&other_concepts).count();
         let union_size = my_concepts.union(&other_concepts).count();
@@ -299,7 +305,7 @@ impl CognitiveState {
 
 impl EmotionalValence {
     /// Create neutral emotional valence state
-    /// 
+    ///
     /// # Returns
     /// Neutral emotional valence with all dimensions at 0.0
     pub fn neutral() -> Self {
@@ -311,12 +317,12 @@ impl EmotionalValence {
     }
 
     /// Create emotional valence from specific dimensional values
-    /// 
+    ///
     /// # Arguments
     /// * `arousal` - Arousal level (-1.0 to 1.0)
     /// * `valence` - Valence level (-1.0 to 1.0)
     /// * `dominance` - Dominance level (-1.0 to 1.0)
-    /// 
+    ///
     /// # Returns
     /// Emotional valence with clamped values
     pub fn new(arousal: f32, valence: f32, dominance: f32) -> Self {
@@ -328,10 +334,10 @@ impl EmotionalValence {
     }
 
     /// Calculate Euclidean distance to another emotional valence
-    /// 
+    ///
     /// # Arguments
     /// * `other` - Other emotional valence to compare with
-    /// 
+    ///
     /// # Returns
     /// Distance measure between emotional states
     pub fn distance(&self, other: &EmotionalValence) -> f32 {
@@ -342,20 +348,41 @@ impl EmotionalValence {
     }
 
     /// Create emotional valence from text analysis
-    /// 
+    ///
     /// # Arguments
     /// * `text` - Text content to analyze for emotional indicators
-    /// 
+    ///
     /// # Returns
     /// Estimated emotional valence based on content analysis
     pub fn from_text_analysis(text: &str) -> Self {
         let text_lower = text.to_lowercase();
-        
+
         // Simple keyword-based emotional analysis
-        let positive_words = ["good", "great", "excellent", "amazing", "wonderful", "fantastic"];
-        let negative_words = ["bad", "terrible", "awful", "horrible", "disappointing", "frustrating"];
+        let positive_words = [
+            "good",
+            "great",
+            "excellent",
+            "amazing",
+            "wonderful",
+            "fantastic",
+        ];
+        let negative_words = [
+            "bad",
+            "terrible",
+            "awful",
+            "horrible",
+            "disappointing",
+            "frustrating",
+        ];
         let high_arousal_words = ["exciting", "thrilling", "intense", "urgent", "critical"];
-        let dominant_words = ["control", "power", "command", "lead", "dominate", "authority"];
+        let dominant_words = [
+            "control",
+            "power",
+            "command",
+            "lead",
+            "dominate",
+            "authority",
+        ];
 
         let mut valence_score = 0.0;
         let mut arousal_score = 0.0;
@@ -364,16 +391,20 @@ impl EmotionalValence {
         // Count word occurrences and calculate scores
         let word_count = text.split_whitespace().count() as f32;
         if word_count > 0.0 {
-            let positive_count = positive_words.iter()
+            let positive_count = positive_words
+                .iter()
                 .map(|w| text_lower.matches(w).count())
                 .sum::<usize>() as f32;
-            let negative_count = negative_words.iter()
+            let negative_count = negative_words
+                .iter()
                 .map(|w| text_lower.matches(w).count())
                 .sum::<usize>() as f32;
-            let arousal_count = high_arousal_words.iter()
+            let arousal_count = high_arousal_words
+                .iter()
                 .map(|w| text_lower.matches(w).count())
                 .sum::<usize>() as f32;
-            let dominance_count = dominant_words.iter()
+            let dominance_count = dominant_words
+                .iter()
                 .map(|w| text_lower.matches(w).count())
                 .sum::<usize>() as f32;
 
@@ -388,12 +419,15 @@ impl EmotionalValence {
 
 impl CognitiveStateManager {
     /// Create a new production-quality cognitive state manager
-    /// 
+    ///
     /// # Returns
     /// Configured cognitive state manager with worker pool
     pub fn new() -> Self {
         let worker_pool = Arc::new(StateWorkerPool::new().unwrap_or_else(|e| {
-            tracing::warn!("Failed to create worker pool: {}, using basic implementation", e);
+            tracing::warn!(
+                "Failed to create worker pool: {}, using basic implementation",
+                e
+            );
             StateWorkerPool::basic()
         }));
 
@@ -405,10 +439,10 @@ impl CognitiveStateManager {
     }
 
     /// Add a new cognitive state with thread-safe operations
-    /// 
+    ///
     /// # Arguments
     /// * `state` - Cognitive state to add
-    /// 
+    ///
     /// # Returns
     /// UUID of the added state
     pub fn add_state(&self, state: CognitiveState) -> Uuid {
@@ -416,12 +450,15 @@ impl CognitiveStateManager {
 
         // Update index with write lock
         {
-            let mut index = self.state_index.write()
+            let mut index = self
+                .state_index
+                .write()
                 .expect("Failed to acquire index write lock");
 
             // Index by primary concepts
             for concept in &state.semantic_context.primary_concepts {
-                index.by_concept
+                index
+                    .by_concept
                     .entry(concept.clone())
                     .or_insert_with(Vec::new)
                     .push(id);
@@ -429,7 +466,8 @@ impl CognitiveStateManager {
 
             // Index by domain tags
             for domain in &state.semantic_context.domain_tags {
-                index.by_domain
+                index
+                    .by_domain
                     .entry(domain.clone())
                     .or_insert_with(Vec::new)
                     .push(id);
@@ -440,13 +478,16 @@ impl CognitiveStateManager {
 
             // Index by activation level
             index.by_activation.push((state.activation_level, id));
-            
+
             // Keep activation index sorted for efficient queries
-            index.by_activation.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+            index
+                .by_activation
+                .sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
         }
 
         // Store state with write lock
-        self.states.write()
+        self.states
+            .write()
             .expect("Failed to acquire states write lock")
             .insert(id, state);
 
@@ -454,30 +495,35 @@ impl CognitiveStateManager {
     }
 
     /// Get a cognitive state by ID using thread-safe operations
-    /// 
+    ///
     /// # Arguments
     /// * `id` - UUID of state to retrieve
-    /// 
+    ///
     /// # Returns
     /// Option containing cloned state if found
     pub fn get_state(&self, id: &Uuid) -> Option<CognitiveState> {
-        self.states.read()
+        self.states
+            .read()
             .expect("Failed to acquire states read lock")
             .get(id)
             .cloned()
     }
 
     /// Find cognitive states by concept with optimized lookup
-    /// 
+    ///
     /// # Arguments
     /// * `concept` - Concept string to search for
-    /// 
+    ///
     /// # Returns
     /// Vector of states containing the specified concept
     pub fn find_by_concept(&self, concept: &str) -> Vec<CognitiveState> {
-        let index = self.state_index.read()
+        let index = self
+            .state_index
+            .read()
             .expect("Failed to acquire index read lock");
-        let states = self.states.read()
+        let states = self
+            .states
+            .read()
             .expect("Failed to acquire states read lock");
 
         if let Some(ids) = index.by_concept.get(concept) {
@@ -490,16 +536,20 @@ impl CognitiveStateManager {
     }
 
     /// Find cognitive states by domain with optimized lookup
-    /// 
+    ///
     /// # Arguments
     /// * `domain` - Domain string to search for
-    /// 
+    ///
     /// # Returns
     /// Vector of states tagged with the specified domain
     pub fn find_by_domain(&self, domain: &str) -> Vec<CognitiveState> {
-        let index = self.state_index.read()
+        let index = self
+            .state_index
+            .read()
             .expect("Failed to acquire index read lock");
-        let states = self.states.read()
+        let states = self
+            .states
+            .read()
             .expect("Failed to acquire states read lock");
 
         if let Some(ids) = index.by_domain.get(domain) {
@@ -512,19 +562,24 @@ impl CognitiveStateManager {
     }
 
     /// Find most active cognitive states
-    /// 
+    ///
     /// # Arguments
     /// * `limit` - Maximum number of states to return
-    /// 
+    ///
     /// # Returns
     /// Vector of most active states ordered by activation level
     pub fn find_most_active(&self, limit: usize) -> Vec<CognitiveState> {
-        let index = self.state_index.read()
+        let index = self
+            .state_index
+            .read()
             .expect("Failed to acquire index read lock");
-        let states = self.states.read()
+        let states = self
+            .states
+            .read()
             .expect("Failed to acquire states read lock");
 
-        index.by_activation
+        index
+            .by_activation
             .iter()
             .take(limit)
             .filter_map(|(_, id)| states.get(id).cloned())
@@ -532,60 +587,69 @@ impl CognitiveStateManager {
     }
 
     /// Clean up inactive states using worker thread pool
-    /// 
+    ///
     /// # Arguments
     /// * `decay_time` - Time period for considering states inactive
-    /// 
+    ///
     /// # Returns
     /// Result containing number of cleaned up states
-    pub fn cleanup_inactive(&self, decay_time: Duration) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
+    pub fn cleanup_inactive(
+        &self,
+        decay_time: Duration,
+    ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
         let (sender, receiver) = bounded(1);
-        
+
         let request = StateWorkRequest::CleanupInactive {
             decay_time,
             response_sender: sender,
         };
 
-        self.worker_pool.request_sender.send(request)
+        self.worker_pool
+            .request_sender
+            .send(request)
             .map_err(|e| format!("Failed to send cleanup request: {}", e))?;
 
-        receiver.recv()
+        receiver
+            .recv()
             .map_err(|e| format!("Failed to receive cleanup response: {}", e))?
     }
 
     /// Update associations for a specific state
-    /// 
+    ///
     /// # Arguments
     /// * `state_id` - UUID of state to update
     /// * `associations` - New associations to set
-    /// 
+    ///
     /// # Returns
     /// Result indicating success or failure
     pub fn update_associations(
         &self,
         state_id: Uuid,
-        associations: Vec<Association>
+        associations: Vec<Association>,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let (sender, receiver) = bounded(1);
-        
+
         let request = StateWorkRequest::UpdateAssociations {
             state_id,
             associations,
             response_sender: sender,
         };
 
-        self.worker_pool.request_sender.send(request)
+        self.worker_pool
+            .request_sender
+            .send(request)
             .map_err(|e| format!("Failed to send update request: {}", e))?;
 
-        receiver.recv()
+        receiver
+            .recv()
             .map_err(|e| format!("Failed to receive update response: {}", e))?
     }
 
     /// Analyze memory context and generate cognitive state
-    /// 
+    ///
     /// # Arguments
     /// * `memory` - Memory node to analyze
-    /// 
+    ///
     /// # Returns
     /// Result containing analyzed cognitive state
     pub fn analyze_memory_context(
@@ -593,28 +657,35 @@ impl CognitiveStateManager {
         memory: &crate::memory::primitives::MemoryNode,
     ) -> Result<CognitiveState, Box<dyn std::error::Error + Send + Sync>> {
         let (sender, receiver) = bounded(1);
-        
+
         let request = StateWorkRequest::AnalyzeMemoryContext {
             memory_content: memory.content.clone(),
             memory_type: format!("{:?}", memory.memory_type),
             response_sender: sender,
         };
 
-        self.worker_pool.request_sender.send(request)
+        self.worker_pool
+            .request_sender
+            .send(request)
             .map_err(|e| format!("Failed to send analysis request: {}", e))?;
 
-        receiver.recv()
+        receiver
+            .recv()
             .map_err(|e| format!("Failed to receive analysis response: {}", e))?
     }
 
     /// Get comprehensive statistics about cognitive states
-    /// 
+    ///
     /// # Returns
     /// Statistics about the current state collection
     pub fn get_statistics(&self) -> CognitiveStateStatistics {
-        let states = self.states.read()
+        let states = self
+            .states
+            .read()
             .expect("Failed to acquire states read lock");
-        let index = self.state_index.read()
+        let index = self
+            .state_index
+            .read()
             .expect("Failed to acquire index read lock");
 
         let total_states = states.len();
@@ -667,7 +738,7 @@ pub struct CognitiveStateStatistics {
 
 impl StateIndex {
     /// Create a new empty state index
-    /// 
+    ///
     /// # Returns
     /// New state index with empty collections
     fn new() -> Self {
@@ -682,7 +753,7 @@ impl StateIndex {
 
 impl StateWorkerPool {
     /// Create new worker pool with default configuration
-    /// 
+    ///
     /// # Returns
     /// Result containing configured worker pool
     fn new() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
@@ -690,10 +761,10 @@ impl StateWorkerPool {
     }
 
     /// Create worker pool with specified number of threads
-    /// 
+    ///
     /// # Arguments
     /// * `num_workers` - Number of worker threads to spawn
-    /// 
+    ///
     /// # Returns
     /// Result containing configured worker pool
     fn with_workers(num_workers: usize) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
@@ -708,7 +779,7 @@ impl StateWorkerPool {
                     Self::worker_thread(worker_id, receiver);
                 })
                 .map_err(|e| format!("Failed to spawn worker thread {}: {}", worker_id, e))?;
-            
+
             worker_handles.push(handle);
         }
 
@@ -719,7 +790,7 @@ impl StateWorkerPool {
     }
 
     /// Create basic worker pool for fallback scenarios
-    /// 
+    ///
     /// # Returns
     /// Basic worker pool with minimal functionality
     fn basic() -> Self {
@@ -731,7 +802,7 @@ impl StateWorkerPool {
     }
 
     /// Main worker thread loop for processing cognitive state requests
-    /// 
+    ///
     /// # Arguments
     /// * `worker_id` - Unique worker identifier for logging
     /// * `receiver` - Channel receiver for work requests
@@ -740,15 +811,26 @@ impl StateWorkerPool {
 
         while let Ok(request) = receiver.recv() {
             match request {
-                StateWorkRequest::CleanupInactive { decay_time, response_sender } => {
+                StateWorkRequest::CleanupInactive {
+                    decay_time,
+                    response_sender,
+                } => {
                     let result = Self::process_cleanup_inactive(decay_time);
                     let _ = response_sender.send(result);
                 }
-                StateWorkRequest::UpdateAssociations { state_id, associations, response_sender } => {
+                StateWorkRequest::UpdateAssociations {
+                    state_id,
+                    associations,
+                    response_sender,
+                } => {
                     let result = Self::process_update_associations(state_id, associations);
                     let _ = response_sender.send(result);
                 }
-                StateWorkRequest::AnalyzeMemoryContext { memory_content, memory_type, response_sender } => {
+                StateWorkRequest::AnalyzeMemoryContext {
+                    memory_content,
+                    memory_type,
+                    response_sender,
+                } => {
                     let result = Self::process_analyze_memory_context(memory_content, memory_type);
                     let _ = response_sender.send(result);
                 }
@@ -759,57 +841,57 @@ impl StateWorkerPool {
     }
 
     /// Process inactive state cleanup in worker thread
-    /// 
+    ///
     /// # Arguments
     /// * `decay_time` - Time period for considering states inactive
-    /// 
+    ///
     /// # Returns
     /// Result containing number of cleaned up states
     fn process_cleanup_inactive(
-        _decay_time: Duration
+        _decay_time: Duration,
     ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
         // Placeholder implementation - would need manager context
         Ok(0)
     }
 
     /// Process association updates in worker thread
-    /// 
+    ///
     /// # Arguments
     /// * `state_id` - UUID of state to update
     /// * `associations` - New associations to apply
-    /// 
+    ///
     /// # Returns
     /// Result indicating success or failure
     fn process_update_associations(
         _state_id: Uuid,
-        _associations: Vec<Association>
+        _associations: Vec<Association>,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Placeholder implementation - would need manager context
         Ok(())
     }
 
     /// Process memory context analysis in worker thread
-    /// 
+    ///
     /// # Arguments
     /// * `memory_content` - Content of memory to analyze
     /// * `memory_type` - Type of memory for context
-    /// 
+    ///
     /// # Returns
     /// Result containing analyzed cognitive state
     fn process_analyze_memory_context(
         memory_content: String,
-        memory_type: String
+        memory_type: String,
     ) -> Result<CognitiveState, Box<dyn std::error::Error + Send + Sync>> {
         // Extract semantic context from memory content and type
         let mut primary_concepts = vec![memory_type.clone()];
-        
+
         // Simple keyword extraction for concepts
         let words: Vec<&str> = memory_content
             .split_whitespace()
             .filter(|w| w.len() > 4)
             .take(10)
             .collect();
-        
+
         for word in words {
             primary_concepts.push(word.to_lowercase());
         }

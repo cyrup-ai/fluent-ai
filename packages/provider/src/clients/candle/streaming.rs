@@ -8,8 +8,8 @@ use std::time::{Duration, Instant};
 
 use arc_swap::ArcSwap;
 use arrayvec::ArrayVec;
-use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError, bounded, unbounded};
 use crossbeam::atomic::AtomicCell;
+use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError, bounded, unbounded};
 use smallvec::SmallVec;
 
 use super::error::{CandleError, CandleResult};

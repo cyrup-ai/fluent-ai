@@ -3,8 +3,6 @@
 //! This module provides blazing-fast configuration management with zero allocations
 //! after construction and no locking requirements.
 
-
-
 use super::error::{AnthropicError, AnthropicResult};
 
 /// Default Anthropic API base URL

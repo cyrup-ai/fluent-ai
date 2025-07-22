@@ -6,11 +6,10 @@
 pub mod audio;
 pub mod transcription;
 
-use serde::{Serialize, Deserialize};
-
 // Re-export types for public API
 pub use audio::{Audio, AudioMediaType, ContentFormat as AudioContentFormat};
-pub use transcription::{TranscriptionRequest, TranscriptionResponse, Transcription};
+use serde::{Deserialize, Serialize};
+pub use transcription::{Transcription, TranscriptionRequest, TranscriptionResponse};
 
 /// Voice processing error type
 #[derive(Debug, thiserror::Error)]
@@ -18,15 +17,15 @@ pub enum VoiceError {
     /// Audio format error
     #[error("Invalid audio format: {0}")]
     FormatError(String),
-    
+
     /// Transcription error
     #[error("Transcription failed: {0}")]
     TranscriptionError(String),
-    
+
     /// IO error
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
-    
+
     /// Other errors
     #[error("Voice processing error: {0}")]
     Other(String),
@@ -36,16 +35,22 @@ pub enum VoiceError {
 pub type Result<T> = std::result::Result<T, VoiceError>;
 
 /// Voice processing service trait
-#[async_trait::async_trait]
 pub trait VoiceService: Send + Sync + 'static {
     /// Transcribe audio data to text
-    async fn transcribe(&self, request: TranscriptionRequest) -> Result<TranscriptionResponse<()>>;
-    
+    fn transcribe(
+        &self,
+        request: TranscriptionRequest,
+    ) -> fluent_ai_http3::async_task::AsyncTask<Result<TranscriptionResponse<()>>>;
+
     /// Convert text to speech
-    async fn synthesize(&self, text: &str, voice_id: &str) -> Result<Vec<u8>>;
-    
+    fn synthesize(
+        &self,
+        text: &str,
+        voice_id: &str,
+    ) -> fluent_ai_http3::async_task::AsyncTask<Result<Vec<u8>>>;
+
     /// List available voices
-    async fn list_voices(&self) -> Result<Vec<VoiceInfo>>;
+    fn list_voices(&self) -> fluent_ai_http3::async_task::AsyncTask<Result<Vec<VoiceInfo>>>;
 }
 
 /// Information about an available voice
@@ -66,7 +71,7 @@ pub struct VoiceInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_audio_creation() {
         let audio = Audio::new("test".to_string());
@@ -74,7 +79,7 @@ mod tests {
         assert!(audio.format.is_none());
         assert!(audio.media_type.is_none());
     }
-    
+
     #[test]
     fn test_transcription_response() {
         let response = TranscriptionResponse::new("test".to_string(), ());

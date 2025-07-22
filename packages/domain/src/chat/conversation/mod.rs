@@ -6,7 +6,9 @@
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::async_task::{AsyncStream, AsyncStreamSender};
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
+use fluent_ai_async::async_stream_channel;
+
 use crate::ZeroOneOrMany;
 
 /// Immutable message in a conversation
@@ -147,7 +149,7 @@ impl StreamingConversation {
     /// Create conversation with event streaming
     #[inline]
     pub fn with_streaming() -> (Self, AsyncStream<ConversationEvent>) {
-        let (sender, stream) = crate::async_task::stream::channel();
+        let (sender, stream) = async_stream_channel();
         let mut conversation = Self::new();
         conversation.event_sender = Some(sender);
         (conversation, stream)
@@ -158,7 +160,7 @@ impl StreamingConversation {
     pub fn add_user_message(&mut self, content: impl Into<String>) -> &ImmutableMessage {
         let sequence = self.sequence_counter.fetch_add(1, Ordering::Relaxed) as u64;
         let message = ImmutableMessage::user(content, sequence);
-        
+
         self.messages.push(message.clone());
         self.total_messages.fetch_add(1, Ordering::Relaxed);
         self.user_messages.fetch_add(1, Ordering::Relaxed);
@@ -176,7 +178,7 @@ impl StreamingConversation {
     pub fn add_assistant_message(&mut self, content: impl Into<String>) -> &ImmutableMessage {
         let sequence = self.sequence_counter.fetch_add(1, Ordering::Relaxed) as u64;
         let message = ImmutableMessage::assistant(content, sequence);
-        
+
         self.messages.push(message.clone());
         self.total_messages.fetch_add(1, Ordering::Relaxed);
         self.assistant_messages.fetch_add(1, Ordering::Relaxed);
@@ -194,7 +196,7 @@ impl StreamingConversation {
     pub fn add_system_message(&mut self, content: impl Into<String>) -> &ImmutableMessage {
         let sequence = self.sequence_counter.fetch_add(1, Ordering::Relaxed) as u64;
         let message = ImmutableMessage::system(content, sequence);
-        
+
         self.messages.push(message.clone());
         self.total_messages.fetch_add(1, Ordering::Relaxed);
         self.system_messages.fetch_add(1, Ordering::Relaxed);
@@ -469,21 +471,24 @@ impl ConversationBuilder {
     /// Add initial user message
     #[inline]
     pub fn with_user_message(mut self, message: impl Into<String>) -> Self {
-        self.initial_messages.push((message.into(), MessageRole::User));
+        self.initial_messages
+            .push((message.into(), MessageRole::User));
         self
     }
 
     /// Add initial assistant message
     #[inline]
     pub fn with_assistant_message(mut self, message: impl Into<String>) -> Self {
-        self.initial_messages.push((message.into(), MessageRole::Assistant));
+        self.initial_messages
+            .push((message.into(), MessageRole::Assistant));
         self
     }
 
     /// Add initial system message
     #[inline]
     pub fn with_system_message(mut self, message: impl Into<String>) -> Self {
-        self.initial_messages.push((message.into(), MessageRole::System));
+        self.initial_messages
+            .push((message.into(), MessageRole::System));
         self
     }
 
@@ -500,9 +505,15 @@ impl ConversationBuilder {
         // Add initial messages
         for (content, role) in self.initial_messages {
             match role {
-                MessageRole::User => { conversation.add_user_message(content); },
-                MessageRole::Assistant => { conversation.add_assistant_message(content); },
-                MessageRole::System => { conversation.add_system_message(content); },
+                MessageRole::User => {
+                    conversation.add_user_message(content);
+                }
+                MessageRole::Assistant => {
+                    conversation.add_assistant_message(content);
+                }
+                MessageRole::System => {
+                    conversation.add_system_message(content);
+                }
             }
         }
 
@@ -518,9 +529,15 @@ impl ConversationBuilder {
         // Add initial messages
         for (content, role) in self.initial_messages {
             match role {
-                MessageRole::User => { conversation.add_user_message(content); },
-                MessageRole::Assistant => { conversation.add_assistant_message(content); },
-                MessageRole::System => { conversation.add_system_message(content); },
+                MessageRole::User => {
+                    conversation.add_user_message(content);
+                }
+                MessageRole::Assistant => {
+                    conversation.add_assistant_message(content);
+                }
+                MessageRole::System => {
+                    conversation.add_system_message(content);
+                }
             }
         }
 

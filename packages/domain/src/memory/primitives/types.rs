@@ -615,3 +615,20 @@ impl MemoryError {
 }
 
 // Dead code removed - FluentMemoryError type does not exist
+
+// Trait implementations for error conversions
+impl From<crate::memory::config::llm::LLMConfigError> for MemoryError {
+    fn from(err: crate::memory::config::llm::LLMConfigError) -> Self {
+        match err {
+            crate::memory::config::llm::LLMConfigError::InvalidModel(msg) => {
+                Self::Validation(format!("Invalid LLM model: {}", msg))
+            }
+            crate::memory::config::llm::LLMConfigError::InvalidParameter(msg) => {
+                Self::Validation(format!("Invalid LLM parameter: {}", msg))
+            }
+            crate::memory::config::llm::LLMConfigError::ValidationError(msg) => {
+                Self::Validation(format!("LLM configuration validation failed: {}", msg))
+            }
+        }
+    }
+}

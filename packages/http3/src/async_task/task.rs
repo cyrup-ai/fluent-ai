@@ -51,17 +51,17 @@ impl<T> AsyncTask<T> {
     #[inline]
     pub fn collect(self) -> Vec<T> {
         let mut results = Vec::new();
-        
+
         // Use blocking recv for first item if available
         if let Ok(first) = self.rx.recv() {
             results.push(first);
-            
+
             // Then try_recv for any additional items
             while let Ok(item) = self.rx.try_recv() {
                 results.push(item);
             }
         }
-        
+
         results
     }
 

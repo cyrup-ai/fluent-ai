@@ -4,10 +4,11 @@
 //! Anthropic tool execution with lock-free streaming and compile-time safety.
 
 use std::{any::TypeId, collections::HashMap, marker::PhantomData};
-use fluent_ai_core::stream::AsyncStream;
-use fluent_ai_core::channel::async_stream_channel;
 
 use arrayvec::ArrayVec;
+use fluent_ai_async::AsyncStream;
+use fluent_ai_async::channel;
+use fluent_ai_domain::tool::Tool;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -15,8 +16,6 @@ use super::core::{
     AnthropicError, AnthropicResult, ChainControl, Emitter, ErrorHandler, InvocationHandler,
     Message, ResultHandler, SchemaType,
 };
-use fluent_ai_domain::tool::{Tool};
-
 #[cfg(feature = "cylo")]
 use crate::execution::{CyloExecutor, CyloInstance, ExecutionRequest};
 
@@ -89,13 +88,19 @@ pub trait DescribedTool {
 /// Trait for tools with dependency
 pub trait WithDependency {
     type RequestSchemaBuilder: WithRequestSchema;
-    fn request_schema<Req: Send + Sync + 'static>(self, schema_type: SchemaType) -> Self::RequestSchemaBuilder;
+    fn request_schema<Req: Send + Sync + 'static>(
+        self,
+        schema_type: SchemaType,
+    ) -> Self::RequestSchemaBuilder;
 }
 
 /// Trait for tools with request schema
 pub trait WithRequestSchema {
     type ResultSchemaBuilder: WithResultSchema;
-    fn result_schema<Res: Send + Sync + 'static>(self, schema_type: SchemaType) -> Self::ResultSchemaBuilder;
+    fn result_schema<Res: Send + Sync + 'static>(
+        self,
+        schema_type: SchemaType,
+    ) -> Self::ResultSchemaBuilder;
 }
 
 /// Trait for tools with result schema
@@ -126,7 +131,12 @@ pub trait WithResult {
 pub trait FinalTool {
     fn name(&self) -> &str;
     fn description(&self) -> &str;
-    fn execute(&self, conversation: &Conversation, emitter: &Emitter, request: Value) -> AsyncStream<AnthropicResult<()>>;
+    fn execute(
+        &self,
+        conversation: &Conversation,
+        emitter: &Emitter,
+        request: Value,
+    ) -> AsyncStream<AnthropicResult<()>>;
 }
 
 /// Builder for creating tools with a fluent interface
@@ -208,7 +218,10 @@ impl<D, Req, Res> DescribedTool for ToolBuilder<Described, D, Req, Res> {
     type DependencyBuilder = ToolBuilder<WithDependency, D, Req, Res>;
 
     #[inline(always)]
-    fn with<NewD: Send + Sync + 'static>(self, dependency: NewD) -> ToolBuilder<WithDependency, NewD, Req, Res> {
+    fn with<NewD: Send + Sync + 'static>(
+        self,
+        dependency: NewD,
+    ) -> ToolBuilder<WithDependency, NewD, Req, Res> {
         ToolBuilder {
             name: self.name,
             description: self.description,
@@ -232,7 +245,10 @@ impl<D, Req, Res> WithDependency for ToolBuilder<WithDependency, D, Req, Res> {
     type RequestSchemaBuilder = ToolBuilder<WithRequestSchema, D, Req, Res>;
 
     #[inline(always)]
-    fn request_schema<NewReq: Send + Sync + 'static>(self, schema_type: SchemaType) -> ToolBuilder<WithRequestSchema, D, NewReq, Res> {
+    fn request_schema<NewReq: Send + Sync + 'static>(
+        self,
+        schema_type: SchemaType,
+    ) -> ToolBuilder<WithRequestSchema, D, NewReq, Res> {
         ToolBuilder {
             name: self.name,
             description: self.description,
@@ -256,7 +272,10 @@ impl<D, Req, Res> WithRequestSchema for ToolBuilder<WithRequestSchema, D, Req, R
     type ResultSchemaBuilder = ToolBuilder<WithResultSchema, D, Req, Res>;
 
     #[inline(always)]
-    fn result_schema<NewRes: Send + Sync + 'static>(self, schema_type: SchemaType) -> ToolBuilder<WithResultSchema, D, Req, NewRes> {
+    fn result_schema<NewRes: Send + Sync + 'static>(
+        self,
+        schema_type: SchemaType,
+    ) -> ToolBuilder<WithResultSchema, D, Req, NewRes> {
         ToolBuilder {
             name: self.name,
             description: self.description,
@@ -282,11 +301,14 @@ impl<D, Req, Res> WithResultSchema for ToolBuilder<WithResultSchema, D, Req, Res
     #[inline(always)]
     fn on_invocation<F>(self, handler: F) -> Self::WithInvocationBuilder
     where
-        F: Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<AnthropicResult<()>> + Send + Sync + 'static,
+        F: Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<AnthropicResult<()>>
+            + Send
+            + Sync
+            + 'static,
     {
         let boxed_handler: InvocationHandler<D, Req, Res> =
             Box::new(move |conv, emitter, req, dep| {
-                let (tx, stream) = async_stream_channel();
+                let (tx, stream) = channel();
                 let handler_stream = handler(conv, emitter, req, dep);
                 tokio::spawn(async move {
                     use tokio_stream::StreamExt;
@@ -411,21 +433,28 @@ where
         self.description
     }
 
-    fn execute(&self, conversation: &Conversation, emitter: &Emitter, request: Value) -> AsyncStream<AnthropicResult<()>> {
-        let (tx, stream) = async_stream_channel();
+    fn execute(
+        &self,
+        conversation: &Conversation,
+        emitter: &Emitter,
+        request: Value,
+    ) -> AsyncStream<AnthropicResult<()>> {
+        let (tx, stream) = channel();
         let invocation_handler = self.handlers.invocation.clone();
         let dependency = self.dependency.clone();
         tokio::spawn(async move {
             let result = async move {
                 use tokio_stream::StreamExt;
-                let handler_stream = invocation_handler(conversation, emitter, request, &dependency);
+                let handler_stream =
+                    invocation_handler(conversation, emitter, request, &dependency);
                 let mut results = handler_stream.collect::<Vec<_>>().await;
                 if let Some(result) = results.pop() {
                     result
                 } else {
                     Ok(())
                 }
-            }.await;
+            }
+            .await;
             let _ = tx.send(result);
         });
         stream
@@ -441,7 +470,10 @@ pub struct ToolStorage<const N: usize> {
 impl<const N: usize> ToolStorage<N> {
     /// Create new tool storage
     pub fn new() -> Self {
-        Self { tools: ArrayVec::new(), by_name: HashMap::new() }
+        Self {
+            tools: ArrayVec::new(),
+            by_name: HashMap::new(),
+        }
     }
 
     /// Add a tool to storage
@@ -468,7 +500,10 @@ pub struct ToolExecutor<const N: usize> {
 impl<const N: usize> ToolExecutor<N> {
     /// Create a new tool executor
     pub fn new() -> Self {
-        Self { tools: ToolStorage::new(), cylo: None }
+        Self {
+            tools: ToolStorage::new(),
+            cylo: None,
+        }
     }
 
     /// Add a tool to the executor
@@ -485,10 +520,18 @@ impl<const N: usize> ToolExecutor<N> {
     }
 
     /// Execute a tool by name
-    pub fn execute_tool(&self, name: String, input: Value) -> AsyncStream<AnthropicResult<ToolOutput>> {
-        let (tx, stream) = async_stream_channel();
+    pub fn execute_tool(
+        &self,
+        name: String,
+        input: Value,
+    ) -> AsyncStream<AnthropicResult<ToolOutput>> {
+        let (tx, stream) = channel();
         if let Some(tool) = self.tools.get(&name) {
-            let conversation = Conversation { messages: &[], context: &ToolExecutionContext::default(), last_message: &Message::default() };
+            let conversation = Conversation {
+                messages: &[],
+                context: &ToolExecutionContext::default(),
+                last_message: &Message::default(),
+            };
             let emitter = Emitter::new(tx.clone());
             let mut stream = tool.execute(&conversation, &emitter, input);
             tokio::spawn(async move {
@@ -500,7 +543,11 @@ impl<const N: usize> ToolExecutor<N> {
         } else {
             #[cfg(feature = "cylo")]
             if let Some(cylo) = &self.cylo {
-                let request = ExecutionRequest { tool_name: name, input, context: None };
+                let request = ExecutionRequest {
+                    tool_name: name,
+                    input,
+                    context: None,
+                };
                 let mut stream = cylo.execute(request);
                 tokio::spawn(async move {
                     use tokio_stream::StreamExt;
@@ -514,20 +561,16 @@ impl<const N: usize> ToolExecutor<N> {
                             })
                         };
                         let _ = tx.send(result);
-                    });
-                }
-                Err(e) => {
-                    let _ = tx.send(Err(e));
-                }
+                    }
+                });
+            } else {
+                let _ = tx.send(Err(AnthropicError::ToolExecutionError {
+                    tool_name: name,
+                    error: "Cylo executor not available".to_string(),
+                }));
             }
-        } else {
-            // Tool not found in either storage
-            let _ = tx.send(Err(AnthropicError::ToolExecutionError {
-                tool_name: name,
-                error: "Tool not found".to_string(),
-            }));
         }
-        
+
         stream
     }
 }
