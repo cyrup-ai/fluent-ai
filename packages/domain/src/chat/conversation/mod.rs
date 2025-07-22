@@ -7,7 +7,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use fluent_ai_async::{AsyncStream, AsyncStreamSender};
-// REMOVED: use fluent_ai_async::async_stream_channel;
+// REMOVED: use fluent_ai_async::AsyncStream::with_channel;
 
 use crate::ZeroOneOrMany;
 
@@ -162,7 +162,7 @@ impl StreamingConversation {
     /// Create conversation with event streaming
     #[inline]
     pub fn with_streaming() -> (Self, AsyncStream<ConversationEvent>) {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let (sender, stream) = AsyncStream::with_channel();
         let mut conversation = Self::new();
         conversation.event_sender = Some(sender);
         (conversation, stream)

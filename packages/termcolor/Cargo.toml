@@ -14,7 +14,7 @@ license = "Unlicense OR MIT"
 edition = "2024"
 
 [dependencies]
-fluent-ai-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
+fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 
 [lib]
 name = "termcolor"

@@ -13,11 +13,10 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, SystemTime};
 
-use fluent_ai_async::{spawn_task};
+use fluent_ai_async::{spawn_task, AsyncStream, AsyncStreamSender};
 
 // Local macro definitions removed - using fluent_ai_async macros instead
 // Streaming primitives from fluent-ai-async  
-// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 // Macros now available from fluent_ai_async crate
 // Removed unused import: futures_util::StreamExt
 // Removed unused import: rayon::prelude
@@ -405,7 +404,7 @@ impl StreamingContextProcessor {
     /// Create processor with event streaming
     #[inline]
     pub fn with_streaming(processor_id: String) -> (Self, AsyncStream<ContextEvent>) {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let (sender, stream) = AsyncStream::with_channel();
         let mut processor = Self::new(processor_id);
         processor.event_sender = Some(sender);
         (processor, stream)
@@ -644,9 +643,9 @@ impl Context<File> {
                 self.processor.process_file_context(file_context)
             }
             _ => {
-                // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-                fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for file loading");
-                stream
+                AsyncStream::with_channel(move |_sender| {
+                    fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for file loading");
+                })
             }
         }
     }
@@ -670,9 +669,8 @@ impl Context<Files> {
     /// Load documents asynchronously with streaming - returns unwrapped values
     #[inline]
     pub fn load(self) -> AsyncStream<ZeroOneOrMany<Document>> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
-        spawn_task(move || {
+        AsyncStream::with_channel(move |sender| {
+            spawn_task(move || {
             match self.source {
                 ContextSourceType::Files(files_context) => {
                     // Expand glob pattern and load files
@@ -711,9 +709,8 @@ impl Context<Files> {
                     fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for files loading");
                 }
             }
-        });
-
-        stream
+            });
+        })
     }
 }
 
@@ -736,9 +733,8 @@ impl Context<Directory> {
     /// Load documents asynchronously with streaming - returns unwrapped values
     #[inline]
     pub fn load(self) -> AsyncStream<ZeroOneOrMany<Document>> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
-        spawn_task(move || {
+        AsyncStream::with_channel(move |sender| {
+            spawn_task(move || {
             match self.source {
                 ContextSourceType::Directory(directory_context) => {
                     // Traverse directory and load files
@@ -822,9 +818,8 @@ impl Context<Directory> {
                     fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for directory loading");
                 }
             }
-        });
-
-        stream
+            });
+        })
     }
 }
 
@@ -847,9 +842,8 @@ impl Context<Github> {
     /// Load documents asynchronously with streaming - returns unwrapped values
     #[inline]
     pub fn load(self) -> AsyncStream<ZeroOneOrMany<Document>> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
-        spawn_task(move || {
+        AsyncStream::with_channel(move |sender| {
+            spawn_task(move || {
             match self.source {
                 ContextSourceType::Github(github_context) => {
                     // GitHub repository file loading implementation
@@ -872,9 +866,8 @@ impl Context<Github> {
                     fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for GitHub loading");
                 }
             }
-        });
-
-        stream
+            });
+        })
     }
 }
 

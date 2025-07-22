@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
-// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -679,7 +679,7 @@ impl StreamingMessageFormatter {
         options: ImmutableFormatOptions,
     ) -> FormatResult<(Self, AsyncStream<FormattingEvent>)> {
         options.validate()?;
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let (sender, stream) = AsyncStream::with_channel();
         let formatter = Self {
             content_counter: AtomicU64::new(0),
             active_operations: AtomicUsize::new(0),

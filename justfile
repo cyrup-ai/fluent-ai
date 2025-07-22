@@ -60,7 +60,8 @@ hakari:
 
 # Complete workspace-hack regeneration from scratch using high-performance Rust tool
 hakari-regenerate:
-    cargo run --bin cargo-hakari-regenerate regenerate --progress --force
+    @echo "Regenerating workspace-hack..."
+    cargo run --bin cargo-hakari-regenerate -- regenerate --progress --force
 
 # Verify existing workspace-hack
 hakari-verify:

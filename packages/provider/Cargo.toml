@@ -6,8 +6,8 @@ edition = "2024"
 build = "build.rs"
 
 [dependencies]
-progresshub = { path = "../../../progresshub/tui" }
 fluent-ai-workspace-hack = { path = "../../workspace-hack" }
+progresshub = { path = "../../../progresshub/tui" }
 yyaml = { git = "https://github.com/cyrup-ai/yyaml", branch = "main"}
 serde = { version = "1.0.219", features = ["derive"] }
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["all"] }

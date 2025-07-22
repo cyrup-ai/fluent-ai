@@ -68,10 +68,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
     fn extract_from(&self, text: &str) -> AsyncStream<T> {
         let agent = self.agent.clone();
         let system_prompt = self.system_prompt.clone();
-        let text = text.to_string();
-
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        
+        let text = text.to_string();        
         tokio::spawn(async move {
             let prompt = if let Some(sys_prompt) = system_prompt {
                 format!(

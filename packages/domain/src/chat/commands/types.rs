@@ -5,10 +5,7 @@
 //! and borrowed data patterns for blazing-fast performance.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-
-// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// Command execution errors with minimal allocations
@@ -607,11 +604,7 @@ impl StreamingCommandExecutor {
 
     /// Create executor with event streaming
     #[inline]
-    pub fn with_streaming() -> (Self, AsyncStream<CommandEvent>) {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let mut executor = Self::new();
-        executor.event_sender = Some(sender);
-        (executor, stream)
+    pub fn with_streaming() -> (Self, AsyncStream<CommandEvent>) {        let (sender, stream) = AsyncStream::with_channel();
     }
 
     /// Execute command with streaming events
@@ -1546,8 +1539,6 @@ impl CommandHandler for DefaultCommandHandler {
         context: CommandContext,
         command: ImmutableChatCommand,
     ) -> AsyncStream<CommandOutput> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
         // Execute command based on type
         let output = match &command {
             ImmutableChatCommand::Help {

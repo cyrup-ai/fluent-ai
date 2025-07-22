@@ -334,8 +334,6 @@ impl ModelResolver {
         model_name: &str,
         provider: Option<&str>,
     ) -> AsyncStream<Option<RegisteredModel<M>>> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
         let resolver = self.clone();
         let model_name = model_name.to_string();
         let provider = provider.map(|s| s.to_string());

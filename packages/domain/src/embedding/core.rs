@@ -3,10 +3,7 @@
 //! This module provides core types and traits for working with text embeddings.
 //! All embedding-related domain objects and operations are defined here.
 
-use serde::{Deserialize, Serialize};
-
-// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-use crate::ZeroOneOrMany;
+use serde::{Deserialize, Serialize};use crate::ZeroOneOrMany;
 use crate::context::chunk::EmbeddingChunk;
 use crate::model::Usage;
 
@@ -24,8 +21,6 @@ pub trait EmbeddingModel: Send + Sync + Clone {
     where
         F: Fn(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + Sync + 'static,
     {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
         // Get embedding task and process result through handler using streaming
         let embedding_task = self.embed(text);
         

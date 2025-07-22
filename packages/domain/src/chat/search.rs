@@ -512,9 +512,7 @@ impl ChatSearchIndex {
     
 
     /// Search with NOT operator (streaming)
-    fn search_not_stream(&self, terms: &[Arc<str>], fuzzy: bool) -> AsyncStream<SearchResult> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    fn search_not_stream(&self, terms: &[Arc<str>], fuzzy: bool) -> AsyncStream<SearchResult> {        let self_clone = self.clone();
         let terms_clone = terms.to_vec();
         
         AsyncStream::with_channel(move |sender| {
@@ -557,9 +555,7 @@ impl ChatSearchIndex {
     
 
     /// Search for phrase matches (streaming)
-    fn search_phrase_stream(&self, terms: &[Arc<str>], fuzzy: bool) -> AsyncStream<SearchResult> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    fn search_phrase_stream(&self, terms: &[Arc<str>], fuzzy: bool) -> AsyncStream<SearchResult> {        let self_clone = self.clone();
         let terms_clone = terms.to_vec();
         
         AsyncStream::with_channel(move |sender| {
@@ -610,9 +606,7 @@ impl ChatSearchIndex {
     
 
     /// Search for proximity matches (streaming)
-    fn search_proximity_stream(&self, terms: &[Arc<str>], distance: u32, fuzzy: bool) -> AsyncStream<SearchResult> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    fn search_proximity_stream(&self, terms: &[Arc<str>], distance: u32, fuzzy: bool) -> AsyncStream<SearchResult> {        let self_clone = self.clone();
         let terms_clone = terms.to_vec();
         
         AsyncStream::with_channel(move |sender| {
@@ -644,9 +638,7 @@ impl ChatSearchIndex {
     
 
     /// Exact search for a term (streaming)
-    fn exact_search_stream(&self, term: &Arc<str>) -> AsyncStream<SearchResult> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    fn exact_search_stream(&self, term: &Arc<str>) -> AsyncStream<SearchResult> {        let self_clone = self.clone();
         let term_clone = term.clone();
         
         AsyncStream::with_channel(move |sender| {
@@ -682,9 +674,7 @@ impl ChatSearchIndex {
     
 
     /// Fuzzy search for a term (streaming)
-    fn fuzzy_search_stream(&self, term: &Arc<str>) -> AsyncStream<SearchResult> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    fn fuzzy_search_stream(&self, term: &Arc<str>) -> AsyncStream<SearchResult> {        let self_clone = self.clone();
         let term_clone = term.clone();
         
         AsyncStream::with_channel(move |sender| {
@@ -821,9 +811,7 @@ impl ChatSearchIndex {
     }
 
     /// Apply query filters (streaming)
-    fn apply_filters_stream(&self, results: Vec<SearchResult>, query: &SearchQuery) -> AsyncStream<SearchResult> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let query_clone = query.clone();
+    fn apply_filters_stream(&self, results: Vec<SearchResult>, query: &SearchQuery) -> AsyncStream<SearchResult> {        let query_clone = query.clone();
         
         AsyncStream::with_channel(move |sender| {
             for mut result in results {
@@ -897,9 +885,7 @@ impl ChatSearchIndex {
     }
 
     /// Get search statistics (streaming)
-    pub fn get_statistics_stream(&self) -> AsyncStream<SearchStatistics> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    pub fn get_statistics_stream(&self) -> AsyncStream<SearchStatistics> {        let self_clone = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             // TODO: Convert to atomic statistics or use try_read for non-blocking access
@@ -1011,9 +997,7 @@ impl ConversationTagger {
         name: Arc<str>,
         description: Arc<str>,
         category: Arc<str>,
-    ) -> AsyncStream<Arc<str>> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    ) -> AsyncStream<Arc<str>> {        let self_clone = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             let tag = ConversationTag::new(name, description, category);
@@ -1036,9 +1020,7 @@ impl ConversationTagger {
         name: Arc<str>,
         description: Arc<str>,
         category: Arc<str>,
-    ) -> AsyncStream<Arc<str>> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    ) -> AsyncStream<Arc<str>> {        let self_clone = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             let mut tag = ConversationTag::new(name, description, category);
@@ -1090,9 +1072,7 @@ impl ConversationTagger {
         &self,
         message_id: Arc<str>,
         tag_ids: Vec<Arc<str>>,
-    ) -> AsyncStream<()> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    ) -> AsyncStream<()> {        let self_clone = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             // Add message to tags mapping
@@ -1147,9 +1127,7 @@ impl ConversationTagger {
     pub fn auto_tag_message_stream(
         &self,
         message: SearchChatMessage,
-    ) -> AsyncStream<Arc<str>> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    ) -> AsyncStream<Arc<str>> {        let self_clone = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             let mut suggested_tags = Vec::new();
@@ -1528,9 +1506,7 @@ impl HistoryExporter {
     }
 
     /// Filter messages based on export options (streaming)
-    fn filter_messages_stream(&self, messages: Vec<SearchChatMessage>, options: &ExportOptions) -> AsyncStream<SearchChatMessage> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let options_clone = options.clone();
+    fn filter_messages_stream(&self, messages: Vec<SearchChatMessage>, options: &ExportOptions) -> AsyncStream<SearchChatMessage> {        let options_clone = options.clone();
         
         AsyncStream::with_channel(move |sender| {
             for message in messages {
@@ -1857,9 +1833,7 @@ impl HistoryExporter {
     }
 
     /// Compress data using LZ4 (streaming)
-    fn compress_data_stream(&self, data: &str) -> AsyncStream<String> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let data_clone = data.to_string();
+    fn compress_data_stream(&self, data: &str) -> AsyncStream<String> {        let data_clone = data.to_string();
         
         AsyncStream::with_channel(move |sender| {
             match lz4::block::compress(data_clone.as_bytes(), None, true) {
@@ -1885,9 +1859,7 @@ impl HistoryExporter {
     }
 
     /// Get export statistics (streaming)
-    pub fn get_statistics_stream(&self) -> AsyncStream<ExportStatistics> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    pub fn get_statistics_stream(&self) -> AsyncStream<ExportStatistics> {        let self_clone = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             match self_clone.export_statistics.read().await {
@@ -1984,9 +1956,7 @@ impl EnhancedHistoryManager {
     }
 
     /// Add message to history manager (streaming)
-    pub fn add_message_stream(&self, message: SearchChatMessage) -> AsyncStream<()> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    pub fn add_message_stream(&self, message: SearchChatMessage) -> AsyncStream<()> {        let self_clone = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             // Add to search index
@@ -2022,9 +1992,7 @@ impl EnhancedHistoryManager {
     }
 
     /// Search messages (streaming)
-    pub fn search_messages_stream(&self, query: SearchQuery) -> AsyncStream<SearchResult> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    pub fn search_messages_stream(&self, query: SearchQuery) -> AsyncStream<SearchResult> {        let self_clone = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             let mut results = self_clone.search_index.search_stream(query).collect().await;
@@ -2063,9 +2031,7 @@ impl EnhancedHistoryManager {
         &self,
         messages: Vec<SearchChatMessage>,
         options: ExportOptions,
-    ) -> AsyncStream<String> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    ) -> AsyncStream<String> {        let self_clone = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             let mut result_stream = self_clone.exporter.export_history_stream(messages, options);
@@ -2098,9 +2064,7 @@ impl EnhancedHistoryManager {
     }
 
     /// Get system statistics (streaming)
-    pub fn get_system_statistics_stream(&self) -> AsyncStream<HistoryManagerStatistics> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let self_clone = self.clone();
+    pub fn get_system_statistics_stream(&self) -> AsyncStream<HistoryManagerStatistics> {        let self_clone = self.clone();
         
         AsyncStream::with_channel(move |sender| {
             match self_clone.statistics.write().await {

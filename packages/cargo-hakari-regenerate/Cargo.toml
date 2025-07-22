@@ -17,8 +17,8 @@ name = "cargo_hakari_regenerate"
 path = "src/lib.rs"
 
 [dependencies]
-fluent-ai-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 # Core hakari integration
+fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 cargo-hakari = "0.9"
 cargo_metadata = "0.18"
 

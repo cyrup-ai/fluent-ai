@@ -6,8 +6,8 @@ description = "High-performance candle integration for fluent-ai completion syst
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-fluent-ai-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 fluent_ai_async = { package = "fluent-ai-async", version = "0.1.0", path = "../fluent-ai-async" }
+fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 
 # ProgressHub core components
 progresshub-client-selector = { path = "../../../progresshub/client_selector" }

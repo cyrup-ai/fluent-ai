@@ -249,9 +249,7 @@ impl HttpClient {
 
     /// Download a file using an HttpRequest (supports conditional headers)  
     /// Returns AsyncStream of DownloadChunk items for unwrapped processing
-    pub fn download_with_request(&self, request: HttpRequest) -> AsyncStream<crate::DownloadChunk> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        let inner_client = self.inner.clone();
+    pub fn download_with_request(&self, request: HttpRequest) -> AsyncStream<crate::DownloadChunk> {        let inner_client = self.inner.clone();
         let user_agent = self.config.user_agent.clone();
 
         // Process download using zero-allocation async streaming
@@ -357,8 +355,6 @@ impl HttpClient {
     /// Send an HTTP request with optimal performance and caching
     /// Returns AsyncStream of HttpResponse items for unwrapped processing
     pub fn send(&self, request: HttpRequest) -> AsyncStream<HttpResponse> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
         // Clone needed data for zero-allocation async streaming
         let inner_client = self.inner.clone();
         let request_count = Arc::clone(&self.request_count);
@@ -473,8 +469,6 @@ impl HttpClient {
     /// Send an HTTP request and return a streaming response  
     /// Returns AsyncStream of HttpStream items for unwrapped processing
     pub fn send_stream(&self, request: HttpRequest) -> AsyncStream<HttpStream> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
         // Clone needed data for zero-allocation async streaming
         let inner_client = self.inner.clone();
         let request_count = Arc::clone(&self.request_count);

@@ -214,9 +214,7 @@ impl CommandExecutor {
     }
     
     /// Parse and execute command from string (streaming-only, zero-allocation)
-    pub fn parse_and_execute(&self, input: &str) -> AsyncStream<CommandOutput> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-        
+    pub fn parse_and_execute(&self, input: &str) -> AsyncStream<CommandOutput> {        
         // Generate unique execution ID
         let execution_id = self.execution_counter.fetch_add(1, Ordering::AcqRel);
         

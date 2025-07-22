@@ -10,8 +10,8 @@ bincode-serialization = ["bincode"]
 rkyv-serialization = ["rkyv"]
 
 [dependencies]
-fluent-ai-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 fluent-ai-async = { path = "../fluent-ai-async" }
+fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 
 serde = { version = "1.0.219", features = ["derive"] }
 cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", features = ["all"] }

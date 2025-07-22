@@ -3,10 +3,7 @@
 //! Contains request structures and builder patterns for completion functionality.
 
 // Removed unused import: std::borrow::Cow
-use std::num::NonZeroU64;
-
-// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-use serde::{Deserialize, Serialize};
+use std::num::NonZeroU64;use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
@@ -164,8 +161,6 @@ impl CompletionRequestBuilder {
 
     /// Set the temperature
     pub fn temperature(self, temp: f64) -> AsyncStream<Self> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
         let builder = self;
         spawn_task(move || {
             let mut updated_builder = builder;
@@ -189,8 +184,6 @@ impl CompletionRequestBuilder {
 
     /// Set the chunk size for streaming
     pub fn chunk_size(self, size: Option<usize>) -> AsyncStream<Self> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
         let builder = self;
         spawn_task(move || {
             let mut updated_builder = builder;
@@ -209,8 +202,6 @@ impl CompletionRequestBuilder {
 
     /// Build the request
     pub fn build(self) -> AsyncStream<CompletionRequest> {
-        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
         let builder = self;
         spawn_task(move || {
             let request = CompletionRequest {

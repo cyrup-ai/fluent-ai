@@ -37,6 +37,9 @@ lazy_static = "1.4"
 # Optional candle integration
 candle-core = { version = "0.9.1", optional = true }
 
+# Workspace hack for unified dependency resolution
+fluent-ai-workspace-hack = { path = "../../workspace-hack" }
+
 [features]
 default = []
 candle = ["dep:candle-core"]

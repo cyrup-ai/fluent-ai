@@ -12,6 +12,7 @@ serde = { version = "1.0", features = ["derive"] }
 crossbeam-channel = "0.5"
 crossbeam-queue = "0.3"
 futures-util = "0.3"
+fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 
 [features]
 default = []

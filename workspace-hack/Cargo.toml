@@ -5,7 +5,7 @@
 [package]
 name = "fluent-ai-workspace-hack"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 description = "workspace-hack package, managed by hakari"
 # You can choose to publish this crate: see https://docs.rs/cargo-hakari/latest/cargo_hakari/publishing.
 publish = false
@@ -26,9 +26,6 @@ bit-vec = { version = "0.6", default-features = false, features = ["std"] }
 bitflags = { version = "2", default-features = false, features = ["serde"] }
 bytemuck = { version = "1", default-features = false, features = ["aarch64_simd", "derive", "extern_crate_alloc"] }
 bytes = { version = "1", features = ["serde"] }
-candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, features = ["accelerate", "metal", "mkl"] }
-candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, features = ["accelerate", "metal", "mkl"] }
-candle-transformers = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, features = ["accelerate", "metal", "mkl"] }
 castaway = { version = "0.2" }
 chrono = { version = "0.4", features = ["serde"] }
 cipher = { version = "0.4", default-features = false, features = ["block-padding", "zeroize"] }
@@ -143,9 +140,6 @@ bit-vec = { version = "0.6", default-features = false, features = ["std"] }
 bitflags = { version = "2", default-features = false, features = ["serde"] }
 bytemuck = { version = "1", default-features = false, features = ["aarch64_simd", "derive", "extern_crate_alloc"] }
 bytes = { version = "1", features = ["serde"] }
-candle-core = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, features = ["accelerate", "metal", "mkl"] }
-candle-nn = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, features = ["accelerate", "metal", "mkl"] }
-candle-transformers = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, features = ["accelerate", "metal", "mkl"] }
 castaway = { version = "0.2" }
 cc = { version = "1", default-features = false, features = ["parallel"] }
 chrono = { version = "0.4", features = ["serde"] }

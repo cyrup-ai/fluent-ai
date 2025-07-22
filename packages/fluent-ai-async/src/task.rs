@@ -94,11 +94,9 @@ where
     F: FnOnce(AsyncStreamSender<T, CAP>) + Send + 'static,
     T: Send + 'static,
 {
-    let (sender, stream) = AsyncStream::channel();
-
-    std::thread::spawn(move || {
-        f(sender);
-    });
-
-    stream
+    AsyncStream::with_channel(move |sender| {
+        std::thread::spawn(move || {
+            f(sender);
+        });
+    })
 }

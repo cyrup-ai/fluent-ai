@@ -208,7 +208,10 @@ impl<T, const CAP: usize> AsyncStreamSender<T, CAP> {
     }
 }
 
-impl<T, const CAP: usize> Default for AsyncStream<T, CAP> {
+impl<T, const CAP: usize> Default for AsyncStream<T, CAP> 
+where
+    T: Send + 'static,
+{
     /// Create an empty AsyncStream
     #[inline]
     fn default() -> Self {

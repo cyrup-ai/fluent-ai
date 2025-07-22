@@ -14,8 +14,6 @@ pub use stream::{AsyncStream, AsyncStreamSender};
 pub use task::{spawn_task, AsyncTask};
 
 // DEPRECATED: Use AsyncStream::with_channel() instead
-// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
 /// Marker trait ensuring types cannot contain Result types
 ///
 /// This enforces the architectural constraint that AsyncTask<T> and AsyncStream<T>

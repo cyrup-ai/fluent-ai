@@ -21,8 +21,6 @@ pub struct PlaceholderMemoryConfig;
 
 /// Initialize the domain with default configuration
 pub fn initialize_domain() -> AsyncStream<Arc<PlaceholderMemoryManager>> {
-    // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
     tokio::spawn(async move {
         let _config = get_default_memory_config();
         let manager = Arc::new(PlaceholderMemoryManager);
@@ -36,8 +34,6 @@ pub fn initialize_domain() -> AsyncStream<Arc<PlaceholderMemoryManager>> {
 pub fn initialize_domain_with_config(
     config: PlaceholderMemoryConfig,
 ) -> AsyncStream<Arc<PlaceholderMemoryManager>> {
-    // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
-
     tokio::spawn(async move {
         match initialize_domain_impl(config).await {
             Ok(memory) => {

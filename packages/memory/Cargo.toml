@@ -7,8 +7,8 @@ authors = ["David Maple<david@cyrup.ai>"]
 license = "MIT"
 
 [dependencies]
-fluent-ai-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 # SurrealDB and its features
+fluent-ai-workspace-hack = { path = "../../workspace-hack" }
 surrealdb = { version = "2.3.7", features = ["http", "protocol-http", "kv-surrealkv", "kv-mem"] }
 
 # Async runtime
