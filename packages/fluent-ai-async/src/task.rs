@@ -84,13 +84,7 @@ where
     F: FnOnce(AsyncStreamSender<T>) + Send + 'static,
     T: Send + 'static,
 {
-    let (sender, stream) = AsyncStream::channel();
-
-    std::thread::spawn(move || {
-        f(sender);
-    });
-
-    stream
+    AsyncStream::with_channel(f)
 }
 
 /// Spawn a closure with custom stream capacity

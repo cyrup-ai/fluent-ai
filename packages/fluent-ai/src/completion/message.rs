@@ -398,8 +398,12 @@ impl<const HAD: bool> MessageBuilder<HAD> {
             None => self.first = Some(item),
             Some(_) => self.overflow.push(item),
         }
-        // SAFETY: We just added content ⇒ HAS_CONTENT=true
-        unsafe { std::mem::transmute(self) }
+        // Safe transition to HAS_CONTENT=true state
+        MessageBuilder::<true> {
+            role: self.role,
+            first: self.first,
+            overflow: self.overflow,
+        }
     }
 }
 

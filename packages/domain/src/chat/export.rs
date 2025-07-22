@@ -231,12 +231,12 @@ impl ChatExporter {
             output.push_str(&format!("## Message {}\n\n", i + 1));
 
             if self.config.include_timestamps {
-                let elapsed_secs = message.timestamp.elapsed().as_secs();
+                let elapsed_secs = message.timestamp.unwrap_or(0);
                 output.push_str(&format!("**Timestamp:** {}\n", elapsed_secs));
             }
 
-            output.push_str(&format!("**Type:** {:?}\n\n", message.message_type));
-            let content_str = std::str::from_utf8(&message.content).unwrap_or("<invalid utf8>");
+            output.push_str(&format!("**Role:** {:?}\n\n", message.role));
+            let content_str = &message.content;
             output.push_str(&format!("{}", content_str));
             output.push_str("---\n\n");
         }
@@ -253,12 +253,12 @@ impl ChatExporter {
 
         for message in messages {
             if self.config.include_timestamps {
-                let elapsed_secs = message.timestamp.elapsed().as_secs();
+                let elapsed_secs = message.timestamp.unwrap_or(0);
                 output.push_str(&format!("[{}] ", elapsed_secs));
             }
 
-            let content_str = std::str::from_utf8(&message.content).unwrap_or("<invalid utf8>");
-            output.push_str(&format!("{:?}: {}\n", message.message_type, content_str));
+            let content_str = &message.content;
+            output.push_str(&format!("{:?}: {}\n", message.role, content_str));
         }
 
         Ok(output)
@@ -280,16 +280,16 @@ impl ChatExporter {
 
         for message in messages {
             if self.config.include_timestamps {
-                let elapsed_secs = message.timestamp.elapsed().as_secs();
+                let elapsed_secs = message.timestamp.unwrap_or(0);
                 output.push_str(&format!("{},", elapsed_secs));
             }
 
             // Escape CSV content
-            let content_str = std::str::from_utf8(&message.content).unwrap_or("<invalid utf8>");
+            let content_str = &message.content;
             let escaped_content = content_str.replace("\"", "\"\"");
             output.push_str(&format!(
                 "\"{:?}\",\"{}\"\n",
-                message.message_type, escaped_content
+                message.role, escaped_content
             ));
         }
 
@@ -369,11 +369,7 @@ fn export_to_markdown(
         output.push_str("\n\n");
 
         if config.include_timestamps {
-            let timestamp_str = message
-                .timestamp
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or(std::time::Duration::from_secs(0))
-                .as_secs();
+            let timestamp_str = message.timestamp.unwrap_or(0);
             output.push_str(&format!("*Timestamp: {}*\n\n", timestamp_str));
         }
     }
@@ -398,11 +394,7 @@ fn export_to_text(
         output.push_str(&format!("{}: {}\n", message.role, message.content));
 
         if config.include_timestamps {
-            let timestamp_str = message
-                .timestamp
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or(std::time::Duration::from_secs(0))
-                .as_secs();
+            let timestamp_str = message.timestamp.unwrap_or(0);
             output.push_str(&format!("Timestamp: {}\n", timestamp_str));
         }
         output.push('\n');
@@ -434,11 +426,7 @@ fn export_to_csv(
     for message in limited_messages {
         let escaped_content = message.content.replace('"', "\"\"");
         if config.include_timestamps {
-            let timestamp_str = message
-                .timestamp
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or(std::time::Duration::from_secs(0))
-                .as_secs();
+            let timestamp_str = message.timestamp.unwrap_or(0);
             output.push_str(&format!(
                 "\"{}\",\"{}\",{}\n",
                 message.role, escaped_content, timestamp_str

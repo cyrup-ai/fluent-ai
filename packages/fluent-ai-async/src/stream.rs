@@ -32,10 +32,25 @@ struct Inner<T, const CAP: usize> {
     len: AtomicUsize, // Runtime metric for monitoring
 }
 
-impl<T, const CAP: usize> AsyncStream<T, CAP> {
-    /// Create a fresh `(sender, stream)` pair
+impl<T, const CAP: usize> AsyncStream<T, CAP> 
+where
+    T: Send + 'static,
+{
+    /// Create stream with closure - preferred ergonomic pattern
     #[inline]
-    pub fn channel() -> (AsyncStreamSender<T, CAP>, Self) {
+    pub fn with_channel<F>(f: F) -> Self 
+    where 
+        F: FnOnce(AsyncStreamSender<T, CAP>) + Send + 'static
+    {
+        let (sender, stream) = Self::channel_internal();
+        std::thread::spawn(move || f(sender));
+        stream
+    }
+
+    /// Create a fresh `(sender, stream)` pair - internal use only
+    /// Use with_channel() for public API
+    #[inline]
+    fn channel_internal() -> (AsyncStreamSender<T, CAP>, Self) {
         let inner = Arc::new(Inner {
             q: ArrayQueue::new(CAP),
             waker: AtomicWaker::new(),
@@ -49,20 +64,13 @@ impl<T, const CAP: usize> AsyncStream<T, CAP> {
         )
     }
 
-    /// Convenience helper – wrap a single item into a ready stream
-    #[inline]
-    pub fn from_single(item: T) -> Self {
-        let (tx, st) = Self::channel();
-        // Ignore full error – CAP ≥ 1 in every instantiation
-        let _ = tx.try_send(item);
-        st
-    }
 
     /// Empty stream (always returns `Poll::Ready(None)`)
     #[inline]
     pub fn empty() -> Self {
-        let (_tx, st) = Self::channel();
-        st
+        Self::with_channel(|_sender| {
+            // Empty stream - no values to emit
+        })
     }
 
     /// Create from std mpsc receiver - NO tokio dependency!
@@ -70,7 +78,7 @@ impl<T, const CAP: usize> AsyncStream<T, CAP> {
     where
         T: Send + 'static,
     {
-        let (tx, st) = Self::channel();
+        let (tx, st) = Self::channel_internal();
         std::thread::spawn(move || {
             while let Ok(item) = receiver.recv() {
                 if tx.try_send(item).is_err() {
@@ -105,7 +113,7 @@ impl<T, const CAP: usize> AsyncStream<T, CAP> {
         F: FnMut(T) + Send + 'static,
         T: Send + 'static,
     {
-        let (_tx, stream) = Self::channel();
+        let (_tx, stream) = Self::channel_internal();
         let inner = self.inner.clone();
         
         std::thread::spawn(move || {
@@ -135,6 +143,21 @@ impl<T, const CAP: usize> AsyncStream<T, CAP> {
     /// Poll for the next item (streaming-only pattern)
     pub fn poll_next(&mut self) -> Option<T> {
         self.try_next()
+    }
+
+    /// Collect all items from the stream into a Vec (future-like behavior when needed)
+    pub fn collect(mut self) -> Vec<T> {
+        let mut results = Vec::new();
+        while let Some(item) = self.try_next() {
+            results.push(item);
+        }
+        results
+    }
+
+    /// Get the next item asynchronously (compatibility method)
+    pub async fn recv(&mut self) -> Option<T> {
+        use futures_util::StreamExt;
+        self.next().await
     }
 }
 
@@ -226,21 +249,5 @@ impl<T, const CAP: usize> Clone for AsyncStreamSender<T, CAP> {
     }
 }
 
-/// Convenience function to create a channel with default capacity
-#[inline]
-pub fn channel<T>() -> (AsyncStreamSender<T>, AsyncStream<T>) {
-    AsyncStream::channel()
-}
-
-/// Convenience function to create a channel with custom capacity
-#[inline]
-pub fn channel_with_capacity<T, const CAP: usize>(
-) -> (AsyncStreamSender<T, CAP>, AsyncStream<T, CAP>) {
-    AsyncStream::channel()
-}
-
-/// Alias for channel() - used by domain crate
-#[inline]
-pub fn async_stream_channel<T>() -> (AsyncStreamSender<T>, AsyncStream<T>) {
-    channel()
-}
+// REMOVED: Deprecated channel creation functions
+// Use AsyncStream::with_channel() instead per fluent-ai streaming architecture

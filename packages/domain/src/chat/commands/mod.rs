@@ -29,7 +29,7 @@ static COMMAND_EXECUTOR: Lazy<Arc<RwLock<Option<CommandExecutor>>>> =
 
 /// Initialize global command executor - PURE SYNC (no futures)
 pub fn initialize_command_executor(context: CommandContext) {
-    let executor = CommandExecutor::new(context);
+    let executor = CommandExecutor::new();
     if let Ok(mut writer) = COMMAND_EXECUTOR.write() {
         *writer = Some(executor);
     }
@@ -37,7 +37,7 @@ pub fn initialize_command_executor(context: CommandContext) {
 
 /// Get global command executor - PURE SYNC (no futures)
 pub fn get_command_executor() -> Option<CommandExecutor> {
-    COMMAND_EXECUTOR.read().ok()?.clone()
+    COMMAND_EXECUTOR.read().ok().and_then(|guard| guard.clone())
 }
 
 /// Parse command using global executor - PURE SYNC (no futures)
@@ -48,9 +48,9 @@ pub fn parse_command(input: &str) -> CommandResult<ImmutableChatCommand> {
             .parse(input)
             .map_err(|e| CommandError::ParseError(e.to_string()))
     } else {
-        Err(CommandError::ConfigurationError(
-            "Command executor not initialized".to_string(),
-        ))
+        Err(CommandError::ConfigurationError {
+            detail: "Command executor not initialized".to_string(),
+        })
     }
 }
 
@@ -58,17 +58,21 @@ pub fn parse_command(input: &str) -> CommandResult<ImmutableChatCommand> {
 pub fn execute_command(command: ImmutableChatCommand) -> CommandResult<CommandOutput> {
     if let Some(executor) = get_command_executor() {
         // Use AsyncTask sync methods instead of await
-        let task = executor.execute(command);
-        match task.wait() {
-            Some(result) => result,
-            None => Err(CommandError::ExecutionFailed(
-                "Command execution task closed without result".to_string(),
-            )),
+        let mut result_stream = executor.execute_streaming(1, command);
+        // Collect the first result from stream (sync emulation)
+        use futures_util::StreamExt;
+        let runtime = tokio::runtime::Handle::current();
+        if let Some(result) = runtime.block_on(result_stream.next()) {
+            return Ok(result);
+        } else {
+            return Err(CommandError::ExecutionFailed(
+                "Stream closed without result".to_string(),
+            ));
         }
     } else {
-        Err(CommandError::ConfigurationError(
-            "Command executor not initialized".to_string(),
-        ))
+        Err(CommandError::ConfigurationError {
+            detail: "Command executor not initialized".to_string(),
+        })
     }
 }
 
@@ -76,16 +80,20 @@ pub fn execute_command(command: ImmutableChatCommand) -> CommandResult<CommandOu
 pub fn parse_and_execute_command(input: &str) -> CommandResult<CommandOutput> {
     if let Some(executor) = get_command_executor() {
         // Get the AsyncTask and use sync completion
-        let task = executor.parse_and_execute(input);
-        match task.wait() {
-            Some(result) => result,
-            None => Err(CommandError::ExecutionFailed {
-                reason: Arc::from("Parse and execute task closed without result"),
-            }),
+        let mut result_stream = executor.parse_and_execute(input);
+        // Collect the first result from stream (sync emulation)
+        use futures_util::StreamExt;
+        let runtime = tokio::runtime::Handle::current();
+        if let Some(result) = runtime.block_on(result_stream.next()) {
+            return Ok(result);
+        } else {
+            return Err(CommandError::ExecutionFailed(
+                "Stream closed without result".to_string(),
+            ));
         }
     } else {
-        Err(CommandError::ConfigurationError(
-            "Command executor not initialized".to_string(),
-        ))
+        Err(CommandError::ConfigurationError {
+            detail: "Command executor not initialized".to_string(),
+        })
     }
 }

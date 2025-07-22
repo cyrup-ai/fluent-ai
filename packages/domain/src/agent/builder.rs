@@ -8,8 +8,9 @@ use crossbeam_utils::CachePadded;
 
 use super::core::{Agent, AgentError, AgentResult, MAX_AGENT_TOOLS};
 use crate::memory::Memory;
-use crate::memory::config::memory::MemoryConfig;
-use crate::memory::manager::MemoryConfig as StubMemoryConfig;
+use crate::memory::manager::MemoryConfig;
+use crate::memory::config::memory::MemoryConfig as ComprehensiveMemoryConfig;
+
 use crate::model::Model;
 use crate::tool::McpToolData;
 
@@ -21,7 +22,7 @@ static AGENT_STATS: CachePadded<AtomicUsize> = CachePadded::new(AtomicUsize::new
 pub struct AgentBuilder<const TOOLS_CAPACITY: usize = MAX_AGENT_TOOLS> {
     model: Option<&'static dyn Model>,
     system_prompt: Option<String>,
-    memory_config: Option<MemoryConfig>,
+    memory_config: Option<ComprehensiveMemoryConfig>,
     shared_memory: Option<Arc<Memory>>,
     tools: ArrayVec<McpToolData, TOOLS_CAPACITY>,
     temperature: Option<f64>,
@@ -61,7 +62,7 @@ impl<const TOOLS_CAPACITY: usize> AgentBuilder<TOOLS_CAPACITY> {
     }
 
     /// Set memory configuration
-    pub fn memory_config(mut self, config: MemoryConfig) -> Self {
+    pub fn memory_config(mut self, config: ComprehensiveMemoryConfig) -> Self {
         self.memory_config = Some(config);
         self
     }
@@ -125,12 +126,12 @@ impl<const TOOLS_CAPACITY: usize> AgentBuilder<TOOLS_CAPACITY> {
             shared_memory
         } else {
             let comprehensive_config = self.memory_config.unwrap_or_default();
-            // Convert comprehensive config to stub config for Memory::new()
-            let stub_config = StubMemoryConfig {
+            // Convert comprehensive config to Memory::new() format
+            let memory_config = MemoryConfig {
                 database_url: comprehensive_config.database.connection_string.to_string(),
                 embedding_dimension: comprehensive_config.vector_store.dimension,
             };
-            let mut memory_stream = Memory::new(stub_config);
+            let mut memory_stream = Memory::new(memory_config);
             
             // Use tokio_stream::StreamExt to get the first item from the stream
             use tokio_stream::StreamExt;
@@ -148,7 +149,12 @@ impl<const TOOLS_CAPACITY: usize> AgentBuilder<TOOLS_CAPACITY> {
         // Convert tools with zero-allocation
         let tools = match self.tools.len() {
             0 => crate::ZeroOneOrMany::None,
-            1 => crate::ZeroOneOrMany::One(self.tools.into_iter().next().unwrap()),
+            1 => {
+                match self.tools.into_iter().next() {
+                    Some(tool) => crate::ZeroOneOrMany::One(tool),
+                    None => return Err(AgentError::InitializationError("Expected one tool but found none".to_string())),
+                }
+            }
             _ => {
                 let tools_vec: Vec<_> = self.tools.into_iter().collect();
                 crate::ZeroOneOrMany::Many(tools_vec)

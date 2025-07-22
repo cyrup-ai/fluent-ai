@@ -34,6 +34,6 @@ pub trait CompletionBackend: Send + Sync + 'static {
     /// Async task that resolves to the completion result
     fn submit_completion<'a>(
         &'a self,
-        request: CompletionRequest<'a>,
+        request: CompletionRequest,
     ) -> fluent_ai_async::AsyncTask<CompletionResponse<'a>>;
 }

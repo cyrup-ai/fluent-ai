@@ -10,7 +10,7 @@ use crossbeam_utils::CachePadded;
 
 use super::parsing::CommandParser;
 use super::types::*;
-use fluent_ai_async::{AsyncStream, async_stream_channel};
+use fluent_ai_async::AsyncStream;
 
 /// Command execution engine with streaming processing (zero-allocation, lock-free)
 #[derive(Debug)]
@@ -29,6 +29,13 @@ pub struct CommandExecutor {
     failed_executions: CachePadded<AtomicU64>,
 }
 
+impl Clone for CommandExecutor {
+    fn clone(&self) -> Self {
+        // Create a new executor with fresh atomic counters
+        Self::new()
+    }
+}
+
 impl CommandExecutor {
     /// Create a new command executor (zero-allocation, lock-free)
     pub fn new() -> Self {
@@ -44,7 +51,7 @@ impl CommandExecutor {
 
     /// Execute a command with streaming output (zero-allocation, lock-free)
     pub fn execute_streaming(&self, execution_id: u64, command: ImmutableChatCommand) -> AsyncStream<CommandOutput> {
-        let (sender, stream) = async_stream_channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
         let start_time = Instant::now();
 
         // Update metrics atomically
@@ -201,7 +208,7 @@ impl CommandExecutor {
     
     /// Parse and execute command from string (streaming-only, zero-allocation)
     pub fn parse_and_execute(&self, input: &str) -> AsyncStream<CommandOutput> {
-        let (sender, stream) = async_stream_channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
         
         // Generate unique execution ID
         let execution_id = self.execution_counter.fetch_add(1, Ordering::AcqRel);
@@ -215,9 +222,10 @@ impl CommandExecutor {
                 let execution_stream = self.execute_streaming(execution_id, command);
                 
                 // Forward all outputs from execution stream to our stream
-                std::thread::spawn(move || {
+                tokio::spawn(async move {
+                    use futures_util::StreamExt;
                     let mut exec_stream = execution_stream;
-                    while let Some(output) = exec_stream.try_next() {
+                    while let Some(output) = exec_stream.next().await {
                         if sender.send(output).is_err() {
                             break; // Receiver dropped
                         }

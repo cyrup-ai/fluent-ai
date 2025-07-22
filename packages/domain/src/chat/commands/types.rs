@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
-use fluent_ai_async::{AsyncStream, AsyncStreamSender, async_stream_channel};
+// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -443,7 +443,7 @@ pub enum OutputType {
 }
 
 /// Search-related enums
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SearchScope {
     All,
     Current,
@@ -452,7 +452,7 @@ pub enum SearchScope {
 }
 
 /// Template-related enums
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TemplateAction {
     List,
     Create,
@@ -462,7 +462,7 @@ pub enum TemplateAction {
 }
 
 /// Macro-related enums
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MacroAction {
     List,
     Create,
@@ -472,7 +472,7 @@ pub enum MacroAction {
 }
 
 /// Branch-related enums
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BranchAction {
     List,
     Create,
@@ -482,7 +482,7 @@ pub enum BranchAction {
 }
 
 /// Session-related enums
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SessionAction {
     List,
     New,
@@ -493,7 +493,7 @@ pub enum SessionAction {
 }
 
 /// Tool-related enums
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ToolAction {
     List,
     Install,
@@ -504,7 +504,7 @@ pub enum ToolAction {
 }
 
 /// Stats-related enums
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StatsType {
     Usage,
     Performance,
@@ -515,7 +515,7 @@ pub enum StatsType {
 }
 
 /// Theme-related enums
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThemeAction {
     Set,
     List,
@@ -526,7 +526,7 @@ pub enum ThemeAction {
 }
 
 /// Debug-related enums
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DebugAction {
     Info,
     Logs,
@@ -537,16 +537,18 @@ pub enum DebugAction {
 }
 
 /// History-related enums
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HistoryAction {
     Show,
     Search,
     Clear,
     Export,
+    Import,
+    Backup,
 }
 
 /// Import-related enums
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ImportType {
     Chat,
     Config,
@@ -554,15 +556,7 @@ pub enum ImportType {
     Macros,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum ParameterType {
-    String,
-    Integer,
-    Float,
-    Boolean,
-    Enum,
-    Path,
-}
+
 
 /// Command execution result
 #[derive(Debug, Clone)]
@@ -614,7 +608,7 @@ impl StreamingCommandExecutor {
     /// Create executor with event streaming
     #[inline]
     pub fn with_streaming() -> (Self, AsyncStream<CommandEvent>) {
-        let (sender, stream) = async_stream_channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
         let mut executor = Self::new();
         executor.event_sender = Some(sender);
         (executor, stream)
@@ -715,128 +709,6 @@ impl CommandExecutorStats {
         100.0 - self.success_rate()
     }
 }
-/// Template actions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum TemplateAction {
-    Create,
-    Use,
-    List,
-    Delete,
-    Edit,
-    Share,
-    Import,
-    Export,
-}
-
-/// Macro actions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum MacroAction {
-    Record,
-    Play,
-    List,
-    Delete,
-    Edit,
-    Share,
-}
-
-/// Search scope options
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum SearchScope {
-    All,
-    Current,
-    Recent,
-    Bookmarked,
-}
-
-/// Branch actions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum BranchAction {
-    Create,
-    Switch,
-    Merge,
-    Delete,
-    List,
-    Rename,
-}
-
-/// Session actions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum SessionAction {
-    Save,
-    Load,
-    List,
-    Delete,
-    Rename,
-    Export,
-    Import,
-}
-
-/// Tool actions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ToolAction {
-    List,
-    Install,
-    Remove,
-    Execute,
-    Configure,
-    Update,
-}
-
-/// Statistics types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum StatsType {
-    Usage,
-    Performance,
-    History,
-    Tokens,
-    Costs,
-    Errors,
-}
-
-/// Theme actions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ThemeAction {
-    Set,
-    List,
-    Create,
-    Edit,
-    Export,
-    Import,
-    Delete,
-}
-
-/// Debug actions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum DebugAction {
-    Info,
-    Logs,
-    Performance,
-    Memory,
-    Network,
-    Cache,
-}
-
-/// History actions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum HistoryAction {
-    Show,
-    Search,
-    Clear,
-    Export,
-    Import,
-    Backup,
-}
-
-/// Import types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ImportType {
-    Conversation,
-    Config,
-    Templates,
-    Macros,
-    Themes,
-    History,
-}
 
 /// Settings categories
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -885,7 +757,7 @@ impl CommandParser {
             "search" | "s" | "template" | "tpl" | "macro" | "m" | "branch" | "b" | 
             "session" | "sess" | "tool" | "t" | "stats" | "st" | 
             "theme" | "th" | "debug" | "d" => {
-                Self::parse_custom_command(command_name, args)
+                Self::parse_custom_command(&command_name, args)
             },
             "history" | "hist" => Self::parse_history_command(args),
             "save" => Self::parse_save_command(args),
@@ -1046,7 +918,7 @@ impl CommandParser {
             .next()
             .map(|s| s.to_string());
             
-        Ok(ImmutableChatCommand::Template { action, name, content })
+        Ok(ImmutableChatCommand::Template { action, name, content, variables: HashMap::new() })
     }
 
     /// Parse macro command
@@ -1068,12 +940,12 @@ impl CommandParser {
             .find(|&&arg| !arg.starts_with("--"))
             .map(|s| s.to_string());
             
-        let commands = args.iter()
+        let commands: Vec<String> = args.iter()
             .skip_while(|&&arg| arg.starts_with("--") || Some(arg) == name.as_deref())
             .map(|s| s.to_string())
             .collect();
             
-        Ok(ImmutableChatCommand::Macro { action, name, commands })
+        Ok(ImmutableChatCommand::Macro { action, name, auto_execute: false })
     }
 
     /// Parse branch command
@@ -1124,9 +996,9 @@ impl CommandParser {
             .find(|&&arg| !arg.starts_with("--"))
             .map(|s| s.to_string());
             
-        let config = std::collections::HashMap::new(); // Empty config for now
+        let config: std::collections::HashMap<String, String> = std::collections::HashMap::new(); // Empty config for now
             
-        Ok(ImmutableChatCommand::Session { action, name, config })
+        Ok(ImmutableChatCommand::Session { action, name, include_config: false })
     }
 
     /// Parse tool command
@@ -1348,6 +1220,8 @@ impl CommandParser {
             metadata: None,
         })
     }
+
+
 }
 
 /// Legacy compatibility type alias (deprecated)
@@ -1485,7 +1359,7 @@ impl CommandOutput {
     /// Create error output
     #[inline]
     pub fn error(execution_id: u64, content: impl Into<String>) -> Self {
-        Self::new(execution_id, content, OutputType::Error)
+        Self::new(execution_id, content, OutputType::Text)
     }
 
     /// Create error output with timestamp
@@ -1672,7 +1546,7 @@ impl CommandHandler for DefaultCommandHandler {
         context: CommandContext,
         command: ImmutableChatCommand,
     ) -> AsyncStream<CommandOutput> {
-        let (sender, stream) = async_stream_channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 
         // Execute command based on type
         let output = match &command {

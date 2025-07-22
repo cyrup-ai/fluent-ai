@@ -116,17 +116,17 @@ impl CognitiveMemoryManager {
     /// # Errors
     /// - `Config` if database connection fails
     /// - `InitializationError` if cognitive components fail to initialize
-    pub fn new(
+    pub async fn new_async(
         surreal_url: &str,
         namespace: &str,
         database: &str,
         settings: CognitiveSettings,
     ) -> Result<Self> {
-        // Initialize legacy manager with synchronous connection
-        let db = futures_util::executor::block_on(surrealdb::engine::any::connect(surreal_url))
+        // Initialize legacy manager with proper async streaming
+        let db = surrealdb::engine::any::connect(surreal_url).await
             .map_err(|e| Error::Config(format!("Failed to connect to SurrealDB: {}", e)))?;
 
-        futures_util::executor::block_on(db.use_ns(namespace).use_db(database))
+        db.use_ns(namespace).use_db(database).await
             .map_err(|e| Error::Config(format!("Failed to use namespace/database: {}", e)))?;
 
         let legacy_manager = Arc::new(SurrealDBMemoryManager::new(db));

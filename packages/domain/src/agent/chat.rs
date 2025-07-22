@@ -5,7 +5,7 @@ use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
 use arrayvec::ArrayVec;
 use atomic_counter::RelaxedCounter;
 use crossbeam_utils::CachePadded;
-use futures_util::StreamExt;
+use tokio_stream::StreamExt;
 use once_cell::sync::Lazy;
 
 use crate::agent::role::AgentRoleImpl;

@@ -4,11 +4,13 @@ use std::sync::{Arc, atomic::AtomicUsize};
 
 use crossbeam_utils::CachePadded;
 use serde_json::Value;
+use tokio_stream::StreamExt;
 
 use crate::ZeroOneOrMany;
 use crate::context::Document;
-use crate::memory::config::memory::MemoryConfig;
-use crate::memory::manager::MemoryConfig as StubMemoryConfig;
+use crate::memory::config::memory::MemoryConfig as ComprehensiveMemoryConfig;
+use crate::memory::manager::MemoryConfig;
+
 use crate::memory::{Memory, MemoryError, MemoryTool, MemoryToolError};
 use crate::model::Model;
 use crate::tool::McpToolData;
@@ -72,13 +74,13 @@ impl Agent {
         system_prompt: impl Into<String>,
     ) -> Result<Self, AgentError> {
         // Initialize memory system with cognitive settings optimized for performance
-        let comprehensive_config = MemoryConfig::default();
-        // Convert comprehensive config to stub config for Memory::new()
-        let stub_config = StubMemoryConfig {
+        let comprehensive_config = ComprehensiveMemoryConfig::default();
+        // Convert comprehensive config to Memory::new() format
+        let memory_config = MemoryConfig {
             database_url: comprehensive_config.database.connection_string.to_string(),
             embedding_dimension: comprehensive_config.vector_store.dimension,
         };
-        let memory_stream = Memory::new(stub_config);
+        let memory_stream = Memory::new(memory_config);
         // Use streaming-only pattern to get the Memory instance
         let mut stream = memory_stream;
         let memory = match stream.try_next() {
@@ -119,15 +121,15 @@ impl Agent {
     pub async fn with_memory_config(
         model: &'static dyn Model,
         system_prompt: impl Into<String>,
-        memory_config: MemoryConfig,
+        memory_config: ComprehensiveMemoryConfig,
     ) -> Result<Self, AgentError> {
         // Initialize memory system with custom configuration
-        // Convert comprehensive config to stub config for Memory::new()
-        let stub_config = StubMemoryConfig {
+        // Convert comprehensive config to Memory::new() format
+        let memory_cfg = MemoryConfig {
             database_url: memory_config.database.connection_string.to_string(),
             embedding_dimension: memory_config.vector_store.dimension,
         };
-        let memory_stream = Memory::new(stub_config);
+        let memory_stream = Memory::new(memory_cfg);
         // Use streaming-only pattern to get the Memory instance
         let mut stream = memory_stream;
         let memory = match stream.try_next() {

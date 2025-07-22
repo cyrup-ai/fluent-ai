@@ -56,7 +56,7 @@ pub use {
 
     // Streaming primitives from fluent-ai-async
     fluent_ai_async::{
-        AsyncStream, AsyncStreamSender, AsyncTask, NotResult, spawn_stream, spawn_task,
+        AsyncStream, AsyncStreamSender, AsyncTask, NotResult, spawn_task,
     },
 
     // Core initialization and management

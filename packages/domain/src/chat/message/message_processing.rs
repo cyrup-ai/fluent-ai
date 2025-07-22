@@ -4,8 +4,7 @@
 //! chat messages in a production environment using async streaming patterns.
 
 // Removed unused import: use crate::error::ZeroAllocResult;
-use fluent_ai_async::AsyncStream;
-use fluent_ai_async::async_stream_channel;
+use fluent_ai_async::{AsyncStream};
 
 use super::types::Message;
 
@@ -18,9 +17,7 @@ use super::types::Message;
 /// Returns an AsyncStream that will emit the processed message.
 /// The on_chunk handler should validate the processed message.
 pub fn process_message(message: Message) -> AsyncStream<Message> {
-    let (sender, stream) = channel();
-
-    tokio::spawn(async move {
+    AsyncStream::with_channel(move |sender| {
         let mut processed_message = message;
 
         // Trim whitespace from the message content
@@ -28,9 +25,7 @@ pub fn process_message(message: Message) -> AsyncStream<Message> {
 
         // Always emit the processed message - validation handled by on_chunk handler
         let _ = sender.send(processed_message);
-    });
-
-    stream
+    })
 }
 
 /// Validates that a message is safe to send using async streaming.
@@ -42,14 +37,10 @@ pub fn process_message(message: Message) -> AsyncStream<Message> {
 /// Returns an AsyncStream that will emit the message if valid.
 /// Invalid messages will be handled by the on_chunk error handler.
 pub fn validate_message(message: Message) -> AsyncStream<Message> {
-    let (sender, stream) = channel();
-
-    tokio::spawn(async move {
+    AsyncStream::with_channel(move |sender| {
         // Always emit the message - the on_chunk handler decides validation behavior
         let _ = sender.send(message);
-    });
-
-    stream
+    })
 }
 
 /// Sanitizes potentially dangerous content from a message.

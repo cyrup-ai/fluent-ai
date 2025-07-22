@@ -457,7 +457,7 @@ where
     F: FnOnce(&mut [std::mem::MaybeUninit<T>]) -> R,
 {
     // Safe zero-allocation buffer using const generics and MaybeUninit::uninit_array
-    let mut buffer: [std::mem::MaybeUninit<T>; 1024] = std::mem::MaybeUninit::uninit_array();
+    let mut buffer: [std::mem::MaybeUninit<T>; 1024] = [std::mem::MaybeUninit::uninit(); 1024];
     f(&mut buffer)
 }
 

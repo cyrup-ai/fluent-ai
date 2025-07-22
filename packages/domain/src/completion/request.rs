@@ -2,10 +2,10 @@
 //!
 //! Contains request structures and builder patterns for completion functionality.
 
-use std::borrow::Cow;
+// Removed unused import: std::borrow::Cow
 use std::num::NonZeroU64;
 
-use fluent_ai_async::{AsyncStream, async_stream_channel};
+// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
@@ -18,9 +18,9 @@ use crate::model::{ValidationError, ValidationResult};
 
 /// A request for text completion
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CompletionRequest<'a> {
+pub struct CompletionRequest {
     /// System prompt providing instructions
-    pub system_prompt: Cow<'a, str>,
+    pub system_prompt: String,
     /// Conversation history
     pub chat_history: ZeroOneOrMany<ChatMessage>,
     /// Documents to use as context
@@ -38,8 +38,8 @@ pub struct CompletionRequest<'a> {
 }
 
 /// Builder for `CompletionRequest`
-pub struct CompletionRequestBuilder<'a> {
-    system_prompt: Cow<'a, str>,
+pub struct CompletionRequestBuilder {
+    system_prompt: String,
     chat_history: ZeroOneOrMany<ChatMessage>,
     documents: ZeroOneOrMany<Document>,
     tools: ZeroOneOrMany<ToolDefinition>,
@@ -61,9 +61,9 @@ pub enum CompletionRequestError {
     Validation(#[from] ValidationError),
 }
 
-impl<'a> CompletionRequest<'a> {
+impl CompletionRequest {
     /// Create a new builder with required fields
-    pub fn builder() -> CompletionRequestBuilder<'static> {
+    pub fn builder() -> CompletionRequestBuilder {
         CompletionRequestBuilder::new()
     }
 
@@ -109,9 +109,9 @@ impl<'a> CompletionRequest<'a> {
 
     /// Convert to a static lifetime version by making all borrowed data owned
     #[inline]
-    pub fn into_static(self) -> CompletionRequest<'static> {
+    pub fn into_static(self) -> CompletionRequest {
         CompletionRequest {
-            system_prompt: self.system_prompt.into_owned().into(),
+            system_prompt: self.system_prompt.into(),
             chat_history: self.chat_history,
             documents: self.documents,
             tools: self.tools,
@@ -123,11 +123,11 @@ impl<'a> CompletionRequest<'a> {
     }
 }
 
-impl<'a> CompletionRequestBuilder<'a> {
+impl CompletionRequestBuilder {
     /// Create a new builder with default values
     pub fn new() -> Self {
         Self {
-            system_prompt: Cow::Borrowed(""),
+            system_prompt: String::new(),
             chat_history: ZeroOneOrMany::None,
             documents: ZeroOneOrMany::None,
             tools: ZeroOneOrMany::None,
@@ -139,7 +139,7 @@ impl<'a> CompletionRequestBuilder<'a> {
     }
 
     /// Set the system prompt
-    pub fn system_prompt<S: Into<Cow<'a, str>>>(mut self, prompt: S) -> Self {
+    pub fn system_prompt(mut self, prompt: impl Into<String>) -> Self {
         self.system_prompt = prompt.into();
         self
     }
@@ -164,13 +164,14 @@ impl<'a> CompletionRequestBuilder<'a> {
 
     /// Set the temperature
     pub fn temperature(self, temp: f64) -> AsyncStream<Self> {
-        let (sender, stream) = async_stream_channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 
-        tokio::spawn(async move {
-            let mut builder = self;
+        let builder = self;
+        spawn_task(move || {
+            let mut updated_builder = builder;
             if TEMPERATURE_RANGE.contains(&temp) {
-                builder.temperature = temp;
-                let _ = sender.send(builder);
+                updated_builder.temperature = temp;
+                let _ = sender.send(updated_builder);
             } else {
                 // Emit the validation error as part of the stream - let on_chunk handler deal with it
                 let _ = sender.send(builder);
@@ -188,12 +189,13 @@ impl<'a> CompletionRequestBuilder<'a> {
 
     /// Set the chunk size for streaming
     pub fn chunk_size(self, size: Option<usize>) -> AsyncStream<Self> {
-        let (sender, stream) = async_stream_channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 
-        tokio::spawn(async move {
-            let mut builder = self;
-            builder.chunk_size = size;
-            let _ = sender.send(builder);
+        let builder = self;
+        spawn_task(move || {
+            let mut updated_builder = builder;
+            updated_builder.chunk_size = size;
+            let _ = sender.send(updated_builder);
         });
 
         stream
@@ -206,19 +208,20 @@ impl<'a> CompletionRequestBuilder<'a> {
     }
 
     /// Build the request
-    pub fn build(self) -> AsyncStream<CompletionRequest<'a>> {
-        let (sender, stream) = async_stream_channel();
+    pub fn build(self) -> AsyncStream<CompletionRequest> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 
-        tokio::spawn(async move {
+        let builder = self;
+        spawn_task(move || {
             let request = CompletionRequest {
-                system_prompt: self.system_prompt,
-                chat_history: self.chat_history,
-                documents: self.documents,
-                tools: self.tools,
-                temperature: self.temperature,
-                max_tokens: self.max_tokens,
-                chunk_size: self.chunk_size,
-                additional_params: self.additional_params,
+                system_prompt: builder.system_prompt,
+                chat_history: builder.chat_history,
+                documents: builder.documents,
+                tools: builder.tools,
+                temperature: builder.temperature,
+                max_tokens: builder.max_tokens,
+                chunk_size: builder.chunk_size,
+                additional_params: builder.additional_params,
             };
 
             // Always emit the result - let on_chunk handler deal with validation

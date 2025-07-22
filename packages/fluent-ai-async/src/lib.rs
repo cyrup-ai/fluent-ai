@@ -4,13 +4,17 @@
 //! All asynchronous operations must return AsyncStream<T> of unwrapped values.
 //! Errors are handled via on_chunk patterns, not Result<T, E> inside streams.
 
+pub mod macros;
 pub mod stream;
 pub mod task;
 pub mod thread_pool;
 
 // Re-export core types
-pub use stream::{AsyncStream, AsyncStreamSender, async_stream_channel};
-pub use task::{spawn_stream, spawn_task, AsyncTask};
+pub use stream::{AsyncStream, AsyncStreamSender};
+pub use task::{spawn_task, AsyncTask};
+
+// DEPRECATED: Use AsyncStream::with_channel() instead
+// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 
 /// Marker trait ensuring types cannot contain Result types
 ///

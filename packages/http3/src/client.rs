@@ -250,21 +250,21 @@ impl HttpClient {
     /// Download a file using an HttpRequest (supports conditional headers)  
     /// Returns AsyncStream of DownloadChunk items for unwrapped processing
     pub fn download_with_request(&self, request: HttpRequest) -> AsyncStream<crate::DownloadChunk> {
-        let (sender, stream) = AsyncStream::channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
         let inner_client = self.inner.clone();
         let user_agent = self.config.user_agent.clone();
 
-        // Process download in background thread
-        std::thread::spawn(move || {
+        // Process download using zero-allocation async streaming
+        spawn_stream(move |_| async move {
             // Validate URL
             let parsed_url = match url::Url::parse(request.url()) {
                 Ok(url) => url,
-                Err(_) => return, // Invalid URL - stream ends
+                Err(_) => return Ok(()), // Invalid URL - stream ends gracefully
             };
 
             match parsed_url.scheme() {
                 "http" | "https" => {}
-                _ => return, // Unsupported scheme - stream ends
+                _ => return Ok(()), // Unsupported scheme - stream ends gracefully
             }
 
             // Build reqwest request with all headers from HttpRequest
@@ -285,75 +285,70 @@ impl HttpClient {
                 req_builder = req_builder.timeout(timeout);
             }
 
-            // Execute request in tokio runtime (contained within thread)
-            let rt = match tokio::runtime::Runtime::new() {
-                Ok(rt) => rt,
-                Err(_) => return,
+            // Execute request with proper async streaming (no blocking)
+            let response = match req_builder.send().await {
+                Ok(response) => response,
+                Err(_) => return Ok(()), // Network error - stream ends gracefully
             };
 
-            rt.block_on(async {
-                let response = match req_builder.send().await {
-                    Ok(response) => response,
-                    Err(_) => return, // Network error - stream ends
-                };
+            let status = response.status();
 
-                let status = response.status();
+            // Handle non-success status codes by ending stream
+            if status.as_u16() == 304 || !status.is_success() {
+                return Ok(()); // Stream ends for HTTP errors
+            }
 
-                // Handle non-success status codes by ending stream
-                if status.as_u16() == 304 || !status.is_success() {
-                    return; // Stream ends for HTTP errors
-                }
-
-                // Validate content type
-                if let Some(content_type) = response.headers().get("content-type") {
-                    if let Ok(content_type_str) = content_type.to_str() {
-                        if content_type_str.starts_with("text/html") {
-                            return; // HTML response - stream ends
-                        }
+            // Validate content type
+            if let Some(content_type) = response.headers().get("content-type") {
+                if let Ok(content_type_str) = content_type.to_str() {
+                    if content_type_str.starts_with("text/html") {
+                        return Ok(()); // HTML response - stream ends
                     }
                 }
+            }
 
-                // Stream download chunks
-                use futures_util::StreamExt;
-                let total_size = response.content_length();
-                let mut bytes_stream = response.bytes_stream();
-                let mut chunk_number = 0;
-                let mut bytes_downloaded = 0;
-                let start_time = std::time::Instant::now();
+            // Stream download chunks
+            use futures_util::StreamExt;
+            let total_size = response.content_length();
+            let mut bytes_stream = response.bytes_stream();
+            let mut chunk_number = 0;
+            let mut bytes_downloaded = 0;
+            let start_time = std::time::Instant::now();
 
-                while let Some(chunk_result) = bytes_stream.next().await {
-                    match chunk_result {
-                        Ok(chunk) => {
-                            let chunk_size = chunk.len() as u64;
-                            bytes_downloaded += chunk_size;
+            while let Some(chunk_result) = bytes_stream.next().await {
+                match chunk_result {
+                    Ok(chunk) => {
+                        let chunk_size = chunk.len() as u64;
+                        bytes_downloaded += chunk_size;
 
-                            // Calculate download speed
-                            let elapsed = start_time.elapsed();
-                            let download_speed = if elapsed.as_secs_f64() > 0.0 {
-                                Some(bytes_downloaded as f64 / elapsed.as_secs_f64())
-                            } else {
-                                None
-                            };
+                        // Calculate download speed
+                        let elapsed = start_time.elapsed();
+                        let download_speed = if elapsed.as_secs_f64() > 0.0 {
+                            Some(bytes_downloaded as f64 / elapsed.as_secs_f64())
+                        } else {
+                            None
+                        };
 
-                            let download_chunk = crate::DownloadChunk::new(
-                                chunk,
-                                chunk_number,
-                                total_size,
-                                bytes_downloaded,
-                                download_speed,
-                            );
+                        let download_chunk = crate::DownloadChunk::new(
+                            chunk,
+                            chunk_number,
+                            total_size,
+                            bytes_downloaded,
+                            download_speed,
+                        );
 
-                            // Emit unwrapped chunk
-                            if sender.try_send(download_chunk).is_err() {
-                                break; // Stream closed
-                            }
-
-                            chunk_number += 1;
+                        // Emit unwrapped chunk with proper error handling
+                        if let Err(_) = sender.send(download_chunk).await {
+                            break; // Stream closed
                         }
-                        Err(_) => break, // Stream error - stop processing
+
+                        chunk_number += 1;
                     }
+                    Err(_) => break, // Stream error - stop processing
                 }
-            });
+            }
+            
+            Ok(())
         });
 
         stream
@@ -362,9 +357,9 @@ impl HttpClient {
     /// Send an HTTP request with optimal performance and caching
     /// Returns AsyncStream of HttpResponse items for unwrapped processing
     pub fn send(&self, request: HttpRequest) -> AsyncStream<HttpResponse> {
-        let (sender, stream) = AsyncStream::channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 
-        // Clone needed data for background thread
+        // Clone needed data for zero-allocation async streaming
         let inner_client = self.inner.clone();
         let request_count = Arc::clone(&self.request_count);
         let cache_hits = Arc::clone(&self.cache_hits);
@@ -375,8 +370,8 @@ impl HttpClient {
         let total_bytes_received = Arc::clone(&self.total_bytes_received);
         let total_response_time_nanos = Arc::clone(&self.total_response_time_nanos);
 
-        // Process request in background thread
-        std::thread::spawn(move || {
+        // Process request using zero-allocation async streaming
+        spawn_stream(move |_| async move {
             let start_time = Instant::now();
 
             // Increment request counter atomically
@@ -389,8 +384,8 @@ impl HttpClient {
             if matches!(request.method(), crate::HttpMethod::Get) {
                 if let Some(cached_response) = Self::check_cache_static(cache_key) {
                     cache_hits.fetch_add(1, Ordering::Relaxed);
-                    let _ = sender.try_send(cached_response);
-                    return;
+                    let _ = sender.send(cached_response).await;
+                    return Ok(());
                 }
             }
 
@@ -400,7 +395,7 @@ impl HttpClient {
             // Build reqwest request with optimal settings
             let req_builder = match Self::build_request_static(&inner_client, &request) {
                 Ok(builder) => builder,
-                Err(_) => return, // Request build failed - stream ends
+                Err(_) => return Ok(()), // Request build failed - stream ends gracefully
             };
 
             // Add performance-optimized headers
@@ -416,65 +411,60 @@ impl HttpClient {
                 req_builder
             };
 
-            // Execute request in tokio runtime (contained within thread)
-            let rt = match tokio::runtime::Runtime::new() {
-                Ok(rt) => rt,
-                Err(_) => return,
+            // Execute request with proper async streaming (no blocking)
+            // Send request (simplified retry for streaming)
+            let response = match req_builder.send().await {
+                Ok(response) => response,
+                Err(_) => {
+                    failed_requests.fetch_add(1, Ordering::Relaxed);
+                    return Ok(()); // Network error - stream ends gracefully
+                }
             };
 
-            rt.block_on(async {
-                // Send request (simplified retry for streaming)
-                let response = match req_builder.send().await {
-                    Ok(response) => response,
-                    Err(_) => {
-                        failed_requests.fetch_add(1, Ordering::Relaxed);
-                        return; // Network error - stream ends
-                    }
-                };
-
-                // Handle 304 Not Modified responses
-                if response.status() == 304 {
-                    if let Some(cached_response) = Self::check_cache_static(cache_key) {
-                        cache_hits.fetch_add(1, Ordering::Relaxed);
-                        let _ = sender.try_send(cached_response);
-                        return;
-                    }
+            // Handle 304 Not Modified responses
+            if response.status() == 304 {
+                if let Some(cached_response) = Self::check_cache_static(cache_key) {
+                    cache_hits.fetch_add(1, Ordering::Relaxed);
+                    let _ = sender.send(cached_response).await;
+                    return Ok(());
                 }
+            }
 
-                // Convert response with zero allocation where possible - NO FUTURES
-                let http_response = Self::convert_response_static(response);
+            // Convert response with zero allocation where possible - NO FUTURES
+            let http_response = Self::convert_response_static(response);
 
-                // Update cache for successful GET requests
-                if matches!(request.method(), crate::HttpMethod::Get) && http_response.is_success()
-                {
-                    Self::update_cache_static(cache_key, &http_response);
-                }
+            // Update cache for successful GET requests
+            if matches!(request.method(), crate::HttpMethod::Get) && http_response.is_success()
+            {
+                Self::update_cache_static(cache_key, &http_response);
+            }
 
-                // Update statistics atomically
-                let response_time = start_time.elapsed();
+            // Update statistics atomically
+            let response_time = start_time.elapsed();
 
-                // Update bytes sent
-                if let Some(body) = request.body() {
-                    total_bytes_sent.fetch_add(body.len() as u64, Ordering::Relaxed);
-                }
+            // Update bytes sent
+            if let Some(body) = request.body() {
+                total_bytes_sent.fetch_add(body.len() as u64, Ordering::Relaxed);
+            }
 
-                // Update bytes received
-                total_bytes_received
-                    .fetch_add(http_response.body().len() as u64, Ordering::Relaxed);
+            // Update bytes received
+            total_bytes_received
+                .fetch_add(http_response.body().len() as u64, Ordering::Relaxed);
 
-                // Update response time
-                total_response_time_nanos
-                    .fetch_add(response_time.as_nanos() as u64, Ordering::Relaxed);
+            // Update response time
+            total_response_time_nanos
+                .fetch_add(response_time.as_nanos() as u64, Ordering::Relaxed);
 
-                if http_response.is_success() {
-                    successful_requests.fetch_add(1, Ordering::Relaxed);
-                } else {
-                    failed_requests.fetch_add(1, Ordering::Relaxed);
-                }
+            if http_response.is_success() {
+                successful_requests.fetch_add(1, Ordering::Relaxed);
+            } else {
+                failed_requests.fetch_add(1, Ordering::Relaxed);
+            }
 
-                // Emit unwrapped response
-                let _ = sender.try_send(http_response);
-            });
+            // Emit unwrapped response with proper error handling
+            let _ = sender.send(http_response).await;
+            
+            Ok(())
         });
 
         stream
@@ -483,20 +473,20 @@ impl HttpClient {
     /// Send an HTTP request and return a streaming response  
     /// Returns AsyncStream of HttpStream items for unwrapped processing
     pub fn send_stream(&self, request: HttpRequest) -> AsyncStream<HttpStream> {
-        let (sender, stream) = AsyncStream::channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 
-        // Clone needed data for background thread
+        // Clone needed data for zero-allocation async streaming
         let inner_client = self.inner.clone();
         let request_count = Arc::clone(&self.request_count);
         let failed_requests = Arc::clone(&self.failed_requests);
 
-        // Process streaming request in background thread
-        std::thread::spawn(move || {
+        // Process streaming request using zero-allocation async streaming
+        spawn_stream(move |_| async move {
             let request_id = request_count.fetch_add(1, Ordering::Relaxed);
 
             let req_builder = match Self::build_request_static(&inner_client, &request) {
                 Ok(builder) => builder,
-                Err(_) => return, // Request build failed - stream ends
+                Err(_) => return Ok(()), // Request build failed - stream ends gracefully
             };
 
             // Add streaming-specific headers
@@ -506,37 +496,32 @@ impl HttpClient {
                 .header("Accept", "text/event-stream")
                 .header("Cache-Control", "no-cache");
 
-            // Execute request in tokio runtime (contained within thread)
-            let rt = match tokio::runtime::Runtime::new() {
-                Ok(rt) => rt,
-                Err(_) => return,
+            // Execute request with proper async streaming (no blocking)
+            // Send request
+            let response = match req_builder.send().await {
+                Ok(response) => response,
+                Err(_) => {
+                    failed_requests.fetch_add(1, Ordering::Relaxed);
+                    return Ok(()); // Network error - stream ends gracefully
+                }
             };
 
-            rt.block_on(async {
-                // Send request
-                let response = match req_builder.send().await {
-                    Ok(response) => response,
-                    Err(_) => {
-                        failed_requests.fetch_add(1, Ordering::Relaxed);
-                        return; // Network error - stream ends
-                    }
-                };
+            // Convert response body to Vec<u8> for HttpStream
+            let response_bytes = match response.bytes().await {
+                Ok(bytes) => bytes.to_vec(),
+                Err(_) => {
+                    failed_requests.fetch_add(1, Ordering::Relaxed);
+                    return Ok(()); // Body read error - stream ends gracefully
+                }
+            };
 
-                // Convert response body to Vec<u8> for HttpStream
-                let response_bytes = match response.bytes().await {
-                    Ok(bytes) => bytes.to_vec(),
-                    Err(_) => {
-                        failed_requests.fetch_add(1, Ordering::Relaxed);
-                        return; // Body read error - stream ends
-                    }
-                };
+            // Create optimized stream
+            let http_stream = HttpStream::new(response_bytes);
 
-                // Create optimized stream
-                let http_stream = HttpStream::new(response_bytes);
-
-                // Emit unwrapped stream
-                let _ = sender.try_send(http_stream);
-            });
+            // Emit unwrapped stream with proper error handling
+            let _ = sender.send(http_stream).await;
+            
+            Ok(())
         });
 
         stream
@@ -784,12 +769,10 @@ impl HttpClient {
         req_builder
     }
 
-    /// Send request with intelligent retry logic
-    fn send_with_retry(&self, req_builder: reqwest::RequestBuilder) -> Option<reqwest::Response> {
+    /// Send request with intelligent retry logic using async streaming
+    async fn send_with_retry_async(&self, req_builder: reqwest::RequestBuilder) -> Option<reqwest::Response> {
         let mut last_error = None;
         let retry_policy = &self.config.retry_policy;
-
-        let rt = tokio::runtime::Handle::current();
 
         for attempt in 0..=retry_policy.max_retries {
             let request = match req_builder.try_clone() {
@@ -797,7 +780,7 @@ impl HttpClient {
                 None => return None, // Can't clone request, give up
             };
 
-            let response_result = rt.block_on(async { request.send().await });
+            let response_result = request.send().await;
 
             match response_result {
                 Ok(response) => {
@@ -920,14 +903,13 @@ impl HttpClient {
         Duration::from_millis(final_delay as u64)
     }
 
-    /// Convert reqwest response to HttpResponse - NO FUTURES, pure sync execution
-    fn convert_response(&self, response: reqwest::Response) -> HttpResponse {
+    /// Convert reqwest response to HttpResponse using async streaming
+    async fn convert_response_async(&self, response: reqwest::Response) -> HttpResponse {
         let status = response.status();
         let headers = response.headers().clone();
 
-        // NO FUTURES - use tokio runtime for sync execution
-        let rt = tokio::runtime::Handle::current();
-        let body = rt.block_on(async { response.bytes().await.unwrap_or_default() });
+        // Use proper async streaming - no blocking
+        let body = response.bytes().await.unwrap_or_default();
 
         HttpResponse::new(status, headers, body.to_vec())
     }
@@ -1157,14 +1139,13 @@ impl HttpClient {
         req_builder
     }
 
-    /// Convert reqwest response to HttpResponse - NO FUTURES, pure sync execution (static version)
-    fn convert_response_static(response: reqwest::Response) -> HttpResponse {
+    /// Convert reqwest response to HttpResponse using async streaming (static version)
+    async fn convert_response_static_async(response: reqwest::Response) -> HttpResponse {
         let status = response.status();
         let headers = response.headers().clone();
 
-        // NO FUTURES - use tokio runtime for sync execution
-        let rt = tokio::runtime::Handle::current();
-        let body = rt.block_on(async { response.bytes().await.unwrap_or_default() });
+        // Use proper async streaming - no blocking
+        let body = response.bytes().await.unwrap_or_default();
 
         HttpResponse::new(status, headers, body.to_vec())
     }

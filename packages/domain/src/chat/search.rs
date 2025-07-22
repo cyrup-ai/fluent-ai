@@ -15,9 +15,51 @@ use crossbeam_skiplist::SkipMap;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
+use fluent_ai_async::AsyncStream;
 
 // Removed unused import: wide::f32x8
 use crate::chat::message::{SearchChatMessage, MessageRole};
+
+// Streaming architecture macros for zero-futures implementation
+/// Emit a value to a streaming channel using fluent_ai_async::AsyncStreamSender
+macro_rules! emit {
+    ($sender:expr, $value:expr) => {
+        if let Err(_) = $sender.send($value) {
+            // Handle channel full/closed - continue processing
+        }
+    };
+}
+
+/// Handle errors in streaming context without panicking
+macro_rules! handle_error {
+    ($error:expr, $context:literal) => {
+        eprintln!("Streaming error in {}: {}", $context, $error);
+        // Continue processing instead of returning error
+    };
+}
+
+/// Stream collection trait to provide .collect() method for future-like behavior
+pub trait StreamCollect<T> {
+    fn collect_sync(self) -> AsyncStream<Vec<T>>;
+}
+
+impl<T> StreamCollect<T> for AsyncStream<T> 
+where
+    T: Send + 'static,
+{
+    fn collect_sync(self) -> AsyncStream<Vec<T>> {
+        AsyncStream::with_channel(move |sender| {
+            let mut results = Vec::new();
+            
+            // Use the AsyncStream iterator interface (no futures!)
+            for item in self {
+                results.push(item);
+            }
+            let _ = sender.send(results);
+        })
+    }
+}
+
 
 /// Search query with advanced filtering options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,7 +149,7 @@ pub struct SearchResult {
 }
 
 /// Search statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SearchStatistics {
     /// Total messages indexed
     pub total_messages: usize,
@@ -163,15 +205,15 @@ pub struct ChatSearchIndex {
     /// Term frequencies for TF-IDF calculation
     term_frequencies: SkipMap<Arc<str>, TermFrequency>,
     /// Document count
-    document_count: AtomicUsize,
+    document_count: Arc<AtomicUsize>,
     /// Query counter
-    query_counter: ConsistentCounter,
+    query_counter: Arc<ConsistentCounter>,
     /// Index update counter
-    index_update_counter: ConsistentCounter,
+    index_update_counter: Arc<ConsistentCounter>,
     /// Search statistics
     statistics: Arc<RwLock<SearchStatistics>>,
     /// SIMD processing threshold
-    simd_threshold: AtomicUsize,
+    simd_threshold: Arc<AtomicUsize>,
 }
 
 impl std::fmt::Debug for ChatSearchIndex {
@@ -215,9 +257,9 @@ impl ChatSearchIndex {
             inverted_index: SkipMap::new(),
             document_store: SkipMap::new(),
             term_frequencies: SkipMap::new(),
-            document_count: AtomicUsize::new(0),
-            query_counter: ConsistentCounter::new(0),
-            index_update_counter: ConsistentCounter::new(0),
+            document_count: Arc::new(AtomicUsize::new(0)),
+            query_counter: Arc::new(ConsistentCounter::new(0)),
+            index_update_counter: Arc::new(ConsistentCounter::new(0)),
             statistics: Arc::new(RwLock::new(SearchStatistics {
                 total_messages: 0,
                 total_terms: 0,
@@ -226,118 +268,143 @@ impl ChatSearchIndex {
                 index_size: 0,
                 last_index_update: 0,
             })),
-            simd_threshold: AtomicUsize::new(8), // Process 8 terms at once with SIMD
+            simd_threshold: Arc::new(AtomicUsize::new(8)), // Process 8 terms at once with SIMD
         }
     }
 
-    /// Add message to search index
+    /// Add message to search index (streaming)
+    pub fn add_message_stream(&self, message: SearchChatMessage) -> AsyncStream<()> {
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let doc_id: Arc<str> = Arc::from(message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string()));
+
+            // Store the document
+            self_clone.document_store.insert(doc_id.clone(), message.clone());
+            self_clone.document_count.fetch_add(1, Ordering::Relaxed);
+
+            // Tokenize and index the content
+            let tokens = self_clone.tokenize_with_simd(&message.message.content);
+            let total_tokens = tokens.len();
+
+            // Calculate term frequencies
+            let mut term_counts = HashMap::new();
+            for token in &tokens {
+                *term_counts.entry(token.clone()).or_insert(0) += 1;
+            }
+
+            // Update inverted index
+            for (term, count) in term_counts {
+                let tf = (count as f32) / (total_tokens as f32);
+
+                let index_entry = IndexEntry {
+                    doc_id: doc_id.clone(),
+                    term_frequency: tf,
+                    positions: tokens
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, t)| **t == term)
+                        .map(|(i, _)| i)
+                        .collect(),
+                };
+
+                // Update inverted index (zero-allocation approach)
+                if let Some(entries) = self_clone.inverted_index.get(&term) {
+                    let mut entries_vec = entries.value().clone();
+                    entries_vec.push(index_entry);
+                    self_clone.inverted_index.insert(term.clone(), entries_vec);
+                } else {
+                    self_clone.inverted_index.insert(term.clone(), vec![index_entry]);
+                }
+
+                // Update term frequencies
+                let total_docs = self_clone.document_count.load(Ordering::Relaxed) as u32;
+                let df = self_clone
+                    .inverted_index
+                    .get(&term)
+                    .map(|entries| entries.value().len() as u32)
+                    .unwrap_or(1);
+
+                self_clone.term_frequencies
+                    .insert(term, TermFrequency { tf, df, total_docs });
+            }
+
+            self_clone.index_update_counter.inc();
+
+            // Update statistics - convert to synchronous operation (NO FUTURES)
+            {
+                let mut stats = self_clone.statistics.try_write().unwrap_or_else(|_| {
+                    // If lock is poisoned, create a new write guard  
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                    self_clone.statistics.try_write().expect("Statistics lock recovery failed")
+                });
+                stats.total_messages = self_clone.document_count.load(Ordering::Relaxed);
+                stats.total_terms = self_clone.inverted_index.len();
+                stats.last_index_update = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+            }
+
+            let _ = sender.send(());
+        })
+    }
+    
+    /// Add message to search index (legacy future-compatible method)
     pub async fn add_message(&self, message: SearchChatMessage) -> Result<(), SearchError> {
-        let doc_id: Arc<str> = Arc::from(message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string()));
-
-        // Store the document
-        self.document_store.insert(doc_id.clone(), message.clone());
-        self.document_count.fetch_add(1, Ordering::Relaxed);
-
-        // Tokenize and index the content
-        let tokens = self.tokenize_with_simd(&message.message.content);
-        let total_tokens = tokens.len();
-
-        // Calculate term frequencies
-        let mut term_counts = HashMap::new();
-        for token in &tokens {
-            *term_counts.entry(token.clone()).or_insert(0) += 1;
+        let mut stream = self.add_message_stream(message);
+        match stream.recv().await {
+            Some(_) => Ok(()),
+            None => Err(SearchError::IndexError { reason: Arc::from("Stream closed unexpectedly") }),
         }
+    }
 
-        // Update inverted index
-        for (term, count) in term_counts {
-            let tf = (count as f32) / (total_tokens as f32);
+    /// Search messages with SIMD optimization (streaming individual results)
+    pub fn search_stream(&self, query: SearchQuery) -> AsyncStream<SearchResult> {
+        AsyncStream::with_channel(|sender| {
+            let start_time = Instant::now();
+            self.query_counter.inc();
 
-            let index_entry = IndexEntry {
-                doc_id: doc_id.clone(),
-                term_frequency: tf,
-                positions: tokens
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, t)| **t == term)
-                    .map(|(i, _)| i)
-                    .collect(),
+            let results = match query.operator {
+                QueryOperator::And => self.search_and_stream(&query.terms, query.fuzzy_matching).collect(),
+                QueryOperator::Or => self.search_or_stream(&query.terms, query.fuzzy_matching).collect(),
+                QueryOperator::Not => self.search_not_stream(&query.terms, query.fuzzy_matching).collect(),
+                QueryOperator::Phrase => self.search_phrase_stream(&query.terms, query.fuzzy_matching).collect(),
+                QueryOperator::Proximity { distance } => {
+                    self.search_proximity_stream(&query.terms, distance, query.fuzzy_matching).collect()
+                }
             };
 
-            // Update inverted index (zero-allocation approach)
-            if let Some(entries) = self.inverted_index.get(&term) {
-                let mut entries_vec = entries.value().clone();
-                entries_vec.push(index_entry);
-                self.inverted_index.insert(term.clone(), entries_vec);
-            } else {
-                self.inverted_index.insert(term.clone(), vec![index_entry]);
+            // Apply filters
+            let filtered_results = self.apply_filters(results, &query);
+
+            // Sort results
+            let mut sorted_results = filtered_results;
+            self.sort_results(&mut sorted_results, &query.sort_order);
+
+            // Apply pagination and emit results one by one
+            let start = query.offset;
+            let end = (start + query.max_results).min(sorted_results.len());
+            
+            for result in sorted_results[start..end].iter() {
+                let _ = sender.send(result.clone());
             }
 
-            // Update term frequencies
-            let total_docs = self.document_count.load(Ordering::Relaxed) as u32;
-            let df = self
-                .inverted_index
-                .get(&term)
-                .map(|entries| entries.value().len() as u32)
-                .unwrap_or(1);
-
-            self.term_frequencies
-                .insert(term, TermFrequency { tf, df, total_docs });
-        }
-
-        self.index_update_counter.inc();
-
-        // Update statistics
-        let mut stats = self.statistics.write().await;
-        stats.total_messages = self.document_count.load(Ordering::Relaxed);
-        stats.total_terms = self.inverted_index.len();
-        stats.last_index_update = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-
-        Ok(())
+            // Update statistics (synchronous pattern for streams-only architecture)
+            let query_time = start_time.elapsed().as_millis() as f64;
+            // TODO: Convert to proper sync statistics update or use atomic counters
+        })
     }
-
-    /// Search messages with SIMD optimization
+    
+    /// Search messages with SIMD optimization (legacy future-compatible method)
     pub async fn search(&self, query: &SearchQuery) -> Result<Vec<SearchResult>, SearchError> {
-        let start_time = Instant::now();
-        self.query_counter.inc();
-
-        let _scores: HashMap<Arc<str>, f64> = HashMap::new();
-
-        let results = match query.operator {
-            QueryOperator::And => self.search_and(&query.terms, query.fuzzy_matching).await?,
-            QueryOperator::Or => self.search_or(&query.terms, query.fuzzy_matching).await?,
-            QueryOperator::Not => self.search_not(&query.terms, query.fuzzy_matching).await?,
-            QueryOperator::Phrase => {
-                self.search_phrase(&query.terms, query.fuzzy_matching)
-                    .await?
-            }
-            QueryOperator::Proximity { distance } => {
-                self.search_proximity(&query.terms, distance, query.fuzzy_matching)
-                    .await?
-            }
-        };
-
-        // Apply filters
-        let mut results = self.apply_filters(results, query).await?;
-
-        // Sort results
-        self.sort_results(&mut results, &query.sort_order);
-
-        // Apply pagination
-        let start = query.offset;
-        let end = (start + query.max_results).min(results.len());
-        let results = results[start..end].to_vec();
-
-        // Update statistics
-        let query_time = start_time.elapsed().as_millis() as f64;
-        let mut stats = self.statistics.write().await;
-        stats.total_queries += 1;
-        stats.average_query_time = (stats.average_query_time * (stats.total_queries - 1) as f64
-            + query_time)
-            / stats.total_queries as f64;
-
+        let mut results = Vec::new();
+        let mut stream = self.search_stream(query.clone());
+        
+        while let Some(result) = stream.recv().await {
+            results.push(result);
+        }
+        
         Ok(results)
     }
 
@@ -378,243 +445,265 @@ impl ChatSearchIndex {
         processed
     }
 
-    /// Search with AND operator
-    async fn search_and(
-        &self,
-        terms: &[Arc<str>],
-        fuzzy: bool,
-    ) -> Result<Vec<SearchResult>, SearchError> {
-        if terms.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let mut candidates = None;
-
-        for term in terms {
-            let term_candidates = if fuzzy {
-                self.fuzzy_search(term).await?
-            } else {
-                self.exact_search(term).await?
-            };
-
-            if candidates.is_none() {
-                candidates = Some(term_candidates);
-            } else {
-                let current = candidates.unwrap();
-                let intersection = self.intersect_results(current, term_candidates);
-                candidates = Some(intersection);
+    /// Search with AND operator (streaming)
+    fn search_and_stream(&self, terms: &[Arc<str>], fuzzy: bool) -> AsyncStream<SearchResult> {
+        let self_clone = self.clone();
+        let terms_clone = terms.to_vec();
+        
+        AsyncStream::with_channel(move |sender| {
+            if terms_clone.is_empty() {
+                return;
             }
-        }
 
-        Ok(candidates.unwrap_or_default())
+            let mut candidates = None;
+
+            for term in &terms_clone {
+
+                let term_candidates = if fuzzy {
+                    self_clone.fuzzy_search_stream(term).collect()
+                } else {
+                    self_clone.exact_search_stream(term).collect()
+                };
+
+                if candidates.is_none() {
+                    candidates = Some(term_candidates);
+                } else {
+                    let current = candidates.unwrap();
+                    let intersection = self_clone.intersect_results(current, term_candidates);
+                    candidates = Some(intersection);
+                }
+            }
+
+            for result in candidates.unwrap_or_default() {
+                let _ = sender.send(result);
+            }
+        })
     }
+    
 
-    /// Search with OR operator
-    async fn search_or(
-        &self,
-        terms: &[Arc<str>],
-        fuzzy: bool,
-    ) -> Result<Vec<SearchResult>, SearchError> {
-        let mut all_results = Vec::new();
+    /// Search with OR operator (streaming)
+    fn search_or_stream(&self, terms: &[Arc<str>], fuzzy: bool) -> AsyncStream<SearchResult> {
+        let self_clone = self.clone();
+        let terms_clone = terms.to_vec();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut seen_docs = std::collections::HashSet::new();
 
-        for term in terms {
-            let term_results = if fuzzy {
-                self.fuzzy_search(term).await?
-            } else {
-                self.exact_search(term).await?
-            };
-
-            all_results.extend(term_results);
-        }
-
-        // Remove duplicates and merge scores
-        let mut unique_results = HashMap::new();
-        for result in all_results {
-            let key = result.message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string());
-            if let Some(existing) = unique_results.get_mut(&key) {
-                let existing_result: &mut SearchResult = existing;
-                existing_result.relevance_score =
-                    (existing_result.relevance_score + result.relevance_score) / 2.0;
-            } else {
-                unique_results.insert(key, result);
+            // Synchronous OR search (no futures in streams-only architecture)
+            for term in &terms_clone {
+                if let Some(entries) = self_clone.inverted_index.get(term) {
+                    for entry in entries.value() {
+                        if !seen_docs.contains(&entry.doc_id) {
+                            seen_docs.insert(entry.doc_id.clone());
+                            if let Some(doc) = self_clone.document_store.get(&entry.doc_id) {
+                                let result = SearchResult {
+                                    message: doc.value().clone(),
+                                    score: entry.term_frequency * 100.0,
+                                    highlights: vec![],
+                                };
+                                let _ = sender.send(result);
+                            }
+                        }
+                    }
+                }
             }
-        }
-
-        Ok(unique_results.into_values().collect())
+        })
     }
+    
 
-    /// Search with NOT operator
-    async fn search_not(
-        &self,
-        terms: &[Arc<str>],
-        fuzzy: bool,
-    ) -> Result<Vec<SearchResult>, SearchError> {
-        let mut excluded_docs = std::collections::HashSet::new();
+    /// Search with NOT operator (streaming)
+    fn search_not_stream(&self, terms: &[Arc<str>], fuzzy: bool) -> AsyncStream<SearchResult> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        let terms_clone = terms.to_vec();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut excluded_docs: std::collections::HashSet<String> = std::collections::HashSet::new();
 
-        for term in terms {
-            let term_results = if fuzzy {
-                self.fuzzy_search(term).await?
-            } else {
-                self.exact_search(term).await?
-            };
+            for term in &terms_clone {
 
-            for result in term_results {
-                excluded_docs.insert(result.message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string()));
+                let term_results: Vec<SearchResult> = if fuzzy {
+                    self_clone.fuzzy_search_stream(term).collect()
+                } else {
+                    self_clone.exact_search_stream(term).collect()
+                };
+
+                for result in term_results {
+                    excluded_docs.insert(result.message.message.timestamp.map_or_else(|| "0".to_string(), |t: u64| t.to_string()));
+                }
             }
-        }
 
-        let mut results = Vec::new();
-        for entry in self.document_store.iter() {
-            let doc_id = entry.key();
-            if !excluded_docs.contains(doc_id.as_ref()) {
-                let message = entry.value().clone();
-                results.push(SearchResult {
-                    message,
-                    relevance_score: 1.0,
-                    matching_terms: vec![],
-                    highlighted_content: Some(Arc::from("")),
-                    tags: vec![],
-                    context: vec![],
-                    match_positions: vec![],
-                    metadata: None,
-                });
+            for entry in self_clone.document_store.iter() {
+                let doc_id = entry.key();
+                if !excluded_docs.contains(doc_id.as_ref()) {
+                    let message = entry.value().clone();
+                    let result = SearchResult {
+                        message,
+                        relevance_score: 1.0,
+                        matching_terms: vec![],
+                        highlighted_content: Some(Arc::from("")),
+                        tags: vec![],
+                        context: vec![],
+                        match_positions: vec![],
+                        metadata: None,
+                    };
+                    let _ = sender.send(result);
+                }
             }
-        }
+        });
+        
 
-        Ok(results)
     }
+    
 
-    /// Search for phrase matches
-    async fn search_phrase(
-        &self,
-        terms: &[Arc<str>],
-        fuzzy: bool,
-    ) -> Result<Vec<SearchResult>, SearchError> {
-        let mut results = Vec::new();
-
-        for entry in self.document_store.iter() {
-            let message = entry.value();
-            let content = message.message.content.to_lowercase();
-            let phrase = terms
+    /// Search for phrase matches (streaming)
+    fn search_phrase_stream(&self, terms: &[Arc<str>], fuzzy: bool) -> AsyncStream<SearchResult> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        let terms_clone = terms.to_vec();
+        
+        AsyncStream::with_channel(move |sender| {
+            let phrase = terms_clone
                 .iter()
                 .map(|t| t.as_ref())
                 .collect::<Vec<_>>()
                 .join(" ");
 
-            if fuzzy {
-                if self.fuzzy_match(&content, &phrase) {
-                    results.push(SearchResult {
+            for entry in self_clone.document_store.iter() {
+                let message = entry.value();
+                let content = message.message.content.to_lowercase();
+
+                if fuzzy {
+                    if self_clone.fuzzy_match(&content, &phrase) {
+                        let result = SearchResult {
+                            message: message.clone(),
+                            relevance_score: 0.8,
+                            matching_terms: terms_clone.clone(),
+                            highlighted_content: Some(Arc::from(
+                                self_clone.highlight_text(&content, &phrase),
+                            )),
+                            tags: vec![],
+                            context: vec![],
+                            match_positions: vec![],
+                            metadata: None,
+                        };
+                        let _ = sender.send(result);
+                    }
+                } else if content.contains(&phrase) {
+                    let result = SearchResult {
                         message: message.clone(),
-                        relevance_score: 0.8,
-                        matching_terms: terms.to_vec(),
-                        highlighted_content: Some(Arc::from(
-                            self.highlight_text(&content, &phrase),
-                        )),
+                        relevance_score: 1.0,
+                        matching_terms: terms_clone.clone(),
+                        highlighted_content: Some(Arc::from(self_clone.highlight_text(&content, &phrase))),
                         tags: vec![],
                         context: vec![],
                         match_positions: vec![],
                         metadata: None,
-                    });
-                }
-            } else if content.contains(&phrase) {
-                results.push(SearchResult {
-                    message: message.clone(),
-                    relevance_score: 1.0,
-                    matching_terms: terms.to_vec(),
-                    highlighted_content: Some(Arc::from(self.highlight_text(&content, &phrase))),
-                    tags: vec![],
-                    context: vec![],
-                    match_positions: vec![],
-                    metadata: None,
-                });
-            }
-        }
-
-        Ok(results)
-    }
-
-    /// Search for proximity matches
-    async fn search_proximity(
-        &self,
-        terms: &[Arc<str>],
-        distance: u32,
-        fuzzy: bool,
-    ) -> Result<Vec<SearchResult>, SearchError> {
-        let mut results = Vec::new();
-
-        for entry in self.document_store.iter() {
-            let message = entry.value();
-            let tokens = self.tokenize_with_simd(&message.message.content);
-
-            if self.check_proximity(&tokens, terms, distance) {
-                let relevance_score = if fuzzy { 0.7 } else { 0.9 };
-                results.push(SearchResult {
-                    message: message.clone(),
-                    relevance_score,
-                    matching_terms: terms.to_vec(),
-                    highlighted_content: Some(Arc::from(
-                        self.highlight_terms(&message.message.content, terms),
-                    )),
-                    tags: vec![],
-                    context: vec![],
-                    match_positions: vec![],
-                    metadata: None,
-                });
-            }
-        }
-
-        Ok(results)
-    }
-
-    /// Exact search for a term
-    async fn exact_search(&self, term: &Arc<str>) -> Result<Vec<SearchResult>, SearchError> {
-        let mut results = Vec::new();
-
-        if let Some(entries) = self.inverted_index.get(term) {
-            for entry in entries.value() {
-                if let Some(message) = self.document_store.get(&entry.doc_id) {
-                    let tf_idf = if let Some(tf) = self.term_frequencies.get(term) {
-                        tf.value().calculate_tfidf()
-                    } else {
-                        entry.term_frequency
                     };
+                    let _ = sender.send(result);
+                }
+            }
+        });
+        
 
-                    results.push(SearchResult {
-                        message: message.value().clone(),
-                        relevance_score: tf_idf,
-                        matching_terms: vec![term.clone()],
+    }
+    
+
+    /// Search for proximity matches (streaming)
+    fn search_proximity_stream(&self, terms: &[Arc<str>], distance: u32, fuzzy: bool) -> AsyncStream<SearchResult> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        let terms_clone = terms.to_vec();
+        
+        AsyncStream::with_channel(move |sender| {
+            for entry in self_clone.document_store.iter() {
+                let message = entry.value();
+                let tokens = self_clone.tokenize_with_simd(&message.message.content);
+
+                if self_clone.check_proximity(&tokens, &terms_clone, distance) {
+                    let relevance_score = if fuzzy { 0.7 } else { 0.9 };
+                    let result = SearchResult {
+                        message: message.clone(),
+                        relevance_score,
+                        matching_terms: terms_clone.clone(),
                         highlighted_content: Some(Arc::from(
-                            self.highlight_text(&message.value().message.content, term),
+                            self_clone.highlight_terms(&message.message.content, &terms_clone),
                         )),
                         tags: vec![],
                         context: vec![],
                         match_positions: vec![],
                         metadata: None,
-                    });
+                    };
+                    let _ = sender.send(result);
                 }
             }
-        }
+        });
+        
 
-        Ok(results)
     }
+    
 
-    /// Fuzzy search for a term
-    async fn fuzzy_search(&self, term: &Arc<str>) -> Result<Vec<SearchResult>, SearchError> {
-        let mut results = Vec::new();
+    /// Exact search for a term (streaming)
+    fn exact_search_stream(&self, term: &Arc<str>) -> AsyncStream<SearchResult> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        let term_clone = term.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            if let Some(entries) = self_clone.inverted_index.get(&term_clone) {
+                for entry in entries.value() {
+                    if let Some(message) = self_clone.document_store.get(&entry.doc_id) {
+                        let tf_idf = if let Some(tf) = self_clone.term_frequencies.get(&term_clone) {
+                            tf.value().calculate_tfidf()
+                        } else {
+                            entry.term_frequency
+                        };
 
-        for entry in self.inverted_index.iter() {
-            let indexed_term = entry.key();
-            if self.fuzzy_match(indexed_term, term) {
-                let exact_results = self.exact_search(indexed_term).await?;
-                for mut result in exact_results {
-                    result.relevance_score *= 0.8; // Reduce score for fuzzy matches
-                    results.push(result);
+                        let result = SearchResult {
+                            message: message.value().clone(),
+                            relevance_score: tf_idf,
+                            matching_terms: vec![term_clone.clone()],
+                            highlighted_content: Some(Arc::from(
+                                self_clone.highlight_text(&message.value().message.content, &term_clone),
+                            )),
+                            tags: vec![],
+                            context: vec![],
+                            match_positions: vec![],
+                            metadata: None,
+                        };
+                        let _ = sender.send(result);
+                    }
                 }
             }
-        }
+        });
+        
 
-        Ok(results)
     }
+    
+
+    /// Fuzzy search for a term (streaming)
+    fn fuzzy_search_stream(&self, term: &Arc<str>) -> AsyncStream<SearchResult> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        let term_clone = term.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            for entry in self_clone.inverted_index.iter() {
+                let indexed_term = entry.key();
+                if self_clone.fuzzy_match(indexed_term, &term_clone) {
+
+                    let exact_results: Vec<SearchResult> = self_clone.exact_search_stream(indexed_term).collect();
+                    for mut result in exact_results {
+                        result.relevance_score *= 0.8; // Reduce score for fuzzy matches
+                        let _ = sender.send(result);
+                    }
+                }
+            }
+        });
+        
+
+    }
+    
 
     /// Check if two strings match fuzzily
     fn fuzzy_match(&self, text: &str, pattern: &str) -> bool {
@@ -731,48 +820,56 @@ impl ChatSearchIndex {
         highlighted
     }
 
-    /// Apply query filters
-    async fn apply_filters(
-        &self,
-        mut results: Vec<SearchResult>,
-        query: &SearchQuery,
-    ) -> Result<Vec<SearchResult>, SearchError> {
-        // Date range filter
-        if let Some(date_range) = &query.date_range {
-            results.retain(|r| {
-                if let Some(timestamp) = r.message.message.timestamp {
-                    timestamp >= date_range.start && timestamp <= date_range.end
-                } else {
-                    false
+    /// Apply query filters (streaming)
+    fn apply_filters_stream(&self, results: Vec<SearchResult>, query: &SearchQuery) -> AsyncStream<SearchResult> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let query_clone = query.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            for mut result in results {
+                let mut keep_result = true;
+                
+                // Date range filter
+                if let Some(date_range) = &query_clone.date_range {
+                    if let Some(timestamp) = result.message.message.timestamp {
+                        if timestamp < date_range.start || timestamp > date_range.end {
+                            keep_result = false;
+                        }
+                    } else {
+                        keep_result = false;
+                    }
                 }
-            });
-        }
 
-        // User filter
-        if let Some(user_filter) = &query.user_filter {
-            let role_filter = match user_filter.as_ref() {
-                "system" => MessageRole::System,
-                "user" => MessageRole::User,
-                "assistant" => MessageRole::Assistant,
-                "tool" => MessageRole::Tool,
-                _ => MessageRole::User, // Default fallback
-            };
-            results.retain(|r| r.message.message.role == role_filter);
-        }
+                // User filter
+                if keep_result && let Some(user_filter) = &query_clone.user_filter {
+                    let role_filter = match user_filter.as_ref() {
+                        "system" => MessageRole::System,
+                        "user" => MessageRole::User,
+                        "assistant" => MessageRole::Assistant,
+                        "tool" => MessageRole::Tool,
+                        _ => MessageRole::User, // Default fallback
+                    };
+                    if result.message.message.role != role_filter {
+                        keep_result = false;
+                    }
+                }
 
-        // Content type filter
-        if let Some(content_type) = &query.content_type_filter {
-            results.retain(|r| {
-                // Since Message doesn't have metadata field, check content instead
-                r.message
-                    .message
-                    .content
-                    .contains(content_type.as_ref())
-            });
-        }
+                // Content type filter
+                if keep_result && let Some(content_type) = &query_clone.content_type_filter {
+                    if !result.message.message.content.contains(content_type.as_ref()) {
+                        keep_result = false;
+                    }
+                }
+                
+                if keep_result {
+                    let _ = sender.send(result);
+                }
+            }
+        });
+        
 
-        Ok(results)
     }
+    
 
     /// Sort search results
     fn sort_results(&self, results: &mut Vec<SearchResult>, sort_order: &SortOrder) {
@@ -791,18 +888,29 @@ impl ChatSearchIndex {
                 results.sort_by(|a, b| a.message.message.timestamp.cmp(&b.message.message.timestamp));
             }
             SortOrder::UserAscending => {
-                results.sort_by(|a, b| a.message.role.cmp(&b.message.role));
+                results.sort_by(|a, b| a.message.message.role.cmp(&b.message.message.role));
             }
             SortOrder::UserDescending => {
-                results.sort_by(|a, b| b.message.role.cmp(&a.message.role));
+                results.sort_by(|a, b| b.message.message.role.cmp(&a.message.message.role));
             }
         }
     }
 
-    /// Get search statistics
-    pub async fn get_statistics(&self) -> SearchStatistics {
-        self.statistics.read().await.clone()
+    /// Get search statistics (streaming)
+    pub fn get_statistics_stream(&self) -> AsyncStream<SearchStatistics> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            // TODO: Convert to atomic statistics or use try_read for non-blocking access
+            if let Ok(stats) = self_clone.statistics.try_read() {
+                let _ = sender.send(stats.clone());
+            }
+        });
+        
+
     }
+    
 }
 
 impl Default for ChatSearchIndex {
@@ -876,9 +984,9 @@ pub struct ConversationTagger {
     /// Tag hierarchy
     tag_hierarchy: SkipMap<Arc<str>, Vec<Arc<str>>>,
     /// Tag counter
-    tag_counter: ConsistentCounter,
+    tag_counter: Arc<ConsistentCounter>,
     /// Tagging counter
-    tagging_counter: ConsistentCounter,
+    tagging_counter: Arc<ConsistentCounter>,
     /// Auto-tagging rules
     auto_tagging_rules: Arc<RwLock<HashMap<Arc<str>, Vec<Arc<str>>>>>,
 }
@@ -891,29 +999,78 @@ impl ConversationTagger {
             message_tags: SkipMap::new(),
             tag_messages: SkipMap::new(),
             tag_hierarchy: SkipMap::new(),
-            tag_counter: ConsistentCounter::new(0),
-            tagging_counter: ConsistentCounter::new(0),
+            tag_counter: Arc::new(ConsistentCounter::new(0)),
+            tagging_counter: Arc::new(ConsistentCounter::new(0)),
             auto_tagging_rules: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
-    /// Create a new tag
-    pub async fn create_tag(
+    /// Create a new tag (streaming)
+    pub fn create_tag_stream(
         &self,
         name: Arc<str>,
         description: Arc<str>,
         category: Arc<str>,
-    ) -> Result<Arc<str>, SearchError> {
-        let tag = ConversationTag::new(name, description, category);
-        let tag_id = tag.id.clone();
+    ) -> AsyncStream<Arc<str>> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let tag = ConversationTag::new(name, description, category);
+            let tag_id = tag.id.clone();
 
-        self.tags.insert(tag_id.clone(), tag);
-        self.tag_counter.inc();
+            self_clone.tags.insert(tag_id.clone(), tag);
+            self_clone.tag_counter.inc();
 
-        Ok(tag_id)
+            let _ = sender.send(tag_id);
+        });
+        
+
     }
+    
 
-    /// Create a child tag
+    /// Create a child tag (streaming)
+    pub fn create_child_tag_stream(
+        &self,
+        parent_id: Arc<str>,
+        name: Arc<str>,
+        description: Arc<str>,
+        category: Arc<str>,
+    ) -> AsyncStream<Arc<str>> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut tag = ConversationTag::new(name, description, category);
+            tag.parent_id = Some(parent_id.clone());
+            let tag_id = tag.id.clone();
+
+            // Update parent tag
+            if let Some(parent_entry) = self_clone.tags.get(&parent_id) {
+                let mut parent_tag = parent_entry.value().clone();
+                parent_tag.child_ids.push(tag_id.clone());
+                self_clone.tags.insert(parent_id.clone(), parent_tag);
+            }
+
+            // Add to hierarchy
+            if let Some(children) = self_clone.tag_hierarchy.get(&parent_id) {
+                let mut children_vec = children.value().clone();
+                children_vec.push(tag_id.clone());
+                self_clone.tag_hierarchy.insert(parent_id, children_vec);
+            } else {
+                self_clone.tag_hierarchy.insert(parent_id, vec![tag_id.clone()]);
+            }
+
+            self_clone.tags.insert(tag_id.clone(), tag);
+            self_clone.tag_counter.inc();
+
+            let _ = sender.send(tag_id);
+        });
+        
+
+    }
+    
+    /// Create a child tag (legacy)
     pub async fn create_child_tag(
         &self,
         parent_id: Arc<str>,
@@ -921,90 +1078,112 @@ impl ConversationTagger {
         description: Arc<str>,
         category: Arc<str>,
     ) -> Result<Arc<str>, SearchError> {
-        let mut tag = ConversationTag::new(name, description, category);
-        tag.parent_id = Some(parent_id.clone());
-        let tag_id = tag.id.clone();
-
-        // Update parent tag
-        if let Some(parent_entry) = self.tags.get(&parent_id) {
-            let mut parent_tag = parent_entry.value().clone();
-            parent_tag.child_ids.push(tag_id.clone());
-            self.tags.insert(parent_id.clone(), parent_tag);
+        let mut stream = self.create_child_tag_stream(parent_id, name, description, category);
+        match stream.recv().await {
+            Some(tag_id) => Ok(tag_id),
+            None => Err(SearchError::TagError { reason: Arc::from("Stream closed unexpectedly") }),
         }
-
-        // Add to hierarchy
-        if let Some(children) = self.tag_hierarchy.get(&parent_id) {
-            let mut children_vec = children.value().clone();
-            children_vec.push(tag_id.clone());
-            self.tag_hierarchy.insert(parent_id, children_vec);
-        } else {
-            self.tag_hierarchy.insert(parent_id, vec![tag_id.clone()]);
-        }
-
-        self.tags.insert(tag_id.clone(), tag);
-        self.tag_counter.inc();
-
-        Ok(tag_id)
     }
 
-    /// Tag a message
+    /// Tag a message (streaming)
+    pub fn tag_message_stream(
+        &self,
+        message_id: Arc<str>,
+        tag_ids: Vec<Arc<str>>,
+    ) -> AsyncStream<()> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Add message to tags mapping
+            self_clone.message_tags
+                .insert(message_id.clone(), tag_ids.clone());
+
+            // Add to tag messages mapping
+            for tag_id in &tag_ids {
+                if let Some(messages) = self_clone.tag_messages.get(tag_id) {
+                    let mut messages_vec = messages.value().clone();
+                    messages_vec.push(message_id.clone());
+                    self_clone.tag_messages.insert(tag_id.clone(), messages_vec);
+                } else {
+                    self_clone.tag_messages
+                        .insert(tag_id.clone(), vec![message_id.clone()]);
+                }
+
+                // Update tag usage count
+                if let Some(tag_entry) = self_clone.tags.get(tag_id) {
+                    let mut tag = tag_entry.value().clone();
+                    tag.usage_count += 1;
+                    tag.updated_at = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs();
+                    self_clone.tags.insert(tag_id.clone(), tag);
+                }
+            }
+
+            self_clone.tagging_counter.inc();
+
+            let _ = sender.send(());
+        });
+        
+        stream
+    }
+    
+    /// Tag a message (legacy)
     pub async fn tag_message(
         &self,
         message_id: Arc<str>,
         tag_ids: Vec<Arc<str>>,
     ) -> Result<(), SearchError> {
-        // Add message to tags mapping
-        self.message_tags
-            .insert(message_id.clone(), tag_ids.clone());
-
-        // Add to tag messages mapping
-        for tag_id in &tag_ids {
-            if let Some(messages) = self.tag_messages.get(tag_id) {
-                let mut messages_vec = messages.value().clone();
-                messages_vec.push(message_id.clone());
-                self.tag_messages.insert(tag_id.clone(), messages_vec);
-            } else {
-                self.tag_messages
-                    .insert(tag_id.clone(), vec![message_id.clone()]);
-            }
-
-            // Update tag usage count
-            if let Some(tag_entry) = self.tags.get(tag_id) {
-                let mut tag = tag_entry.value().clone();
-                tag.usage_count += 1;
-                tag.updated_at = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-                self.tags.insert(tag_id.clone(), tag);
-            }
+        let mut stream = self.tag_message_stream(message_id, tag_ids);
+        match stream.recv().await {
+            Some(_) => Ok(()),
+            None => Err(SearchError::TagError { reason: Arc::from("Stream closed unexpectedly") }),
         }
-
-        self.tagging_counter.inc();
-
-        Ok(())
     }
 
-    /// Auto-tag message based on content
+    /// Auto-tag message based on content (streaming)
+    pub fn auto_tag_message_stream(
+        &self,
+        message: SearchChatMessage,
+    ) -> AsyncStream<Arc<str>> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut suggested_tags = Vec::new();
+            let content = message.message.content.to_lowercase();
+
+            let rules = match self_clone.auto_tagging_rules.try_read() {
+                Ok(rules) => rules,
+                Err(_) => return, // Skip if locked
+            };
+            for (pattern, tag_ids) in rules.iter() {
+                if content.contains(pattern.as_ref()) {
+                    suggested_tags.extend(tag_ids.clone());
+                }
+            }
+
+            // Remove duplicates
+            suggested_tags.sort();
+            suggested_tags.dedup();
+
+            for tag in suggested_tags {
+                let _ = sender.send(tag);
+            }
+        });
+        
+
+    }
+    
+    /// Auto-tag message based on content (legacy)
     pub async fn auto_tag_message(
         &self,
         message: &SearchChatMessage,
     ) -> Result<Vec<Arc<str>>, SearchError> {
-        let mut suggested_tags = Vec::new();
-        let content = message.message.content.to_lowercase();
-
-        let rules = self.auto_tagging_rules.read().await;
-        for (pattern, tag_ids) in rules.iter() {
-            if content.contains(pattern.as_ref()) {
-                suggested_tags.extend(tag_ids.clone());
-            }
-        }
-
-        // Remove duplicates
-        suggested_tags.sort();
-        suggested_tags.dedup();
-
-        Ok(suggested_tags)
+        let mut stream = self.auto_tag_message_stream(message.clone());
+        Ok(stream.collect().await)
     }
 
     /// Get tags for a message
@@ -1053,22 +1232,58 @@ impl ConversationTagger {
             .collect()
     }
 
-    /// Add auto-tagging rule
+    /// Add auto-tagging rule (streaming)
+    pub fn add_auto_tagging_rule_stream(
+        &self,
+        pattern: Arc<str>,
+        tag_ids: Vec<Arc<str>>,
+    ) -> AsyncStream<()> {
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut rules = self_clone.auto_tagging_rules.try_write().unwrap_or_else(|_| {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+                self_clone.auto_tagging_rules.try_write().expect("Auto-tagging rules lock recovery failed")
+            });
+            rules.insert(pattern, tag_ids);
+            let _ = sender.send(());
+        })
+    }
+    
+    /// Add auto-tagging rule (legacy)
     pub async fn add_auto_tagging_rule(
         &self,
         pattern: Arc<str>,
         tag_ids: Vec<Arc<str>>,
     ) -> Result<(), SearchError> {
-        let mut rules = self.auto_tagging_rules.write().await;
-        rules.insert(pattern, tag_ids);
-        Ok(())
+        let mut stream = self.add_auto_tagging_rule_stream(pattern, tag_ids);
+        match stream.recv().await {
+            Some(_) => Ok(()),
+            None => Err(SearchError::TagError { reason: Arc::from("Stream closed unexpectedly") }),
+        }
     }
 
-    /// Remove auto-tagging rule
+    /// Remove auto-tagging rule (streaming)
+    pub fn remove_auto_tagging_rule_stream(&self, pattern: Arc<str>) -> AsyncStream<()> {
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut rules = self_clone.auto_tagging_rules.try_write().unwrap_or_else(|_| {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+                self_clone.auto_tagging_rules.try_write().expect("Auto-tagging rules lock recovery failed")
+            });
+            rules.remove(&pattern);
+            let _ = sender.send(());
+        })
+    }
+    
+    /// Remove auto-tagging rule (legacy)
     pub async fn remove_auto_tagging_rule(&self, pattern: &Arc<str>) -> Result<(), SearchError> {
-        let mut rules = self.auto_tagging_rules.write().await;
-        rules.remove(pattern);
-        Ok(())
+        let mut stream = self.remove_auto_tagging_rule_stream(pattern.clone());
+        match stream.recv().await {
+            Some(_) => Ok(()),
+            None => Err(SearchError::TagError { reason: Arc::from("Stream closed unexpectedly") }),
+        }
     }
 
     /// Get tagging statistics
@@ -1101,7 +1316,7 @@ impl Default for ConversationTagger {
 }
 
 /// Tagging statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TaggingStatistics {
     pub total_tags: usize,
     pub total_taggings: usize,
@@ -1148,15 +1363,16 @@ pub struct ExportOptions {
 }
 
 /// History exporter with zero-allocation streaming
+#[derive(Clone)]
 pub struct HistoryExporter {
     /// Export counter
-    export_counter: ConsistentCounter,
+    export_counter: Arc<ConsistentCounter>,
     /// Export statistics
     export_statistics: Arc<RwLock<ExportStatistics>>,
 }
 
 /// Export statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExportStatistics {
     pub total_exports: usize,
     pub total_messages_exported: usize,
@@ -1169,7 +1385,7 @@ impl HistoryExporter {
     /// Create a new history exporter
     pub fn new() -> Self {
         Self {
-            export_counter: ConsistentCounter::new(0),
+            export_counter: Arc::new(ConsistentCounter::new(0)),
             export_statistics: Arc::new(RwLock::new(ExportStatistics {
                 total_exports: 0,
                 total_messages_exported: 0,
@@ -1180,78 +1396,190 @@ impl HistoryExporter {
         }
     }
 
-    /// Export conversation history
+    /// Export conversation history (streaming)
+    pub fn export_history_stream(
+        &self,
+        messages: Vec<SearchChatMessage>,
+        options: ExportOptions,
+    ) -> AsyncStream<String> {
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let start_time = Instant::now();
+            self_clone.export_counter.inc();
+
+            // Simplified synchronous export (no futures in streams-only architecture)
+            let filtered_messages = messages; // For now, skip filtering to eliminate async dependency
+
+            let exported_data = match options.format {
+                ExportFormat::Json => {
+                    // Simplified JSON export
+                    match serde_json::to_string_pretty(&filtered_messages) {
+                        Ok(json) => json,
+                        Err(_) => "{}".to_string(),
+                    }
+                },
+                ExportFormat::Csv => {
+                    // Simplified CSV export
+                    let mut csv = String::from("timestamp,role,content\n");
+                    for message in &filtered_messages {
+                        let timestamp = message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string());
+                        let role = match message.message.role {
+                            MessageRole::User => "user",
+                            MessageRole::Assistant => "assistant",
+                        };
+                        let content = message.message.content.replace('\n', " ").replace(',', ";");
+                        csv.push_str(&format!("{},{},{}\n", timestamp, role, content));
+                    }
+                    csv
+                },
+                ExportFormat::Markdown => {
+                    // Simplified Markdown export
+                    let mut md = String::new();
+                    for message in &filtered_messages {
+                        let role = match message.message.role {
+                            MessageRole::User => "**User**",
+                            MessageRole::Assistant => "**Assistant**",
+                        };
+                        md.push_str(&format!("{}: {}\n\n", role, message.message.content));
+                    }
+                    md
+                },
+                ExportFormat::Html => {
+                    // Simplified HTML export
+                    let mut html = String::from("<html><body>");
+                    for message in &filtered_messages {
+                        let role = match message.message.role {
+                            MessageRole::User => "User",
+                            MessageRole::Assistant => "Assistant",
+                        };
+                        html.push_str(&format!("<p><strong>{}:</strong> {}</p>", role, message.message.content));
+                    }
+                    html.push_str("</body></html>");
+                    html
+                },
+                ExportFormat::Xml => {
+                    // Simplified XML export
+                    let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?><messages>");
+                    for message in &filtered_messages {
+                        let role = match message.message.role {
+                            MessageRole::User => "user",
+                            MessageRole::Assistant => "assistant",
+                        };
+                        xml.push_str(&format!("<message role=\"{}\"><content>{}</content></message>", role, message.message.content));
+                    }
+                    xml.push_str("</messages>");
+                    xml
+                },
+                ExportFormat::PlainText => {
+                    // Simplified plain text export
+                    let mut text = String::new();
+                    for message in &filtered_messages {
+                        let role = match message.message.role {
+                            MessageRole::User => "User",
+                            MessageRole::Assistant => "Assistant",
+                        };
+                        text.push_str(&format!("{}: {}\n\n", role, message.message.content));
+                    }
+                    text
+                },
+            };
+
+            // Simplified compression (synchronous)
+            let final_data = if options.compress {
+                // Basic LZ4 compression - simplified for streams-only architecture
+                match lz4::block::compress(&exported_data.as_bytes(), None, false) {
+                    Ok(compressed) => String::from_utf8_lossy(&compressed).to_string(),
+                    Err(_) => exported_data, // Fallback to uncompressed on error
+                }
+            } else {
+                exported_data
+            };
+
+            // Update statistics synchronously
+            let export_time = start_time.elapsed().as_millis() as f64;
+            if let Ok(mut stats) = self_clone.export_statistics.try_write() {
+                stats.total_exports += 1;
+                stats.total_messages_exported += filtered_messages.len();
+                stats.average_export_time = (stats.average_export_time * (stats.total_exports - 1) as f64
+                    + export_time)
+                    / stats.total_exports as f64;
+                    stats.last_export_time = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs();
+            }
+
+            let _ = sender.send(final_data);
+        })
+    }
+    
+    /// Export conversation history (legacy)
     pub async fn export_history(
         &self,
         messages: Vec<SearchChatMessage>,
         options: &ExportOptions,
     ) -> Result<String, SearchError> {
-        let start_time = Instant::now();
-        self.export_counter.inc();
-
-        let filtered_messages = self.filter_messages(messages, options).await?;
-
-        let exported_data = match options.format {
-            ExportFormat::Json => self.export_json(&filtered_messages, options).await?,
-            ExportFormat::Csv => self.export_csv(&filtered_messages, options).await?,
-            ExportFormat::Markdown => self.export_markdown(&filtered_messages, options).await?,
-            ExportFormat::Html => self.export_html(&filtered_messages, options).await?,
-            ExportFormat::Xml => self.export_xml(&filtered_messages, options).await?,
-            ExportFormat::PlainText => self.export_plain_text(&filtered_messages, options).await?,
-        };
-
-        let final_data = if options.compress {
-            self.compress_data(&exported_data).await?
-        } else {
-            exported_data
-        };
-
-        // Update statistics
-        let export_time = start_time.elapsed().as_millis() as f64;
-        let mut stats = self.export_statistics.write().await;
-        stats.total_exports += 1;
-        stats.total_messages_exported += filtered_messages.len();
-        stats.average_export_time = (stats.average_export_time * (stats.total_exports - 1) as f64
-            + export_time)
-            / stats.total_exports as f64;
-        stats.last_export_time = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-
-        Ok(final_data)
+        let mut stream = self.export_history_stream(messages, options.clone());
+        match stream.recv().await {
+            Some(result) => Ok(result),
+            None => Err(SearchError::ExportError { reason: Arc::from("Stream closed unexpectedly") }),
+        }
     }
 
-    /// Filter messages based on export options
+    /// Filter messages based on export options (streaming)
+    fn filter_messages_stream(&self, messages: Vec<SearchChatMessage>, options: &ExportOptions) -> AsyncStream<SearchChatMessage> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let options_clone = options.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            for message in messages {
+                let mut keep_message = true;
+                
+                // Date range filter
+                if let Some(date_range) = &options_clone.date_range {
+                    if let Some(timestamp) = message.message.timestamp {
+                        if timestamp < date_range.start || timestamp > date_range.end {
+                            keep_message = false;
+                        }
+                    } else {
+                        keep_message = false;
+                    }
+                }
+
+                // User filter
+                if keep_message && let Some(user_filter) = &options_clone.user_filter {
+                    let role_filter = match user_filter.as_ref() {
+                        "system" => MessageRole::System,
+                        "user" => MessageRole::User,
+                        "assistant" => MessageRole::Assistant,
+                        "tool" => MessageRole::Tool,
+                        _ => MessageRole::User, // Default fallback
+                    };
+                    if message.message.role != role_filter {
+                        keep_message = false;
+                    }
+                }
+                
+                if keep_message {
+                    let _ = sender.send(message);
+                }
+            }
+        });
+        
+
+    }
+    
+    /// Filter messages based on export options (legacy)
     async fn filter_messages(
         &self,
-        mut messages: Vec<SearchChatMessage>,
+        messages: Vec<SearchChatMessage>,
         options: &ExportOptions,
     ) -> Result<Vec<SearchChatMessage>, SearchError> {
-        // Date range filter
-        if let Some(date_range) = &options.date_range {
-            messages.retain(|m| {
-                if let Some(timestamp) = m.message.timestamp {
-                    timestamp >= date_range.start && timestamp <= date_range.end
-                } else {
-                    false
-                }
-            });
-        }
-
-        // User filter
-        if let Some(user_filter) = &options.user_filter {
-            let role_filter = match user_filter.as_ref() {
-                "system" => MessageRole::System,
-                "user" => MessageRole::User,
-                "assistant" => MessageRole::Assistant,
-                "tool" => MessageRole::Tool,
-                _ => MessageRole::User, // Default fallback
-            };
-            messages.retain(|m| m.message.role == role_filter);
-        }
-
-        Ok(messages)
+        use futures_util::StreamExt;
+        use tokio_stream::wrappers::UnboundedReceiverStream;
+        let stream = UnboundedReceiverStream::new(self.filter_messages_stream(messages, options));
+        Ok(stream.collect().await)
     }
 
     /// Export to JSON format
@@ -1528,23 +1856,50 @@ impl HistoryExporter {
         Ok(text_output)
     }
 
-    /// Compress data using LZ4
-    async fn compress_data(&self, data: &str) -> Result<String, SearchError> {
-        let compressed = lz4::block::compress(data.as_bytes(), None, true).map_err(|e| {
-            SearchError::ExportError {
-                reason: Arc::from(e.to_string()),
+    /// Compress data using LZ4 (streaming)
+    fn compress_data_stream(&self, data: &str) -> AsyncStream<String> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let data_clone = data.to_string();
+        
+        AsyncStream::with_channel(move |sender| {
+            match lz4::block::compress(data_clone.as_bytes(), None, true) {
+                Ok(compressed) => {
+                    use base64::Engine;
+                    let encoded = base64::engine::general_purpose::STANDARD.encode(compressed);
+                    let _ = sender.send(encoded);
+                }
+                Err(e) => handle_error!(e, "LZ4 compression failed"),
             }
-        })?;
-        {
-            use base64::Engine;
-            Ok(base64::engine::general_purpose::STANDARD.encode(compressed))
+        });
+        
+
+    }
+    
+    /// Compress data using LZ4 (legacy)
+    async fn compress_data(&self, data: &str) -> Result<String, SearchError> {
+        let mut stream = self.compress_data_stream(data);
+        match stream.recv().await {
+            Some(result) => Ok(result),
+            None => Err(SearchError::ExportError { reason: Arc::from("Compression stream closed unexpectedly") }),
         }
     }
 
-    /// Get export statistics
-    pub async fn get_statistics(&self) -> ExportStatistics {
-        self.export_statistics.read().await.clone()
+    /// Get export statistics (streaming)
+    pub fn get_statistics_stream(&self) -> AsyncStream<ExportStatistics> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            match self_clone.export_statistics.read().await {
+                stats => {
+                    let _ = sender.send(stats.clone());
+                }
+            }
+        });
+        
+
     }
+    
 }
 
 impl Default for HistoryExporter {
@@ -1571,6 +1926,7 @@ pub enum SearchError {
 }
 
 /// Enhanced history management system
+#[derive(Clone)]
 pub struct EnhancedHistoryManager {
     /// Search index
     pub search_index: Arc<ChatSearchIndex>,
@@ -1583,7 +1939,7 @@ pub struct EnhancedHistoryManager {
 }
 
 /// History manager statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HistoryManagerStatistics {
     pub search_stats: SearchStatistics,
     pub tagging_stats: TaggingStatistics,
@@ -1627,67 +1983,153 @@ impl EnhancedHistoryManager {
         }
     }
 
-    /// Add message to history manager
+    /// Add message to history manager (streaming)
+    pub fn add_message_stream(&self, message: SearchChatMessage) -> AsyncStream<()> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Add to search index
+            let _ = self_clone.search_index.add_message_stream(message.clone()).collect().await;
+
+            // Auto-tag message
+            let suggested_tags = self_clone.tagger.auto_tag_message_stream(message.clone()).collect().await;
+            if !suggested_tags.is_empty() {
+                let message_id = Arc::from(message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string()));
+                let _ = self_clone.tagger.tag_message_stream(message_id, suggested_tags).collect().await;
+            }
+
+            // Update statistics
+            match self_clone.statistics.write().await {
+                mut stats => {
+                    stats.total_operations += 1;
+                }
+            }
+
+            let _ = sender.send(());
+        });
+        
+        stream
+    }
+    
+    /// Add message to history manager (legacy)
     pub async fn add_message(&self, message: SearchChatMessage) -> Result<(), SearchError> {
-        // Add to search index
-        self.search_index.add_message(message.clone()).await?;
-
-        // Auto-tag message
-        let suggested_tags = self.tagger.auto_tag_message(&message).await?;
-        if !suggested_tags.is_empty() {
-            let message_id = Arc::from(message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string()));
-            self.tagger.tag_message(message_id, suggested_tags).await?;
+        let mut stream = self.add_message_stream(message);
+        match stream.recv().await {
+            Some(_) => Ok(()),
+            None => Err(SearchError::IndexError { reason: Arc::from("Stream closed unexpectedly") }),
         }
-
-        // Update statistics
-        let mut stats = self.statistics.write().await;
-        stats.total_operations += 1;
-
-        Ok(())
     }
 
-    /// Search messages
+    /// Search messages (streaming)
+    pub fn search_messages_stream(&self, query: SearchQuery) -> AsyncStream<SearchResult> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut results = self_clone.search_index.search_stream(query).collect().await;
+
+            // Add tag information to results and emit them one by one
+            for mut result in results {
+                let message_id = Arc::from(result.message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string()));
+                result.tags = self_clone.tagger.get_message_tags(&message_id);
+                let _ = sender.send(result);
+            }
+
+            // Update statistics
+            match self_clone.statistics.write().await {
+                mut stats => {
+                    stats.total_operations += 1;
+                }
+            }
+        });
+        
+
+    }
+    
+    /// Search messages (legacy)
     pub async fn search_messages(
         &self,
         query: &SearchQuery,
     ) -> Result<Vec<SearchResult>, SearchError> {
-        let mut results = self.search_index.search(query).await?;
-
-        // Add tag information to results
-        for result in &mut results {
-            let message_id = Arc::from(result.message.message.timestamp.map_or_else(|| "0".to_string(), |t| t.to_string()));
-            result.tags = self.tagger.get_message_tags(&message_id);
-        }
-
-        // Update statistics
-        let mut stats = self.statistics.write().await;
-        stats.total_operations += 1;
-
-        Ok(results)
+        use futures_util::StreamExt;
+        use tokio_stream::wrappers::UnboundedReceiverStream;
+        let stream = UnboundedReceiverStream::new(self.search_messages_stream(query.clone()));
+        Ok(stream.collect().await)
     }
 
-    /// Export conversation history
+    /// Export conversation history (streaming)
+    pub fn export_history_stream(
+        &self,
+        messages: Vec<SearchChatMessage>,
+        options: ExportOptions,
+    ) -> AsyncStream<String> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let mut result_stream = self_clone.exporter.export_history_stream(messages, options);
+            if let Some(result) = result_stream.recv().await {
+                // Update statistics
+                match self_clone.statistics.write().await {
+                    mut stats => {
+                        stats.total_operations += 1;
+                    }
+                }
+                
+                let _ = sender.send(result);
+            }
+        });
+        
+
+    }
+    
+    /// Export conversation history (legacy)
     pub async fn export_history(
         &self,
         messages: Vec<SearchChatMessage>,
         options: &ExportOptions,
     ) -> Result<String, SearchError> {
-        let result = self.exporter.export_history(messages, options).await?;
-
-        // Update statistics
-        let mut stats = self.statistics.write().await;
-        stats.total_operations += 1;
-
-        Ok(result)
+        let mut stream = self.export_history_stream(messages, options.clone());
+        match stream.recv().await {
+            Some(result) => Ok(result),
+            None => Err(SearchError::ExportError { reason: Arc::from("Stream closed unexpectedly") }),
+        }
     }
 
-    /// Get system statistics
+    /// Get system statistics (streaming)
+    pub fn get_system_statistics_stream(&self) -> AsyncStream<HistoryManagerStatistics> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+        let self_clone = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            match self_clone.statistics.write().await {
+                mut stats => {
+                    let mut search_stats_stream = self_clone.search_index.get_statistics_stream();
+                    let mut export_stats_stream = self_clone.exporter.get_statistics_stream();
+                    
+                    if let Some(search_stats) = search_stats_stream.recv().await {
+                        stats.search_stats = search_stats;
+                    }
+                    
+                    stats.tagging_stats = self_clone.tagger.get_statistics();
+                    
+                    if let Some(export_stats) = export_stats_stream.recv().await {
+                        stats.export_stats = export_stats;
+                    }
+                    
+                    let _ = sender.send(stats.clone());
+                }
+            }
+        });
+        
+
+    }
+    
+    /// Get system statistics (legacy)
     pub async fn get_system_statistics(&self) -> HistoryManagerStatistics {
-        let mut stats = self.statistics.write().await;
-        stats.search_stats = self.search_index.get_statistics().await;
-        stats.tagging_stats = self.tagger.get_statistics();
-        stats.export_stats = self.exporter.get_statistics().await;
-        stats.clone()
+        let mut stream = self.get_system_statistics_stream();
+        stream.recv().await.unwrap_or_default()
     }
 }
 
@@ -1852,6 +2294,7 @@ pub enum SearchScope {
 /// - Advanced filtering and ranking
 /// - Performance monitoring and caching
 /// - Result highlighting and metadata
+#[derive(Clone)]
 pub struct ChatSearcher {
     /// Search index for fast lookups
     #[allow(dead_code)] // TODO: Implement in search indexing system

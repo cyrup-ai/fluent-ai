@@ -13,17 +13,23 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, SystemTime};
 
-use fluent_ai_async::{spawn_stream, spawn_task};
-// Streaming primitives from fluent-ai-async
-use fluent_ai_async::{AsyncStream, AsyncStreamSender, async_stream_channel};
+use fluent_ai_async::{spawn_task};
+
+// Local macro definitions removed - using fluent_ai_async macros instead
+// Streaming primitives from fluent-ai-async  
+// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+// Macros now available from fluent_ai_async crate
 // Removed unused import: futures_util::StreamExt
 // Removed unused import: rayon::prelude
 use serde::{Deserialize, Serialize};
+use serde_json;
 use thiserror::Error;
 use uuid::Uuid;
 
 // Domain imports
 use crate::{ZeroOneOrMany, context::Document};
+
+// Macros now imported from fluent_ai_async - removed local definitions
 
 /// Marker types for Context
 pub struct File;
@@ -297,8 +303,8 @@ impl MemoryIntegration {
 
 /// Immutable embedding model with streaming operations
 pub trait ImmutableEmbeddingModel: Send + Sync + 'static {
-    /// Generate embeddings for text with streaming results
-    fn embed(&self, text: &str, context: Option<String>) -> AsyncStream<Result<Vec<f32>, String>>;
+    /// Generate embeddings for text with streaming results - returns unwrapped values
+    fn embed(&self, text: &str, context: Option<String>) -> AsyncStream<Vec<f32>>;
 
     /// Get model information
     fn model_info(&self) -> EmbeddingModelInfo;
@@ -319,24 +325,24 @@ pub struct EmbeddingModelInfo {
 
 /// Immutable memory manager with streaming operations
 pub trait ImmutableMemoryManager: Send + Sync + 'static {
-    /// Create memory with streaming confirmation
-    fn create_memory(&self, node: MemoryNode) -> AsyncStream<Result<(), String>>;
+    /// Create memory with streaming confirmation - returns unwrapped values
+    fn create_memory(&self, node: MemoryNode) -> AsyncStream<()>;
 
-    /// Search by vector with streaming results
+    /// Search by vector with streaming results - returns unwrapped values
     fn search_by_vector(
         &self,
         vector: Vec<f32>,
         limit: usize,
-    ) -> AsyncStream<Result<MemoryNode, String>>;
+    ) -> AsyncStream<MemoryNode>;
 
-    /// Search by text with streaming results
-    fn search_by_text(&self, query: &str, limit: usize) -> AsyncStream<Result<MemoryNode, String>>;
+    /// Search by text with streaming results - returns unwrapped values
+    fn search_by_text(&self, query: &str, limit: usize) -> AsyncStream<MemoryNode>;
 
-    /// Update memory with streaming confirmation
-    fn update_memory(&self, memory_id: &str, node: MemoryNode) -> AsyncStream<Result<(), String>>;
+    /// Update memory with streaming confirmation - returns unwrapped values
+    fn update_memory(&self, memory_id: &str, node: MemoryNode) -> AsyncStream<()>;
 
-    /// Delete memory with streaming confirmation
-    fn delete_memory(&self, memory_id: &str) -> AsyncStream<Result<(), String>>;
+    /// Delete memory with streaming confirmation - returns unwrapped values
+    fn delete_memory(&self, memory_id: &str) -> AsyncStream<()>;
 
     /// Get memory manager information
     fn manager_info(&self) -> MemoryManagerInfo;
@@ -399,22 +405,22 @@ impl StreamingContextProcessor {
     /// Create processor with event streaming
     #[inline]
     pub fn with_streaming(processor_id: String) -> (Self, AsyncStream<ContextEvent>) {
-        let (sender, stream) = channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
         let mut processor = Self::new(processor_id);
         processor.event_sender = Some(sender);
         (processor, stream)
     }
 
-    /// Process file context with streaming results
+    /// Process file context with streaming results - returns unwrapped values
     #[inline]
     pub fn process_file_context(
         &self,
         context: ImmutableFileContext,
-    ) -> AsyncStream<Result<Document, ContextError>> {
+    ) -> AsyncStream<Document> {
         let _processor_id = self.processor_id.clone();
         let event_sender = self.event_sender.clone();
 
-        spawn_stream(move |sender| {
+        AsyncStream::with_channel(move |sender| {
             let start_time = SystemTime::now();
 
             // Emit context load started event
@@ -429,7 +435,7 @@ impl StreamingContextProcessor {
             // Validate input
             if let Err(validation_error) = Self::validate_file_context(&context) {
                 let error = ContextError::ValidationError(validation_error.to_string());
-                let _ = sender.send(Err(error.clone()));
+                fluent_ai_async::handle_error!(error, "File context validation failed");
 
                 // Emit validation failed event
                 if let Some(ref events) = event_sender {
@@ -446,7 +452,7 @@ impl StreamingContextProcessor {
             match Self::load_file_document(&context) {
                 Ok(document) => {
                     let duration = start_time.elapsed().unwrap_or(Duration::ZERO);
-                    let _ = sender.send(Ok(document));
+                    let _ = sender.send(document);
 
                     // Emit context load completed event
                     if let Some(ref events) = event_sender {
@@ -460,7 +466,7 @@ impl StreamingContextProcessor {
                     }
                 }
                 Err(error) => {
-                    let _ = sender.send(Err(error.clone()));
+                    fluent_ai_async::handle_error!(error, "File document loading failed");
 
                     // Emit context load failed event
                     if let Some(ref events) = event_sender {
@@ -500,16 +506,17 @@ impl StreamingContextProcessor {
         // Implementation would read file and create Document
         // For now, create a basic document structure
         Ok(Document {
-            id: Uuid::new_v4().to_string(),
-            content: format!("Content from file: {}", context.path),
-            metadata: {
-                let mut meta = HashMap::new();
-                meta.insert("path".to_string(), context.path.clone());
-                meta.insert("size".to_string(), context.size_bytes.to_string());
-                meta.insert("hash".to_string(), context.content_hash.clone());
-                meta
+            data: format!("Content from file: {}", context.path),
+            format: Some(crate::context::ContentFormat::Text),
+            media_type: Some(crate::context::DocumentMediaType::TXT),
+            additional_props: {
+                let mut props = HashMap::new();
+                props.insert("id".to_string(), serde_json::Value::String(Uuid::new_v4().to_string()));
+                props.insert("path".to_string(), serde_json::Value::String(context.path.clone()));
+                props.insert("size".to_string(), serde_json::Value::String(context.size_bytes.to_string()));
+                props.insert("hash".to_string(), serde_json::Value::String(context.content_hash.clone()));
+                props
             },
-            embedding: None,
         })
     }
 
@@ -629,18 +636,16 @@ impl Context<File> {
         Self::new(ContextSourceType::File(file_context))
     }
 
-    /// Load document asynchronously with streaming
+    /// Load document asynchronously with streaming - returns unwrapped values
     #[inline]
-    pub fn load(self) -> AsyncStream<Result<Document, ContextError>> {
+    pub fn load(self) -> AsyncStream<Document> {
         match self.source {
             ContextSourceType::File(file_context) => {
                 self.processor.process_file_context(file_context)
             }
             _ => {
-                let (sender, stream) = channel();
-                let _ = sender.send(Err(ContextError::ContextNotFound(
-                    "Invalid context type".to_string(),
-                )));
+                // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
+                fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for file loading");
                 stream
             }
         }
@@ -662,10 +667,10 @@ impl Context<Files> {
         Self::new(ContextSourceType::Files(files_context))
     }
 
-    /// Load documents asynchronously with streaming
+    /// Load documents asynchronously with streaming - returns unwrapped values
     #[inline]
-    pub fn load(self) -> AsyncStream<Result<ZeroOneOrMany<Document>, ContextError>> {
-        let (sender, stream) = channel();
+    pub fn load(self) -> AsyncStream<ZeroOneOrMany<Document>> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 
         spawn_task(move || {
             match self.source {
@@ -677,9 +682,15 @@ impl Context<Files> {
                             for entry in paths.flatten() {
                                 if let Ok(content) = std::fs::read_to_string(&entry) {
                                     let document = Document {
-                                        path: entry.to_string_lossy().to_string(),
-                                        content,
-                                        metadata: HashMap::new(),
+                                        data: content,
+                                        format: Some(crate::context::ContentFormat::Text),
+                                        media_type: Some(crate::context::DocumentMediaType::TXT),
+                                        additional_props: {
+                                            let mut props = HashMap::new();
+                                            props.insert("id".to_string(), serde_json::Value::String(Uuid::new_v4().to_string()));
+                                            props.insert("path".to_string(), serde_json::Value::String(entry.to_string_lossy().to_string()));
+                                            props
+                                        },
                                     };
                                     documents.push(document);
                                 }
@@ -689,19 +700,15 @@ impl Context<Files> {
                                 1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
                                 _ => ZeroOneOrMany::Many(documents),
                             };
-                            let _ = sender.send(Ok(result));
+                            let _ = sender.send(result);
                         }
                         Err(e) => {
-                            let _ = sender.send(Err(ContextError::ContextNotFound(
-                                format!("Glob pattern error: {}", e)
-                            )));
+                            fluent_ai_async::handle_error!(ContextError::ContextNotFound(format!("Glob pattern error: {}", e)), "Glob pattern expansion failed");
                         }
                     }
                 }
                 _ => {
-                    let _ = sender.send(Err(ContextError::ContextNotFound(
-                        "Invalid context type".to_string(),
-                    )));
+                    fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for files loading");
                 }
             }
         });
@@ -726,10 +733,10 @@ impl Context<Directory> {
         Self::new(ContextSourceType::Directory(directory_context))
     }
 
-    /// Load documents asynchronously with streaming
+    /// Load documents asynchronously with streaming - returns unwrapped values
     #[inline]
-    pub fn load(self) -> AsyncStream<Result<ZeroOneOrMany<Document>, ContextError>> {
-        let (sender, stream) = channel();
+    pub fn load(self) -> AsyncStream<ZeroOneOrMany<Document>> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 
         spawn_task(move || {
             match self.source {
@@ -768,9 +775,15 @@ impl Context<Directory> {
                                 if should_include {
                                     if let Ok(content) = std::fs::read_to_string(&path) {
                                         let document = Document {
-                                            path: path.to_string_lossy().to_string(),
-                                            content,
-                                            metadata: HashMap::new(),
+                                            data: content,
+                                            format: Some(crate::context::ContentFormat::Text),
+                                            media_type: Some(crate::context::DocumentMediaType::TXT),
+                                            additional_props: {
+                                                let mut props = HashMap::new();
+                                                props.insert("id".to_string(), serde_json::Value::String(Uuid::new_v4().to_string()));
+                                                props.insert("path".to_string(), serde_json::Value::String(path.to_string_lossy().to_string()));
+                                                props
+                                            },
                                         };
                                         documents.push(document);
                                     }
@@ -798,19 +811,15 @@ impl Context<Directory> {
                                 1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
                                 _ => ZeroOneOrMany::Many(documents),
                             };
-                            let _ = sender.send(Ok(result));
+                            let _ = sender.send(result);
                         }
                         Err(e) => {
-                            let _ = sender.send(Err(ContextError::ContextNotFound(
-                                format!("Directory traversal error: {}", e)
-                            )));
+                            fluent_ai_async::handle_error!(ContextError::ContextNotFound(format!("Directory traversal error: {}", e)), "Directory traversal failed");
                         }
                     }
                 }
                 _ => {
-                    let _ = sender.send(Err(ContextError::ContextNotFound(
-                        "Invalid context type".to_string(),
-                    )));
+                    fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for directory loading");
                 }
             }
         });
@@ -835,38 +844,32 @@ impl Context<Github> {
         Self::new(ContextSourceType::Github(github_context))
     }
 
-    /// Load documents asynchronously with streaming
+    /// Load documents asynchronously with streaming - returns unwrapped values
     #[inline]
-    pub fn load(self) -> AsyncStream<Result<ZeroOneOrMany<Document>, ContextError>> {
-        let (sender, stream) = channel();
+    pub fn load(self) -> AsyncStream<ZeroOneOrMany<Document>> {
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 
         spawn_task(move || {
             match self.source {
                 ContextSourceType::Github(github_context) => {
                     // GitHub repository file loading implementation
                     if github_context.repository_url.is_empty() {
-                        let _ = sender.send(Err(ContextError::ContextNotFound(
-                            "GitHub repository URL is required".to_string()
-                        )));
+                        fluent_ai_async::handle_error!(ContextError::ContextNotFound("GitHub repository URL is required".to_string()), "GitHub repository URL missing");
                         return;
                     }
                     
                     // For now, return a meaningful error indicating GitHub integration needs external dependencies
                     // This is production-ready error handling rather than a placeholder
-                    let _ = sender.send(Err(ContextError::ContextNotFound(
-                        format!(
-                            "GitHub repository loading for '{}' requires git2 or GitHub API integration. \
-                            Pattern: '{}', Branch: '{}'", 
-                            github_context.repository_url,
-                            github_context.pattern,
-                            github_context.branch
-                        )
-                    )));
+                    fluent_ai_async::handle_error!(ContextError::ContextNotFound(format!(
+                        "GitHub repository loading for '{}' requires git2 or GitHub API integration. \
+                        Pattern: '{}', Branch: '{}'", 
+                        github_context.repository_url,
+                        github_context.pattern,
+                        github_context.branch
+                    )), "GitHub integration not implemented");
                 }
                 _ => {
-                    let _ = sender.send(Err(ContextError::ContextNotFound(
-                        "Invalid context type".to_string(),
-                    )));
+                    fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for GitHub loading");
                 }
             }
         });

@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::AsyncTask;
+// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 use crate::ZeroOneOrMany;
 use crate::context::chunk::EmbeddingChunk;
 use crate::model::Usage;
@@ -24,21 +24,22 @@ pub trait EmbeddingModel: Send + Sync + Clone {
     where
         F: Fn(ZeroOneOrMany<f32>) -> ZeroOneOrMany<f32> + Send + Sync + 'static,
     {
-        let (sender, receiver) = crate::AsyncStream::channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 
-        // Get embedding task and process result through handler
+        // Get embedding task and process result through handler using streaming
         let embedding_task = self.embed(text);
-        let result = embedding_task.collect();
-        match result {
-            Ok(embedding) => {
+        
+        tokio::spawn(async move {
+            use tokio_stream::StreamExt;
+            let mut stream = embedding_task;
+            if let Some(embedding) = stream.next().await {
                 let processed = handler(embedding);
-                sender.send(processed);
-            }
-            Err(_) => {
+                let _ = sender.send(processed);
+            } else {
                 // Handle error case - send empty embedding
-                sender.send(ZeroOneOrMany::None);
+                let _ = sender.send(ZeroOneOrMany::None);
             }
-        }
+        });
 
         receiver
     }

@@ -325,7 +325,7 @@ fn good_llm_call() -> AsyncStream<String> {
 }
 ```
 
-### STREAMING CONVERSION EXAMPLES
+### CLEAN STREAMING PATTERN
 
 ```rust
 // BAD - Async function with await
@@ -335,20 +335,35 @@ pub async fn embed_text(text: &str) -> Result<Vec<f32>, EmbedError> {
     Ok(embedding)
 }
 
-// GOOD - Streaming function with unwrapped values
+// GOOD - Clean streaming function
 pub fn embed_text_stream(text: &str) -> AsyncStream<Vec<f32>> {
-    let (sender, receiver) = channel::<Vec<f32>>();
-    
-    let response_stream = client.post_stream(url);
-    response_stream.on_chunk(|chunk| {
-        match parse_embedding(chunk) {
-            Ok(embedding) => emit!(sender, embedding),
-            Err(err) => handle_error!(err, "Embedding parse failed"),
-        }
-    });
-    
-    receiver
+    AsyncStream::with_channel(|sender| {
+        let response_stream = client.post_stream(url);
+        response_stream.on_chunk(|chunk| {
+            match parse_embedding(chunk) {
+                Ok(embedding) => { let _ = sender.send(embedding); },
+                Err(err) => handle_error!(err, "Embedding parse failed"),
+            }
+        });
+    })
 }
+```
+
+### USAGE PATTERNS
+
+```rust
+// Streaming (preferred - real-time processing)
+for embedding in embed_text_stream("hello") {
+    process_embedding(embedding);
+}
+
+// Future-like (when needed - collect all results)
+let final_embedding = embed_text_stream("hello").collect();
+
+// Chaining operations
+let filtered = embed_text_stream("hello")
+    .filter(|e| e.len() > 100)
+    .collect();
 ```
 
 ### FUTURE-LIKE BEHAVIOR WITH .collect()

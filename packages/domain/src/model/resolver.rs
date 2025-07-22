@@ -236,14 +236,12 @@ impl ModelResolver {
         model_name: &str,
         provider: Option<&str>,
     ) -> AsyncStream<ModelResolution> {
-        let (sender, stream) = AsyncStream::channel();
-
         let registry = self.registry.clone();
         let resolver = self.clone();
         let model_name = model_name.to_string();
         let provider = provider.map(|s| s.to_string());
 
-        tokio::spawn(async move {
+        AsyncStream::with_channel(move |sender| {
             match resolver.resolve_with_registry::<M>(&registry, &model_name, provider.as_deref()) {
                 Ok(resolution) => {
                     let _ = sender.try_send(resolution);
@@ -255,9 +253,7 @@ impl ModelResolver {
                     let _ = sender.try_send(fallback);
                 }
             }
-        });
-
-        stream
+        })
     }
 
     /// Resolve a model by name and optional provider using a specific registry
@@ -338,7 +334,7 @@ impl ModelResolver {
         model_name: &str,
         provider: Option<&str>,
     ) -> AsyncStream<Option<RegisteredModel<M>>> {
-        let (sender, stream) = AsyncStream::channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 
         let resolver = self.clone();
         let model_name = model_name.to_string();

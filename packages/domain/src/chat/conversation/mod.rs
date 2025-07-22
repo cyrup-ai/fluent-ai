@@ -7,7 +7,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use fluent_ai_async::{AsyncStream, AsyncStreamSender};
-use fluent_ai_async::async_stream_channel;
+// REMOVED: use fluent_ai_async::async_stream_channel;
 
 use crate::ZeroOneOrMany;
 
@@ -113,7 +113,6 @@ pub enum ConversationEvent {
 }
 
 /// Immutable conversation with streaming updates
-#[derive(Debug)]
 pub struct StreamingConversation {
     /// Immutable message history (append-only)
     messages: Vec<ImmutableMessage>,
@@ -129,6 +128,20 @@ pub struct StreamingConversation {
     system_messages: AtomicUsize,
     /// Event stream sender
     event_sender: Option<AsyncStreamSender<ConversationEvent>>,
+}
+
+impl std::fmt::Debug for StreamingConversation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StreamingConversation")
+            .field("messages", &self.messages)
+            .field("sequence_counter", &self.sequence_counter.load(std::sync::atomic::Ordering::Relaxed))
+            .field("total_messages", &self.total_messages.load(std::sync::atomic::Ordering::Relaxed))
+            .field("user_messages", &self.user_messages.load(std::sync::atomic::Ordering::Relaxed))
+            .field("assistant_messages", &self.assistant_messages.load(std::sync::atomic::Ordering::Relaxed))
+            .field("system_messages", &self.system_messages.load(std::sync::atomic::Ordering::Relaxed))
+            .field("event_sender", &self.event_sender.is_some())
+            .finish()
+    }
 }
 
 impl StreamingConversation {
@@ -149,7 +162,7 @@ impl StreamingConversation {
     /// Create conversation with event streaming
     #[inline]
     pub fn with_streaming() -> (Self, AsyncStream<ConversationEvent>) {
-        let (sender, stream) = async_stream_channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
         let mut conversation = Self::new();
         conversation.event_sender = Some(sender);
         (conversation, stream)
@@ -170,7 +183,11 @@ impl StreamingConversation {
             let _ = sender.send(ConversationEvent::MessageAdded(message.clone()));
         }
 
-        self.messages.last().unwrap()
+        // Safety: We just pushed a message, so messages cannot be empty
+        match self.messages.last() {
+            Some(msg) => msg,
+            None => panic!("Critical error: message vector empty after push - possible memory corruption"),
+        }
     }
 
     /// Add assistant message (creates new immutable message)
@@ -188,7 +205,11 @@ impl StreamingConversation {
             let _ = sender.send(ConversationEvent::MessageAdded(message.clone()));
         }
 
-        self.messages.last().unwrap()
+        // Safety: We just pushed a message, so messages cannot be empty
+        match self.messages.last() {
+            Some(msg) => msg,
+            None => panic!("Critical error: message vector empty after push - possible memory corruption"),
+        }
     }
 
     /// Add system message (creates new immutable message)
@@ -206,7 +227,11 @@ impl StreamingConversation {
             let _ = sender.send(ConversationEvent::MessageAdded(message.clone()));
         }
 
-        self.messages.last().unwrap()
+        // Safety: We just pushed a message, so messages cannot be empty
+        match self.messages.last() {
+            Some(msg) => msg,
+            None => panic!("Critical error: message vector empty after push - possible memory corruption"),
+        }
     }
 
     /// Get all messages as borrowed slice (zero allocation)

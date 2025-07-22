@@ -276,11 +276,11 @@ impl TypingIndicator {
     ) -> Result<(), RealTimeError> {
         let key = format!("{}:{}", user_id, session_id);
 
-        let typing_state = if let Some(existing) = self.typing_states.get(&key) {
+        let typing_state = if let Some(existing) = self.typing_states.get(key.as_str()) {
             existing.value().clone()
         } else {
             let new_state = Arc::new(TypingState::new(user_id.clone(), session_id.clone()));
-            self.typing_states.insert(key, new_state.clone());
+            self.typing_states.insert(key.into(), new_state.clone());
             self.active_users.inc();
             new_state
         };
@@ -311,7 +311,7 @@ impl TypingIndicator {
     ) -> Result<(), RealTimeError> {
         let key = format!("{}:{}", user_id, session_id);
 
-        if let Some(typing_state) = self.typing_states.get(&key) {
+        if let Some(typing_state) = self.typing_states.get(key.as_str()) {
             typing_state.value().stop_typing();
             self.typing_events.inc();
 
@@ -919,7 +919,7 @@ impl ConnectionManager {
         session_id: Arc<str>,
     ) -> Result<(), RealTimeError> {
         let connection_key = Arc::from(format!("{}:{}", user_id, session_id));
-        let connection_state = Arc::new(ConnectionState::new(user_id.clone(), session_id.clone()));
+        let connection_state = Arc::new(ConnectionState::new(user_id.to_string(), session_id.to_string()));
 
         self.connections.insert(connection_key, connection_state);
         self.connection_counter.inc();
@@ -959,8 +959,8 @@ impl ConnectionManager {
 
             // Broadcast user left event
             let event = RealTimeEvent::UserLeft {
-                user_id: user_id.clone(),
-                session_id: session_id.clone(),
+                user_id: user_id.to_string(),
+                session_id: session_id.to_string(),
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
@@ -987,8 +987,8 @@ impl ConnectionManager {
 
             // Broadcast heartbeat event
             let event = RealTimeEvent::HeartbeatReceived {
-                user_id: user_id.clone(),
-                session_id: session_id.clone(),
+                user_id: user_id.to_string(),
+                session_id: session_id.to_string(),
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()

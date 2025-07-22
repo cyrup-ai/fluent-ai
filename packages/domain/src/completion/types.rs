@@ -33,10 +33,16 @@ pub struct CompletionParams {
 
 impl Default for CompletionParams {
     fn default() -> Self {
+        // SAFETY: 1 is non-zero, so this is safe to use as a const
+        const ONE: std::num::NonZeroU8 = match std::num::NonZeroU8::new(1) {
+            Some(n) => n,
+            None => unreachable!("1 is non-zero"),
+        };
+        
         Self {
             temperature: 1.0,
             max_tokens: None,
-            n: std::num::NonZeroU8::new(1).unwrap(),
+            n: ONE,
             stream: false,
         }
     }

@@ -5,7 +5,7 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use fluent_ai_async::{AsyncStream, async_stream_channel};
+use fluent_ai_async::{AsyncStream};
 use serde::{Deserialize, Serialize};
 
 use crate::model::Usage;
@@ -167,7 +167,7 @@ impl<'a> CompletionResponseBuilder<'a> {
 
 /// A more compact representation of a completion response using Arcs for shared ownership
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CompactCompletionResponse<'a> {
+pub struct CompactCompletionResponse {
     /// The generated completion text
     pub content: Arc<str>,
     /// The model that generated the completion
@@ -181,24 +181,23 @@ pub struct CompactCompletionResponse<'a> {
     /// Response time in milliseconds
     pub response_time_ms: u64,
 
-    #[serde(skip)]
-    _marker: std::marker::PhantomData<&'a ()>,
+
 }
 
 /// Builder for `CompactCompletionResponse`
-pub struct CompactCompletionResponseBuilder<'a> {
+pub struct CompactCompletionResponseBuilder {
     content: Option<Arc<str>>,
     model: Option<Arc<str>>,
     provider: Option<Arc<str>>,
     tokens_used: u32,
     finish_reason: Option<Arc<str>>,
     response_time_ms: u64,
-    _marker: std::marker::PhantomData<&'a ()>,
+
 }
 
-impl<'a> CompactCompletionResponse<'a> {
+impl CompactCompletionResponse {
     /// Create a new builder for a compact completion response
-    pub fn builder() -> CompactCompletionResponseBuilder<'static> {
+    pub fn builder() -> CompactCompletionResponseBuilder {
         CompactCompletionResponseBuilder::new()
     }
 
@@ -225,7 +224,7 @@ impl<'a> CompactCompletionResponse<'a> {
     }
 }
 
-impl<'a> CompactCompletionResponseBuilder<'a> {
+impl CompactCompletionResponseBuilder {
     /// Create a new builder
     pub fn new() -> Self {
         Self {
@@ -235,7 +234,7 @@ impl<'a> CompactCompletionResponseBuilder<'a> {
             tokens_used: 0,
             finish_reason: None,
             response_time_ms: 0,
-            _marker: std::marker::PhantomData,
+
         }
     }
 
@@ -276,10 +275,8 @@ impl<'a> CompactCompletionResponseBuilder<'a> {
     }
 
     /// Build the compact response
-    pub fn build(self) -> AsyncStream<CompactCompletionResponse<'a>> {
-        let (sender, stream) = async_stream_channel();
-
-        tokio::spawn(async move {
+    pub fn build(self) -> AsyncStream<CompactCompletionResponse> {
+        AsyncStream::with_channel(move |sender| {
             let response = CompactCompletionResponse {
                 content: self.content.unwrap_or_else(|| Arc::from("")),
                 model: self.model.unwrap_or_else(|| Arc::from("unknown")),
@@ -287,12 +284,10 @@ impl<'a> CompactCompletionResponseBuilder<'a> {
                 tokens_used: self.tokens_used,
                 finish_reason: self.finish_reason.unwrap_or_else(|| Arc::from("stop")),
                 response_time_ms: self.response_time_ms,
-                _marker: std::marker::PhantomData,
+
             };
 
             let _ = sender.send(response);
-        });
-
-        stream
+        })
     }
 }

@@ -9,7 +9,7 @@
 // • No runtime checks – all invariants enforced by the type-system.
 // ============================================================================
 
-use std::{marker::PhantomData, mem};
+use std::marker::PhantomData;
 
 use crate::{
     completion::{
@@ -74,16 +74,32 @@ where
 
     /// Push a *user* message.
     #[inline(always)]
-    pub fn user(mut self, txt: impl Into<String>) -> Self {
+    pub fn user(mut self, txt: impl Into<String>) -> CompletionRequestBuilder<M, WithContent> {
         self.messages.push(Message::user(txt.into()));
-        unsafe { mem::transmute(self) } // transitions to `WithContent`
+        // Safe transition to WithContent state
+        CompletionRequestBuilder {
+            model: self.model,
+            messages: self.messages,
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            top_p: self.top_p,
+            _state: PhantomData,
+        }
     }
 
     /// Push an arbitrary message.
     #[inline(always)]
-    pub fn push(mut self, msg: Message) -> Self {
+    pub fn push(mut self, msg: Message) -> CompletionRequestBuilder<M, WithContent> {
         self.messages.push(msg);
-        unsafe { mem::transmute(self) }
+        // Safe transition to WithContent state
+        CompletionRequestBuilder {
+            model: self.model,
+            messages: self.messages,
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            top_p: self.top_p,
+            _state: PhantomData,
+        }
     }
 
     // -------- generation params --------------------------------------------

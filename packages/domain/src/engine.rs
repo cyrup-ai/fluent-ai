@@ -10,7 +10,24 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::completion::CompletionResponse;
-use crate::{AsyncTask, spawn_task};
+use crate::{AsyncStream, AsyncTask, spawn_task};
+
+/// Emit value to stream sender without panicking on channel errors
+macro_rules! emit {
+    ($sender:expr, $value:expr) => {
+        if let Err(_) = $sender.send($value) {
+            // Handle channel full/closed - continue processing
+        }
+    };
+}
+
+/// Handle errors in streaming context without panicking
+macro_rules! handle_error {
+    ($error:expr, $context:literal) => {
+        eprintln!("Streaming error in {}: {}", $context, $error);
+        // Continue processing instead of returning error
+    };
+}
 
 /// Engine-specific error types with minimal allocations
 #[derive(Error, Debug, Clone)]
@@ -309,7 +326,9 @@ impl Engine {
     ) -> AsyncTask<EngineResult<CompletionResponse<'static>>> {
         // Validate request first
         if let Err(e) = request.validate() {
-            return spawn_task(async move { Err(e) });
+            return spawn_task(move || {
+                Err(e)
+            });
         }
 
         // Atomic operations for metrics (lock-free)
@@ -337,13 +356,11 @@ impl Engine {
         let tools: Vec<String> = request.tools.iter().map(|s| s.to_string()).collect();
         let metadata = request.metadata.map(|s| s.to_string());
 
-        // Atomic references for completion tracking
-        let active_requests = &self.active_requests;
-        let successful_requests = &self.successful_requests;
-        let failed_requests = &self.failed_requests;
+        // We'll update metrics after the task completes, not during
 
-        spawn_task(async move {
-            let result = Self::execute_completion(
+        spawn_task(move || {
+            // Create streaming completion and collect first result for backward compatibility
+            let mut stream = Self::execute_completion_stream(
                 request_id,
                 model_name,
                 provider,
@@ -358,27 +375,19 @@ impl Engine {
                 history,
                 tools,
                 metadata,
-            )
-            .await;
+            );
 
-            // Update metrics atomically
-            active_requests.fetch_sub(1, Ordering::Relaxed);
-
-            match &result {
-                Ok(_) => {
-                    successful_requests.fetch_add(1, Ordering::Relaxed);
-                }
-                Err(_) => {
-                    failed_requests.fetch_add(1, Ordering::Relaxed);
-                }
+            // Try to get the first item from stream
+            if let Some(response) = stream.try_next() {
+                Ok(response)
+            } else {
+                Err(EngineError::InternalError("No response from stream".to_string()))
             }
-
-            result
         })
     }
 
-    /// Execute completion request (internal implementation)
-    async fn execute_completion(
+    /// Execute completion request as stream (internal implementation)
+    fn execute_completion_stream(
         _request_id: u64,
         _model_name: String,
         _provider: String,
@@ -393,10 +402,87 @@ impl Engine {
         _history: Vec<String>,
         _tools: Vec<String>,
         _metadata: Option<String>,
-    ) -> EngineResult<CompletionResponse<'static>> {
-        // TODO: Implement actual completion logic with provider clients
-        // This would integrate with the provider system to make actual API calls
-        Err(EngineError::InternalError("Not implemented".to_string()))
+    ) -> AsyncStream<CompletionResponse<'static>> {
+        AsyncStream::with_channel(move |_sender| {
+            // TODO: Implement actual completion logic with provider clients
+            // This would integrate with the provider system to make actual API calls
+            
+            // For now, handle the "not implemented" error through streaming
+            let error = EngineError::InternalError("Not implemented".to_string());
+            handle_error!(error, "execute_completion_stream");
+        })
+    }
+
+    /// Process completion request as stream (new primary API)
+    #[inline] 
+    pub fn process_completion_stream(
+        &self,
+        request: CompletionRequest<'_>,
+    ) -> AsyncStream<CompletionResponse<'static>> {
+        // Validate request first
+        if let Err(e) = request.validate() {
+            return AsyncStream::with_channel(move |_sender| {
+                handle_error!(e, "process_completion_stream validation");
+            });
+        }
+
+        // Atomic operations for metrics (lock-free)
+        let request_id = self.request_count.fetch_add(1, Ordering::Relaxed);
+        self.active_requests.fetch_add(1, Ordering::Relaxed);
+
+        // Clone necessary data for async processing
+        let model_name = self.config.model_name.clone();
+        let provider = self.config.provider.clone();
+        let api_key = self.config.api_key.clone();
+        let timeout = self.config.timeout_seconds;
+        let max_tokens = self.config.max_tokens;
+        let temperature = self.config.temperature;
+        let streaming = self.config.enable_streaming;
+        let endpoint = self.config.endpoint_url.clone();
+
+        // Convert borrowed request data to owned for async processing
+        let prompt = request.prompt.to_string();
+        let system_prompt = request.system_prompt.map(|s| s.to_string());
+        let history: Vec<String> = request
+            .conversation_history
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let tools: Vec<String> = request.tools.iter().map(|s| s.to_string()).collect();
+        let metadata = request.metadata.map(|s| s.to_string());
+
+        AsyncStream::with_channel(move |sender| {
+            let mut completion_stream = Self::execute_completion_stream(
+                request_id,
+                model_name,
+                provider,
+                api_key,
+                timeout,
+                max_tokens,
+                temperature,
+                streaming,
+                endpoint,
+                prompt,
+                system_prompt,
+                history,
+                tools,
+                metadata,
+            );
+
+            // Process completion responses from the stream using try_next
+            while let Some(response) = completion_stream.try_next() {
+                let _ = sender.send(response);
+            }
+        })
+    }
+
+    /// Get streaming completion results (convenience method)
+    #[inline]
+    pub fn get_completion_stream(
+        &self,
+        request: CompletionRequest<'_>,
+    ) -> AsyncStream<CompletionResponse<'static>> {
+        self.process_completion_stream(request)
     }
 
     /// Get engine statistics

@@ -11,7 +11,7 @@ pub type AsyncStreamSender<T> = mpsc::UnboundedSender<T>;
 /// This is the primary factory for creating streams in the fluent-ai ecosystem.
 /// It returns a sender and a receiver, where the receiver is already wrapped
 /// in the canonical `AsyncStream` type.
-pub fn async_stream_channel<T>() -> (AsyncStreamSender<T>, AsyncStream<T>) {
+// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
     let (tx, rx) = mpsc::unbounded_channel();
     (tx, tokio_stream::wrappers::UnboundedReceiverStream::new(rx))
 }

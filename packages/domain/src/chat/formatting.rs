@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
-use fluent_ai_async::{AsyncStream, AsyncStreamSender};
+// TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -626,7 +626,6 @@ pub enum FormattingEvent {
 }
 
 /// Streaming message formatter with atomic state tracking
-#[derive(Debug)]
 pub struct StreamingMessageFormatter {
     /// Content counter (atomic)
     content_counter: AtomicU64,
@@ -642,6 +641,20 @@ pub struct StreamingMessageFormatter {
     event_sender: Option<AsyncStreamSender<FormattingEvent>>,
     /// Formatter configuration
     options: ImmutableFormatOptions,
+}
+
+impl std::fmt::Debug for StreamingMessageFormatter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StreamingMessageFormatter")
+            .field("content_counter", &self.content_counter.load(std::sync::atomic::Ordering::Relaxed))
+            .field("active_operations", &self.active_operations.load(std::sync::atomic::Ordering::Relaxed))
+            .field("total_operations", &self.total_operations.load(std::sync::atomic::Ordering::Relaxed))
+            .field("successful_operations", &self.successful_operations.load(std::sync::atomic::Ordering::Relaxed))
+            .field("failed_operations", &self.failed_operations.load(std::sync::atomic::Ordering::Relaxed))
+            .field("event_sender", &self.event_sender.is_some())
+            .field("options", &self.options)
+            .finish()
+    }
 }
 
 impl StreamingMessageFormatter {
@@ -666,7 +679,7 @@ impl StreamingMessageFormatter {
         options: ImmutableFormatOptions,
     ) -> FormatResult<(Self, AsyncStream<FormattingEvent>)> {
         options.validate()?;
-        let (sender, stream) = AsyncStream::channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
         let formatter = Self {
             content_counter: AtomicU64::new(0),
             active_operations: AtomicUsize::new(0),

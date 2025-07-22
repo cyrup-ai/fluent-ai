@@ -375,7 +375,7 @@ impl CommandValidator {
     /// Validate template/macro variables
     fn validate_variables(
         &self,
-        variables: &HashMap<Arc<str>, Arc<str>>,
+        variables: &HashMap<String, String>,
     ) -> Result<(), ValidationError> {
         if variables.len() > self.max_parameter_count {
             return Err(ValidationError::TooManyParameters {
@@ -395,7 +395,7 @@ impl CommandValidator {
     /// Validate tool arguments
     fn validate_tool_args(
         &self,
-        args: &HashMap<Arc<str>, Arc<str>>,
+        args: &HashMap<String, String>,
     ) -> Result<(), ValidationError> {
         if args.len() > self.max_parameter_count {
             return Err(ValidationError::TooManyParameters {
@@ -415,7 +415,7 @@ impl CommandValidator {
     /// Validate theme properties
     fn validate_theme_properties(
         &self,
-        properties: &HashMap<Arc<str>, Arc<str>>,
+        properties: &HashMap<String, String>,
     ) -> Result<(), ValidationError> {
         if properties.len() > self.max_parameter_count {
             return Err(ValidationError::TooManyParameters {

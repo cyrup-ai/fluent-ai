@@ -70,7 +70,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
         let system_prompt = self.system_prompt.clone();
         let text = text.to_string();
 
-        let (sender, stream) = AsyncStream::channel();
+        // TODO: Convert async_stream_channel to AsyncStream::with_channel pattern
         
         tokio::spawn(async move {
             let prompt = if let Some(sys_prompt) = system_prompt {
@@ -105,7 +105,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor
 impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> ExtractorImpl<T> {
     async fn execute_extraction(
         agent: Agent,
-        completion_request: CompletionRequest<'_>,
+        completion_request: CompletionRequest,
         _text_input: String,
     ) -> Result<T, ExtractionError> {
         let model = AgentCompletionModel::new(agent);

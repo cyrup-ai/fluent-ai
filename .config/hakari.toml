@@ -27,18 +27,14 @@ platforms = [
 # exact-versions = true
 
 # Exclude problematic packages that cause CUDA builds on non-CUDA systems
-# Let each project define their own candle dependencies instead of through workspace-hack
+# Focus on crates.io dependencies that actually cause build issues
 [final-excludes]
 third-party = [
-    { name = "candle-core", git = "https://github.com/huggingface/candle", branch = "main" },
-    { name = "candle-nn", git = "https://github.com/huggingface/candle", branch = "main" },
-    { name = "candle-transformers", git = "https://github.com/huggingface/candle", branch = "main" },
-    { name = "candle-flash-attn", git = "https://github.com/huggingface/candle", branch = "main" },
-    { name = "candle-onnx", git = "https://github.com/huggingface/candle", branch = "main" },
-    { name = "candle-datasets", git = "https://github.com/huggingface/candle", branch = "main" },
-    { name = "cudarc", version = "0.16" },
-    { name = "bindgen_cuda" },
-    { name = "half", version = "2" },
+    # CUDA-specific dependencies that should be excluded on Metal-default systems
+    { name = "cudarc" },
+    { name = "bindgen_cuda" }, 
+    { name = "half" },
+    # Platform-specific accelerations
     { name = "accelerate-src" },
     { name = "intel-mkl-src" }
 ]

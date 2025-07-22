@@ -51,9 +51,8 @@ pub struct SurrealDBMemoryManager {
 // Removed unused import: smallvec::SmallVec
 
 // Removed unused import: crate::ZeroOneOrMany
-// Removed unused imports: AsyncTask, spawn_async
+// Removed unused imports: AsyncTask, spawn_async  
 use fluent_ai_async::AsyncStream;
-use fluent_ai_async::async_stream_channel;
 use once_cell::sync::Lazy;
 
 use crate::memory::primitives::MemoryNode;
@@ -388,9 +387,7 @@ impl Memory {
     /// # Performance
     /// Zero allocation initialization with lock-free connection pooling
     pub fn new(config: MemoryConfig) -> AsyncStream<Self> {
-        let (sender, stream) = async_stream_channel();
-
-        tokio::spawn(async move {
+        AsyncStream::with_channel(move |sender| {
             let current_time = std::time::SystemTime::now();
             let timestamp_nanos = current_time
                 .duration_since(std::time::UNIX_EPOCH)
@@ -410,9 +407,7 @@ impl Memory {
                 last_accessed: current_time,
             };
             let _ = sender.send(memory_instance);
-        });
-
-        stream
+        })
     }
 
     /// Create memory instance with default configuration
@@ -435,15 +430,11 @@ impl Memory {
     /// # Returns
     /// AsyncStream that completes when the memory is stored
     pub fn store_memory(&self, _memory_node: &MemoryNode) -> AsyncStream<Result<(), MemoryError>> {
-        let (sender, stream) = AsyncStream::channel();
-
-        tokio::spawn(async move {
+        AsyncStream::with_channel(move |sender| {
             // Stub implementation - always return success
             let result = Ok(());
-            let _ = sender.try_send(result);
-        });
-
-        stream
+            let _ = sender.send(result);
+        })
     }
 
     /// Create memory stub for testing or fallback scenarios
