@@ -40,17 +40,17 @@ pub trait VoiceService: Send + Sync + 'static {
     fn transcribe(
         &self,
         request: TranscriptionRequest,
-    ) -> fluent_ai_http3::async_task::AsyncTask<Result<TranscriptionResponse<()>>>;
+    ) -> crate::AsyncTask<Result<TranscriptionResponse<()>>>;
 
     /// Convert text to speech
     fn synthesize(
         &self,
         text: &str,
         voice_id: &str,
-    ) -> fluent_ai_http3::async_task::AsyncTask<Result<Vec<u8>>>;
+    ) -> crate::AsyncTask<Result<Vec<u8>>>;
 
     /// List available voices
-    fn list_voices(&self) -> fluent_ai_http3::async_task::AsyncTask<Result<Vec<VoiceInfo>>>;
+    fn list_voices(&self) -> crate::AsyncTask<Result<Vec<VoiceInfo>>>;
 }
 
 /// Information about an available voice

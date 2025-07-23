@@ -12,6 +12,7 @@ use crate::ZeroOneOrMany;
 use crate::chat::Message as ChatMessage;
 use crate::context::Document;
 use crate::model::{ValidationError, ValidationResult};
+use crate::AsyncStream;
 
 /// A request for text completion
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,18 +163,16 @@ impl CompletionRequestBuilder {
     /// Set the temperature
     pub fn temperature(self, temp: f64) -> AsyncStream<Self> {
         let builder = self;
-        spawn_task(move || {
+        AsyncStream::with_channel(move |sender| {
             let mut updated_builder = builder;
             if TEMPERATURE_RANGE.contains(&temp) {
                 updated_builder.temperature = temp;
-                let _ = sender.send(updated_builder);
+                let _ = sender.try_send(updated_builder);
             } else {
                 // Emit the validation error as part of the stream - let on_chunk handler deal with it
-                let _ = sender.send(builder);
+                let _ = sender.try_send(builder);
             }
-        });
-
-        stream
+        })
     }
 
     /// Set the maximum number of tokens
@@ -185,13 +184,11 @@ impl CompletionRequestBuilder {
     /// Set the chunk size for streaming
     pub fn chunk_size(self, size: Option<usize>) -> AsyncStream<Self> {
         let builder = self;
-        spawn_task(move || {
+        AsyncStream::with_channel(move |sender| {
             let mut updated_builder = builder;
             updated_builder.chunk_size = size;
-            let _ = sender.send(updated_builder);
-        });
-
-        stream
+            let _ = sender.try_send(updated_builder);
+        })
     }
 
     /// Set additional parameters
@@ -203,7 +200,7 @@ impl CompletionRequestBuilder {
     /// Build the request
     pub fn build(self) -> AsyncStream<CompletionRequest> {
         let builder = self;
-        spawn_task(move || {
+        AsyncStream::with_channel(move |sender| {
             let request = CompletionRequest {
                 system_prompt: builder.system_prompt,
                 chat_history: builder.chat_history,
@@ -216,9 +213,7 @@ impl CompletionRequestBuilder {
             };
 
             // Always emit the result - let on_chunk handler deal with validation
-            let _ = sender.send(request);
-        });
-
-        stream
+            let _ = sender.try_send(request);
+        })
     }
 }

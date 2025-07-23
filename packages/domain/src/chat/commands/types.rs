@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use crate::{AsyncStream, AsyncStreamSender};
 
 /// Command execution errors with minimal allocations
 #[derive(Error, Debug, Clone)]
@@ -604,7 +605,31 @@ impl StreamingCommandExecutor {
 
     /// Create executor with event streaming
     #[inline]
-    pub fn with_streaming() -> (Self, AsyncStream<CommandEvent>) {        let (sender, stream) = AsyncStream::with_channel();
+    pub fn with_streaming() -> (Self, AsyncStream<CommandEvent>) {
+        // Create a channel for storing the sender
+        let (tx, rx) = std::sync::mpsc::channel();
+        
+        // Create AsyncStream that will receive the sender
+        let stream = AsyncStream::with_channel(move |sender| {
+            // Send the sender through the channel so we can store it
+            let _ = tx.send(sender);
+            // Keep the thread alive but don't emit any events initially
+            std::thread::park();
+        });
+        
+        // Get the sender from the channel
+        let event_sender = rx.recv().ok();
+        
+        let executor = Self {
+            execution_counter: AtomicU64::new(0),
+            active_executions: AtomicUsize::new(0),
+            total_executions: AtomicU64::new(0),
+            successful_executions: AtomicU64::new(0),
+            failed_executions: AtomicU64::new(0),
+            event_sender,
+        };
+        
+        (executor, stream)
     }
 
     /// Execute command with streaming events
@@ -1539,8 +1564,9 @@ impl CommandHandler for DefaultCommandHandler {
         context: CommandContext,
         command: ImmutableChatCommand,
     ) -> AsyncStream<CommandOutput> {
-        // Execute command based on type
-        let output = match &command {
+        AsyncStream::with_channel(move |sender| {
+            // Execute command based on type
+            let output = match &command {
             ImmutableChatCommand::Help {
                 command: cmd,
                 extended,
@@ -1594,10 +1620,9 @@ impl CommandHandler for DefaultCommandHandler {
             ),
         };
 
-        // Send output through stream
-        let _ = sender.send(output.final_output());
-
-        stream
+            // Send output through stream
+            let _ = sender.try_send(output.final_output());
+        })
     }
 
     fn name(&self) -> &'static str {

@@ -338,17 +338,17 @@ impl ModelResolver {
         let model_name = model_name.to_string();
         let provider = provider.map(|s| s.to_string());
 
-        tokio::spawn(async move {
-            let resolution_stream = resolver.resolve::<M>(&model_name, provider.as_deref());
-            let mut stream_pin = Box::pin(resolution_stream);
-
-            if let Some(resolution) = StreamExt::next(&mut stream_pin).await {
+        AsyncStream::with_channel(move |sender| {
+            let mut resolution_stream = resolver.resolve::<M>(&model_name, provider.as_deref());
+            
+            // Use proper streams-only pattern - no await allowed
+            if let Some(resolution) = resolution_stream.try_next() {
                 if resolution.is_valid() {
                     if let Ok(model) = resolver
                         .registry
                         .get::<M>(&resolution.provider, &resolution.model)
                     {
-                        let _ = sender.try_send(model);
+                        let _ = sender.try_send(Some(model));
                     } else {
                         let _ = sender.try_send(None);
                     }
@@ -358,9 +358,7 @@ impl ModelResolver {
             } else {
                 let _ = sender.try_send(None);
             }
-        });
-
-        stream
+        })
     }
 
     /// Get the default provider (if any)

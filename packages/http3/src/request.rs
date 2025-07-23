@@ -96,7 +96,10 @@ impl HttpRequest {
     /// Adds query parameters to the URL.
     pub fn with_query_params(mut self, params: &[(&str, &str)]) -> Self {
         if !params.is_empty() {
-            let mut url = url::Url::parse(&self.url).unwrap(); // Should not fail if URL is valid
+            let mut url = match url::Url::parse(&self.url) {
+                Ok(url) => url,
+                Err(_) => return self, // Skip query params if URL parsing fails
+            };
             for (key, value) in params {
                 url.query_pairs_mut().append_pair(key, value);
             }

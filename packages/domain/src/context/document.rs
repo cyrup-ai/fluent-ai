@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use fluent_ai_http3::async_task::error_handlers::BadTraitImpl;
+// Removed fluent_ai_http3::async_task import - not needed for streams-only architecture
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -76,15 +76,15 @@ impl DocumentLoader {
 
 // All builder implementations moved to fluent_ai/src/builders/document.rs
 
-/// BadTraitImpl for Document - returns empty document as the bad implementation
-impl BadTraitImpl for Document {
-    fn bad_impl(error: &str) -> Self {
-        eprintln!("Document BadTraitImpl: {}", error);
-        Document {
-            data: format!("Error loading document: {}", error),
-            format: Some(ContentFormat::Text),
-            media_type: Some(DocumentMediaType::TXT),
-            additional_props: HashMap::new(),
-        }
-    }
-}
+// Removed BadTraitImpl implementation - not needed for streams-only architecture
+// impl BadTraitImpl for Document {
+//     fn bad_impl(error: &str) -> Self {
+//         eprintln!("Document BadTraitImpl: {}", error);
+//         Document {
+//             data: format!("Error loading document: {}", error),
+//             format: Some(ContentFormat::Text),
+//             media_type: Some(DocumentMediaType::TXT),
+//             additional_props: HashMap::new(),
+//         }
+//     }
+// }

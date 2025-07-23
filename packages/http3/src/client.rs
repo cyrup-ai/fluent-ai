@@ -18,8 +18,6 @@ pub struct HttpClient {
     inner: reqwest::Client,
     /// Client configuration
     config: HttpConfig,
-    /// Client creation timestamp
-    start_time: SystemTime,
     /// Atomic metrics for lock-free statistics
     stats: ClientStats,
 }
@@ -42,19 +40,44 @@ impl HttpClient {
 
     /// Executes a request and returns a stream of `HttpChunk`s.
     pub fn execute_streaming(&self, request: HttpRequest) -> HttpStream {
+        self.execute_streaming_with_debug(request, false)
+    }
+
+    /// Executes a request with optional debug logging
+    pub fn execute_streaming_with_debug(&self, request: HttpRequest, debug: bool) -> HttpStream {
+        if debug {
+            println!("🚀 HTTP Request: {} {}", request.method(), request.url());
+            if let Some(body) = request.body() {
+                println!("📤 Request Body: {} bytes", body.len());
+            }
+            println!("📋 Request Headers:");
+            for (name, value) in request.headers().iter() {
+                if let Ok(value_str) = value.to_str() {
+                    println!("  {}: {}", name, value_str);
+                }
+            }
+        }
+
         let client = self.inner.clone();
-        let reqwest_request = client
+        let reqwest_request = match client
             .request(request.method().clone(), request.url())
             .headers(request.headers().clone())
-            .body(request.body().cloned().unwrap_or_default())
+            .body(request.body().cloned().unwrap_or_else(Vec::new))
             .build()
-            .unwrap(); // This should be handled more gracefully
+        {
+            Ok(req) => req,
+            Err(e) => {
+                let error_stream = stream! { yield Err(HttpError::from(e)); };
+                return HttpStream::new(Box::pin(error_stream));
+            }
+        };
 
         let response_stream = stream! {
             match client.execute(reqwest_request).await {
                 Ok(response) => {
                     let status = response.status();
                     let headers = response.headers().clone();
+                    log::debug!("HTTP Response: {} {}", status.as_u16(), status.canonical_reason().unwrap_or(""));
                     yield Ok(HttpChunk::Head(status, headers));
 
                     let mut byte_stream = response.bytes_stream();
@@ -80,12 +103,18 @@ impl HttpClient {
     /// Executes a download request and returns a stream of `DownloadChunk`s.
     pub fn download_file(&self, request: HttpRequest) -> DownloadStream {
         let client = self.inner.clone();
-        let reqwest_request = client
+        let reqwest_request = match client
             .request(request.method().clone(), request.url())
             .headers(request.headers().clone())
-            .body(request.body().cloned().unwrap_or_default())
+            .body(request.body().cloned().unwrap_or_else(Vec::new))
             .build()
-            .unwrap(); // This should be handled more gracefully
+        {
+            Ok(req) => req,
+            Err(e) => {
+                let error_stream = stream! { yield Err(HttpError::from(e)); };
+                return DownloadStream::new(Box::pin(error_stream));
+            }
+        };
 
         let download_stream = stream! {
             match client.execute(reqwest_request).await {
@@ -125,29 +154,49 @@ impl HttpClient {
     }
 }
 
+/// Thread-safe client statistics with atomic counters
 #[derive(Debug, Default, Clone)]
 pub struct ClientStats {
+    /// Total number of HTTP requests made
     pub request_count: Arc<AtomicUsize>,
+    /// Total number of connections established
     pub connection_count: Arc<AtomicUsize>,
+    /// Total bytes sent in request bodies
     pub total_bytes_sent: Arc<AtomicU64>,
+    /// Total bytes received in response bodies
     pub total_bytes_received: Arc<AtomicU64>,
+    /// Total response time across all requests in nanoseconds
     pub total_response_time_nanos: Arc<AtomicU64>,
+    /// Number of successful requests (2xx status codes)
     pub successful_requests: Arc<AtomicUsize>,
+    /// Number of failed requests (4xx/5xx status codes or network errors)
     pub failed_requests: Arc<AtomicUsize>,
+    /// Number of cache hits
     pub cache_hits: Arc<AtomicUsize>,
+    /// Number of cache misses
     pub cache_misses: Arc<AtomicUsize>,
 }
 
+/// Immutable snapshot of client statistics at a point in time
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientStatsSnapshot {
+    /// Total number of HTTP requests made
     pub request_count: usize,
+    /// Total number of connections established
     pub connection_count: usize,
+    /// Total bytes sent in request bodies
     pub total_bytes_sent: u64,
+    /// Total bytes received in response bodies
     pub total_bytes_received: u64,
+    /// Total response time across all requests in nanoseconds
     pub total_response_time_nanos: u64,
+    /// Number of successful requests (2xx status codes)
     pub successful_requests: usize,
+    /// Number of failed requests (4xx/5xx status codes or network errors)
     pub failed_requests: usize,
+    /// Number of cache hits
     pub cache_hits: usize,
+    /// Number of cache misses
     pub cache_misses: usize,
 }
 
@@ -189,7 +238,6 @@ impl Default for HttpClient {
         Self {
             inner,
             config,
-            start_time: SystemTime::now(),
             stats: ClientStats::default(),
         }
     }

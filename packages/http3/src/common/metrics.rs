@@ -1,7 +1,7 @@
 //! Lock-free metrics collection for HTTP operations
 
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// Lock-free metrics collector using atomic counters
 #[derive(Debug)]
@@ -88,11 +88,17 @@ impl MetricsCollector {
 /// Request metrics snapshot
 #[derive(Debug, Clone)]
 pub struct RequestMetrics {
+    /// Total number of HTTP requests made
     pub total_requests: usize,
+    /// Number of successful requests (2xx status)
     pub successful_requests: usize,
+    /// Number of failed requests (4xx/5xx status or errors)
     pub failed_requests: usize,
+    /// Average response time across all requests
     pub average_response_time: Duration,
+    /// Total bytes sent in request bodies
     pub total_bytes_sent: u64,
+    /// Total bytes received in response bodies
     pub total_bytes_received: u64,
 }
 
@@ -110,13 +116,17 @@ impl RequestMetrics {
 /// Operation-specific metrics
 #[derive(Debug, Clone)]
 pub struct OperationMetrics {
+    /// Type of HTTP operation (GET, POST, etc.)
     pub operation_type: String,
+    /// Number of operations of this type
     pub count: usize,
+    /// Average response time for this operation type
     pub average_response_time: Duration,
+    /// Success rate for this operation type (0.0-1.0)
     pub success_rate: f64,
 }
 
-/// Global metrics instance
 lazy_static::lazy_static! {
+    /// Global metrics instance
     pub static ref GLOBAL_METRICS: MetricsCollector = MetricsCollector::new();
 }

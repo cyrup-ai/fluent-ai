@@ -19,7 +19,7 @@
 use arrayvec::ArrayVec;
 use core::sync::atomic::{AtomicU64, Ordering};
 use crate::hub::{create_client, create_download_config, Backend, ProgressData};
-use fluent_ai_stream::{on_chunk, AsyncStream};
+use fluent_ai_async::AsyncStream;
 
 use super::mod_::KimiK2Config; // re-exported via `mod.rs`
 

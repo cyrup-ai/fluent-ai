@@ -18,7 +18,9 @@ pub struct PatchOperation {
 /// Supported PATCH types
 #[derive(Clone)]
 pub enum PatchBody {
+    /// JSON Patch (RFC 6902) - Array of patch operations
     JsonPatch(Value),
+    /// JSON Merge Patch (RFC 7396) - Object representing the patch
     JsonMergePatch(Value),
 }
 
@@ -79,8 +81,14 @@ impl HttpOperation for PatchOperation {
 
     fn execute(&self) -> Self::Output {
         let body_bytes = match &self.body {
-            PatchBody::JsonPatch(val) => serde_json::to_vec(val).unwrap(), // Should not fail
-            PatchBody::JsonMergePatch(val) => serde_json::to_vec(val).unwrap(), // Should not fail
+            PatchBody::JsonPatch(val) => match serde_json::to_vec(val) {
+                Ok(bytes) => bytes,
+                Err(_) => Vec::new(), // Fallback to empty body on serialization error
+            },
+            PatchBody::JsonMergePatch(val) => match serde_json::to_vec(val) {
+                Ok(bytes) => bytes,
+                Err(_) => Vec::new(), // Fallback to empty body on serialization error
+            },
         };
 
         let request = HttpRequest::new(

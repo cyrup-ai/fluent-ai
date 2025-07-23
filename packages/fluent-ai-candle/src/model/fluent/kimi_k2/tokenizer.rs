@@ -34,7 +34,7 @@ use crate::error::{CandleError, CandleResult};
 use arrayvec::ArrayVec;
 use fluent_ai_http3::config::HttpConfig;
 use fluent_ai_http3::client::HttpClient;
-use fluent_ai_stream::AsyncStream;
+use fluent_ai_async::AsyncStream;
 use std::sync::Arc;
 
 /// Special token literals as per `tokenizer_config.json`.

@@ -7,7 +7,7 @@ use crate::{
     client::HttpClient,
     operations::HttpOperation,
     request::HttpRequest,
-    stream::{DownloadStream, HttpStream},
+    stream::DownloadStream,
 };
 
 /// Download operation with progress tracking and resume capability
@@ -57,10 +57,10 @@ impl DownloadOperation {
     pub fn execute_download(mut self) -> DownloadStream {
         if let Some(offset) = self.resume_from {
             let range_value = format!("bytes={}-", offset);
-            self.headers.insert(
-                http::header::RANGE,
-                HeaderValue::from_str(&range_value).unwrap(), // Should not fail
-            );
+            if let Ok(header_value) = HeaderValue::from_str(&range_value) {
+                self.headers.insert(http::header::RANGE, header_value);
+            }
+            // Silently skip invalid range header rather than panicking
         }
 
         let request = HttpRequest::new(

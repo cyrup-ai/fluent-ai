@@ -55,7 +55,10 @@ impl HeaderManager {
 pub enum HeaderError {
     /// Represents an error when a header value is invalid.
     #[error("Invalid header value: {message}")]
-    InvalidHeaderValue { message: String },
+    InvalidHeaderValue { 
+        /// Error message describing the invalid header value
+        message: String 
+    },
 }
 
 impl From<http::header::InvalidHeaderValue> for HeaderError {

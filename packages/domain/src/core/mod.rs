@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use arc_swap::ArcSwap;
 use crossbeam_utils::CachePadded;
-use fluent_ai_http3::async_task::AsyncTask;
+use crate::AsyncTask;
 use once_cell::sync::Lazy;
 
 use crate::memory::MemoryError;

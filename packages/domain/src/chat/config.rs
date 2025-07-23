@@ -863,16 +863,16 @@ impl ConfigurationManager {
 
     /// Update configuration atomically
     pub fn update_config(&self, new_config: ChatConfig) -> AsyncStream<()> {
-        let manager = self.clone();
+        let config_store = self.config.clone();
         AsyncStream::with_channel(move |sender| {
             // Validate the new configuration (sync validation)
             // manager.validate_config(&new_config); // Remove .await
 
-            let old_config = manager.config.load_full();
+            let old_config = config_store.load_full();
             let config_arc = Arc::new(new_config);
 
             // Perform atomic update
-            manager.config.store(config_arc.clone());
+            config_store.store(config_arc.clone());
 
             // Create change event
             let change_event = ConfigurationChangeEvent {

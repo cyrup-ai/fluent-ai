@@ -9,51 +9,100 @@ use thiserror::Error;
 pub enum HttpError {
     /// Network error
     #[error("Network error: {message}")]
-    NetworkError { message: String },
+    NetworkError { 
+        /// Error message describing the network issue
+        message: String 
+    },
 
     /// Client configuration error
     #[error("Client error: {message}")]
-    ClientError { message: String },
+    ClientError { 
+        /// Error message describing the client configuration issue
+        message: String 
+    },
 
     /// HTTP status error
     #[error("HTTP {status}: {message}")]
     HttpStatus {
+        /// HTTP status code
         status: u16,
+        /// Error message describing the status error
         message: String,
+        /// Response body content
         body: String,
     },
 
     /// Timeout error
     #[error("Request timeout: {message}")]
-    Timeout { message: String },
+    Timeout { 
+        /// Error message describing the timeout
+        message: String 
+    },
 
     /// Serialization error
     #[error("Serialization error: {message}")]
-    SerializationError { message: String },
+    SerializationError { 
+        /// Error message describing the serialization issue
+        message: String 
+    },
 
     /// Deserialization error
     #[error("Deserialization error: {message}")]
-    DeserializationError { message: String },
+    DeserializationError { 
+        /// Error message describing the deserialization issue
+        message: String 
+    },
+
+    /// Runtime error
+    #[error("Runtime error: {message}")]
+    RuntimeError { 
+        /// Error message describing the runtime issue
+        message: String 
+    },
+
+    /// Stream error
+    #[error("Stream error: {message}")]
+    StreamError { 
+        /// Error message describing the stream issue
+        message: String 
+    },
 
     /// URL parsing error
     #[error("URL parsing error: {message}")]
-    UrlParseError { message: String },
+    UrlParseError { 
+        /// Error message describing the URL parsing issue
+        message: String 
+    },
 
     /// Invalid URL error
     #[error("Invalid URL '{url}': {message}")]
-    InvalidUrl { url: String, message: String },
+    InvalidUrl { 
+        /// The invalid URL that caused the error
+        url: String, 
+        /// Error message describing the URL issue
+        message: String 
+    },
 
     /// Invalid response error
     #[error("Invalid response: {message}")]
-    InvalidResponse { message: String },
+    InvalidResponse { 
+        /// Error message describing the response issue
+        message: String 
+    },
 
     /// TLS error
     #[error("TLS error: {message}")]
-    TlsError { message: String },
+    TlsError { 
+        /// Error message describing the TLS issue
+        message: String 
+    },
 
     /// Connection error
     #[error("Connection error: {message}")]
-    ConnectionError { message: String },
+    ConnectionError { 
+        /// Error message describing the connection issue
+        message: String 
+    },
 
     /// IO error
     #[error("IO error: {0}")]
@@ -61,34 +110,54 @@ pub enum HttpError {
 
     /// Invalid header error
     #[error("Invalid header: {message}")]
-    InvalidHeader { message: String },
+    InvalidHeader { 
+        /// Error message describing the header issue
+        message: String 
+    },
 
     /// Custom error for middleware and other uses
     #[error("Custom error: {message}")]
-    Custom { message: String },
+    Custom { 
+        /// Custom error message
+        message: String 
+    },
 
     /// Error processing a response chunk during collection
     #[error("Chunk processing error: {source}")]
     ChunkProcessingError {
+        /// The underlying JSON error that occurred
         source: std::sync::Arc<serde_json::Error>,
+        /// The response body that failed to process
         body: Vec<u8>,
     },
 
     /// Download was interrupted
     #[error("Download interrupted: {message}")]
-    DownloadInterrupted { message: String },
+    DownloadInterrupted { 
+        /// Error message describing the interruption
+        message: String 
+    },
 
     /// Invalid content length
     #[error("Invalid content length: {message}")]
-    InvalidContentLength { message: String },
+    InvalidContentLength { 
+        /// Error message describing the content length issue
+        message: String 
+    },
 
     /// A retryable error
     #[error("Retryable error: {message}")]
-    Retryable { message: String },
+    Retryable { 
+        /// Error message for the retryable error
+        message: String 
+    },
 
     /// A non-retryable error
     #[error("Non-retryable error: {message}")]
-    NonRetryable { message: String },
+    NonRetryable { 
+        /// Error message for the non-retryable error
+        message: String 
+    },
 }
 
 impl HttpError {

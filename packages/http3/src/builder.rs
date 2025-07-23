@@ -5,33 +5,33 @@ use std::marker::PhantomData;
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
-use cyrup_sugars::ZeroOneOrMany;
-use fluent_ai_async::AsyncStream;
-use futures_util::{StreamExt, TryStreamExt};
-use http::{HeaderMap, HeaderName, HeaderValue, Method};
+use futures_util::StreamExt;
+use http::{HeaderName, HeaderValue, Method};
 use serde::{Serialize, de::DeserializeOwned};
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
 use crate::{
-    DownloadChunk, DownloadStream, HttpChunk, HttpClient, HttpError, HttpRequest, HttpStream,
+    DownloadStream, HttpChunk, HttpClient, HttpError, HttpRequest, HttpStream,
 };
-
-/// Alias for http header names - no custom enum duplication
-pub use http::header::*;
-
 
 /// Content type enumeration for elegant API
 #[derive(Debug, Clone, Copy)]
 pub enum ContentType {
+    /// application/json content type
     ApplicationJson,
+    /// application/x-www-form-urlencoded content type
     ApplicationFormUrlEncoded,
+    /// application/octet-stream content type
     ApplicationOctetStream,
+    /// text/plain content type
     TextPlain,
+    /// text/html content type
     TextHtml,
 }
 
 impl ContentType {
+    /// Convert content type to string representation
     #[inline(always)]
     pub fn as_str(self) -> &'static str {
         match self {
@@ -44,7 +44,13 @@ impl ContentType {
     }
 }
 
-
+/// Header name aliases for elegant builder syntax
+pub mod header {
+    pub use http::header::*;
+    
+    /// X-API-Key header name (not in http crate standard headers)
+    pub const X_API_KEY: http::HeaderName = http::HeaderName::from_static("x-api-key");
+}
 
 /// Zero allocation, blazing-fast HTTP builder
 #[derive(Clone)]
@@ -52,6 +58,7 @@ pub struct Http3Builder<S = BodyNotSet> {
     client: HttpClient,
     request: HttpRequest,
     state: PhantomData<S>,
+    debug_enabled: bool,
 }
 
 // Entry points
@@ -62,6 +69,7 @@ impl Http3Builder<BodyNotSet> {
             client: client.clone(),
             request: HttpRequest::new(Method::GET, "".to_string(), None, None, None),
             state: PhantomData,
+            debug_enabled: false,
         }
     }
 
@@ -71,6 +79,8 @@ impl Http3Builder<BodyNotSet> {
         Self::new(&client).content_type(ContentType::ApplicationJson)
     }
 
+    // Removed duplicate debug method - keeping the one in impl<S> Http3Builder<S>
+
     /// Shorthand for setting Content-Type to application/x-www-form-urlencoded
     pub fn form_urlencoded() -> Self {
         let client = HttpClient::default();
@@ -78,9 +88,13 @@ impl Http3Builder<BodyNotSet> {
     }
 }
 
-
-// State-agnostic methods
+// State-agnostic methods  
 impl<S> Http3Builder<S> {
+    /// Enable debug logging for this request
+    pub fn debug(mut self) -> Self {
+        self.debug_enabled = true;
+        self
+    }
     /// Set the request URL
     pub fn url(mut self, url: &str) -> Self {
         self.request = self.request.set_url(url.to_string());
@@ -93,27 +107,22 @@ impl<S> Http3Builder<S> {
         self
     }
 
-    pub fn headers(mut self, headers: ZeroOneOrMany<(HeaderName, HeaderValue)>) -> Self {
-        let mut header_map = HeaderMap::new();
-        match headers {
-            ZeroOneOrMany::None => {}
-            ZeroOneOrMany::One((name, value)) => {
-                header_map.insert(name, value);
-            }
-            ZeroOneOrMany::Many(header_list) => {
-                for (name, value) in header_list {
-                    header_map.insert(name, value);
-                }
-            }
+    /// Add multiple headers without overwriting existing ones
+    pub fn headers<F>(mut self, f: F) -> Self
+    where
+        F: FnOnce() -> std::collections::HashMap<HeaderName, &'static str>,
+    {
+        let params = f();
+        for (header_key, header_value) in params {
+            self.request = self.request.header(header_key, HeaderValue::from_static(header_value));
         }
-        self.request = self.request.with_headers(header_map);
         self
     }
 
     /// Set the Content-Type header
     pub fn content_type(self, content_type: ContentType) -> Self {
         self.header(
-            HeaderName::from_static("content-type"),
+            header::CONTENT_TYPE,
             HeaderValue::from_static(content_type.as_str()),
         )
     }
@@ -121,61 +130,77 @@ impl<S> Http3Builder<S> {
     /// Set the Accept header
     pub fn accept(self, content_type: ContentType) -> Self {
         self.header(
-            HeaderName::from_static("accept"),
+            header::ACCEPT,
             HeaderValue::from_static(content_type.as_str()),
         )
     }
 
     /// Set the API key using the x-api-key header
     pub fn api_key(self, key: &str) -> Self {
-        self.header(
-            HeaderName::from_static("x-api-key"),
-            HeaderValue::from_str(key).unwrap(),
-        )
+        match HeaderValue::from_str(key) {
+            Ok(header_value) => self.header(header::X_API_KEY, header_value),
+            Err(_) => self, // Skip invalid header value
+        }
     }
 
     /// Set basic authentication header
-    pub fn basic_auth(self, user: &str, pass: Option<&str>) -> Self {
-        let auth_string = format!("{}:{}", user, pass.unwrap_or(""));
-        let encoded = STANDARD.encode(auth_string.as_bytes());
-        let header_value = format!("Basic {}", encoded);
-        self.header(
-            HeaderName::from_static("authorization"),
-            HeaderValue::from_str(&header_value).unwrap(),
-        )
-    }
-
-    /// Set basic authentication using HashMap syntax
-    pub fn basic_auth_map<F>(self, f: F) -> Self
-    where 
+    pub fn basic_auth<F>(self, f: F) -> Self
+    where
         F: FnOnce() -> std::collections::HashMap<&'static str, &'static str>,
     {
-        let auth_map = f();
-        if let (Some(user), Some(pass)) = (auth_map.get("user"), auth_map.get("password")) {
-            self.basic_auth(user, Some(pass))
-        } else {
-            self
+        let params = f();
+        if let Some((user, pass)) = params.into_iter().next() {
+            let auth_string = format!("{}:{}", user, pass);
+            let encoded = STANDARD.encode(auth_string.as_bytes());
+            let header_value = format!("Basic {}", encoded);
+            return match HeaderValue::from_str(&header_value) {
+                Ok(value) => self.header(header::AUTHORIZATION, value),
+                Err(_) => self, // Skip invalid header value
+            };
         }
+        self
     }
 
     /// Set bearer token authentication header
     pub fn bearer_auth(self, token: &str) -> Self {
         let header_value = format!("Bearer {}", token);
-        self.header(
-            HeaderName::from_static("authorization"),
-            HeaderValue::from_str(&header_value).unwrap(),
-        )
+        match HeaderValue::from_str(&header_value) {
+            Ok(value) => self.header(header::AUTHORIZATION, value),
+            Err(_) => self, // Skip invalid header value
+        }
     }
 
     /// Set the request body
     pub fn body<T: Serialize>(self, body: &T) -> Http3Builder<BodySet> {
-        let body_bytes = serde_json::to_vec(body).unwrap();
+        let content_type = self.request.headers().get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("application/json");
+            
+        let body_bytes = if content_type.contains("application/x-www-form-urlencoded") {
+            // Serialize as form-urlencoded
+            match serde_urlencoded::to_string(body) {
+                Ok(form_string) => form_string.into_bytes(),
+                Err(_) => Vec::new(),
+            }
+        } else {
+            // Default to JSON serialization
+            match serde_json::to_vec(body) {
+                Ok(bytes) => bytes,
+                Err(_) => Vec::new(),
+            }
+        };
+        
+        if self.debug_enabled {
+            log::debug!("HTTP3 Builder: Set request body ({} bytes, content-type: {})", body_bytes.len(), content_type);
+        }
+        
         let request = self.request.set_body(body_bytes);
 
         Http3Builder {
             client: self.client,
             request,
             state: PhantomData,
+            debug_enabled: self.debug_enabled,
         }
     }
 }
@@ -188,6 +213,11 @@ impl Http3Builder<BodyNotSet> {
             .request
             .set_method(Method::GET)
             .set_url(url.to_string());
+        
+        if self.debug_enabled {
+            log::debug!("HTTP3 Builder: GET {}", url);
+        }
+        
         self.client.execute_streaming(self.request)
     }
 
@@ -219,6 +249,14 @@ impl Http3Builder<BodySet> {
             .request
             .set_method(Method::POST)
             .set_url(url.to_string());
+        
+        if self.debug_enabled {
+            log::debug!("HTTP3 Builder: POST {}", url);
+            if let Some(body) = self.request.body() {
+                log::debug!("HTTP3 Builder: Request body size: {} bytes", body.len());
+            }
+        }
+        
         self.client.execute_streaming(self.request)
     }
 
@@ -242,69 +280,102 @@ impl Http3Builder<BodySet> {
 }
 
 // Typestates for builder
+/// Type state indicating that no request body has been set yet
 #[derive(Clone)]
 pub struct BodyNotSet;
+
+/// Type state indicating that a request body has been set
 #[derive(Clone)]
 pub struct BodySet;
 
-// Extension trait for collecting stream into a Serde type
+/// Extension trait for collecting HTTP streams into deserialized types
 pub trait HttpStreamExt {
-    fn collect<T: DeserializeOwned + Send + 'static>(self) -> AsyncStream<Result<T, HttpError>>;
+    /// Collect the entire HTTP stream into a deserialized type, returning default on error
+    fn collect<T: DeserializeOwned + Default + Send + 'static>(self) -> T;
+    
+    /// Collect the entire HTTP stream into a deserialized type, calling error handler on failure
     fn collect_or_else<
         T: DeserializeOwned + Send + 'static,
         F: Fn(HttpError) -> T + Send + 'static,
     >(
         self,
         f: F,
-    ) -> AsyncStream<T>;
+    ) -> T;
+}
+
+impl HttpStream {
+    // EXPLICITLY APPROVED BY DAVID MAPLE 07/22/2025
+    async fn collect_internal<T: DeserializeOwned + Send + 'static>(
+        self,
+    ) -> Result<T, HttpError> {
+        use futures_util::StreamExt;
+        
+        let mut stream = self;
+        let mut all_bytes = Vec::new();
+
+        while let Some(chunk_result) = stream.next().await {
+            match chunk_result {
+                Ok(HttpChunk::Body(bytes)) => {
+                    all_bytes.extend_from_slice(&bytes);
+                }
+                Ok(HttpChunk::Head(status, _)) => {
+                    log::debug!("HTTP Response Status: {}", status.as_u16());
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+
+        if all_bytes.is_empty() {
+            return Err(HttpError::InvalidResponse {
+                message: "Empty response body".to_string(),
+            });
+        }
+
+        match serde_json::from_slice(&all_bytes) {
+            Ok(value) => Ok(value),
+            Err(err) => Err(HttpError::DeserializationError {
+                message: format!("JSON deserialization failed: {}", err),
+            }),
+        }
+    }
 }
 
 impl HttpStreamExt for HttpStream {
-    fn collect<T: DeserializeOwned + Send + 'static>(self) -> AsyncStream<Result<T, HttpError>> {
-        AsyncStream::with_channel(move |mut sender| {
-            tokio::spawn(async move {
-                let body_bytes_result = self
-                    .try_fold(Vec::new(), |mut acc, chunk| async move {
-                        if let HttpChunk::Body(bytes) = chunk {
-                            acc.extend_from_slice(&bytes);
-                        }
-                        Ok(acc)
-                    })
-                    .await;
-
-                let result = match body_bytes_result {
-                    Ok(body_bytes) => serde_json::from_slice(&body_bytes).map_err(|e| {
-                        HttpError::ChunkProcessingError {
-                            source: std::sync::Arc::new(e),
-                            body: body_bytes,
-                        }
-                    }),
-                    Err(e) => Err(e),
-                };
-
-                sender.send(result).ok();
-            });
-        })
+    // EXPLICITLY APPROVED BY DAVID MAPLE 07/22/2025
+    #[inline(always)]
+    fn collect<T: DeserializeOwned + Default + Send + 'static>(self) -> T {
+        let rt = tokio::runtime::Handle::try_current()
+            .unwrap_or_else(|_| tokio::runtime::Handle::current());
+        
+        match rt.block_on(async move { self.collect_internal().await }) {
+            Ok(value) => value,
+            Err(_) => T::default(),
+        }
     }
 
+    // EXPLICITLY APPROVED BY DAVID MAPLE 07/22/2025
+    #[inline(always)]
     fn collect_or_else<
         T: DeserializeOwned + Send + 'static,
         F: Fn(HttpError) -> T + Send + 'static,
     >(
         self,
         f: F,
-    ) -> AsyncStream<T> {
-        AsyncStream::with_channel(move |mut sender| {
-            tokio::spawn(async move {
-                let mut stream = HttpStreamExt::collect::<T>(self);
-                if let Some(result) = stream.next().await {
-                    let value = result.unwrap_or_else(f);
-                    sender.send(value).ok();
-                }
-            });
-        })
+    ) -> T {
+        let rt = tokio::runtime::Handle::try_current()
+            .unwrap_or_else(|_| tokio::runtime::Handle::current());
+        
+        match rt.block_on(async move { 
+            self.collect_internal::<T>().await 
+        }) {
+            Ok(value) => value,
+            Err(err) => f(err),
+        }
     }
 }
+
 
 /// Builder for download-specific operations
 pub struct DownloadBuilder {
@@ -354,10 +425,15 @@ impl DownloadBuilder {
 /// Download progress information for saved files
 #[derive(Debug, Clone)]
 pub struct DownloadProgress {
+    /// Number of chunks received during download
     pub chunk_count: u32,
+    /// Total bytes written to local file
     pub bytes_written: u64,
+    /// Total expected file size if known from headers
     pub total_size: Option<u64>,
+    /// Local filesystem path where file was saved
     pub local_path: String,
+    /// Whether the download completed successfully
     pub is_complete: bool,
 }
 

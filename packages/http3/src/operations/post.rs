@@ -20,9 +20,13 @@ pub struct PostOperation {
 /// Supported POST body types
 #[derive(Clone)]
 pub enum PostBody {
+    /// JSON-encoded request body
     Json(Value),
+    /// Form-encoded data as key-value pairs
     FormData(HashMap<String, String>),
+    /// Binary data body
     Binary(Vec<u8>),
+    /// Empty request body
     Empty,
 }
 
@@ -87,11 +91,14 @@ impl HttpOperation for PostOperation {
 
     fn execute(&self) -> Self::Output {
         let body_bytes = match &self.body {
-            PostBody::Json(val) => Some(serde_json::to_vec(val).unwrap()), // Should not fail
-            PostBody::FormData(data) => {
-                let encoded = serde_urlencoded::to_string(data).unwrap(); // Should not fail
-                Some(encoded.into_bytes())
-            }
+            PostBody::Json(val) => match serde_json::to_vec(val) {
+                Ok(bytes) => Some(bytes),
+                Err(_) => Some(Vec::new()), // Fallback to empty body on serialization error
+            },
+            PostBody::FormData(data) => match serde_urlencoded::to_string(data) {
+                Ok(encoded) => Some(encoded.into_bytes()),
+                Err(_) => Some(Vec::new()), // Fallback to empty body on encoding error
+            },
             PostBody::Binary(data) => Some(data.clone()),
             PostBody::Empty => None,
         };

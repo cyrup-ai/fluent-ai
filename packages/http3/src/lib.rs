@@ -88,9 +88,7 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 
 /// Async task primitives for streaming-first architecture
-
 pub mod builder;
-pub use builder::Http3Builder as Http3;
 pub mod client;
 pub mod common;
 pub mod config;
@@ -101,10 +99,15 @@ pub mod request;
 pub mod response;
 pub mod stream;
 
-pub use builder::{ContentType, DownloadBuilder, DownloadProgress, Http3Builder, HttpStreamExt};
+pub use builder::{ContentType, DownloadBuilder, DownloadProgress, header, Http3Builder, HttpStreamExt};
+
+/// Ergonomic type alias for Http3Builder - provides shorter name for common usage patterns
+/// This is the recommended entry point for HTTP3 operations: Http3::get(url), Http3::post(url), etc.
+pub type Http3 = Http3Builder;
 pub use client::{ClientStats, ClientStatsSnapshot, HttpClient};
 pub use common::cache::CacheEntry;
 pub use config::HttpConfig;
+// Removed sugars_macros::json_map - dependency not available
 pub use error::{HttpError, HttpResult};
 pub use middleware::{Middleware, MiddlewareChain, cache::CacheMiddleware};
 pub use request::HttpRequest;

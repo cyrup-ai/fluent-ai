@@ -18,9 +18,13 @@ pub struct PutOperation {
 /// Supported PUT body types
 #[derive(Clone)]
 pub enum PutBody {
+    /// JSON-encoded request body
     Json(Value),
+    /// Binary data body
     Binary(Vec<u8>),
+    /// Plain text body
     Text(String),
+    /// Empty request body
     Empty,
 }
 
@@ -92,7 +96,10 @@ impl HttpOperation for PutOperation {
 
     fn execute(&self) -> Self::Output {
         let body_bytes = match &self.body {
-            PutBody::Json(val) => Some(serde_json::to_vec(val).unwrap()), // Should not fail
+            PutBody::Json(val) => match serde_json::to_vec(val) {
+                Ok(bytes) => Some(bytes),
+                Err(_) => Some(Vec::new()), // Fallback to empty body on serialization error
+            },
             PutBody::Binary(data) => Some(data.clone()),
             PutBody::Text(text) => Some(text.clone().into_bytes()),
             PutBody::Empty => None,

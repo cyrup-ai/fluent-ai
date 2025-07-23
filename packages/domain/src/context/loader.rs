@@ -31,13 +31,13 @@ where
     /// Stream files one by one
     fn stream_files(&self) -> AsyncStream<T>
     where
-        T: fluent_ai_http3::async_task::NotResult;
+        T: fluent_ai_async::NotResult;
 
     /// Process each file with a processor function
     fn process_each<F, U>(&self, processor: F) -> AsyncTask<ZeroOneOrMany<U>>
     where
         F: Fn(&T) -> U + Send + Sync + 'static,
-        U: Send + Sync + fmt::Debug + Clone + 'static + fluent_ai_http3::async_task::NotResult;
+        U: Send + Sync + fmt::Debug + Clone + 'static + fluent_ai_async::NotResult;
 
     /// Create new loader with pattern
     fn new(pattern: impl Into<String>) -> Self;
@@ -133,19 +133,18 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
         PathBuf: fluent_ai_async::NotResult,
     {
         let pattern = self.pattern.clone();
-        std::thread::spawn(move || {
+        
+        AsyncStream::with_channel(move |sender| {
             if let Some(p) = pattern {
                 if let Ok(paths) = glob::glob(&p) {
                     for path in paths.filter_map(Result::ok) {
-                        if sender.send(path).is_err() {
+                        if sender.try_send(path).is_err() {
                             break;
                         }
                     }
                 }
             }
-        });
-
-        stream
+        })
     }
 
     fn process_each<F, U>(&self, processor: F) -> AsyncTask<ZeroOneOrMany<U>>

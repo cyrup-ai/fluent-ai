@@ -1,220 +1,192 @@
 # HTTP3 Package Production Readiness TODO
 
-## CRITICAL PRODUCTION ISSUES
+## CRITICAL PRODUCTION ISSUES - IMMEDIATE IMPLEMENTATION REQUIRED
 
-### Non-Production Code Violations
+### 1. Replace block_on with Streams-Only Architecture in builder.rs
+**File**: `packages/http3/src/builder.rs`
+**Lines**: 297, 349
+**Issue**: block_on usage violates streams-only architecture constraint
+**Implementation**: 
+- Replace `block_on` with `AsyncStream::with_channel()` pattern
+- Implement `collect()` method using streaming collection instead of blocking
+- Maintain backwards compatibility for synchronous APIs by using stream.collect()
+- Use crossbeam channels for zero-allocation streaming
+- Architecture: Transform blocking collection into streaming with fallback collection
 
-#### 1. Simplified HTTP Date Parsing
-**File:** `packages/http3/src/common/cache.rs:583`  
-**Issue:** Comment states "Simplified HTTP date parsing - in production, use a proper HTTP date parser"  
-**Violation:** Production code contains simplified implementation with production disclaimer  
-**Solution:**  
-- Replace simplified parsing with production-ready HTTP date parser using `httpdate` crate
-- Implement full RFC compliance for HTTP date formats (RFC 1123, RFC 850, ANSI C asctime)
-- Add comprehensive error handling for malformed dates
-- Performance optimizations with zero allocation where possible
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-#### 2. Incomplete Middleware Chain Implementation
-**File:** `packages/http3/src/middleware.rs:64,83,99`  
-**Issue:** Three "For now" comments indicating incomplete middleware chain processing  
-**Violation:** Production code with temporary implementations  
-**Solution:**  
-- Implement full middleware chain processing with proper composition
-- Create middleware pipeline with request/response transformation
-- Add error propagation through middleware chain
-- Implement middleware short-circuiting for early returns
-- Add middleware ordering and priority system
+### 2. QA: Verify block_on elimination compliance
+Act as an Objective QA Rust developer. Rate the work performed on block_on elimination against these requirements: (1) Complete removal of all blocking code, (2) Proper AsyncStream::with_channel() usage, (3) Maintained API compatibility, (4) Zero-allocation patterns verified, (5) Streams-only architecture compliance. Rate 1-10 and provide specific technical feedback.
 
-#### 3. API Key Query Parameter Handling
-**File:** `packages/http3/src/common/auth.rs:89`  
-**Issue:** "For now, we'll store it in a special header that can be processed later"  
-**Violation:** Incomplete authentication implementation with temporary workaround  
-**Solution:**  
-- Implement proper query parameter injection at request build time  
-- Create URL manipulation utilities for parameter insertion
-- Add URL encoding/escaping for parameter values
-- Implement parameter conflict resolution
-- Add validation for parameter placement restrictions
+### 3. Implement Complete Retry Logic with Exponential Backoff
+**File**: `packages/http3/src/common/retry.rs`
+**Line**: 2
+**Issue**: TODO marker with no implementation
+**Implementation**:
+- Replace TODO comment with complete RetryPolicy struct
+- Implement exponential backoff with configurable jitter (0-100% randomization)
+- Add max_retries, initial_delay, max_delay, backoff_multiplier fields
+- Use atomic operations for retry counters
+- Implement should_retry() method with smart failure classification
+- Support HTTP status code based retry decisions (5xx retry, 4xx don't retry)
+- Architecture: Lock-free retry state management using AtomicU64 for timestamps
 
-#### 4. Missing Request Context Extraction
-**File:** `packages/http3/src/middleware/cache.rs:98`  
-**Issue:** "TODO: Extract from request context" for cache expiration  
-**Violation:** TODO marker in production code  
-**Solution:**  
-- Design request context system with metadata propagation
-- Implement context-aware cache expiration policies
-- Add request-scoped configuration override mechanism
-- Create context extraction utilities for middleware
-- Add validation for context data integrity
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-#### 5. Unimplemented Download Operation Trait
-**File:** `packages/http3/src/operations/download.rs:303`  
-**Issue:** `unimplemented!()` macro for OperationResult trait  
-**Violation:** Panic-inducing code in production  
-**Solution:**  
-- Implement proper OperationResult trait for download operations
-- Create download-specific result types and error handling
-- Add progress reporting through OperationResult interface
-- Implement streaming download with backpressure control
-- Add resumable download capability with Range headers
+### 4. QA: Verify retry logic implementation compliance
+Act as an Objective QA Rust developer. Rate the retry logic implementation against these requirements: (1) Complete exponential backoff with jitter, (2) Lock-free atomic operations, (3) Proper HTTP status code handling, (4) Zero-allocation patterns, (5) Configurable retry policies. Rate 1-10 and provide specific technical feedback.
 
-### Language Accuracy Issues (False Positives)
+### 5. Implement Lock-Free HTTP Response Cache
+**File**: `packages/http3/src/common/cache.rs`
+**Line**: 2
+**Issue**: TODO marker with no cache implementation
+**Implementation**:
+- Replace TODO with complete HttpResponseCache using crossbeam-skiplist
+- Implement cache key generation using blake3 hash of URL + headers
+- Add TTL support using atomic timestamps (u64 microseconds since epoch)
+- Implement LRU eviction using atomic counters for access tracking
+- Use Arc<CachedResponse> for zero-copy cache hits
+- Add cache statistics (hit_rate, eviction_count) using atomic counters
+- Architecture: Lock-free concurrent cache using SkipMap<CacheKey, CachedEntry>
 
-#### 6. "Actual" Usage Context Review
-**Files:** `packages/http3/src/response.rs:91`, `packages/http3/src/stream.rs:292`  
-**Issue:** Review usage of "actual" to ensure not indicating non-production status  
-**Solution:**  
-- Review context and revise language for clarity
-- Replace with more specific technical terminology
-- Ensure comments accurately describe implementation intent
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-## LARGE FILE DECOMPOSITION REQUIRED
+### 6. QA: Verify cache implementation compliance
+Act as an Objective QA Rust developer. Rate the cache implementation against these requirements: (1) Lock-free concurrent access, (2) Proper TTL and LRU eviction, (3) Zero-allocation cache hits, (4) Atomic statistics tracking, (5) Blake3 key generation. Rate 1-10 and provide specific technical feedback.
 
-### Files Exceeding 300 Lines (Production Architecture Violation)
+### 7. Replace unwrap() with Proper Error Handling in Operations
+**Files**: `packages/http3/src/operations/{put.rs:95, download.rs:62, patch.rs:82-83, post.rs:90,92}`
+**Issue**: unwrap() usage in production code paths
+**Implementation**:
+- Replace unwrap() with proper Result<T, HttpError> propagation
+- Add context-specific error variants to HttpError enum
+- Use map_err() to provide meaningful error messages
+- Implement From<T> conversions for common error types
+- Add validation methods that return Result instead of panicking
+- Architecture: Error propagation chain from operations → client → user with full context
 
-#### 1. stream.rs (759 lines) - CRITICAL
-**File:** `packages/http3/src/stream.rs`  
-**Issue:** Monolithic streaming module with multiple concerns  
-**Decomposition Plan:**  
-- Create `stream/download_chunk.rs` - DownloadChunk trait and implementations
-- Create `stream/download_stream.rs` - Download streaming logic
-- Create `stream/progress.rs` - Progress tracking and callbacks
-- Create `stream/validation.rs` - Stream validation and error handling
-- Create `stream/mod.rs` - Public API and re-exports
-- Move chunk implementations to dedicated files with trait separation
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-#### 2. common/cache.rs (609 lines) - HIGH PRIORITY  
-**File:** `packages/http3/src/common/cache.rs`  
-**Issue:** Cache system with mixed responsibilities  
-**Decomposition Plan:**  
-- Create `common/cache/entry.rs` - CacheEntry and metadata management
-- Create `common/cache/policy.rs` - Cache policies and expiration logic  
-- Create `common/cache/storage.rs` - Lock-free storage with skiplist
-- Create `common/cache/validation.rs` - ETag and conditional request logic
-- Create `common/cache/stats.rs` - Cache statistics and monitoring
-- Create `common/cache/mod.rs` - Public API coordination
+### 8. QA: Verify error handling compliance
+Act as an Objective QA Rust developer. Rate the error handling implementation against these requirements: (1) Complete elimination of unwrap(), (2) Proper Result<T, E> propagation, (3) Meaningful error context, (4) Ergonomic error handling, (5) No panic paths in production code. Rate 1-10 and provide specific technical feedback.
 
-#### 3. cache.rs (496 lines) - DUPLICATE INVESTIGATION
-**File:** `packages/http3/src/cache.rs`  
-**Issue:** Potential duplicate cache implementation  
-**Investigation Required:**  
-- Compare with `common/cache.rs` to identify redundancy
-- Determine if this is legacy cache implementation
-- Consolidate into single cache system if duplicate
-- Remove deprecated implementation entirely
+### 9. Implement Production HTTP Date Parsing
+**File**: `packages/http3/src/common/cache.rs`
+**Line**: 660
+**Issue**: "in production" comment instead of implementation
+**Implementation**:
+- Replace comment with complete parse_http_date implementation using chrono
+- Support RFC 7231 HTTP date formats (IMF-fixdate, rfc850-date, asctime-date)
+- Add timezone handling for GMT/UTC conversion
+- Use zero-allocation parsing where possible
+- Return proper Result<SystemTime, ParseError> instead of ()
+- Architecture: Fast HTTP date parsing with format detection and caching
 
-#### 4. error.rs (495 lines) - HIGH PRIORITY
-**File:** `packages/http3/src/error.rs`  
-**Issue:** Large error handling module  
-**Decomposition Plan:**  
-- Create `error/types.rs` - Core error type definitions
-- Create `error/http.rs` - HTTP-specific error types and status codes
-- Create `error/network.rs` - Network and connection error types
-- Create `error/conversion.rs` - Error conversion traits and implementations
-- Create `error/display.rs` - Error formatting and user messages
-- Create `error/mod.rs` - Public error API
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-#### 5. response.rs (489 lines) - HIGH PRIORITY
-**File:** `packages/http3/src/response.rs`  
-**Issue:** Mixed response handling concerns  
-**Decomposition Plan:**  
-- Create `response/core.rs` - HttpResponse struct and basic operations
-- Create `response/sse.rs` - Server-Sent Events parsing and handling
-- Create `response/json.rs` - JSON response streaming and parsing
-- Create `response/headers.rs` - Response header utilities
-- Create `response/status.rs` - HTTP status code handling
-- Create `response/mod.rs` - Public response API
+### 10. QA: Verify HTTP date parsing compliance
+Act as an Objective QA Rust developer. Rate the HTTP date parsing against these requirements: (1) RFC 7231 compliance, (2) Proper timezone handling, (3) Zero-allocation optimization, (4) Complete error handling, (5) Format detection accuracy. Rate 1-10 and provide specific technical feedback.
 
-#### 6. common/retry.rs (416 lines) - MEDIUM PRIORITY
-**File:** `packages/http3/src/common/retry.rs`  
-**Issue:** Retry system with multiple concerns  
-**Decomposition Plan:**  
-- Create `common/retry/policy.rs` - Retry policies and configuration
-- Create `common/retry/executor.rs` - Retry execution engine
-- Create `common/retry/backoff.rs` - Backoff algorithms and jitter
-- Create `common/retry/stats.rs` - Retry statistics and monitoring
-- Create `common/retry/mod.rs` - Public retry API
+### 11. Implement Complete SSE Event Parsing
+**File**: `packages/http3/src/response.rs`
+**Line**: 226
+**Issue**: "fix" placeholder in SSE parsing
+**Implementation**:
+- Replace "fix" comment with complete SSE event parsing
+- Parse event_type, id, retry, and data fields according to SSE specification
+- Handle multi-line data fields with proper line joining
+- Implement proper field validation and escaping
+- Add support for custom event types and reconnection handling
+- Architecture: Zero-allocation SSE parser using string slicing and stack buffers
 
-#### 7. config.rs (396 lines) - MEDIUM PRIORITY
-**File:** `packages/http3/src/config.rs`  
-**Issue:** Large configuration module  
-**Decomposition Plan:**  
-- Create `config/http.rs` - HTTP protocol configuration
-- Create `config/tls.rs` - TLS and security configuration  
-- Create `config/connection.rs` - Connection pool and timeout configuration
-- Create `config/defaults.rs` - Default configuration presets
-- Create `config/validation.rs` - Configuration validation logic
-- Create `config/mod.rs` - Configuration API
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-#### 8. client.rs (355 lines) - ACCEPTABLE BUT MONITOR
-**File:** `packages/http3/src/client.rs`  
-**Status:** Recently refactored, acceptable size but monitor for growth  
-**Action:** Monitor for future decomposition if exceeds 400 lines
+### 12. QA: Verify SSE parsing compliance
+Act as an Objective QA Rust developer. Rate the SSE parsing implementation against these requirements: (1) SSE specification compliance, (2) Multi-line data handling, (3) Zero-allocation parsing, (4) Proper field validation, (5) Custom event type support. Rate 1-10 and provide specific technical feedback.
 
-#### 9. operations/download.rs (315 lines) - ACCEPTABLE
-**File:** `packages/http3/src/operations/download.rs`  
-**Status:** Specialized operation module, acceptable size for single concern
+### 13. Implement Request Metadata Header Parsing
+**File**: `packages/http3/src/middleware/cache.rs`
+**Line**: 97
+**Issue**: TODO for header parsing implementation
+**Implementation**:
+- Replace TODO with complete request metadata parsing
+- Extract cache-control, expires, etag headers from request
+- Parse cache directives (no-cache, no-store, max-age, must-revalidate)
+- Implement header value validation and normalization
+- Add support for custom cache headers and extensions
+- Architecture: Header parsing with zero-allocation string slicing and cached lookups
 
-#### 10. middleware/cache.rs (308 lines) - ACCEPTABLE  
-**File:** `packages/http3/src/middleware/cache.rs`  
-**Status:** Specialized middleware, acceptable size
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-## TEST EXTRACTION REQUIRED
+### 14. QA: Verify header parsing compliance
+Act as an Objective QA Rust developer. Rate the header parsing against these requirements: (1) Cache-control directive parsing, (2) Header validation, (3) Zero-allocation string handling, (4) RFC compliance, (5) Extension header support. Rate 1-10 and provide specific technical feedback.
 
-### Inline Tests Found
-**File:** `packages/http3/src/middleware/cache.rs:291-309`  
-**Issue:** Test module embedded in source code  
-**Solution:**  
-- Create `tests/middleware/cache_tests.rs`
-- Move all test cases from source to dedicated test file
-- Set up proper test imports and utilities
-- Ensure test coverage is maintained during extraction
-- Bootstrap nextest configuration if not present
-- Verify all tests pass after extraction
+### 15. Remove Backward Compatibility Type Alias
+**File**: `packages/http3/src/lib.rs`
+**Lines**: 104-105
+**Issue**: "backward compatibility" type alias Http3 = Http3Builder
+**Implementation**:
+- Remove type alias if no longer needed or replace with proper abstraction
+- Audit codebase for Http3 usage and update to Http3Builder
+- Add deprecation notice if removal breaks public API
+- Ensure all examples and documentation use canonical type names
+- Architecture: Clean public API without unnecessary type aliases
 
-## NEXTEST BOOTSTRAP AND VERIFICATION
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-### Test Infrastructure Setup
-**Required Actions:**  
-1. Verify nextest is configured in workspace
-2. Create `tests/` directory structure mirroring `src/`
-3. Set up test utilities and common test infrastructure  
-4. Configure test execution pipeline
-5. Ensure all extracted tests execute and pass
-6. Add CI/CD integration for test execution
+### 16. QA: Verify type alias removal compliance
+Act as an Objective QA Rust developer. Rate the type alias cleanup against these requirements: (1) Complete removal or proper abstraction, (2) No breaking API changes, (3) Updated documentation, (4) Clean public interface, (5) Consistent naming conventions. Rate 1-10 and provide specific technical feedback.
 
-### Test Execution Verification Steps
-**QA Process:**  
-1. Run `cargo nextest run -p fluent_ai_http3` to verify test execution
-2. Validate test coverage maintains 100% pass rate
-3. Ensure no test dependencies are broken during extraction  
-4. Verify test isolation and independence
-5. Confirm test execution time remains acceptable
+## LARGE FILE DECOMPOSITION
 
-## IMPLEMENTATION PRIORITIES
+### 17. Decompose builder.rs into Focused Modules
+**File**: `packages/http3/src/builder.rs` (474 lines)
+**Implementation**:
+- Create `packages/http3/src/builder/mod.rs` with public re-exports
+- Split into `builder/core.rs` (Http3Builder struct and main methods, ~150 lines)
+- Split into `builder/stream_ext.rs` (HttpStreamExt trait and implementations, ~120 lines)  
+- Split into `builder/download.rs` (DownloadBuilder and progress handling, ~100 lines)
+- Split into `builder/types.rs` (ContentType, Header, and related types, ~100 lines)
+- Maintain exact same public API through re-exports
+- Architecture: Modular builder pattern with clear separation of concerns
 
-### CRITICAL (Must Fix Immediately)
-1. Remove `unimplemented!()` from download operations
-2. Investigate and resolve cache.rs duplication
-3. Fix simplified HTTP date parsing with production implementation
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-### HIGH (Next Sprint)  
-1. Complete middleware chain implementation
-2. Implement API key query parameter handling
-3. Decompose stream.rs into logical modules
-4. Extract inline tests to proper test files
+### 18. QA: Verify builder decomposition compliance
+Act as an Objective QA Rust developer. Rate the builder decomposition against these requirements: (1) Logical module separation, (2) Maintained public API, (3) Clear dependency boundaries, (4) Proper re-exports, (5) No functionality changes. Rate 1-10 and provide specific technical feedback.
 
-### MEDIUM (Following Sprint)
-1. Decompose large files (error.rs, response.rs, retry.rs, config.rs)
-2. Implement request context system
-3. Bootstrap comprehensive test infrastructure
-4. Add monitoring and observability improvements
+### 19. Decompose response.rs into Focused Modules  
+**File**: `packages/http3/src/response.rs` (490 lines)
+**Implementation**:
+- Create `packages/http3/src/response/mod.rs` with public re-exports
+- Split into `response/core.rs` (HttpResponse struct and basic methods, ~150 lines)
+- Split into `response/sse.rs` (SSE event handling and parsing, ~120 lines)
+- Split into `response/json.rs` (JSON parsing and deserialization, ~100 lines)
+- Split into `response/stream.rs` (streaming functionality and collection, ~120 lines)
+- Maintain exact same public API through re-exports
+- Architecture: Response handling with specialized modules for different content types
 
-### ONGOING MAINTENANCE
-1. Monitor file sizes and decompose when exceeding 300 lines
-2. Regular code review for production readiness indicators
-3. Continuous performance optimization and zero allocation compliance
-4. Regular security audit and dependency updates
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+
+### 20. QA: Verify response decomposition compliance
+Act as an Objective QA Rust developer. Rate the response decomposition against these requirements: (1) Logical content-type separation, (2) Maintained public API, (3) Clear module boundaries, (4) Proper re-exports, (5) No functionality changes. Rate 1-10 and provide specific technical feedback.
+
+## TEST EXTRACTION
+
+### 21. Extract Embedded Tests to Proper Test Directory
+**File**: `packages/http3/src/middleware/cache.rs` (lines 285-299)
+**Implementation**:
+- Create `packages/http3/tests/middleware_cache_tests.rs`
+- Move all #[cfg(test)] mod tests content to new test file
+- Add proper imports and setup for integration tests
+- Use expect() in tests as allowed (not unwrap())
+- Remove #[cfg(test)] mod from source file
+- Architecture: Proper test separation with integration test patterns
+
+**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
+
+### 22. QA: Verify test extraction compliance
+Act as an Objective QA Rust developer. Rate the test extraction against these requirements: (1) Complete test relocation, (2) Proper integration test setup, (3) Use of expect() not unwrap(), (4) Maintained test coverage, (5) Clean source file separation. Rate 1-10 and provide specific technical feedback.
 
 ## TECHNICAL CONSTRAINTS
 

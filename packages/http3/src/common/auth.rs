@@ -53,7 +53,9 @@ pub struct ApiKey {
 
 /// Where to place the API key
 pub enum ApiKeyPlacement {
+    /// Place API key in HTTP header with specified name
     Header(String),
+    /// Place API key in URL query parameter with specified name
     Query(String),
 }
 
@@ -123,14 +125,19 @@ impl AuthProvider for BasicAuth {
 /// Authentication errors
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum AuthError {
+    /// Authentication token is malformed or invalid
     #[error("Invalid authentication token")]
     InvalidToken,
+    /// Provided credentials do not match expected values
     #[error("Invalid credentials")]
     InvalidCredentials,
+    /// Authentication token has passed its expiration time
     #[error("Authentication token expired")]
     TokenExpired,
+    /// Error occurred while encoding authentication data
     #[error("Authentication encoding error")]
     EncodingError,
+    /// Request requires authentication but none was provided
     #[error("Authentication required")]
     AuthRequired,
 }
