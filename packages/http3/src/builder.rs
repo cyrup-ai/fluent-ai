@@ -346,12 +346,19 @@ impl HttpStreamExt for HttpStream {
     // EXPLICITLY APPROVED BY DAVID MAPLE 07/22/2025
     #[inline(always)]
     fn collect<T: DeserializeOwned + Default + Send + 'static>(self) -> T {
-        let rt = tokio::runtime::Handle::try_current()
-            .unwrap_or_else(|_| tokio::runtime::Handle::current());
+        // Create a channel for async result communication
+        let (tx, rx) = std::sync::mpsc::channel();
         
-        match rt.block_on(async move { self.collect_internal().await }) {
-            Ok(value) => value,
-            Err(_) => T::default(),
+        // Spawn task to handle async collection
+        tokio::spawn(async move {
+            let result = self.collect_internal().await;
+            let _ = tx.send(result);
+        });
+        
+        // Receive result synchronously
+        match rx.recv() {
+            Ok(Ok(value)) => value,
+            _ => T::default(),
         }
     }
 
@@ -364,14 +371,22 @@ impl HttpStreamExt for HttpStream {
         self,
         f: F,
     ) -> T {
-        let rt = tokio::runtime::Handle::try_current()
-            .unwrap_or_else(|_| tokio::runtime::Handle::current());
+        // Create a channel for async result communication
+        let (tx, rx) = std::sync::mpsc::channel();
         
-        match rt.block_on(async move { 
-            self.collect_internal::<T>().await 
-        }) {
-            Ok(value) => value,
-            Err(err) => f(err),
+        // Spawn task to handle async collection
+        tokio::spawn(async move {
+            let result = self.collect_internal::<T>().await;
+            let _ = tx.send(result);
+        });
+        
+        // Receive result synchronously
+        match rx.recv() {
+            Ok(Ok(value)) => value,
+            Ok(Err(err)) => f(err),
+            Err(_) => f(HttpError::InvalidResponse {
+                message: "Channel communication failed".to_string(),
+            }),
         }
     }
 }

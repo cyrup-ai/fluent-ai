@@ -3,6 +3,7 @@
 //! Provides production-ready HTTP date parsing following RFC 7231
 //! with comprehensive error handling and multiple format support.
 
+#[allow(unused_imports)]
 use std::time::SystemTime;
 
 /// HTTP date parsing error types

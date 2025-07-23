@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+#[allow(unused_imports)]
 use std::time::SystemTime;
 
 use async_stream::stream;
