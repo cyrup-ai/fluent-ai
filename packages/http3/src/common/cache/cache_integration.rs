@@ -5,15 +5,12 @@
 
 use std::{collections::HashMap, pin::Pin};
 
-use futures_util::stream::{self, Stream};
 use futures_util::StreamExt;
+use futures_util::stream::{self, Stream};
 
-use crate::HttpResult;
+use super::{cache_key::CacheKey, response_cache::ResponseCache};
 use crate::HttpResponse;
-use super::{
-    cache_key::CacheKey,
-    response_cache::ResponseCache,
-};
+use crate::HttpResult;
 
 lazy_static::lazy_static! {
     /// Global cache instance for use across the HTTP client
@@ -21,30 +18,38 @@ lazy_static::lazy_static! {
 }
 
 /// Cache-aware HTTP stream that checks cache before making requests using native Streams
-pub fn cached_stream<F>(cache_key: CacheKey, operation: F) -> Pin<Box<dyn Stream<Item = HttpResult<HttpResponse>> + Send>>
+pub fn cached_stream<F>(
+    cache_key: CacheKey,
+    operation: F,
+) -> Pin<Box<dyn Stream<Item = HttpResult<HttpResponse>> + Send>>
 where
     F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<HttpResponse>> + Send>> + Send + Sync + 'static,
 {
-    Box::pin(stream::unfold((Some(cache_key), operation, false), move |(cache_key_opt, operation, cache_checked)| async move {
-        if let Some(cache_key) = cache_key_opt {
-            if !cache_checked {
-                // Check cache first
-                if let Some(cached_response) = GLOBAL_CACHE.get(&cache_key) {
-                    return Some((Ok(cached_response), (None, operation, true)));
-                }
-                
-                // Cache miss - execute operation
-                let mut operation_stream = operation();
-                if let Some(result) = operation_stream.next().await {
-                    match result {
-                        Ok(response) => {
-                            // Check if response should be cached
-                            if GLOBAL_CACHE.should_cache(&response) {
-                                GLOBAL_CACHE.put(cache_key.clone(), response.clone());
+    Box::pin(stream::unfold(
+        (Some(cache_key), operation, false),
+        move |(cache_key_opt, operation, cache_checked)| async move {
+            if let Some(cache_key) = cache_key_opt {
+                if !cache_checked {
+                    // Check cache first
+                    if let Some(cached_response) = GLOBAL_CACHE.get(&cache_key) {
+                        return Some((Ok(cached_response), (None, operation, true)));
+                    }
+
+                    // Cache miss - execute operation
+                    let mut operation_stream = operation();
+                    if let Some(result) = operation_stream.next().await {
+                        match result {
+                            Ok(response) => {
+                                // Check if response should be cached
+                                if GLOBAL_CACHE.should_cache(&response) {
+                                    GLOBAL_CACHE.put(cache_key.clone(), response.clone());
+                                }
+                                Some((Ok(response), (None, operation, true)))
                             }
-                            Some((Ok(response), (None, operation, true)))
+                            Err(error) => Some((Err(error), (None, operation, true))),
                         }
-                        Err(error) => Some((Err(error), (None, operation, true)))
+                    } else {
+                        None
                     }
                 } else {
                     None
@@ -52,10 +57,8 @@ where
             } else {
                 None
             }
-        } else {
-            None
-        }
-    }))
+        },
+    ))
 }
 
 /// Helper to create conditional request headers for cache validation

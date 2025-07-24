@@ -4,7 +4,7 @@
 // Ollama streaming implementation using HTTP3 client with zero-allocation design
 // ============================================================================
 
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpRequest as Http3Request};
+use fluent_ai_http3::{Http3, HttpStreamExt};
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 
@@ -29,13 +29,13 @@ pub struct OllamaStreamingResponse {
     pub eval_duration: Option<u64>,
 }
 
-/// Send a streaming request to Ollama using HTTP3 client and return an AsyncStream
+/// Process Ollama streaming response using HTTP3 stream
 ///
 /// This function uses zero-allocation patterns and blazing-fast HTTP/3 streaming
 /// with no unsafe code, no unchecked operations, and no locking.
 #[inline(always)]
-pub fn send_ollama_streaming_request(
-    http3_request: Http3Request,
+pub fn process_ollama_streaming_response(
+    http3_stream: impl HttpStreamExt,
 ) -> crate::runtime::AsyncTask<
     Result<StreamingCompletionResponse<OllamaStreamingResponse>, CompletionError>,
 > {
@@ -44,24 +44,10 @@ pub fn send_ollama_streaming_request(
         let (tx, stream) =
             runtime::async_stream::<Result<RawStreamingChoice, CompletionError>>(512);
 
-        // Create HTTP3 client with streaming configuration optimized for Ollama
-        let client = HttpClient::with_config(HttpConfig::streaming_optimized()).map_err(|e| {
-            CompletionError::RequestError(format!("Failed to create HTTP3 client: {}", e))
-        })?;
-
         // Spawn the streaming task with zero-allocation patterns
         runtime::spawn_async(async move {
-            // Send streaming request using HTTP3 client
-            let stream_response = match client.send_stream(http3_request).await {
-                Ok(stream) => stream,
-                Err(e) => {
-                    let _ = tx.try_send(Err(CompletionError::RequestError(e.to_string())));
-                    return Ok::<(), CompletionError>(());
-                }
-            };
-
-            // Process JSON lines stream (Ollama uses JSON lines, not SSE)
-            let mut json_stream = stream_response.json_lines::<serde_json::Value>();
+            // Process the Http3 stream directly - it's already configured for streaming
+            let mut json_stream = http3_stream.json_lines::<serde_json::Value>();
 
             while let Some(chunk) = json_stream.next().await {
                 match chunk {

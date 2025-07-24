@@ -9,7 +9,7 @@ use arrayvec::ArrayVec;
 use candle_core::Tensor;
 
 use super::SamplingError;
-use crate::processing::traits::LogitsProcessor;
+// Removed unused import: crate::processing::traits::LogitsProcessor
 
 /// Maximum context size for repetition tracking (bounded for performance)
 const MAX_REPETITION_CONTEXT: usize = 2048;

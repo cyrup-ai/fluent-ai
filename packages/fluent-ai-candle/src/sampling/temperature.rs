@@ -7,7 +7,7 @@ use candle_core::{Tensor, D};
 use candle_nn::ops;
 
 use super::SamplingError;
-use crate::processing::traits::LogitsProcessor;
+// Removed unused import: crate::processing::traits::LogitsProcessor
 
 /// Temperature scaling processor for controlling generation randomness
 ///

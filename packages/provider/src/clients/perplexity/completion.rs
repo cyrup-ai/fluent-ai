@@ -4,13 +4,24 @@
 // Perplexity completion types and implementation
 // ============================================================================
 
+// Import centralized HTTP structs - no more local definitions!
+use fluent_ai_http_structs::{
+    builders::{ChatBuilder, Http3Builders, HttpRequestBuilder},
+    common::{AuthMethod, ContentTypes, HttpHeaders, HttpUtils, Provider},
+    errors::{HttpStructError, HttpStructResult},
+    perplexity::{
+        PerplexityChatRequest, PerplexityChatResponse, PerplexityChoice, PerplexityContent,
+        PerplexityMessage, PerplexityResponseMessage, PerplexityStreamingChunk, PerplexityUsage,
+    },
+    validation::{ValidateRequest, ValidationResult},
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::client::Client;
 use crate::{
     OneOrMany,
-    completion::{self, CompletionError, CompletionRequest},
+    completion::{self, CompletionError, CompletionModel, CompletionRequest},
     json_util, message,
 };
 
@@ -22,61 +33,25 @@ pub const SONAR_PRO: &str = "sonar-pro";
 /// `sonar` completion model
 pub const SONAR: &str = "sonar";
 
-#[derive(Debug, Deserialize)]
-pub struct CompletionResponse {
-    pub id: String,
-    pub model: String,
-    pub object: String,
-    pub created: u64,
-    #[serde(default)]
-    pub choices: Vec<Choice>,
-    pub usage: Usage,
-}
+/// Legacy alias for centralized Perplexity response type
+pub type CompletionResponse = fluent_ai_http_structs::perplexity::PerplexityChatResponse;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct Message {
-    pub role: Role,
-    pub content: String,
-}
+/// Legacy alias for centralized message type
+pub type Message = fluent_ai_http_structs::perplexity::PerplexityMessage;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum Role {
-    System,
-    User,
-    Assistant,
-}
+/// Legacy alias for centralized role type  
+pub type Role = fluent_ai_http_structs::perplexity::PerplexityRole;
 
-#[derive(Deserialize, Debug)]
-pub struct Delta {
-    pub role: Role,
-    pub content: String,
-}
+/// Legacy alias for centralized delta type
+pub type Delta = fluent_ai_http_structs::perplexity::PerplexityDelta;
 
-#[derive(Deserialize, Debug)]
-pub struct Choice {
-    pub index: usize,
-    pub finish_reason: String,
-    pub message: Message,
-    pub delta: Delta,
-}
+/// Legacy alias for centralized choice type
+pub type Choice = fluent_ai_http_structs::perplexity::PerplexityChoice;
 
-#[derive(Deserialize, Debug)]
-pub struct Usage {
-    pub prompt_tokens: u32,
-    pub completion_tokens: u32,
-    pub total_tokens: u32,
-}
+/// Legacy alias for centralized usage type
+pub type Usage = fluent_ai_http_structs::perplexity::PerplexityUsage;
 
-impl std::fmt::Display for Usage {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Prompt tokens: {}\nCompletion tokens: {} Total tokens: {}",
-            self.prompt_tokens, self.completion_tokens, self.total_tokens
-        )
-    }
-}
+// Display implementation is provided by centralized PerplexityUsage type
 
 impl TryFrom<CompletionResponse> for completion::CompletionResponse {
     type Error = CompletionError;
@@ -87,13 +62,15 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse {
         })?;
 
         match &choice.message {
-            Message {
-                role: Role::Assistant,
-                content,
-            } => Ok(completion::CompletionResponse {
-                choice: OneOrMany::one(content.clone().into()),
-                raw_response: response,
-            }),
+            message
+                if message.role
+                    == fluent_ai_http_structs::perplexity::PerplexityRole::Assistant =>
+            {
+                Ok(completion::CompletionResponse {
+                    choice: OneOrMany::one(message.content.clone().into()),
+                    raw_response: response,
+                })
+            }
             _ => Err(CompletionError::ResponseError(
                 "Response contained no assistant message".to_owned(),
             )),
@@ -101,10 +78,14 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse {
     }
 }
 
-// CompletionModel is now imported from fluent_ai_domain::model
-// Removed duplicated CompletionModel struct - use canonical domain type
+/// Perplexity completion model implementation
+#[derive(Debug, Clone)]
+pub struct PerplexityCompletionModel {
+    client: Client,
+    model: String,
+}
 
-impl CompletionModel {
+impl PerplexityCompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
@@ -115,47 +96,70 @@ impl CompletionModel {
     pub(crate) fn create_completion_request(
         &self,
         completion_request: CompletionRequest,
-    ) -> Result<Value, CompletionError> {
-        // Build up the order of messages (context, chat_history, prompt)
-        let mut partial_history = vec![];
-        if let Some(docs) = completion_request.normalized_documents() {
-            partial_history.push(docs);
+    ) -> Result<PerplexityChatRequest<'_>, CompletionError> {
+        // Use the centralized builder with validation
+        let builder = Http3Builders::perplexity();
+        let mut chat_builder = builder.chat(&self.model);
+
+        // Add preamble as system message if present
+        if let Some(preamble) = &completion_request.preamble {
+            chat_builder = chat_builder.add_text_message("system", preamble);
         }
-        partial_history.extend(completion_request.chat_history);
 
-        // Initialize full history with preamble (or empty if non-existent)
-        let mut full_history: Vec<Message> =
-            completion_request
-                .preamble
-                .map_or_else(Vec::new, |preamble| {
-                    vec![Message {
-                        role: Role::System,
-                        content: preamble,
-                    }]
-                });
+        // Add documents as context
+        if let Some(docs) = completion_request.normalized_documents() {
+            for doc in docs {
+                let content = format!("Document: {}", doc.content());
+                chat_builder = chat_builder.add_text_message("user", &content);
+            }
+        }
 
-        // Convert and extend the rest of the history
-        full_history.extend(
-            partial_history
-                .into_iter()
-                .map(message::Message::try_into)
-                .collect::<Result<Vec<Message>, _>>()?,
-        );
+        // Add chat history
+        for msg in completion_request.chat_history {
+            match msg.role() {
+                fluent_ai_domain::message::MessageRole::User => {
+                    if let Some(text) = msg.content().text() {
+                        chat_builder = chat_builder.add_text_message("user", text);
+                    }
+                }
+                fluent_ai_domain::message::MessageRole::Assistant => {
+                    if let Some(text) = msg.content().text() {
+                        chat_builder = chat_builder.add_text_message("assistant", text);
+                    }
+                }
+                fluent_ai_domain::message::MessageRole::System => {
+                    if let Some(text) = msg.content().text() {
+                        chat_builder = chat_builder.add_text_message("system", text);
+                    }
+                }
+            }
+        }
 
-        // Compose request
-        let request = json!({
-            "model": self.model,
-            "messages": full_history,
-            "temperature": completion_request.temperature,
-        });
+        // Set parameters with validation using centralized utilities
+        if let Some(temp) = completion_request.temperature {
+            chat_builder = chat_builder.temperature(
+                HttpUtils::validate_temperature(temp as f32, Provider::Perplexity).map_err(|e| {
+                    CompletionError::InvalidRequest(format!("Invalid temperature: {}", e))
+                })? as f64,
+            );
+        }
 
-        let request = if let Some(ref params) = completion_request.additional_params {
-            json_util::merge(request, params.clone())
-        } else {
-            request
-        };
+        if let Some(max_tokens) = completion_request.max_tokens {
+            chat_builder = chat_builder.max_tokens(
+                HttpUtils::validate_max_tokens(max_tokens, Provider::Perplexity).map_err(|e| {
+                    CompletionError::InvalidRequest(format!("Invalid max_tokens: {}", e))
+                })?,
+            );
+        }
 
-        Ok(request)
+        // Build and validate the request
+        match chat_builder.build() {
+            Ok(request) => Ok(request),
+            Err(e) => Err(CompletionError::InvalidRequest(format!(
+                "Request building failed: {}",
+                e
+            ))),
+        }
     }
 }
 
@@ -176,8 +180,8 @@ impl TryFrom<message::Message> for Message {
                     .collect::<Result<Vec<_>, _>>()?
                     .join("\n");
 
-                Message {
-                    role: Role::User,
+                fluent_ai_http_structs::perplexity::PerplexityMessage {
+                    role: fluent_ai_http_structs::perplexity::PerplexityRole::User,
                     content: collapsed_content,
                 }
             }
@@ -197,8 +201,8 @@ impl TryFrom<message::Message> for Message {
                     .collect::<Result<Vec<_>, _>>()?
                     .join("\n");
 
-                Message {
-                    role: Role::Assistant,
+                fluent_ai_http_structs::perplexity::PerplexityMessage {
+                    role: fluent_ai_http_structs::perplexity::PerplexityRole::Assistant,
                     content: collapsed_content,
                 }
             }
@@ -209,17 +213,22 @@ impl TryFrom<message::Message> for Message {
 impl From<Message> for message::Message {
     fn from(message: Message) -> Self {
         match message.role {
-            Role::User => message::Message::user(message.content),
-            Role::Assistant => message::Message::assistant(message.content),
-
+            fluent_ai_http_structs::perplexity::PerplexityRole::User => {
+                message::Message::user(message.content)
+            }
+            fluent_ai_http_structs::perplexity::PerplexityRole::Assistant => {
+                message::Message::assistant(message.content)
+            }
             // System messages get coerced into user messages for ease of error handling.
             // They should be handled on the outside of `Message` conversions via the preamble.
-            Role::System => message::Message::user(message.content),
+            fluent_ai_http_structs::perplexity::PerplexityRole::System => {
+                message::Message::user(message.content)
+            }
         }
     }
 }
 
-impl completion::CompletionModel for CompletionModel {
+impl completion::CompletionModel for PerplexityCompletionModel {
     type Response = CompletionResponse;
     type StreamingResponse = crate::providers::openai::StreamingCompletionResponse;
 
@@ -228,12 +237,24 @@ impl completion::CompletionModel for CompletionModel {
         &self,
         completion_request: completion::CompletionRequest,
     ) -> Result<completion::CompletionResponse<CompletionResponse>, CompletionError> {
-        let request = self.create_completion_request(completion_request)?;
+        let request_body = self.create_completion_request(completion_request)?;
+
+        // Use centralized serialization
+        let body_bytes = match serde_json::to_vec(&request_body) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(CompletionError::Internal(format!(
+                    "Serialization error: {}",
+                    e
+                )));
+            }
+        };
 
         let response = self
             .client
             .post("/chat/completions")
-            .json(&request)
+            .body(body_bytes)
+            .header("content-type", "application/json")
             .send()
             .await?;
 
@@ -266,11 +287,27 @@ impl completion::CompletionModel for CompletionModel {
         crate::streaming::StreamingCompletionResponse<Self::StreamingResponse>,
         CompletionError,
     > {
-        let mut request = self.create_completion_request(completion_request)?;
+        let mut request_body = self.create_completion_request(completion_request)?;
 
-        request = json_util::merge(request, json!({"stream": true}));
+        // Enable streaming in the centralized request
+        request_body.stream = Some(true);
 
-        let builder = self.client.post("/chat/completions").json(&request);
+        // Use centralized serialization
+        let body_bytes = match serde_json::to_vec(&request_body) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(CompletionError::Internal(format!(
+                    "Serialization error: {}",
+                    e
+                )));
+            }
+        };
+
+        let builder = self
+            .client
+            .post("/chat/completions")
+            .body(body_bytes)
+            .header("content-type", "application/json");
 
         crate::providers::openai::send_compatible_streaming_request(builder).await
     }

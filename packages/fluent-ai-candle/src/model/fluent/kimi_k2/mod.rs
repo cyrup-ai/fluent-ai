@@ -51,18 +51,45 @@ impl KimiK2Config {
     }
 }
 
-/// Pre-defined FP16 configuration constant.
-pub static KIMI_K2_FP16: KimiK2Config = KimiK2Config {
-    repo: ArrayVec::from_array_len(*b"moonshotai/Kimi-K2-Instruct", 28),
-    index_file: ArrayVec::from_array_len(*b"model.safetensors.index.json", 28),
-    quant: QuantFormat::Fp16,
-    max_seq_len: 32_768,
+/// Static byte arrays for configuration data
+static KIMI_K2_REPO_BYTES: [u8; 128] = {
+    let mut arr = [0u8; 128];
+    let repo = b"moonshotai/Kimi-K2-Instruct";
+    let mut i = 0;
+    while i < repo.len() {
+        arr[i] = repo[i];
+        i += 1;
+    }
+    arr
 };
 
-/// Pre-defined FP8 configuration constant.
-pub static KIMI_K2_FP8: KimiK2Config = KimiK2Config {
-    repo: ArrayVec::from_array_len(*b"moonshotai/Kimi-K2-Instruct", 28),
-    index_file: ArrayVec::from_array_len(*b"model.safetensors.index.json", 28),
-    quant: QuantFormat::Fp8,
-    max_seq_len: 32_768,
+static KIMI_K2_INDEX_BYTES: [u8; 128] = {
+    let mut arr = [0u8; 128];
+    let index = b"model.safetensors.index.json";
+    let mut i = 0;
+    while i < index.len() {
+        arr[i] = index[i];
+        i += 1;
+    }
+    arr
 };
+
+/// Get pre-defined FP16 configuration.
+pub fn kimi_k2_fp16() -> KimiK2Config {
+    KimiK2Config {
+        repo: ArrayVec::from(KIMI_K2_REPO_BYTES),
+        index_file: ArrayVec::from(KIMI_K2_INDEX_BYTES),
+        quant: QuantFormat::Fp16,
+        max_seq_len: 32_768,
+    }
+}
+
+/// Get pre-defined FP8 configuration.
+pub fn kimi_k2_fp8() -> KimiK2Config {
+    KimiK2Config {
+        repo: ArrayVec::from(KIMI_K2_REPO_BYTES),
+        index_file: ArrayVec::from(KIMI_K2_INDEX_BYTES),
+        quant: QuantFormat::Fp8,
+        max_seq_len: 32_768,
+    }
+}

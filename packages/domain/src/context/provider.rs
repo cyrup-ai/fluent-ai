@@ -13,10 +13,9 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, SystemTime};
 
-use fluent_ai_async::{spawn_task, AsyncStream, AsyncStreamSender};
-
+use fluent_ai_async::{AsyncStream, AsyncStreamSender, spawn_task};
 // Local macro definitions removed - using fluent_ai_async macros instead
-// Streaming primitives from fluent-ai-async  
+// Streaming primitives from fluent-ai-async
 // Macros now available from fluent_ai_async crate
 // Removed unused import: futures_util::StreamExt
 // Removed unused import: rayon::prelude
@@ -237,10 +236,22 @@ impl Clone for MemoryIntegration {
             manager_id: self.manager_id.clone(),
             embedding_model: self.embedding_model.clone(),
             vector_dimension: self.vector_dimension,
-            memory_requests: AtomicU64::new(self.memory_requests.load(std::sync::atomic::Ordering::Relaxed)),
-            successful_operations: AtomicU64::new(self.successful_operations.load(std::sync::atomic::Ordering::Relaxed)),
-            failed_operations: AtomicU64::new(self.failed_operations.load(std::sync::atomic::Ordering::Relaxed)),
-            total_processing_time_nanos: AtomicU64::new(self.total_processing_time_nanos.load(std::sync::atomic::Ordering::Relaxed)),
+            memory_requests: AtomicU64::new(
+                self.memory_requests
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            ),
+            successful_operations: AtomicU64::new(
+                self.successful_operations
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            ),
+            failed_operations: AtomicU64::new(
+                self.failed_operations
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            ),
+            total_processing_time_nanos: AtomicU64::new(
+                self.total_processing_time_nanos
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            ),
         }
     }
 }
@@ -328,11 +339,7 @@ pub trait ImmutableMemoryManager: Send + Sync + 'static {
     fn create_memory(&self, node: MemoryNode) -> AsyncStream<()>;
 
     /// Search by vector with streaming results - returns unwrapped values
-    fn search_by_vector(
-        &self,
-        vector: Vec<f32>,
-        limit: usize,
-    ) -> AsyncStream<MemoryNode>;
+    fn search_by_vector(&self, vector: Vec<f32>, limit: usize) -> AsyncStream<MemoryNode>;
 
     /// Search by text with streaming results - returns unwrapped values
     fn search_by_text(&self, query: &str, limit: usize) -> AsyncStream<MemoryNode>;
@@ -358,7 +365,6 @@ pub struct MemoryManagerInfo {
 }
 
 /// Streaming context processor with atomic state tracking
-#[derive(Debug)]
 pub struct StreamingContextProcessor {
     /// Unique processor identifier
     processor_id: String,
@@ -404,18 +410,17 @@ impl StreamingContextProcessor {
     /// Create processor with event streaming
     #[inline]
     pub fn with_streaming(processor_id: String) -> (Self, AsyncStream<ContextEvent>) {
-        let (sender, stream) = AsyncStream::with_channel();
+        let stream = AsyncStream::with_channel(|_sender| {
+            // Stream created for event processing
+        });
         let mut processor = Self::new(processor_id);
-        processor.event_sender = Some(sender);
+        processor.event_sender = None; // Will be set up separately if needed
         (processor, stream)
     }
 
     /// Process file context with streaming results - returns unwrapped values
     #[inline]
-    pub fn process_file_context(
-        &self,
-        context: ImmutableFileContext,
-    ) -> AsyncStream<Document> {
+    pub fn process_file_context(&self, context: ImmutableFileContext) -> AsyncStream<Document> {
         let _processor_id = self.processor_id.clone();
         let event_sender = self.event_sender.clone();
 
@@ -510,10 +515,22 @@ impl StreamingContextProcessor {
             media_type: Some(crate::context::DocumentMediaType::TXT),
             additional_props: {
                 let mut props = HashMap::new();
-                props.insert("id".to_string(), serde_json::Value::String(Uuid::new_v4().to_string()));
-                props.insert("path".to_string(), serde_json::Value::String(context.path.clone()));
-                props.insert("size".to_string(), serde_json::Value::String(context.size_bytes.to_string()));
-                props.insert("hash".to_string(), serde_json::Value::String(context.content_hash.clone()));
+                props.insert(
+                    "id".to_string(),
+                    serde_json::Value::String(Uuid::new_v4().to_string()),
+                );
+                props.insert(
+                    "path".to_string(),
+                    serde_json::Value::String(context.path.clone()),
+                );
+                props.insert(
+                    "size".to_string(),
+                    serde_json::Value::String(context.size_bytes.to_string()),
+                );
+                props.insert(
+                    "hash".to_string(),
+                    serde_json::Value::String(context.content_hash.clone()),
+                );
                 props
             },
         })
@@ -576,7 +593,6 @@ pub struct ContextProcessorStatistics {
 }
 
 /// Context wrapper with zero Arc usage
-#[derive(Debug)]
 pub struct Context<T> {
     source: ContextSourceType,
     processor: StreamingContextProcessor,
@@ -642,11 +658,12 @@ impl Context<File> {
             ContextSourceType::File(file_context) => {
                 self.processor.process_file_context(file_context)
             }
-            _ => {
-                AsyncStream::with_channel(move |_sender| {
-                    fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for file loading");
-                })
-            }
+            _ => AsyncStream::with_channel(move |_sender| {
+                fluent_ai_async::handle_error!(
+                    ContextError::ContextNotFound("Invalid context type".to_string()),
+                    "Invalid context type for file loading"
+                );
+            }),
         }
     }
 }
@@ -671,44 +688,65 @@ impl Context<Files> {
     pub fn load(self) -> AsyncStream<ZeroOneOrMany<Document>> {
         AsyncStream::with_channel(move |sender| {
             spawn_task(move || {
-            match self.source {
-                ContextSourceType::Files(files_context) => {
-                    // Expand glob pattern and load files
-                    match glob::glob(&files_context.pattern) {
-                        Ok(paths) => {
-                            let mut documents = Vec::new();
-                            for entry in paths.flatten() {
-                                if let Ok(content) = std::fs::read_to_string(&entry) {
-                                    let document = Document {
-                                        data: content,
-                                        format: Some(crate::context::ContentFormat::Text),
-                                        media_type: Some(crate::context::DocumentMediaType::TXT),
-                                        additional_props: {
-                                            let mut props = HashMap::new();
-                                            props.insert("id".to_string(), serde_json::Value::String(Uuid::new_v4().to_string()));
-                                            props.insert("path".to_string(), serde_json::Value::String(entry.to_string_lossy().to_string()));
-                                            props
-                                        },
-                                    };
-                                    documents.push(document);
+                match self.source {
+                    ContextSourceType::Files(files_context) => {
+                        // Expand glob pattern and load files
+                        match glob::glob(&files_context.pattern) {
+                            Ok(paths) => {
+                                let mut documents = Vec::new();
+                                for entry in paths.flatten() {
+                                    if let Ok(content) = std::fs::read_to_string(&entry) {
+                                        let document = Document {
+                                            data: content,
+                                            format: Some(crate::context::ContentFormat::Text),
+                                            media_type: Some(
+                                                crate::context::DocumentMediaType::TXT,
+                                            ),
+                                            additional_props: {
+                                                let mut props = HashMap::new();
+                                                props.insert(
+                                                    "id".to_string(),
+                                                    serde_json::Value::String(
+                                                        Uuid::new_v4().to_string(),
+                                                    ),
+                                                );
+                                                props.insert(
+                                                    "path".to_string(),
+                                                    serde_json::Value::String(
+                                                        entry.to_string_lossy().to_string(),
+                                                    ),
+                                                );
+                                                props
+                                            },
+                                        };
+                                        documents.push(document);
+                                    }
                                 }
+                                let result = match documents.len() {
+                                    0 => ZeroOneOrMany::None,
+                                    1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
+                                    _ => ZeroOneOrMany::Many(documents),
+                                };
+                                let _ = sender.send(result);
                             }
-                            let result = match documents.len() {
-                                0 => ZeroOneOrMany::None,
-                                1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
-                                _ => ZeroOneOrMany::Many(documents),
-                            };
-                            let _ = sender.send(result);
-                        }
-                        Err(e) => {
-                            fluent_ai_async::handle_error!(ContextError::ContextNotFound(format!("Glob pattern error: {}", e)), "Glob pattern expansion failed");
+                            Err(e) => {
+                                fluent_ai_async::handle_error!(
+                                    ContextError::ContextNotFound(format!(
+                                        "Glob pattern error: {}",
+                                        e
+                                    )),
+                                    "Glob pattern expansion failed"
+                                );
+                            }
                         }
                     }
+                    _ => {
+                        fluent_ai_async::handle_error!(
+                            ContextError::ContextNotFound("Invalid context type".to_string()),
+                            "Invalid context type for files loading"
+                        );
+                    }
                 }
-                _ => {
-                    fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for files loading");
-                }
-            }
             });
         })
     }
@@ -735,89 +773,117 @@ impl Context<Directory> {
     pub fn load(self) -> AsyncStream<ZeroOneOrMany<Document>> {
         AsyncStream::with_channel(move |sender| {
             spawn_task(move || {
-            match self.source {
-                ContextSourceType::Directory(directory_context) => {
-                    // Traverse directory and load files
-                    let mut documents = Vec::new();
-                    
-                    fn traverse_dir(
-                        path: &str, 
-                        recursive: bool, 
-                        extensions: &[String], 
-                        max_depth: Option<usize>,
-                        current_depth: usize,
-                        documents: &mut Vec<Document>
-                    ) -> Result<(), std::io::Error> {
-                        if let Some(max) = max_depth {
-                            if current_depth > max {
-                                return Ok(());
+                match self.source {
+                    ContextSourceType::Directory(directory_context) => {
+                        // Traverse directory and load files
+                        let mut documents = Vec::new();
+
+                        fn traverse_dir(
+                            path: &str,
+                            recursive: bool,
+                            extensions: &[String],
+                            max_depth: Option<usize>,
+                            current_depth: usize,
+                            documents: &mut Vec<Document>,
+                        ) -> Result<(), std::io::Error> {
+                            if let Some(max) = max_depth {
+                                if current_depth > max {
+                                    return Ok(());
+                                }
                             }
-                        }
-                        
-                        for entry in std::fs::read_dir(path)? {
-                            let entry = entry?;
-                            let path = entry.path();
-                            
-                            if path.is_file() {
-                                let should_include = if extensions.is_empty() {
-                                    true
-                                } else {
-                                    path.extension()
-                                        .and_then(|ext| ext.to_str())
-                                        .map(|ext| extensions.contains(&ext.to_string()))
-                                        .unwrap_or(false)
-                                };
-                                
-                                if should_include {
-                                    if let Ok(content) = std::fs::read_to_string(&path) {
-                                        let document = Document {
-                                            data: content,
-                                            format: Some(crate::context::ContentFormat::Text),
-                                            media_type: Some(crate::context::DocumentMediaType::TXT),
-                                            additional_props: {
-                                                let mut props = HashMap::new();
-                                                props.insert("id".to_string(), serde_json::Value::String(Uuid::new_v4().to_string()));
-                                                props.insert("path".to_string(), serde_json::Value::String(path.to_string_lossy().to_string()));
-                                                props
-                                            },
-                                        };
-                                        documents.push(document);
+
+                            for entry in std::fs::read_dir(path)? {
+                                let entry = entry?;
+                                let path = entry.path();
+
+                                if path.is_file() {
+                                    let should_include = if extensions.is_empty() {
+                                        true
+                                    } else {
+                                        path.extension()
+                                            .and_then(|ext| ext.to_str())
+                                            .map(|ext| extensions.contains(&ext.to_string()))
+                                            .unwrap_or(false)
+                                    };
+
+                                    if should_include {
+                                        if let Ok(content) = std::fs::read_to_string(&path) {
+                                            let document = Document {
+                                                data: content,
+                                                format: Some(crate::context::ContentFormat::Text),
+                                                media_type: Some(
+                                                    crate::context::DocumentMediaType::TXT,
+                                                ),
+                                                additional_props: {
+                                                    let mut props = HashMap::new();
+                                                    props.insert(
+                                                        "id".to_string(),
+                                                        serde_json::Value::String(
+                                                            Uuid::new_v4().to_string(),
+                                                        ),
+                                                    );
+                                                    props.insert(
+                                                        "path".to_string(),
+                                                        serde_json::Value::String(
+                                                            path.to_string_lossy().to_string(),
+                                                        ),
+                                                    );
+                                                    props
+                                                },
+                                            };
+                                            documents.push(document);
+                                        }
+                                    }
+                                } else if path.is_dir() && recursive {
+                                    if let Some(path_str) = path.to_str() {
+                                        traverse_dir(
+                                            path_str,
+                                            recursive,
+                                            extensions,
+                                            max_depth,
+                                            current_depth + 1,
+                                            documents,
+                                        )?;
                                     }
                                 }
-                            } else if path.is_dir() && recursive {
-                                if let Some(path_str) = path.to_str() {
-                                    traverse_dir(path_str, recursive, extensions, max_depth, current_depth + 1, documents)?;
-                                }
+                            }
+                            Ok(())
+                        }
+
+                        match traverse_dir(
+                            &directory_context.path,
+                            directory_context.recursive,
+                            &directory_context.extensions,
+                            directory_context.max_depth,
+                            0,
+                            &mut documents,
+                        ) {
+                            Ok(()) => {
+                                let result = match documents.len() {
+                                    0 => ZeroOneOrMany::None,
+                                    1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
+                                    _ => ZeroOneOrMany::Many(documents),
+                                };
+                                let _ = sender.send(result);
+                            }
+                            Err(e) => {
+                                fluent_ai_async::handle_error!(
+                                    ContextError::ContextNotFound(format!(
+                                        "Directory traversal error: {}",
+                                        e
+                                    )),
+                                    "Directory traversal failed"
+                                );
                             }
                         }
-                        Ok(())
                     }
-                    
-                    match traverse_dir(
-                        &directory_context.path,
-                        directory_context.recursive,
-                        &directory_context.extensions,
-                        directory_context.max_depth,
-                        0,
-                        &mut documents
-                    ) {
-                        Ok(()) => {
-                            let result = match documents.len() {
-                                0 => ZeroOneOrMany::None,
-                                1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
-                                _ => ZeroOneOrMany::Many(documents),
-                            };
-                            let _ = sender.send(result);
-                        }
-                        Err(e) => {
-                            fluent_ai_async::handle_error!(ContextError::ContextNotFound(format!("Directory traversal error: {}", e)), "Directory traversal failed");
-                        }
+                    _ => {
+                        fluent_ai_async::handle_error!(
+                            ContextError::ContextNotFound("Invalid context type".to_string()),
+                            "Invalid context type for directory loading"
+                        );
                     }
                 }
-                _ => {
-                    fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for directory loading");
-                }
-            }
             });
         })
     }
@@ -844,28 +910,39 @@ impl Context<Github> {
     pub fn load(self) -> AsyncStream<ZeroOneOrMany<Document>> {
         AsyncStream::with_channel(move |sender| {
             spawn_task(move || {
-            match self.source {
-                ContextSourceType::Github(github_context) => {
-                    // GitHub repository file loading implementation
-                    if github_context.repository_url.is_empty() {
-                        fluent_ai_async::handle_error!(ContextError::ContextNotFound("GitHub repository URL is required".to_string()), "GitHub repository URL missing");
-                        return;
+                match self.source {
+                    ContextSourceType::Github(github_context) => {
+                        // GitHub repository file loading implementation
+                        if github_context.repository_url.is_empty() {
+                            fluent_ai_async::handle_error!(
+                                ContextError::ContextNotFound(
+                                    "GitHub repository URL is required".to_string()
+                                ),
+                                "GitHub repository URL missing"
+                            );
+                            return;
+                        }
+
+                        // For now, return a meaningful error indicating GitHub integration needs external dependencies
+                        // This is production-ready error handling rather than a placeholder
+                        fluent_ai_async::handle_error!(
+                            ContextError::ContextNotFound(format!(
+                                "GitHub repository loading for '{}' requires git2 or GitHub API integration. \
+                        Pattern: '{}', Branch: '{}'",
+                                github_context.repository_url,
+                                github_context.pattern,
+                                github_context.branch
+                            )),
+                            "GitHub integration not implemented"
+                        );
                     }
-                    
-                    // For now, return a meaningful error indicating GitHub integration needs external dependencies
-                    // This is production-ready error handling rather than a placeholder
-                    fluent_ai_async::handle_error!(ContextError::ContextNotFound(format!(
-                        "GitHub repository loading for '{}' requires git2 or GitHub API integration. \
-                        Pattern: '{}', Branch: '{}'", 
-                        github_context.repository_url,
-                        github_context.pattern,
-                        github_context.branch
-                    )), "GitHub integration not implemented");
+                    _ => {
+                        fluent_ai_async::handle_error!(
+                            ContextError::ContextNotFound("Invalid context type".to_string()),
+                            "Invalid context type for GitHub loading"
+                        );
+                    }
                 }
-                _ => {
-                    fluent_ai_async::handle_error!(ContextError::ContextNotFound("Invalid context type".to_string()), "Invalid context type for GitHub loading");
-                }
-            }
             });
         })
     }

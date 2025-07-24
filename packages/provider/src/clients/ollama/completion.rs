@@ -6,6 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::collections::HashMap;
 
 use super::client::Client;
 use super::streaming;
@@ -20,6 +21,7 @@ use crate::{
     runtime::{self, AsyncTask},
     streaming::StreamingCompletionResponse,
 };
+use fluent_ai_http3::{Http3, HttpStreamExt, header};
 
 // ============================================================================
 // Model Constants
@@ -216,35 +218,19 @@ impl completion::CompletionModel for CompletionModel {
         match self.create_completion_request(completion_request) {
             Ok(request_payload) => {
                 runtime::spawn_async(async move {
-                    let response = client.post("api/chat").json(&request_payload).send().await;
-
-                    let result = match response {
-                        Ok(response) => {
-                            if response.status().is_success() {
-                                let text = match response.text().await {
-                                    Ok(text) => text,
-                                    Err(e) => {
-                                        tx.finish(Err(CompletionError::ProviderError(
-                                            e.to_string(),
-                                        )));
-                                        return;
-                                    }
-                                };
-                                tracing::debug!(target: "rig", "Ollama chat response: {}", text);
-                                match serde_json::from_str::<CompletionResponse>(&text) {
-                                    Ok(chat_resp) => chat_resp.try_into(),
-                                    Err(e) => Err(CompletionError::ProviderError(e.to_string())),
-                                }
-                            } else {
-                                let err_text = match response.text().await {
-                                    Ok(text) => text,
-                                    Err(e) => e.to_string(),
-                                };
-                                Err(CompletionError::ProviderError(err_text))
-                            }
-                        }
-                        Err(e) => Err(CompletionError::ProviderError(e.to_string())),
-                    };
+                    let url = format!("{}/api/chat", client.base_url());
+                    
+                    let result = Http3::json()
+                        .body(&request_payload)
+                        .post(&url)
+                        .collect_or_else(|e| {
+                            tracing::error!(target: "rig", "Ollama completion request failed: {}", e);
+                            Err(CompletionError::ProviderError(e.to_string()))
+                        })
+                        .and_then(|chat_resp: CompletionResponse| {
+                            tracing::debug!(target: "rig", "Ollama chat response: {:?}", chat_resp);
+                            chat_resp.try_into()
+                        });
 
                     tx.finish(result);
                 });
@@ -270,8 +256,13 @@ impl completion::CompletionModel for CompletionModel {
                 json_util::merge_inplace(&mut request_payload, json!({"stream": true}));
 
                 runtime::spawn_async(async move {
-                    let builder = client.post("api/chat").json(&request_payload);
-                    let result = streaming::send_ollama_streaming_request(builder).await;
+                    let url = format!("{}/api/chat", client.base_url());
+                    
+                    let stream = Http3::json()
+                        .body(&request_payload)
+                        .post(&url);
+                    
+                    let result = streaming::process_ollama_streaming_response(stream).await;
                     tx.finish(result);
                 });
             }

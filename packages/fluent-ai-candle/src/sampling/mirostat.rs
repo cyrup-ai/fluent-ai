@@ -29,9 +29,8 @@ use arrayvec::ArrayVec;
 use candle_core::{Result as CandleResult, Tensor};
 use fastrand::Rng;
 
-use super::LogitsProcessor;
 use crate::error::CandleError;
-use crate::logits::{ProcessingContext, SamplingConfig};
+use crate::logits::SamplingConfig;
 
 /// Maximum perplexity history for moving average (stack allocated)
 const MAX_PERPLEXITY_HISTORY: usize = 32;

@@ -8,9 +8,8 @@ use crossbeam_utils::CachePadded;
 
 use super::core::{Agent, AgentError, AgentResult, MAX_AGENT_TOOLS};
 use crate::memory::Memory;
-use crate::memory::manager::MemoryConfig;
 use crate::memory::config::memory::MemoryConfig as ComprehensiveMemoryConfig;
-
+use crate::memory::manager::MemoryConfig;
 use crate::model::Model;
 use crate::tool::McpToolData;
 
@@ -132,12 +131,16 @@ impl<const TOOLS_CAPACITY: usize> AgentBuilder<TOOLS_CAPACITY> {
                 embedding_dimension: comprehensive_config.vector_store.dimension,
             };
             let mut memory_stream = Memory::new(memory_config);
-            
+
             // Use tokio_stream::StreamExt to get the first item from the stream
             use tokio_stream::StreamExt;
             let memory_instance = match memory_stream.next().await {
                 Some(memory) => memory,
-                None => return Err(AgentError::InitializationError("Failed to initialize memory".to_string())),
+                None => {
+                    return Err(AgentError::InitializationError(
+                        "Failed to initialize memory".to_string(),
+                    ));
+                }
             };
             let memory_arc = Arc::new(memory_instance);
             memory_arc
@@ -149,12 +152,14 @@ impl<const TOOLS_CAPACITY: usize> AgentBuilder<TOOLS_CAPACITY> {
         // Convert tools with zero-allocation
         let tools = match self.tools.len() {
             0 => crate::ZeroOneOrMany::None,
-            1 => {
-                match self.tools.into_iter().next() {
-                    Some(tool) => crate::ZeroOneOrMany::One(tool),
-                    None => return Err(AgentError::InitializationError("Expected one tool but found none".to_string())),
+            1 => match self.tools.into_iter().next() {
+                Some(tool) => crate::ZeroOneOrMany::One(tool),
+                None => {
+                    return Err(AgentError::InitializationError(
+                        "Expected one tool but found none".to_string(),
+                    ));
                 }
-            }
+            },
             _ => {
                 let tools_vec: Vec<_> = self.tools.into_iter().collect();
                 crate::ZeroOneOrMany::Many(tools_vec)

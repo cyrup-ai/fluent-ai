@@ -123,10 +123,13 @@ impl CognitiveMemoryManager {
         settings: CognitiveSettings,
     ) -> Result<Self> {
         // Initialize legacy manager with proper async streaming
-        let db = surrealdb::engine::any::connect(surreal_url).await
+        let db = surrealdb::engine::any::connect(surreal_url)
+            .await
             .map_err(|e| Error::Config(format!("Failed to connect to SurrealDB: {}", e)))?;
 
-        db.use_ns(namespace).use_db(database).await
+        db.use_ns(namespace)
+            .use_db(database)
+            .await
             .map_err(|e| Error::Config(format!("Failed to use namespace/database: {}", e)))?;
 
         let legacy_manager = Arc::new(SurrealDBMemoryManager::new(db));

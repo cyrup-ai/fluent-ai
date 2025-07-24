@@ -24,7 +24,12 @@ macro_rules! emit {
 #[macro_export]
 macro_rules! handle_error {
     ($err:expr, $context:expr) => {{
-        log::error!("Stream error in {}: {}. Details: {}", file!(), $context, $err);
+        log::error!(
+            "Stream error in {}: {}. Details: {}",
+            file!(),
+            $context,
+            $err
+        );
         return;
     }};
 }

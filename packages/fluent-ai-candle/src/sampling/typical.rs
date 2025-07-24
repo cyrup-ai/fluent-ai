@@ -3,11 +3,10 @@
 //! Production-quality typical sampling implementation that selects tokens based on
 //! their surprisal (negative log probability) relative to the distribution's entropy.
 
-use candle_core::{DType, Result as CandleResult, Tensor, D};
+use candle_core::{Tensor, D};
 use candle_nn::ops;
 
 use super::SamplingError;
-use crate::processing::traits::LogitsProcessor;
 
 /// Typical sampling processor for surprise-based token selection
 ///

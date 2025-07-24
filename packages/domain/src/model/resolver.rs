@@ -9,7 +9,8 @@ use std::hash::Hash;
 use ahash::RandomState;
 use dashmap::DashMap;
 use fluent_ai_async::AsyncStream;
-use futures_util::StreamExt;
+#[cfg(test)]
+use once_cell::sync::Lazy;
 // Removed unused import: once_cell::sync::Lazy
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -339,24 +340,28 @@ impl ModelResolver {
         let provider = provider.map(|s| s.to_string());
 
         AsyncStream::with_channel(move |sender| {
-            let mut resolution_stream = resolver.resolve::<M>(&model_name, provider.as_deref());
-            
-            // Use proper streams-only pattern - no await allowed
-            if let Some(resolution) = resolution_stream.try_next() {
+            let resolution_stream = resolver.resolve::<M>(&model_name, provider.as_deref());
+
+            // Use proper streams-only pattern with collect() for blocking collection
+            let resolutions = resolution_stream.collect();
+            if let Some(resolution) = resolutions.into_iter().next() {
                 if resolution.is_valid() {
-                    if let Ok(model) = resolver
+                    match resolver
                         .registry
                         .get::<M>(&resolution.provider, &resolution.model)
                     {
-                        let _ = sender.try_send(Some(model));
-                    } else {
-                        let _ = sender.try_send(None);
+                        Ok(Some(model)) => {
+                            let _ = sender.send(Some(model));
+                        }
+                        _ => {
+                            let _ = sender.send(None);
+                        }
                     }
                 } else {
-                    let _ = sender.try_send(None);
+                    let _ = sender.send(None);
                 }
             } else {
-                let _ = sender.try_send(None);
+                let _ = sender.send(None);
             }
         })
     }
@@ -476,12 +481,14 @@ mod tests {
         resolver.add_alias("chat", "openai", "gpt-3.5-turbo");
 
         // Test resolution with a rule
-        let resolution = resolver.resolve::<TestModel>("gpt-4", None).unwrap();
+        let resolution_stream = resolver.resolve::<TestModel>("gpt-4", None);
+        let resolution = resolution_stream.collect().into_iter().next().unwrap();
         assert_eq!(resolution.provider, "openai");
         assert_eq!(resolution.model, "gpt-3.5-turbo");
 
         // Test resolution with an alias
-        let resolution = resolver.resolve::<TestModel>("chat", None).unwrap();
+        let resolution_stream = resolver.resolve::<TestModel>("chat", None);
+        let resolution = resolution_stream.collect().into_iter().next().unwrap();
         assert_eq!(resolution.provider, "openai");
         assert_eq!(resolution.model, "gpt-3.5-turbo");
     }

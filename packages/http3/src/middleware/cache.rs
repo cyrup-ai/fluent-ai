@@ -3,8 +3,8 @@
 
 use std::time::SystemTime;
 
-use crate::{HttpRequest, HttpResponse, HttpResult, Middleware};
 use crate::common::cache::httpdate;
+use crate::{HttpRequest, HttpResponse, HttpResult, Middleware};
 
 /// Cache middleware that handles ETag processing and expires computation
 pub struct CacheMiddleware {
@@ -80,7 +80,7 @@ impl CacheMiddleware {
     #[allow(dead_code)]
     fn extract_request_cache_directives(&self, request: &HttpRequest) -> Option<u64> {
         let headers = request.headers();
-        
+
         // Parse Cache-Control header for max-age directive
         if let Some(cache_control) = headers.get("cache-control") {
             if let Ok(cache_control_str) = cache_control.to_str() {
@@ -103,7 +103,8 @@ impl CacheMiddleware {
         if let Some(expires) = headers.get("expires") {
             if let Ok(expires_str) = expires.to_str() {
                 if let Ok(expires_time) = httpdate::parse_http_date(expires_str) {
-                    if let Ok(duration) = expires_time.duration_since(std::time::SystemTime::now()) {
+                    if let Ok(duration) = expires_time.duration_since(std::time::SystemTime::now())
+                    {
                         return Some(duration.as_secs() / 3600); // Convert to hours
                     }
                 }
@@ -126,7 +127,6 @@ impl CacheMiddleware {
         }
         None
     }
-
 }
 
 impl Default for CacheMiddleware {
@@ -340,5 +340,3 @@ fn days_to_ymd(mut days: u64) -> (u32, u32, u32) {
 
     (year, month, day)
 }
-
-

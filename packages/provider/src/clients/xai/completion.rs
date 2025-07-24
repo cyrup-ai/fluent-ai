@@ -3,12 +3,17 @@
 //! From [xAI Reference](https://docs.x.ai/docs/api-reference#chat-completions)
 // ================================================================
 
+// Import centralized HTTP structs - no more local definitions!
 // Re-export the domain CompletionModel trait
 pub use fluent_ai_domain::completion::CompletionModel;
 use fluent_ai_domain::completion::{self, CompletionRequest};
+use super::types::{
+    XaiChatRequest, XaiChatResponse, XaiChoice, XaiContent, XaiFunction, XaiMessage,
+    XaiResponseMessage, XaiStreamingChunk, XaiTool, XaiUsage,
+};
+use fluent_ai_http3::{Http3, HttpResult};
 use serde_json::{Value, json};
 
-use self::xai_api_types::{CompletionResponse, ToolDefinition};
 use super::client::Client;
 use crate::completion_provider::{CompletionError, CompletionResponse as DomainCompletionResponse};
 use crate::json_util;
@@ -38,93 +43,89 @@ impl XaiCompletionModel {
     pub(crate) fn create_completion_request(
         &self,
         completion_request: fluent_ai_domain::completion::CompletionRequest,
-    ) -> Result<Value, CompletionError> {
-        // Convert documents into user messages
-        let docs: Option<Vec<serde_json::Value>> =
-            completion_request.normalized_documents().map(|docs| {
-                docs.into_iter()
-                    .map(|doc| serde_json::json!({"role": "user", "content": doc.content}))
-                    .collect()
-            });
+    ) -> Result<XaiChatRequest<'_>, CompletionError> {
+        // Use the centralized builder with validation
+        let builder = Http3Builders::xai();
+        let mut chat_builder = builder.chat(&self.model);
 
-        // Convert existing chat history to JSON values
-        let chat_history: Vec<serde_json::Value> = completion_request
-            .chat_history
-            .into_iter()
-            .map(|message| {
-                // Convert domain Message to xAI format
-                match message {
-                    fluent_ai_domain::message::Message::User(content) => {
-                        serde_json::json!({"role": "user", "content": content})
-                    }
-                    fluent_ai_domain::message::Message::Assistant(content) => {
-                        serde_json::json!({"role": "assistant", "content": content})
-                    }
-                    fluent_ai_domain::message::Message::System(content) => {
-                        serde_json::json!({"role": "system", "content": content})
-                    }
-                    fluent_ai_domain::message::Message::ToolCall {
-                        name, arguments, ..
-                    } => {
-                        serde_json::json!({
-                            "role": "assistant",
-                            "tool_calls": [{
-                                "type": "function",
-                                "function": {
-                                    "name": name,
-                                    "arguments": arguments
-                                }
-                            }]
-                        })
-                    }
-                    fluent_ai_domain::message::Message::ToolResult { name, result, .. } => {
-                        serde_json::json!({
-                            "role": "tool",
-                            "tool_call_id": name,
-                            "content": result
-                        })
-                    }
-                }
-            })
-            .collect();
-
-        // Init full history with preamble (or empty if non-existent)
-        let mut full_history: Vec<serde_json::Value> = match &completion_request.preamble {
-            Some(preamble) => vec![serde_json::json!({"role": "system", "content": preamble})],
-            None => vec![],
-        };
-
-        // Docs appear right after preamble, if they exist
-        if let Some(docs) = docs {
-            full_history.extend(docs)
+        // Add preamble as system message if present
+        if let Some(preamble) = &completion_request.preamble {
+            chat_builder = chat_builder.add_text_message("system", preamble);
         }
 
-        // Chat history and prompt appear in the order they were provided
-        full_history.extend(chat_history);
+        // Add documents as context
+        if let Some(docs) = completion_request.normalized_documents() {
+            for doc in docs {
+                let content = format!("Document: {}", doc.content());
+                chat_builder = chat_builder.add_text_message("user", &content);
+            }
+        }
 
-        let mut request = if completion_request.tools.is_empty() {
-            json!({
-                "model": self.model,
-                "messages": full_history,
-                "temperature": completion_request.temperature,
-            })
-        } else {
-            json!({
-                "model": self.model,
-                "messages": full_history,
-                "temperature": completion_request.temperature,
-                "tools": completion_request.tools.into_iter().map(ToolDefinition::from).collect::<Vec<_>>(),
-                "tool_choice": "auto",
-            })
-        };
+        // Add chat history
+        for msg in completion_request.chat_history {
+            match msg.role() {
+                fluent_ai_domain::message::MessageRole::User => {
+                    if let Some(text) = msg.content().text() {
+                        chat_builder = chat_builder.add_text_message("user", text);
+                    }
+                }
+                fluent_ai_domain::message::MessageRole::Assistant => {
+                    if let Some(text) = msg.content().text() {
+                        chat_builder = chat_builder.add_text_message("assistant", text);
+                    }
+                }
+                fluent_ai_domain::message::MessageRole::System => {
+                    if let Some(text) = msg.content().text() {
+                        chat_builder = chat_builder.add_text_message("system", text);
+                    }
+                }
+            }
+        }
 
-        request = if let Some(params) = completion_request.additional_params {
-            json_util::merge(request, params)
-        } else {
-            request
-        };
+        // Set parameters with validation using centralized utilities
+        if let Some(temp) = completion_request.temperature {
+            chat_builder = chat_builder.temperature(
+                HttpUtils::validate_temperature(temp as f32, Provider::XAI).map_err(|e| {
+                    CompletionError::RequestError(format!("Invalid temperature: {}", e))
+                })? as f64,
+            );
+        }
 
-        Ok(request)
+        if let Some(max_tokens) = completion_request.max_tokens {
+            chat_builder = chat_builder.max_tokens(
+                HttpUtils::validate_max_tokens(max_tokens, Provider::XAI).map_err(|e| {
+                    CompletionError::RequestError(format!("Invalid max_tokens: {}", e))
+                })?,
+            );
+        }
+
+        // Add tools if present
+        if !completion_request.tools.is_empty() {
+            let mut xai_tools = arrayvec::ArrayVec::new();
+            for tool in completion_request.tools.into_iter() {
+                if xai_tools.len() < super::types::MAX_TOOLS {
+                    let xai_tool = XaiTool {
+                        tool_type: "function",
+                        function: XaiFunction {
+                            name: tool.name(),
+                            description: tool.description(),
+                            parameters: tool.parameters().clone(),
+                        },
+                    };
+                    let _ = xai_tools.push(xai_tool);
+                }
+            }
+            chat_builder = chat_builder.with_tools(xai_tools);
+        }
+
+        // Build and validate the request
+        match chat_builder.build() {
+            Ok(request) => Ok(request),
+            Err(e) => Err(CompletionError::RequestError(format!(
+                "Request building failed: {}",
+                e
+            ))),
+        }
     }
     pub fn new(client: Client, model: &str) -> Self {
         Self {
@@ -135,41 +136,54 @@ impl XaiCompletionModel {
 }
 
 impl completion::CompletionModel for XaiCompletionModel {
-    type Response = CompletionResponse;
+    type Response = XaiChatResponse;
     type StreamingResponse = StreamingCompletionResponse;
 
     #[cfg_attr(feature = "worker", worker::send)]
     async fn completion(
         &self,
         completion_request: fluent_ai_domain::completion::CompletionRequest,
-    ) -> Result<DomainCompletionResponse<CompletionResponse>, CompletionError> {
-        let request = self.create_completion_request(completion_request)?;
-        let request_body = serde_json::to_vec(&request)
-            .map_err(|e| CompletionError::RequestError(format!("Serialization error: {}", e)))?;
+    ) -> Result<DomainCompletionResponse<XaiChatResponse>, CompletionError> {
+        let request_body = self.create_completion_request(completion_request)?;
+
+        // Use centralized serialization
+        let body_bytes = match serde_json::to_vec(&request_body) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(CompletionError::RequestError(format!(
+                    "Serialization error: {}",
+                    e
+                )));
+            }
+        };
 
         let response = self
             .client
-            .make_request("v1/chat/completions", request_body)
+            .make_request("v1/chat/completions", body_bytes)
             .await
             .map_err(|e| CompletionError::HttpError(e.to_string()))?;
 
         if response.status().is_success() {
-            // Use pure HTTP3 streaming - delegate to domain layer
-            // Provider uses domain, domain uses HTTP3 directly
-            let completion: CompletionResponse =
-                todo!("Delegate to domain layer for HTTP3 streaming");
+            let body = response.body();
+            let completion_response: XaiChatResponse =
+                serde_json::from_slice(body).map_err(|e| {
+                    CompletionError::ResponseError(format!("Deserialization error: {}", e))
+                })?;
+
+            tracing::info!(target: "rig",
+                "XAI completion token usage: {:?}",
+                completion_response.usage.clone().map(|usage| format!("{usage}")).unwrap_or_else(|| "N/A".to_string())
+            );
 
             Ok(DomainCompletionResponse {
-                raw_response: completion.clone(),
-                content: completion.try_into()?,
-                token_usage: None, // TODO: Extract token usage from response
+                raw_response: completion_response.clone(),
+                content: completion_response.try_into()?,
+                token_usage: None, // Token usage is in the raw_response
                 metadata: Default::default(),
             })
         } else {
-            // Use pure HTTP3 streaming for error responses - delegate to domain
-            Err(CompletionError::ProviderError(
-                "HTTP error - delegate to domain layer".to_string(),
-            ))
+            let error_body = String::from_utf8_lossy(response.body());
+            Err(CompletionError::ProviderError(error_body.to_string()))
         }
     }
 
@@ -178,23 +192,31 @@ impl completion::CompletionModel for XaiCompletionModel {
         &self,
         request: CompletionRequest,
     ) -> Result<crate::streaming::StreamingResponse<Self::StreamingResponse>, CompletionError> {
-        let mut request_json = self.create_completion_request(request)?;
-        request_json["stream"] = serde_json::json!(true);
+        let mut request_body = self.create_completion_request(request)?;
 
-        let request_body = serde_json::to_vec(&request_json)
-            .map_err(|e| CompletionError::RequestError(format!("Serialization error: {}", e)))?;
+        // Enable streaming in the centralized request
+        request_body.stream = Some(true);
+
+        // Use centralized serialization
+        let body_bytes = match serde_json::to_vec(&request_body) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(CompletionError::RequestError(format!(
+                    "Serialization error: {}",
+                    e
+                )));
+            }
+        };
 
         let response = self
             .client
-            .make_request("v1/chat/completions", request_body)
+            .make_request("v1/chat/completions", body_bytes)
             .await
             .map_err(|e| CompletionError::HttpError(e.to_string()))?;
 
         if !response.status().is_success() {
-            // Use pure HTTP3 streaming for error responses - delegate to domain
-            return Err(CompletionError::ProviderError(
-                "HTTP error - delegate to domain layer".to_string(),
-            ));
+            let error_body = String::from_utf8_lossy(response.body());
+            return Err(CompletionError::ProviderError(error_body.to_string()));
         }
 
         // Create streaming response using the streaming module
@@ -205,20 +227,18 @@ impl completion::CompletionModel for XaiCompletionModel {
     }
 }
 
-impl TryFrom<xai_api_types::CompletionResponse>
-    for crate::completion_provider::ZeroOneOrMany<String>
-{
+impl TryFrom<XaiChatResponse> for crate::completion_provider::ZeroOneOrMany<String> {
     type Error = CompletionError;
 
-    fn try_from(response: xai_api_types::CompletionResponse) -> Result<Self, Self::Error> {
+    fn try_from(response: XaiChatResponse) -> Result<Self, Self::Error> {
         let choice = response.choices.first().ok_or_else(|| {
             CompletionError::ResponseError("Response contained no choices".to_owned())
         })?;
 
         // Extract text content from the response
-        if let Some(content) = choice.message.get("content").and_then(|c| c.as_str()) {
+        if let Some(content) = &choice.message.content {
             Ok(crate::completion_provider::ZeroOneOrMany::One(
-                content.to_string(),
+                content.clone(),
             ))
         } else {
             Err(CompletionError::ResponseError(
@@ -228,52 +248,9 @@ impl TryFrom<xai_api_types::CompletionResponse>
     }
 }
 
-pub mod xai_api_types {
-    use serde::{Deserialize, Serialize};
-
-    impl From<completion::ToolDefinition> for ToolDefinition {
-        fn from(tool: completion::ToolDefinition) -> Self {
-            Self {
-                r#type: "function".into(),
-                function: tool,
-            }
-        }
-    }
-
-    #[derive(Clone, Debug, Deserialize, Serialize)]
-    pub struct ToolDefinition {
-        pub r#type: String,
-        pub function: completion::ToolDefinition,
-    }
-
-    #[derive(Debug, Deserialize)]
-    pub struct Function {
-        pub name: String,
-        pub arguments: String,
-    }
-
-    #[derive(Debug, Deserialize)]
-    pub struct CompletionResponse {
-        pub id: String,
-        pub model: String,
-        pub choices: Vec<Choice>,
-        pub created: i64,
-        pub object: String,
-        pub system_fingerprint: String,
-        pub usage: Usage,
-    }
-
-    #[derive(Debug, Deserialize)]
-    pub struct Choice {
-        pub finish_reason: String,
-        pub index: i32,
-        pub message: serde_json::Value,
-    }
-
-    #[derive(Debug, Deserialize)]
-    pub struct Usage {
-        pub completion_tokens: i32,
-        pub prompt_tokens: i32,
-        pub total_tokens: i32,
-    }
-}
+// Legacy type aliases for centralized XAI types
+pub type CompletionResponse = fluent_ai_http_structs::xai::XaiChatResponse;
+pub type ToolDefinition = fluent_ai_http_structs::xai::XaiTool;
+pub type Function = fluent_ai_http_structs::xai::XaiFunction;
+pub type Choice = fluent_ai_http_structs::xai::XaiChoice;
+pub type Usage = fluent_ai_http_structs::xai::XaiUsage;

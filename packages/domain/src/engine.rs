@@ -12,19 +12,10 @@ use thiserror::Error;
 use crate::completion::CompletionResponse;
 use crate::{AsyncStream, AsyncTask, spawn_task};
 
-/// Emit value to stream sender without panicking on channel errors
-macro_rules! emit {
-    ($sender:expr, $value:expr) => {
-        if let Err(_) = $sender.send($value) {
-            // Handle channel full/closed - continue processing
-        }
-    };
-}
-
 /// Handle errors in streaming context without panicking
 macro_rules! handle_error {
     ($error:expr, $context:literal) => {
-        eprintln!("Streaming error in {}: {}", $context, $error);
+        eprintln!("Streaming error in {}: {}", $context, $error)
         // Continue processing instead of returning error
     };
 }
@@ -326,9 +317,7 @@ impl Engine {
     ) -> AsyncTask<EngineResult<CompletionResponse<'static>>> {
         // Validate request first
         if let Err(e) = request.validate() {
-            return spawn_task(move || {
-                Err(e)
-            });
+            return spawn_task(move || Err(e));
         }
 
         // Atomic operations for metrics (lock-free)
@@ -381,7 +370,9 @@ impl Engine {
             if let Some(response) = stream.try_next() {
                 Ok(response)
             } else {
-                Err(EngineError::InternalError("No response from stream".to_string()))
+                Err(EngineError::InternalError(
+                    "No response from stream".to_string(),
+                ))
             }
         })
     }
@@ -406,7 +397,7 @@ impl Engine {
         AsyncStream::with_channel(move |_sender| {
             // TODO: Implement actual completion logic with provider clients
             // This would integrate with the provider system to make actual API calls
-            
+
             // For now, handle the "not implemented" error through streaming
             let error = EngineError::InternalError("Not implemented".to_string());
             handle_error!(error, "execute_completion_stream");
@@ -414,7 +405,7 @@ impl Engine {
     }
 
     /// Process completion request as stream (new primary API)
-    #[inline] 
+    #[inline]
     pub fn process_completion_stream(
         &self,
         request: CompletionRequest<'_>,

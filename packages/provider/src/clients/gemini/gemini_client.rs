@@ -14,6 +14,19 @@ use fluent_ai_domain::completion::{
 };
 use fluent_ai_domain::tool::ToolDefinition;
 use fluent_ai_domain::{AsyncTask, Document, Message, spawn_async};
+// Import centralized HTTP structs - no more local definitions!
+use fluent_ai_http_structs::{
+    builders::{ChatBuilder, Http3Builders, HttpRequestBuilder},
+    common::{AuthMethod, ContentTypes, HttpHeaders, HttpUtils, Provider},
+    errors::{HttpStructError, HttpStructResult},
+    google::{
+        GeminiCandidate, GeminiContent, GeminiFunctionCall, GeminiFunctionDeclaration,
+        GeminiFunctionResponse, GeminiGenerateContentRequest, GeminiGenerateContentResponse,
+        GeminiGenerationConfig, GeminiInlineData, GeminiPart, GeminiSafetySetting,
+        GeminiStreamGenerateContentResponse, GeminiTool, GeminiUsageMetadata,
+    },
+    validation::{ValidateRequest, ValidationResult},
+};
 use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
 use serde_json::{Map, Value};
 use tracing::{debug, error, info, warn};
@@ -21,7 +34,6 @@ use tracing::{debug, error, info, warn};
 use super::Client;
 use super::gemini_error::{GeminiError, GeminiResult};
 use super::gemini_streaming::{GeminiStreamProcessor, StreamingResponse};
-use super::gemini_types::*;
 use crate::{
     AsyncStream, OneOrMany,
     completion_provider::{ChunkHandler, CompletionProvider, ModelConfig, ModelInfo},
@@ -52,14 +64,14 @@ impl CompletionModel {
 }
 
 impl completion::CompletionModel for CompletionModel {
-    type Response = GenerateContentResponse;
+    type Response = GeminiGenerateContentResponse;
     type StreamingResponse = StreamingCompletionResponse;
 
     fn completion(
         &self,
         completion_request: CompletionRequest,
     ) -> crate::runtime::AsyncTask<
-        Result<completion::CompletionResponse<GenerateContentResponse>, CompletionError>,
+        Result<completion::CompletionResponse<GeminiGenerateContentResponse>, CompletionError>,
     > {
         let (tx, task) = crate::runtime::channel();
         let client = self.client.clone();
@@ -421,132 +433,317 @@ impl GeminiCompletionBuilder {
         )
     }
 
-    /// Build Gemini request with zero allocation where possible
+    /// Build Gemini request using centralized builder pattern (zero allocation where possible)
     #[inline(always)]
-    fn build_gemini_request(&self, prompt: &str) -> GeminiResult<GenerateContentRequest> {
-        let mut contents = Vec::new();
+    fn build_gemini_request(&self, prompt: &str) -> GeminiResult<GeminiGenerateContentRequest> {
+        // Use the centralized builder with validation
+        let builder = Http3Builders::google();
+        let mut gemini_builder = builder.gemini_generate_content();
+
+        // Add system instruction if present
+        if !self.system_prompt.is_empty() {
+            gemini_builder = gemini_builder.with_system_instruction(self.system_prompt.clone());
+        }
 
         // Add documents as context
         for doc in &self.documents {
-            contents.push(Content {
-                parts: OneOrMany::one(format!("Document: {}", doc.content()).into()),
-                role: Some(Role::User),
-            });
+            let content = format!("Document: {}", doc.content());
+            gemini_builder = gemini_builder.add_user_text(content)?;
         }
 
         // Add chat history
         for msg in &self.chat_history {
-            contents.push(self.convert_domain_message_to_gemini(msg)?);
+            match self.convert_domain_message_to_content(msg) {
+                Ok((role, text)) => {
+                    match role {
+                        "user" => gemini_builder = gemini_builder.add_user_text(text)?,
+                        "model" => gemini_builder = gemini_builder.add_model_text(text)?,
+                        _ => {} // Skip unknown roles
+                    }
+                }
+                Err(e) => return Err(e),
+            }
         }
 
         // Add user prompt
-        contents.push(Content {
-            parts: OneOrMany::one(prompt.to_string().into()),
-            role: Some(Role::User),
-        });
+        gemini_builder = gemini_builder.add_user_text(prompt.to_string())?;
 
-        let system_instruction = if !self.system_prompt.is_empty() {
-            Some(Content {
-                parts: OneOrMany::one(self.system_prompt.clone().into()),
-                role: Some(Role::Model),
-            })
-        } else {
-            None
-        };
+        // Set generation configuration with validation using centralized utilities
+        let generation_config = GeminiGenerationConfig::new()
+            .with_temperature(
+                HttpUtils::validate_temperature(self.temperature as f32, Provider::Google)
+                    .map_err(|e| GeminiError::parse_error(format!("Invalid temperature: {}", e)))?,
+            )
+            .with_max_output_tokens(
+                HttpUtils::validate_max_tokens(self.max_tokens, Provider::Google)
+                    .map_err(|e| GeminiError::parse_error(format!("Invalid max_tokens: {}", e)))?,
+            )
+            .with_top_p(
+                HttpUtils::validate_top_p(self.top_p as f32)
+                    .map_err(|e| GeminiError::parse_error(format!("Invalid top_p: {}", e)))?,
+            )
+            .with_top_k(self.top_k);
 
-        let mut generation_config = GenerationConfig::default();
-        generation_config.temperature = Some(self.temperature);
-        generation_config.max_output_tokens = Some(self.max_tokens as u64);
-        generation_config.top_p = Some(self.top_p);
-        generation_config.top_k = Some(self.top_k as i32);
+        gemini_builder = gemini_builder.with_generation_config(generation_config);
 
-        let tools = if self.tools.is_empty() {
-            None
-        } else {
-            Some(self.convert_tools_to_gemini()?)
-        };
+        // Add tools if present
+        if !self.tools.is_empty() {
+            for tool in &self.tools {
+                gemini_builder = gemini_builder.add_function_tool(
+                    tool.name().to_string(),
+                    tool.description().to_string(),
+                    Some(tool.parameters().clone()),
+                )?;
+            }
+        }
 
-        Ok(GenerateContentRequest {
-            contents,
-            generation_config: Some(generation_config),
-            safety_settings: None,
-            tools,
-            tool_config: None,
-            system_instruction,
-        })
+        // Build and validate the request
+        match gemini_builder.build() {
+            Ok(request) => Ok(request),
+            Err(e) => Err(GeminiError::parse_error(format!(
+                "Request building failed: {}",
+                e
+            ))),
+        }
     }
 
-    /// Convert domain Message to Gemini format
+    /// Convert domain Message to Gemini content (zero allocation)
     #[inline(always)]
-    fn convert_domain_message_to_gemini(&self, msg: &Message) -> GeminiResult<Content> {
+    fn convert_domain_message_to_content(
+        &self,
+        msg: &Message,
+    ) -> GeminiResult<(&'static str, String)> {
         match msg.role() {
             fluent_ai_domain::message::MessageRole::User => {
                 let content = msg
                     .content()
                     .text()
-                    .ok_or_else(|| GeminiError::parse_error("Message content must be text"))?;
-                Ok(Content {
-                    parts: OneOrMany::one(content.to_string().into()),
-                    role: Some(Role::User),
-                })
+                    .ok_or_else(|| GeminiError::parse_error("User message content must be text"))?;
+                Ok(("user", content.to_string()))
             }
             fluent_ai_domain::message::MessageRole::Assistant => {
-                let mut parts = Vec::new();
-
                 if let Some(text) = msg.content().text() {
-                    parts.push(Part::Text(text.to_string()));
+                    Ok(("model", text.to_string()))
+                } else if msg.has_tool_calls() {
+                    // For tool calls, we'd need to create a more complex content structure
+                    // For now, return text content or error
+                    Err(GeminiError::parse_error(
+                        "Tool calls not yet supported in message conversion",
+                    ))
+                } else {
+                    Ok(("model", String::new()))
                 }
-
-                for tool_call in msg.tool_calls() {
-                    parts.push(Part::FunctionCall(FunctionCall {
-                        name: tool_call.function().name().to_string(),
-                        args: tool_call.function().arguments().clone(),
-                    }));
-                }
-
-                Ok(Content {
-                    parts: OneOrMany::many(parts).map_err(|_| {
-                        GeminiError::parse_error("Failed to convert assistant message parts")
-                    })?,
-                    role: Some(Role::Model),
-                })
             }
             fluent_ai_domain::message::MessageRole::System => {
-                let content = msg.content().text().ok_or_else(|| {
-                    GeminiError::parse_error("System message content must be text")
-                })?;
-                Ok(Content {
-                    parts: OneOrMany::one(content.to_string().into()),
-                    role: Some(Role::Model),
-                })
+                // System messages in Gemini go in the system_instruction field, not messages array
+                Err(GeminiError::parse_error(
+                    "System messages should be handled separately",
+                ))
             }
         }
     }
 
-    /// Convert domain ToolDefinition to Gemini format
+    /// Execute streaming completion with zero-allocation HTTP3 (blazing-fast)
+    /// Returns AsyncStream<Result<CompletionChunk, CompletionError>> with proper error handling
     #[inline(always)]
-    fn convert_tools_to_gemini(&self) -> GeminiResult<Vec<Tool>> {
-        let mut tools = Vec::new();
+    async fn execute_streaming_completion_http(
+        &self,
+        prompt: String,
+    ) -> GeminiResult<
+        AsyncStream<Result<CompletionChunk, crate::completion_provider::CompletionError>>,
+    > {
+        let request_body = self.build_gemini_request(&prompt)?;
 
-        for tool in &self.tools {
-            let parameters: Option<Schema> =
-                if tool.parameters() == &serde_json::json!({"type": "object", "properties": {}}) {
-                    None
-                } else {
-                    Some(tool.parameters().clone().try_into()?)
-                };
+        // Use centralized serialization with zero allocation where possible
+        let body_bytes = match serde_json::to_vec(&request_body) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(GeminiError::parse_error(format!(
+                    "Serialization error: {}",
+                    e
+                )));
+            }
+        };
 
-            tools.push(Tool {
-                function_declarations: FunctionDeclaration {
-                    name: tool.name().to_string(),
-                    description: tool.description().to_string(),
-                    parameters,
-                },
-                code_execution: None,
+        // Use explicit API key if set, otherwise use discovered key
+        let auth_key = self.explicit_api_key.as_ref().unwrap_or(&self.api_key);
+
+        // Create auth method using centralized utilities (Google uses query parameter for API key)
+        let auth = match AuthMethod::query_param("key", auth_key) {
+            Ok(auth) => auth,
+            Err(e) => {
+                return Err(GeminiError::parse_error(format!(
+                    "Auth setup failed: {}",
+                    e
+                )));
+            }
+        };
+
+        // Build headers using centralized utilities
+        let headers =
+            match HttpUtils::standard_headers(Provider::Google, ContentTypes::JSON, Some(&auth)) {
+                Ok(headers) => headers,
+                Err(e) => {
+                    return Err(GeminiError::parse_error(format!(
+                        "Header setup failed: {}",
+                        e
+                    )));
+                }
+            };
+
+        // Build request using centralized URL building
+        let endpoint_url = match HttpUtils::build_endpoint(
+            self.base_url,
+            &format!("/v1beta/models/{}:streamGenerateContent", self.model_name),
+        ) {
+            Ok(url) => url,
+            Err(e) => {
+                return Err(GeminiError::parse_error(format!(
+                    "URL building failed: {}",
+                    e
+                )));
+            }
+        };
+
+        let mut request = HttpRequest::post(&endpoint_url, &body_bytes)
+            .map_err(|_| GeminiError::parse_error("HTTP request creation failed"))?;
+
+        // Add headers from centralized header collection
+        for (name, value) in headers {
+            request = request.header(name.as_str(), value.as_str());
+        }
+
+        let response = self
+            .client
+            .send(request)
+            .await
+            .map_err(|_| GeminiError::parse_error("HTTP request failed"))?;
+
+        if !response.status().is_success() {
+            return Err(match response.status().as_u16() {
+                400 => GeminiError::parse_error("Invalid request"),
+                401 => GeminiError::parse_error("Authentication failed"),
+                403 => GeminiError::parse_error("Permission denied"),
+                429 => GeminiError::parse_error("Rate limit exceeded"),
+                _ => GeminiError::parse_error("HTTP error"),
             });
         }
 
-        Ok(tools)
+        let sse_stream = response.sse();
+        let (chunk_sender, chunk_receiver) = crate::channel();
+
+        spawn_async(async move {
+            use futures_util::StreamExt;
+            let mut sse_stream = sse_stream;
+
+            while let Some(event) = sse_stream.next().await {
+                match event {
+                    Ok(sse_event) => {
+                        if let Some(data) = sse_event.data {
+                            match Self::parse_gemini_sse_chunk(data.as_bytes()) {
+                                Ok(chunk) => {
+                                    if chunk_sender.send(Ok(chunk)).is_err() {
+                                        break;
+                                    }
+                                }
+                                Err(e) => {
+                                    if chunk_sender
+                                        .send(Err(
+                                            crate::completion_provider::CompletionError::ParseError,
+                                        ))
+                                        .is_err()
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        let _ = chunk_sender
+                            .send(Err(crate::completion_provider::CompletionError::HttpError));
+                        break;
+                    }
+                }
+            }
+        });
+
+        Ok(chunk_receiver)
+    }
+}
+
+/// Parse Gemini SSE chunk using centralized deserialization (blazing-fast)
+#[inline(always)]
+fn parse_gemini_sse_chunk(data: &[u8]) -> GeminiResult<CompletionChunk> {
+    // Use centralized deserialization
+    let gemini_chunk: GeminiStreamGenerateContentResponse = match serde_json::from_slice(data) {
+        Ok(chunk) => chunk,
+        Err(_) => return Err(GeminiError::parse_error("Invalid JSON in SSE chunk")),
+    };
+
+    // Convert to domain CompletionChunk based on Gemini's streaming format
+    if let Some(candidate) = gemini_chunk.candidates.first() {
+        let mut text_content = String::new();
+        let mut has_function_calls = false;
+
+        // Extract text content from parts
+        for part in &candidate.content.parts {
+            match part {
+                GeminiPart::Text { text } => {
+                    text_content.push_str(text);
+                }
+                GeminiPart::FunctionCall { .. } => {
+                    has_function_calls = true;
+                }
+                _ => {} // Skip other part types for now
+            }
+        }
+
+        // Handle finish reason
+        if let Some(ref finish_reason) = candidate.finish_reason {
+            let reason = match finish_reason.as_str() {
+                "stop" => FinishReason::Stop,
+                "max_tokens" => FinishReason::Length,
+                "safety" => FinishReason::ContentFilter,
+                _ => FinishReason::Stop,
+            };
+
+            let usage_info = gemini_chunk.usage_metadata.map(|u| {
+                Usage::new(
+                    u.prompt_token_count,
+                    u.candidates_token_count.unwrap_or(0),
+                    u.total_token_count,
+                )
+            });
+
+            return Ok(CompletionChunk::new(
+                "gemini_chunk".to_string(),
+                candidate.index.unwrap_or(0),
+                text_content,
+                Some(reason),
+                usage_info,
+            ));
+        }
+
+        if has_function_calls {
+            Ok(CompletionChunk::new(
+                "gemini_chunk".to_string(),
+                candidate.index.unwrap_or(0),
+                text_content,
+                None,
+                None,
+            ))
+        } else {
+            Ok(CompletionChunk::new(
+                "gemini_chunk".to_string(),
+                candidate.index.unwrap_or(0),
+                text_content,
+                None,
+                None,
+            ))
+        }
+    } else {
+        Err(GeminiError::parse_error("No candidates in chunk"))
     }
 }
 
@@ -556,49 +753,63 @@ impl GeminiCompletionBuilder {
 
 pub(crate) fn create_request_body(
     completion_request: CompletionRequest,
-) -> Result<GenerateContentRequest, CompletionError> {
-    let mut full_history = Vec::new();
-    full_history.extend(completion_request.chat_history);
+) -> Result<GeminiGenerateContentRequest, CompletionError> {
+    let mut request = GeminiGenerateContentRequest::new();
 
-    let additional_params = completion_request
-        .additional_params
-        .unwrap_or_else(|| Value::Object(Map::new()));
+    // Add chat history to contents
+    for msg in completion_request.chat_history {
+        match msg.role() {
+            fluent_ai_domain::message::MessageRole::User => {
+                if let Some(text) = msg.content().text() {
+                    request.add_user_content(text.to_string()).map_err(|e| {
+                        CompletionError::RequestError(Box::new(GeminiError::parse_error(e)))
+                    })?;
+                }
+            }
+            fluent_ai_domain::message::MessageRole::Assistant => {
+                if let Some(text) = msg.content().text() {
+                    request.add_model_content(text.to_string()).map_err(|e| {
+                        CompletionError::RequestError(Box::new(GeminiError::parse_error(e)))
+                    })?;
+                }
+            }
+            fluent_ai_domain::message::MessageRole::System => {
+                // System messages go in system_instruction field
+                if let Some(text) = msg.content().text() {
+                    request = request.with_system_instruction(text.to_string());
+                }
+            }
+        }
+    }
 
-    let mut generation_config = serde_json::from_value::<GenerationConfig>(additional_params)?;
+    // Set system instruction from preamble
+    if let Some(preamble) = completion_request.preamble {
+        request = request.with_system_instruction(preamble);
+    }
+
+    // Configure generation settings
+    let mut generation_config = GeminiGenerationConfig::new();
 
     if let Some(temp) = completion_request.temperature {
-        generation_config.temperature = Some(temp);
+        generation_config = generation_config.with_temperature(temp as f32);
     }
 
     if let Some(max_tokens) = completion_request.max_tokens {
-        generation_config.max_output_tokens = Some(max_tokens);
+        generation_config = generation_config.with_max_output_tokens(max_tokens);
     }
 
-    let system_instruction = completion_request.preamble.clone().map(|preamble| Content {
-        parts: OneOrMany::one(preamble.into()),
-        role: Some(Role::Model),
-    });
+    request = request.with_generation_config(generation_config);
 
-    let request = GenerateContentRequest {
-        contents: full_history
-            .into_iter()
-            .map(|msg| {
-                msg.try_into()
-                    .map_err(|e| CompletionError::RequestError(Box::new(e)))
-            })
-            .collect::<Result<Vec<_>, _>>()?,
-        generation_config: Some(generation_config),
-        safety_settings: None,
-        tools: Some(
-            completion_request
-                .tools
-                .into_iter()
-                .map(Tool::try_from)
-                .collect::<Result<Vec<_>, _>>()?,
-        ),
-        tool_config: None,
-        system_instruction,
-    };
+    // Add tools
+    for tool in completion_request.tools {
+        request
+            .add_function_tool(
+                tool.name().to_string(),
+                tool.description().to_string(),
+                Some(tool.parameters().clone()),
+            )
+            .map_err(|e| CompletionError::RequestError(Box::new(GeminiError::parse_error(e))))?;
+    }
 
     Ok(request)
 }

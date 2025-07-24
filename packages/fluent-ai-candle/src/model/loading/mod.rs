@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use candle_core::safetensors::MmapedSafetensors;
 use candle_core::{DType, Device};
+// Removed unused import: safetensors::tensor::Dtype as SafetensorsDtype
 use candle_nn::VarBuilder;
 
 use crate::constants::MAX_MODEL_FILE_SIZE;
@@ -267,29 +268,39 @@ impl ModelLoader {
         let mut total_size_bytes = 0u64;
 
         // Extract tensor information
-        for tensor_name in safetensors.tensors() {
-            if let Ok(tensor_view) = safetensors.tensor(&tensor_name) {
-                let shape = tensor_view.shape().to_vec();
-                let dtype = tensor_view.dtype();
+        for (tensor_name, tensor_view) in safetensors.tensors() {
+            let shape = tensor_view.shape().to_vec();
+            let dtype = tensor_view.dtype();
 
-                // Calculate parameters for this tensor
-                let tensor_params = shape.iter().product::<usize>() as u64;
-                total_parameters += tensor_params;
+            // Calculate parameters for this tensor
+            let tensor_params = shape.iter().product::<usize>() as u64;
+            total_parameters += tensor_params;
 
-                // Calculate size in bytes
-                let size_bytes = tensor_params as usize * dtype.size_in_bytes();
-                total_size_bytes += size_bytes as u64;
+            // Calculate size in bytes - use format string to determine type
+            let dtype_str = format!("{:?}", dtype);
+            let (dtype_size, candle_dtype) = match dtype_str.as_str() {
+                "F32" => (4, DType::F32),
+                "F16" => (2, DType::F16),
+                "BF16" => (2, DType::BF16),
+                "I64" => (8, DType::I64),
+                "I32" => (4, DType::U32), // Map I32 to U32 as candle doesn't have I32
+                "I16" => (2, DType::U32), // Map I16 to U32 as candle doesn't have I16  
+                "I8" => (1, DType::U8),   // Map I8 to U8 as candle doesn't have I8
+                "U8" => (1, DType::U8),
+                _ => (4, DType::F32), // Default to F32 for unknown types
+            };
+            let size_bytes = tensor_params as usize * dtype_size;
+            total_size_bytes += size_bytes as u64;
 
-                metadata.tensor_info.insert(
-                    tensor_name.clone(),
-                    TensorInfo {
-                        shape,
-                        dtype,
-                        size_bytes,
-                        name: tensor_name.clone(),
-                    },
-                );
-            }
+            metadata.tensor_info.insert(
+                tensor_name.clone(),
+                TensorInfo {
+                    shape,
+                    dtype: candle_dtype,
+                    size_bytes,
+                    name: tensor_name.clone(),
+                },
+            );
         }
 
         // Extract architecture information from tensor names
@@ -361,7 +372,7 @@ impl ModelLoader {
     fn validate_model_compatibility(&self, metadata: &ModelMetadata) -> CandleResult<()> {
         // Check memory requirements
         if metadata.required_memory_bytes > self.memory_budget {
-            return Err(CandleError::configuration(format!(
+            return Err(CandleError::configuration(&format!(
                 "Model requires {}MB but budget is {}MB",
                 metadata.required_memory_bytes / 1024 / 1024,
                 self.memory_budget / 1024 / 1024
@@ -374,7 +385,7 @@ impl ModelLoader {
                 .supported_quantizations
                 .contains(&self.quantization_type)
         {
-            return Err(CandleError::configuration(format!(
+            return Err(CandleError::configuration(&format!(
                 "Quantization {:?} not supported for architecture {}",
                 self.quantization_type, metadata.architecture
             )));
@@ -446,7 +457,7 @@ impl ModelLoader {
         } else {
             // Use from_backend for existing MmapedSafetensors (more efficient than re-mapping)
             VarBuilder::from_backend(
-                Box::new(mmaped_safetensors.clone()),
+                Box::new(mmaped_safetensors),
                 self.dtype,
                 self.device.clone(),
             )
@@ -469,7 +480,7 @@ impl ModelLoader {
         // Create VarBuilder from existing MmapedSafetensors
         // This avoids the need to re-mmap files and is more efficient
         let var_builder = VarBuilder::from_backend(
-            Box::new(mmaped_safetensors.clone()),
+            mmaped_safetensors.clone(),
             self.dtype,
             &self.device,
         );

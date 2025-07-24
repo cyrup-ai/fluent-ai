@@ -55,9 +55,9 @@ impl HeaderManager {
 pub enum HeaderError {
     /// Represents an error when a header value is invalid.
     #[error("Invalid header value: {message}")]
-    InvalidHeaderValue { 
+    InvalidHeaderValue {
         /// Error message describing the invalid header value
-        message: String 
+        message: String,
     },
 }
 

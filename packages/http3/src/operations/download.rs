@@ -3,10 +3,7 @@
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 
 use crate::{
-    HttpResult,
-    client::HttpClient,
-    operations::HttpOperation,
-    request::HttpRequest,
+    HttpResult, client::HttpClient, operations::HttpOperation, request::HttpRequest,
     stream::DownloadStream,
 };
 

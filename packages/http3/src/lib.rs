@@ -99,7 +99,9 @@ pub mod request;
 pub mod response;
 pub mod stream;
 
-pub use builder::{ContentType, DownloadBuilder, DownloadProgress, header, Http3Builder, HttpStreamExt};
+pub use builder::{
+    ContentType, DownloadBuilder, DownloadProgress, Http3Builder, HttpStreamExt, header,
+};
 
 /// Ergonomic type alias for Http3Builder - provides shorter name for common usage patterns
 /// This is the recommended entry point for HTTP3 operations: Http3::get(url), Http3::post(url), etc.

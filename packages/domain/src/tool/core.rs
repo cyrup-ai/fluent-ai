@@ -244,8 +244,25 @@ impl NamedTool {
     }
 }
 
-// String extension for exec_to_text
+/// Extension trait for executing strings as shell commands and returning text output.
+///
+/// This trait provides a convenient way to execute shell commands from string-like types
+/// and capture their stdout as a String. Primarily used for tool execution in the AI framework.
 pub trait ExecToText {
+    /// Execute the string as a shell command and return the stdout as a String.
+    ///
+    /// # Returns
+    ///
+    /// Returns the command's stdout as a String, or an error message if execution fails.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fluent_ai_domain::tool::core::ExecToText;
+    ///
+    /// let output = "echo hello".exec_to_text();
+    /// assert!(output.contains("hello"));
+    /// ```
     fn exec_to_text(&self) -> String;
 }
 

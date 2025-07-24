@@ -11,6 +11,7 @@
 
 pub mod client;
 pub mod constants;
+pub mod constraints;
 // Domain stubs removed - using real fluent_ai_domain types
 pub mod error;
 pub mod generator;
@@ -24,17 +25,24 @@ pub mod progress;
 pub mod sampling;
 pub mod streaming;
 pub mod tokenizer;
+pub mod types;
+// Re-export specific types to avoid ambiguous glob re-exports
+pub use types::{
+    CandleMessage, CandleMessageRole, CandleCompletionRequest, CandleCompletionResponse,
+    CandleStreamingResponse, CandleFinishReason, CandleUsage, CandleDocument,
+    CandleCompletionError, CandleCompletionResult, CandleTokenStream,
+    CandleCompletionModel, CandleModelInfo,
+};
 pub mod var_builder;
+
+pub mod builders;
+pub use builders::*;
 
 // Re-export core types for ergonomic usage
 pub use client::{CandleClientBuilder, CandleClientConfig, CandleCompletionClient};
 pub use error::{CandleError, CandleResult};
-// Re-export completion types from real domain
-pub use fluent_ai_domain::completion::{
-    CompletionCoreError as CompletionError, CompletionCoreRequest as CompletionRequest,
-    CompletionCoreResponse as CompletionResponse, CompletionCoreResult as CompletionResult,
-};
-pub use fluent_ai_domain::model::FinishReason;
+// Re-export completion types from local Candle types
+// Removed unused imports: CandleCompletionRequest, CandleCompletionResponse, CandleFinishReason
 pub use generator::{CandleGenerator, GenerationConfig};
 pub use hub::{
     create_client, create_download_config, Backend, Client, DownloadConfig, DownloadEvent,
@@ -54,12 +62,18 @@ pub use progress::{
 };
 pub use streaming::{
     FlushPolicy, StreamingConfig, StreamingMetrics, TokenChunk, TokenMetadata, TokenOutputStream,
-    TokenStreamWrapper,
+    TokenStreamSender,
 };
 pub use tokenizer::{CandleTokenizer, TokenizerConfig};
 pub use var_builder::{
     CandleVarBuilder, LoadingStats, ModelMetadata, TensorEntry, VarBuilderConfig,
     VarBuilderConfigBuilder,
+};
+
+// Re-export constraint system for structured generation
+pub use constraints::{
+    GenerationConstraint, JsonConstraint, JsonState, JsonCurrentState, 
+    JsonStackItem, NumberState, create_json_constraint_for_tokenizer,
 };
 
 /// Device utilities for optimal device selection

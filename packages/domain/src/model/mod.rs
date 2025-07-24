@@ -12,6 +12,10 @@ pub mod traits;
 pub mod usage;
 pub mod validation;
 
+// Generated modules - created by build system
+pub mod providers;
+pub mod models;
+
 // Re-export commonly used types
 pub use capabilities::*;
 pub use error::{ModelError, Result};
@@ -21,3 +25,7 @@ pub use resolver::*;
 pub use traits::*;
 pub use usage::Usage;
 pub use validation::*;
+
+// Re-export generated types
+pub use providers::*;
+pub use models::*;

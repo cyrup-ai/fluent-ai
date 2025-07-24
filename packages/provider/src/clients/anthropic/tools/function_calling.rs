@@ -215,13 +215,13 @@ impl NamedTool for ToolBuilder<Named, (), (), ()> {
 pub struct Described;
 
 impl<D, Req, Res> DescribedTool for ToolBuilder<Described, D, Req, Res> {
-    type DependencyBuilder = ToolBuilder<WithDependency, D, Req, Res>;
+    type DependencyBuilder = ToolBuilder<WithDependencyState, D, Req, Res>;
 
     #[inline(always)]
     fn with<NewD: Send + Sync + 'static>(
         self,
         dependency: NewD,
-    ) -> ToolBuilder<WithDependency, NewD, Req, Res> {
+    ) -> ToolBuilder<WithDependencyState, NewD, Req, Res> {
         ToolBuilder {
             name: self.name,
             description: self.description,
@@ -239,16 +239,16 @@ impl<D, Req, Res> DescribedTool for ToolBuilder<Described, D, Req, Res> {
 }
 
 /// State marker for tools with dependency
-pub struct WithDependency;
+pub struct WithDependencyState;
 
-impl<D, Req, Res> WithDependency for ToolBuilder<WithDependency, D, Req, Res> {
-    type RequestSchemaBuilder = ToolBuilder<WithRequestSchema, D, Req, Res>;
+impl<D, Req, Res> WithDependency for ToolBuilder<WithDependencyState, D, Req, Res> {
+    type RequestSchemaBuilder = ToolBuilder<WithRequestSchemaState, D, Req, Res>;
 
     #[inline(always)]
     fn request_schema<NewReq: Send + Sync + 'static>(
         self,
         schema_type: SchemaType,
-    ) -> ToolBuilder<WithRequestSchema, D, NewReq, Res> {
+    ) -> ToolBuilder<WithRequestSchemaState, D, NewReq, Res> {
         ToolBuilder {
             name: self.name,
             description: self.description,
@@ -266,16 +266,16 @@ impl<D, Req, Res> WithDependency for ToolBuilder<WithDependency, D, Req, Res> {
 }
 
 /// State marker for tools with request schema
-pub struct WithRequestSchema;
+pub struct WithRequestSchemaState;
 
-impl<D, Req, Res> WithRequestSchema for ToolBuilder<WithRequestSchema, D, Req, Res> {
-    type ResultSchemaBuilder = ToolBuilder<WithResultSchema, D, Req, Res>;
+impl<D, Req, Res> WithRequestSchema for ToolBuilder<WithRequestSchemaState, D, Req, Res> {
+    type ResultSchemaBuilder = ToolBuilder<WithResultSchemaState, D, Req, Res>;
 
     #[inline(always)]
     fn result_schema<NewRes: Send + Sync + 'static>(
         self,
         schema_type: SchemaType,
-    ) -> ToolBuilder<WithResultSchema, D, Req, NewRes> {
+    ) -> ToolBuilder<WithResultSchemaState, D, Req, NewRes> {
         ToolBuilder {
             name: self.name,
             description: self.description,
@@ -293,10 +293,10 @@ impl<D, Req, Res> WithRequestSchema for ToolBuilder<WithRequestSchema, D, Req, R
 }
 
 /// State marker for tools with result schema
-pub struct WithResultSchema;
+pub struct WithResultSchemaState;
 
-impl<D, Req, Res> WithResultSchema for ToolBuilder<WithResultSchema, D, Req, Res> {
-    type WithInvocationBuilder = ToolBuilder<WithInvocation, D, Req, Res>;
+impl<D, Req, Res> WithResultSchema for ToolBuilder<WithResultSchemaState, D, Req, Res> {
+    type WithInvocationBuilder = ToolBuilder<WithInvocationState, D, Req, Res>;
 
     #[inline(always)]
     fn on_invocation<F>(self, handler: F) -> Self::WithInvocationBuilder
@@ -337,10 +337,10 @@ impl<D, Req, Res> WithResultSchema for ToolBuilder<WithResultSchema, D, Req, Res
 }
 
 /// State marker for tools with invocation handler
-pub struct WithInvocation;
+pub struct WithInvocationState;
 
-impl<D, Req, Res> WithInvocation for ToolBuilder<WithInvocation, D, Req, Res> {
-    type WithErrorBuilder = ToolBuilder<WithError, D, Req, Res>;
+impl<D, Req, Res> WithInvocation for ToolBuilder<WithInvocationState, D, Req, Res> {
+    type WithErrorBuilder = ToolBuilder<WithErrorState, D, Req, Res>;
 
     #[inline(always)]
     fn on_error<F>(self, handler: F) -> Self::WithErrorBuilder
@@ -364,10 +364,10 @@ impl<D, Req, Res> WithInvocation for ToolBuilder<WithInvocation, D, Req, Res> {
 }
 
 /// State marker for tools with error handler
-pub struct WithError;
+pub struct WithErrorState;
 
-impl<D, Req, Res> WithError for ToolBuilder<WithError, D, Req, Res> {
-    type WithResultBuilder = ToolBuilder<WithResult, D, Req, Res>;
+impl<D, Req, Res> WithError for ToolBuilder<WithErrorState, D, Req, Res> {
+    type WithResultBuilder = ToolBuilder<WithResultState, D, Req, Res>;
 
     #[inline(always)]
     fn on_result<F>(self, handler: F) -> Self::WithResultBuilder
@@ -391,9 +391,9 @@ impl<D, Req, Res> WithError for ToolBuilder<WithError, D, Req, Res> {
 }
 
 /// State marker for tools with result handler
-pub struct WithResult;
+pub struct WithResultState;
 
-impl<D, Req, Res> WithResult for ToolBuilder<WithResult, D, Req, Res> {
+impl<D, Req, Res> WithResult for ToolBuilder<WithResultState, D, Req, Res> {
     type FinalBuilder = BuiltTool<D, Req, Res>;
 
     #[inline(always)]

@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../http3"
+		},
+		{
+			"path": "../fluent-ai"
+		}
+	],
+	"settings": {}
+}

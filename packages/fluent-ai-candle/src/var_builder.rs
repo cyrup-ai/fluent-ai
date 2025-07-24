@@ -32,22 +32,20 @@
 
 use std::{
     collections::HashMap,
-    mem::MaybeUninit,
     path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
+        atomic::{AtomicU64, AtomicUsize, Ordering},
         Arc,
     },
-    time::{Duration, Instant},
 };
 
 use arrayvec::{ArrayString, ArrayVec};
-use candle_core::{DType, Device, Result as CandleCoreResult, Shape, Tensor};
+use candle_core::{DType, Device, Shape, Tensor};
 use candle_nn::{Init, VarBuilder};
 use crossbeam_skiplist::SkipMap;
 use memmap2::Mmap;
 use safetensors::SafeTensors;
-use smallvec::SmallVec;
+
 
 use crate::error::{CandleError, CandleResult as Result};
 

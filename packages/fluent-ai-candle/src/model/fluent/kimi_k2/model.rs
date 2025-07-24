@@ -7,10 +7,9 @@
 //! - YARN RoPE scaling for extended context (131k tokens)
 //! - Zero-allocation streaming architecture
 
-use candle_core::{DType, Device, Module, Result, Tensor};
+use candle_core::{DType, Device, Module, Result, Tensor, D};
 use candle_nn::{embedding, linear, rms_norm, Activation, Embedding, Linear, RmsNorm, VarBuilder};
 use serde::Deserialize;
-use std::sync::Arc;
 
 /// Kimi K2 model configuration matching the HuggingFace config.json
 #[derive(Debug, Clone, Deserialize)]
@@ -227,8 +226,8 @@ impl KimiK2Attention {
         let (q, k) = self.rotary_emb.apply_rotary_emb(&q, &k, position)?;
         
         // Scaled dot-product attention
-        let scale = (self.head_dim as f64).sqrt().recip() as f32;
-        let scores = q.matmul(&k.transpose(D::Minus2, D::Minus1)?)? * scale;
+        let scale = (self.head_dim as f64).sqrt().recip();
+        let scores = q.matmul(&k.transpose(D::Minus2, D::Minus1)?)?.affine(scale, 0.0)?;
         let attn_weights = candle_nn::ops::softmax_last_dim(&scores)?;
         let attn_output = attn_weights.matmul(&v)?;
         
@@ -286,13 +285,41 @@ impl KimiK2MoE {
         let router_logits = self.gate.forward(&x_flat)?;
         let routing_weights = candle_nn::ops::softmax_last_dim(&router_logits)?;
         
-        // Top-k expert selection
-        let topk_weights = routing_weights.topk(self.num_experts_per_tok)?;
-        let topk_indices = topk_weights.1;
-        let topk_weights = topk_weights.0;
+        // Top-k expert selection (manual implementation since Candle doesn't have topk)
+        let routing_data = routing_weights.to_vec2::<f32>()?;
+        let mut topk_results = Vec::new();
+        
+        for row in routing_data {
+            let mut indexed: Vec<(usize, f32)> = row.iter().copied().enumerate().collect();
+            indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            let k = self.num_experts_per_tok.min(indexed.len());
+            topk_results.push(&indexed[..k]);
+        }
+        
+        // Extract indices and weights - flatten for tensor creation
+        let batch_size = topk_results.len();
+        let k = self.num_experts_per_tok;
+        
+        let mut topk_indices_flat: Vec<u32> = Vec::with_capacity(batch_size * k);
+        let mut topk_weights_flat: Vec<f32> = Vec::with_capacity(batch_size * k);
+        
+        for row in &topk_results {
+            for (idx, weight) in row.iter() {
+                topk_indices_flat.push(*idx as u32);
+                topk_weights_flat.push(*weight);
+            }
+            // Pad if necessary
+            while topk_indices_flat.len() % k != 0 {
+                topk_indices_flat.push(0);
+                topk_weights_flat.push(0.0);
+            }
+        }
+        
+        let topk_indices = Tensor::from_vec(topk_indices_flat, (batch_size, k), routing_weights.device())?;
+        let topk_weights = Tensor::from_vec(topk_weights_flat, (batch_size, k), routing_weights.device())?;
         
         // Apply routed scaling factor
-        let topk_weights = (topk_weights * self.routed_scaling_factor as f32)?;
+        let _topk_weights = topk_weights.affine(self.routed_scaling_factor, 0.0)?;
         
         // Expert computation
         let mut final_hidden_states = Tensor::zeros_like(&x_flat)?;

@@ -1,0 +1,428 @@
+    Checking utils v0.14.5 (/Volumes/samsung_t9/progresshub/forks/xet-core/utils)
+    Checking cryypt_common v0.1.0 (/Volumes/samsung_t9/cryypt/common)
+    Checking fluent-ai-workspace-hack v0.1.0 (/Volumes/samsung_t9/fluent-ai/workspace-hack)
+    Checking progresshub-progress v0.1.0 (/Volumes/samsung_t9/progresshub/progress)
+    Checking xet_threadpool v0.1.0 (/Volumes/samsung_t9/progresshub/forks/xet-core/xet_threadpool)
+    Checking fluent-ai-async v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-async)
+    Checking fluent-ai-simd v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-simd)
+    Checking cryypt_hashing v0.1.0 (/Volumes/samsung_t9/cryypt/hashing)
+    Checking cryypt_key v0.1.0 (/Volumes/samsung_t9/cryypt/key)
+    Checking progresshub-client-xet v0.1.0 (/Volumes/samsung_t9/progresshub/client_xet)
+    Checking fluent_ai_http3 v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/http3)
+    Checking progress_tracking v0.1.0 (/Volumes/samsung_t9/progresshub/forks/xet-core/progress_tracking)
+    Checking mdb_shard v0.14.5 (/Volumes/samsung_t9/progresshub/forks/xet-core/mdb_shard)
+    Checking chunk_cache v0.1.0 (/Volumes/samsung_t9/progresshub/forks/xet-core/chunk_cache)
+    Checking cryypt_quic v0.1.0 (/Volumes/samsung_t9/cryypt/quic)
+    Checking deduplication v0.14.5 (/Volumes/samsung_t9/progresshub/forks/xet-core/deduplication)
+    Checking cryypt v0.1.0 (/Volumes/samsung_t9/cryypt/cryypt)
+    Checking cas_object v0.1.0 (/Volumes/samsung_t9/progresshub/forks/xet-core/cas_object)
+    Checking progresshub-client-quic v0.1.0 (/Volumes/samsung_t9/progresshub/client_quic)
+    Checking cas_client v0.14.5 (/Volumes/samsung_t9/progresshub/forks/xet-core/cas_client)
+    Checking progresshub-client-selector v0.1.0 (/Volumes/samsung_t9/progresshub/client_selector)
+    Checking fluent_ai_candle v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle)
+packages/fluent-ai-candle/src/types/candle_context/extraction/extractor.rs:9:20: warning: unused imports: `CandleCompletionError`, `CandleCompletionRequest`, `CandleCompletionResponse`, `CandleCompletionResult`, `CandleMessageRole`, and `CandleMessage`
+packages/fluent-ai-candle/src/types/candle_context/extraction/extractor.rs:10:20: warning: unused imports: `CandleCompletionError as CandleError` and `CandleCompletionResult as CandleResult`
+packages/fluent-ai-candle/src/types/candle_model/mod.rs:30:9: warning: unused import: `providers::*`
+packages/fluent-ai-candle/src/types/candle_model/mod.rs:31:9: warning: unused import: `models::*`
+packages/fluent-ai-candle/src/lib.rs:29:9: warning: ambiguous glob re-exports: the name `candle_chat` in the type namespace is first re-exported here
+packages/fluent-ai-candle/src/var_builder.rs:35:5: warning: unused imports: `AtomicBool`, `Duration`, `Instant`, and `mem::MaybeUninit`
+packages/fluent-ai-candle/src/var_builder.rs:45:34: warning: unused import: `Result as CandleCoreResult`
+packages/fluent-ai-candle/src/var_builder.rs:50:5: warning: unused import: `smallvec::SmallVec`
+packages/fluent-ai-candle/src/client.rs:1070:13: warning: unused variable: `request`: help: if this is intentional, prefix it with an underscore: `_request`
+packages/fluent-ai-candle/src/client.rs:738:50: error[E0063]: missing fields `system_fingerprint` and `usage` in initializer of `candle_completion::streaming::CandleStreamingResponse`: missing `system_fingerprint` and `usage`
+packages/fluent-ai-candle/src/constraints/json.rs:67:17: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:117:21: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:126:29: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:136:21: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:143:21: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:152:29: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:162:21: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:171:29: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:181:21: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:188:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:197:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:206:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:211:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:217:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:226:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:232:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:240:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:247:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:253:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:260:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:275:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:290:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:305:25: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:376:17: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/constraints/json.rs:443:21: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/error.rs:188:37: error[E0599]: no variant or associated item named `InvalidParameter` found for enum `candle_completion::error::CandleCompletionError` in the current scope: variant or associated item not found in `candle_completion::error::CandleCompletionError`
+packages/fluent-ai-candle/src/error.rs:191:37: error[E0599]: no variant or associated item named `Validation` found for enum `candle_completion::error::CandleCompletionError` in the current scope: variant or associated item not found in `candle_completion::error::CandleCompletionError`
+packages/fluent-ai-candle/src/error.rs:480:60: error[E0599]: no variant or associated item named `Internal` found for enum `candle_completion::error::CandleCompletionError` in the current scope: variant or associated item not found in `candle_completion::error::CandleCompletionError`
+packages/fluent-ai-candle/src/error.rs:497:17: error[E0533]: expected value, found struct variant `CandleCompletionError::GenerationFailed`: not a value
+packages/fluent-ai-candle/src/error.rs:500:17: error[E0533]: expected value, found struct variant `CandleCompletionError::InvalidRequest`: not a value
+packages/fluent-ai-candle/src/error.rs:503:17: error[E0533]: expected value, found struct variant `CandleCompletionError::InvalidRequest`: not a value
+packages/fluent-ai-candle/src/error.rs:509:17: error[E0533]: expected value, found struct variant `CandleCompletionError::GenerationFailed`: not a value
+packages/fluent-ai-candle/src/error.rs:515:17: error[E0533]: expected value, found struct variant `CandleCompletionError::GenerationFailed`: not a value
+packages/fluent-ai-candle/src/error.rs:518:40: error[E0599]: no variant or associated item named `ModelLoadingFailed` found for enum `candle_completion::error::CandleCompletionError` in the current scope: variant or associated item not found in `candle_completion::error::CandleCompletionError`
+packages/fluent-ai-candle/src/error.rs:521:40: error[E0599]: no variant or associated item named `ModelLoadingFailed` found for enum `candle_completion::error::CandleCompletionError` in the current scope: variant or associated item not found in `candle_completion::error::CandleCompletionError`
+packages/fluent-ai-candle/src/error.rs:523:44: error[E0533]: expected value, found struct variant `CandleCompletionError::GenerationFailed`: not a value
+packages/fluent-ai-candle/src/error.rs:525:40: error[E0599]: no variant or associated item named `ModelLoadingFailed` found for enum `candle_completion::error::CandleCompletionError` in the current scope: variant or associated item not found in `candle_completion::error::CandleCompletionError`
+packages/fluent-ai-candle/src/error.rs:528:40: error[E0599]: no variant or associated item named `ModelLoadingFailed` found for enum `candle_completion::error::CandleCompletionError` in the current scope: variant or associated item not found in `candle_completion::error::CandleCompletionError`
+packages/fluent-ai-candle/src/error.rs:531:17: error[E0533]: expected value, found struct variant `CandleCompletionError::InvalidRequest`: not a value
+packages/fluent-ai-candle/src/error.rs:533:48: error[E0533]: expected value, found struct variant `CandleCompletionError::InvalidRequest`: not a value
+packages/fluent-ai-candle/src/error.rs:536:17: error[E0533]: expected value, found struct variant `CandleCompletionError::GenerationFailed`: not a value
+packages/fluent-ai-candle/src/error.rs:538:52: error[E0533]: expected value, found struct variant `CandleCompletionError::TokenizationFailed`: not a value
+packages/fluent-ai-candle/src/error.rs:540:17: error[E0533]: expected value, found struct variant `CandleCompletionError::GenerationFailed`: not a value
+packages/fluent-ai-candle/src/error.rs:542:47: error[E0533]: expected value, found struct variant `CandleCompletionError::InvalidRequest`: not a value
+packages/fluent-ai-candle/src/error.rs:543:66: error[E0599]: no variant or associated item named `Internal` found for enum `candle_completion::error::CandleCompletionError` in the current scope: variant or associated item not found in `candle_completion::error::CandleCompletionError`
+packages/fluent-ai-candle/src/error.rs:544:40: error[E0533]: expected value, found struct variant `CandleCompletionError::GenerationFailed`: not a value
+packages/fluent-ai-candle/src/error.rs:545:77: error[E0599]: no variant or associated item named `Internal` found for enum `candle_completion::error::CandleCompletionError` in the current scope: variant or associated item not found in `candle_completion::error::CandleCompletionError`
+packages/fluent-ai-candle/src/error.rs:546:51: error[E0533]: expected value, found struct variant `CandleCompletionError::GenerationFailed`: not a value
+packages/fluent-ai-candle/src/error.rs:547:70: error[E0599]: no variant or associated item named `Internal` found for enum `candle_completion::error::CandleCompletionError` in the current scope: variant or associated item not found in `candle_completion::error::CandleCompletionError`
+packages/fluent-ai-candle/src/error.rs:548:47: error[E0533]: expected value, found struct variant `CandleCompletionError::GenerationFailed`: not a value
+packages/fluent-ai-candle/src/error.rs:549:50: error[E0533]: expected value, found struct variant `CandleCompletionError::GenerationFailed`: not a value
+packages/fluent-ai-candle/src/generator.rs:357:5: error[E0277]: the trait bound `AtomicU32: Clone` is not satisfied: the trait `Clone` is not implemented for `AtomicU32`
+packages/fluent-ai-candle/src/generator.rs:359:5: error[E0277]: the trait bound `AtomicU64: Clone` is not satisfied: the trait `Clone` is not implemented for `AtomicU64`
+packages/fluent-ai-candle/src/generator.rs:361:5: error[E0277]: the trait bound `AtomicU32: Clone` is not satisfied: the trait `Clone` is not implemented for `AtomicU32`
+packages/fluent-ai-candle/src/generator.rs:363:5: error[E0277]: the trait bound `AtomicU32: Clone` is not satisfied: the trait `Clone` is not implemented for `AtomicU32`
+packages/fluent-ai-candle/src/generator.rs:365:5: error[E0277]: the trait bound `AtomicU32: Clone` is not satisfied: the trait `Clone` is not implemented for `AtomicU32`
+packages/fluent-ai-candle/src/generator.rs:367:5: error[E0277]: the trait bound `AtomicU64: Clone` is not satisfied: the trait `Clone` is not implemented for `AtomicU64`
+packages/fluent-ai-candle/src/generator.rs:520:53: error[E0599]: the method `clone` exists for enum `std::option::Option<Box<(dyn processing::traits::LogitsProcessor + 'static)>>`, but its trait bounds were not satisfied: method cannot be called due to unsatisfied trait bounds
+packages/fluent-ai-candle/src/generator.rs:542:40: error[E0599]: no variant or associated item named `default` found for enum `Sampling` in the current scope: variant or associated item not found in `Sampling`
+packages/fluent-ai-candle/src/generator.rs:570:51: error[E0599]: no method named `build_processor` found for enum `Sampling` in the current scope: method not found in `Sampling`
+packages/fluent-ai-candle/src/hub.rs:58:31: error[E0599]: no variant or associated item named `XET` found for enum `progresshub_client_selector::Backend` in the current scope: variant or associated item not found in `progresshub_client_selector::Backend`
+packages/fluent-ai-candle/src/kv_cache/mod.rs:974:27: error[E0599]: no method named `is_full` found for struct `SmallVec<(usize, u32), 64>` in the current scope: method not found in `SmallVec<(usize, u32), 64>`
+packages/fluent-ai-candle/src/kv_cache/mod.rs:977:32: error[E0599]: no method named `try_push` found for struct `SmallVec<(usize, u32), 64>` in the current scope
+packages/fluent-ai-candle/src/kv_cache/mod.rs:983:24: error[E0599]: no method named `is_full` found for mutable reference `&mut SmallVec<usize, 32>` in the current scope: method not found in `&mut SmallVec<usize, 32>`
+packages/fluent-ai-candle/src/kv_cache/mod.rs:986:29: error[E0599]: no method named `try_push` found for mutable reference `&mut SmallVec<usize, 32>` in the current scope
+packages/fluent-ai-candle/src/kv_cache/mod.rs:1001:27: error[E0599]: no method named `is_full` found for struct `SmallVec<(usize, u32), 64>` in the current scope: method not found in `SmallVec<(usize, u32), 64>`
+packages/fluent-ai-candle/src/kv_cache/mod.rs:1004:32: error[E0599]: no method named `try_push` found for struct `SmallVec<(usize, u32), 64>` in the current scope
+packages/fluent-ai-candle/src/kv_cache/mod.rs:1010:24: error[E0599]: no method named `is_full` found for mutable reference `&mut SmallVec<usize, 32>` in the current scope: method not found in `&mut SmallVec<usize, 32>`
+packages/fluent-ai-candle/src/kv_cache/mod.rs:1013:29: error[E0599]: no method named `try_push` found for mutable reference `&mut SmallVec<usize, 32>` in the current scope
+packages/fluent-ai-candle/src/kv_cache/mod.rs:1026:24: error[E0599]: no method named `is_full` found for mutable reference `&mut SmallVec<usize, 32>` in the current scope: method not found in `&mut SmallVec<usize, 32>`
+packages/fluent-ai-candle/src/kv_cache/mod.rs:1029:29: error[E0599]: no method named `try_push` found for mutable reference `&mut SmallVec<usize, 32>` in the current scope
+packages/fluent-ai-candle/src/kv_cache/mod.rs:1045:28: error[E0599]: no method named `try_push` found for mutable reference `&mut SmallVec<usize, 32>` in the current scope
+packages/fluent-ai-candle/src/kv_cache/mod.rs:1054:24: error[E0599]: no method named `try_push` found for mutable reference `&mut SmallVec<usize, 32>` in the current scope
+packages/fluent-ai-candle/src/kv_cache/mod.rs:1077:28: error[E0599]: no method named `try_push` found for mutable reference `&mut SmallVec<usize, 32>` in the current scope
+packages/fluent-ai-candle/src/logits.rs:119:9: error[E0308]: mismatched types: expected `CompositeProcessor`, found `sampling::composite::CompositeProcessor`
+packages/fluent-ai-candle/src/logits.rs:164:48: error[E0308]: mismatched types: expected `usize`, found `CompositeProcessor`
+packages/fluent-ai-candle/src/logits.rs:167:27: error[E0061]: this function takes 2 arguments but 1 argument was supplied
+packages/fluent-ai-candle/src/logits.rs:168:16: error[E0599]: no method named `set_context` found for enum `std::result::Result` in the current scope
+packages/fluent-ai-candle/src/logits.rs:170:19: error[E0308]: mismatched types: expected `ProcessingEngine`, found `Result<ProcessingEngine, ...>`
+packages/fluent-ai-candle/src/logits.rs:186:21: error[E0599]: no method named `context_mut` found for struct `processing::ProcessingEngine` in the current scope
+packages/fluent-ai-candle/src/model/core/candle_model.rs:95:37: error[E0599]: no variant or associated item named `ModelNotLoaded` found for enum `error::CandleError` in the current scope: variant or associated item not found in `error::CandleError`
+packages/fluent-ai-candle/src/model/core/candle_model.rs:101:26: error[E0599]: no variant or associated item named `TensorError` found for enum `error::CandleError` in the current scope: variant or associated item not found in `error::CandleError`
+packages/fluent-ai-candle/src/model/core/candle_model.rs:109:30: error[E0599]: no variant or associated item named `TensorError` found for enum `error::CandleError` in the current scope: variant or associated item not found in `error::CandleError`
+packages/fluent-ai-candle/src/model/core/candle_model.rs:122:39: error[E0599]: no variant or associated item named `ModelInferenceError` found for enum `error::CandleError` in the current scope: variant or associated item not found in `error::CandleError`
+packages/fluent-ai-candle/src/model/core/candle_model.rs:160:39: error[E0599]: no variant or associated item named `CacheError` found for enum `error::CandleError` in the current scope: variant or associated item not found in `error::CandleError`
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/loader.rs:55:28: error[E0282]: type annotations needed
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/loader.rs:91:40: error[E0609]: no field `destination` on type `DownloadResult`: unknown field
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/loader.rs:97:63: error[E0599]: no method named `map_ro` found for struct `MmapOptions` in the current scope
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/loader.rs:103:125: error[E0599]: no method named `clone` found for struct `Mmap` in the current scope
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/model.rs:230:69: error[E0277]: the trait bound `f32: Borrow<candle_core::Tensor>` is not satisfied: the trait `Borrow<candle_core::Tensor>` is not implemented for `f32`
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/model.rs:231:61: error[E0308]: mismatched types: expected `&Tensor`, found `&Result<Tensor, Error>`
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/model.rs:289:44: error[E0599]: no method named `topk` found for struct `candle_core::Tensor` in the current scope: method not found in `candle_core::Tensor`
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/tokenizer.rs:66:38: error[E0599]: no function or associated item named `new` found for struct `HttpClient` in the current scope: function or associated item not found in `HttpClient`
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/tokenizer.rs:70:24: error[E0599]: no method named `subscribe` found for opaque type `impl Future<Output = Result<CandleTokenizer, CandleError>>` in the current scope
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/tokenizer.rs:99:24: error[E0609]: no field `role` on type `types::candle_model::traits::ChatMessage`: unknown field
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/tokenizer.rs:101:52: error[E0609]: no field `content` on type `types::candle_model::traits::ChatMessage`: unknown field
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/tokenizer.rs:110:25: error[E0609]: no field `role` on type `&types::candle_model::traits::ChatMessage`: unknown field
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/tokenizer.rs:114:49: error[E0609]: no field `content` on type `&types::candle_model::traits::ChatMessage`: unknown field
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/tokenizer.rs:121:54: error[E0609]: no field `role` on type `types::candle_model::traits::ChatMessage`: unknown field
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/tokenizer.rs:123:55: error[E0609]: no field `content` on type `&types::candle_model::traits::ChatMessage`: unknown field
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/tokenizer.rs:130:40: error[E0308]: mismatched types: expected `Vec<u8>`, found `Result<[u8; 8192], ArrayVec<u8, 8192>>`
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/mod.rs:56:21: error[E0599]: no function or associated item named `from_array_len` found for struct `arrayvec::ArrayVec<_, _>` in the current scope: function or associated item not found in `arrayvec::ArrayVec<_, _>`
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/mod.rs:57:27: error[E0599]: no function or associated item named `from_array_len` found for struct `arrayvec::ArrayVec<_, _>` in the current scope: function or associated item not found in `arrayvec::ArrayVec<_, _>`
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/mod.rs:64:21: error[E0599]: no function or associated item named `from_array_len` found for struct `arrayvec::ArrayVec<_, _>` in the current scope: function or associated item not found in `arrayvec::ArrayVec<_, _>`
+packages/fluent-ai-candle/src/model/fluent/kimi_k2/mod.rs:65:27: error[E0599]: no function or associated item named `from_array_len` found for struct `arrayvec::ArrayVec<_, _>` in the current scope: function or associated item not found in `arrayvec::ArrayVec<_, _>`
+packages/fluent-ai-candle/src/model/loading/mod.rs:271:50: error[E0599]: no method named `tensor` found for reference `&MmapedSafetensors` in the current scope
+packages/fluent-ai-candle/src/model/loading/mod.rs:289:31: error[E0308]: mismatched types: expected `String`, found `(String, TensorView<'_>)`
+packages/fluent-ai-candle/src/model/loading/mod.rs:284:21: error[E0308]: mismatched types: expected `String`, found `(String, TensorView<'_>)`
+packages/fluent-ai-candle/src/model/loading/mod.rs:364:51: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/model/loading/mod.rs:377:51: error[E0308]: mismatched types: expected `&str`, found `String`
+packages/fluent-ai-candle/src/model/loading/mod.rs:472:13: error[E0277]: the trait bound `&MmapedSafetensors: SimpleBackend` is not satisfied: the trait `SimpleBackend` is not implemented for `&MmapedSafetensors`
+packages/fluent-ai-candle/src/model/loading/mod.rs:474:13: error[E0308]: mismatched types: expected `Device`, found `&Device`
+packages/fluent-ai-candle/src/processing/processors/repetition_penalty.rs:121:82: error[E0616]: field `token_history` of struct `processing::context::ProcessingContext` is private: private field
+packages/fluent-ai-candle/src/processing/processors/repetition_penalty.rs:124:37: error[E0616]: field `token_history` of struct `processing::context::ProcessingContext` is private: private field
+packages/fluent-ai-candle/src/processing/processors/repetition_penalty.rs:125:22: error[E0616]: field `token_history` of struct `processing::context::ProcessingContext` is private: private field
+packages/fluent-ai-candle/src/processing/processors/repetition_penalty.rs:128:22: error[E0616]: field `token_history` of struct `processing::context::ProcessingContext` is private: private field
+packages/fluent-ai-candle/src/processing/processors/top_k.rs:143:32: error[E0308]: mismatched types: expected `f32`, found `(usize, f32)`
+packages/fluent-ai-candle/src/processing/processors/top_p.rs:83:49: error[E0599]: no variant or associated item named `BufferOverflow` found for enum `processing::error::ProcessingError` in the current scope: variant or associated item not found in `processing::error::ProcessingError`
+packages/fluent-ai-candle/src/processing/processors/top_p.rs:132:41: error[E0599]: no variant or associated item named `BufferOverflow` found for enum `processing::error::ProcessingError` in the current scope: variant or associated item not found in `processing::error::ProcessingError`
+packages/fluent-ai-candle/src/processing/processors/mod.rs:63:38: error[E0308]: arguments to this function are incorrect
+packages/fluent-ai-candle/src/processing/processors/mod.rs:63:29: error[E0277]: the trait bound `repetition::RepetitionPenaltyProcessor: processing::traits::LogitsProcessor` is not satisfied: the trait `processing::traits::LogitsProcessor` is not implemented for `repetition::RepetitionPenaltyProcessor`
+packages/fluent-ai-candle/src/processing/processors/mod.rs:69:25: error[E0277]: the trait bound `sampling::temperature::TemperatureProcessor: processing::traits::LogitsProcessor` is not satisfied: the trait `processing::traits::LogitsProcessor` is not implemented for `sampling::temperature::TemperatureProcessor`
+packages/fluent-ai-candle/src/processing/processors/mod.rs:73:29: error[E0277]: the trait bound `sampling::topk::TopKProcessor: processing::traits::LogitsProcessor` is not satisfied: the trait `processing::traits::LogitsProcessor` is not implemented for `sampling::topk::TopKProcessor`
+packages/fluent-ai-candle/src/processing/processors/mod.rs:78:29: error[E0277]: the trait bound `nucleus::TopPProcessor: processing::traits::LogitsProcessor` is not satisfied: the trait `processing::traits::LogitsProcessor` is not implemented for `nucleus::TopPProcessor`
+packages/fluent-ai-candle/src/processing/processors/mod.rs:81:29: error[E0599]: no function or associated item named `with_processors` found for struct `sampling::composite::CompositeProcessor` in the current scope: function or associated item not found in `sampling::composite::CompositeProcessor`
+packages/fluent-ai-candle/src/processing/processors/mod.rs:117:13: error[E0277]: the trait bound `sampling::temperature::TemperatureProcessor: processing::traits::LogitsProcessor` is not satisfied: the trait `processing::traits::LogitsProcessor` is not implemented for `sampling::temperature::TemperatureProcessor`
+packages/fluent-ai-candle/src/processing/processors/mod.rs:119:29: error[E0599]: no function or associated item named `with_processors` found for struct `sampling::composite::CompositeProcessor` in the current scope: function or associated item not found in `sampling::composite::CompositeProcessor`
+packages/fluent-ai-candle/src/processing/processors/mod.rs:125:13: error[E0277]: the trait bound `sampling::temperature::TemperatureProcessor: processing::traits::LogitsProcessor` is not satisfied: the trait `processing::traits::LogitsProcessor` is not implemented for `sampling::temperature::TemperatureProcessor`
+packages/fluent-ai-candle/src/processing/processors/mod.rs:127:29: error[E0599]: no function or associated item named `with_processors` found for struct `sampling::composite::CompositeProcessor` in the current scope: function or associated item not found in `sampling::composite::CompositeProcessor`
+packages/fluent-ai-candle/src/processing/processors/mod.rs:204:41: error[E0599]: no variant or associated item named `InvalidInput` found for enum `processing::error::ProcessingError` in the current scope: variant or associated item not found in `processing::error::ProcessingError`
+packages/fluent-ai-candle/src/processing/mod.rs:62:25: error[E0061]: this function takes 0 arguments but 1 argument was supplied
+packages/fluent-ai-candle/src/processing/mod.rs:62:25: error[E0277]: the `?` operator can only be applied to values that implement `Try`: the `?` operator cannot be applied to type `processing::processors::composite::CompositeProcessor`
+packages/fluent-ai-candle/src/processing/mod.rs:93:25: error[E0061]: this function takes 0 arguments but 1 argument was supplied
+packages/fluent-ai-candle/src/processing/mod.rs:93:25: error[E0277]: the `?` operator can only be applied to values that implement `Try`: the `?` operator cannot be applied to type `processing::processors::composite::CompositeProcessor`
+packages/fluent-ai-candle/src/processing/mod.rs:334:34: error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+packages/fluent-ai-candle/src/processing/mod.rs:348:29: error[E0061]: this function takes 0 arguments but 1 argument was supplied
+packages/fluent-ai-candle/src/processing/mod.rs:348:29: error[E0277]: the `?` operator can only be applied to values that implement `Try`: the `?` operator cannot be applied to type `processing::processors::composite::CompositeProcessor`
+packages/fluent-ai-candle/src/progress/mod.rs:548:34: error[E0308]: mismatched types: expected `bool`, found `ProgressHubConfig`
+packages/fluent-ai-candle/src/sampling/composite.rs:121:18: error[E0599]: no method named `process` found for reference `&Box<dyn processing::traits::LogitsProcessor>` in the current scope
+packages/fluent-ai-candle/src/sampling/composite.rs:209:31: error[E0277]: the trait bound `sampling::temperature::TemperatureProcessor: processing::traits::LogitsProcessor` is not satisfied: the trait `processing::traits::LogitsProcessor` is not implemented for `sampling::temperature::TemperatureProcessor`
+packages/fluent-ai-candle/src/sampling/composite.rs:217:31: error[E0277]: the trait bound `sampling::topk::TopKProcessor: processing::traits::LogitsProcessor` is not satisfied: the trait `processing::traits::LogitsProcessor` is not implemented for `sampling::topk::TopKProcessor`
+packages/fluent-ai-candle/src/sampling/composite.rs:224:44: error[E0308]: mismatched types: expected `f32`, found `f64`
+packages/fluent-ai-candle/src/sampling/composite.rs:225:31: error[E0277]: the trait bound `nucleus::TopPProcessor: processing::traits::LogitsProcessor` is not satisfied: the trait `processing::traits::LogitsProcessor` is not implemented for `nucleus::TopPProcessor`
+packages/fluent-ai-candle/src/sampling/composite.rs:237:31: error[E0277]: the trait bound `repetition::RepetitionPenaltyProcessor: processing::traits::LogitsProcessor` is not satisfied: the trait `processing::traits::LogitsProcessor` is not implemented for `repetition::RepetitionPenaltyProcessor`
+packages/fluent-ai-candle/src/sampling/composite.rs:245:31: error[E0277]: the trait bound `TypicalSamplingProcessor: processing::traits::LogitsProcessor` is not satisfied: the trait `processing::traits::LogitsProcessor` is not implemented for `TypicalSamplingProcessor`
+packages/fluent-ai-candle/src/sampling/composite.rs:259:31: error[E0277]: the trait bound `GumbelSoftmaxProcessor: processing::traits::LogitsProcessor` is not satisfied: the trait `processing::traits::LogitsProcessor` is not implemented for `GumbelSoftmaxProcessor`
+packages/fluent-ai-candle/src/sampling/gumbel.rs:105:37: warning: use of deprecated method `rand::Rng::gen_range`: Renamed to `random_range`
+packages/fluent-ai-candle/src/sampling/gumbel.rs:106:37: warning: use of deprecated method `rand::Rng::gen_range`: Renamed to `random_range`
+packages/fluent-ai-candle/src/sampling/gumbel.rs:173:14: error[E0599]: no method named `map_err` found for struct `candle_core::Tensor` in the current scope: method not found in `candle_core::Tensor`
+packages/fluent-ai-candle/src/sampling/gumbel.rs:176:14: error[E0599]: no method named `map_err` found for struct `candle_core::Tensor` in the current scope: method not found in `candle_core::Tensor`
+packages/fluent-ai-candle/src/sampling/gumbel.rs:193:41: error[E0277]: the trait bound `Shape: From<&Vec<usize>>` is not satisfied: the trait `From<&Vec<usize>>` is not implemented for `Shape`
+packages/fluent-ai-candle/src/sampling/gumbel.rs:212:39: error[E0277]: the trait bound `Shape: From<&Vec<usize>>` is not satisfied: the trait `From<&Vec<usize>>` is not implemented for `Shape`
+packages/fluent-ai-candle/src/sampling/mirostat.rs:88:24: error[E0308]: mismatched types: expected `Error`, found `CandleError`
+packages/fluent-ai-candle/src/sampling/mirostat.rs:92:24: error[E0308]: mismatched types: expected `Error`, found `CandleError`
+packages/fluent-ai-candle/src/sampling/mirostat.rs:104:24: error[E0308]: mismatched types: expected `Error`, found `CandleError`
+packages/fluent-ai-candle/src/sampling/mirostat.rs:108:24: error[E0308]: mismatched types: expected `Error`, found `CandleError`
+packages/fluent-ai-candle/src/sampling/mirostat.rs:318:24: error[E0308]: mismatched types: expected `Error`, found `CandleError`
+packages/fluent-ai-candle/src/sampling/mirostat.rs:324:24: error[E0308]: mismatched types: expected `Error`, found `CandleError`
+packages/fluent-ai-candle/src/sampling/mirostat.rs:330:14: error[E0609]: no field `temp_probs` on type `&mut mirostat::MirostatProcessor`: unknown field
+packages/fluent-ai-candle/src/sampling/mirostat.rs:335:21: error[E0609]: no field `temp_probs` on type `&mut mirostat::MirostatProcessor`: unknown field
+packages/fluent-ai-candle/src/sampling/mirostat.rs:336:28: error[E0308]: mismatched types: expected `Error`, found `CandleError`
+packages/fluent-ai-candle/src/sampling/mirostat.rs:342:24: error[E0308]: mismatched types: expected `Error`, found `CandleError`
+packages/fluent-ai-candle/src/sampling/mirostat.rs:349:28: error[E0609]: no field `temp_probs` on type `&mut mirostat::MirostatProcessor`: unknown field
+packages/fluent-ai-candle/src/sampling/mirostat.rs:363:17: error[E0308]: mismatched types: expected `Error`, found `CandleError`
+packages/fluent-ai-candle/src/sampling/mirostat.rs:541:38: error[E0599]: no method named `unwrap_or` found for type `f32` in the current scope: method not found in `f32`
+packages/fluent-ai-candle/src/sampling/mirostat.rs:542:32: error[E0599]: no method named `unwrap_or` found for type `f32` in the current scope: method not found in `f32`
+packages/fluent-ai-candle/src/sampling/mirostat.rs:545:25: error[E0599]: no method named `is_some` found for type `usize` in the current scope
+packages/fluent-ai-candle/src/sampling/nucleus.rs:53:51: error[E0308]: mismatched types: expected `f64`, found `f32`
+packages/fluent-ai-candle/src/sampling/nucleus.rs:57:51: error[E0308]: mismatched types: expected `f64`, found `f32`
+packages/fluent-ai-candle/src/sampling/nucleus.rs:144:24: error[E0308]: mismatched types: expected `SamplingError`, found enum constructor
+packages/fluent-ai-candle/src/sampling/nucleus.rs:318:51: error[E0308]: mismatched types: expected `f64`, found `f32`
+packages/fluent-ai-candle/src/sampling/simd.rs:35:24: error[E0599]: no variant or associated item named `NotSupported` found for enum `fluent_ai_simd::SimdError` in the current scope: variant or associated item not found in `fluent_ai_simd::SimdError`
+packages/fluent-ai-candle/src/sampling/simd.rs:35:58: error[E0599]: no variant or associated item named `Other` found for enum `error::CandleError` in the current scope: variant or associated item not found in `error::CandleError`
+packages/fluent-ai-candle/src/sampling/simd.rs:70:14: error[E0609]: no field `inner` on type `&mut sampling::simd::CandleSimdProcessor`: unknown field
+packages/fluent-ai-candle/src/sampling/simd.rs:78:9: error[E0308]: mismatched types: expected `Result<(), Error>`, found `Result<(), CandleError>`
+packages/fluent-ai-candle/src/sampling/simd.rs:84:9: error[E0308]: mismatched types: expected `Result<(), Error>`, found `Result<(), CandleError>`
+packages/fluent-ai-candle/src/sampling/simd.rs:111:45: error[E0599]: no method named `map_err` found for struct `SoftmaxProcessor` in the current scope: method not found in `SoftmaxProcessor`
+packages/fluent-ai-candle/src/sampling/simd.rs:119:9: error[E0308]: mismatched types: expected `Result<(), Error>`, found `Result<(), CandleError>`
+packages/fluent-ai-candle/src/sampling/simd.rs:125:20: error[E0599]: no method named `stats` found for struct `SoftmaxProcessor` in the current scope
+packages/fluent-ai-candle/src/sampling/simd.rs:139:49: error[E0599]: no method named `map_err` found for struct `fluent_ai_simd::TemperatureProcessor` in the current scope: method not found in `fluent_ai_simd::TemperatureProcessor`
+packages/fluent-ai-candle/src/sampling/simd.rs:148:14: error[E0599]: no method named `apply_temperature_inplace` found for struct `fluent_ai_simd::TemperatureProcessor` in the current scope: method not found in `fluent_ai_simd::TemperatureProcessor`
+packages/fluent-ai-candle/src/sampling/simd.rs:155:20: error[E0599]: no method named `stats` found for struct `fluent_ai_simd::TemperatureProcessor` in the current scope
+packages/fluent-ai-candle/src/sampling/simd.rs:192:68: error[E0277]: expected a `FnMut(usize)` closure, found `{float}`: expected an `FnMut(usize)` closure, found `{float}`
+packages/fluent-ai-candle/src/sampling/simd.rs:192:9: error[E0308]: arguments to this function are incorrect
+packages/fluent-ai-candle/src/sampling/temperature.rs:56:58: error[E0308]: mismatched types: expected `f64`, found `f32`
+packages/fluent-ai-candle/src/sampling/temperature.rs:60:58: error[E0308]: mismatched types: expected `f64`, found `f32`
+packages/fluent-ai-candle/src/sampling/temperature.rs:64:58: error[E0308]: mismatched types: expected `f64`, found `f32`
+packages/fluent-ai-candle/src/sampling/temperature.rs:115:24: error[E0308]: mismatched types: expected `SamplingError`, found enum constructor
+packages/fluent-ai-candle/src/sampling/temperature.rs:153:24: error[E0308]: mismatched types: expected `SamplingError`, found enum constructor
+packages/fluent-ai-candle/src/sampling/mod.rs:260:35: warning: use of deprecated method `rand::Rng::gen_range`: Renamed to `random_range`
+packages/fluent-ai-candle/src/streaming/decoder.rs:182:45: error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/decoder.rs:197:40: error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/decoder.rs:204:40: error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/decoder.rs:212:40: error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/decoder.rs:222:46: error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/decoder.rs:251:33: error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/decoder.rs:281:41: error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/decoder.rs:292:37: error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/flow_control.rs:32:9: error[E0277]: the trait bound `f32: std::cmp::Eq` is not satisfied: the trait `std::cmp::Eq` is not implemented for `f32`
+packages/fluent-ai-candle/src/streaming/flow_control.rs:229:48: error[E0599]: no variant or associated item named `BackpressureError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/flow_control.rs:325:51: error[E0689]: can't call method `min` on ambiguous numeric type `{float}`
+packages/fluent-ai-candle/src/streaming/flow_control.rs:327:59: error[E0689]: can't call method `min` on ambiguous numeric type `{float}`
+packages/fluent-ai-candle/src/streaming/flow_control.rs:491:40: error[E0599]: no variant or associated item named `FlowControlError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/flow_control.rs:498:44: error[E0599]: no variant or associated item named `FlowControlError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/flow_control.rs:503:44: error[E0599]: no variant or associated item named `FlowControlError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/formats.rs:92:31: error[E0277]: the trait bound `StreamingTokenResponse: Serialize` is not satisfied: the trait `Serialize` is not implemented for `StreamingTokenResponse`
+packages/fluent-ai-candle/src/streaming/formats.rs:93:42: error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/formats.rs:99:42: error[E0277]: the trait bound `StreamingTokenResponse: Serialize` is not satisfied: the trait `Serialize` is not implemented for `StreamingTokenResponse`
+packages/fluent-ai-candle/src/streaming/formats.rs:100:42: error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/formats.rs:121:23: error[E0277]: the trait bound `StreamingTokenResponse: Serialize` is not satisfied: the trait `Serialize` is not implemented for `StreamingTokenResponse`, required by a bound introduced by this call
+packages/fluent-ai-candle/src/streaming/formats.rs:128:42: error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/formats.rs:134:21: error[E0609]: no field `content` on type `&StreamingTokenResponse`: unknown field
+packages/fluent-ai-candle/src/streaming/formats.rs:142:22: error[E0609]: no field `token_id` on type `&StreamingTokenResponse`: unknown field
+packages/fluent-ai-candle/src/streaming/formats.rs:143:22: error[E0609]: no field `position` on type `&StreamingTokenResponse`: unknown field
+packages/fluent-ai-candle/src/streaming/formats.rs:144:22: error[E0609]: no field `content` on type `&StreamingTokenResponse`: unknown field
+packages/fluent-ai-candle/src/streaming/formats.rs:155:41: error[E0609]: no field `content` on type `&StreamingTokenResponse`: unknown field
+packages/fluent-ai-candle/src/streaming/formats.rs:156:42: error[E0609]: no field `position` on type `&StreamingTokenResponse`: unknown field
+packages/fluent-ai-candle/src/streaming/formats.rs:157:45: error[E0609]: no field `is_complete_token` on type `&StreamingTokenResponse`: unknown field
+packages/fluent-ai-candle/src/streaming/formats.rs:160:50: error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/formats.rs:165:30: error[E0609]: no field `position` on type `&StreamingTokenResponse`: unknown field
+packages/fluent-ai-candle/src/streaming/formats.rs:166:30: error[E0609]: no field `content` on type `&StreamingTokenResponse`: unknown field
+packages/fluent-ai-candle/src/streaming/formats.rs:167:30: error[E0609]: no field `is_complete_token` on type `&StreamingTokenResponse`: unknown field
+packages/fluent-ai-candle/src/streaming/formats.rs:168:30: error[E0609]: no field `probability` on type `&StreamingTokenResponse`: unknown field
+packages/fluent-ai-candle/src/streaming/formats.rs:171:38: error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/formats.rs:193:50: error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/formats.rs:201:46: error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/formats.rs:233:50: error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/formats.rs:241:46: error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/streaming/formats.rs:325:38: error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope: variant or associated item not found in `streaming::constants::StreamingError`
+packages/fluent-ai-candle/src/tokenizer.rs:433:32: error[E0599]: no method named `as_str` found for enum `CandleMessageRole` in the current scope: method not found in `CandleMessageRole`
+packages/fluent-ai-candle/src/types/candle_completion/compact_completion_response.rs:168:42: error[E0277]: `std::result::Result<(), CompactCompletionResponse>` is not a future: `std::result::Result<(), CompactCompletionResponse>` is not a future
+packages/fluent-ai-candle/src/types/candle_completion/compact_completion_response.rs:167:13: error[E0308]: mismatched types: expected `()`, found `Pin<Box<...>>`
+packages/fluent-ai-candle/src/types/candle_completion/completion_params.rs:63:41: error[E0599]: no variant named `InvalidRange` found for enum `model::error::ValidationError`: variant not found in `model::error::ValidationError`
+packages/fluent-ai-candle/src/types/candle_completion/request.rs:75:41: error[E0599]: no variant named `InvalidRange` found for enum `model::error::ValidationError`: variant not found in `model::error::ValidationError`
+packages/fluent-ai-candle/src/types/candle_completion/request.rs:89:45: error[E0599]: no variant named `InvalidRange` found for enum `model::error::ValidationError`: variant not found in `model::error::ValidationError`
+packages/fluent-ai-candle/src/types/candle_completion/request.rs:100:45: error[E0599]: no variant named `InvalidRange` found for enum `model::error::ValidationError`: variant not found in `model::error::ValidationError`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:52:24: error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: Serialize` is not satisfied: the trait `Serialize` is not implemented for `SmallVec<Arc<str>, 8>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:52:24: error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: Serialize` is not satisfied: the trait `Serialize` is not implemented for `SmallVec<Arc<str>, 4>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:55:16: error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: formats::_::_serde::Deserialize<'_>` is not satisfied: the trait `formats::_::_serde::Deserialize<'_>` is not implemented for `SmallVec<Arc<str>, 8>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:65:21: error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: formats::_::_serde::Deserialize<'_>` is not satisfied: the trait `formats::_::_serde::Deserialize<'_>` is not implemented for `SmallVec<Arc<str>, 4>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:52:35: error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: formats::_::_serde::Deserialize<'_>` is not satisfied: the trait `formats::_::_serde::Deserialize<'_>` is not implemented for `SmallVec<Arc<str>, 8>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:52:35: error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: formats::_::_serde::Deserialize<'_>` is not satisfied: the trait `formats::_::_serde::Deserialize<'_>` is not implemented for `SmallVec<Arc<str>, 4>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:118:24: error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: Serialize` is not satisfied: the trait `Serialize` is not implemented for `SmallVec<Arc<str>, 8>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:118:24: error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: Serialize` is not satisfied: the trait `Serialize` is not implemented for `SmallVec<Arc<str>, 4>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:118:24: error[E0277]: the trait bound `SmallVec<SearchChatMessage, 6>: Serialize` is not satisfied: the trait `Serialize` is not implemented for `SmallVec<SearchChatMessage, 6>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:118:24: error[E0277]: the trait bound `SmallVec<MatchPosition, 16>: Serialize` is not satisfied: the trait `Serialize` is not implemented for `SmallVec<MatchPosition, 16>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:125:25: error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: formats::_::_serde::Deserialize<'_>` is not satisfied: the trait `formats::_::_serde::Deserialize<'_>` is not implemented for `SmallVec<Arc<str>, 8>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:129:15: error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: formats::_::_serde::Deserialize<'_>` is not satisfied: the trait `formats::_::_serde::Deserialize<'_>` is not implemented for `SmallVec<Arc<str>, 4>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:131:18: error[E0277]: the trait bound `SmallVec<SearchChatMessage, 6>: formats::_::_serde::Deserialize<'_>` is not satisfied: the trait `formats::_::_serde::Deserialize<'_>` is not implemented for `SmallVec<SearchChatMessage, 6>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:133:26: error[E0277]: the trait bound `SmallVec<MatchPosition, 16>: formats::_::_serde::Deserialize<'_>` is not satisfied: the trait `formats::_::_serde::Deserialize<'_>` is not implemented for `SmallVec<MatchPosition, 16>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:118:35: error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: formats::_::_serde::Deserialize<'_>` is not satisfied: the trait `formats::_::_serde::Deserialize<'_>` is not implemented for `SmallVec<Arc<str>, 8>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:118:35: error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: formats::_::_serde::Deserialize<'_>` is not satisfied: the trait `formats::_::_serde::Deserialize<'_>` is not implemented for `SmallVec<Arc<str>, 4>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:118:35: error[E0277]: the trait bound `SmallVec<SearchChatMessage, 6>: formats::_::_serde::Deserialize<'_>` is not satisfied: the trait `formats::_::_serde::Deserialize<'_>` is not implemented for `SmallVec<SearchChatMessage, 6>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:118:35: error[E0277]: the trait bound `SmallVec<MatchPosition, 16>: formats::_::_serde::Deserialize<'_>` is not satisfied: the trait `formats::_::_serde::Deserialize<'_>` is not implemented for `SmallVec<MatchPosition, 16>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:352:45: error[E0599]: no method named `inc` found for struct `CachePadded<AtomicU64>` in the current scope: method not found in `CachePadded<AtomicU64>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:355:47: error[E0609]: no field `statistics` on type `ChatSearchIndex`: unknown field
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:391:38: error[E0599]: no method named `inc` found for struct `CachePadded<AtomicU64>` in the current scope: method not found in `CachePadded<AtomicU64>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:542:53: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 8>`, found `Vec<Arc<str>>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:544:43: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 4>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:545:46: error[E0308]: mismatched types: expected `SmallVec<SearchChatMessage, 6>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:546:54: error[E0308]: mismatched types: expected `SmallVec<MatchPosition, 16>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:592:41: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 8>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:594:31: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 4>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:595:34: error[E0308]: mismatched types: expected `SmallVec<SearchChatMessage, 6>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:596:42: error[E0308]: mismatched types: expected `SmallVec<MatchPosition, 16>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:627:45: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 8>`, found `Vec<Arc<str>>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:631:35: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 4>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:632:38: error[E0308]: mismatched types: expected `SmallVec<SearchChatMessage, 6>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:633:46: error[E0308]: mismatched types: expected `SmallVec<MatchPosition, 16>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:642:41: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 8>`, found `Vec<Arc<str>>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:646:31: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 4>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:647:34: error[E0308]: mismatched types: expected `SmallVec<SearchChatMessage, 6>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:648:42: error[E0308]: mismatched types: expected `SmallVec<MatchPosition, 16>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:678:41: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 8>`, found `Vec<Arc<str>>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:682:31: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 4>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:683:34: error[E0308]: mismatched types: expected `SmallVec<SearchChatMessage, 6>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:684:42: error[E0308]: mismatched types: expected `SmallVec<MatchPosition, 16>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:713:45: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 8>`, found `Vec<Arc<str>>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:718:35: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 4>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:719:38: error[E0308]: mismatched types: expected `SmallVec<SearchChatMessage, 6>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:720:46: error[E0308]: mismatched types: expected `SmallVec<MatchPosition, 16>`, found `Vec<_>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:988:43: error[E0609]: no field `statistics` on type `ChatSearchIndex`: unknown field
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:1227:51: error[E0599]: no method named `try_read` found for struct `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>` in the current scope: method not found in `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:1313:55: error[E0599]: no method named `try_write` found for struct `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>` in the current scope: method not found in `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:1318:47: error[E0599]: no method named `try_write` found for struct `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>` in the current scope: method not found in `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:1356:55: error[E0599]: no method named `try_write` found for struct `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>` in the current scope: method not found in `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:1361:47: error[E0599]: no method named `try_write` found for struct `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>` in the current scope: method not found in `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:1474:5: error[E0277]: the trait bound `AtomicUsize: Clone` is not satisfied: the trait `Clone` is not implemented for `AtomicUsize`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:1475:5: error[E0277]: the trait bound `AtomicUsize: Clone` is not satisfied: the trait `Clone` is not implemented for `AtomicUsize`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:1476:5: error[E0277]: the trait bound `AtomicU64: Clone` is not satisfied: the trait `Clone` is not implemented for `AtomicU64`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:1477:5: error[E0277]: the trait bound `AtomicU64: Clone` is not satisfied: the trait `Clone` is not implemented for `AtomicU64`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:1624:47: error[E0609]: no field `export_statistics` on type `HistoryExporter`: unknown field
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:2090:5: error[E0277]: the trait bound `AtomicUsize: Clone` is not satisfied: the trait `Clone` is not implemented for `AtomicUsize`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:2091:5: error[E0277]: the trait bound `AtomicU64: Clone` is not satisfied: the trait `Clone` is not implemented for `AtomicU64`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:2180:31: error[E0308]: mismatched types: expected `SmallVec<Arc<str>, 4>`, found `Vec<Arc<str>>`
+packages/fluent-ai-candle/src/types/candle_context/extraction/extractor.rs:230:33: error[E0223]: ambiguous associated type
+packages/fluent-ai-candle/src/types/candle_context/provider.rs:445:17: warning: unreachable statement: unreachable statement
+packages/fluent-ai-candle/src/types/candle_context/provider.rs:476:21: warning: unreachable expression: unreachable expression
+packages/fluent-ai-candle/src/types/candle_context/provider.rs:923:29: warning: unreachable statement: unreachable statement
+packages/fluent-ai-candle/src/types/candle_model/info.rs:202:36: error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope: variant or associated item not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/info.rs:208:36: error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope: variant or associated item not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/info.rs:215:40: error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope: variant or associated item not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/info.rs:223:40: error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope: variant or associated item not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/info.rs:230:36: error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope: variant or associated item not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/info.rs:348:29: error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope: variant or associated item not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/info.rs:352:44: error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope: variant or associated item not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/info.rs:395:36: error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope: variant or associated item not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/info.rs:401:36: error[E0599]: no variant named `ModelAlreadyExists` found for enum `model::error::ModelError`: variant not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/registry.rs:105:36: error[E0599]: no variant named `ModelAlreadyExists` found for enum `model::error::ModelError`: variant not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/registry.rs:155:36: error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope: variant or associated item not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/registry.rs:180:40: error[E0599]: no variant named `ModelNotFound` found for enum `model::error::ModelError`: variant not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/registry.rs:243:33: error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope: variant or associated item not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/registry.rs:247:37: error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope: variant or associated item not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/registry.rs:285:25: error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope: variant or associated item not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/registry.rs:308:40: error[E0599]: no variant named `ModelNotFound` found for enum `model::error::ModelError`: variant not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/registry.rs:331:40: error[E0599]: no variant named `ModelNotFound` found for enum `model::error::ModelError`: variant not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:182:5: error[E0277]: the trait bound `model::registry::ModelRegistry: Clone` is not satisfied: the trait `Clone` is not implemented for `model::registry::ModelRegistry`
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:240:38: error[E0599]: no method named `clone` found for struct `model::registry::ModelRegistry` in the current scope: method not found in `model::registry::ModelRegistry`
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:269:47: error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied: expected 0 generic arguments
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:269:47: error[E0061]: this method takes 1 argument but 2 arguments were supplied
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:269:23: error[E0308]: mismatched types: expected `Arc<dyn Model>`, found `Option<_>`
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:282:47: error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied: expected 0 generic arguments
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:282:47: error[E0061]: this method takes 1 argument but 2 arguments were supplied
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:282:23: error[E0308]: mismatched types: expected `Arc<dyn Model>`, found `Option<_>`
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:296:47: error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied: expected 0 generic arguments
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:296:47: error[E0061]: this method takes 1 argument but 2 arguments were supplied
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:296:23: error[E0308]: mismatched types: expected `Arc<dyn Model>`, found `Option<_>`
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:316:51: error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied: expected 0 generic arguments
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:316:51: error[E0061]: this method takes 1 argument but 2 arguments were supplied
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:316:27: error[E0308]: mismatched types: expected `Arc<dyn Model>`, found `Option<_>`
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:351:26: error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied: expected 0 generic arguments
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:351:26: error[E0061]: this method takes 1 argument but 2 arguments were supplied
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:353:28: error[E0308]: mismatched types: expected `Arc<dyn Model>`, found `Option<_>`
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:402:35: error[E0599]: no method named `find_all` found for reference `&model::registry::ModelRegistry` in the current scope: method not found in `&model::registry::ModelRegistry`
+packages/fluent-ai-candle/src/types/candle_model/resolver.rs:423:29: error[E0599]: no variant named `ModelNotFound` found for enum `model::error::ModelError`: variant not found in `model::error::ModelError`
+packages/fluent-ai-candle/src/types/candle_engine.rs:265:20: error[E0308]: mismatched types: expected `AsyncTask<Result<..., ...>>`, found `AsyncTask<Result<_, ValidationError>>`
+packages/fluent-ai-candle/src/types/candle_engine.rs:283:30: error[E0609]: no field `prompt` on type `candle_completion::request::CandleCompletionRequest`: unknown field
+packages/fluent-ai-candle/src/types/candle_engine.rs:284:51: error[E0599]: `std::string::String` is not an iterator: `std::string::String` is not an iterator
+packages/fluent-ai-candle/src/types/candle_engine.rs:286:14: error[E0609]: no field `conversation_history` on type `candle_completion::request::CandleCompletionRequest`: unknown field
+packages/fluent-ai-candle/src/types/candle_engine.rs:290:65: error[E0599]: the method `to_string` exists for reference `&tool_definition::ToolDefinition`, but its trait bounds were not satisfied: method cannot be called on `&tool_definition::ToolDefinition` due to unsatisfied trait bounds
+packages/fluent-ai-candle/src/types/candle_engine.rs:291:32: error[E0609]: no field `metadata` on type `candle_completion::request::CandleCompletionRequest`: unknown field
+packages/fluent-ai-candle/src/types/candle_engine.rs:380:30: error[E0609]: no field `prompt` on type `candle_completion::request::CandleCompletionRequest`: unknown field
+packages/fluent-ai-candle/src/types/candle_engine.rs:381:51: error[E0599]: `std::string::String` is not an iterator: `std::string::String` is not an iterator
+packages/fluent-ai-candle/src/types/candle_engine.rs:383:14: error[E0609]: no field `conversation_history` on type `candle_completion::request::CandleCompletionRequest`: unknown field
+packages/fluent-ai-candle/src/types/candle_engine.rs:387:65: error[E0599]: the method `to_string` exists for reference `&tool_definition::ToolDefinition`, but its trait bounds were not satisfied: method cannot be called on `&tool_definition::ToolDefinition` due to unsatisfied trait bounds
+packages/fluent-ai-candle/src/types/candle_engine.rs:388:32: error[E0609]: no field `metadata` on type `candle_completion::request::CandleCompletionRequest`: unknown field
+packages/fluent-ai-candle/src/var_builder.rs:839:13: error[E0560]: struct `CandleVarBuilder<'a>` has no field named `safetensors`: `CandleVarBuilder<'a>` does not have this field
+packages/fluent-ai-candle/src/var_builder.rs:841:30: error[E0308]: mismatched types: expected `HashMap<String, TensorMetadata>`, found `Arc<HashMap<_, _>>`
+packages/fluent-ai-candle/src/var_builder.rs:866:29: error[E0308]: mismatched types: expected `usize`, found `u64`
+packages/fluent-ai-candle/src/var_builder.rs:880:37: error[E0599]: no variant or associated item named `Msg` found for enum `error::CandleError` in the current scope: variant or associated item not found in `error::CandleError`
+packages/fluent-ai-candle/src/var_builder.rs:899:39: error[E0599]: no variant or associated item named `Msg` found for enum `error::CandleError` in the current scope: variant or associated item not found in `error::CandleError`
+packages/fluent-ai-candle/src/var_builder.rs:924:21: error[E0277]: the `?` operator can only be applied to values that implement `Try`: the `?` operator cannot be applied to type `VarBuilderArgs<'_, Box<dyn SimpleBackend>>`
+packages/fluent-ai-candle/src/var_builder.rs:934:17: error[E0609]: no field `safetensors` on type `CandleVarBuilder<'_>`: unknown field
+packages/fluent-ai-candle/src/var_builder.rs:940:17: error[E0599]: no method named `populate_metadata_safe` found for struct `CandleVarBuilder<'_>` in the current scope: this is an associated function, not a method
+packages/fluent-ai-candle/src/var_builder.rs:950:21: error[E0277]: the `?` operator can only be applied to values that implement `Try`: the `?` operator cannot be applied to type `VarBuilderArgs<'_, Box<dyn SimpleBackend>>`
+packages/fluent-ai-candle/src/var_builder.rs:954:35: error[E0308]: mismatched types: expected `HashMap<String, TensorMetadata>`, found `Arc<HashMap<String, TensorMetadata>>`
+packages/fluent-ai-candle/src/var_builder.rs:957:17: error[E0599]: no method named `populate_metadata_from_tensors` found for struct `CandleVarBuilder<'_>` in the current scope: this is an associated function, not a method
+packages/fluent-ai-candle/src/builders/candle_chat/candle_chatbot.rs:33:30: error[E0599]: no function or associated item named `default` found for struct `AsyncTask` in the current scope: function or associated item not found in `AsyncTask<_>`
+packages/fluent-ai-candle/src/builders/candle_chat/candle_chatbot.rs:59:28: error[E0599]: no method named `chat` found for type parameter `C` in the current scope: method not found in `C`
+packages/fluent-ai-candle/src/builders/candle_chat/candle_chatbot.rs:77:38: error[E0599]: no function or associated item named `user` found for struct `message::types::CandleMessage` in the current scope: function or associated item not found in `message::types::CandleMessage`
+packages/fluent-ai-candle/src/builders/candle_chat/candle_chatbot.rs:78:38: error[E0599]: no function or associated item named `assistant` found for struct `message::types::CandleMessage` in the current scope: function or associated item not found in `message::types::CandleMessage`
+packages/fluent-ai-candle/src/sampling/nucleus.rs:11:5: warning: unused import: `crate::processing::traits::LogitsProcessor`
+packages/fluent-ai-candle/src/sampling/repetition.rs:12:5: warning: unused import: `crate::processing::traits::LogitsProcessor`
+packages/fluent-ai-candle/src/sampling/temperature.rs:10:5: warning: unused import: `crate::processing::traits::LogitsProcessor`
+packages/fluent-ai-candle/src/sampling/topk.rs:9:5: warning: unused import: `crate::processing::traits::LogitsProcessor`
+packages/fluent-ai-candle/src/client.rs:704:25: error[E0515]: cannot return value referencing local variable `generator`: returns a value referencing data owned by the current function
+packages/fluent-ai-candle/src/client.rs:716:36: error[E0596]: cannot borrow `rx` as mutable, as it is not declared as mutable: cannot borrow as mutable
+packages/fluent-ai-candle/src/client.rs:715:9: error: lifetime may not live long enough: returning this value requires that `'a` must outlive `'static`
+packages/fluent-ai-candle/src/kv_cache/mod.rs:1276:40: warning: unused variable: `entries`: help: if this is intentional, prefix it with an underscore: `_entries`
+packages/fluent-ai-candle/src/kv_cache/mod.rs:1276:30: warning: variable does not need to be mutable
+packages/fluent-ai-candle/src/logits.rs:180:58: error[E0716]: temporary value dropped while borrowed: creates a temporary value which is freed while still in use
+packages/fluent-ai-candle/src/logits.rs:210:54: error[E0716]: temporary value dropped while borrowed: creates a temporary value which is freed while still in use
+packages/fluent-ai-candle/src/progress/mod.rs:199:29: warning: unused variable: `session_id`: help: if this is intentional, prefix it with an underscore: `_session_id`
+packages/fluent-ai-candle/src/progress/mod.rs:199:47: warning: unused variable: `description`: help: if this is intentional, prefix it with an underscore: `_description`
+packages/fluent-ai-candle/src/progress/mod.rs:213:30: warning: unused variable: `session_id`: help: if this is intentional, prefix it with an underscore: `_session_id`
+packages/fluent-ai-candle/src/progress/mod.rs:237:9: warning: unused variable: `operation_key`: help: if this is intentional, prefix it with an underscore: `_operation_key`
+packages/fluent-ai-candle/src/progress/mod.rs:275:9: warning: unused variable: `total_bytes`: help: if this is intentional, prefix it with an underscore: `_total_bytes`
+packages/fluent-ai-candle/src/progress/mod.rs:276:9: warning: unused variable: `downloaded_bytes`: help: if this is intentional, prefix it with an underscore: `_downloaded_bytes`
+packages/fluent-ai-candle/src/progress/mod.rs:277:9: warning: unused variable: `transfer_rate`: help: if this is intentional, prefix it with an underscore: `_transfer_rate`
+packages/fluent-ai-candle/src/progress/mod.rs:278:9: warning: unused variable: `eta_seconds`: help: if this is intentional, prefix it with an underscore: `_eta_seconds`
+packages/fluent-ai-candle/src/progress/mod.rs:312:9: warning: unused variable: `memory_used`: help: if this is intentional, prefix it with an underscore: `_memory_used`
+packages/fluent-ai-candle/src/progress/mod.rs:313:9: warning: unused variable: `total_parameters`: help: if this is intentional, prefix it with an underscore: `_total_parameters`
+packages/fluent-ai-candle/src/types/candle_chat/commands/types.rs:1046:13: warning: unused variable: `config`: help: if this is intentional, prefix it with an underscore: `_config`
+packages/fluent-ai-candle/src/types/candle_chat/commands/mod.rs:31:36: warning: unused variable: `context`: help: if this is intentional, prefix it with an underscore: `_context`
+packages/fluent-ai-candle/src/types/candle_chat/commands/mod.rs:87:16: warning: unused variable: `handle`: help: if this is intentional, prefix it with an underscore: `_handle`
+packages/fluent-ai-candle/src/types/candle_chat/commands/mod.rs:156:16: warning: unused variable: `handle`: help: if this is intentional, prefix it with an underscore: `_handle`
+packages/fluent-ai-candle/src/types/candle_chat/config.rs:228:13: warning: unused variable: `config`: help: if this is intentional, prefix it with an underscore: `_config`
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:44:17: warning: variable does not need to be mutable
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:893:17: warning: variable does not need to be mutable
+packages/fluent-ai-candle/src/types/candle_chat/search.rs:2045:13: warning: unused variable: `self_clone`: help: if this is intentional, prefix it with an underscore: `_self_clone`
+packages/fluent-ai-candle/src/types/candle_context/extraction/extractor.rs:67:13: warning: unused variable: `agent`: help: if this is intentional, prefix it with an underscore: `_agent`
+packages/fluent-ai-candle/src/types/candle_context/provider.rs:911:41: warning: unused variable: `sender`: help: if this is intentional, prefix it with an underscore: `_sender`
+packages/fluent-ai-candle/src/var_builder.rs:1179:57: warning: unused variable: `name`: help: if this is intentional, prefix it with an underscore: `_name`
+packages/fluent-ai-candle/src/var_builder.rs:1318:18: warning: unused variable: `arch`: help: if this is intentional, prefix it with an underscore: `_arch`
+warning: `fluent_ai_candle` (lib) generated 43 warnings
+error: could not compile `fluent_ai_candle` (lib) due to 367 previous errors; 43 warnings emitted

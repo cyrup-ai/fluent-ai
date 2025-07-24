@@ -107,6 +107,13 @@ where
     T: Send + 'static,
 {
     fn into_task(self) -> AsyncTask<T> {
-        AsyncTask::new(self)
+        // Create a channel and spawn the future
+        let (tx, rx) = crossbeam_channel::bounded(1);
+        std::thread::spawn(move || {
+            let runtime = tokio::runtime::Handle::current();
+            let result = runtime.block_on(self);
+            let _ = tx.send(result);
+        });
+        AsyncTask::new(rx)
     }
 }

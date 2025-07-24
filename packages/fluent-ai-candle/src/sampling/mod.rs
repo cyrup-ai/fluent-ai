@@ -14,7 +14,7 @@
 use candle_core::{Result as CandleResult, Tensor};
 /// Re-export canonical Candle LogitsProcessor and Sampling enums
 pub use candle_transformers::generation::{LogitsProcessor, Sampling};
-use rand::{distr::Distribution, SeedableRng};
+use rand;
 
 // Legacy modules maintained for compatibility
 pub mod composite;
@@ -257,7 +257,7 @@ pub mod utils {
         }
 
         // Generate random value
-        let random_val: f32 = rng.gen_range(0.0..sum);
+        let random_val: f32 = rng.random_range(0.0..sum);
         let mut cumulative = 0.0;
 
         // Find sample using cumulative distribution

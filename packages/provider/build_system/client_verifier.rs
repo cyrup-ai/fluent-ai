@@ -1,1 +1,0 @@
-//! Client verification was removed - the entire module was unused

@@ -241,16 +241,18 @@ impl HttpResponse {
 
             // Empty line indicates end of event
             if line.is_empty() {
-                if !data_lines.is_empty() || current_event.event_type.is_some() 
-                   || current_event.id.is_some() || current_event.retry.is_some() {
-                    
+                if !data_lines.is_empty()
+                    || current_event.event_type.is_some()
+                    || current_event.id.is_some()
+                    || current_event.retry.is_some()
+                {
                     // Join data lines with newlines (SSE spec requirement)
                     if !data_lines.is_empty() {
                         current_event.data = Some(data_lines.join("\n"));
                     }
-                    
+
                     events.push(current_event);
-                    
+
                     // Reset for next event
                     current_event = SseEvent {
                         data: None,
@@ -303,9 +305,11 @@ impl HttpResponse {
         }
 
         // Handle final event if stream doesn't end with empty line
-        if !data_lines.is_empty() || current_event.event_type.is_some() 
-           || current_event.id.is_some() || current_event.retry.is_some() {
-            
+        if !data_lines.is_empty()
+            || current_event.event_type.is_some()
+            || current_event.id.is_some()
+            || current_event.retry.is_some()
+        {
             if !data_lines.is_empty() {
                 current_event.data = Some(data_lines.join("\n"));
             }

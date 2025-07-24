@@ -193,11 +193,16 @@ impl CandleTokenizer {
                 let tokenizer_files = ["tokenizer.json", "tokenizer.model", "vocab.json"];
                 let mut tokenizer_path = None;
 
-                for filename in tokenizer_files {
-                    let file_path = result.destination.join(filename);
-                    if file_path.exists() {
-                        tokenizer_path = Some(file_path);
-                        break;
+                // Use the models field from DownloadResult
+                if let Some(model_result) = result.models.first() {
+                    // ModelResult should have a path field
+                    let model_dir = &model_result.path.parent().unwrap_or(&model_result.path);
+                    for filename in tokenizer_files {
+                        let file_path = model_dir.join(filename);
+                        if file_path.exists() {
+                            tokenizer_path = Some(file_path);
+                            break;
+                        }
                     }
                 }
 
@@ -417,7 +422,7 @@ impl CandleTokenizer {
     /// Apply chat template if supported by tokenizer
     pub fn apply_chat_template(
         &self,
-        messages: &[ChatMessage],
+        messages: &[crate::types::CandleMessage],
         add_generation_prompt: bool,
     ) -> CandleResult<String> {
         // This would use the tokenizer's chat template functionality
@@ -447,43 +452,7 @@ impl CandleTokenizer {
     }
 }
 
-/// Chat message for template formatting
-#[derive(Debug, Clone)]
-pub struct ChatMessage {
-    /// Message role (system, user, assistant, etc.)
-    pub role: String,
-    /// Message content
-    pub content: String,
-}
-
-impl ChatMessage {
-    /// Create new chat message
-    #[inline(always)]
-    pub fn new(role: impl Into<String>, content: impl Into<String>) -> Self {
-        Self {
-            role: role.into(),
-            content: content.into(),
-        }
-    }
-
-    /// Create system message
-    #[inline(always)]
-    pub fn system(content: impl Into<String>) -> Self {
-        Self::new("system", content)
-    }
-
-    /// Create user message
-    #[inline(always)]
-    pub fn user(content: impl Into<String>) -> Self {
-        Self::new("user", content)
-    }
-
-    /// Create assistant message
-    #[inline(always)]
-    pub fn assistant(content: impl Into<String>) -> Self {
-        Self::new("assistant", content)
-    }
-}
+// Removed duplicate ChatMessage type - use CandleMessage from types module instead
 
 /// Builder for tokenizer configuration
 pub struct TokenizerConfigBuilder {
@@ -634,11 +603,11 @@ mod tests {
 
     #[test]
     fn test_chat_message() {
-        let msg = ChatMessage::system("You are a helpful assistant");
+        let msg = crate::types::CandleMessage::system("You are a helpful assistant");
         assert_eq!(msg.role, "system");
         assert_eq!(msg.content, "You are a helpful assistant");
 
-        let user_msg = ChatMessage::user("Hello world");
+        let user_msg = crate::types::CandleMessage::user("Hello world");
         assert_eq!(user_msg.role, "user");
         assert_eq!(user_msg.content, "Hello world");
     }

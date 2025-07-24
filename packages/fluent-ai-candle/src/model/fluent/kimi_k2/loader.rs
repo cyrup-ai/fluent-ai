@@ -17,11 +17,11 @@
 #![allow(clippy::module_name_repetitions)]
 
 use arrayvec::ArrayVec;
-use core::sync::atomic::{AtomicU64, Ordering};
-use crate::hub::{create_client, create_download_config, Backend, ProgressData};
+use crate::hub::{create_client, create_download_config, Backend};
+
 use fluent_ai_async::AsyncStream;
 
-use super::mod_::KimiK2Config; // re-exported via `mod.rs`
+use super::KimiK2Config; // re-exported via `mod.rs`
 
 /// Maximum number of shards for the FP8 variant (empirically 61)
 const MAX_SHARDS: usize = 64;
@@ -44,6 +44,8 @@ pub enum LoaderEvent<'a> {
     ShardReady { shard_idx: usize, shard: ModelShard },
     /// Emitted once all shards have been processed.
     Complete { shards: ArrayVec<ModelShard, MAX_SHARDS> },
+    /// Error during loading process.
+    Error { message: String },
 }
 
 /// Streams [`LoaderEvent`]s while downloading and memory-mapping the Kimi-K2
@@ -52,13 +54,13 @@ pub enum LoaderEvent<'a> {
 /// The caller is expected to *consume* the stream and assemble the model
 /// tensors once `Complete` is received.
 #[must_use]
-pub fn load_model<'cfg>(config: &'cfg KimiK2Config) -> AsyncStream<'cfg, LoaderEvent<'cfg>> {
-    AsyncStream::new(move |y| {
+pub fn load_model(config: &KimiK2Config) -> AsyncStream<LoaderEvent<'static>> {
+    AsyncStream::with_channel(move |y: fluent_ai_async::AsyncStreamSender<LoaderEvent<'static>>| {
         // Use ProgressHub directly - no abstractions
         let client = match create_client(Backend::Auto) {
             Ok(client) => client,
             Err(e) => {
-                y.yield_error(e);
+                let _ = y.send(LoaderEvent::Error { message: e.to_string() });
                 return;
             }
         };
@@ -66,20 +68,20 @@ pub fn load_model<'cfg>(config: &'cfg KimiK2Config) -> AsyncStream<'cfg, LoaderE
         let cache_dir = std::path::PathBuf::from("/tmp/fluent_ai_cache"); // TODO: make configurable
         let download_config = create_download_config(cache_dir);
 
-        let mut total_bytes = 0_u64;
+        let _total_bytes = 0_u64;
         let mut shards: ArrayVec<ModelShard, MAX_SHARDS> = ArrayVec::new();
 
         // Convert repo ArrayVec to string
         let repo_str = match std::str::from_utf8(&config.repo) {
             Ok(s) => s,
             Err(e) => {
-                y.yield_error(crate::error::CandleError::ValidationError(e.to_string()));
+                let _ = y.send(LoaderEvent::Error { message: e.to_string() });
                 return;
             }
         };
 
         // Emit initial metadata event
-        y.yield_item(LoaderEvent::Start {
+        let _ = y.send(LoaderEvent::Start {
             total_shards: 1, // ProgressHub downloads entire models
             total_bytes: 0, // will be updated via Progress events
         });
@@ -89,25 +91,32 @@ pub fn load_model<'cfg>(config: &'cfg KimiK2Config) -> AsyncStream<'cfg, LoaderE
         match rt.block_on(client.download_model_auto(repo_str, &download_config, None)) {
             Ok(result) => {
                 // Find and memory-map all safetensors files
-                let model_dir = result.destination;
+                let model_dir = if let Some(model_result) = result.models.first() {
+                    model_result.path.parent().unwrap_or(&model_result.path)
+                } else {
+                    let _ = y.send(LoaderEvent::Error { message: "No models in download result".to_string() });
+                    return;
+                };
                 if let Ok(entries) = std::fs::read_dir(&model_dir) {
                     let mut shard_idx = 0;
                     for entry in entries.flatten() {
                         let path = entry.path();
                         if path.extension().and_then(|s| s.to_str()) == Some("safetensors") {
-                            match memmap2::MmapOptions::new().map_ro(&path) {
+                            match unsafe { memmap2::MmapOptions::new().map(&std::fs::File::open(&path).unwrap()) } {
                                 Ok(mmap) => {
                                     let shard = ModelShard { bytes: mmap };
+                                    let current_idx = shard_idx;
                                     if shards.try_push(shard).is_ok() {
-                                        y.yield_item(LoaderEvent::ShardReady { 
-                                            shard_idx, 
-                                            shard: ModelShard { bytes: unsafe { std::mem::transmute(shards[shard_idx].bytes.clone()) } }
+                                        // Send notification that shard is ready (without duplicating the shard)
+                                        let _ = y.send(LoaderEvent::Progress { 
+                                            shard_idx: current_idx, 
+                                            bytes: &shards[current_idx].bytes[..]
                                         });
                                         shard_idx += 1;
                                     }
                                 }
                                 Err(e) => {
-                                    y.yield_error(crate::error::CandleError::Io(e.to_string()));
+                                    let _ = y.send(LoaderEvent::Error { message: e.to_string() });
                                     return;
                                 }
                             }
@@ -115,10 +124,10 @@ pub fn load_model<'cfg>(config: &'cfg KimiK2Config) -> AsyncStream<'cfg, LoaderE
                     }
                 }
 
-                y.yield_item(LoaderEvent::Complete { shards });
+                let _ = y.send(LoaderEvent::Complete { shards });
             }
             Err(e) => {
-                y.yield_error(crate::error::CandleError::InitializationError(e.to_string()));
+                let _ = y.send(LoaderEvent::Error { message: e.to_string() });
                 return;
             }
         }

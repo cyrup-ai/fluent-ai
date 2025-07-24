@@ -26,7 +26,7 @@ impl HakariRegenerator {
     pub async fn regenerate(&self) -> Result<()> {
         // Always ensure workspace-hack exists first
         self.ensure_workspace_hack_exists().await?;
-        
+
         let output = Command::new("cargo")
             .arg("hakari")
             .arg("generate")
@@ -65,7 +65,7 @@ impl HakariRegenerator {
         // Move existing config temporarily so init can create fresh one
         let config_path = self.workspace_root.join(".config/hakari.toml");
         let backup_path = self.workspace_root.join(".config/hakari.toml.backup");
-        
+
         if config_path.exists() {
             std::fs::rename(&config_path, &backup_path).map_err(|e| {
                 error::HakariRegenerateError::Io(error::IoError::FileOperation {

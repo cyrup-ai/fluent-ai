@@ -6,7 +6,7 @@
 use candle_core::Tensor;
 
 use super::SamplingError;
-use crate::processing::traits::LogitsProcessor;
+// Removed unused import: crate::processing::traits::LogitsProcessor
 
 /// Top-k sampling processor with optimized filtering algorithms
 ///

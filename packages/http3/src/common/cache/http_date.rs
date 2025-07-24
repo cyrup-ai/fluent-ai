@@ -32,7 +32,8 @@ impl std::error::Error for HttpDateParseError {}
 
 /// HTTP date parsing utilities
 pub mod httpdate {
-    use std::time::{SystemTime, Duration};
+    use std::time::{Duration, SystemTime};
+
     use super::HttpDateParseError;
 
     /// Parse HTTP date string into SystemTime following RFC 7231 formats
@@ -41,7 +42,7 @@ pub mod httpdate {
 
         // RFC 7231 Section 7.1.1.1: HTTP-date format preferences
         // 1. IMF-fixdate (preferred): "Sun, 06 Nov 1994 08:49:37 GMT"
-        // 2. RFC 850 format: "Sunday, 06-Nov-94 08:49:37 GMT"  
+        // 2. RFC 850 format: "Sunday, 06-Nov-94 08:49:37 GMT"
         // 3. ANSI C asctime() format: "Sun Nov  6 08:49:37 1994"
 
         // Try IMF-fixdate format first (RFC 7231 preferred format)

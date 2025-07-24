@@ -8,9 +8,9 @@ pub mod kimi_k2;
 
 // Re-export the main components
 pub use kimi_k2::{
-    example::KimiK2Example,
+
     loader::{load_model, LoaderEvent, ModelShard},
     model::{KimiK2Config, KimiK2Model},
-    tokenizer::{ChatMessage, KimiK2Tokenizer},
-    KimiK2Config as Config, QuantFormat, KIMI_K2_FP16, KIMI_K2_FP8,
+    tokenizer::KimiK2Tokenizer,
+    KimiK2Config as Config, QuantFormat, kimi_k2_fp16, kimi_k2_fp8,
 };

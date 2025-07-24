@@ -1,3 +1,9 @@
+// Import centralized HTTP structs - no more local definitions!
+use super::types::{
+    OpenRouterChatRequest, OpenRouterContent, OpenRouterError, OpenRouterErrorResponse,
+    OpenRouterMessage, OpenRouterResponseMessage, OpenRouterStreamingChunk, OpenRouterToolCall,
+};
+use fluent_ai_http3::{Http3, HttpResult};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -7,7 +13,7 @@ use crate::clients::openai::AssistantContent;
 use crate::{
     OneOrMany,
     clients::openai::Message,
-    completion::{self, CompletionError, CompletionRequest},
+    completion::{self, CompletionError, CompletionModel, CompletionRequest},
     json_util,
 };
 
@@ -25,19 +31,8 @@ pub const PERPLEXITY_SONAR_PRO: &str = "perplexity/sonar-pro";
 /// The `google/gemini-2.0-flash-001` model. Find more models at <https://openrouter.ai/models>.
 pub const GEMINI_FLASH_2_0: &str = "google/gemini-2.0-flash-001";
 
-/// A openrouter completion object.
-///
-/// For more information, see this link: <https://docs.openrouter.xyz/reference/create_chat_completion_v1_chat_completions_post>
-#[derive(Debug, Deserialize)]
-pub struct CompletionResponse {
-    pub id: String,
-    pub object: String,
-    pub created: u64,
-    pub model: String,
-    pub choices: Vec<Choice>,
-    pub system_fingerprint: Option<String>,
-    pub usage: Option<Usage>,
-}
+/// Legacy alias for centralized OpenRouter response type
+pub type CompletionResponse = fluent_ai_http_structs::openrouter::OpenRouterChatResponse;
 
 impl From<ApiErrorResponse> for CompletionError {
     fn from(err: ApiErrorResponse) -> Self {
@@ -101,13 +96,8 @@ impl TryFrom<CompletionResponse> for completion::CompletionResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct Choice {
-    pub index: usize,
-    pub native_finish_reason: Option<String>,
-    pub message: Message,
-    pub finish_reason: Option<String>,
-}
+/// Legacy alias for centralized choice type
+pub type Choice = fluent_ai_http_structs::openrouter::OpenRouterChoice;
 
 // CompletionModel is now imported from fluent_ai_domain::model
 // Removed duplicated CompletionModel struct - use canonical domain type
@@ -119,7 +109,7 @@ pub struct OpenRouterCompletionModel {
     model: String,
 }
 
-impl CompletionModel {
+impl OpenRouterCompletionModel {
     pub fn new(client: Client, model: &str) -> Self {
         Self {
             client,
@@ -130,50 +120,119 @@ impl CompletionModel {
     pub(crate) fn create_completion_request(
         &self,
         completion_request: CompletionRequest,
-    ) -> Result<Value, CompletionError> {
-        // Add preamble to chat history (if available)
-        let mut full_history: Vec<Message> = match &completion_request.preamble {
-            Some(preamble) => vec![Message::system(preamble)],
-            None => vec![],
-        };
+    ) -> Result<OpenRouterChatRequest<'_>, CompletionError> {
+        // Use the centralized builder with validation
+        let builder = Http3Builders::openrouter();
+        let mut chat_builder = builder.chat(&self.model);
 
-        // Gather docs
-        if let Some(docs) = completion_request.normalized_documents() {
-            let docs: Vec<Message> = docs.try_into()?;
-            full_history.extend(docs);
+        // Add preamble as system message if present
+        if let Some(preamble) = &completion_request.preamble {
+            chat_builder = chat_builder.add_text_message("system", preamble);
         }
 
-        // Convert existing chat history
-        let chat_history: Vec<Message> = completion_request
-            .chat_history
-            .into_iter()
-            .map(|message| message.try_into())
-            .collect::<Result<Vec<Vec<Message>>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect();
+        // Add documents as context
+        if let Some(docs) = completion_request.normalized_documents() {
+            for doc in docs {
+                let content = format!("Document: {}", doc.content());
+                chat_builder = chat_builder.add_text_message("user", &content);
+            }
+        }
 
-        // Combine all messages into a single history
-        full_history.extend(chat_history);
+        // Add chat history
+        for msg in completion_request.chat_history {
+            match msg.role() {
+                fluent_ai_domain::message::MessageRole::User => {
+                    if let Some(text) = msg.content().text() {
+                        chat_builder = chat_builder.add_text_message("user", text);
+                    }
+                }
+                fluent_ai_domain::message::MessageRole::Assistant => {
+                    if let Some(text) = msg.content().text() {
+                        chat_builder = chat_builder.add_text_message("assistant", text);
+                    }
+                }
+                fluent_ai_domain::message::MessageRole::System => {
+                    if let Some(text) = msg.content().text() {
+                        chat_builder = chat_builder.add_text_message("system", text);
+                    }
+                }
+            }
+        }
 
-        let request = json!({
-            "model": self.model,
-            "messages": full_history,
-            "temperature": completion_request.temperature,
-            "tool_calls": completion_request.tools
-        });
+        // Set parameters with validation using centralized utilities
+        if let Some(temp) = completion_request.temperature {
+            chat_builder = chat_builder.temperature(
+                HttpUtils::validate_temperature(temp as f32, Provider::OpenRouter).map_err(|e| {
+                    CompletionError::InvalidRequest(format!("Invalid temperature: {}", e))
+                })? as f64,
+            );
+        }
 
-        let request = if let Some(params) = completion_request.additional_params {
-            json_util::merge(request, params)
-        } else {
-            request
+        if let Some(max_tokens) = completion_request.max_tokens {
+            chat_builder = chat_builder.max_tokens(
+                HttpUtils::validate_max_tokens(max_tokens, Provider::OpenRouter).map_err(|e| {
+                    CompletionError::InvalidRequest(format!("Invalid max_tokens: {}", e))
+                })?,
+            );
+        }
+
+        // Add tools if present
+        if !completion_request.tools.is_empty() {
+            let mut openrouter_tools = arrayvec::ArrayVec::new();
+            for tool in completion_request.tools.into_iter() {
+                if openrouter_tools.len() < super::types::MAX_TOOLS {
+                    let openrouter_tool = super::types::OpenRouterTool {
+                        tool_type: "function",
+                        function: super::types::OpenRouterFunction {
+                            name: tool.name(),
+                            description: tool.description(),
+                            parameters: tool.parameters().clone(),
+                        },
+                    };
+                    let _ = openrouter_tools.push(openrouter_tool);
+                }
+            }
+            chat_builder = chat_builder.with_tools(openrouter_tools);
+        }
+
+        // Build and validate the request
+        match chat_builder.build() {
+            Ok(request) => Ok(request),
+            Err(e) => Err(CompletionError::InvalidRequest(format!(
+                "Request building failed: {}",
+                e
+            ))),
+        }
+    }
+
+    pub async fn stream(
+        &self,
+        completion_request: CompletionRequest,
+    ) -> Result<StreamingCompletionResponse<FinalCompletionResponse>, CompletionError> {
+        let request_body = self.create_completion_request(completion_request)?;
+
+        // Use centralized serialization
+        let body_bytes = match serde_json::to_vec(&request_body) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(CompletionError::Internal(format!(
+                    "Serialization error: {}",
+                    e
+                )));
+            }
         };
 
-        Ok(request)
+        let builder = self
+            .client
+            .post("/chat/completions")
+            .body(body_bytes)
+            .header("content-type", "application/json");
+
+        super::streaming::send_openrouter_streaming_request(builder).await
     }
 }
 
-impl completion::CompletionModel for CompletionModel {
+impl completion::CompletionModel for OpenRouterCompletionModel {
     type Response = CompletionResponse;
     type StreamingResponse = FinalCompletionResponse;
 
@@ -182,12 +241,24 @@ impl completion::CompletionModel for CompletionModel {
         &self,
         completion_request: CompletionRequest,
     ) -> Result<completion::CompletionResponse<CompletionResponse>, CompletionError> {
-        let request = self.create_completion_request(completion_request)?;
+        let request_body = self.create_completion_request(completion_request)?;
+
+        // Use centralized serialization
+        let body_bytes = match serde_json::to_vec(&request_body) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(CompletionError::Internal(format!(
+                    "Serialization error: {}",
+                    e
+                )));
+            }
+        };
 
         let response = self
             .client
             .post("/chat/completions")
-            .json(&request)
+            .body(body_bytes)
+            .header("content-type", "application/json")
             .send()
             .await?;
 
@@ -213,6 +284,6 @@ impl completion::CompletionModel for CompletionModel {
         &self,
         completion_request: CompletionRequest,
     ) -> Result<StreamingCompletionResponse<Self::StreamingResponse>, CompletionError> {
-        CompletionModel::stream(self, completion_request).await
+        OpenRouterCompletionModel::stream(self, completion_request).await
     }
 }

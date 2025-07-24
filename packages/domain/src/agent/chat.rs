@@ -1,12 +1,15 @@
 //! Chat functionality for memory-enhanced agent conversations
 
-use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
 
 use arrayvec::ArrayVec;
 use atomic_counter::RelaxedCounter;
 use crossbeam_utils::CachePadded;
-use tokio_stream::StreamExt;
 use once_cell::sync::Lazy;
+use tokio_stream::StreamExt;
 
 use crate::agent::role::AgentRoleImpl;
 use crate::memory::primitives::node::MemoryNodeBuilder;
@@ -210,10 +213,8 @@ impl AgentRoleImpl {
             .map_err(|e| ChatError::Memory(e.into()))?;
 
         // Store user memory with zero-allocation error handling - PURE STREAMING
-        let store_stream = memory_tool
-            .memory()
-            .store_memory(&user_memory);
-        
+        let store_stream = memory_tool.memory().store_memory(&user_memory);
+
         // Use StreamExt to properly consume AsyncStream
         let mut stream = store_stream;
         if let Some(store_result) = stream.next().await {
@@ -233,10 +234,8 @@ impl AgentRoleImpl {
         );
 
         // Store assistant memory with zero-allocation error handling - PURE STREAMING
-        let store_stream = memory_tool
-            .memory()
-            .store_memory(&assistant_memory);
-        
+        let store_stream = memory_tool.memory().store_memory(&assistant_memory);
+
         // Use StreamExt to properly consume AsyncStream
         let mut stream = store_stream;
         if let Some(store_result) = stream.next().await {
@@ -259,10 +258,8 @@ impl AgentRoleImpl {
         );
 
         // Store context memory with zero-allocation error handling - PURE STREAMING
-        let store_stream = memory_tool
-            .memory()
-            .store_memory(&context_memory);
-        
+        let store_stream = memory_tool.memory().store_memory(&context_memory);
+
         // Use StreamExt to properly consume AsyncStream
         let mut stream = store_stream;
         if let Some(store_result) = stream.next().await {

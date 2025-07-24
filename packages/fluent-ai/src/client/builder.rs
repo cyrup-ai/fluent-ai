@@ -16,7 +16,7 @@ use std::{
 };
 
 use crossbeam::{
-    channel::{unbounded, Receiver},
+    channel::{Receiver, unbounded},
     thread,
 };
 
@@ -34,7 +34,8 @@ use crate::{
 };
 
 /// Thread-safe factory function signature using crossbeam channels
-type SafeFactoryFn = Arc<dyn Fn() -> Receiver<Result<Box<dyn ProviderClient>, BuildErr>> + Send + Sync>;
+type SafeFactoryFn =
+    Arc<dyn Fn() -> Receiver<Result<Box<dyn ProviderClient>, BuildErr>> + Send + Sync>;
 
 /// Utility so we can map/pipe inline without extra imports.
 trait Pipe: Sized {
@@ -84,23 +85,24 @@ impl DynClientBuilder {
     {
         // Lower-case once to store in registry
         let name_key = name.to_ascii_lowercase();
-        
+
         // Create a thread-safe factory using Arc
         let safe_factory: SafeFactoryFn = Arc::new(move || {
             let (tx, rx) = unbounded();
             let factory_clone = Arc::new(factory);
-            
+
             thread::spawn(move || {
                 let result = factory_clone()
                     .map(|c| Box::new(c) as Box<dyn ProviderClient>)
                     .map_err(|e| BuildErr::Factory(e.to_string()));
                 let _ = tx.send(result);
             });
-            
+
             rx
         });
 
-        self.registry.insert(Box::leak(name_key.into_boxed_str()), safe_factory);
+        self.registry
+            .insert(Box::leak(name_key.into_boxed_str()), safe_factory);
         self
     }
 
@@ -123,12 +125,14 @@ impl DynClientBuilder {
             .registry
             .get(provider)
             .ok_or_else(|| BuildErr::UnknownProvider(provider.into()))?;
-        
+
         // Use the safe factory function - no unsafe code needed
         let receiver = (factory)();
         match receiver.recv() {
             Ok(result) => result,
-            Err(_) => Err(BuildErr::Factory("Channel closed without result".to_string())),
+            Err(_) => Err(BuildErr::Factory(
+                "Channel closed without result".to_string(),
+            )),
         }
     }
 

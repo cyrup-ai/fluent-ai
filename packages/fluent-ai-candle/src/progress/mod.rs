@@ -196,7 +196,7 @@ pub trait ProgressReporter: Send + Sync {
     /// # Returns
     ///
     /// Returns Ok(()) on success, error if session creation fails
-    fn start_session(&self, session_id: &str, description: &str) -> Result<()> {
+    fn start_session(&self, _session_id: &str, _description: &str) -> Result<()> {
         // Default implementation for backward compatibility
         Ok(())
     }
@@ -210,7 +210,7 @@ pub trait ProgressReporter: Send + Sync {
     /// # Returns
     ///
     /// Returns Ok(()) on success, error if session finishing fails
-    fn finish_session(&self, session_id: &str) -> Result<()> {
+    fn finish_session(&self, _session_id: &str) -> Result<()> {
         // Default implementation for backward compatibility
         Ok(())
     }
@@ -234,7 +234,7 @@ pub trait ProgressReporter: Send + Sync {
     fn report_progress(
         &self,
         operation_type: &str,
-        operation_key: &str,
+        _operation_key: &str,
         current_value: u64,
         total_value: Option<u64>,
         message: &str,
@@ -272,10 +272,10 @@ pub trait ProgressReporter: Send + Sync {
         &self,
         download_stage: DownloadStage,
         progress: f32,
-        total_bytes: Option<u64>,
-        downloaded_bytes: Option<u64>,
-        transfer_rate: Option<f64>,
-        eta_seconds: Option<f64>,
+        _total_bytes: Option<u64>,
+        _downloaded_bytes: Option<u64>,
+        _transfer_rate: Option<f64>,
+        _eta_seconds: Option<f64>,
     ) -> Result<()> {
         // Default implementation uses standard progress reporting
         let stage_name = match download_stage {
@@ -309,8 +309,8 @@ pub trait ProgressReporter: Send + Sync {
         layer_index: usize,
         total_layers: usize,
         progress: f32,
-        memory_used: Option<u64>,
-        total_parameters: Option<u64>,
+        _memory_used: Option<u64>,
+        _total_parameters: Option<u64>,
     ) -> Result<()> {
         // Default implementation uses standard progress reporting
         let stage_name = match layer_stage {
@@ -1070,7 +1070,7 @@ impl ProgressHubConfig {
 
     /// Check if TUI is enabled
     #[inline(always)]
-    pub const fn enable_tui(&self) -> bool {
+    pub const fn is_tui_enabled(&self) -> bool {
         self.enable_tui
     }
 
@@ -1186,7 +1186,7 @@ impl MetricsAggregator {
             self.average_latency_nanos.store(new_avg, Ordering::Relaxed);
 
             // Update peak tokens per second
-            let tokens_per_sec_u64 = (metrics.tokens_per_second as u64);
+            let tokens_per_sec_u64 = metrics.tokens_per_second as u64;
             let current_peak = self.peak_tokens_per_second.load(Ordering::Relaxed);
             if tokens_per_sec_u64 > current_peak {
                 self.peak_tokens_per_second

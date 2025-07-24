@@ -9,16 +9,16 @@ use thiserror::Error;
 pub enum HttpError {
     /// Network error
     #[error("Network error: {message}")]
-    NetworkError { 
+    NetworkError {
         /// Error message describing the network issue
-        message: String 
+        message: String,
     },
 
     /// Client configuration error
     #[error("Client error: {message}")]
-    ClientError { 
+    ClientError {
         /// Error message describing the client configuration issue
-        message: String 
+        message: String,
     },
 
     /// HTTP status error
@@ -34,74 +34,74 @@ pub enum HttpError {
 
     /// Timeout error
     #[error("Request timeout: {message}")]
-    Timeout { 
+    Timeout {
         /// Error message describing the timeout
-        message: String 
+        message: String,
     },
 
     /// Serialization error
     #[error("Serialization error: {message}")]
-    SerializationError { 
+    SerializationError {
         /// Error message describing the serialization issue
-        message: String 
+        message: String,
     },
 
     /// Deserialization error
     #[error("Deserialization error: {message}")]
-    DeserializationError { 
+    DeserializationError {
         /// Error message describing the deserialization issue
-        message: String 
+        message: String,
     },
 
     /// Runtime error
     #[error("Runtime error: {message}")]
-    RuntimeError { 
+    RuntimeError {
         /// Error message describing the runtime issue
-        message: String 
+        message: String,
     },
 
     /// Stream error
     #[error("Stream error: {message}")]
-    StreamError { 
+    StreamError {
         /// Error message describing the stream issue
-        message: String 
+        message: String,
     },
 
     /// URL parsing error
     #[error("URL parsing error: {message}")]
-    UrlParseError { 
+    UrlParseError {
         /// Error message describing the URL parsing issue
-        message: String 
+        message: String,
     },
 
     /// Invalid URL error
     #[error("Invalid URL '{url}': {message}")]
-    InvalidUrl { 
+    InvalidUrl {
         /// The invalid URL that caused the error
-        url: String, 
+        url: String,
         /// Error message describing the URL issue
-        message: String 
+        message: String,
     },
 
     /// Invalid response error
     #[error("Invalid response: {message}")]
-    InvalidResponse { 
+    InvalidResponse {
         /// Error message describing the response issue
-        message: String 
+        message: String,
     },
 
     /// TLS error
     #[error("TLS error: {message}")]
-    TlsError { 
+    TlsError {
         /// Error message describing the TLS issue
-        message: String 
+        message: String,
     },
 
     /// Connection error
     #[error("Connection error: {message}")]
-    ConnectionError { 
+    ConnectionError {
         /// Error message describing the connection issue
-        message: String 
+        message: String,
     },
 
     /// IO error
@@ -110,16 +110,16 @@ pub enum HttpError {
 
     /// Invalid header error
     #[error("Invalid header: {message}")]
-    InvalidHeader { 
+    InvalidHeader {
         /// Error message describing the header issue
-        message: String 
+        message: String,
     },
 
     /// Custom error for middleware and other uses
     #[error("Custom error: {message}")]
-    Custom { 
+    Custom {
         /// Custom error message
-        message: String 
+        message: String,
     },
 
     /// Error processing a response chunk during collection
@@ -133,30 +133,30 @@ pub enum HttpError {
 
     /// Download was interrupted
     #[error("Download interrupted: {message}")]
-    DownloadInterrupted { 
+    DownloadInterrupted {
         /// Error message describing the interruption
-        message: String 
+        message: String,
     },
 
     /// Invalid content length
     #[error("Invalid content length: {message}")]
-    InvalidContentLength { 
+    InvalidContentLength {
         /// Error message describing the content length issue
-        message: String 
+        message: String,
     },
 
     /// A retryable error
     #[error("Retryable error: {message}")]
-    Retryable { 
+    Retryable {
         /// Error message for the retryable error
-        message: String 
+        message: String,
     },
 
     /// A non-retryable error
     #[error("Non-retryable error: {message}")]
-    NonRetryable { 
+    NonRetryable {
         /// Error message for the non-retryable error
-        message: String 
+        message: String,
     },
 }
 

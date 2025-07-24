@@ -4,13 +4,11 @@ use std::sync::{Arc, atomic::AtomicUsize};
 
 use crossbeam_utils::CachePadded;
 use serde_json::Value;
-use tokio_stream::StreamExt;
 
 use crate::ZeroOneOrMany;
 use crate::context::Document;
 use crate::memory::config::memory::MemoryConfig as ComprehensiveMemoryConfig;
 use crate::memory::manager::MemoryConfig;
-
 use crate::memory::{Memory, MemoryError, MemoryTool, MemoryToolError};
 use crate::model::Model;
 use crate::tool::McpToolData;
@@ -85,7 +83,11 @@ impl Agent {
         let mut stream = memory_stream;
         let memory = match stream.try_next() {
             Some(memory) => memory,
-            None => return Err(AgentError::Config("Failed to initialize memory: no memory returned".to_string())),
+            None => {
+                return Err(AgentError::Config(
+                    "Failed to initialize memory: no memory returned".to_string(),
+                ));
+            }
         };
 
         // Create memory tool with zero-allocation initialization
@@ -134,7 +136,11 @@ impl Agent {
         let mut stream = memory_stream;
         let memory = match stream.try_next() {
             Some(memory) => memory,
-            None => return Err(AgentError::Config("Failed to initialize memory: no memory returned".to_string())),
+            None => {
+                return Err(AgentError::Config(
+                    "Failed to initialize memory: no memory returned".to_string(),
+                ));
+            }
         };
 
         // Create memory tool with zero-allocation initialization

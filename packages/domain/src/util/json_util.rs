@@ -410,7 +410,8 @@ mod tests {
         };
         let s = serde_json::to_string(&original).expect("Failed to serialize Dummy to JSON string");
         assert_eq!(s, r#"{"data":"{\"k\":\"v\"}"}"#);
-        let parsed: Dummy = serde_json::from_str(&s).expect("Failed to deserialize JSON string back to Dummy");
+        let parsed: Dummy =
+            serde_json::from_str(&s).expect("Failed to deserialize JSON string back to Dummy");
         assert_eq!(parsed, original);
     }
 
@@ -423,13 +424,16 @@ mod tests {
             v: Vec<u32>,
         }
 
-        let w1: Wrapper = serde_json::from_str(r#"{"v":"3"}"#).expect("Failed to parse string variant");
+        let w1: Wrapper =
+            serde_json::from_str(r#"{"v":"3"}"#).expect("Failed to parse string variant");
         assert_eq!(w1.v, vec![3]);
 
-        let w2: Wrapper = serde_json::from_str(r#"{"v":[1,2,3]}"#).expect("Failed to parse array variant");
+        let w2: Wrapper =
+            serde_json::from_str(r#"{"v":[1,2,3]}"#).expect("Failed to parse array variant");
         assert_eq!(w2.v, vec![1, 2, 3]);
 
-        let w3: Wrapper = serde_json::from_str(r#"{"v":null}"#).expect("Failed to parse null variant");
+        let w3: Wrapper =
+            serde_json::from_str(r#"{"v":null}"#).expect("Failed to parse null variant");
         assert!(w3.v.is_empty());
     }
 

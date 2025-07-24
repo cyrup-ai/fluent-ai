@@ -48,7 +48,10 @@ impl McpToolData {
 /// Tool definition from MCP protocol
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tool {
+    /// The unique name identifier for this tool
     pub name: String,
+    /// Human-readable description of what this tool does
     pub description: String,
+    /// JSON schema defining the expected input parameters for this tool
     pub input_schema: Value,
 }

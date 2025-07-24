@@ -323,5 +323,3 @@ where
     }
 }
 
-/// Re-export for convenience
-pub use DefaultStreamingResponse as StreamingCompletionResponse;

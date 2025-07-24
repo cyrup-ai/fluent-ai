@@ -3,7 +3,9 @@
 //! Contains request structures and builder patterns for completion functionality.
 
 // Removed unused import: std::borrow::Cow
-use std::num::NonZeroU64;use serde::{Deserialize, Serialize};
+use std::num::NonZeroU64;
+
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
@@ -12,7 +14,6 @@ use crate::ZeroOneOrMany;
 use crate::chat::Message as ChatMessage;
 use crate::context::Document;
 use crate::model::{ValidationError, ValidationResult};
-use crate::AsyncStream;
 
 /// A request for text completion
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,6 +37,7 @@ pub struct CompletionRequest {
 }
 
 /// Builder for `CompletionRequest`
+#[derive(Clone)]
 pub struct CompletionRequestBuilder {
     system_prompt: String,
     chat_history: ZeroOneOrMany<ChatMessage>,
@@ -109,7 +111,7 @@ impl CompletionRequest {
     #[inline]
     pub fn into_static(self) -> CompletionRequest {
         CompletionRequest {
-            system_prompt: self.system_prompt.into(),
+            system_prompt: self.system_prompt,
             chat_history: self.chat_history,
             documents: self.documents,
             tools: self.tools,
@@ -161,18 +163,12 @@ impl CompletionRequestBuilder {
     }
 
     /// Set the temperature
-    pub fn temperature(self, temp: f64) -> AsyncStream<Self> {
-        let builder = self;
-        AsyncStream::with_channel(move |sender| {
-            let mut updated_builder = builder;
-            if TEMPERATURE_RANGE.contains(&temp) {
-                updated_builder.temperature = temp;
-                let _ = sender.try_send(updated_builder);
-            } else {
-                // Emit the validation error as part of the stream - let on_chunk handler deal with it
-                let _ = sender.try_send(builder);
-            }
-        })
+    pub fn temperature(mut self, temp: f64) -> Self {
+        // Only set if valid, otherwise keep current value
+        if TEMPERATURE_RANGE.contains(&temp) {
+            self.temperature = temp;
+        }
+        self
     }
 
     /// Set the maximum number of tokens
@@ -182,13 +178,9 @@ impl CompletionRequestBuilder {
     }
 
     /// Set the chunk size for streaming
-    pub fn chunk_size(self, size: Option<usize>) -> AsyncStream<Self> {
-        let builder = self;
-        AsyncStream::with_channel(move |sender| {
-            let mut updated_builder = builder;
-            updated_builder.chunk_size = size;
-            let _ = sender.try_send(updated_builder);
-        })
+    pub fn chunk_size(mut self, size: Option<usize>) -> Self {
+        self.chunk_size = size;
+        self
     }
 
     /// Set additional parameters
@@ -198,22 +190,22 @@ impl CompletionRequestBuilder {
     }
 
     /// Build the request
-    pub fn build(self) -> AsyncStream<CompletionRequest> {
-        let builder = self;
-        AsyncStream::with_channel(move |sender| {
-            let request = CompletionRequest {
-                system_prompt: builder.system_prompt,
-                chat_history: builder.chat_history,
-                documents: builder.documents,
-                tools: builder.tools,
-                temperature: builder.temperature,
-                max_tokens: builder.max_tokens,
-                chunk_size: builder.chunk_size,
-                additional_params: builder.additional_params,
-            };
+    pub fn build(self) -> Result<CompletionRequest, CompletionRequestError> {
+        let request = CompletionRequest {
+            system_prompt: self.system_prompt,
+            chat_history: self.chat_history,
+            documents: self.documents,
+            tools: self.tools,
+            temperature: self.temperature,
+            max_tokens: self.max_tokens,
+            chunk_size: self.chunk_size,
+            additional_params: self.additional_params,
+        };
 
-            // Always emit the result - let on_chunk handler deal with validation
-            let _ = sender.try_send(request);
-        })
+        // Validate the request before returning
+        request
+            .validate()
+            .map_err(CompletionRequestError::Validation)?;
+        Ok(request)
     }
 }

@@ -1,13 +1,13 @@
 //! Zero allocation retry logic with exponential backoff and jitter
 //! Zero-allocation retry mechanism with exponential backoff and jitter
 
+use std::pin::Pin;
 use std::{
     sync::atomic::{AtomicU64, Ordering},
     time::{Duration, Instant},
 };
 
 use fastrand::Rng;
-use std::pin::Pin;
 use futures_util::stream::{self, Stream};
 use futures_util::{StreamExt, pin_mut};
 
@@ -182,18 +182,21 @@ impl RetryStats {
 /// Retry executor trait for generic retry operations
 pub trait RetryExecutor<T>: Send + Sync + 'static {
     /// Execute operation with retry logic
-    fn execute_with_retry(self, policy: RetryPolicy) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>;
+    fn execute_with_retry(
+        self,
+        policy: RetryPolicy,
+    ) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>;
 }
 
 /// Result of a retry attempt
 #[derive(Debug)]
 pub enum RetryResult<T> {
     /// Attempt succeeded
-    Success { 
+    Success {
         /// The successful result
-        result: T, 
+        result: T,
         /// Retry statistics
-        stats: RetryStats 
+        stats: RetryStats,
     },
     /// Attempt failed, will retry
     Retry {
@@ -207,11 +210,11 @@ pub enum RetryResult<T> {
         stats: RetryStats,
     },
     /// Final failure after all retries exhausted
-    FinalFailure { 
+    FinalFailure {
         /// The final error
-        error: HttpError, 
+        error: HttpError,
         /// Retry statistics
-        stats: RetryStats 
+        stats: RetryStats,
     },
 }
 
@@ -240,67 +243,94 @@ where
     F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
     T: Send + 'static,
 {
-    fn execute_with_retry(self, policy: RetryPolicy) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>> {
+    fn execute_with_retry(
+        self,
+        policy: RetryPolicy,
+    ) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>> {
         let operation = self.operation;
-        Box::pin(stream::unfold((policy, operation, 0, RetryStats::default()), move |(policy, operation, attempt, mut stats)| async move {
-            if attempt >= policy.max_attempts {
-                return None; // All attempts exhausted
-            }
-
-            stats.total_attempts = attempt + 1;
-            let attempt_start = Instant::now();
-
-            // Execute the operation
-            let operation_stream = (operation)();
-            pin_mut!(operation_stream);
-
-            match operation_stream.next().await {
-                Some(Ok(result)) => {
-                    if attempt > 0 {
-                        stats.successful_retries += 1;
-                    }
-                    stats.total_retry_time += attempt_start.elapsed();
-                    stats.complete();
-
-                    Some((RetryResult::Success { result, stats: stats.clone() }, (policy.clone(), operation, policy.max_attempts, stats)))
+        Box::pin(stream::unfold(
+            (policy, operation, 0, RetryStats::default()),
+            move |(policy, operation, attempt, mut stats)| async move {
+                if attempt >= policy.max_attempts {
+                    return None; // All attempts exhausted
                 }
-                Some(Err(error)) => {
-                    stats.total_retry_time += attempt_start.elapsed();
-                    stats.retry_errors.push(error.to_string());
 
-                    // Check if we should retry
-                    if attempt + 1 < policy.max_attempts && policy.is_retryable_error(&error) {
-                        let delay = policy.calculate_delay(attempt + 1);
-                        stats.total_delay_time += delay;
+                stats.total_attempts = attempt + 1;
+                let attempt_start = Instant::now();
 
-                        // Apply delay if needed
-                        if delay > Duration::ZERO {
-                            tokio::time::sleep(delay).await;
+                // Execute the operation
+                let operation_stream = (operation)();
+                pin_mut!(operation_stream);
+
+                match operation_stream.next().await {
+                    Some(Ok(result)) => {
+                        if attempt > 0 {
+                            stats.successful_retries += 1;
                         }
+                        stats.total_retry_time += attempt_start.elapsed();
+                        stats.complete();
 
-                        Some((RetryResult::Retry {
-                            error: error.clone(),
-                            attempt: attempt + 1,
-                            delay,
-                            stats: stats.clone(),
-                        }, (policy, operation, attempt + 1, stats)))
-                    } else {
-                        Some((RetryResult::FinalFailure { error, stats: stats.clone() }, (policy.clone(), operation, policy.max_attempts, stats)))
+                        Some((
+                            RetryResult::Success {
+                                result,
+                                stats: stats.clone(),
+                            },
+                            (policy.clone(), operation, policy.max_attempts, stats),
+                        ))
+                    }
+                    Some(Err(error)) => {
+                        stats.total_retry_time += attempt_start.elapsed();
+                        stats.retry_errors.push(error.to_string());
+
+                        // Check if we should retry
+                        if attempt + 1 < policy.max_attempts && policy.is_retryable_error(&error) {
+                            let delay = policy.calculate_delay(attempt + 1);
+                            stats.total_delay_time += delay;
+
+                            // Apply delay if needed
+                            if delay > Duration::ZERO {
+                                tokio::time::sleep(delay).await;
+                            }
+
+                            Some((
+                                RetryResult::Retry {
+                                    error: error.clone(),
+                                    attempt: attempt + 1,
+                                    delay,
+                                    stats: stats.clone(),
+                                },
+                                (policy, operation, attempt + 1, stats),
+                            ))
+                        } else {
+                            Some((
+                                RetryResult::FinalFailure {
+                                    error,
+                                    stats: stats.clone(),
+                                },
+                                (policy.clone(), operation, policy.max_attempts, stats),
+                            ))
+                        }
+                    }
+                    None => {
+                        // Stream ended without result - treat as error
+                        let error = HttpError::InvalidResponse {
+                            message: "Empty response stream".to_string(),
+                        };
+                        stats.total_retry_time += attempt_start.elapsed();
+                        stats.retry_errors.push(error.to_string());
+                        stats.complete();
+
+                        Some((
+                            RetryResult::FinalFailure {
+                                error,
+                                stats: stats.clone(),
+                            },
+                            (policy.clone(), operation, policy.max_attempts, stats),
+                        ))
                     }
                 }
-                None => {
-                    // Stream ended without result - treat as error
-                    let error = HttpError::InvalidResponse {
-                        message: "Empty response stream".to_string(),
-                    };
-                    stats.total_retry_time += attempt_start.elapsed();
-                    stats.retry_errors.push(error.to_string());
-                    stats.complete();
-
-                    Some((RetryResult::FinalFailure { error, stats: stats.clone() }, (policy.clone(), operation, policy.max_attempts, stats)))
-                }
-            }
-        }))
+            },
+        ))
     }
 }
 
@@ -387,7 +417,9 @@ where
 }
 
 /// Helper function to execute operation with default retry policy
-pub fn execute_with_default_retry<F, T>(operation: F) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>
+pub fn execute_with_default_retry<F, T>(
+    operation: F,
+) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>
 where
     F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
     T: Send + 'static,
@@ -397,7 +429,9 @@ where
 }
 
 /// Helper function to execute operation with aggressive retry policy
-pub fn execute_with_aggressive_retry<F, T>(operation: F) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>
+pub fn execute_with_aggressive_retry<F, T>(
+    operation: F,
+) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>
 where
     F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
     T: Send + 'static,
@@ -407,7 +441,9 @@ where
 }
 
 /// Helper function to execute operation with conservative retry policy
-pub fn execute_with_conservative_retry<F, T>(operation: F) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>
+pub fn execute_with_conservative_retry<F, T>(
+    operation: F,
+) -> Pin<Box<dyn Stream<Item = RetryResult<T>> + Send>>
 where
     F: Fn() -> Pin<Box<dyn Stream<Item = HttpResult<T>> + Send>> + Send + Sync + 'static,
     T: Send + 'static,

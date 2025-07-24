@@ -39,27 +39,73 @@ struct JsonRpcError {
     data: Option<Value>,
 }
 
+/// Error types for MCP (Model Context Protocol) operations.
+///
+/// This enum represents all possible errors that can occur during MCP tool execution,
+/// transport operations, and protocol communication.
 #[derive(Debug)]
 pub enum McpError {
+    /// The transport connection has been closed or is unavailable.
     TransportClosed,
+    /// Failed to serialize or deserialize MCP protocol messages.
     SerializationFailed,
+    /// The requested tool was not found in the MCP server.
     ToolNotFound,
+    /// Tool execution failed with the provided error message.
     ExecutionFailed(String),
+    /// Operation timed out waiting for response.
     Timeout,
+    /// Received an invalid or malformed response from the MCP server.
     InvalidResponse,
 }
 
+/// Transport layer abstraction for MCP (Model Context Protocol) communication.
+///
+/// This trait defines the interface for sending and receiving data over various transport
+/// mechanisms (stdio, TCP, WebSocket, etc.) used by MCP servers and clients.
+///
+/// Implementations must be thread-safe and support async operations without blocking.
 pub trait Transport: Send + Sync + 'static {
+    /// Send data to the transport endpoint.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - The raw bytes to send over the transport
+    ///
+    /// # Returns
+    ///
+    /// A future that resolves to `Ok(())` on successful send, or `McpError` on failure.
     fn send(&self, data: &[u8]) -> impl std::future::Future<Output = Result<(), McpError>> + Send;
+
+    /// Receive data from the transport endpoint.
+    ///
+    /// # Returns
+    ///
+    /// A future that resolves to the received bytes on success, or `McpError` on failure.
+    /// May block until data is available or an error occurs.
     fn receive(&self) -> impl std::future::Future<Output = Result<Vec<u8>, McpError>> + Send;
 }
 
+/// Standard input/output transport implementation for MCP communication.
+///
+/// This transport uses stdin/stdout for bidirectional communication with MCP servers,
+/// which is the most common transport method for MCP tools. It uses async channels
+/// to handle the communication without blocking.
 pub struct StdioTransport {
     stdin_tx: mpsc::UnboundedSender<Vec<u8>>,
     stdout_rx: Arc<RwLock<mpsc::UnboundedReceiver<Vec<u8>>>>,
 }
 
 impl StdioTransport {
+    /// Create a new StdioTransport instance.
+    ///
+    /// This method sets up bidirectional communication channels using stdin/stdout
+    /// and spawns async tasks to handle the I/O operations. The transport is ready
+    /// to use immediately after creation.
+    ///
+    /// # Returns
+    ///
+    /// A new `StdioTransport` instance ready for MCP communication.
     #[inline]
     pub fn new() -> Self {
         let (stdin_tx, mut stdin_rx) = mpsc::unbounded_channel::<Vec<u8>>();
@@ -125,6 +171,15 @@ impl Transport for StdioTransport {
     }
 }
 
+/// MCP client for communicating with MCP servers over various transports.
+///
+/// This client handles JSON-RPC communication with MCP servers, including request/response
+/// matching, timeout handling, and response caching. It supports any transport that
+/// implements the `Transport` trait.
+///
+/// # Type Parameters
+///
+/// * `T` - The transport implementation to use for communication
 pub struct Client<T: Transport> {
     transport: Arc<T>,
     request_id: AtomicU64,
@@ -133,6 +188,15 @@ pub struct Client<T: Transport> {
 }
 
 impl<T: Transport> Client<T> {
+    /// Create a new MCP client with the specified transport.
+    ///
+    /// # Arguments
+    ///
+    /// * `transport` - The transport implementation to use for communication
+    ///
+    /// # Returns
+    ///
+    /// A new `Client` instance ready to communicate with MCP servers.
     #[inline]
     pub fn new(transport: T) -> Self {
         Self {
@@ -143,6 +207,26 @@ impl<T: Transport> Client<T> {
         }
     }
 
+    /// Call a tool on the MCP server with the specified arguments.
+    ///
+    /// This method sends a JSON-RPC request to execute a tool and waits for the response.
+    /// It handles request/response matching and timeout management automatically.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the tool to execute
+    /// * `args` - JSON arguments to pass to the tool
+    ///
+    /// # Returns
+    ///
+    /// Returns the tool's result as a JSON `Value` on success, or `McpError` on failure.
+    ///
+    /// # Errors
+    ///
+    /// * `McpError::Timeout` - If the request times out
+    /// * `McpError::ExecutionFailed` - If the tool execution fails
+    /// * `McpError::SerializationFailed` - If JSON serialization/deserialization fails
+    /// * `McpError::TransportClosed` - If the transport connection is closed
     pub async fn call_tool(&self, name: &str, args: Value) -> Result<Value, McpError> {
         let id = self.request_id.fetch_add(1, Ordering::Relaxed);
         let start_time = Instant::now();
@@ -189,6 +273,21 @@ impl<T: Transport> Client<T> {
         }
     }
 
+    /// List all available tools from the MCP server.
+    ///
+    /// This method queries the MCP server for its available tools and returns
+    /// a list of tool definitions including their names, descriptions, and schemas.
+    ///
+    /// # Returns
+    ///
+    /// Returns a vector of `Tool` definitions on success, or `McpError` on failure.
+    /// An empty vector is returned if no tools are available.
+    ///
+    /// # Errors
+    ///
+    /// * `McpError::Timeout` - If the request times out
+    /// * `McpError::SerializationFailed` - If JSON parsing fails
+    /// * `McpError::TransportClosed` - If the transport connection is closed
     #[inline]
     pub async fn list_tools(&self) -> Result<Vec<super::types::Tool>, McpError> {
         let result = self.call_tool_internal("tools/list", Value::Null).await?;

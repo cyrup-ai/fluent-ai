@@ -43,11 +43,7 @@ pub trait VoiceService: Send + Sync + 'static {
     ) -> crate::AsyncTask<Result<TranscriptionResponse<()>>>;
 
     /// Convert text to speech
-    fn synthesize(
-        &self,
-        text: &str,
-        voice_id: &str,
-    ) -> crate::AsyncTask<Result<Vec<u8>>>;
+    fn synthesize(&self, text: &str, voice_id: &str) -> crate::AsyncTask<Result<Vec<u8>>>;
 
     /// List available voices
     fn list_voices(&self) -> crate::AsyncTask<Result<Vec<VoiceInfo>>>;

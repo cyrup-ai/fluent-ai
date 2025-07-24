@@ -1,12 +1,18 @@
 //! Example usage of Http3 builder with exact user syntax patterns
 
-use axum::{
-    Router, extract::{Json, Form}, http::{StatusCode, HeaderMap}, response::{Json as ResponseJson, Response}, 
-    routing::{get, post, put}, middleware::{self, Next}, body::Body,
-};
-use axum::http::Request;
 use std::collections::HashMap;
-use fluent_ai_http3::{Http3, ContentType, header, HttpStreamExt};
+
+use axum::http::Request;
+use axum::{
+    Router,
+    body::Body,
+    extract::{Form, Json},
+    http::{HeaderMap, StatusCode},
+    middleware::{self, Next},
+    response::{Json as ResponseJson, Response},
+    routing::{get, post, put},
+};
+use fluent_ai_http3::{ContentType, Http3, HttpStreamExt, header};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 
@@ -40,7 +46,7 @@ struct JsonResponse {
     settings: std::collections::HashMap<String, i32>,
 }
 
-// Form request/response types  
+// Form request/response types
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct FormRequest {
     product_id: String,
@@ -103,7 +109,7 @@ async fn handle_post(
 // Handler for CSV download
 async fn handle_csv_download() -> Result<Response<String>, StatusCode> {
     let csv_data = "name,age,city\nJohn,30,NYC\nJane,25,LA\nBob,35,Chicago";
-    
+
     Ok(Response::builder()
         .header("content-type", "text/csv")
         .header("content-disposition", "attachment; filename=\"test.csv\"")
@@ -118,38 +124,51 @@ async fn handle_put_json(
 ) -> Result<ResponseJson<JsonResponse>, StatusCode> {
     println!("🔄 PUT JSON received: {:#?}", payload);
     println!("📋 Headers: {:?}", headers.get("content-type"));
-    
+
     // Transform JsonRequest -> JsonResponse to prove different serialization/deserialization
     let mut settings = std::collections::HashMap::new();
     settings.insert("notifications".to_string(), 1);
     settings.insert("theme".to_string(), 2);
     settings.insert("language".to_string(), 3);
-    
+
     let response = JsonResponse {
         success: true,
         user_id: payload.user_id + 1000,
         created_at: chrono::Utc::now().to_rfc3339(),
-        roles: payload.permissions.into_iter().map(|p| format!("role_{}", p)).collect(),
+        roles: payload
+            .permissions
+            .into_iter()
+            .map(|p| format!("role_{}", p))
+            .collect(),
         settings,
     };
-    
+
     println!("📤 PUT JSON responding: {:#?}", response);
     Ok(ResponseJson(response))
 }
 
-// PUT handler for form-urlencoded content - FormRequest -> FormResponse  
+// PUT handler for form-urlencoded content - FormRequest -> FormResponse
 async fn handle_put_form(
     headers: HeaderMap,
     Form(params): Form<HashMap<String, String>>,
 ) -> Result<ResponseJson<FormResponse>, StatusCode> {
     println!("🔄 PUT Form received: {:#?}", params);
     println!("📋 Headers: {:?}", headers.get("content-type"));
-    
+
     // Parse form params into FormRequest-like data, respond with FormResponse
-    let product_id = params.get("product_id").map_or("unknown", |s| s.as_str()).to_string();
-    let quantity: i32 = params.get("quantity").and_then(|s| s.parse().ok()).unwrap_or(1);
-    let price: f64 = params.get("price").and_then(|s| s.parse().ok()).unwrap_or(0.0);
-    
+    let product_id = params
+        .get("product_id")
+        .map_or("unknown", |s| s.as_str())
+        .to_string();
+    let quantity: i32 = params
+        .get("quantity")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1);
+    let price: f64 = params
+        .get("price")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.0);
+
     let response = FormResponse {
         order_id: format!("ORD-{}-{}", product_id, chrono::Utc::now().timestamp()),
         total_cost: price * quantity as f64,
@@ -157,7 +176,7 @@ async fn handle_put_form(
         items: vec![format!("{} x{}", product_id, quantity)],
         discount_applied: quantity > 5,
     };
-    
+
     println!("📤 PUT Form responding: {:#?}", response);
     Ok(ResponseJson(response))
 }
@@ -169,7 +188,7 @@ async fn handle_put_binary(
 ) -> Result<ResponseJson<BinaryResponse>, StatusCode> {
     println!("🔄 PUT Binary received: {:#?}", payload);
     println!("📋 Headers: {:?}", headers.get("content-type"));
-    
+
     // Transform BinaryRequest -> BinaryResponse
     let response = BinaryResponse {
         upload_id: format!("UPLOAD-{}", chrono::Utc::now().timestamp()),
@@ -177,7 +196,7 @@ async fn handle_put_binary(
         bytes_processed: payload.file_size,
         validation_result: payload.checksum.len() > 10,
     };
-    
+
     println!("📤 PUT Binary responding: {:#?}", response);
     Ok(ResponseJson(response))
 }
@@ -191,17 +210,17 @@ async fn requestbin_logger(
     let uri = req.uri().clone();
     let headers = req.headers().clone();
     let version = req.version();
-    
+
     println!("\n🔍 REQUESTBIN: Incoming {} {} {:?}", method, uri, version);
     println!("📋 Headers ({} total):", headers.len());
-    
+
     for (name, value) in headers.iter() {
         match value.to_str() {
             Ok(value_str) => println!("   {}: {}", name, value_str),
             Err(_) => println!("   {}: <binary_data>", name),
         }
     }
-    
+
     // Extract and log the body
     let (parts, body) = req.into_parts();
     let body_bytes = match axum::body::to_bytes(body, usize::MAX).await {
@@ -211,7 +230,7 @@ async fn requestbin_logger(
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
-    
+
     if !body_bytes.is_empty() {
         println!("📤 Body ({} bytes):", body_bytes.len());
         match std::str::from_utf8(&body_bytes) {
@@ -221,22 +240,27 @@ async fn requestbin_logger(
     } else {
         println!("📤 Body: <empty>");
     }
-    
+
     println!(""); // Empty line for readability
-    
+
     // Reconstruct request with the consumed body
     let reconstructed_req = Request::from_parts(parts, Body::from(body_bytes));
-    
+
     // Continue to the next middleware/handler
     let response = next.run(reconstructed_req).await;
-    
+
     Ok(response)
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize env_logger for reqwest's native debug logging
-    unsafe { std::env::set_var("RUST_LOG", "reqwest=debug,hyper=debug,fluent_ai_http3=debug"); }
+    unsafe {
+        std::env::set_var(
+            "RUST_LOG",
+            "reqwest=debug,hyper=debug,fluent_ai_http3=debug",
+        );
+    }
     env_logger::init();
     println!("✨ Enabled reqwest's native HTTP debug logging");
     // Start local test server on random port with requestbin logging
@@ -249,14 +273,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .layer(middleware::from_fn(requestbin_logger));
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let local_addr = listener.local_addr()?;
-    
+
     println!("🌍 Test server starting on {}", local_addr);
-    
+
     // Spawn server in background
     tokio::spawn(async move {
         axum::serve(listener, app).await.unwrap();
     });
-    
+
     // Give server time to start
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
@@ -274,9 +298,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("🧪 Testing Http3 builder with EXACT syntax patterns...\n");
 
-    // Stream of HttpChunk or mixed BadHttpChunk 
+    // Stream of HttpChunk or mixed BadHttpChunk
     Http3::json()
-        .debug()  // Enable debug logging
+        .debug() // Enable debug logging
         .headers(|| {
             use std::collections::HashMap;
             let mut map = HashMap::new();
@@ -300,7 +324,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect::<SerdeResponseType>();
     println!("📥 Received response: {:?}", response_data);
 
-    //shorthand 
+    // shorthand
     let response_data2 = Http3::json()
         .api_key("abc123")
         .body(&request)
@@ -308,7 +332,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect::<SerdeResponseType>();
     println!("📥 Received response 2: {:?}", response_data2);
 
-    //shorthand 
+    // shorthand
     let _serde_response_type = Http3::form_urlencoded()
         .basic_auth(|| {
             use std::collections::HashMap;
@@ -320,7 +344,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .post(&server_url)
         .collect::<SerdeResponseType>();
 
-    // Stream of HttpChunk may have mixed BadHttpChunk 
+    // Stream of HttpChunk may have mixed BadHttpChunk
     let error_response = Http3::json()
         .headers(|| {
             use std::collections::HashMap;
@@ -332,7 +356,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .post(&server_url)
         .collect_or_else(|e| {
             println!("Error: {}", e);
-            SerdeResponseType { result: "error".to_string(), count: 0 }
+            SerdeResponseType {
+                result: "error".to_string(),
+                count: 0,
+            }
         });
     println!("📥 Error response: {:?}", error_response);
 
@@ -346,13 +373,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             map
         })
         .download_file(&csv_url)
-        .save("/tmp/some.csv").await; // polymorphic path for download specific semantics
-    
+        .save("/tmp/some.csv")
+        .await; // polymorphic path for download specific semantics
+
     println!("📥 Download result: {:?}", download_result);
 
     // Test comprehensive PUT endpoints with different serialization/deserialization types
     println!("\n🧪 Testing PUT endpoints with different content types...\n");
-    
+
     // PUT JSON test - JsonRequest -> JsonResponse
     let json_request = JsonRequest {
         user_id: 42,
@@ -365,7 +393,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             map
         },
     };
-    
+
     let json_url = format!("http://{}/put/json", local_addr);
     let json_response = Http3::json()
         .debug()
@@ -373,7 +401,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .put(&json_url)
         .collect::<JsonResponse>();
     println!("📤 PUT JSON Response: {:#?}", json_response);
-    
+
     // PUT Form test - Send actual form-urlencoded data, not JSON
     let form_params = std::collections::HashMap::from([
         ("product_id".to_string(), "LAPTOP_001".to_string()),
@@ -381,7 +409,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("price".to_string(), "999.99".to_string()),
         ("category".to_string(), "electronics".to_string()),
     ]);
-    
+
     let form_url = format!("http://{}/put/form", local_addr);
     let form_response = Http3::form_urlencoded()
         .debug()
@@ -389,7 +417,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .put(&form_url)
         .collect::<FormResponse>();
     println!("📤 PUT Form Response: {:#?}", form_response);
-    
+
     // PUT Binary test - BinaryRequest -> BinaryResponse
     let binary_request = BinaryRequest {
         file_name: "document.pdf".to_string(),
@@ -397,7 +425,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         checksum: "sha256:abc123def456".to_string(),
         mime_type: "application/pdf".to_string(),
     };
-    
+
     let binary_url = format!("http://{}/put/binary", local_addr);
     let binary_response = Http3::json() // Send as JSON
         .debug()
@@ -408,7 +436,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Give the server a moment to process all requests
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-    
+
     println!("\n✅ All PUT endpoint tests completed successfully!");
     println!("🎯 HTTP3 builder example completed!");
     Ok(())

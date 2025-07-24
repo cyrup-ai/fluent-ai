@@ -5,7 +5,7 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use fluent_ai_async::{AsyncStream};
+use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 
 use crate::model::Usage;
@@ -180,8 +180,6 @@ pub struct CompactCompletionResponse {
     pub finish_reason: Arc<str>,
     /// Response time in milliseconds
     pub response_time_ms: u64,
-
-
 }
 
 /// Builder for `CompactCompletionResponse`
@@ -192,7 +190,6 @@ pub struct CompactCompletionResponseBuilder {
     tokens_used: u32,
     finish_reason: Option<Arc<str>>,
     response_time_ms: u64,
-
 }
 
 impl CompactCompletionResponse {
@@ -234,7 +231,6 @@ impl CompactCompletionResponseBuilder {
             tokens_used: 0,
             finish_reason: None,
             response_time_ms: 0,
-
         }
     }
 
@@ -284,7 +280,6 @@ impl CompactCompletionResponseBuilder {
                 tokens_used: self.tokens_used,
                 finish_reason: self.finish_reason.unwrap_or_else(|| Arc::from("stop")),
                 response_time_ms: self.response_time_ms,
-
             };
 
             let _ = sender.send(response);

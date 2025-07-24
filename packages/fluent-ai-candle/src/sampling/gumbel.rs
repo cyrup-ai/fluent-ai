@@ -3,11 +3,10 @@
 //! Production-quality Gumbel-Softmax implementation for differentiable discrete sampling
 //! with comprehensive numerical stability and temperature control.
 
-use candle_core::{DType, Device, Result as CandleResult, Tensor, D};
+use candle_core::{DType, Device, Tensor, D};
 use rand::{Rng, SeedableRng};
 
 use super::SamplingError;
-use crate::processing::traits::LogitsProcessor;
 
 /// Gumbel-Softmax processor for differentiable discrete sampling
 ///
@@ -103,8 +102,8 @@ impl GumbelSoftmaxProcessor {
         // Generate Gumbel noise using inverse CDF method
         for _ in 0..size {
             // Generate uniform random number in (0, 1) with small epsilon to avoid log(0)
-            let u1: f32 = rng_guard.gen_range(1e-7..1.0 - 1e-7);
-            let u2: f32 = rng_guard.gen_range(1e-7..1.0 - 1e-7);
+            let u1: f32 = rng_guard.random_range(1e-7..1.0 - 1e-7);
+            let u2: f32 = rng_guard.random_range(1e-7..1.0 - 1e-7);
 
             // Apply inverse Gumbel CDF: G = -ln(-ln(U))
             let gumbel_noise = -(-u1.ln()).ln() - (-u2.ln()).ln();

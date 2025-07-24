@@ -3,10 +3,12 @@
 //! This module provides core types and traits for working with text embeddings.
 //! All embedding-related domain objects and operations are defined here.
 
-use serde::{Deserialize, Serialize};use crate::ZeroOneOrMany;
+use serde::{Deserialize, Serialize};
+
+use crate::AsyncTask;
+use crate::ZeroOneOrMany;
 use crate::context::chunk::EmbeddingChunk;
 use crate::model::Usage;
-use crate::AsyncTask;
 
 /// Core trait for embedding models
 pub trait EmbeddingModel: Send + Sync + Clone {
@@ -24,16 +26,12 @@ pub trait EmbeddingModel: Send + Sync + Clone {
     {
         // Get embedding task and process result through handler using streaming
         let mut embedding_task = self.embed(text);
-        
+
         crate::AsyncStream::with_channel(move |sender| {
-            // Use proper streams-only pattern - no await allowed
-            if let Some(embedding) = embedding_task.try_next() {
-                let processed = handler(embedding);
-                let _ = sender.try_send(processed);
-            } else {
-                // Handle error case - send empty embedding
-                let _ = sender.try_send(ZeroOneOrMany::None);
-            }
+            // Use proper streams-only pattern with blocking collect (safe in thread context)
+            let embedding = embedding_task.collect();
+            let processed = handler(embedding);
+            let _ = sender.send(processed);
         })
     }
 }

@@ -1,100 +1,2135 @@
+    Blocking waiting for file lock on build directory
    Compiling fluent_ai_domain v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/domain)
-warning: unused import: `warn`
-  --> /Volumes/samsung_t9/progresshub/client_quic/src/client.rs:18:28
+    Checking fluent_ai_http_structs v0.1.0 (/Volumes/samsung_t9/fluent-ai/packages/http-structs)
+warning: unused imports: `AI21ChatRequest`, `AI21EmbedRequest`, `AnthropicEmbeddingRequest`, `AzureChatCompletionRequest`, `AzureEmbeddingRequest`, `BedrockClaudeMessagesRequest`, `BedrockTitanEmbeddingRequest`, `CohereChatRequest`, `CohereEmbedRequest`, `DeepSeekChatRequest`, `GeminiEmbedContentRequest`, `GeminiGenerateContentRequest`, `GroqChatRequest`, `HuggingFaceChatRequest`, `HuggingFaceEmbeddingRequest`, `MistralChatRequest`, `MistralEmbeddingRequest`, `OllamaChatRequest`, `OllamaEmbeddingRequest`, `OpenRouterChatRequest`, `PerplexityChatRequest`, `TogetherChatRequest`, `TogetherEmbeddingRequest`, `XAIChatRequest`, and `XAIEmbeddingRequest`
+  --> packages/http-structs/src/builders.rs:9:45
    |
-18 | use tracing::{error, info, warn};
-   |                            ^^^^
+9  |     anthropic::{AnthropicCompletionRequest, AnthropicEmbeddingRequest},
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^
+10 |     google::{GeminiGenerateContentRequest, GeminiEmbedContentRequest},
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^
+11 |     azure::{AzureChatCompletionRequest, AzureEmbeddingRequest},
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^
+12 |     bedrock::{BedrockClaudeMessagesRequest, BedrockTitanEmbeddingRequest},
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+13 |     ollama::{OllamaChatRequest, OllamaEmbeddingRequest},
+   |              ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^
+14 |     huggingface::{HuggingFaceChatRequest, HuggingFaceEmbeddingRequest},
+   |                   ^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+15 |     cohere::{CohereChatRequest, CohereEmbedRequest},
+   |              ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^
+16 |     mistral::{MistralChatRequest, MistralEmbeddingRequest},
+   |               ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^
+17 |     groq::{GroqChatRequest},
+   |            ^^^^^^^^^^^^^^^
+18 |     perplexity::{PerplexityChatRequest},
+   |                  ^^^^^^^^^^^^^^^^^^^^^
+19 |     openrouter::{OpenRouterChatRequest},
+   |                  ^^^^^^^^^^^^^^^^^^^^^
+20 |     together::{TogetherChatRequest, TogetherEmbeddingRequest},
+   |                ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^
+21 |     xai::{XAIChatRequest, XAIEmbeddingRequest},
+   |           ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^
+22 |     deepseek::{DeepSeekChatRequest},
+   |                ^^^^^^^^^^^^^^^^^^^
+23 |     ai21::{AI21ChatRequest, AI21EmbedRequest},
+   |            ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(unused_imports)]` on by default
 
-warning: unused imports: `StateError` and `client::QuicClientError`
-  --> /Volumes/samsung_t9/progresshub/client_quic/src/chunk_manager.rs:27:43
-   |
-27 |     download_state::{SharedDownloadState, StateError},
-   |                                           ^^^^^^^^^^
-28 |     client::QuicClientError,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: unused variable: `status`
-   --> /Volumes/samsung_t9/progresshub/client_quic/src/chunk_manager.rs:620:13
+error[E0107]: struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+   --> packages/http-structs/src/openrouter.rs:471:10
     |
-620 |             status => {
-    |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_status`
+471 | impl<'a> OpenRouterActivityRequest<'a> {
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^---- help: remove the unnecessary generics
+    |          |
+    |          expected 0 lifetime arguments
     |
-    = note: `#[warn(unused_variables)]` on by default
+note: struct defined here, with 0 lifetime parameters
+   --> packages/http-structs/src/openrouter.rs:216:12
+    |
+216 | pub struct OpenRouterActivityRequest {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    Checking progresshub-client-xet v0.1.0 (/Volumes/samsung_t9/progresshub/client_xet)
-warning: `progresshub-client-quic` (lib) generated 3 warnings (run `cargo fix --lib -p progresshub-client-quic` to apply 2 suggestions)
-warning: unused variable: `start`
-  --> packages/fluent-ai-simd/src/benchmark/mod.rs:33:9
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+   --> packages/http-structs/src/builders.rs:655:6
+    |
+655 | impl Http3Builders<Google> {
+    |      ^^^^^^^^^^^^^-------- help: remove the unnecessary generics
+    |      |
+    |      expected 0 generic arguments
+    |
+note: struct defined here, with 0 generic parameters
+   --> packages/http-structs/src/builders.rs:313:12
+    |
+313 | pub struct Http3Builders;
+    |            ^^^^^^^^^^^^^
+
+error[E0053]: method `valid_range` has an incompatible type for trait
+   --> packages/http-structs/src/validation.rs:472:30
+    |
+472 |     fn valid_range(&self) -> Option<(&str, &str)> {
+    |                              ^^^^^^^^^^^^^^^^^^^^ expected `str`, found `&str`
+    |
+note: type in trait
+   --> packages/http-structs/src/validation.rs:72:30
+    |
+72  |     fn valid_range(&self) -> Option<(T, T)> where T: PartialOrd;
+    |                              ^^^^^^^^^^^^^^
+    = note: expected signature `fn(&ModelValidator) -> std::option::Option<(_, _)>`
+               found signature `fn(&ModelValidator) -> std::option::Option<(&_, &_)>`
+help: change the output type to match the trait
+    |
+472 -     fn valid_range(&self) -> Option<(&str, &str)> {
+472 +     fn valid_range(&self) -> std::option::Option<(str, str)> {
+    |
+
+error[E0053]: method `valid_values` has an incompatible type for trait
+   --> packages/http-structs/src/validation.rs:476:31
+    |
+476 |     fn valid_values(&self) -> Option<ArrayVec<&str, 16>> {
+    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `str`, found `&str`
+    |
+note: type in trait
+   --> packages/http-structs/src/validation.rs:75:31
+    |
+75  |     fn valid_values(&self) -> Option<ArrayVec<T, 16>> where T: Clone;
+    |                               ^^^^^^^^^^^^^^^^^^^^^^^
+    = note: expected signature `fn(&ModelValidator) -> std::option::Option<ArrayVec<_, _>>`
+               found signature `fn(&ModelValidator) -> std::option::Option<ArrayVec<&_, _>>`
+help: change the output type to match the trait
+    |
+476 -     fn valid_values(&self) -> Option<ArrayVec<&str, 16>> {
+476 +     fn valid_values(&self) -> std::option::Option<ArrayVec<str, 16>> {
+    |
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+   --> packages/http-structs/src/validation.rs:453:6
+    |
+453 | impl ValidateField<str> for ModelValidator {
+    |      ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+    |
+    = help: the trait `Sized` is not implemented for `str`
+note: required by an implicit `Sized` bound in `ValidateField`
+   --> packages/http-structs/src/validation.rs:67:25
+    |
+67  | pub trait ValidateField<T> {
+    |                         ^ required by the implicit `Sized` requirement on this type parameter in `ValidateField`
+help: consider relaxing the implicit `Sized` restriction
+    |
+67  | pub trait ValidateField<T: ?Sized> {
+    |                          ++++++++
+
+error[E0277]: the trait bound `OpenAIFunctionChoice<'_>: Clone` is not satisfied
+  --> packages/http-structs/src/openai.rs:87:9
    |
-33 |     let start = Instant::now();
-   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_start`
+75 | #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+   |                 ----- in this derive macro expansion
+...
+87 |         function: OpenAIFunctionChoice<'a>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `OpenAIFunctionChoice<'_>`
    |
-   = note: `#[warn(unused_variables)]` on by default
-
-warning: `fluent-ai-simd` (lib) generated 1 warning
-    Checking progresshub-client-selector v0.1.0 (/Volumes/samsung_t9/progresshub/client_selector)
-error[E0432]: unresolved import `crate::completion::CompletionProvider`
- --> packages/domain/src/memory/config/memory.rs:6:5
-  |
-6 | use crate::completion::CompletionProvider;
-  |     ^^^^^^^^^^^^^^^^^^^------------------
-  |     |                  |
-  |     |                  help: a similar name exists in the module: `CompletionModel`
-  |     no `CompletionProvider` in `completion`
-
-error[E0432]: unresolved imports `types::CommandHandler`, `types::CommandHandlerMetadata`, `types::DefaultCommandHandler`
-  --> packages/domain/src/chat/commands/mod.rs:25:17
+help: consider annotating `OpenAIFunctionChoice<'_>` with `#[derive(Clone)]`
    |
-25 | pub use types::{CommandHandler, CommandHandlerMetadata, DefaultCommandHandler};
-   |                 ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^ no `DefaultCommandHandler` in `chat::commands::types`
-   |                 |               |
-   |                 |               no `CommandHandlerMetadata` in `chat::commands::types`
-   |                 no `CommandHandler` in `chat::commands::types`
-   |                 help: a similar name exists in the module: `CommandParser`
+93 + #[derive(Clone)]
+94 | pub struct OpenAIFunctionChoice<'a> {
+   |
 
-error[E0432]: unresolved import `crate::model::ModelConfig`
- --> packages/domain/src/memory/config/memory.rs:7:5
-  |
-7 | use crate::model::ModelConfig;
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^ no `ModelConfig` in `model`
-  |
-help: consider importing this struct instead
-  |
-7 - use crate::model::ModelConfig;
-7 + use crate::chat::config::ModelConfig;
-  |
+error[E0369]: binary operation `==` cannot be applied to type `&OpenAIFunctionChoice<'_>`
+  --> packages/http-structs/src/openai.rs:87:9
+   |
+75 | #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+   |                        --------- in this derive macro expansion
+...
+87 |         function: OpenAIFunctionChoice<'a>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: an implementation of `PartialEq<OpenAIFunctionChoice<'_>>` might be missing for `OpenAIFunctionChoice<'_>`
+  --> packages/http-structs/src/openai.rs:93:1
+   |
+93 | pub struct OpenAIFunctionChoice<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ must implement `PartialEq<OpenAIFunctionChoice<'_>>`
+help: consider annotating `OpenAIFunctionChoice<'_>` with `#[derive(PartialEq)]`
+   |
+93 + #[derive(PartialEq)]
+94 | pub struct OpenAIFunctionChoice<'a> {
+   |
 
-    Checking progresshub v0.1.0 (/Volumes/samsung_t9/progresshub/tui)
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `bincode`
-    --> packages/domain/src/chat/config.rs:1038:62
+error[E0277]: the trait bound `OpenAIFunctionChoice<'a>: Deserialize<'_>` is not satisfied
+    --> packages/http-structs/src/openai.rs:87:19
      |
-1038 |                 let bytes = bincode::encode_to_vec(&*config, bincode::config::standard())
-     |                                                              ^^^^^^^ use of unresolved module or unlinked crate `bincode`
+87   |         function: OpenAIFunctionChoice<'a>,
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Deserialize<'_>` is not implemented for `OpenAIFunctionChoice<'a>`
      |
-     = help: if you wanted to use a crate named `bincode`, use `cargo add bincode` to add it to your `Cargo.toml`
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `bincode`
-    --> packages/domain/src/chat/config.rs:1100:70
+     = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `OpenAIFunctionChoice<'a>` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Deserialize<'de>`:
+               &'a Path
+               &'a [u8]
+               &'a serde_json::value::RawValue
+               &'a str
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+             and 658 others
+note: required by a bound in `next_value`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/de/mod.rs:1871:12
      |
-1100 |                 let (config, _) = bincode::decode_from_slice(&bytes, bincode::config::standard())
-     |                                                                      ^^^^^^^ use of unresolved module or unlinked crate `bincode`
-     |
-     = help: if you wanted to use a crate named `bincode`, use `cargo add bincode` to add it to your `Cargo.toml`
+1869 |     fn next_value<V>(&mut self) -> Result<V, Self::Error>
+     |        ---------- required by a bound in this associated function
+1870 |     where
+1871 |         V: Deserialize<'de>,
+     |            ^^^^^^^^^^^^^^^^ required by this bound in `MapAccess::next_value`
 
-error[E0106]: missing lifetime specifier
-   --> packages/domain/src/engine.rs:388:23
-    |
-388 |     ) -> EngineResult<CompletionResponse> {
-    |                       ^^^^^^^^^^^^^^^^^^ expected named lifetime parameter
-    |
-    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
-    |
-388 |     ) -> EngineResult<CompletionResponse<'static>> {
-    |                                         +++++++++
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `fluent_ai_memory`
-  --> packages/domain/src/memory/config/cache.rs:40:42
+error[E0277]: the trait bound `OpenAIFunctionChoice<'_>: Deserialize<'_>` is not satisfied
+  --> packages/http-structs/src/openai.rs:75:46
    |
+75 | #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+   |                                              ^^^^^^^^^^^ the trait `Deserialize<'_>` is not implemented for `OpenAIFunctionChoice<'_>`
+   |
+   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `OpenAIFunctionChoice<'_>` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Deserialize<'de>`:
+             &'a Path
+             &'a [u8]
+             &'a serde_json::value::RawValue
+             &'a str
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+           and 658 others
+note: required by a bound in `openai::_::_serde::__private::de::missing_field`
+  --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/private/de.rs:25:8
+   |
+23 | pub fn missing_field<'de, V, E>(field: &'static str) -> Result<V, E>
+   |        ------------- required by a bound in this function
+24 | where
+25 |     V: Deserialize<'de>,
+   |        ^^^^^^^^^^^^^^^^ required by this bound in `missing_field`
+   = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `OpenAIMessageContent<'_>: Clone` is not satisfied
+   --> packages/http-structs/src/openai.rs:105:5
+    |
+99  | #[derive(Debug, Clone, Serialize, Deserialize)]
+    |                 ----- in this derive macro expansion
+...
+105 |     pub content: Option<OpenAIMessageContent<'a>>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `OpenAIMessageContent<'_>`
+    |
+    = note: required for `std::option::Option<OpenAIMessageContent<'_>>` to implement `Clone`
+
+error[E0277]: the trait bound `OpenAIToolCall<'_>: Clone` is not satisfied
+   --> packages/http-structs/src/openai.rs:108:5
+    |
+99  | #[derive(Debug, Clone, Serialize, Deserialize)]
+    |                 ----- in this derive macro expansion
+...
+108 |     pub tool_calls: Option<ArrayVec<OpenAIToolCall<'a>, MAX_TOOLS>>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `OpenAIToolCall<'_>`
+    |
+    = note: required for `ArrayVec<OpenAIToolCall<'_>, 32>` to implement `Clone`
+    = note: 1 redundant requirement hidden
+    = note: required for `std::option::Option<ArrayVec<OpenAIToolCall<'_>, 32>>` to implement `Clone`
+
+error[E0277]: the trait bound `OpenAIMessageContent<'a>: Deserialize<'_>` is not satisfied
+    --> packages/http-structs/src/openai.rs:105:18
+     |
+105  |     pub content: Option<OpenAIMessageContent<'a>>,
+     |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Deserialize<'_>` is not implemented for `OpenAIMessageContent<'a>`
+     |
+     = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `OpenAIMessageContent<'a>` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Deserialize<'de>`:
+               &'a Path
+               &'a [u8]
+               &'a serde_json::value::RawValue
+               &'a str
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+             and 658 others
+     = note: required for `std::option::Option<OpenAIMessageContent<'a>>` to implement `Deserialize<'_>`
+note: required by a bound in `next_element`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/de/mod.rs:1732:12
+     |
+1730 |     fn next_element<T>(&mut self) -> Result<Option<T>, Self::Error>
+     |        ------------ required by a bound in this associated function
+1731 |     where
+1732 |         T: Deserialize<'de>,
+     |            ^^^^^^^^^^^^^^^^ required by this bound in `SeqAccess::next_element`
+
+error[E0277]: the trait bound `OpenAIToolCall<'a>: Deserialize<'_>` is not satisfied
+    --> packages/http-structs/src/openai.rs:108:21
+     |
+108  |     pub tool_calls: Option<ArrayVec<OpenAIToolCall<'a>, MAX_TOOLS>>,
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Deserialize<'_>` is not implemented for `OpenAIToolCall<'a>`
+     |
+     = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `OpenAIToolCall<'a>` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Deserialize<'de>`:
+               &'a Path
+               &'a [u8]
+               &'a serde_json::value::RawValue
+               &'a str
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+             and 658 others
+     = note: required for `ArrayVec<OpenAIToolCall<'a>, 32>` to implement `Deserialize<'_>`
+     = note: 1 redundant requirement hidden
+     = note: required for `std::option::Option<ArrayVec<OpenAIToolCall<'a>, 32>>` to implement `Deserialize<'_>`
+note: required by a bound in `next_element`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/de/mod.rs:1732:12
+     |
+1730 |     fn next_element<T>(&mut self) -> Result<Option<T>, Self::Error>
+     |        ------------ required by a bound in this associated function
+1731 |     where
+1732 |         T: Deserialize<'de>,
+     |            ^^^^^^^^^^^^^^^^ required by this bound in `SeqAccess::next_element`
+
+error[E0277]: the trait bound `OpenAIMessageContent<'a>: Deserialize<'_>` is not satisfied
+    --> packages/http-structs/src/openai.rs:105:18
+     |
+105  |     pub content: Option<OpenAIMessageContent<'a>>,
+     |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Deserialize<'_>` is not implemented for `OpenAIMessageContent<'a>`
+     |
+     = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `OpenAIMessageContent<'a>` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Deserialize<'de>`:
+               &'a Path
+               &'a [u8]
+               &'a serde_json::value::RawValue
+               &'a str
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+             and 658 others
+     = note: required for `std::option::Option<OpenAIMessageContent<'a>>` to implement `Deserialize<'_>`
+note: required by a bound in `next_value`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/de/mod.rs:1871:12
+     |
+1869 |     fn next_value<V>(&mut self) -> Result<V, Self::Error>
+     |        ---------- required by a bound in this associated function
+1870 |     where
+1871 |         V: Deserialize<'de>,
+     |            ^^^^^^^^^^^^^^^^ required by this bound in `MapAccess::next_value`
+
+error[E0277]: the trait bound `OpenAIToolCall<'a>: Deserialize<'_>` is not satisfied
+    --> packages/http-structs/src/openai.rs:108:21
+     |
+108  |     pub tool_calls: Option<ArrayVec<OpenAIToolCall<'a>, MAX_TOOLS>>,
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Deserialize<'_>` is not implemented for `OpenAIToolCall<'a>`
+     |
+     = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `OpenAIToolCall<'a>` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Deserialize<'de>`:
+               &'a Path
+               &'a [u8]
+               &'a serde_json::value::RawValue
+               &'a str
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+             and 658 others
+     = note: required for `ArrayVec<OpenAIToolCall<'a>, 32>` to implement `Deserialize<'_>`
+     = note: 1 redundant requirement hidden
+     = note: required for `std::option::Option<ArrayVec<OpenAIToolCall<'a>, 32>>` to implement `Deserialize<'_>`
+note: required by a bound in `next_value`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/de/mod.rs:1871:12
+     |
+1869 |     fn next_value<V>(&mut self) -> Result<V, Self::Error>
+     |        ---------- required by a bound in this associated function
+1870 |     where
+1871 |         V: Deserialize<'de>,
+     |            ^^^^^^^^^^^^^^^^ required by this bound in `MapAccess::next_value`
+
+error[E0277]: the trait bound `OpenAIMessageContent<'_>: Deserialize<'_>` is not satisfied
+  --> packages/http-structs/src/openai.rs:99:35
+   |
+99 | #[derive(Debug, Clone, Serialize, Deserialize)]
+   |                                   ^^^^^^^^^^^ the trait `Deserialize<'_>` is not implemented for `OpenAIMessageContent<'_>`
+   |
+   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `OpenAIMessageContent<'_>` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Deserialize<'de>`:
+             &'a Path
+             &'a [u8]
+             &'a serde_json::value::RawValue
+             &'a str
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+           and 658 others
+   = note: required for `std::option::Option<OpenAIMessageContent<'_>>` to implement `Deserialize<'_>`
+note: required by a bound in `openai::_::_serde::__private::de::missing_field`
+  --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/private/de.rs:25:8
+   |
+23 | pub fn missing_field<'de, V, E>(field: &'static str) -> Result<V, E>
+   |        ------------- required by a bound in this function
+24 | where
+25 |     V: Deserialize<'de>,
+   |        ^^^^^^^^^^^^^^^^ required by this bound in `missing_field`
+   = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `OpenAIToolCall<'_>: Deserialize<'_>` is not satisfied
+  --> packages/http-structs/src/openai.rs:99:35
+   |
+99 | #[derive(Debug, Clone, Serialize, Deserialize)]
+   |                                   ^^^^^^^^^^^ the trait `Deserialize<'_>` is not implemented for `OpenAIToolCall<'_>`
+   |
+   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `OpenAIToolCall<'_>` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Deserialize<'de>`:
+             &'a Path
+             &'a [u8]
+             &'a serde_json::value::RawValue
+             &'a str
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+           and 658 others
+   = note: required for `ArrayVec<OpenAIToolCall<'_>, 32>` to implement `Deserialize<'_>`
+   = note: 1 redundant requirement hidden
+   = note: required for `std::option::Option<ArrayVec<OpenAIToolCall<'_>, 32>>` to implement `Deserialize<'_>`
+note: required by a bound in `openai::_::_serde::__private::de::missing_field`
+  --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/private/de.rs:25:8
+   |
+23 | pub fn missing_field<'de, V, E>(field: &'static str) -> Result<V, E>
+   |        ------------- required by a bound in this function
+24 | where
+25 |     V: Deserialize<'de>,
+   |        ^^^^^^^^^^^^^^^^ required by this bound in `missing_field`
+   = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `OpenAITopLogprob: Clone` is not satisfied
+   --> packages/http-structs/src/openai.rs:274:5
+    |
+265 | #[derive(Debug, Clone, Serialize, Deserialize)]
+    |                 ----- in this derive macro expansion
+...
+274 |     pub top_logprobs: ArrayVec<OpenAITopLogprob, 16>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `OpenAITopLogprob`
+    |
+    = note: required for `ArrayVec<OpenAITopLogprob, 16>` to implement `Clone`
+help: consider annotating `OpenAITopLogprob` with `#[derive(Clone)]`
+    |
+279 + #[derive(Clone)]
+280 | pub struct OpenAITopLogprob {
+    |
+
+error[E0277]: the trait bound `OpenAITopLogprob: Serialize` is not satisfied
+    --> packages/http-structs/src/openai.rs:265:24
+     |
+265  |   #[derive(Debug, Clone, Serialize, Deserialize)]
+     |                          ^^^^^^^^^ the trait `Serialize` is not implemented for `OpenAITopLogprob`
+...
+273  | /     /// Top alternative tokens with probabilities
+274  | |     pub top_logprobs: ArrayVec<OpenAITopLogprob, 16>,
+     | |____________________________________________________- required by a bound introduced by this call
+     |
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `OpenAITopLogprob` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 617 others
+     = note: required for `ArrayVec<OpenAITopLogprob, 16>` to implement `Serialize`
+note: required by a bound in `openai::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/ser/mod.rs:1866:21
+     |
+1864 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1865 |     where
+1866 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/anthropic.rs:649:22
+    |
+649 |             content: AnthropicToolResultContent::Text(content),
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<AnthropicToolResultContent<'_>>`, found `AnthropicToolResultContent<'_>`
+    |
+    = note: expected struct `Box<AnthropicToolResultContent<'a>>`
+                 found enum `AnthropicToolResultContent<'_>`
+    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+    |
+649 |             content: Box::new(AnthropicToolResultContent::Text(content)),
+    |                      +++++++++                                         +
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/anthropic.rs:660:22
+    |
+660 |             content: AnthropicToolResultContent::Text(error_message),
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<AnthropicToolResultContent<'_>>`, found `AnthropicToolResultContent<'_>`
+    |
+    = note: expected struct `Box<AnthropicToolResultContent<'a>>`
+                 found enum `AnthropicToolResultContent<'_>`
+    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+    |
+660 |             content: Box::new(AnthropicToolResultContent::Text(error_message)),
+    |                      +++++++++                                               +
+
+error[E0308]: mismatched types
+    --> packages/domain/src/chat/search.rs:2070:32
+     |
+2070 |                 system_uptime: std::time::Duration::from_secs(0),
+     |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u64`, found `Duration`
+
+error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+   --> packages/domain/src/completion/candle.rs:460:57
+    |
+460 |     let mut buffer: [std::mem::MaybeUninit<T>; 1024] = [std::mem::MaybeUninit::uninit(); 1024];
+    |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+    |
+    = note: required for `MaybeUninit<T>` to implement `std::marker::Copy`
+    = note: the `Copy` trait is required because this value will be copied for each element of the array
+help: consider further restricting type parameter `T` with trait `Copy`
+    |
+457 |     F: FnOnce(&mut [std::mem::MaybeUninit<T>]) -> R, T: std::marker::Copy
+    |                                                      ++++++++++++++++++++
+help: create an inline `const` block
+    |
+460 |     let mut buffer: [std::mem::MaybeUninit<T>; 1024] = [const { std::mem::MaybeUninit::uninit() }; 1024];
+    |                                                         +++++++                                 +
+
+error[E0015]: cannot call non-const formatting macro in constants
+  --> packages/domain/src/completion/types.rs:39:21
+   |
+39 |             None => unreachable!("1 is non-zero"),
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error[E0308]: mismatched types
+   --> packages/domain/src/concurrency/mod.rs:110:24
+    |
+104 | impl<F, T> IntoTask<T> for F
+    |      - found this type parameter
+...
+110 |         AsyncTask::new(self)
+    |         -------------- ^^^^ expected `Receiver<T>`, found type parameter `F`
+    |         |
+    |         arguments to this function are incorrect
+    |
+    = note:      expected struct `crossbeam_channel::Receiver<T>`
+            found type parameter `F`
+note: associated function defined here
+   --> /Volumes/samsung_t9/fluent-ai/packages/fluent-ai-async/src/task.rs:22:12
+    |
+22  |     pub fn new(rx: Receiver<T>) -> Self {
+    |            ^^^
+
+error[E0599]: no function or associated item named `new` found for struct `request::CompletionRequest` in the current scope
+  --> packages/domain/src/context/extraction/extractor.rs:83:57
+   |
+83 |             let completion_request = CompletionRequest::new()
+   |                                                         ^^^ function or associated item not found in `request::CompletionRequest`
+   |
+  ::: packages/domain/src/completion/request.rs:18:1
+   |
+18 | pub struct CompletionRequest {
+   | ---------------------------- function or associated item `new` not found for this struct
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `new`, perhaps you need to implement one of them:
+           candidate #1: `AgentRole`
+           candidate #2: `Conversation`
+           candidate #3: `Extractor`
+           candidate #4: `Loader`
+           candidate #5: `McpTool`
+           candidate #6: `HashMapExt`
+           candidate #7: `HashSetExt`
+           candidate #8: `brotli::enc::backward_references::hash_to_binary_tree::Allocable`
+           candidate #9: `brotli::enc::threading::AnyBoxConstructor`
+           candidate #10: `crypto_common::KeyInit`
+           candidate #11: `crypto_common::KeyIvInit`
+           candidate #12: `digest::VariableOutput`
+           candidate #13: `digest::core_api::VariableOutputCore`
+           candidate #14: `digest::digest::Digest`
+           candidate #15: `digest::mac::Mac`
+           candidate #16: `parking_lot_core::thread_parker::ThreadParkerT`
+           candidate #17: `rand::distr::uniform::UniformSampler`
+           candidate #18: `ring::aead::BoundKey`
+           candidate #19: `typenum::marker_traits::Bit`
+
+error[E0599]: no function or associated item named `default` found for type parameter `T` in the current scope
+  --> packages/domain/src/context/extraction/extractor.rs:90:37
+   |
+44 | impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static> Extractor<T>
+   |      - function or associated item `default` not found for this type parameter
+...
+90 |             let default_result = T::default(); // Assuming T implements Default
+   |                                     ^^^^^^^ function or associated item not found in `T`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following traits define an item `default`, perhaps you need to restrict type parameter `T` with one of them:
+   |
+44 | impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static + std::default::Default> Extractor<T>
+   |                                                                       +++++++++++++++++++++++
+44 | impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + 'static + tinyvec::array::Array> Extractor<T>
+   |                                                                       +++++++++++++++++++++++
+
+error[E0599]: no function or associated item named `new` found for struct `request::CompletionRequest` in the current scope
+   --> packages/domain/src/context/extraction/extractor.rs:199:50
+    |
+199 |             let mut request = CompletionRequest::new()
+    |                                                  ^^^ function or associated item not found in `request::CompletionRequest`
+    |
+   ::: packages/domain/src/completion/request.rs:18:1
+    |
+18  | pub struct CompletionRequest {
+    | ---------------------------- function or associated item `new` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `new`, perhaps you need to implement one of them:
+            candidate #1: `AgentRole`
+            candidate #2: `Conversation`
+            candidate #3: `Extractor`
+            candidate #4: `Loader`
+            candidate #5: `McpTool`
+            candidate #6: `HashMapExt`
+            candidate #7: `HashSetExt`
+            candidate #8: `brotli::enc::backward_references::hash_to_binary_tree::Allocable`
+            candidate #9: `brotli::enc::threading::AnyBoxConstructor`
+            candidate #10: `crypto_common::KeyInit`
+            candidate #11: `crypto_common::KeyIvInit`
+            candidate #12: `digest::VariableOutput`
+            candidate #13: `digest::core_api::VariableOutputCore`
+            candidate #14: `digest::digest::Digest`
+            candidate #15: `digest::mac::Mac`
+            candidate #16: `parking_lot_core::thread_parker::ThreadParkerT`
+            candidate #17: `rand::distr::uniform::UniformSampler`
+            candidate #18: `ring::aead::BoundKey`
+            candidate #19: `typenum::marker_traits::Bit`
+
+error[E0599]: `prompt::Prompt` doesn't implement `std::fmt::Display`
+    --> packages/domain/src/context/extraction/extractor.rs:200:37
+     |
+200  |                 .with_prompt(prompt.to_string())
+     |                                     ^^^^^^^^^ method cannot be called on `prompt::Prompt` due to unsatisfied trait bounds
+     |
+    ::: packages/domain/src/prompt/mod.rs:6:1
+     |
+6    | pub struct Prompt {
+     | ----------------- method `to_string` not found for this struct because it doesn't satisfy `prompt::Prompt: ToString` or `prompt::Prompt: std::fmt::Display`
+     |
+     = note: the following trait bounds were not satisfied:
+             `prompt::Prompt: std::fmt::Display`
+             which is required by `prompt::Prompt: ToString`
+note: the trait `std::fmt::Display` must be implemented
+    --> /Users/davidmaple/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/fmt/mod.rs:1003:1
+     |
+1003 | pub trait Display: PointeeSized {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     = help: items from traits can only be used if the trait is implemented and in scope
+     = note: the following trait defines an item `to_string`, perhaps you need to implement it:
+             candidate #1: `ToString`
+
+error[E0599]: no method named `complete_stream` found for struct `agent::core::Agent` in the current scope
+   --> packages/domain/src/context/extraction/extractor.rs:203:42
+    |
+203 |             let mut stream = match agent.complete_stream(&request).await {
+    |                                          ^^^^^^^^^^^^^^^ method not found in `agent::core::Agent`
+    |
+   ::: packages/domain/src/agent/core.rs:47:1
+    |
+47  | pub struct Agent {
+    | ---------------- method `complete_stream` not found for this struct
+
+error[E0277]: `AsyncStreamSender<ContextEvent>` doesn't implement `std::fmt::Debug`
+   --> packages/domain/src/context/provider.rs:376:5
+    |
+361 | #[derive(Debug)]
+    |          ----- in this derive macro expansion
+...
+376 |     event_sender: Option<AsyncStreamSender<ContextEvent>>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::fmt::Debug` is not implemented for `AsyncStreamSender<ContextEvent>`
+    |
+    = help: the trait `std::fmt::Debug` is implemented for `std::option::Option<T>`
+
+warning: unreachable statement
+   --> packages/domain/src/context/provider.rs:442:17
+    |
+439 |                   fluent_ai_async::handle_error!(error, "File context validation failed");
+    |                   ----------------------------------------------------------------------- any code following this expression is unreachable
+...
+442 | /                 if let Some(ref events) = event_sender {
+443 | |                     let _ = events.send(ContextEvent::ValidationFailed {
+444 | |                         validation_type: "FileContext".to_string(),
+445 | |                         error: error.to_string(),
+446 | |                         timestamp: SystemTime::now(),
+447 | |                     });
+448 | |                 }
+    | |_________________^ unreachable statement
+    |
+    = note: `#[warn(unreachable_code)]` on by default
+
+warning: unreachable expression
+   --> packages/domain/src/context/provider.rs:473:21
+    |
+470 |                       fluent_ai_async::handle_error!(error, "File document loading failed");
+    |                       --------------------------------------------------------------------- any code following this expression is unreachable
+...
+473 | /                     if let Some(ref events) = event_sender {
+474 | |                         let _ = events.send(ContextEvent::ContextLoadFailed {
+475 | |                             context_type: "File".to_string(),
+476 | |                             source: context.path.clone(),
+...   |
+479 | |                         });
+480 | |                     }
+    | |_____________________^ unreachable expression
+
+warning: unreachable statement
+   --> packages/domain/src/context/provider.rs:854:25
+    |
+853 | ...   fluent_ai_async::handle_error!(ContextError::ContextNotFound("GitHub repository URL is required".to_string()), "GitHub repository URL missing");
+    |       ----------------------------------------------------------------------------------------------------------------------------------------------- any code following this expression is unreachable
+854 | ...   return;
+    |       ^^^^^^^ unreachable statement
+
+error[E0277]: the trait bound `OpenAIChoice: Clone` is not satisfied
+  --> packages/http-structs/src/perplexity.rs:98:5
+   |
+95 | #[derive(Debug, Clone, Serialize, Deserialize)]
+   |                 ----- in this derive macro expansion
+...
+98 |     pub message: PerplexityResponseMessage,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `OpenAIChoice`
+
+error[E0277]: the trait bound `OpenAIDelta: Clone` is not satisfied
+   --> packages/http-structs/src/perplexity.rs:100:5
+    |
+95  | #[derive(Debug, Clone, Serialize, Deserialize)]
+    |                 ----- in this derive macro expansion
+...
+100 |     pub delta: Option<PerplexityStreamingDelta>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `OpenAIDelta`
+    |
+    = note: required for `std::option::Option<OpenAIDelta>` to implement `Clone`
+
+error[E0277]: the trait bound `OpenAIChoice: Serialize` is not satisfied
+    --> packages/http-structs/src/perplexity.rs:95:24
+     |
+95   | #[derive(Debug, Clone, Serialize, Deserialize)]
+     |                        ^^^^^^^^^ the trait `Serialize` is not implemented for `OpenAIChoice`
+...
+98   |     pub message: PerplexityResponseMessage,
+     |     -------------------------------------- required by a bound introduced by this call
+     |
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `OpenAIChoice` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 617 others
+note: required by a bound in `openai::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/ser/mod.rs:1866:21
+     |
+1864 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1865 |     where
+1866 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `OpenAIDelta: Serialize` is not satisfied
+    --> packages/http-structs/src/perplexity.rs:95:24
+     |
+95   | #[derive(Debug, Clone, Serialize, Deserialize)]
+     |                        ^^^^^^^^^ the trait `Serialize` is not implemented for `OpenAIDelta`
+...
+100  |     pub delta: Option<PerplexityStreamingDelta>,
+     |     ------------------------------------------- required by a bound introduced by this call
+     |
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `OpenAIDelta` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 617 others
+     = note: required for `std::option::Option<OpenAIDelta>` to implement `Serialize`
+note: required by a bound in `openai::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/ser/mod.rs:1866:21
+     |
+1864 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1865 |     where
+1866 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/perplexity.rs:230:17
+    |
+230 |                 content,
+    |                 ^^^^^^^ expected `Option<OpenAIMessageContent<'_>>`, found `OpenAIMessageContent<'_>`
+    |
+    = note: expected enum `std::option::Option<OpenAIMessageContent<'_>>`
+               found enum `OpenAIMessageContent<'a>`
+help: try wrapping the expression in `Some`
+    |
+230 |                 content: Some(content),
+    |                 ++++++++++++++       +
+
+error[E0277]: the trait bound `OpenAIChoice: Clone` is not satisfied
+   --> packages/http-structs/src/openrouter.rs:123:5
+    |
+120 | #[derive(Debug, Clone, Serialize, Deserialize)]
+    |                 ----- in this derive macro expansion
+...
+123 |     pub message: OpenRouterResponseMessage,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `OpenAIChoice`
+
+error[E0277]: the trait bound `OpenAIChoice: Serialize` is not satisfied
+    --> packages/http-structs/src/openrouter.rs:120:24
+     |
+120  | #[derive(Debug, Clone, Serialize, Deserialize)]
+     |                        ^^^^^^^^^ the trait `Serialize` is not implemented for `OpenAIChoice`
+...
+123  |     pub message: OpenRouterResponseMessage,
+     |     -------------------------------------- required by a bound introduced by this call
+     |
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `OpenAIChoice` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 617 others
+note: required by a bound in `openai::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/ser/mod.rs:1866:21
+     |
+1864 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1865 |     where
+1866 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `OpenAIDelta: Clone` is not satisfied
+   --> packages/http-structs/src/openrouter.rs:283:5
+    |
+280 | #[derive(Debug, Clone, Serialize, Deserialize)]
+    |                 ----- in this derive macro expansion
+...
+283 |     pub delta: OpenRouterStreamingDelta,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `OpenAIDelta`
+
+error[E0277]: the trait bound `OpenAIDelta: Serialize` is not satisfied
+    --> packages/http-structs/src/openrouter.rs:280:24
+     |
+280  | #[derive(Debug, Clone, Serialize, Deserialize)]
+     |                        ^^^^^^^^^ the trait `Serialize` is not implemented for `OpenAIDelta`
+...
+283  |     pub delta: OpenRouterStreamingDelta,
+     |     ----------------------------------- required by a bound introduced by this call
+     |
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `OpenAIDelta` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 617 others
+note: required by a bound in `openai::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/ser/mod.rs:1866:21
+     |
+1864 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1865 |     where
+1866 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/openrouter.rs:321:17
+    |
+321 |                 content,
+    |                 ^^^^^^^ expected `Option<OpenAIMessageContent<'_>>`, found `OpenAIMessageContent<'_>`
+    |
+    = note: expected enum `std::option::Option<OpenAIMessageContent<'_>>`
+               found enum `OpenAIMessageContent<'a>`
+help: try wrapping the expression in `Some`
+    |
+321 |                 content: Some(content),
+    |                 ++++++++++++++       +
+
+error[E0071]: expected struct, variant or union type, found `Value`
+   --> packages/http-structs/src/openrouter.rs:375:37
+    |
+375 |         self.response_format = Some(OpenRouterResponseFormat {
+    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^ not a struct
+
+error[E0277]: the trait bound `OpenAIChoice: Clone` is not satisfied
+   --> packages/http-structs/src/together.rs:105:5
+    |
+102 | #[derive(Debug, Clone, Serialize, Deserialize)]
+    |                 ----- in this derive macro expansion
+...
+105 |     pub message: TogetherResponseMessage,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `OpenAIChoice`
+
+error[E0277]: the trait bound `OpenAIChoice: Serialize` is not satisfied
+    --> packages/http-structs/src/together.rs:102:24
+     |
+102  | #[derive(Debug, Clone, Serialize, Deserialize)]
+     |                        ^^^^^^^^^ the trait `Serialize` is not implemented for `OpenAIChoice`
+...
+105  |     pub message: TogetherResponseMessage,
+     |     ------------------------------------ required by a bound introduced by this call
+     |
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `OpenAIChoice` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 617 others
+note: required by a bound in `openai::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/ser/mod.rs:1866:21
+     |
+1864 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1865 |     where
+1866 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/together.rs:412:17
+    |
+412 |                 content,
+    |                 ^^^^^^^ expected `Option<OpenAIMessageContent<'_>>`, found `OpenAIMessageContent<'_>`
+    |
+    = note: expected enum `std::option::Option<OpenAIMessageContent<'_>>`
+               found enum `OpenAIMessageContent<'a>`
+help: try wrapping the expression in `Some`
+    |
+412 |                 content: Some(content),
+    |                 ++++++++++++++       +
+
+error[E0071]: expected struct, variant or union type, found `Value`
+   --> packages/http-structs/src/together.rs:471:37
+    |
+471 |         self.response_format = Some(TogetherResponseFormat {
+    |                                     ^^^^^^^^^^^^^^^^^^^^^^ not a struct
+
+warning: unused variable: `config`
+    --> packages/domain/src/chat/commands/types.rs:1019:13
+     |
+1019 |         let config: std::collections::HashMap<String, String> = std::collections::HashMap::new(); // Empty config for now
+     |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_config`
+     |
+     = note: `#[warn(unused_variables)]` on by default
+
+error[E0277]: the trait bound `OpenAIChoice: Clone` is not satisfied
+   --> packages/http-structs/src/xai.rs:111:5
+    |
+108 | #[derive(Debug, Clone, Serialize, Deserialize)]
+    |                 ----- in this derive macro expansion
+...
+111 |     pub message: XAIResponseMessage,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `OpenAIChoice`
+
+warning: unused variable: `context`
+  --> packages/domain/src/chat/commands/mod.rs:31:36
+   |
+31 | pub fn initialize_command_executor(context: CommandContext) {
+   |                                    ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_context`
+
+error[E0277]: the trait bound `OpenAIChoice: Serialize` is not satisfied
+    --> packages/http-structs/src/xai.rs:108:24
+     |
+108  | #[derive(Debug, Clone, Serialize, Deserialize)]
+     |                        ^^^^^^^^^ the trait `Serialize` is not implemented for `OpenAIChoice`
+...
+111  |     pub message: XAIResponseMessage,
+     |     ------------------------------- required by a bound introduced by this call
+     |
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `OpenAIChoice` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 617 others
+note: required by a bound in `openai::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/ser/mod.rs:1866:21
+     |
+1864 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1865 |     where
+1866 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused variable: `config`
+   --> packages/domain/src/chat/config.rs:231:13
+    |
+231 |         let config = self.clone();
+    |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_config`
+
+error[E0277]: the trait bound `OpenAIDelta: Clone` is not satisfied
+   --> packages/http-structs/src/xai.rs:291:5
+    |
+288 | #[derive(Debug, Clone, Serialize, Deserialize)]
+    |                 ----- in this derive macro expansion
+...
+291 |     pub delta: XAIStreamingDelta,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `OpenAIDelta`
+
+error[E0277]: the trait bound `OpenAIDelta: Serialize` is not satisfied
+    --> packages/http-structs/src/xai.rs:288:24
+     |
+288  | #[derive(Debug, Clone, Serialize, Deserialize)]
+     |                        ^^^^^^^^^ the trait `Serialize` is not implemented for `OpenAIDelta`
+...
+291  |     pub delta: XAIStreamingDelta,
+     |     ---------------------------- required by a bound introduced by this call
+     |
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `OpenAIDelta` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 617 others
+note: required by a bound in `openai::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /Users/davidmaple/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.219/src/ser/mod.rs:1866:21
+     |
+1864 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1865 |     where
+1866 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/xai.rs:325:17
+    |
+325 |                 content,
+    |                 ^^^^^^^ expected `Option<OpenAIMessageContent<'_>>`, found `OpenAIMessageContent<'_>`
+    |
+    = note: expected enum `std::option::Option<OpenAIMessageContent<'_>>`
+               found enum `OpenAIMessageContent<'a>`
+help: try wrapping the expression in `Some`
+    |
+325 |                 content: Some(content),
+    |                 ++++++++++++++       +
+
+error[E0071]: expected struct, variant or union type, found `Value`
+   --> packages/http-structs/src/xai.rs:379:37
+    |
+379 |         self.response_format = Some(XAIResponseFormat {
+    |                                     ^^^^^^^^^^^^^^^^^ not a struct
+
+error[E0063]: missing fields `name`, `tool_call_id` and `tool_calls` in initializer of `OpenAIMessage<'_>`
+   --> packages/http-structs/src/deepseek.rs:168:27
+    |
+168 |             messages.push(DeepSeekMessage { role, content });
+    |                           ^^^^^^^^^^^^^^^ missing `name`, `tool_call_id` and `tool_calls`
+
+error[E0071]: expected struct, variant or union type, found `Value`
+   --> packages/http-structs/src/deepseek.rs:230:37
+    |
+230 |         self.response_format = Some(DeepSeekResponseFormat {
+    |                                     ^^^^^^^^^^^^^^^^^^^^^^ not a struct
+
+error[E0599]: no associated item named `MissingField` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/builders.rs:184:41
+    |
+184 |             return Err(ValidationError::MissingField("model"));
+    |                                         ^^^^^^^^^^^^ associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- associated item `MissingField` not found for this struct
+
+error[E0599]: no associated item named `MissingField` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/builders.rs:187:41
+    |
+187 |             return Err(ValidationError::MissingField("messages"));
+    |                                         ^^^^^^^^^^^^ associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- associated item `MissingField` not found for this struct
+
+error[E0599]: no associated item named `InvalidValue` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/builders.rs:191:45
+    |
+191 |                 return Err(ValidationError::InvalidValue("temperature must be 0.0-2.0"));
+    |                                             ^^^^^^^^^^^^ associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- associated item `InvalidValue` not found for this struct
+
+error[E0599]: no variant or associated item named `Validation` found for enum `HttpStructError` in the current scope
+   --> packages/http-structs/src/builders.rs:212:65
+    |
+212 |         let complete = self.complete().map_err(HttpStructError::Validation)?;
+    |                                                                 ^^^^^^^^^^ variant or associated item not found in `HttpStructError`
+    |
+   ::: packages/http-structs/src/errors.rs:41:1
+    |
+41  | pub enum HttpStructError {
+    | ------------------------ variant or associated item `Validation` not found for this enum
+    |
+help: there is an associated function `validation` with a similar name
+   --> packages/http-structs/src/errors.rs:65:5
+    |
+65  |     pub fn validation(field: &str, message: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no variant or associated item named `BuildError` found for enum `HttpStructError` in the current scope
+   --> packages/http-structs/src/builders.rs:222:45
+    |
+222 |                 return Err(HttpStructError::BuildError("OpenAI builder needs proper lifetime management".into()));
+    |                                             ^^^^^^^^^^ variant or associated item not found in `HttpStructError`
+    |
+   ::: packages/http-structs/src/errors.rs:41:1
+    |
+41  | pub enum HttpStructError {
+    | ------------------------ variant or associated item `BuildError` not found for this enum
+    |
+note: if you're trying to build a new `HttpStructError` consider using one of the following associated functions:
+      HttpStructError::serialization
+      HttpStructError::serialization_with_detail
+      HttpStructError::validation
+      HttpStructError::http
+      and 2 others
+   --> packages/http-structs/src/errors.rs:59:5
+    |
+59  |     pub fn serialization(message: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+62  |     pub fn serialization_with_detail(message: &str, detail: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+65  |     pub fn validation(field: &str, message: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+68  |     pub fn http(status: u16, message: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/builders.rs:227:28
+    |
+227 |         request.messages = self.messages.clone();
+    |         ----------------   ^^^^^^^^^^^^^^^^^^^^^ expected `ArrayVec<OpenAIMessage<'_>, 128>`, found `ArrayVec<String, 128>`
+    |         |
+    |         expected due to the type of this binding
+    |
+    = note: expected struct `ArrayVec<OpenAIMessage<'_>, _>`
+               found struct `ArrayVec<std::string::String, _>`
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/builders.rs:228:31
+    |
+228 |         request.temperature = self.temperature;
+    |         -------------------   ^^^^^^^^^^^^^^^^ expected `Option<f64>`, found `Option<f32>`
+    |         |
+    |         expected due to the type of this binding
+    |
+    = note: expected enum `std::option::Option<f64>`
+               found enum `std::option::Option<f32>`
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/builders.rs:230:26
+    |
+230 |         request.stream = self.stream;
+    |         --------------   ^^^^^^^^^^^ expected `bool`, found `Option<bool>`
+    |         |
+    |         expected due to the type of this binding
+    |
+    = note: expected type `bool`
+               found enum `std::option::Option<bool>`
+help: consider using `Option::expect` to unwrap the `std::option::Option<bool>` value, panicking if the value is an `Option::None`
+    |
+230 |         request.stream = self.stream.expect("REASON");
+    |                                     +++++++++++++++++
+
+error[E0599]: no associated item named `MissingField` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/builders.rs:241:41
+    |
+241 |             return Err(ValidationError::MissingField("model"));
+    |                                         ^^^^^^^^^^^^ associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- associated item `MissingField` not found for this struct
+
+error[E0599]: no associated item named `MissingField` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/builders.rs:244:41
+    |
+244 |             return Err(ValidationError::MissingField("input"));
+    |                                         ^^^^^^^^^^^^ associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- associated item `MissingField` not found for this struct
+
+error[E0599]: no variant or associated item named `Validation` found for enum `HttpStructError` in the current scope
+   --> packages/http-structs/src/builders.rs:262:65
+    |
+262 |         let complete = self.complete().map_err(HttpStructError::Validation)?;
+    |                                                                 ^^^^^^^^^^ variant or associated item not found in `HttpStructError`
+    |
+   ::: packages/http-structs/src/errors.rs:41:1
+    |
+41  | pub enum HttpStructError {
+    | ------------------------ variant or associated item `Validation` not found for this enum
+    |
+help: there is an associated function `validation` with a similar name
+   --> packages/http-structs/src/errors.rs:65:5
+    |
+65  |     pub fn validation(field: &str, message: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no variant or associated item named `BuildError` found for enum `HttpStructError` in the current scope
+   --> packages/http-structs/src/builders.rs:265:37
+    |
+265 |         return Err(HttpStructError::BuildError("OpenAI embedding builder needs proper implementation".into()));
+    |                                     ^^^^^^^^^^ variant or associated item not found in `HttpStructError`
+    |
+   ::: packages/http-structs/src/errors.rs:41:1
+    |
+41  | pub enum HttpStructError {
+    | ------------------------ variant or associated item `BuildError` not found for this enum
+    |
+note: if you're trying to build a new `HttpStructError` consider using one of the following associated functions:
+      HttpStructError::serialization
+      HttpStructError::serialization_with_detail
+      HttpStructError::validation
+      HttpStructError::http
+      and 2 others
+   --> packages/http-structs/src/errors.rs:59:5
+    |
+59  |     pub fn serialization(message: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+62  |     pub fn serialization_with_detail(message: &str, detail: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+65  |     pub fn validation(field: &str, message: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+68  |     pub fn http(status: u16, message: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no associated item named `MissingField` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/builders.rs:276:41
+    |
+276 |             return Err(ValidationError::MissingField("model"));
+    |                                         ^^^^^^^^^^^^ associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- associated item `MissingField` not found for this struct
+
+error[E0599]: no associated item named `MissingField` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/builders.rs:279:41
+    |
+279 |             return Err(ValidationError::MissingField("messages"));
+    |                                         ^^^^^^^^^^^^ associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- associated item `MissingField` not found for this struct
+
+error[E0599]: no associated item named `InvalidValue` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/builders.rs:284:45
+    |
+284 |                 return Err(ValidationError::InvalidValue("Anthropic temperature must be 0.0-1.0"));
+    |                                             ^^^^^^^^^^^^ associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- associated item `InvalidValue` not found for this struct
+
+error[E0599]: no variant or associated item named `Validation` found for enum `HttpStructError` in the current scope
+   --> packages/http-structs/src/builders.rs:305:66
+    |
+305 |         let _complete = self.complete().map_err(HttpStructError::Validation)?;
+    |                                                                  ^^^^^^^^^^ variant or associated item not found in `HttpStructError`
+    |
+   ::: packages/http-structs/src/errors.rs:41:1
+    |
+41  | pub enum HttpStructError {
+    | ------------------------ variant or associated item `Validation` not found for this enum
+    |
+help: there is an associated function `validation` with a similar name
+   --> packages/http-structs/src/errors.rs:65:5
+    |
+65  |     pub fn validation(field: &str, message: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no variant or associated item named `BuildError` found for enum `HttpStructError` in the current scope
+   --> packages/http-structs/src/builders.rs:308:37
+    |
+308 |         return Err(HttpStructError::BuildError("Anthropic builder needs proper implementation".into()));
+    |                                     ^^^^^^^^^^ variant or associated item not found in `HttpStructError`
+    |
+   ::: packages/http-structs/src/errors.rs:41:1
+    |
+41  | pub enum HttpStructError {
+    | ------------------------ variant or associated item `BuildError` not found for this enum
+    |
+note: if you're trying to build a new `HttpStructError` consider using one of the following associated functions:
+      HttpStructError::serialization
+      HttpStructError::serialization_with_detail
+      HttpStructError::validation
+      HttpStructError::http
+      and 2 others
+   --> packages/http-structs/src/errors.rs:59:5
+    |
+59  |     pub fn serialization(message: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+62  |     pub fn serialization_with_detail(message: &str, detail: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+65  |     pub fn validation(field: &str, message: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+68  |     pub fn http(status: u16, message: &str) -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `ChatBuilder<OpenAI, builders::Complete>: HttpRequestBuilder<_, _>` is not satisfied
+   --> packages/http-structs/src/builders.rs:473:49
+    |
+473 |         let request = HttpRequestBuilder::build(self.clone())?;
+    |                       ------------------------- ^^^^^^^^^^^^ the trait `HttpRequestBuilder<_, _>` is not implemented for `ChatBuilder<OpenAI, builders::Complete>`
+    |                       |
+    |                       required by a bound introduced by this call
+    |
+    = help: the following other types implement trait `HttpRequestBuilder<P, S>`:
+              `ChatBuilder<Anthropic>` implements `HttpRequestBuilder<Anthropic>`
+              `ChatBuilder<OpenAI>` implements `HttpRequestBuilder<OpenAI>`
+
+error[E0533]: expected value, found struct variant `HttpStructError::SerializationError`
+   --> packages/http-structs/src/builders.rs:475:26
+    |
+475 |             .map_err(|e| HttpStructError::SerializationError(e.to_string()))?;
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a value
+    |
+help: you might have meant to create a new value of the struct
+    |
+475 -             .map_err(|e| HttpStructError::SerializationError(e.to_string()))?;
+475 +             .map_err(|e| HttpStructError::SerializationError { message: /* value */, detail: /* value */ })?;
+    |
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/builders.rs:573:26
+    |
+573 |                 message: e,
+    |                          ^ expected `ArrayString<256>`, found `&str`
+    |
+    = note: expected struct `ArrayString<256>`
+            found reference `&str`
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/builders.rs:584:26
+    |
+584 |                 message: e,
+    |                          ^ expected `ArrayString<256>`, found `&str`
+    |
+    = note: expected struct `ArrayString<256>`
+            found reference `&str`
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/builders.rs:612:26
+    |
+612 |                 message: e,
+    |                          ^ expected `ArrayString<256>`, found `&str`
+    |
+    = note: expected struct `ArrayString<256>`
+            found reference `&str`
+
+error[E0599]: no method named `clone` found for struct `GeminiGenerateContentRequest` in the current scope
+   --> packages/http-structs/src/builders.rs:648:35
+    |
+648 |             request: self.request.clone(),
+    |                                   ^^^^^ method not found in `GeminiGenerateContentRequest`
+    |
+   ::: packages/http-structs/src/google.rs:26:1
+    |
+26  | pub struct GeminiGenerateContentRequest {
+    | --------------------------------------- method `clone` not found for this struct
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `clone`, perhaps you need to implement it:
+            candidate #1: `Clone`
+
+error[E0599]: no variant or associated item named `InvalidValue` found for enum `ValidationErrorType` in the current scope
+   --> packages/http-structs/src/validation.rs:298:54
+    |
+298 |                     error_type: ValidationErrorType::InvalidValue,
+    |                                                      ^^^^^^^^^^^^ variant or associated item not found in `ValidationErrorType`
+    |
+   ::: packages/http-structs/src/errors.rs:16:1
+    |
+16  | pub enum ValidationErrorType { Required, MinLength, MaxLength, Pattern, Custom }
+    | ---------------------------- variant or associated item `InvalidValue` not found for this enum
+
+error[E0560]: struct `ValidationError` has no field named `expected`
+   --> packages/http-structs/src/validation.rs:299:21
+    |
+299 |                     expected: None,
+    |                     ^^^^^^^^ `ValidationError` does not have this field
+    |
+    = note: all struct fields are already assigned
+
+error[E0560]: struct `ValidationError` has no field named `actual`
+   --> packages/http-structs/src/validation.rs:300:21
+    |
+300 |                     actual: None,
+    |                     ^^^^^^ `ValidationError` does not have this field
+    |
+    = note: all struct fields are already assigned
+
+error[E0599]: no function or associated item named `out_of_range` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/validation.rs:363:42
+    |
+363 |             let error = ValidationError::out_of_range(
+    |                                          ^^^^^^^^^^^^ function or associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- function or associated item `out_of_range` not found for this struct
+
+error[E0599]: no function or associated item named `out_of_range` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/validation.rs:391:42
+    |
+391 |             let error = ValidationError::out_of_range(
+    |                                          ^^^^^^^^^^^^ function or associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- function or associated item `out_of_range` not found for this struct
+
+error[E0599]: no function or associated item named `out_of_range` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/validation.rs:421:42
+    |
+421 |             let error = ValidationError::out_of_range(
+    |                                          ^^^^^^^^^^^^ function or associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- function or associated item `out_of_range` not found for this struct
+
+error[E0599]: no function or associated item named `out_of_range` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/validation.rs:428:42
+    |
+428 |             let error = ValidationError::out_of_range(
+    |                                          ^^^^^^^^^^^^ function or associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- function or associated item `out_of_range` not found for this struct
+
+error[E0599]: no function or associated item named `invalid_format` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/validation.rs:462:42
+    |
+462 |             let error = ValidationError::invalid_format(
+    |                                          ^^^^^^^^^^^^^^ function or associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- function or associated item `invalid_format` not found for this struct
+
+error[E0599]: no function or associated item named `required` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/validation.rs:573:46
+    |
+573 |                 let error = ValidationError::required(field_name);
+    |                                              ^^^^^^^^ function or associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- function or associated item `required` not found for this struct
+
+error[E0599]: no function or associated item named `out_of_range` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/validation.rs:589:42
+    |
+589 |             let error = ValidationError::out_of_range(
+    |                                          ^^^^^^^^^^^^ function or associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- function or associated item `out_of_range` not found for this struct
+
+error[E0599]: no function or associated item named `out_of_range` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/validation.rs:596:42
+    |
+596 |             let error = ValidationError::out_of_range(
+    |                                          ^^^^^^^^^^^^ function or associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- function or associated item `out_of_range` not found for this struct
+
+error[E0599]: no function or associated item named `out_of_range` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/validation.rs:617:42
+    |
+617 |             let error = ValidationError::out_of_range(
+    |                                          ^^^^^^^^^^^^ function or associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- function or associated item `out_of_range` not found for this struct
+
+error[E0599]: no function or associated item named `out_of_range` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/validation.rs:624:42
+    |
+624 |             let error = ValidationError::out_of_range(
+    |                                          ^^^^^^^^^^^^ function or associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- function or associated item `out_of_range` not found for this struct
+
+error[E0599]: no function or associated item named `invalid_format` found for struct `ValidationError` in the current scope
+   --> packages/http-structs/src/validation.rs:647:42
+    |
+647 |             let error = ValidationError::invalid_format(
+    |                                          ^^^^^^^^^^^^^^ function or associated item not found in `ValidationError`
+    |
+   ::: packages/http-structs/src/errors.rs:19:1
+    |
+19  | pub struct ValidationError {
+    | -------------------------- function or associated item `invalid_format` not found for this struct
+
+error[E0308]: arguments to this function are incorrect
+   --> packages/http-structs/src/common.rs:686:17
+    |
+686 |                 HttpStructError::http("Content-Type header too long", None)
+    |                 ^^^^^^^^^^^^^^^^^^^^^ ------------------------------  ---- unexpected argument #2 of type `std::option::Option<_>`
+    |                                       |
+    |                                       argument #1 of type `u16` is missing
+    |
+note: associated function defined here
+   --> packages/http-structs/src/errors.rs:68:12
+    |
+68  |     pub fn http(status: u16, message: &str) -> Self {
+    |            ^^^^ -----------
+help: did you mean
+    |
+686 -                 HttpStructError::http("Content-Type header too long", None)
+686 +                 HttpStructError::http(/* u16 */, "Content-Type header too long")
+    |
+
+warning: unused import: `validation::ValidateRequest`
+  --> packages/http-structs/src/builders.rs:25:5
+   |
+25 |     validation::ValidateRequest,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+  --> packages/domain/src/chat/search.rs:45:17
+   |
+45 |             let mut results = Vec::new();
+   |                 ----^^^^^^^
+   |                 |
+   |                 help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` on by default
+
+warning: unused variable: `index`
+   --> packages/domain/src/chat/search.rs:279:17
+    |
+279 |             let index = self_clone.document_count.fetch_add(1, Ordering::Relaxed);
+    |                 ^^^^^ help: if this is intentional, prefix it with an underscore: `_index`
+
+warning: unused variable: `query_time`
+   --> packages/domain/src/chat/search.rs:390:17
+    |
+390 |             let query_time = start_time.elapsed().as_millis() as f64;
+    |                 ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_query_time`
+
+error[E0521]: borrowed data escapes outside of method
+   --> packages/domain/src/chat/search.rs:360:9
+    |
+359 |       pub fn search_stream(&self, query: SearchQuery) -> AsyncStream<SearchResult> {
+    |                            -----
+    |                            |
+    |                            `self` is a reference that is only valid in the method body
+    |                            let's call the lifetime of this reference `'1`
+360 | /         AsyncStream::with_channel(|sender| {
+361 | |             let start_time = Instant::now();
+362 | |             self.query_counter.inc();
+...   |
+392 | |         })
+    | |          ^
+    | |          |
+    | |__________`self` escapes the method body here
+    |            argument requires that `'1` must outlive `'static`
+
+error[E0373]: closure may outlive the current function, but it borrows `query.terms`, which is owned by the current function
+   --> packages/domain/src/chat/search.rs:360:35
+    |
+360 |         AsyncStream::with_channel(|sender| {
+    |                                   ^^^^^^^^ may outlive borrowed value `query.terms`
+...
+365 |                 QueryOperator::And => self.search_and_stream(&query.terms, query.fuzzy_matching).collect(),
+    |                                                               ----------- `query.terms` is borrowed here
+    |
+note: function requires argument type to outlive `'static`
+   --> packages/domain/src/chat/search.rs:360:9
+    |
+360 | /         AsyncStream::with_channel(|sender| {
+361 | |             let start_time = Instant::now();
+362 | |             self.query_counter.inc();
+...   |
+392 | |         })
+    | |__________^
+help: to force the closure to take ownership of `query.terms` (and any other referenced variables), use the `move` keyword
+    |
+360 |         AsyncStream::with_channel(move |sender| {
+    |                                   ++++
+
+error[E0373]: closure may outlive the current function, but it borrows `query.operator`, which is owned by the current function
+   --> packages/domain/src/chat/search.rs:360:35
+    |
+360 |         AsyncStream::with_channel(|sender| {
+    |                                   ^^^^^^^^ may outlive borrowed value `query.operator`
+...
+364 |             let results = match query.operator {
+    |                                 -------------- `query.operator` is borrowed here
+    |
+note: function requires argument type to outlive `'static`
+   --> packages/domain/src/chat/search.rs:360:9
+    |
+360 | /         AsyncStream::with_channel(|sender| {
+361 | |             let start_time = Instant::now();
+362 | |             self.query_counter.inc();
+...   |
+392 | |         })
+    | |__________^
+help: to force the closure to take ownership of `query.operator` (and any other referenced variables), use the `move` keyword
+    |
+360 |         AsyncStream::with_channel(move |sender| {
+    |                                   ++++
+
+error[E0373]: closure may outlive the current function, but it borrows `query.fuzzy_matching`, which is owned by the current function
+   --> packages/domain/src/chat/search.rs:360:35
+    |
+360 |         AsyncStream::with_channel(|sender| {
+    |                                   ^^^^^^^^ may outlive borrowed value `query.fuzzy_matching`
+...
+365 |                 QueryOperator::And => self.search_and_stream(&query.terms, query.fuzzy_matching).collect(),
+    |                                                                            -------------------- `query.fuzzy_matching` is borrowed here
+    |
+note: function requires argument type to outlive `'static`
+   --> packages/domain/src/chat/search.rs:360:9
+    |
+360 | /         AsyncStream::with_channel(|sender| {
+361 | |             let start_time = Instant::now();
+362 | |             self.query_counter.inc();
+...   |
+392 | |         })
+    | |__________^
+help: to force the closure to take ownership of `query.fuzzy_matching` (and any other referenced variables), use the `move` keyword
+    |
+360 |         AsyncStream::with_channel(move |sender| {
+    |                                   ++++
+
+error[E0373]: closure may outlive the current function, but it borrows `query.max_results`, which is owned by the current function
+   --> packages/domain/src/chat/search.rs:360:35
+    |
+360 |         AsyncStream::with_channel(|sender| {
+    |                                   ^^^^^^^^ may outlive borrowed value `query.max_results`
+...
+383 |             let end = (start + query.max_results).min(sorted_results.len());
+    |                                ----------------- `query.max_results` is borrowed here
+    |
+note: function requires argument type to outlive `'static`
+   --> packages/domain/src/chat/search.rs:360:9
+    |
+360 | /         AsyncStream::with_channel(|sender| {
+361 | |             let start_time = Instant::now();
+362 | |             self.query_counter.inc();
+...   |
+392 | |         })
+    | |__________^
+help: to force the closure to take ownership of `query.max_results` (and any other referenced variables), use the `move` keyword
+    |
+360 |         AsyncStream::with_channel(move |sender| {
+    |                                   ++++
+
+error[E0373]: closure may outlive the current function, but it borrows `query.offset`, which is owned by the current function
+   --> packages/domain/src/chat/search.rs:360:35
+    |
+360 |         AsyncStream::with_channel(|sender| {
+    |                                   ^^^^^^^^ may outlive borrowed value `query.offset`
+...
+382 |             let start = query.offset;
+    |                         ------------ `query.offset` is borrowed here
+    |
+note: function requires argument type to outlive `'static`
+   --> packages/domain/src/chat/search.rs:360:9
+    |
+360 | /         AsyncStream::with_channel(|sender| {
+361 | |             let start_time = Instant::now();
+362 | |             self.query_counter.inc();
+...   |
+392 | |         })
+    | |__________^
+help: to force the closure to take ownership of `query.offset` (and any other referenced variables), use the `move` keyword
+    |
+360 |         AsyncStream::with_channel(move |sender| {
+    |                                   ++++
+
+error[E0373]: closure may outlive the current function, but it borrows `query.sort_order`, which is owned by the current function
+   --> packages/domain/src/chat/search.rs:360:35
+    |
+360 |         AsyncStream::with_channel(|sender| {
+    |                                   ^^^^^^^^ may outlive borrowed value `query.sort_order`
+...
+379 |             self.sort_results(&mut sorted_results, &query.sort_order);
+    |                                                     ---------------- `query.sort_order` is borrowed here
+    |
+note: function requires argument type to outlive `'static`
+   --> packages/domain/src/chat/search.rs:360:9
+    |
+360 | /         AsyncStream::with_channel(|sender| {
+361 | |             let start_time = Instant::now();
+362 | |             self.query_counter.inc();
+...   |
+392 | |         })
+    | |__________^
+help: to force the closure to take ownership of `query.sort_order` (and any other referenced variables), use the `move` keyword
+    |
+360 |         AsyncStream::with_channel(move |sender| {
+    |                                   ++++
+
+warning: unused variable: `fuzzy`
+   --> packages/domain/src/chat/search.rs:490:52
+    |
+490 |     fn search_or_stream(&self, terms: &[Arc<str>], fuzzy: bool) -> AsyncStream<SearchResult> {
+    |                                                    ^^^^^ help: if this is intentional, prefix it with an underscore: `_fuzzy`
+
+warning: variable does not need to be mutable
+   --> packages/domain/src/chat/search.rs:828:17
+    |
+828 |             for mut result in results {
+    |                 ----^^^^^^
+    |                 |
+    |                 help: remove this `mut`
+
+error[E0521]: borrowed data escapes outside of method
+    --> packages/domain/src/chat/search.rs:1011:9
+     |
+1005 |           &self,
+     |           -----
+     |           |
+     |           `self` is a reference that is only valid in the method body
+     |           let's call the lifetime of this reference `'1`
+...
+1011 | /         AsyncStream::with_channel(move |sender| {
+1012 | |             let tag = ConversationTag::new(name, description, category);
+1013 | |             let tag_id = tag.id.clone();
+...    |
+1020 | |         })
+     | |          ^
+     | |          |
+     | |__________`self` escapes the method body here
+     |            argument requires that `'1` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of method
+    --> packages/domain/src/chat/search.rs:1033:9
+     |
+1026 |           &self,
+     |           -----
+     |           |
+     |           `self` is a reference that is only valid in the method body
+     |           let's call the lifetime of this reference `'1`
+...
+1033 | /         AsyncStream::with_channel(move |sender| {
+1034 | |             let mut tag = ConversationTag::new(name, description, category);
+1035 | |             tag.parent_id = Some(parent_id.clone());
+1036 | |             let tag_id = tag.id.clone();
+...    |
+1059 | |         })
+     | |          ^
+     | |          |
+     | |__________`self` escapes the method body here
+     |            argument requires that `'1` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of method
+    --> packages/domain/src/chat/search.rs:1084:9
+     |
+1079 |           &self,
+     |           -----
+     |           |
+     |           `self` is a reference that is only valid in the method body
+     |           let's call the lifetime of this reference `'1`
+...
+1084 | /         AsyncStream::with_channel(move |sender| {
+1085 | |             // Add message to tags mapping
+1086 | |             self_clone.message_tags
+1087 | |                 .insert(message_id.clone(), tag_ids.clone());
+...    |
+1114 | |             let _ = sender.send(());
+1115 | |         })
+     | |          ^
+     | |          |
+     | |__________`self` escapes the method body here
+     |            argument requires that `'1` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of method
+    --> packages/domain/src/chat/search.rs:1137:9
+     |
+1133 |           &self,
+     |           -----
+     |           |
+     |           `self` is a reference that is only valid in the method body
+     |           let's call the lifetime of this reference `'1`
+...
+1137 | /         AsyncStream::with_channel(move |sender| {
+1138 | |             let mut suggested_tags = Vec::new();
+1139 | |             let content = message.message.content.to_lowercase();
+...    |
+1159 | |         })
+     | |          ^
+     | |          |
+     | |__________`self` escapes the method body here
+     |            argument requires that `'1` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of method
+    --> packages/domain/src/chat/search.rs:1221:9
+     |
+1215 |           &self,
+     |           -----
+     |           |
+     |           `self` is a reference that is only valid in the method body
+     |           let's call the lifetime of this reference `'1`
+...
+1221 | /         AsyncStream::with_channel(move |sender| {
+1222 | |             let mut rules = self_clone.auto_tagging_rules.try_write().unwrap_or_else(|_| {
+1223 | |                 std::thread::sleep(std::time::Duration::from_millis(1));
+1224 | |                 self_clone.auto_tagging_rules.try_write().expect("Auto-tagging rules lock recovery failed")
+...    |
+1227 | |             let _ = sender.send(());
+1228 | |         })
+     | |          ^
+     | |          |
+     | |__________`self` escapes the method body here
+     |            argument requires that `'1` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of method
+    --> packages/domain/src/chat/search.rs:1248:9
+     |
+1245 |       pub fn remove_auto_tagging_rule_stream(&self, pattern: Arc<str>) -> AsyncStream<()> {
+     |                                              -----
+     |                                              |
+     |                                              `self` is a reference that is only valid in the method body
+     |                                              let's call the lifetime of this reference `'1`
+...
+1248 | /         AsyncStream::with_channel(move |sender| {
+1249 | |             let mut rules = self_clone.auto_tagging_rules.try_write().unwrap_or_else(|_| {
+1250 | |                 std::thread::sleep(std::time::Duration::from_millis(1));
+1251 | |                 self_clone.auto_tagging_rules.try_write().expect("Auto-tagging rules lock recovery failed")
+...    |
+1254 | |             let _ = sender.send(());
+1255 | |         })
+     | |          ^
+     | |          |
+     | |__________`self` escapes the method body here
+     |            argument requires that `'1` must outlive `'static`
+
+error[E0004]: non-exhaustive patterns: `message::types::MessageRole::System` and `message::types::MessageRole::Tool` not covered
+    --> packages/domain/src/chat/search.rs:1405:46
+     |
+1405 | ...                   let role = match message.message.role {
+     |                                        ^^^^^^^^^^^^^^^^^^^^ patterns `message::types::MessageRole::System` and `message::types::MessageRole::Tool` not covered
+     |
+note: `message::types::MessageRole` defined here
+    --> packages/domain/src/chat/message/mod.rs:33:14
+     |
+33   |     pub enum MessageRole {
+     |              ^^^^^^^^^^^
+34   |         /// Message from the system
+35   |         System,
+     |         ------ not covered
+...
+41   |         Tool,
+     |         ---- not covered
+     = note: the matched value is of type `message::types::MessageRole`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+     |
+1407 ~                                 MessageRole::Assistant => "assistant",
+1408 ~                                 message::types::MessageRole::System | message::types::MessageRole::Tool => todo!(),
+     |
+
+error[E0004]: non-exhaustive patterns: `message::types::MessageRole::System` and `message::types::MessageRole::Tool` not covered
+    --> packages/domain/src/chat/search.rs:1418:46
+     |
+1418 | ...                   let role = match message.message.role {
+     |                                        ^^^^^^^^^^^^^^^^^^^^ patterns `message::types::MessageRole::System` and `message::types::MessageRole::Tool` not covered
+     |
+note: `message::types::MessageRole` defined here
+    --> packages/domain/src/chat/message/mod.rs:33:14
+     |
+33   |     pub enum MessageRole {
+     |              ^^^^^^^^^^^
+34   |         /// Message from the system
+35   |         System,
+     |         ------ not covered
+...
+41   |         Tool,
+     |         ---- not covered
+     = note: the matched value is of type `message::types::MessageRole`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+     |
+1420 ~                                 MessageRole::Assistant => "**Assistant**",
+1421 ~                                 message::types::MessageRole::System | message::types::MessageRole::Tool => todo!(),
+     |
+
+error[E0004]: non-exhaustive patterns: `message::types::MessageRole::System` and `message::types::MessageRole::Tool` not covered
+    --> packages/domain/src/chat/search.rs:1430:46
+     |
+1430 | ...                   let role = match message.message.role {
+     |                                        ^^^^^^^^^^^^^^^^^^^^ patterns `message::types::MessageRole::System` and `message::types::MessageRole::Tool` not covered
+     |
+note: `message::types::MessageRole` defined here
+    --> packages/domain/src/chat/message/mod.rs:33:14
+     |
+33   |     pub enum MessageRole {
+     |              ^^^^^^^^^^^
+34   |         /// Message from the system
+35   |         System,
+     |         ------ not covered
+...
+41   |         Tool,
+     |         ---- not covered
+     = note: the matched value is of type `message::types::MessageRole`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+     |
+1432 ~                                 MessageRole::Assistant => "Assistant",
+1433 ~                                 message::types::MessageRole::System | message::types::MessageRole::Tool => todo!(),
+     |
+
+error[E0004]: non-exhaustive patterns: `message::types::MessageRole::System` and `message::types::MessageRole::Tool` not covered
+    --> packages/domain/src/chat/search.rs:1443:46
+     |
+1443 | ...                   let role = match message.message.role {
+     |                                        ^^^^^^^^^^^^^^^^^^^^ patterns `message::types::MessageRole::System` and `message::types::MessageRole::Tool` not covered
+     |
+note: `message::types::MessageRole` defined here
+    --> packages/domain/src/chat/message/mod.rs:33:14
+     |
+33   |     pub enum MessageRole {
+     |              ^^^^^^^^^^^
+34   |         /// Message from the system
+35   |         System,
+     |         ------ not covered
+...
+41   |         Tool,
+     |         ---- not covered
+     = note: the matched value is of type `message::types::MessageRole`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+     |
+1445 ~                                 MessageRole::Assistant => "assistant",
+1446 ~                                 message::types::MessageRole::System | message::types::MessageRole::Tool => todo!(),
+     |
+
+error[E0004]: non-exhaustive patterns: `message::types::MessageRole::System` and `message::types::MessageRole::Tool` not covered
+    --> packages/domain/src/chat/search.rs:1456:46
+     |
+1456 | ...                   let role = match message.message.role {
+     |                                        ^^^^^^^^^^^^^^^^^^^^ patterns `message::types::MessageRole::System` and `message::types::MessageRole::Tool` not covered
+     |
+note: `message::types::MessageRole` defined here
+    --> packages/domain/src/chat/message/mod.rs:33:14
+     |
+33   |     pub enum MessageRole {
+     |              ^^^^^^^^^^^
+34   |         /// Message from the system
+35   |         System,
+     |         ------ not covered
+...
+41   |         Tool,
+     |         ---- not covered
+     = note: the matched value is of type `message::types::MessageRole`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+     |
+1458 ~                                 MessageRole::Assistant => "Assistant",
+1459 ~                                 message::types::MessageRole::System | message::types::MessageRole::Tool => todo!(),
+     |
+
+warning: unused variable: `self_clone`
+    --> packages/domain/src/chat/search.rs:1860:87
+     |
+1860 |     pub fn get_statistics_stream(&self) -> AsyncStream<ExportStatistics> {        let self_clone = self.clone();
+     |                                                                                       ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_self_clone`
+
+warning: unused variable: `sender`
+   --> packages/domain/src/context/provider.rs:847:41
+    |
+847 |         AsyncStream::with_channel(move |sender| {
+    |                                         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_sender`
+
+warning: variable does not need to be mutable
+  --> packages/domain/src/embedding/core.rs:26:13
+   |
+26 |         let mut embedding_task = self.embed(text);
+   |             ----^^^^^^^^^^^^^^
+   |             |
+   |             help: remove this `mut`
+
+Some errors have detailed explanations: E0004, E0015, E0277, E0308, E0373, E0521, E0599.
+For more information about an error, try `rustc --explain E0004`.
+warning: `fluent_ai_domain` (lib) generated 14 warnings (1 duplicate)
+error: could not compile `fluent_ai_domain` (lib) due to 28 previous errors; 14 warnings emitted
+warning: build failed, waiting for other jobs to finish...
+warning: variable does not need to be mutable
+   --> packages/http-structs/src/mistral.rs:554:29
+    |
+554 |     pub fn add_text_message(mut self, role: &'a str, text: &'a str) -> Self {
+    |                             ----^^^^
+    |                             |
+    |                             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: variable does not need to be mutable
+   --> packages/http-structs/src/groq.rs:473:29
+    |
+473 |     pub fn add_text_message(mut self, role: &'a str, text: &'a str) -> Self {
+    |                             ----^^^^
+    |                             |
+    |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> packages/http-structs/src/perplexity.rs:239:29
+    |
+239 |     pub fn add_text_message(mut self, role: &'a str, text: &'a str) -> Self {
+    |                             ----^^^^
+    |                             |
+    |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> packages/http-structs/src/openrouter.rs:330:29
+    |
+330 |     pub fn add_text_message(mut self, role: &'a str, text: &'a str) -> Self {
+    |                             ----^^^^
+    |                             |
+    |                             help: remove this `mut`
+
+warning: `fluent_ai_domain` (lib) generated 14 warnings (13 duplicates)
+error: could not compile `fluent_ai_domain` (lib) due to 28 previous errors; 14 warnings emitted
+warning: variable does not need to be mutable
+   --> packages/http-structs/src/together.rs:421:29
+    |
+421 |     pub fn add_text_message(mut self, role: &'a str, text: &'a str) -> Self {
+    |                             ----^^^^
+    |                             |
+    |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> packages/http-structs/src/xai.rs:334:29
+    |
+334 |     pub fn add_text_message(mut self, role: &'a str, text: &'a str) -> Self {
+    |                             ----^^^^
+    |                             |
+    |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> packages/http-structs/src/deepseek.rs:185:29
+    |
+185 |     pub fn add_text_message(mut self, role: &'a str, text: &'a str) -> Self {
+    |                             ----^^^^
+    |                             |
+    |                             help: remove this `mut`
+
+error[E0308]: mismatched types
+   --> packages/http-structs/src/deepseek.rs:168:51
+    |
+168 |             messages.push(DeepSeekMessage { role, content });
+    |                                                   ^^^^^^^ expected `Option<OpenAIMessageContent<'_>>`, found `OpenAIMessageContent<'_>`
+    |
+    = note: expected enum `std::option::Option<OpenAIMessageContent<'_>>`
+               found enum `OpenAIMessageContent<'a>`
+help: try wrapping the expression in `Some`
+    |
+168 |             messages.push(DeepSeekMessage { role, content: Some(content) });
+    |                                                   ++++++++++++++       +
+
+Some errors have detailed explanations: E0053, E0063, E0071, E0107, E0277, E0308, E0369, E0533, E0560...
+For more information about an error, try `rustc --explain E0053`.
+warning: `fluent_ai_http_structs` (lib) generated 9 warnings
+error: could not compile `fluent_ai_http_structs` (lib) due to 83 previous errors; 9 warnings emitted

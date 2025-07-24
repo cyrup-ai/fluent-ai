@@ -126,7 +126,7 @@ impl StreamingDecoder {
     /// Find the longest valid UTF-8 prefix in the input bytes
     ///
     /// Returns (complete_bytes, remaining_bytes, is_complete)
-    fn find_complete_utf8_prefix(&self, bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>, bool), StreamingError> {
+    fn find_complete_utf8_prefix(&mut self, bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>, bool), StreamingError> {
         if !self.enable_incremental {
             // Simple mode: validate entire input
             return self.validate_complete_sequence(bytes);

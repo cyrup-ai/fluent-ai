@@ -32,15 +32,15 @@ struct Inner<T, const CAP: usize> {
     len: AtomicUsize, // Runtime metric for monitoring
 }
 
-impl<T, const CAP: usize> AsyncStream<T, CAP> 
+impl<T, const CAP: usize> AsyncStream<T, CAP>
 where
     T: Send + 'static,
 {
     /// Create stream with closure - preferred ergonomic pattern
     #[inline]
-    pub fn with_channel<F>(f: F) -> Self 
-    where 
-        F: FnOnce(AsyncStreamSender<T, CAP>) + Send + 'static
+    pub fn with_channel<F>(f: F) -> Self
+    where
+        F: FnOnce(AsyncStreamSender<T, CAP>) + Send + 'static,
     {
         let (sender, stream) = Self::channel_internal();
         std::thread::spawn(move || f(sender));
@@ -63,7 +63,6 @@ where
             Self { inner },
         )
     }
-
 
     /// Empty stream (always returns `Poll::Ready(None)`)
     #[inline]
@@ -115,18 +114,16 @@ where
     {
         let (_tx, stream) = Self::channel_internal();
         let inner = self.inner.clone();
-        
-        std::thread::spawn(move || {
-            loop {
-                if let Some(item) = inner.q.pop() {
-                    inner.len.fetch_sub(1, Ordering::AcqRel);
-                    handler(item);
-                } else {
-                    std::thread::yield_now();
-                }
+
+        std::thread::spawn(move || loop {
+            if let Some(item) = inner.q.pop() {
+                inner.len.fetch_sub(1, Ordering::AcqRel);
+                handler(item);
+            } else {
+                std::thread::yield_now();
             }
         });
-        
+
         stream
     }
 
@@ -208,7 +205,7 @@ impl<T, const CAP: usize> AsyncStreamSender<T, CAP> {
     }
 }
 
-impl<T, const CAP: usize> Default for AsyncStream<T, CAP> 
+impl<T, const CAP: usize> Default for AsyncStream<T, CAP>
 where
     T: Send + 'static,
 {

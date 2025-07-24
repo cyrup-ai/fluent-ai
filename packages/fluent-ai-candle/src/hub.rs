@@ -55,7 +55,7 @@ pub struct HubConfig {
 impl Default for HubConfig {
     fn default() -> Self {
         Self {
-            backend: Backend::XET, // Default to XET backend
+            backend: Backend::Xet, // Default to Xet backend
             cache_dir: std::env::var("HF_HOME")
                 .or_else(|_| {
                     std::env::var("HOME").map(|home| format!("{}/.cache/huggingface", home))

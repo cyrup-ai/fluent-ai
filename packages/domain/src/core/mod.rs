@@ -4,10 +4,11 @@ use std::sync::atomic::AtomicUsize;
 use std::time::Duration;
 
 use arc_swap::ArcSwap;
+use crossbeam_channel;
 use crossbeam_utils::CachePadded;
-use crate::AsyncTask;
 use once_cell::sync::Lazy;
 
+use crate::AsyncTask;
 use crate::memory::MemoryError;
 
 /// Domain initialization error types with semantic error handling
@@ -47,28 +48,33 @@ pub enum ChannelError {
     Closed,
 }
 
-/// Channel sender wrapper
+/// Channel sender wrapper using crossbeam for zero-allocation performance
 pub struct ChannelSender<T> {
-    sender: tokio::sync::oneshot::Sender<T>,
+    sender: crossbeam_channel::Sender<std::result::Result<T, ChannelError>>,
 }
 
-impl<T> ChannelSender<T> {
+impl<T: Send + 'static> ChannelSender<T> {
     /// Finish the task by sending the result
+    #[inline]
     pub fn finish(self, value: T) {
-        let _ = self.sender.send(value);
+        let _ = self.sender.send(Ok(value));
+    }
+
+    /// Finish the task with an error
+    #[inline]
+    pub fn finish_with_error(self, error: ChannelError) {
+        let _ = self.sender.send(Err(error));
     }
 }
 
-/// Create a new channel for async communication
-pub fn channel<T>() -> (
+/// Create a new channel for async communication using crossbeam for zero allocation
+#[inline]
+pub fn channel<T: Send + 'static>() -> (
     ChannelSender<T>,
     AsyncTask<std::result::Result<T, ChannelError>>,
 ) {
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    (
-        ChannelSender { sender: tx },
-        AsyncTask::new(async move { rx.await.map_err(|_| ChannelError::ReceiveError) }),
-    )
+    let (tx, rx) = crossbeam_channel::bounded(1);
+    (ChannelSender { sender: tx }, AsyncTask::new(rx))
 }
 
 /// Global state for circuit breaker pattern

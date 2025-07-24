@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use bytes::Bytes;
-use fluent_ai_http3::{HttpClient, HttpError, HttpMethod, HttpRequest, HttpResponse};
+use fluent_ai_http3::{Http3, HttpError};
 
 use super::completion::AnthropicCompletionRequest;
 use super::config::AnthropicConfig;
@@ -76,46 +76,46 @@ impl<'a> AnthropicRequestBuilder<'a> {
         format!("{}{}", self.config.base_url(), endpoint)
     }
 
+    /// Build headers as HashMap for Http3::json() pattern
+    fn build_headers_map(&self) -> HashMap<String, String> {
+        let mut headers = HashMap::new();
+        headers.insert(
+            HEADER_CONTENT_TYPE.to_string(),
+            CONTENT_TYPE_JSON.to_string(),
+        );
+        headers.insert(
+            HEADER_AUTHORIZATION.to_string(),
+            self.config.api_key().to_string(),
+        );
+        headers.insert(
+            HEADER_ANTHROPIC_VERSION.to_string(),
+            self.config.anthropic_version().to_string(),
+        );
+        headers.insert(
+            HEADER_USER_AGENT.to_string(),
+            "fluent-ai-anthropic/1.0".to_string(),
+        );
+        headers
+    }
+
     /// Send a completion request
     pub async fn send_completion(
         &self,
         request: &AnthropicCompletionRequest,
-    ) -> AnthropicResult<HttpResponse> {
+    ) -> AnthropicResult<serde_json::Value> {
         let url = self.build_url(ENDPOINT_MESSAGES);
 
-        // Serialize request body
-        let body = serde_json::to_vec(request).map_err(|e| AnthropicError::SerializationError {
-            message: format!("Failed to serialize completion request: {}", e),
-        })?;
-
-        // Build HTTP request
-        let mut http_request = HttpRequest::new(HttpMethod::Post, url.to_string()).with_body(body);
-
-        // Add headers
-        let headers = self.build_headers();
-        for (name, value) in headers {
-            http_request =
-                http_request
-                    .header(&name, &value)
-                    .map_err(|e| AnthropicError::NetworkError {
-                        message: format!("Failed to add header {}: {}", name, e),
-                    })?;
-        }
-
-        // Execute request
-        let response = self.http_client.execute(http_request).await.map_err(|e| {
-            AnthropicError::NetworkError {
+        // Use new Http3::json() pattern with automatic serialization
+        let response = Http3::json()
+            .debug() // Enable debug logging
+            .headers(|| self.build_headers_map()) // Use headers from config
+            .body(request) // Automatic serde serialization
+            .post(&url)
+            .collect::<serde_json::Value>() // Collect to JSON response
+            .await
+            .map_err(|e| AnthropicError::NetworkError {
                 message: format!("Failed to execute completion request: {}", e),
-            }
-        })?;
-
-        // Check for HTTP errors
-        if !response.status.is_success() {
-            return Err(AnthropicError::HttpStatus {
-                status: response.status.as_u16(),
-                message: String::from_utf8_lossy(&response.body).to_string(),
-            });
-        }
+            })?;
 
         Ok(response)
     }

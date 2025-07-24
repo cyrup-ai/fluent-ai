@@ -4,8 +4,6 @@
 //! LogitsProcessor instances into a single processing pipeline. Provides intelligent
 //! optimization, error handling, and performance monitoring for complex processing chains.
 
-use std::collections::VecDeque;
-
 use crate::processing::traits::{LogitsProcessor, ProcessingResult};
 use crate::processing::{ProcessingContext, ProcessingError};
 

@@ -7,8 +7,11 @@
 #![allow(clippy::type_complexity)]
 
 // TranscriptionModel does not exist in domain - removed
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpMethod, HttpRequest};
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
+use fluent_ai_http3::{Http3, header};
 use tokio::{self as rt, task::spawn as AsyncTask};
+use std::collections::HashMap;
 
 use super::client::Client;
 use crate::{AsyncStream, AsyncStreamSender, channel, clients::openai::TranscriptionResponse};
@@ -72,53 +75,36 @@ impl TranscriptionModel {
     ) -> impl crate::http3_streaming::TranscriptionChunk {
         use crate::http3_streaming::TranscriptionChunkImpl;
 
-        // Create HTTP3 client
-        let http_client = HttpClient::with_config(HttpConfig::ai_optimized())
-            .unwrap_or_else(|_| panic!("HTTP3 client creation failed"));
-
-        // Build multipart request with HTTP3
-        let mut form_data = Vec::new();
-
-        // Add file part
-        let file_boundary = format!("----fluent_ai_boundary_{}", uuid::Uuid::new_v4());
-        let file_header = format!(
-            "--{}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{}\"\r\nContent-Type: audio/wav\r\n\r\n",
-            file_boundary, request.filename
-        );
-        form_data.extend_from_slice(file_header.as_bytes());
-        form_data.extend_from_slice(&request.data);
-        form_data.extend_from_slice(b"\r\n");
-
-        // Add optional parameters
+        // Build form data for transcription request
+        let mut form_data = HashMap::new();
+        form_data.insert("file".to_string(), BASE64_STANDARD.encode(&request.data));
+        form_data.insert("model".to_string(), self.model.clone());
+        
         if let Some(prompt) = &request.prompt {
-            let prompt_field = format!(
-                "--{}\r\nContent-Disposition: form-data; name=\"prompt\"\r\n\r\n{}\r\n",
-                file_boundary, prompt
-            );
-            form_data.extend_from_slice(prompt_field.as_bytes());
+            form_data.insert("prompt".to_string(), prompt.clone());
         }
-
+        
         if let Some(temperature) = request.temperature {
-            let temp_field = format!(
-                "--{}\r\nContent-Disposition: form-data; name=\"temperature\"\r\n\r\n{}\r\n",
-                file_boundary, temperature
-            );
-            form_data.extend_from_slice(temp_field.as_bytes());
+            form_data.insert("temperature".to_string(), temperature.to_string());
         }
 
-        // Close multipart boundary
-        let closing_boundary = format!("--{}--\r\n", file_boundary);
-        form_data.extend_from_slice(closing_boundary.as_bytes());
-
-        // Create HTTP3 POST request - pure sync streaming
+        // Create HTTP3 request with form data
         let transcription_url = self.client.get_transcription_url(&self.model);
-        let http_request = HttpRequest::new(HttpMethod::Post, transcription_url)
-            .header(
-                "Content-Type",
-                &format!("multipart/form-data; boundary={}", file_boundary),
-            )
-            .body(form_data)
-            .unwrap_or_else(|_| panic!("HTTP3 request creation failed"));
+        
+        let result = Http3::form_urlencoded()
+            .bearer_auth(&self.client.api_key())
+            .body(&form_data)
+            .post(&transcription_url)
+            .collect_or_else(|e| {
+                tracing::error!(target: "rig", "Azure transcription request failed: {}", e);
+                TranscriptionResponse {
+                    text: format!("Error: {}", e),
+                    language: None,
+                    duration: None,
+                    words: None,
+                    segments: None,
+                }
+            });
 
         // Return TranscriptionChunkImpl immediately - pure streaming
         TranscriptionChunkImpl::new(

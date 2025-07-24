@@ -13,8 +13,9 @@
 
 use std::sync::Arc;
 
-use candle_core::{Device, DType};
+use candle_core::{DType, Device};
 use clap::{Arg, Command};
+use fluent_ai_async::AsyncStream;
 use fluent_ai_candle::{
     error::{CandleError, CandleResult},
     model::fluent::{
@@ -31,7 +32,6 @@ use fluent_ai_candle::{
     },
     var_builder::CandleVarBuilder,
 };
-use fluent_ai_async::AsyncStream;
 
 /// Complete example of Kimi K2 model usage
 pub struct KimiK2Example {
@@ -49,7 +49,7 @@ impl KimiK2Example {
                 QuantFormat::Fp16 => KIMI_K2_FP16.clone(),
                 QuantFormat::Fp8 => KIMI_K2_FP8.clone(),
             };
-            
+
             // Load tokenizer
             y.yield_item(Ok("Loading tokenizer...".to_string()));
             let tokenizer = match KimiK2Tokenizer::from_hub(&config).await {
@@ -59,20 +59,20 @@ impl KimiK2Example {
                     return;
                 }
             };
-            
+
             // Load model shards
             y.yield_item(Ok("Loading model shards...".to_string()));
             let mut model_shards = Vec::new();
-            
+
             // TODO: Replace with proper AsyncStream processing
             // For now, simulate model loading
             y.yield_item(Ok("Starting download: simulated shards".to_string()));
             y.yield_item(Ok("All shards loaded".to_string()));
-            
+
             // Initialize model from shards
             y.yield_item(Ok("Initializing model...".to_string()));
             let model_config = KimiK2Config::default();
-            
+
             // Create VarBuilder from loaded shards
             let var_builder = match CandleVarBuilder::from_safetensors_shards(
                 &model_shards,
@@ -88,7 +88,7 @@ impl KimiK2Example {
                     return;
                 }
             };
-            
+
             // Create model
             let model = match KimiK2Model::new(&model_config, var_builder.into(), &device) {
                 Ok(model) => model,
@@ -100,14 +100,14 @@ impl KimiK2Example {
                     return;
                 }
             };
-            
+
             // Create cache manager
             let cache_config = KVCacheConfig::default();
             let cache_manager = Arc::new(KVCacheManager::new(cache_config));
-            
+
             // Wrap model
             let model_wrapper = model.into_wrapper(cache_manager);
-            
+
             y.yield_item(Ok(Self {
                 model: model_wrapper,
                 tokenizer,
@@ -115,32 +115,32 @@ impl KimiK2Example {
             }));
         })
     }
-    
+
     /// Generate a response to a chat conversation
     pub fn chat(&self, messages: &[ChatMessage]) -> CandleResult<String> {
         // Apply chat template
         let prompt = self.tokenizer.apply_chat_template(messages)?;
-        
+
         // Tokenize input
         let input_ids = self.tokenizer.encode(&prompt)?;
         let input_tensor = input_ids.to_tensor(&self.model.config().torch_dtype, &Device::Cpu)?;
-        
+
         // Generate response
         let output = self.model.generate_next(&input_tensor)?;
-        
+
         // Decode output
         let output_ids = output.argmax(candle_core::D::Minus1)?;
         let response = self.tokenizer.decode(&output_ids)?;
-        
+
         Ok(response)
     }
-    
+
     /// Stream generation for longer responses
     pub fn stream_chat(&self, messages: &[ChatMessage]) -> AsyncStream<CandleResult<String>> {
         let messages = messages.to_vec();
         let model = self.model.clone();
         let tokenizer = self.tokenizer.clone();
-        
+
         AsyncStream::new(move |y| async move {
             // Apply chat template
             let prompt = match tokenizer.apply_chat_template(&messages) {
@@ -150,7 +150,7 @@ impl KimiK2Example {
                     return;
                 }
             };
-            
+
             // Tokenize input
             let input_ids = match tokenizer.encode(&prompt) {
                 Ok(ids) => ids,
@@ -159,25 +159,32 @@ impl KimiK2Example {
                     return;
                 }
             };
-            
+
             // Convert to tensor
-            let input_tensor = match input_ids.to_tensor(&model.config().torch_dtype, &Device::Cpu) {
+            let input_tensor = match input_ids.to_tensor(&model.config().torch_dtype, &Device::Cpu)
+            {
                 Ok(tensor) => tensor,
                 Err(e) => {
-                    y.yield_error(CandleError::TensorError(format!("Tensor conversion failed: {}", e)));
+                    y.yield_error(CandleError::TensorError(format!(
+                        "Tensor conversion failed: {}",
+                        e
+                    )));
                     return;
                 }
             };
-            
+
             // Prefill cache
             let mut current_output = match model.prefill(&input_tensor) {
                 Ok(output) => output,
                 Err(e) => {
-                    y.yield_error(CandleError::InferenceError(format!("Prefill failed: {}", e)));
+                    y.yield_error(CandleError::InferenceError(format!(
+                        "Prefill failed: {}",
+                        e
+                    )));
                     return;
                 }
             };
-            
+
             // Generate tokens one by one
             let max_tokens = 512;
             for _step in 0..max_tokens {
@@ -185,20 +192,26 @@ impl KimiK2Example {
                 let next_token_logits = match model.generate_next(&current_output) {
                     Ok(logits) => logits,
                     Err(e) => {
-                        y.yield_error(CandleError::InferenceError(format!("Generation failed: {}", e)));
+                        y.yield_error(CandleError::InferenceError(format!(
+                            "Generation failed: {}",
+                            e
+                        )));
                         return;
                     }
                 };
-                
+
                 // Sample next token (greedy for now)
                 let next_token = match next_token_logits.argmax(candle_core::D::Minus1) {
                     Ok(token) => token,
                     Err(e) => {
-                        y.yield_error(CandleError::InferenceError(format!("Token sampling failed: {}", e)));
+                        y.yield_error(CandleError::InferenceError(format!(
+                            "Token sampling failed: {}",
+                            e
+                        )));
                         return;
                     }
                 };
-                
+
                 // Decode token
                 let token_text = match tokenizer.decode(&next_token) {
                     Ok(text) => text,
@@ -207,18 +220,18 @@ impl KimiK2Example {
                         return;
                     }
                 };
-                
+
                 // Check for end of sequence
                 if token_text.contains("[EOS]") || token_text.contains("<|im_end|>") {
                     break;
                 }
-                
+
                 y.yield_item(Ok(token_text));
                 current_output = next_token_logits;
             }
         })
     }
-    
+
     /// Get model statistics
     pub fn stats(&self) -> String {
         let cache_stats = self.model.cache_stats();
@@ -294,15 +307,15 @@ fn parse_args() -> (Device, QuantFormat) {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse command line arguments
     let (device, quant_format) = parse_args();
-    
+
     println!("🚀 Loading Kimi K2 model...");
     println!("📱 Device: {:?}", device);
     println!("🔢 Quantization: {:?}", quant_format);
-    
+
     // Load model using proper AsyncStream pattern
     let mut example = None;
     let mut stream = KimiK2Example::new(device, quant_format);
-    
+
     // Process stream items
     while let Some(chunk) = stream.try_next() {
         match chunk {
@@ -317,14 +330,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    
-    let example = example.ok_or_else(|| {
-        CandleError::InitializationError("Failed to load model".to_string())
-    })?;
-    
+
+    let example = example
+        .ok_or_else(|| CandleError::InitializationError("Failed to load model".to_string()))?;
+
     println!("✅ Model loaded successfully!");
     println!("{}", example.stats());
-    
+
     // Example conversation
     let messages = vec![
         ChatMessage {
@@ -336,14 +348,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             content: "What are the key features of the Kimi K2 model?".to_string(),
         },
     ];
-    
+
     println!("\n💬 Starting conversation...");
     println!("👤 User: What are the key features of the Kimi K2 model?");
     println!("🤖 Kimi: ");
-    
+
     // Stream response using proper AsyncStream pattern
     let mut response_stream = example.stream_chat(&messages);
-    
+
     while let Some(chunk) = response_stream.try_next() {
         match chunk {
             Ok(token) => print!("{}", token),
@@ -353,7 +365,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    
+
     println!("\n\n🎉 Example completed successfully!");
     Ok(())
 }
@@ -361,7 +373,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_argument_parsing() {
         // Test would require actual CLI parsing, but we can test the logic
@@ -369,14 +381,14 @@ mod tests {
         assert!(matches!(device, Device::Cpu));
         assert!(matches!(quant, QuantFormat::Fp16));
     }
-    
+
     #[test]
     fn test_chat_message_creation() {
         let message = ChatMessage {
             role: "user".to_string(),
             content: "Hello, Kimi!".to_string(),
         };
-        
+
         assert_eq!(message.role, "user");
         assert_eq!(message.content, "Hello, Kimi!");
     }

@@ -66,7 +66,10 @@ async fn basic_builder_flow() {
         .url(url)
         .headers(|| {
             let mut map = std::collections::HashMap::new();
-            map.insert(http::HeaderName::from_static("x-custom-header"), "Cascade-Test");
+            map.insert(
+                http::HeaderName::from_static("x-custom-header"),
+                "Cascade-Test",
+            );
             map
         })
         .api_key("test-api-key")
@@ -78,6 +81,8 @@ async fn basic_builder_flow() {
     // Basic validation on the collected body.
     assert!(body.is_object(), "Response body should be a JSON object");
     let headers = body.get("headers").expect("Response should have headers");
-    let custom_header = headers.get("X-Custom-Header").expect("Missing X-Custom-Header");
+    let custom_header = headers
+        .get("X-Custom-Header")
+        .expect("Missing X-Custom-Header");
     assert_eq!(custom_header, "Cascade-Test");
 }

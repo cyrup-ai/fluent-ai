@@ -968,22 +968,22 @@ impl EvictionManager {
         victims: &mut SmallVec<usize, 32>,
     ) {
         // Sort by generation (oldest first)
-        let mut candidates: SmallVec<[(usize, u32); 64]> = SmallVec::new();
+        let mut candidates: SmallVec<(usize, u32), 64> = SmallVec::new();
 
         for (idx, entry) in entries.iter().enumerate() {
-            if candidates.is_full() {
+            if candidates.len() >= 64 {
                 break;
             }
-            let _ = candidates.try_push((idx, entry.generation()));
+            candidates.push((idx, entry.generation()));
         }
 
-        candidates.sort_by_key(|(_, gen)| *gen);
+        candidates.sort_by_key(|(_, generation)| *generation);
 
         for (idx, _) in candidates.into_iter().take(count) {
-            if victims.is_full() {
+            if victims.len() >= 32 {
                 break;
             }
-            let _ = victims.try_push(idx);
+            victims.push(idx);
         }
     }
 
@@ -995,22 +995,22 @@ impl EvictionManager {
         victims: &mut SmallVec<usize, 32>,
     ) {
         // Sort by access count (least accessed first)
-        let mut candidates: SmallVec<[(usize, u32); 64]> = SmallVec::new();
+        let mut candidates: SmallVec<(usize, u32), 64> = SmallVec::new();
 
         for (idx, entry) in entries.iter().enumerate() {
-            if candidates.is_full() {
+            if candidates.len() >= 64 {
                 break;
             }
-            let _ = candidates.try_push((idx, entry.access_count()));
+            candidates.push((idx, entry.access_count()));
         }
 
         candidates.sort_by_key(|(_, count)| *count);
 
         for (idx, _) in candidates.into_iter().take(count) {
-            if victims.is_full() {
+            if victims.len() >= victims.capacity() {
                 break;
             }
-            let _ = victims.try_push(idx);
+            victims.push(idx);
         }
     }
 
@@ -1023,10 +1023,10 @@ impl EvictionManager {
     ) {
         // Select oldest entries (similar to LRU but simpler)
         for idx in 0..count.min(entries.len()) {
-            if victims.is_full() {
+            if victims.len() >= victims.capacity() {
                 break;
             }
-            let _ = victims.try_push(idx);
+            victims.push(idx);
         }
     }
 
@@ -1042,18 +1042,20 @@ impl EvictionManager {
         while victims.len() < count && idx < entries.len() {
             if entries[idx].generation() % 3 == 0 {
                 // Simple pseudo-random selection
-                if victims.try_push(idx).is_err() {
+                if victims.len() >= victims.capacity() {
                     break;
                 }
+                victims.push(idx);
             }
             idx += 1;
         }
 
         // Fill remaining slots if needed
         while victims.len() < count && victims.len() < entries.len() {
-            if victims.try_push(victims.len()).is_err() {
+            if victims.len() >= victims.capacity() {
                 break;
             }
+            victims.push(victims.len());
         }
     }
 
@@ -1074,9 +1076,10 @@ impl EvictionManager {
 
             // Consider entries older than threshold
             if current_time.saturating_sub(entry.generation()) > 100 {
-                if victims.try_push(idx).is_err() {
+                if victims.len() >= victims.capacity() {
                     break;
                 }
+                victims.push(idx);
             }
         }
     }
@@ -1273,7 +1276,7 @@ impl KVCacheBuilder {
 
     /// Set maximum cache entries
     #[inline(always)]
-    pub const fn max_entries(mut self, entries: usize) -> Self {
+    pub const fn max_entries(self, _entries: usize) -> Self {
         // Max entries affects memory allocation
         self
     }

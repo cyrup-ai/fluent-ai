@@ -31,13 +31,17 @@ pub mod util;
 pub mod voice;
 pub mod workflow;
 
+// Additional module re-exports for provider compatibility
 // Essential re-exports for public API
 // Backward compatibility aliases
 pub use core::{ChannelError, ChannelSender};
 
+pub use chat::message;
+pub use context::chunk;
 // Re-export from cyrup_sugars for convenience
 pub use cyrup_sugars::{ByteSize, OneOrMany, ZeroOneOrMany};
 pub use fluent_ai_async::spawn_task as spawn_async; // Alias for backward compatibility
+pub use util::json_util;
 pub use {
     // Chat system
     chat::{
@@ -55,9 +59,7 @@ pub use {
     core::{DomainInitError, HashMap, execute_with_circuit_breaker},
 
     // Streaming primitives from fluent-ai-async
-    fluent_ai_async::{
-        AsyncStream, AsyncStreamSender, AsyncTask, NotResult, spawn_task,
-    },
+    fluent_ai_async::{AsyncStream, AsyncStreamSender, AsyncTask, NotResult, spawn_task},
 
     // Core initialization and management
     init::{

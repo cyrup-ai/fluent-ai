@@ -14,6 +14,19 @@
 //! - Parameter validation with model-specific optimizations
 //! - Circuit breaker integration and performance monitoring
 
+// Import centralized HTTP structs - no more local JSON building!
+use fluent_ai_http_structs::{
+    ai21::{
+        AI21ChatRequest, AI21Message, AI21Content, 
+        AI21StreamingChunk, AI21ResponseMessage, AI21Choice,
+        AI21ChatResponse, AI21Usage, AI21Tool, AI21Function
+    },
+    common::{HttpUtils, AuthMethod, Provider, HttpHeaders, ContentTypes},
+    errors::{HttpStructError, HttpStructResult},
+    builders::{HttpRequestBuilder, ChatBuilder, Http3Builders},
+    validation::{ValidateRequest, ValidationResult},
+};
+
 use crate::completion_provider::{CompletionProvider, CompletionError, CompletionResponse, StreamingResponse};
 use super::error::{AI21Error, Result, RequestType, JsonOperation};
 use super::models;
@@ -270,133 +283,131 @@ impl AI21CompletionBuilder {
         self
     }
     
-    /// Build OpenAI-compatible request body with AI21 extensions
+    /// Build AI21 request using centralized HTTP structs
     fn build_request_body(&self, messages: &[Message]) -> Result<Vec<u8>> {
-        let mut request = Map::new();
-        
-        // Model is required
-        request.insert("model".to_string(), Value::String(self.model.to_string()));
-        
-        // Convert messages to OpenAI format
-        let mut openai_messages = Vec::new();
-        
+        // Use the centralized builder with validation
+        let builder = Http3Builders::ai21();
+        let mut chat_builder = builder.chat(self.model);
+
         // Add system prompt if present
         if let Some(ref system) = self.system_prompt {
-            let mut system_msg = Map::new();
-            system_msg.insert("role".to_string(), Value::String("system".to_string()));
-            system_msg.insert("content".to_string(), Value::String(system.clone()));
-            openai_messages.push(Value::Object(system_msg));
+            chat_builder = chat_builder.add_text_message("system", system);
         }
-        
+
         // Add chat history
         for message in &self.chat_history {
-            let mut msg = Map::new();
-            let role = match message.role {
+            let role_str = match message.role {
                 Role::User => "user",
-                Role::Assistant => "assistant",
+                Role::Assistant => "assistant", 
                 Role::System => "system",
                 Role::Tool => "tool",
             };
-            msg.insert("role".to_string(), Value::String(role.to_string()));
-            msg.insert("content".to_string(), Value::String(message.content.clone()));
-            
-            // Add tool calls if present
-            if let Some(ref tool_calls) = message.tool_calls {
-                let tool_calls_json = serde_json::to_value(tool_calls)
-                    .map_err(|e| AI21Error::json_error(
-                        JsonOperation::RequestSerialization,
-                        &e.to_string(),
-                        None,
-                        None,
-                        false,
-                    ))?;
-                msg.insert("tool_calls".to_string(), tool_calls_json);
-            }
-            
-            // Add tool call ID if present
-            if let Some(ref tool_call_id) = message.tool_call_id {
-                msg.insert("tool_call_id".to_string(), Value::String(tool_call_id.clone()));
-            }
-            
-            openai_messages.push(Value::Object(msg));
+            chat_builder = chat_builder.add_text_message(role_str, &message.content);
         }
-        
+
         // Add new messages
         for message in messages {
-            let mut msg = Map::new();
-            let role = match message.role {
+            let role_str = match message.role {
                 Role::User => "user",
                 Role::Assistant => "assistant",
-                Role::System => "system",
+                Role::System => "system", 
                 Role::Tool => "tool",
             };
-            msg.insert("role".to_string(), Value::String(role.to_string()));
-            msg.insert("content".to_string(), Value::String(message.content.clone()));
-            openai_messages.push(Value::Object(msg));
+            chat_builder = chat_builder.add_text_message(role_str, &message.content);
         }
-        
-        request.insert("messages".to_string(), Value::Array(openai_messages));
-        
-        // Add generation parameters
+
+        // Set parameters with validation using centralized utilities
         if let Some(temp) = self.temperature {
-            request.insert("temperature".to_string(), Value::from(temp));
-        }
-        
-        if let Some(max_tokens) = self.max_tokens {
-            request.insert("max_tokens".to_string(), Value::from(max_tokens));
-        }
-        
-        if let Some(top_p) = self.top_p {
-            request.insert("top_p".to_string(), Value::from(top_p));
-        }
-        
-        if let Some(freq_penalty) = self.frequency_penalty {
-            request.insert("frequency_penalty".to_string(), Value::from(freq_penalty));
-        }
-        
-        if let Some(pres_penalty) = self.presence_penalty {
-            request.insert("presence_penalty".to_string(), Value::from(pres_penalty));
-        }
-        
-        // Add stop sequences
-        if !self.stop_sequences.is_empty() {
-            let stop_seqs: Vec<Value> = self.stop_sequences.iter()
-                .map(|s| Value::String(s.clone()))
-                .collect();
-            request.insert("stop".to_string(), Value::Array(stop_seqs));
-        }
-        
-        // Add tools if present and model supports them
-        if !self.tools.is_empty() && models::supports_tools(self.model) {
-            let tools_json = serde_json::to_value(&self.tools)
+            chat_builder = chat_builder.temperature(HttpUtils::validate_temperature(temp, Provider::AI21)
                 .map_err(|e| AI21Error::json_error(
                     JsonOperation::RequestSerialization,
-                    &e.to_string(),
+                    &format!("Invalid temperature: {}", e),
                     None,
                     None,
                     false,
-                ))?;
-            request.insert("tools".to_string(), tools_json);
+                ))? as f64);
         }
-        
-        // Add OpenAI-compatible parameters
-        if let Some(n) = self.n {
-            request.insert("n".to_string(), Value::from(n));
+
+        if let Some(max_tokens) = self.max_tokens {
+            chat_builder = chat_builder.max_tokens(HttpUtils::validate_max_tokens(max_tokens, Provider::AI21)
+                .map_err(|e| AI21Error::json_error(
+                    JsonOperation::RequestSerialization,
+                    &format!("Invalid max_tokens: {}", e),
+                    None,
+                    None,
+                    false,
+                ))?);
         }
-        
-        if let Some(ref logit_bias) = self.logit_bias {
-            request.insert("logit_bias".to_string(), Value::Object(logit_bias.clone()));
+
+        if let Some(top_p) = self.top_p {
+            chat_builder = chat_builder.top_p(HttpUtils::validate_top_p(top_p)
+                .map_err(|e| AI21Error::json_error(
+                    JsonOperation::RequestSerialization,
+                    &format!("Invalid top_p: {}", e),
+                    None,
+                    None,
+                    false,
+                ))?);
         }
-        
-        if let Some(ref user) = self.user {
-            request.insert("user".to_string(), Value::String(user.clone()));
+
+        if let Some(freq_penalty) = self.frequency_penalty {
+            chat_builder = chat_builder.frequency_penalty(freq_penalty);
         }
-        
-        // Add streaming flag
+
+        if let Some(pres_penalty) = self.presence_penalty {
+            chat_builder = chat_builder.presence_penalty(pres_penalty);
+        }
+
+        // Add stop sequences with zero-allocation
+        if !self.stop_sequences.is_empty() {
+            let mut stop_arrayvec = arrayvec::ArrayVec::new();
+            for seq in self.stop_sequences.iter().take(4) {
+                if stop_arrayvec.len() < 4 {
+                    let _ = stop_arrayvec.push(seq.as_str());
+                }
+            }
+            chat_builder = chat_builder.stop_sequences(stop_arrayvec);
+        }
+
+        // Add tools if present and model supports them
+        if !self.tools.is_empty() && models::supports_tools(self.model) {
+            let mut ai21_tools = arrayvec::ArrayVec::new();
+            for tool in self.tools.iter() {
+                if ai21_tools.len() < fluent_ai_http_structs::MAX_TOOLS {
+                    let ai21_tool = AI21Tool {
+                        tool_type: "function",
+                        function: AI21Function {
+                            name: &tool.name,
+                            description: tool.description.as_deref().unwrap_or(""),
+                            parameters: &tool.parameters,
+                        },
+                    };
+                    let _ = ai21_tools.push(ai21_tool);
+                }
+            }
+            chat_builder = chat_builder.with_tools(ai21_tools);
+        }
+
+        // Set streaming flag
         if self.stream {
-            request.insert("stream".to_string(), Value::Bool(true));
+            chat_builder = chat_builder.stream(true);
         }
-        
+
+        // Set user identifier if present
+        if let Some(ref user) = self.user {
+            chat_builder = chat_builder.user(user);
+        }
+
+        // Build and serialize the request
+        let request = chat_builder.build()
+            .map_err(|e| AI21Error::json_error(
+                JsonOperation::RequestSerialization,
+                &format!("Request building failed: {}", e),
+                None,
+                None,
+                false,
+            ))?;
+
         serde_json::to_vec(&request)
             .map_err(|e| AI21Error::json_error(
                 JsonOperation::RequestSerialization,
@@ -473,19 +484,19 @@ impl AI21CompletionBuilder {
         Ok(completion_response)
     }
     
-    /// Parse OpenAI-compatible completion response
+    /// Parse AI21 completion response using centralized types
     fn parse_completion_response(&self, response: Value) -> Result<CompletionResponse> {
-        let choices = response.get("choices")
-            .and_then(|c| c.as_array())
-            .ok_or_else(|| AI21Error::json_error(
+        // Parse using centralized AI21 response type
+        let ai21_response: AI21ChatResponse = serde_json::from_value(response)
+            .map_err(|e| AI21Error::json_error(
                 JsonOperation::ResponseDeserialization,
-                "Missing choices array",
+                &e.to_string(),
                 None,
                 None,
                 false,
             ))?;
         
-        let first_choice = choices.get(0)
+        let first_choice = ai21_response.choices.first()
             .ok_or_else(|| AI21Error::json_error(
                 JsonOperation::ResponseDeserialization,
                 "Empty choices array",
@@ -494,34 +505,14 @@ impl AI21CompletionBuilder {
                 false,
             ))?;
         
-        let message = first_choice.get("message")
-            .ok_or_else(|| AI21Error::json_error(
-                JsonOperation::ResponseDeserialization,
-                "Missing message in choice",
-                None,
-                None,
-                false,
-            ))?;
+        let content = first_choice.message.content.as_deref().unwrap_or("");
+        let finish_reason = first_choice.finish_reason.clone();
         
-        let content = message.get("content")
-            .and_then(|c| c.as_str())
-            .unwrap_or("");
-        
-        let finish_reason = first_choice.get("finish_reason")
-            .and_then(|r| r.as_str())
-            .map(|r| r.to_string());
-        
-        // Parse usage information
-        let usage = response.get("usage").and_then(|usage| {
-            let prompt_tokens = usage.get("prompt_tokens")?.as_u64()? as u32;
-            let completion_tokens = usage.get("completion_tokens")?.as_u64()? as u32;
-            let total_tokens = usage.get("total_tokens")?.as_u64()? as u32;
-            
-            Some(Usage {
-                prompt_tokens,
-                completion_tokens,
-                total_tokens,
-            })
+        // Convert centralized usage to domain usage
+        let usage = ai21_response.usage.map(|u| Usage {
+            prompt_tokens: u.prompt_tokens,
+            completion_tokens: u.completion_tokens,
+            total_tokens: u.total_tokens,
         });
         
         Ok(CompletionResponse {

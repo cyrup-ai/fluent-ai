@@ -108,6 +108,11 @@ impl Client {
         Self::from_url(OLLAMA_API_BASE_URL)
     }
 
+    /// Get the base URL for this client
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
     /// Create a new Ollama client with the given base URL
     pub fn from_url(base_url: &str) -> Result<Self> {
         let base_url_array =

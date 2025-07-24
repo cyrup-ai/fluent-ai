@@ -3,11 +3,13 @@ use base64::prelude::BASE64_STANDARD;
 // TranscriptionModel does not exist in domain - removed
 use serde::Deserialize;
 use serde_json::json;
+use std::collections::HashMap;
 
 use super::client::HuggingFaceClient as Client;
 use super::completion::ApiResponse;
 use crate::transcription;
 use crate::transcription::TranscriptionError;
+use fluent_ai_http3::{Http3, header};
 
 pub const WHISPER_LARGE_V3: &str = "openai/whisper-large-v3";
 pub const WHISPER_LARGE_V3_TURBO: &str = "openai/whisper-large-v3-turbo";
@@ -68,18 +70,21 @@ impl transcription::TranscriptionModel for TranscriptionModel {
             .client
             .sub_provider
             .transcription_endpoint(&self.model)?;
-        let response = self.client.post(&route).json(&request).send().await?;
-
-        if response.status().is_success() {
-            match response
-                .json::<ApiResponse<TranscriptionResponse>>()
-                .await?
-            {
-                ApiResponse::Ok(response) => response.try_into(),
-                ApiResponse::Err(err) => Err(TranscriptionError::ProviderError(err.to_string())),
-            }
-        } else {
-            Err(TranscriptionError::ProviderError(response.text().await?))
-        }
+        let url = format!("{}{}", self.client.base_url(), route);
+        
+        let result = Http3::json()
+            .bearer_auth(&self.client.api_key())
+            .body(&request)
+            .post(&url)
+            .collect_or_else(|e| {
+                tracing::error!(target: "rig", "HuggingFace transcription request failed: {}", e);
+                Err(TranscriptionError::ProviderError(e.to_string()))
+            })
+            .and_then(|response: TranscriptionResponse| {
+                tracing::debug!(target: "rig", "HuggingFace transcription response: {:?}", response);
+                response.try_into()
+            });
+            
+        result
     }
 }

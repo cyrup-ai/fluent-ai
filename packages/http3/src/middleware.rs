@@ -87,8 +87,8 @@ impl Middleware for RequestIdMiddleware {
         let request_id = fastrand::u64(..).to_string();
         let request = request.header(
             http::HeaderName::from_static("x-request-id"),
-            http::HeaderValue::from_str(&request_id).map_err(|e| HttpError::StreamError { 
-                message: format!("Invalid request ID: {}", e) 
+            http::HeaderValue::from_str(&request_id).map_err(|e| HttpError::StreamError {
+                message: format!("Invalid request ID: {}", e),
             })?,
         );
         Ok(request)
@@ -172,8 +172,8 @@ impl Middleware for CompressionMiddleware {
                     http::HeaderValue::from_static("gzip, deflate, br"),
                 )
                 .header(
-                    http::header::CONTENT_ENCODING, 
-                    http::HeaderValue::from_static("identity")
+                    http::header::CONTENT_ENCODING,
+                    http::HeaderValue::from_static("identity"),
                 );
             Ok(request)
         } else {

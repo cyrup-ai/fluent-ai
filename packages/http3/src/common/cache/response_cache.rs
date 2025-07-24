@@ -11,14 +11,11 @@ use std::{
 
 use crossbeam_skiplist::SkipMap;
 
-use crate::HttpResponse;
 use super::{
-    cache_key::CacheKey,
-    cache_entry::CacheEntry,
-    cache_config::CacheConfig,
-    cache_stats::CacheStats,
-    http_date::httpdate,
+    cache_config::CacheConfig, cache_entry::CacheEntry, cache_key::CacheKey,
+    cache_stats::CacheStats, http_date::httpdate,
 };
+use crate::HttpResponse;
 
 /// Lock-free HTTP response cache using crossbeam skiplist
 pub struct ResponseCache {
@@ -215,7 +212,7 @@ impl ResponseCache {
                 }
             }
         }
-        
+
         evicted_count
     }
 

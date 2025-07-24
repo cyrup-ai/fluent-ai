@@ -7,8 +7,8 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use fluent_ai_async::AsyncTask;
 use fluent_ai_async::AsyncStream;
+use fluent_ai_async::AsyncTask;
 
 use crate::ZeroOneOrMany;
 
@@ -133,7 +133,7 @@ impl Loader<PathBuf> for LoaderImpl<PathBuf> {
         PathBuf: fluent_ai_async::NotResult,
     {
         let pattern = self.pattern.clone();
-        
+
         AsyncStream::with_channel(move |sender| {
             if let Some(p) = pattern {
                 if let Ok(paths) = glob::glob(&p) {

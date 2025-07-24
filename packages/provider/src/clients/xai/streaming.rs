@@ -1,10 +1,12 @@
 use fluent_ai_domain::completion::CompletionRequest;
 use serde_json::json;
+use std::collections::HashMap;
 
 use super::completion::CompletionModel;
 use crate::clients::openai;
-use crate::clients::openai::send_compatible_streaming_request;
 use crate::completion_provider::CompletionError;
+use crate::streaming::StreamingCompletionResponse;
+use fluent_ai_http3::{Http3, header};
 /// Helper function to merge two JSON values
 fn merge(mut base: serde_json::Value, other: serde_json::Value) -> serde_json::Value {
     if let (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) =
@@ -28,8 +30,13 @@ impl CompletionModel {
 
         request = merge(request, json!({"stream": true}));
 
-        let builder = self.client.post("/v1/chat/completions").json(&request);
-
-        send_compatible_streaming_request(builder).await
+        let url = format!("{}/v1/chat/completions", self.client.base_url());
+        
+        let stream = Http3::json()
+            .bearer_auth(&self.client.api_key())
+            .body(&request)
+            .post(&url);
+        
+        openai::process_openai_compatible_streaming_response(stream).await
     }
 }

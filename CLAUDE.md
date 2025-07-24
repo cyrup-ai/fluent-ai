@@ -179,6 +179,104 @@ impl ProviderClient {
 }
 ```
 
+### JSON POST with Serde Request/Response Marshaling
+
+**RECOMMENDED PATTERN**: Use the elegant Http3 builder with Serde types for type-safe JSON communication:
+
+```rust
+use fluent_ai_http3::{Http3, HttpStreamExt};
+use serde::{Deserialize, Serialize};
+
+// Define your request/response types
+#[derive(Serialize, Debug)]
+struct CompletionRequest {
+    model: String,
+    messages: Vec<Message>,
+    stream: bool,
+    temperature: f64,
+}
+
+#[derive(Deserialize, Debug)]
+struct CompletionResponse {
+    id: String,
+    choices: Vec<Choice>,
+    usage: Usage,
+}
+
+// Pattern 1: Collect to typed response (most common)
+async fn send_completion_request(request: &CompletionRequest) -> Result<CompletionResponse, HttpError> {
+    let response = Http3::json()
+        .debug()                              // Enable debug logging
+        .api_key(&api_key)                   // Authorization: Bearer
+        .body(request)                       // Serialize request to JSON
+        .post("https://api.openai.com/v1/chat/completions")
+        .collect::<CompletionResponse>();    // Deserialize response from JSON
+    
+    Ok(response)
+}
+
+// Pattern 2: Stream processing for real-time responses
+async fn stream_completion_request(request: &CompletionRequest) -> AsyncStream<CompletionChunk> {
+    let mut stream = Http3::json()
+        .debug()
+        .api_key(&api_key)
+        .body(request)
+        .post("https://api.openai.com/v1/chat/completions");
+    
+    // Process chunks as they arrive
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            Ok(HttpChunk::Body(bytes)) => {
+                // Parse SSE or JSON Lines format
+                if let Ok(chunk_data) = parse_completion_chunk(&bytes) {
+                    yield chunk_data;
+                }
+            }
+            Err(e) => {
+                eprintln!("Stream error: {}", e);
+                break;
+            }
+        }
+    }
+}
+
+// Pattern 3: Error handling with fallback
+async fn robust_completion_request(request: &CompletionRequest) -> CompletionResponse {
+    Http3::json()
+        .api_key(&api_key)
+        .body(request)
+        .post("https://api.openai.com/v1/chat/completions")
+        .collect_or_else(|error| {
+            eprintln!("Request failed: {}", error);
+            CompletionResponse::default() // Fallback response
+        })
+}
+
+// Pattern 4: Custom headers with Serde marshaling
+async fn completion_with_custom_headers(request: &CompletionRequest) -> CompletionResponse {
+    Http3::json()
+        .headers(|| {
+            use std::collections::HashMap;
+            let mut map = HashMap::new();
+            map.insert("X-Request-ID", "req-123");
+            map.insert("X-Client-Version", "1.0.0");
+            map
+        })
+        .bearer_token(&api_key)              // Alternative to .api_key()
+        .body(request)
+        .post("https://api.openai.com/v1/chat/completions")
+        .collect::<CompletionResponse>()
+}
+```
+
+**KEY ADVANTAGES**:
+- **Type Safety**: Compile-time verification of request/response types
+- **Automatic Serialization**: Serde handles JSON marshaling transparently
+- **Streaming Support**: Real-time processing for AI streaming responses
+- **Error Handling**: Built-in error handling with collect_or_else patterns
+- **Debug Support**: Easy debugging with .debug() method
+- **Zero Allocation**: Efficient memory usage with streaming-first design
+
 ### Streaming Implementation Pattern
 
 ```rust
@@ -427,3 +525,219 @@ fn new_pattern() -> AsyncStream<String> {
 ```
 
 This AsyncStream architecture provides the foundation for all async operations in fluent-ai with optimal performance and ergonomics.
+
+# JSON POST WITH SERDE MARSHALING - USAGE PATTERNS
+
+## CORE PATTERN: Fluent Builder with Type-Safe Serde Integration
+
+The fluent_ai_http3 library provides elegant JSON POST operations with automatic Serde serialization/deserialization:
+
+### BASIC JSON POST PATTERN
+
+```rust
+use fluent_ai_http3::Http3;
+use serde::{Deserialize, Serialize};
+
+// Define request/response types
+#[derive(Serialize, Debug)]
+struct CompletionRequest {
+    model: String,
+    messages: Vec<Message>,
+    temperature: f32,
+    stream: bool,
+}
+
+#[derive(Deserialize, Debug)]
+struct CompletionResponse {
+    id: String,
+    object: String,
+    created: u64,
+    choices: Vec<Choice>,
+}
+
+// CORRECT: Streaming-first approach
+async fn send_completion_request(request: CompletionRequest) -> Result<CompletionResponse, HttpError> {
+    let response = Http3::json()                          // Sets Content-Type: application/json
+        .api_key("sk-...")                               // Authorization: Bearer sk-...
+        .body(&request)                                  // Automatic serde_json serialization
+        .post("https://api.openai.com/v1/chat/completions")
+        .collect::<CompletionResponse>()                 // Automatic serde_json deserialization
+        .await?;
+    
+    Ok(response)
+}
+```
+
+### ADVANCED PATTERN: Headers + Error Handling
+
+```rust
+use fluent_ai_http3::{Http3, HttpError, header};
+use std::collections::HashMap;
+
+async fn advanced_json_post<Req, Resp>(
+    url: &str,
+    request: &Req,
+    api_key: &str,
+) -> Result<Resp, HttpError>
+where
+    Req: Serialize,
+    Resp: for<'de> Deserialize<'de>,
+{
+    let response = Http3::json()
+        .debug()                                         // Enable request/response logging
+        .headers(|| {
+            let mut map = HashMap::new();
+            map.insert(header::X_API_KEY, api_key);
+            map.insert(header::USER_AGENT, "fluent-ai/1.0");
+            map.insert(header::ACCEPT, "application/json");
+            map
+        })
+        .body(request)                                   // Generic serde serialization
+        .post(url)
+        .collect::<Resp>()                              // Generic serde deserialization
+        .await?;
+    
+    Ok(response)
+}
+```
+
+### STREAMING PATTERN: Real-time JSON Processing
+
+```rust
+use fluent_ai_http3::{Http3, HttpChunk};
+use futures_util::StreamExt;
+use serde_json::Value;
+
+async fn stream_json_chunks(request: &CompletionRequest) -> Result<(), HttpError> {
+    let mut stream = Http3::json()
+        .body(request)
+        .post("https://api.openai.com/v1/chat/completions")
+        .stream();                                       // Get raw HttpChunk stream
+    
+    while let Some(chunk_result) = stream.next().await {
+        match chunk_result? {
+            HttpChunk::Head(status, headers) => {
+                println!("Response status: {}", status);
+                println!("Content-Type: {:?}", headers.get("content-type"));
+            }
+            HttpChunk::Body(bytes) => {
+                // Parse JSON chunks for streaming responses
+                if let Ok(json_str) = std::str::from_utf8(&bytes) {
+                    for line in json_str.lines() {
+                        if line.starts_with("data: ") {
+                            let data = &line[6..];
+                            if let Ok(chunk_data) = serde_json::from_str::<Value>(data) {
+                                println!("Received chunk: {}", chunk_data);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(())
+}
+```
+
+### ERROR HANDLING PATTERN: Collect with Fallback
+
+```rust
+use fluent_ai_http3::{Http3, HttpError};
+
+async fn robust_json_post(request: &CompletionRequest) -> CompletionResponse {
+    Http3::json()
+        .body(request)
+        .post("https://api.openai.com/v1/chat/completions")
+        .collect_or_else(|error: HttpError| {
+            eprintln!("API call failed: {}", error);
+            
+            // Return fallback response on error
+            CompletionResponse {
+                id: "error".to_string(),
+                object: "error".to_string(),
+                created: 0,
+                choices: vec![],
+            }
+        })
+        .await
+}
+```
+
+### PROVIDER INTEGRATION PATTERN: Reusable Client
+
+```rust
+use fluent_ai_http3::{HttpClient, HttpConfig, Http3};
+
+pub struct AIProviderClient {
+    client: HttpClient,
+    api_key: String,
+    base_url: String,
+}
+
+impl AIProviderClient {
+    pub fn new(api_key: String) -> Result<Self, HttpError> {
+        let config = HttpConfig::ai_optimized()
+            .with_timeout(Duration::from_secs(120))
+            .with_max_retries(3)
+            .with_http3_enabled(true);
+            
+        let client = HttpClient::with_config(config)?;
+        
+        Ok(Self {
+            client,
+            api_key,
+            base_url: "https://api.openai.com/v1".to_string(),
+        })
+    }
+    
+    pub async fn completion<Req, Resp>(&self, request: &Req) -> Result<Resp, HttpError>
+    where
+        Req: Serialize,
+        Resp: for<'de> Deserialize<'de>,
+    {
+        Http3::new(&self.client)                         // Use existing client instance
+            .json()
+            .bearer_auth(&self.api_key)
+            .body(request)
+            .post(&format!("{}/chat/completions", self.base_url))
+            .collect::<Resp>()
+            .await
+    }
+}
+```
+
+### FORM DATA PATTERN: Alternative Content Types
+
+```rust
+use std::collections::HashMap;
+
+// For application/x-www-form-urlencoded content
+async fn send_form_data() -> Result<FormResponse, HttpError> {
+    let form_data = HashMap::from([
+        ("grant_type".to_string(), "client_credentials".to_string()),
+        ("client_id".to_string(), "your_client_id".to_string()),
+        ("client_secret".to_string(), "your_secret".to_string()),
+    ]);
+    
+    let response = Http3::form_urlencoded()              // Sets Content-Type: application/x-www-form-urlencoded
+        .body(&form_data)                               // HashMap -> URL encoded serialization
+        .post("https://oauth.provider.com/token")
+        .collect::<FormResponse>()                      // Serde deserialization
+        .await?;
+    
+    Ok(response)
+}
+```
+
+### KEY BENEFITS OF THIS PATTERN
+
+1. **Type Safety**: Request/response types checked at compile time
+2. **Zero Allocation**: Streaming-first design with .collect() when needed  
+3. **Automatic Marshaling**: Serde handles JSON serialization/deserialization
+4. **Flexible Headers**: Type-safe header management with closures
+5. **Error Recovery**: Built-in error handling with fallback options
+6. **HTTP/3 Performance**: QUIC protocol with HTTP/2 fallback
+7. **Connection Reuse**: Efficient client pooling for multiple requests
+
+This pattern integrates seamlessly with the fluent-ai ecosystem while providing the performance and ergonomics required for production AI applications.

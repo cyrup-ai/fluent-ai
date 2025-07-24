@@ -3,14 +3,15 @@ resolver = "2"
 members = [
     "packages/fluent-ai-async",
     "packages/fluent-ai",
+    "packages/fluent-ai-candle",
+    "packages/fluent-ai-simd",
     "packages/provider",
     "packages/domain", 
     "packages/memory",
     "packages/http3",
+    "packages/yaml-model-info",
     "packages/cylo",
     "packages/termcolor",
-    "packages/fluent-ai-candle",
-    "packages/fluent-ai-simd",
     "packages/cargo-hakari-regenerate",
     "workspace-hack",
 ]

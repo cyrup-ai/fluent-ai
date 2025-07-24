@@ -11,9 +11,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
-use crate::{
-    DownloadStream, HttpChunk, HttpClient, HttpError, HttpRequest, HttpStream,
-};
+use crate::{DownloadStream, HttpChunk, HttpClient, HttpError, HttpRequest, HttpStream};
 
 /// Content type enumeration for elegant API
 #[derive(Debug, Clone, Copy)]
@@ -47,7 +45,7 @@ impl ContentType {
 /// Header name aliases for elegant builder syntax
 pub mod header {
     pub use http::header::*;
-    
+
     /// X-API-Key header name (not in http crate standard headers)
     pub const X_API_KEY: http::HeaderName = http::HeaderName::from_static("x-api-key");
 }
@@ -88,7 +86,7 @@ impl Http3Builder<BodyNotSet> {
     }
 }
 
-// State-agnostic methods  
+// State-agnostic methods
 impl<S> Http3Builder<S> {
     /// Enable debug logging for this request
     pub fn debug(mut self) -> Self {
@@ -114,7 +112,9 @@ impl<S> Http3Builder<S> {
     {
         let params = f();
         for (header_key, header_value) in params {
-            self.request = self.request.header(header_key, HeaderValue::from_static(header_value));
+            self.request = self
+                .request
+                .header(header_key, HeaderValue::from_static(header_value));
         }
         self
     }
@@ -172,10 +172,13 @@ impl<S> Http3Builder<S> {
 
     /// Set the request body
     pub fn body<T: Serialize>(self, body: &T) -> Http3Builder<BodySet> {
-        let content_type = self.request.headers().get("content-type")
+        let content_type = self
+            .request
+            .headers()
+            .get("content-type")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("application/json");
-            
+
         let body_bytes = if content_type.contains("application/x-www-form-urlencoded") {
             // Serialize as form-urlencoded
             match serde_urlencoded::to_string(body) {
@@ -189,11 +192,15 @@ impl<S> Http3Builder<S> {
                 Err(_) => Vec::new(),
             }
         };
-        
+
         if self.debug_enabled {
-            log::debug!("HTTP3 Builder: Set request body ({} bytes, content-type: {})", body_bytes.len(), content_type);
+            log::debug!(
+                "HTTP3 Builder: Set request body ({} bytes, content-type: {})",
+                body_bytes.len(),
+                content_type
+            );
         }
-        
+
         let request = self.request.set_body(body_bytes);
 
         Http3Builder {
@@ -213,11 +220,11 @@ impl Http3Builder<BodyNotSet> {
             .request
             .set_method(Method::GET)
             .set_url(url.to_string());
-        
+
         if self.debug_enabled {
             log::debug!("HTTP3 Builder: GET {}", url);
         }
-        
+
         self.client.execute_streaming(self.request)
     }
 
@@ -249,14 +256,14 @@ impl Http3Builder<BodySet> {
             .request
             .set_method(Method::POST)
             .set_url(url.to_string());
-        
+
         if self.debug_enabled {
             log::debug!("HTTP3 Builder: POST {}", url);
             if let Some(body) = self.request.body() {
                 log::debug!("HTTP3 Builder: Request body size: {} bytes", body.len());
             }
         }
-        
+
         self.client.execute_streaming(self.request)
     }
 
@@ -292,7 +299,7 @@ pub struct BodySet;
 pub trait HttpStreamExt {
     /// Collect the entire HTTP stream into a deserialized type, returning default on error
     fn collect<T: DeserializeOwned + Default + Send + 'static>(self) -> T;
-    
+
     /// Collect the entire HTTP stream into a deserialized type, calling error handler on failure
     fn collect_or_else<
         T: DeserializeOwned + Send + 'static,
@@ -305,11 +312,9 @@ pub trait HttpStreamExt {
 
 impl HttpStream {
     // EXPLICITLY APPROVED BY DAVID MAPLE 07/22/2025
-    async fn collect_internal<T: DeserializeOwned + Send + 'static>(
-        self,
-    ) -> Result<T, HttpError> {
+    async fn collect_internal<T: DeserializeOwned + Send + 'static>(self) -> Result<T, HttpError> {
         use futures_util::StreamExt;
-        
+
         let mut stream = self;
         let mut all_bytes = Vec::new();
 
@@ -348,13 +353,13 @@ impl HttpStreamExt for HttpStream {
     fn collect<T: DeserializeOwned + Default + Send + 'static>(self) -> T {
         // Create a channel for async result communication
         let (tx, rx) = std::sync::mpsc::channel();
-        
+
         // Spawn task to handle async collection
         tokio::spawn(async move {
             let result = self.collect_internal().await;
             let _ = tx.send(result);
         });
-        
+
         // Receive result synchronously
         match rx.recv() {
             Ok(Ok(value)) => value,
@@ -373,13 +378,13 @@ impl HttpStreamExt for HttpStream {
     ) -> T {
         // Create a channel for async result communication
         let (tx, rx) = std::sync::mpsc::channel();
-        
+
         // Spawn task to handle async collection
         tokio::spawn(async move {
             let result = self.collect_internal::<T>().await;
             let _ = tx.send(result);
         });
-        
+
         // Receive result synchronously
         match rx.recv() {
             Ok(Ok(value)) => value,
@@ -390,7 +395,6 @@ impl HttpStreamExt for HttpStream {
         }
     }
 }
-
 
 /// Builder for download-specific operations
 pub struct DownloadBuilder {

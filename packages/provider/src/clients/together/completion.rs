@@ -7,9 +7,16 @@
 // Together Completion Models
 // ================================================================
 
+// Import centralized HTTP structs - no more local definitions!
 // Re-export the domain CompletionModel trait
 pub use fluent_ai_domain::CompletionModel;
 use fluent_ai_domain::completion::{CompletionCoreError as CompletionError, CompletionRequest};
+use super::types::{
+    TogetherChatRequest, TogetherChatResponse, TogetherChoice, TogetherContent,
+    TogetherFunction, TogetherMessage, TogetherResponseMessage, TogetherStreamingChunk,
+    TogetherTool, TogetherUsage,
+    validation::{ValidateRequest, ValidationResult},
+};
 use serde_json::json;
 
 use super::client::{Client, together_ai_api_types::ApiResponse};
@@ -144,68 +151,117 @@ impl TogetherCompletionModel {
     pub(crate) fn create_completion_request(
         &self,
         completion_request: completion::CompletionRequest,
-    ) -> Result<serde_json::Value, CompletionError> {
-        let mut full_history: Vec<openai::Message> = match &completion_request.preamble {
-            Some(preamble) => vec![openai::Message::system(preamble)],
-            None => vec![],
-        };
-        if let Some(docs) = completion_request.normalized_documents() {
-            let docs: Vec<openai::Message> = docs.try_into()?;
-            full_history.extend(docs);
+    ) -> Result<TogetherChatRequest<'_>, CompletionError> {
+        // Use the centralized builder with validation
+        let builder = Http3Builders::together();
+        let mut chat_builder = builder.chat(&self.model);
+
+        // Add preamble as system message if present
+        if let Some(preamble) = &completion_request.preamble {
+            chat_builder = chat_builder.add_text_message("system", preamble);
         }
-        let chat_history: Vec<openai::Message> = completion_request
-            .chat_history
-            .into_iter()
-            .map(|message| message.try_into())
-            .collect::<Result<Vec<Vec<openai::Message>>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect();
 
-        full_history.extend(chat_history);
+        // Add documents as context
+        if let Some(docs) = completion_request.normalized_documents() {
+            for doc in docs {
+                let content = format!("Document: {}", doc.content());
+                chat_builder = chat_builder.add_text_message("user", &content);
+            }
+        }
 
-        let mut request = if completion_request.tools.is_empty() {
-            json!({
-                "model": self.model,
-                "messages": full_history,
-                "temperature": completion_request.temperature,
-            })
-        } else {
-            json!({
-                "model": self.model,
-                "messages": full_history,
-                "temperature": completion_request.temperature,
-                "tools": completion_request.tools.into_iter().map(openai::ToolDefinition::from).collect::<Vec<_>>(),
-                "tool_choice": "auto",
-            })
-        };
-        request = if let Some(params) = completion_request.additional_params {
-            json_util::merge(request, params)
-        } else {
-            request
-        };
-        Ok(request)
+        // Add chat history
+        for msg in completion_request.chat_history {
+            match msg.role() {
+                fluent_ai_domain::message::MessageRole::User => {
+                    if let Some(text) = msg.content().text() {
+                        chat_builder = chat_builder.add_text_message("user", text);
+                    }
+                }
+                fluent_ai_domain::message::MessageRole::Assistant => {
+                    if let Some(text) = msg.content().text() {
+                        chat_builder = chat_builder.add_text_message("assistant", text);
+                    }
+                }
+                fluent_ai_domain::message::MessageRole::System => {
+                    if let Some(text) = msg.content().text() {
+                        chat_builder = chat_builder.add_text_message("system", text);
+                    }
+                }
+            }
+        }
+
+        // Set parameters with validation using centralized utilities
+        if let Some(temp) = completion_request.temperature {
+            chat_builder = chat_builder.temperature(
+                HttpUtils::validate_temperature(temp as f32, Provider::Together).map_err(|e| {
+                    CompletionError::InvalidRequest(format!("Invalid temperature: {}", e))
+                })? as f64,
+            );
+        }
+
+        if let Some(max_tokens) = completion_request.max_tokens {
+            chat_builder = chat_builder.max_tokens(
+                HttpUtils::validate_max_tokens(max_tokens, Provider::Together).map_err(|e| {
+                    CompletionError::InvalidRequest(format!("Invalid max_tokens: {}", e))
+                })?,
+            );
+        }
+
+        // Add tools if present
+        if !completion_request.tools.is_empty() {
+            let mut together_tools = arrayvec::ArrayVec::new();
+            for tool in completion_request.tools.into_iter() {
+                if together_tools.len() < super::types::MAX_TOOLS {
+                    let together_tool = TogetherTool {
+                        tool_type: "function",
+                        function: TogetherFunction {
+                            name: tool.name(),
+                            description: tool.description(),
+                            parameters: tool.parameters().clone(),
+                        },
+                    };
+                    let _ = together_tools.push(together_tool);
+                }
+            }
+            chat_builder = chat_builder.with_tools(together_tools);
+        }
+
+        // Build and validate the request
+        match chat_builder.build() {
+            Ok(request) => Ok(request),
+            Err(e) => Err(CompletionError::InvalidRequest(format!(
+                "Request building failed: {}",
+                e
+            ))),
+        }
     }
 }
 
 impl completion::CompletionModel for TogetherCompletionModel {
-    type Response = openai::CompletionResponse;
+    type Response = TogetherChatResponse;
     type StreamingResponse = openai::StreamingCompletionResponse;
 
     #[cfg_attr(feature = "worker", worker::send)]
     async fn completion(
         &self,
         completion_request: completion::CompletionRequest,
-    ) -> Result<completion::CompletionResponse<openai::CompletionResponse>, CompletionError> {
-        let request = self.create_completion_request(completion_request)?;
+    ) -> Result<completion::CompletionResponse<TogetherChatResponse>, CompletionError> {
+        let request_body = self.create_completion_request(completion_request)?;
 
-        let request_body = serde_json::to_vec(&request).map_err(|e| {
-            CompletionError::ProviderError(format!("Failed to serialize request: {}", e))
-        })?;
+        // Use centralized serialization
+        let body_bytes = match serde_json::to_vec(&request_body) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(CompletionError::ProviderError(format!(
+                    "Serialization error: {}",
+                    e
+                )));
+            }
+        };
 
         let http_request = self
             .client
-            .post("/v1/chat/completions", request_body)
+            .post("/v1/chat/completions", body_bytes)
             .map_err(|e| {
                 CompletionError::ProviderError(format!("Failed to create request: {}", e))
             })?;
@@ -221,7 +277,7 @@ impl completion::CompletionModel for TogetherCompletionModel {
             let body = response.body();
             tracing::debug!(target: "rig", "Together completion response: {}", String::from_utf8_lossy(body));
 
-            match serde_json::from_slice::<ApiResponse<openai::CompletionResponse>>(body)? {
+            match serde_json::from_slice::<ApiResponse<TogetherChatResponse>>(body)? {
                 ApiResponse::Ok(response) => {
                     tracing::info!(target: "rig",
                         "Together completion token usage: {:?}",
@@ -242,6 +298,30 @@ impl completion::CompletionModel for TogetherCompletionModel {
         &self,
         request: CompletionRequest,
     ) -> Result<StreamingCompletionResponse<Self::StreamingResponse>, CompletionError> {
-        CompletionModel::stream(self, request).await
+        let mut request_body = self.create_completion_request(request)?;
+
+        // Enable streaming in the centralized request
+        request_body.stream = Some(true);
+
+        // Use centralized serialization
+        let body_bytes = match serde_json::to_vec(&request_body) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                return Err(CompletionError::ProviderError(format!(
+                    "Serialization error: {}",
+                    e
+                )));
+            }
+        };
+
+        let http_request = self
+            .client
+            .post("/v1/chat/completions", body_bytes)
+            .map_err(|e| {
+                CompletionError::ProviderError(format!("Failed to create request: {}", e))
+            })?;
+
+        // Use OpenAI-compatible streaming since Together AI is OpenAI-compatible
+        openai::send_openai_streaming_request(self.client.http_client.clone(), http_request).await
     }
 }

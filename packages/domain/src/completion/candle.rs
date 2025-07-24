@@ -454,6 +454,7 @@ impl Stream for StreamingCoreResponse {
 #[inline(always)]
 pub fn with_stack_buffer<T, F, R>(f: F) -> R
 where
+    T: Copy,
     F: FnOnce(&mut [std::mem::MaybeUninit<T>]) -> R,
 {
     // Safe zero-allocation buffer using const generics and MaybeUninit::uninit_array

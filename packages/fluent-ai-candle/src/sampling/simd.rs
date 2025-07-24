@@ -4,16 +4,16 @@
 //! fluent-ai-simd crate. All actual SIMD implementations have been moved to the shared crate
 //! to eliminate duplication across packages and achieve blazing-fast performance.
 
-use candle_core::{Result as CandleResult, Tensor};
+use candle_core::Result as CandleResult;
 // Import real SIMD types from shared crate
 use fluent_ai_simd::{
     config::ProcessorConfig,
     context::ProcessingContext,
     error::SimdError,
     logits::{
-        processing::{apply_temperature_scaling_simd, DefaultLogitsProcessor},
+        processing::apply_temperature_scaling_simd,
         topk::topk_filtering_simd,
-        LogitsProcessor, LogitsResult,
+        LogitsProcessor,
     },
     ops::{compute_softmax_inplace, SoftmaxProcessor, TemperatureProcessor},
 };
@@ -40,7 +40,6 @@ impl From<SimdError> for CandleError {
 /// Bridge processor that implements LogitsProcessor using shared SIMD operations
 #[repr(C, align(64))]
 pub struct CandleSimdProcessor {
-    inner: DefaultLogitsProcessor,
     config: ProcessorConfig,
 }
 
@@ -49,7 +48,6 @@ impl CandleSimdProcessor {
     #[inline(always)]
     pub fn new() -> CandleResult<Self> {
         Ok(Self {
-            inner: DefaultLogitsProcessor::new(),
             config: ProcessorConfig::default(),
         })
     }
@@ -58,7 +56,6 @@ impl CandleSimdProcessor {
     #[inline(always)]
     pub fn with_config(config: ProcessorConfig) -> CandleResult<Self> {
         Ok(Self {
-            inner: DefaultLogitsProcessor::with_config(config.clone()),
             config,
         })
     }
@@ -111,7 +108,7 @@ impl CandleSoftmaxProcessor {
     /// Create new SIMD softmax processor with zero allocation
     #[inline(always)]
     pub fn new(temperature: f32) -> CandleResult<Self> {
-        let inner = SoftmaxProcessor::new(temperature).map_err(CandleError::from)?;
+        let inner = SoftmaxProcessor::new().map_err(CandleError::from)?;
 
         Ok(Self { inner })
     }
@@ -139,7 +136,7 @@ impl CandleTemperatureProcessor {
     /// Create new SIMD temperature processor with zero allocation
     #[inline(always)]
     pub fn new(temperature: f32) -> CandleResult<Self> {
-        let inner = TemperatureProcessor::new(temperature).map_err(CandleError::from)?;
+        let inner = TemperatureProcessor::new().map_err(CandleError::from)?;
 
         Ok(Self { inner })
     }
@@ -192,7 +189,7 @@ pub mod utils {
         size: usize,
         iterations: u32,
     ) -> fluent_ai_simd::benchmark::BenchmarkResult {
-        fluent_ai_simd::benchmark::run_benchmark(size, iterations)
+        fluent_ai_simd::benchmark::run_benchmark(size, iterations, 1.0)
     }
 }
 

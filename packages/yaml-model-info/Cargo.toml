@@ -1,0 +1,28 @@
+[package]
+name = "yaml_model_info"
+version = "0.1.0"
+edition = "2024"
+description = "Pure YAML replica structs for model providers - no transformations, no domain dependencies"
+
+[[bin]]
+name = "yaml-model-info"
+path = "src/main.rs"
+
+[[bin]]
+name = "test_yaml"
+path = "test_yaml.rs"
+
+[dependencies]
+# Core serialization
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.141"
+yyaml = { git = "https://github.com/cyrup-ai/yyaml", branch = "main"}
+
+# CLI dependencies
+clap = { version = "4.5", features = ["derive"] }
+tokio = { version = "1.46.1", features = ["full"] }
+
+# HTTP client for YAML download
+fluent_ai_http3 = { path = "../http3" }
+futures-util = "0.3"
+http = "1.0"

@@ -14,10 +14,11 @@ use fluent_ai_domain::completion::{
 use fluent_ai_domain::message::{self, MessageError};
 use fluent_ai_domain::tool::ToolDefinition as DomainToolDefinition;
 use fluent_ai_domain::{Document, Message};
-use fluent_ai_http3::{HttpClient, HttpConfig, HttpError, HttpRequest};
+use fluent_ai_http3::{Http3, HttpStreamExt, header};
 use futures_util::{self, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::collections::HashMap;
 use tokio::task;
 use tokio_stream;
 
@@ -289,55 +290,23 @@ impl completion::CompletionModel for CompletionModel {
         match self.create_completion_request(completion_request) {
             Ok(request) => {
                 tokio::spawn(async move {
-                    let request_body = match serde_json::to_vec(&request) {
-                        Ok(body) => body,
-                        Err(e) => {
-                            tx.finish(Err(CompletionError::ProviderError(format!(
-                                "Failed to serialize request: {}",
-                                e
-                            ))));
-                            return;
-                        }
-                    };
-
-                    let http_request = match client.post("/chat/completions", request_body) {
-                        Ok(req) => req,
-                        Err(e) => {
-                            tx.finish(Err(CompletionError::ProviderError(format!(
-                                "Failed to create request: {}",
-                                e
-                            ))));
-                            return;
-                        }
-                    };
-
-                    let result = match client.http_client.send(http_request).await {
-                        Ok(response) => {
-                            if response.status().is_success() {
-                                match serde_json::from_slice::<ApiResponse<CompletionResponse>>(
-                                    response.body(),
-                                ) {
-                                    Ok(ApiResponse::Ok(response)) => {
-                                        tracing::info!(target: "rig",
-                                            "groq completion token usage: {:?}",
-                                            response.usage.clone().map(|usage| format!("{usage}")).unwrap_or_else(|| "N/A".to_string())
-                                        );
-                                        response.try_into()
-                                    }
-                                    Ok(ApiResponse::Err(err)) => {
-                                        Err(CompletionError::ProviderError(err.message))
-                                    }
-                                    Err(e) => {
-                                        Err(CompletionError::DeserializationError(e.to_string()))
-                                    }
-                                }
-                            } else {
-                                let error_body = String::from_utf8_lossy(response.body());
-                                Err(CompletionError::ProviderError(error_body.to_string()))
-                            }
-                        }
-                        Err(e) => Err(CompletionError::RequestError(e.to_string())),
-                    };
+                    let url = format!("{}/chat/completions", client.base_url());
+                    
+                    let result = Http3::json()
+                        .bearer_auth(&client.api_key())
+                        .body(&request)
+                        .post(&url)
+                        .collect_or_else(|e| {
+                            tracing::error!(target: "rig", "Groq completion request failed: {}", e);
+                            Err(CompletionError::ProviderError(e.to_string()))
+                        })
+                        .and_then(|response: CompletionResponse| {
+                            tracing::info!(target: "rig",
+                                "groq completion token usage: {:?}",
+                                response.usage.clone().map(|usage| format!("{usage}")).unwrap_or_else(|| "N/A".to_string())
+                            );
+                            response.try_into()
+                        });
 
                     tx.finish(result);
                 });
@@ -366,31 +335,14 @@ impl completion::CompletionModel for CompletionModel {
                 );
 
                 tokio::spawn(async move {
-                    let request_body = match serde_json::to_vec(&request) {
-                        Ok(body) => body,
-                        Err(e) => {
-                            tx.finish(Err(CompletionError::ProviderError(format!(
-                                "Failed to serialize request: {}",
-                                e
-                            ))));
-                            return;
-                        }
-                    };
-
-                    let http_request = match client.post("/chat/completions", request_body) {
-                        Ok(req) => req,
-                        Err(e) => {
-                            tx.finish(Err(CompletionError::ProviderError(format!(
-                                "Failed to create request: {}",
-                                e
-                            ))));
-                            return;
-                        }
-                    };
-
-                    let result =
-                        streaming::send_groq_streaming_request(client.http_client, http_request)
-                            .await;
+                    let url = format!("{}/chat/completions", client.base_url());
+                    
+                    let stream = Http3::json()
+                        .bearer_auth(&client.api_key())
+                        .body(&request)
+                        .post(&url);
+                    
+                    let result = streaming::process_groq_streaming_response(stream).await;
                     tx.finish(result);
                 });
             }
