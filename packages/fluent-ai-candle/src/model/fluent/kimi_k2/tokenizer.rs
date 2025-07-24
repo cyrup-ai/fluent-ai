@@ -39,6 +39,7 @@ use std::sync::Arc;
 
 /// Special token literals as per `tokenizer_config.json`.
 const BOS: &str = "[BOS]";
+#[allow(dead_code)] // Reserved for future EOS token handling
 const EOS: &str = "[EOS]";
 const EOT: &str = "[EOT]";
 const IM_SYSTEM: &str = "<|im_system|>";

@@ -156,3 +156,98 @@ impl CandleExtractionError {
         }
     }
 }
+
+// From trait implementations for error conversion
+
+impl From<crate::model::error::ModelError> for CandleCompletionError {
+    fn from(err: crate::model::error::ModelError) -> Self {
+        match err {
+            crate::model::error::ModelError::Validation(validation_err) => {
+                Self::Validation { message: validation_err.to_string() }
+            }
+            crate::model::error::ModelError::Io(io_err) => {
+                Self::Internal { message: format!("IO error: {}", io_err) }
+            }
+            crate::model::error::ModelError::Serialization(serde_err) => {
+                Self::Internal { message: format!("Serialization error: {}", serde_err) }
+            }
+            crate::model::error::ModelError::Candle { message } => {
+                Self::InferenceError { message }
+            }
+            crate::model::error::ModelError::InitializationFailed { reason } => {
+                Self::ModelLoadingFailed { message: reason }
+            }
+            crate::model::error::ModelError::Inference { message } => {
+                Self::InferenceError { message }
+            }
+            crate::model::error::ModelError::Memory { message } => {
+                Self::MemoryError { message }
+            }
+            crate::model::error::ModelError::Device { message } => {
+                Self::DeviceError { message }
+            }
+            crate::model::error::ModelError::InvalidConfiguration(msg) => {
+                Self::InvalidRequest { message: msg.to_string() }
+            }
+            crate::model::error::ModelError::OperationNotSupported(msg) => {
+                Self::UnsupportedOperation { operation: msg.to_string() }
+            }
+            crate::model::error::ModelError::ModelNotFound { provider, name } => {
+                Self::ModelLoadingFailed { 
+                    message: format!("Model not found: {}::{}", provider, name) 
+                }
+            }
+            crate::model::error::ModelError::ModelAlreadyExists { name } => {
+                Self::InvalidRequest { 
+                    message: format!("Model already exists: {}", name) 
+                }
+            }
+        }
+    }
+}
+
+
+/// Convert ModelError to CandleCompletionError
+
+
+impl From<crate::types::candle_model::error::ModelError> for CandleCompletionError {
+    fn from(error: crate::types::candle_model::error::ModelError) -> Self {
+        match error {
+            crate::types::candle_model::error::ModelError::ModelNotFound { provider, name } => {
+                Self::InvalidRequest {
+                    message: format!("Model not found: {}:{}", provider, name),
+                }
+            }
+            crate::types::candle_model::error::ModelError::ModelAlreadyExists { provider, name } => {
+                Self::InvalidRequest {
+                    message: format!("Model already exists: {}:{}", provider, name),
+                }
+            }
+            crate::types::candle_model::error::ModelError::ProviderNotFound(provider) => {
+                Self::InvalidRequest {
+                    message: format!("Provider not found: {}", provider),
+                }
+            }
+            crate::types::candle_model::error::ModelError::InvalidConfiguration(msg) => {
+                Self::InvalidParameter {
+                    message: msg.to_string(),
+                }
+            }
+            crate::types::candle_model::error::ModelError::OperationNotSupported(msg) => {
+                Self::UnsupportedOperation {
+                    operation: msg.to_string(),
+                }
+            }
+            crate::types::candle_model::error::ModelError::InvalidInput(msg) => {
+                Self::InvalidParameter {
+                    message: msg.to_string(),
+                }
+            }
+            crate::types::candle_model::error::ModelError::Internal(msg) => {
+                Self::Internal {
+                    message: msg.to_string(),
+                }
+            }
+        }
+    }
+}

@@ -19,12 +19,12 @@ use fluent_ai_async::AsyncStream;
 use fluent_ai_candle::{
     error::{CandleError, CandleResult},
     model::fluent::{
+        Config, KIMI_K2_FP8, KIMI_K2_FP16, QuantFormat,
         kimi_k2::{
-            loader::{load_model, LoaderEvent},
+            loader::{LoaderEvent, load_model},
             model::{KimiK2Config, KimiK2Model},
             tokenizer::{ChatMessage, KimiK2Tokenizer},
         },
-        Config, QuantFormat, KIMI_K2_FP16, KIMI_K2_FP8,
     },
     model::{
         cache::{KVCacheConfig, KVCacheManager},

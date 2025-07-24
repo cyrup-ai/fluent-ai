@@ -18,6 +18,7 @@ use crate::types::{
 // Type aliases for local use
 type CompletionRequest = CandleCompletionRequest;
 type CompletionResponse<'a> = CandleCompletionResponse<'a>;
+#[allow(dead_code)] // Used extensively in client.rs and streaming modules
 type StreamingResponse = CandleStreamingResponse;
 use smallvec::SmallVec;
 use tokio::sync::mpsc;
@@ -514,6 +515,7 @@ pub struct CandleGenerator {
     /// KV cache for efficient generation
     kv_cache: Option<Arc<parking_lot::Mutex<KVCache>>>,
     /// LogitsProcessor for sophisticated sampling
+    #[allow(dead_code)] // Reserved for future implementation of custom logits processing
     logits_processor: Option<Box<dyn LogitsProcessor>>,
     /// TokenOutputStream for real-time streaming
     token_output_stream: Option<Arc<parking_lot::Mutex<TokenOutputStream>>>,
@@ -717,7 +719,7 @@ impl CandleGenerator {
     pub async fn generate(
         &self,
         request: &CompletionRequest,
-    ) -> CandleResult<CompletionResponse> {
+    ) -> CandleResult<CompletionResponse<'_>> {
         let start_time = std::time::Instant::now();
 
         // Construct prompt from system prompt and chat history

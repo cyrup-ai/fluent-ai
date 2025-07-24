@@ -28,6 +28,7 @@ pub struct GumbelSoftmaxProcessor {
     /// Cached inverse temperature for efficiency
     inv_temperature: f32,
     /// Device for tensor operations
+    #[allow(dead_code)] // Reserved for future device-specific Gumbel noise generation
     device: Device,
 }
 
@@ -194,7 +195,7 @@ impl GumbelSoftmaxProcessor {
 
         // Create zeros tensor
         let shape = candle_core::Shape::from_dims(&output_shape);
-        let mut one_hot = Tensor::zeros(shape, DType::F32, &self.device)
+        let mut _one_hot = Tensor::zeros(shape, DType::F32, &self.device)
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
 
         // Set appropriate indices to 1.0

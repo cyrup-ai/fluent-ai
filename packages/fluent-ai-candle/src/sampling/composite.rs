@@ -19,8 +19,10 @@ pub struct CompositeProcessor {
     /// Chain of processors to execute in sequence
     processors: Vec<Box<dyn LogitsProcessor>>,
     /// Cached identity status for optimization
+    #[allow(dead_code)] // Reserved for future identity processor optimization
     is_identity_cached: bool,
     /// Name for debugging and metrics
+    #[allow(dead_code)] // Reserved for future processor debugging and telemetry
     name: String,
 }
 
@@ -99,11 +101,12 @@ impl CompositeProcessor {
     }
 
     /// Execute all processors in sequence with comprehensive error handling
+    #[allow(dead_code)] // Part of CompositeProcessor internal API for future use
     fn execute_chain(
-        &self,
+        &mut self,
         logits: &mut Tensor,
-        token_ids: &[u32],
-        position: usize,
+        _token_ids: &[u32],
+        _position: usize,
     ) -> Result<(), SamplingError> {
         // Early return for identity case
         if self.is_identity_cached {
@@ -111,7 +114,7 @@ impl CompositeProcessor {
         }
 
         // Execute each processor in sequence
-        for (i, processor) in self.processors.iter().enumerate() {
+        for (i, processor) in self.processors.iter_mut().enumerate() {
             // Skip identity processors for performance
             if processor.is_identity() {
                 continue;
@@ -161,7 +164,7 @@ impl CompositeProcessor {
             })?;
 
             // Validate tensor integrity after each processor
-            if let Err(validation_error) = self.validate_tensor_integrity(logits) {
+            if let Err(validation_error) = Self::validate_tensor_integrity(logits) {
                 return Err(SamplingError::ProcessorChainError(format!(
                     "Tensor validation failed after processor {}: {}",
                     i, validation_error
@@ -174,7 +177,8 @@ impl CompositeProcessor {
 
     /// Validate tensor integrity between processor executions
     #[inline(always)]
-    fn validate_tensor_integrity(&self, logits: &Tensor) -> Result<(), String> {
+    #[allow(dead_code)] // Part of CompositeProcessor internal API for future validation
+    fn validate_tensor_integrity(logits: &Tensor) -> Result<(), String> {
         // Check tensor dimensions
         let shape = logits.shape();
         if shape.dims().is_empty() || shape.elem_count() == 0 {
@@ -318,7 +322,9 @@ impl CompositeProcessorBuilder {
 /// applying independent transformations that can be merged.
 #[derive(Debug)]
 pub struct ParallelCompositeProcessor {
+    #[allow(dead_code)] // Reserved for future parallel processing implementation
     processors: Vec<Box<dyn LogitsProcessor>>,
+    #[allow(dead_code)] // Reserved for future parallel merge strategy implementation
     merge_strategy: MergeStrategy,
 }
 

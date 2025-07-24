@@ -116,6 +116,12 @@ impl ModelRegistry {
         let models = self.models.read().map_err(|_| RegistryError::LockError)?;
         Ok(models.is_empty())
     }
+    
+    /// Find all models (returning all registered models)
+    pub fn find_all(&self) -> Result<Vec<Arc<dyn Model>>, RegistryError> {
+        let models = self.models.read().map_err(|_| RegistryError::LockError)?;
+        Ok(models.values().cloned().collect())
+    }
 }
 
 impl Default for ModelRegistry {
@@ -170,4 +176,17 @@ pub fn list_models() -> Result<Vec<String>, RegistryError> {
 /// Check if a model exists in the global registry
 pub fn model_exists(name: &str) -> Result<bool, RegistryError> {
     global_registry().contains(name)
+}
+
+impl Clone for ModelRegistry {
+    fn clone(&self) -> Self {
+        // Clone the data from the RwLocks
+        let models = self.models.read().unwrap().clone();
+        let info = self.info.read().unwrap().clone();
+        
+        Self {
+            models: RwLock::new(models),
+            info: RwLock::new(info),
+        }
+    }
 }

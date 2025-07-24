@@ -222,14 +222,21 @@ impl crate::types::CandleCompletionModel for AgentCompletionModel {
     ) -> fluent_ai_async::AsyncStream<crate::types::CandleCompletionChunk> {
         let _agent = self.agent.clone();
         let _params = params.clone();
+        let prompt_owned = prompt.to_string(); // Convert to owned string
 
         AsyncStream::with_channel(move |sender| {
             // TODO: Replace with proper streams-only completion
             // For now, send default chunk to maintain compilation
-            let default_chunk = crate::types::CandleCompletionChunk::Complete {
-                text: format!("{:?}", prompt),
+            let default_chunk = crate::types::CandleCompletionChunk {
+                index: 0,
+                delta: crate::types::CandleStreamingDelta {
+                    role: Some("assistant".to_string()),
+                    content: Some(format!("{:?}", prompt_owned)), // Use owned string
+                    function_call: None,
+                    tool_calls: None,
+                },
                 finish_reason: Some(crate::types::CandleFinishReason::Stop),
-                usage: None,
+                logprobs: None,
             };
             let _ = sender.try_send(default_chunk);
         })

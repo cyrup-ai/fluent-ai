@@ -49,6 +49,26 @@ use safetensors::SafeTensors;
 
 use crate::error::{CandleError, CandleResult as Result};
 
+/// Convert safetensors Dtype to candle DType
+fn convert_dtype(dtype: safetensors::Dtype) -> DType {
+    match dtype {
+        safetensors::Dtype::BOOL => DType::U8, // Candle doesn't have native bool, use U8
+        safetensors::Dtype::U8 => DType::U8,
+        safetensors::Dtype::I8 => DType::I64, // Candle doesn't have I8, use I64
+        safetensors::Dtype::U16 => DType::U32, // Candle doesn't have U16, use U32
+        safetensors::Dtype::I16 => DType::I64, // Candle doesn't have I16, use I64
+        safetensors::Dtype::U32 => DType::U32,
+        safetensors::Dtype::I32 => DType::I64, // Candle doesn't have I32, use I64
+        safetensors::Dtype::U64 => DType::U32, // Candle doesn't have U64, use U32
+        safetensors::Dtype::I64 => DType::I64,
+        safetensors::Dtype::F16 => DType::F16,
+        safetensors::Dtype::BF16 => DType::BF16,
+        safetensors::Dtype::F32 => DType::F32,
+        safetensors::Dtype::F64 => DType::F64,
+        _ => DType::F32, // Default fallback
+    }
+}
+
 /// Maximum tensor name length for stack allocation
 const MAX_TENSOR_NAME_LEN: usize = 256;
 
@@ -59,16 +79,23 @@ const MAX_TENSORS: usize = 2048;
 const MAX_CONFIG_ENTRIES: usize = 128;
 
 /// Maximum file paths for sharded models
+#[allow(dead_code)] // Reserved for future sharded model loading validation
 const MAX_FILE_PATHS: usize = 32;
 
 /// Cache line size for alignment
+#[allow(dead_code)] // Reserved for future memory alignment optimizations
 const CACHE_LINE_SIZE: usize = 64;
 
 /// Static error messages (zero allocation)
+#[allow(dead_code)] // Error message constants for future error handling
 const ERR_TENSOR_NOT_FOUND: &str = "Tensor not found";
+#[allow(dead_code)] // Error message constants for future error handling
 const ERR_INVALID_SHAPE: &str = "Invalid tensor shape";
+#[allow(dead_code)] // Error message constants for future error handling
 const ERR_DEVICE_MISMATCH: &str = "Device mismatch";
+#[allow(dead_code)] // Error message constants for future error handling
 const ERR_MODEL_LOADING: &str = "Model loading failed";
+#[allow(dead_code)] // Error message constants for future error handling
 const ERR_METADATA_PARSING: &str = "Metadata parsing failed";
 
 /// Ultra-compact tensor name (stack allocated)
@@ -88,6 +115,7 @@ enum TensorLoadStrategy {
     /// Memory-map the tensor data
     MemoryMapped,
     /// Lazy loading with on-demand creation
+    #[allow(dead_code)] // Reserved for future lazy loading implementation
     Lazy,
 }
 
@@ -95,16 +123,22 @@ enum TensorLoadStrategy {
 #[derive(Debug, Clone)]
 struct TensorMetadata {
     /// Tensor name
+    #[allow(dead_code)] // Tensor metadata fields for future safetensors loading
     name: String,
     /// Tensor shape
+    #[allow(dead_code)] // Tensor metadata fields for future safetensors loading
     shape: Vec<usize>,
     /// Data type
+    #[allow(dead_code)] // Tensor metadata fields for future safetensors loading
     dtype: DType,
     /// Byte offset in file
+    #[allow(dead_code)] // Tensor metadata fields for future safetensors loading
     offset: usize,
     /// Byte length in file
+    #[allow(dead_code)] // Tensor metadata fields for future safetensors loading
     length: usize,
     /// Loading strategy
+    #[allow(dead_code)] // Tensor metadata fields for future safetensors loading
     strategy: TensorLoadStrategy,
 }
 
@@ -834,9 +868,9 @@ impl<'a> CandleVarBuilder<'a> {
             metadata: ModelMetadata::new(),
             stats: LoadingStats::new(),
             created_at_nanos: LoadingStats::current_time_nanos(),
-            safetensors: None,
+            safetensors_data: None,
             mmap: None,
-            tensor_metadata: Arc::new(HashMap::new()),
+            tensor_metadata: HashMap::new(),
             tensor_cache: SkipMap::new(),
             file_path: None,
             config,
@@ -861,7 +895,7 @@ impl<'a> CandleVarBuilder<'a> {
                     shape,
                     dtype,
                     offset: 0, // Not applicable for in-memory tensors
-                    length: num_bytes as u64,
+                    length: num_bytes,
                     strategy: TensorLoadStrategy::Immediate,
                 },
             );
@@ -892,8 +926,12 @@ impl<'a> CandleVarBuilder<'a> {
             .map_err(|e| CandleError::Io(format!("Failed to mmap file: {}", e)))?;
         let mmap = Arc::new(mmap);
 
-        // Parse safetensors
-        let safetensors = SafeTensors::deserialize(mmap.as_ref())
+        // Parse safetensors - we need to ensure the mmap data is valid for 'static
+        // Since we keep the mmap Arc in the builder, we can safely cast the lifetime
+        let mmap_data: &'static [u8] = unsafe { 
+            std::mem::transmute::<&[u8], &'static [u8]>(&**mmap) 
+        };
+        let safetensors = SafeTensors::deserialize(mmap_data)
             .map_err(|e| CandleError::Msg(format!("Invalid safetensors file: {}", e)))?;
         let safetensors_arc = Arc::new(safetensors);
 
@@ -905,10 +943,9 @@ impl<'a> CandleVarBuilder<'a> {
                 TensorMetadata {
                     name: name.to_string(),
                     shape: tensor_info.shape().to_vec(),
-                    dtype: tensor_info.dtype(),
-                    offset: tensor_info.data_offsets().start,
-                    length: (tensor_info.data_offsets().end - tensor_info.data_offsets().start)
-                        as u64,
+                    dtype: convert_dtype(tensor_info.dtype()),
+                    offset: 0, // TODO: Get actual offset from tensor_info
+                    length: tensor_info.data().len(),
                     strategy: if config.use_memory_mapping() {
                         TensorLoadStrategy::MemoryMapped
                     } else {
@@ -922,20 +959,29 @@ impl<'a> CandleVarBuilder<'a> {
         let inner = VarBuilder::from_tensors(
             safetensors_arc
                 .tensors()
-                .map(|(name, _)| (name.to_string(), safetensors_arc.tensor(name).unwrap()))
+                .into_iter()
+                .map(|(name, tensor_info)| {
+                    let tensor = Tensor::from_raw_buffer(
+                        tensor_info.data(),
+                        convert_dtype(tensor_info.dtype()),
+                        tensor_info.shape(),
+                        &config.device,
+                    ).unwrap();
+                    (name.to_string(), tensor)
+                })
                 .collect(),
             config.dtype,
             &config.device,
-        )?;
+        );
 
         let mut builder = Self::new_internal(inner, config);
-        builder.safetensors = Some(safetensors_arc);
-        builder.mmap = Some(mmap);
-        builder.tensor_metadata = Arc::new(tensor_metadata);
+        builder.safetensors_data = Some(safetensors_arc);
+        builder.mmap = Some(mmap.clone());
+        builder.tensor_metadata = tensor_metadata;
         builder.file_path = Some(path.as_ref().to_path_buf());
 
         // Populate metadata
-        builder.populate_metadata_safe(&builder.inner, &mut builder.metadata)?;
+        Self::populate_metadata_safe(&builder.inner, &mut builder.metadata)?;
 
         Ok(builder)
     }
@@ -945,14 +991,14 @@ impl<'a> CandleVarBuilder<'a> {
         tensors: std::collections::HashMap<String, Tensor>,
         config: VarBuilderConfig,
     ) -> Result<Self> {
-        let inner = VarBuilder::from_tensors(tensors.clone(), config.dtype, &config.device)?;
+        let inner = VarBuilder::from_tensors(tensors.clone(), config.dtype, &config.device);
         let tensor_metadata = Self::create_tensor_metadata(&tensors);
 
         let mut builder = Self::new_internal(inner, config);
-        builder.tensor_metadata = Arc::new(tensor_metadata);
+        builder.tensor_metadata = tensor_metadata;
 
         // Populate metadata from tensors
-        builder.populate_metadata_from_tensors(&tensors, &mut builder.metadata)?;
+        Self::populate_metadata_from_tensors(&tensors, &mut builder.metadata)?;
 
         Ok(builder)
     }

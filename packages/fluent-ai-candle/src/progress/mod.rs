@@ -82,15 +82,23 @@ const MAX_CONCURRENT_SESSIONS: usize = 256;
 const PROGRESS_BATCH_SIZE: usize = 32;
 
 /// Metrics update interval (nanoseconds)
+#[allow(dead_code)] // Reserved for future metrics update scheduling
 const METRICS_UPDATE_INTERVAL_NANOS: u64 = 10_000_000; // 10ms
 
 /// Static stage names (zero allocation)
+#[allow(dead_code)] // Stage names for future progress reporting implementation
 const STAGE_MODEL_LOADING: &str = "Loading model";
+#[allow(dead_code)] // Stage names for future progress reporting implementation
 const STAGE_WEIGHT_LOADING: &str = "Loading weights";
+#[allow(dead_code)] // Stage names for future progress reporting implementation
 const STAGE_QUANTIZATION: &str = "Weight quantization";
+#[allow(dead_code)] // Stage names for future progress reporting implementation
 const STAGE_CACHE_INIT: &str = "Cache initialization";
+#[allow(dead_code)] // Stage names for future progress reporting implementation
 const STAGE_TOKENIZATION: &str = "Tokenization";
+#[allow(dead_code)] // Stage names for future progress reporting implementation
 const STAGE_GENERATION: &str = "Token generation";
+#[allow(dead_code)] // Stage names for future progress reporting implementation
 const STAGE_COMPLETION: &str = "Completion";
 
 /// Ultra-compact stage name (stack allocated)
@@ -1025,6 +1033,7 @@ pub struct ProgressHubConfig {
     enable_metrics: bool,
 
     /// Enable session tracking
+    #[allow(dead_code)] // Reserved for future session tracking functionality
     enable_sessions: bool,
 }
 
@@ -1270,6 +1279,7 @@ struct SessionInfo {
     session_id: SessionId,
 
     /// Session start time
+    #[allow(dead_code)] // Used in duration calculations but flagged incorrectly by compiler
     start_time_nanos: u64,
 
     /// Last update time

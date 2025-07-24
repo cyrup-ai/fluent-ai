@@ -89,12 +89,15 @@ const MAX_ATTENTION_HEADS: usize = 128;
 const MAX_CACHE_ENTRIES_PER_HEAD: usize = 2048;
 
 /// Maximum sequence length for caching
+#[allow(dead_code)] // Reserved for future sequence length validation
 const MAX_SEQUENCE_LENGTH: usize = 32768;
 
 /// Cache line size for alignment
+#[allow(dead_code)] // Reserved for future memory alignment optimizations
 const CACHE_LINE_SIZE: usize = 64;
 
 /// Memory pool block size (optimized for tensors)
+#[allow(dead_code)] // Reserved for future memory pool implementation
 const MEMORY_POOL_BLOCK_SIZE: usize = 4096;
 
 /// Maximum memory pools for different tensor sizes
@@ -673,18 +676,21 @@ impl MemoryPool {
     }
 
     /// Get block size
+    #[allow(dead_code)] // Part of MemoryPool API for future use
     #[inline(always)]
     fn block_size(&self) -> usize {
         self.block_size
     }
 
     /// Get available blocks
+    #[allow(dead_code)] // Part of MemoryPool API for future use
     #[inline(always)]
     fn available_blocks(&self) -> usize {
         self.available_blocks.load(Ordering::Relaxed)
     }
 
     /// Try to allocate a block
+    #[allow(dead_code)] // Part of MemoryPool API for future use
     #[inline(always)]
     fn try_allocate(&self) -> bool {
         let available = self.available_blocks.load(Ordering::Acquire);
@@ -703,6 +709,7 @@ impl MemoryPool {
     }
 
     /// Deallocate a block
+    #[allow(dead_code)] // Part of MemoryPool API for future use
     #[inline(always)]
     fn deallocate(&self) {
         self.available_blocks.fetch_add(1, Ordering::Release);

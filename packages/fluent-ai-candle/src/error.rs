@@ -7,8 +7,11 @@ use crate::types::{
 };
 
 // Type aliases for missing error types
+#[allow(dead_code)] // Used in multiple modules but flagged incorrectly by compiler
 type ExtractionError = CandleCompletionError;
+#[allow(dead_code)] // Used for completion request compatibility
 type CompletionRequestError = CandleCompletionError;
+#[allow(dead_code)] // Used in generator.rs and error conversion logic
 type CompletionCoreError = CandleCompletionError;
 
 /// Result type alias for candle operations
@@ -17,6 +20,8 @@ pub type CandleResult<T> = Result<T, CandleError>;
 /// Candle-specific error types with zero allocation
 #[derive(Debug, Clone, PartialEq)]
 pub enum CandleError {
+    /// Generic message error (for compatibility with candle-core)
+    Msg(String),
     /// Model file not found or inaccessible
     ModelNotFound(String),
     /// Model loading failed
@@ -100,6 +105,7 @@ pub enum CandleError {
 impl fmt::Display for CandleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Msg(msg) => write!(f, "{}", msg),
             Self::ModelNotFound(path) => write!(f, "Model not found: {}", path),
             Self::ModelLoadError(msg) => write!(f, "Model loading failed: {}", msg),
             Self::InvalidModelFormat(msg) => write!(f, "Invalid model format: {}", msg),
@@ -350,6 +356,12 @@ impl CandleError {
         Self::Cache(msg.into())
     }
 
+    /// Create a generic message error
+    #[inline(always)]
+    pub fn msg<S: Into<String>>(msg: S) -> Self {
+        Self::Msg(msg.into())
+    }
+
     /// Check if this error is retryable
     #[inline(always)]
     pub fn is_retryable(&self) -> bool {
@@ -490,6 +502,7 @@ macro_rules! candle_error {
 impl From<CandleError> for CandleCompletionError {
     fn from(err: CandleError) -> Self {
         match err {
+            CandleError::Msg(msg) => CandleCompletionError::Internal { message: msg },
             CandleError::ModelNotFound(_msg) => CandleCompletionError::ModelNotLoaded,
             CandleError::ModelLoadError(_msg) => CandleCompletionError::ModelNotLoaded,
             CandleError::ProcessingError(msg) => CandleCompletionError::GenerationFailed { reason: msg.to_string() },

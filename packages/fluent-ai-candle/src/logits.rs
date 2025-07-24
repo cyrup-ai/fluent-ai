@@ -27,10 +27,12 @@ pub use crate::processing::{
 };
 
 /// Maximum vocabulary size for zero-allocation processing
+#[allow(dead_code)] // Reserved for future vocabulary size validation
 const MAX_VOCAB_SIZE: usize = 128000;
 /// Maximum top-k value for bounded sampling
 const MAX_TOP_K: usize = 100;
 /// Maximum sequence length for bounded context tracking
+#[allow(dead_code)] // Reserved for future sequence length validation
 const MAX_SEQUENCE_LENGTH: usize = 8192;
 
 /// Legacy sampling configuration - DEPRECATED
@@ -140,7 +142,7 @@ impl LogitsSampler {
 
         // Create processing engine with vocab_size
         let engine = ProcessingEngine::new(vocab_size)
-            .map_err(|e| CandleError::configuration(&e.to_string()))?;
+            .map_err(|_| CandleError::configuration("Failed to create processing engine"))?;
 
         // TODO: Configure engine with unified processor from config
         // let processor = config.to_unified_processor()?;
@@ -156,14 +158,14 @@ impl LogitsSampler {
     pub fn process_logits(&mut self, logits: &mut [f32]) -> CandleResult<()> {
         self.engine
             .process_logits(logits)
-            .map_err(|e| CandleError::generation_failed(&e.to_string()))
+            .map_err(|_| CandleError::generation_failed("Logits processing failed"))
     }
 
     /// Add token to context after generation - DEPRECATED
     #[inline(always)]
     pub fn add_generated_token(&mut self, token: u32) -> CandleResult<()> {
         self.engine.add_token(token)
-            .map_err(|e| CandleError::configuration(&e.to_string()))?;
+            .map_err(|_| CandleError::configuration("Failed to add token to context"))?;
         Ok(())
     }
 
@@ -187,7 +189,7 @@ impl LogitsSampler {
         // Convert to unified processor
         let processor = config
             .to_unified_processor()
-            .map_err(|e| CandleError::configuration(&e.to_string()))?;
+            .map_err(|_| CandleError::configuration("Failed to add token to context"))?;
 
         self.engine.set_processor(processor);
         self.config = config;

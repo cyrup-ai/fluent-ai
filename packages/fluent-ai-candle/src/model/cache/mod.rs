@@ -55,6 +55,7 @@ impl CacheKey {
         (self.position_start, self.position_end)
     }
 
+    #[allow(dead_code)] // Part of CacheKey API for future memory monitoring
     #[inline(always)]
     fn memory_footprint(&self) -> usize {
         std::mem::size_of::<Self>()

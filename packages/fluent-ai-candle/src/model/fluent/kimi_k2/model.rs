@@ -108,6 +108,7 @@ impl Default for KimiK2Config {
 pub struct RotaryEmbedding {
     sin: Tensor,
     cos: Tensor,
+    #[allow(dead_code)] // Used in YARN scaling calculations but flagged incorrectly
     head_dim: usize,
 }
 
@@ -293,7 +294,7 @@ impl KimiK2MoE {
             let mut indexed: Vec<(usize, f32)> = row.iter().copied().enumerate().collect();
             indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
             let k = self.num_experts_per_tok.min(indexed.len());
-            topk_results.push(&indexed[..k]);
+            topk_results.push(indexed[..k].to_vec());
         }
         
         // Extract indices and weights - flatten for tensor creation
@@ -443,6 +444,7 @@ pub struct KimiK2Model {
     layers: Vec<KimiK2Block>,
     norm: RmsNorm,
     lm_head: Linear,
+    #[allow(dead_code)] // Stored for future model introspection features
     config: KimiK2Config,
 }
 

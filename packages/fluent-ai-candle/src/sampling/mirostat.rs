@@ -38,12 +38,15 @@ use crate::processing::error::{ProcessingError, ProcessingResult};
 const MAX_PERPLEXITY_HISTORY: usize = 32;
 
 /// Maximum vocabulary size for token probability arrays
+#[allow(dead_code)] // Reserved for future vocabulary size validation
 const MAX_VOCAB_SIZE: usize = 32768;
 
 /// Minimum temperature to prevent numerical instability
+#[allow(dead_code)] // Reserved for future temperature bounds validation
 const MIN_TEMPERATURE: f32 = 1e-8;
 
 /// Maximum temperature to prevent overflow
+#[allow(dead_code)] // Reserved for future temperature bounds validation
 const MAX_TEMPERATURE: f32 = 100.0;
 
 /// Tau adjustment learning rate bounds
@@ -410,10 +413,10 @@ impl MirostatProcessor {
         let threshold = 1.0 / (tau * probabilities.len() as f32);
         
         // Suppress probabilities below threshold
-        let mut total_suppressed = 0.0f32;
+        let mut _total_suppressed = 0.0f32;
         for prob in probabilities.iter_mut() {
             if *prob < threshold {
-                total_suppressed += *prob;
+                _total_suppressed += *prob;
                 *prob = 0.0;
             }
         }
@@ -479,7 +482,7 @@ impl MirostatProcessor {
 }
 
 impl LogitsProcessor for MirostatProcessor {
-    fn process_logits(&mut self, logits: &mut [f32], context: &ProcessingContext) -> ProcessingResult<()> {
+    fn process_logits(&mut self, logits: &mut [f32], _context: &ProcessingContext) -> ProcessingResult<()> {
         // Apply Mirostat algorithm directly to logits
         if logits.is_empty() {
             return Err(ProcessingError::validation("Empty logits array"));

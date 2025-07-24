@@ -16,12 +16,11 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use strsim;
 
-use crate::model::error::ModelError;
-use crate::types::CandleCompletionResult as Result;
+use crate::types::candle_model::error::ModelError;
+use crate::types::{CandleCompletionResult as Result};
 use crate::types::{CandleModelInfo as ModelInfo, CandleModel};
-use crate::model::registry::ModelRegistry;
+use crate::types::candle_model::registry::{ModelRegistry, RegisteredModel};
 // Removed unused import: strsim::jaro_winkler
-use crate::types::candle_model::registry::RegisteredModel;
 
 /// A pattern that can be used to match model names
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -423,7 +422,7 @@ impl ModelResolver {
             Err(ModelError::ModelNotFound {
                 provider: provider.unwrap_or("any").to_string().into(),
                 name: model_name.to_string().into(),
-            })
+            }.into())
         }
     }
 }
@@ -437,7 +436,7 @@ mod tests {
         info: &'static ModelInfo,
     }
 
-    impl Model for TestModel {
+    impl crate::types::Model for TestModel {
         fn info(&self) -> &'static ModelInfo {
             self.info
         }
@@ -470,7 +469,7 @@ mod tests {
 
         // Add a resolution rule
         resolver.add_rule(ModelResolutionRule {
-            pattern: CandleModelPattern::Pattern("gpt-*".to_string()),
+            pattern: ModelPattern::Pattern("gpt-*".to_string()),
             provider: "openai".to_string(),
             target: "gpt-3.5-turbo".to_string(),
             priority: 10,

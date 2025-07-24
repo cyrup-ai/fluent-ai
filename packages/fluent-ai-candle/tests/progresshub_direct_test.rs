@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-use fluent_ai_candle::{create_client, create_download_config, Backend};
+use fluent_ai_candle::{Backend, create_client, create_download_config};
 
 #[tokio::test]
 async fn test_direct_progresshub_client_creation() {

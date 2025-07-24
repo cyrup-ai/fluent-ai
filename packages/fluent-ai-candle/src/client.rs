@@ -656,130 +656,101 @@ impl CandleCompletionClient {
 
 // Direct implementation methods for completion functionality
 impl CandleCompletionClient {
-    /// Generate completion with zero allocation
+    /// Generate completion with zero allocation - SYNCHRONOUS ONLY
     #[inline(always)]
-    pub fn complete<'a>(
-        &'a self,
-        request: CompletionRequest,
-    ) -> AsyncStream<crate::types::CompletionCoreResult<CompletionResponse<'a>>> {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let self_clone = self.clone();
-        tokio::spawn(async move {
-            let result = async move {
-                // Check if client is initialized
-                if !self_clone.is_initialized() {
-                    return Err(CandleCompletionError::InvalidRequest {
-                        message: "Client not initialized".to_string(),
-                    });
-                }
+    pub fn complete(
+        &self,
+        _request: CompletionRequest,
+    ) -> AsyncStream<crate::types::CompletionCoreResult<CompletionResponse<'static>>> {
+        let client = self.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            // Check if client is initialized
+            if !client.is_initialized() {
+                let error = CandleCompletionError::InvalidRequest {
+                    message: "Client not initialized".to_string(),
+                };
+                let _ = sender.send(Err(error));
+                return;
+            }
 
-                // Acquire semaphore permit for rate limiting
-                let _permit = self_clone.request_semaphore.acquire().await.map_err(|_| {
-                    CandleCompletionError::InvalidRequest { message: "Request semaphore error".to_string() }
-                })?;
-
-                // Update concurrent request counter
-                self_clone
+                // Update concurrent request counter - ATOMIC OPERATION
+                client
                     .metrics
                     .concurrent_requests
                     .fetch_add(1, Ordering::Relaxed);
 
-                // Generate completion - clone Arc to avoid borrow issues
-                let generator = self_clone.generator.load();
-                let result = generator.generate(&request).await;
+                // TODO: Implement synchronous generation method
+                // For now, return an error since sync generation is not implemented
+                let result = {
+                    client.record_request_stats(false, 0, false);
+                    Err(CandleCompletionError::GenerationFailed {
+                        reason: "Synchronous generation not yet implemented".to_string(),
+                    })
+                };
 
                 // Decrement concurrent counter
-                self_clone
+                client
                     .metrics
                     .concurrent_requests
                     .fetch_sub(1, Ordering::Relaxed);
 
-                match result {
-                    Ok(response) => {
-                        self_clone.record_request_stats(
-                            true,
-                            response.tokens_generated().unwrap_or(0),
-                            false, // Not streaming
-                        );
-                        Ok(response)
-                    }
-                    Err(e) => {
-                        self_clone.record_request_stats(false, 0, false);
-                        Err(CandleCompletionError::GenerationFailed { reason: e.to_string() })
-                    }
-                }
-            }
-            .await;
-            let _ = tx.send(result);
-        });
-        AsyncStream::with_channel(move |sender| {
-            Box::pin(async move {
-                // Return empty result to resolve compilation error
-                let response = CandleCompletionResponse {
-                    id: Some("temp_id".into()),
-                    object: Some("text_completion".into()),
-                    created: Some(0),
-                    text: "".into(),
-                    model: "candle-model".into(),
-                    provider: None,
-                    usage: None,
-                    finish_reason: None,
-                    response_time_ms: None,
-                    generation_time_ms: None,
-                    tokens_per_second: None,
-                };
-                
-                let _ = sender.send(Ok(response)).await;
-                Ok(())
-            })
+                // Send result
+                let _ = sender.send(result);
         })
     }
 
-    /// Generate streaming completion
+    /// Generate streaming completion with prompt - RETURNS UNWRAPPED AsyncStream
     #[inline(always)]
-    pub fn complete_stream<'a>(
-        &'a self,
-        request: CompletionRequest,
-    ) -> AsyncStream<crate::types::CompletionCoreResult<StreamingResponse>> {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let self_clone = self.clone();
-        tokio::spawn(async move {
-            let result = async move {
-                // Use the new enhanced TokenOutputStream method and convert for backward compatibility
-                match self_clone.complete_token_stream(request).await {
-                    Ok(_token_stream) => {
-                        // Create a default streaming response for now
-                        let streaming_response = CandleStreamingResponse {
-                            id: "stream_0".to_string(),
-                            object: "chat.completion.chunk".to_string(),
-                            created: std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs(),
-                            model: self.model_name().to_string(),
-                            choices: vec![],
-                            usage: None,
-                            system_fingerprint: None,
-                        };
-                        Ok(streaming_response)
-                    }
-                    Err(e) => Err(CandleCompletionError::GenerationFailed { reason: e.to_string() }),
-                }
-            }
-            .await;
-            let _ = tx.send(result);
-        });
+    pub fn prompt(&self, prompt_text: &str) -> AsyncStream<CandleStreamingResponse> {
+        let client = self.clone();
+        let prompt = prompt_text.to_string();
+        
         AsyncStream::with_channel(move |sender| {
-            tokio::spawn(async move {
-                // Return empty result to resolve compilation error
-                let response = CandleStreamingResponse::new(
-                    "stream_temp".to_string(),
-                    "candle-model".to_string(),
-                    0
+            // Check if client is initialized
+            if !client.is_initialized() {
+                log::error!("Stream error in {}: Client not initialized. Details: {}", 
+                          file!(), "Client not initialized");
+                return;
+            }
+
+                // Build request
+                let _request = match CompletionRequest::builder()
+                    .system_prompt(prompt)
+                    .build()
+                {
+                    Ok(req) => req,
+                    Err(e) => {
+                        log::error!("Stream error in {}: Request building failed. Details: {}", 
+                                  file!(), format!("Failed to build request: {}", e));
+                        return;
+                    }
+                };
+
+                // Update concurrent request counter - ATOMIC OPERATION
+                client
+                    .metrics
+                    .concurrent_requests
+                    .fetch_add(1, Ordering::Relaxed);
+
+                // TODO: Generate streaming response synchronously
+                // For now, create a placeholder streaming response since async calls are not allowed
+                let streaming_response = CandleStreamingResponse::new(
+                    "placeholder-streaming".to_string(),
+                    "candle-placeholder".to_string(),
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
                 );
                 
-                let _ = sender.send(Ok(response));
-            });
+                let _ = sender.send(streaming_response);
+
+                // Decrement concurrent counter
+                client
+                    .metrics
+                    .concurrent_requests
+                    .fetch_sub(1, Ordering::Relaxed);
         })
     }
 

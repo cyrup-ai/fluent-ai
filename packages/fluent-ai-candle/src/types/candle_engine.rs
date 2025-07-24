@@ -9,7 +9,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::types::{CandleCompletionRequest, CandleCompletionResponse};
+use crate::types::{CandleCompletionRequest, CandleCompletionResponse, ZeroOneOrMany};
+use crate::model::ValidationError;
 use fluent_ai_async::{AsyncStream, AsyncTask, spawn_task};
 
 /// Handle errors in streaming context without panicking
@@ -56,6 +57,13 @@ pub enum EngineError {
 
 /// Result type for engine operations
 pub type EngineResult<T> = Result<T, EngineError>;
+
+/// Convert ValidationError to EngineError
+impl From<ValidationError> for EngineError {
+    fn from(_err: ValidationError) -> Self {
+        EngineError::InvalidInput
+    }
+}
 
 /// Engine configuration with owned strings allocated once at creation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -261,8 +269,8 @@ impl Engine {
         request: CandleCompletionRequest,
     ) -> AsyncTask<EngineResult<CandleCompletionResponse<'static>>> {
         // Validate request first
-        if let Err(e) = request.validate() {
-            return spawn_task(move || Err(e));
+        if let Err(_e) = request.validate() {
+            return spawn_task(move || Err(EngineError::InvalidInput));
         }
 
         // Atomic operations for metrics (lock-free)
@@ -280,15 +288,19 @@ impl Engine {
         let endpoint = self.config.endpoint_url.clone();
 
         // Convert borrowed request data to owned for async processing
-        let prompt = request.prompt.to_string();
-        let system_prompt = request.system_prompt.map(|s| s.to_string());
-        let history: Vec<String> = request
-            .conversation_history
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
-        let tools: Vec<String> = request.tools.iter().map(|s| s.to_string()).collect();
-        let metadata = request.metadata.map(|s| s.to_string());
+        let prompt = request.system_prompt.clone();
+        let system_prompt = Some(request.system_prompt.clone());
+        let history: Vec<String> = match &request.chat_history {
+            ZeroOneOrMany::None => Vec::new(),
+            ZeroOneOrMany::One(msg) => vec![msg.content.clone()],
+            ZeroOneOrMany::Many(msgs) => msgs.iter().map(|m| m.content.clone()).collect(),
+        };
+        let tools: Vec<String> = match &request.tools {
+            ZeroOneOrMany::None => Vec::new(),
+            ZeroOneOrMany::One(tool) => vec![format!("{:?}", tool)], // ToolDefinition doesn't have Display
+            ZeroOneOrMany::Many(tools) => tools.iter().map(|t| format!("{:?}", t)).collect(),
+        };
+        let metadata = request.additional_params.as_ref().map(|v| v.to_string());
 
         // We'll update metrics after the task completes, not during
 
@@ -377,15 +389,19 @@ impl Engine {
         let endpoint = self.config.endpoint_url.clone();
 
         // Convert borrowed request data to owned for async processing
-        let prompt = request.prompt.to_string();
-        let system_prompt = request.system_prompt.map(|s| s.to_string());
-        let history: Vec<String> = request
-            .conversation_history
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
-        let tools: Vec<String> = request.tools.iter().map(|s| s.to_string()).collect();
-        let metadata = request.metadata.map(|s| s.to_string());
+        let prompt = request.system_prompt.clone();
+        let system_prompt = Some(request.system_prompt.clone());
+        let history: Vec<String> = match &request.chat_history {
+            ZeroOneOrMany::None => Vec::new(),
+            ZeroOneOrMany::One(msg) => vec![msg.content.clone()],
+            ZeroOneOrMany::Many(msgs) => msgs.iter().map(|m| m.content.clone()).collect(),
+        };
+        let tools: Vec<String> = match &request.tools {
+            ZeroOneOrMany::None => Vec::new(),
+            ZeroOneOrMany::One(tool) => vec![format!("{:?}", tool)], // ToolDefinition doesn't have Display
+            ZeroOneOrMany::Many(tools) => tools.iter().map(|t| format!("{:?}", t)).collect(),
+        };
+        let metadata = request.additional_params.as_ref().map(|v| v.to_string());
 
         AsyncStream::with_channel(move |sender| {
             let mut completion_stream = Self::execute_completion_stream(

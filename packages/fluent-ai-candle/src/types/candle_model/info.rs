@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 // Removed unused import: smallvec::SmallVec
 use crate::model::error::ModelError;
-use crate::types::CandleCompletionResult as Result;
+use crate::types::{CandleCompletionResult as Result};
 
 /// Core metadata and capabilities for an AI model
 ///
@@ -201,20 +201,20 @@ impl ModelInfo {
         if self.provider_name.is_empty() {
             return Err(ModelError::InvalidConfiguration(
                 "provider_name cannot be empty".into(),
-            ));
+            ).into());
         }
 
         if self.name.is_empty() {
             return Err(ModelError::InvalidConfiguration(
                 "name cannot be empty".into(),
-            ));
+            ).into());
         }
 
         if let Some(max_input) = self.max_input_tokens {
             if max_input.get() == 0 {
                 return Err(ModelError::InvalidConfiguration(
                     "max_input_tokens cannot be zero".into(),
-                ));
+                ).into());
             }
         }
 
@@ -222,14 +222,14 @@ impl ModelInfo {
             if max_output.get() == 0 {
                 return Err(ModelError::InvalidConfiguration(
                     "max_output_tokens cannot be zero".into(),
-                ));
+                ).into());
             }
         }
 
         if self.supports_thinking && self.optimal_thinking_budget.is_none() {
             return Err(ModelError::InvalidConfiguration(
                 "optimal_thinking_budget must be set when supports_thinking is true".into(),
-            ));
+            ).into());
         }
 
         Ok(())
@@ -394,14 +394,13 @@ impl ProviderModels {
         if model.provider_name != self.provider_name {
             return Err(ModelError::InvalidConfiguration(
                 "model provider does not match collection provider".into(),
-            ));
+            ).into());
         }
 
         if self.models.iter().any(|m| m.name == model.name) {
             return Err(ModelError::ModelAlreadyExists {
-                provider: self.provider_name.into(),
-                name: model.name.into(),
-            });
+                name: format!("{}::{}", self.provider_name, model.name).into(),
+            }.into());
         }
 
         self.models.push(model);

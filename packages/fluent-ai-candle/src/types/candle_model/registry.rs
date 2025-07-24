@@ -11,7 +11,7 @@ use dashmap::{DashMap, DashSet};
 use once_cell::sync::Lazy;
 
 use crate::model::error::ModelError;
-use crate::types::CandleCompletionResult as Result;
+use crate::types::{CandleCompletionResult as Result};
 use crate::types::CandleModelInfo as ModelInfo;
 use crate::types::CandleModel;
 
@@ -103,9 +103,8 @@ impl ModelRegistry {
         // Check for duplicate model
         if provider_models.contains_key(model_name) {
             return Err(ModelError::ModelAlreadyExists {
-                provider: provider.into(),
-                name: model_name.into(),
-            });
+                name: format!("{}::{}", provider, model_name).into(),
+            }.into());
         }
 
         // Register the model
@@ -154,7 +153,7 @@ impl ModelRegistry {
         if handle.as_any().downcast_ref::<M>().is_none() {
             return Err(ModelError::InvalidConfiguration(
                 "model type does not match requested type".into(),
-            ));
+            ).into());
         }
 
         Ok(Some(RegisteredModel {
@@ -180,7 +179,7 @@ impl ModelRegistry {
             .ok_or_else(|| ModelError::ModelNotFound {
                 provider: provider.into(),
                 name: name.into(),
-            })
+            }.into())
     }
 
     /// Find all models of a specific type
@@ -242,7 +241,7 @@ impl ModelRegistry {
                 // For now, this method is not fully implemented due to Arc<T> conversion complexity
                 Err(ModelError::InvalidConfiguration(
                     format!("Model downcast for '{}' from provider '{}' requires additional implementation", name, provider).into()
-                ))
+                ).into())
             }
             None => Err(ModelError::InvalidConfiguration(
                 format!(
@@ -250,7 +249,7 @@ impl ModelRegistry {
                     name, provider
                 )
                 .into(),
-            )),
+            ).into()),
         }
     }
 
@@ -285,7 +284,7 @@ impl ModelRegistry {
         Err(ModelError::InvalidConfiguration(Cow::Owned(format!(
             "Boxed trait object conversion for model '{}' from provider '{}' requires additional implementation for ?Sized types",
             name, provider
-        ))))
+        ))).into())
     }
 
     /// Get a model as a specific trait object, returning an error if not found
@@ -308,7 +307,7 @@ impl ModelRegistry {
             .ok_or_else(|| ModelError::ModelNotFound {
                 provider: provider.into(),
                 name: name.into(),
-            })
+            }.into())
     }
 
     /// Get a model as a boxed trait object, returning an error if not found
@@ -331,7 +330,7 @@ impl ModelRegistry {
             .ok_or_else(|| ModelError::ModelNotFound {
                 provider: provider.into(),
                 name: name.into(),
-            })
+            }.into())
     }
 }
 

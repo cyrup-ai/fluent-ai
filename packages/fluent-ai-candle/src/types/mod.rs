@@ -16,7 +16,7 @@ pub use candle_chat::conversation::{CandleChat, Conversation, ConversationBuilde
 pub use candle_completion::{
     CompletionParams, CandleCompletionRequest, CompletionRequestBuilder,
     CompletionResponse, CandleStreamingResponse, CandleStreamingChoice,
-    CandleFinishReason, ToolDefinition, CandleCompletionError, 
+    CandleStreamingDelta, CandleFinishReason, ToolDefinition, CandleCompletionError, 
     CandleCompletionResult, CandleExtractionError, CandleExtractionResult
 };
 

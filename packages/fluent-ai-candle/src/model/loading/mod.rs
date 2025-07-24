@@ -372,11 +372,12 @@ impl ModelLoader {
     fn validate_model_compatibility(&self, metadata: &ModelMetadata) -> CandleResult<()> {
         // Check memory requirements
         if metadata.required_memory_bytes > self.memory_budget {
-            return Err(CandleError::configuration(&format!(
+            let error_msg = format!(
                 "Model requires {}MB but budget is {}MB",
                 metadata.required_memory_bytes / 1024 / 1024,
                 self.memory_budget / 1024 / 1024
-            )));
+            );
+            return Err(CandleError::model_loading(error_msg));
         }
 
         // Check quantization compatibility
@@ -385,10 +386,11 @@ impl ModelLoader {
                 .supported_quantizations
                 .contains(&self.quantization_type)
         {
-            return Err(CandleError::configuration(&format!(
+            let error_msg = format!(
                 "Quantization {:?} not supported for architecture {}",
                 self.quantization_type, metadata.architecture
-            )));
+            );
+            return Err(CandleError::model_loading(error_msg));
         }
 
         // Check model size limits
