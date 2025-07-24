@@ -61,8 +61,8 @@ impl CompletionParams {
     pub fn with_temperature(mut self, temperature: f64) -> ValidationResult<Self> {
         if !TEMPERATURE_RANGE.contains(&temperature) {
             return Err(ValidationError::InvalidRange {
-                field: "temperature".into(),
-                value: temperature.to_string(),
+                parameter: "temperature".into(),
+                actual: temperature.to_string(),
                 expected: format!(
                     "between {:.1} and {:.1}",
                     TEMPERATURE_RANGE.start(),

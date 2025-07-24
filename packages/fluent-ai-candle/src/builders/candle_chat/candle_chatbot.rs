@@ -10,16 +10,13 @@
 // ============================================================================
 
 use std::io::{self, Write};
-use std::thread::yield_now;
 
-use futures_util::FutureExt; // for `now_or_never`
 // Note: termcolor items not available, using standard logging instead
 
 use crate::types::{
     CandleMessage, CandleCompletionError,
     CandleChat,
 };
-use fluent_ai_async::AsyncTask as Executor; // single-threaded coop executor
 
 /// Run a blocking terminal REPL around any `Chat` engine.
 ///
@@ -30,7 +27,6 @@ where
     C: CandleChat,
 {
     let mut chat_log = Vec::new();
-    let executor = Executor::default();
 
     // Display welcome message with Cyrup.ai branding
     println!("=== Candle Chat ===");
@@ -54,28 +50,25 @@ where
         }
 
         // ------------------------------------------------------------------
-        // Spawn the chat task onto our single-thread executor
+        // Get chat response using blocking collection pattern
         // ------------------------------------------------------------------
-        let task = chatbot.chat(prompt, chat_log.clone()); // AsyncTask<Result<_,_>>
-        let mut handle = executor.spawn(task); // runtime::JoinHandle<_>
-
-        // Drive the executor cooperatively until the task completes.
-        let reply = loop {
-            executor.drain(); // runs any ready tasks
-
-            if let Some(res) = handle.now_or_never() {
-                break res?; // propagate PromptError
+        let stream = chatbot.chat(prompt.to_string(), chat_log.clone()); // AsyncStream<CandleMessage>
+        
+        // Use blocking collection to get the result without async/await
+        let messages = stream.collect(); // Returns Vec<CandleMessage>
+        let reply = match messages.first() {
+            Some(message) => message.content.clone(),
+            None => {
+                eprintln!("No response received from chat");
+                continue;
             }
-
-            // Give other threads a chance (keeps CLI responsive on heavy load)
-            yield_now();
         };
 
         // ------------------------------------------------------------------
         // Update chat log & print response
         // ------------------------------------------------------------------
         chat_log.push(CandleMessage::user(prompt));
-        chat_log.push(CandleMessage::assistant(&reply));
+        chat_log.push(CandleMessage::assistant(reply.clone()));
 
         // Display response with standard formatting
         println!();

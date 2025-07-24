@@ -80,8 +80,8 @@ impl TopPProcessor {
                 total_prob += prob as f64;
 
                 if self.buffer.is_full() {
-                    return Err(ProcessingError::BufferOverflow(
-                        "Vocabulary size exceeds maximum supported tokens (32768)".to_string(),
+                    return Err(ProcessingError::buffer_overflow(
+                        "Vocabulary size exceeds maximum supported tokens (32768)"
                     ));
                 }
 
@@ -129,8 +129,8 @@ impl TopPProcessor {
         let mut kept_indices = [false; 32768]; // Stack allocation for common case
 
         if logits.len() > kept_indices.len() {
-            return Err(ProcessingError::BufferOverflow(
-                "Vocabulary size exceeds maximum supported tokens".to_string(),
+            return Err(ProcessingError::buffer_overflow(
+                "Vocabulary size exceeds maximum supported tokens"
             ));
         }
 

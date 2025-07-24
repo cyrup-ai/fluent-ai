@@ -61,7 +61,7 @@ pub mod presets {
         // Add repetition penalty first (context-dependent)
         if let Some(penalty) = repetition_penalty {
             processors.push(Box::new(RepetitionPenaltyProcessor::new(
-                penalty, 0.0,
+                penalty, 0.0, 0.0, 0, // repetition_penalty, frequency_penalty, presence_penalty, context_window
             )?));
         }
 
@@ -201,7 +201,7 @@ pub mod utils {
     /// Performs basic validation to ensure logits are in a valid state.
     pub fn validate_logits(logits: &[f32], context: &str) -> ProcessingResult<()> {
         if logits.is_empty() {
-            return Err(ProcessingError::InvalidInput(format!(
+            return Err(ProcessingError::invalid_input(format!(
                 "Empty logits array in context: {}",
                 context
             )));

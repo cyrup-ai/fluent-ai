@@ -225,7 +225,7 @@ impl ModelConfig {
 
     /// Validate the model configuration
     pub fn validate(&self) -> AsyncStream<()> {
-        let config = self.clone();
+        let _config = self.clone();
         // Use AsyncStream::with_channel for streaming-only architecture - emit success immediately
         AsyncStream::with_channel(move |sender| {
             // Emit success via sender - validation happens during stream processing

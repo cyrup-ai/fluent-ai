@@ -545,7 +545,7 @@ impl ProgressHubReporter {
 
     /// Create ProgressHub reporter with custom configuration
     pub fn with_config(config: ProgressHubConfig) -> Result<Self> {
-        let progress_handle = if config.enable_tui() {
+        let progress_handle = if config.enable_tui {
             // TODO: Integrate with actual ProgressHub TUI when available
             // For now, we use a placeholder that provides progress tracking
             // without actual TUI display but maintains all the reporting APIs

@@ -53,15 +53,15 @@ impl TemperatureProcessor {
     pub fn new(temperature: f32) -> Result<Self, SamplingError> {
         // Validate temperature range
         if !temperature.is_finite() || temperature <= 0.0 {
-            return Err(SamplingError::InvalidTemperature(temperature));
+            return Err(SamplingError::InvalidTemperature(temperature.into()));
         }
 
         if temperature < Self::MIN_TEMPERATURE {
-            return Err(SamplingError::InvalidTemperature(temperature));
+            return Err(SamplingError::InvalidTemperature(temperature.into()));
         }
 
         if temperature > Self::MAX_TEMPERATURE {
-            return Err(SamplingError::InvalidTemperature(temperature));
+            return Err(SamplingError::InvalidTemperature(temperature.into()));
         }
 
         let is_identity = (temperature - 1.0).abs() < Self::ZERO_THRESHOLD;
@@ -112,7 +112,7 @@ impl TemperatureProcessor {
         let has_inf = logits_vec.iter().any(|&x| x.is_infinite());
 
         if has_nan {
-            return Err(SamplingError::NumericalInstability);
+            return Err(SamplingError::NumericalInstability("NaN values detected in logits".to_string()));
         }
 
         // Handle infinite values by clamping to prevent overflow after scaling
@@ -150,7 +150,7 @@ impl TemperatureProcessor {
         let output_has_nan = output_vec.iter().any(|&x| x.is_nan());
 
         if output_has_nan {
-            return Err(SamplingError::NumericalInstability);
+            return Err(SamplingError::NumericalInstability("NaN values detected in temperature scaling output".to_string()));
         }
 
         Ok(scaled)

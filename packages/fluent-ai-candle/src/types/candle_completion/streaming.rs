@@ -180,6 +180,20 @@ impl CandleStreamingResponse {
     }
 }
 
+impl Default for CandleStreamingResponse {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            object: "chat.completion.chunk".to_string(),
+            created: 0,
+            model: String::new(),
+            choices: Vec::new(),
+            usage: None,
+            system_fingerprint: None,
+        }
+    }
+}
+
 impl CandleStreamingChoice {
     /// Create a new streaming choice with content
     pub fn with_content(index: u32, content: String) -> Self {

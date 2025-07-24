@@ -69,6 +69,12 @@ impl From<candle_core::Error> for SamplingError {
     }
 }
 
+impl From<crate::processing::error::ProcessingError> for SamplingError {
+    fn from(err: crate::processing::error::ProcessingError) -> Self {
+        SamplingError::ProcessingFailed(err.to_string())
+    }
+}
+
 // Error conversions for compatibility
 
 /// High-performance sampling configuration builder for canonical Candle Sampling

@@ -50,11 +50,11 @@ impl TopPProcessor {
     pub fn new(top_p: f32) -> Result<Self, SamplingError> {
         // Validate top_p range
         if !top_p.is_finite() || top_p < 0.0 || top_p > 1.0 {
-            return Err(SamplingError::InvalidTopP(top_p));
+            return Err(SamplingError::InvalidTopP(top_p as f64));
         }
 
         if top_p < Self::MIN_TOP_P {
-            return Err(SamplingError::InvalidTopP(top_p));
+            return Err(SamplingError::InvalidTopP(top_p as f64));
         }
 
         let is_identity = top_p >= Self::IDENTITY_THRESHOLD;
@@ -141,7 +141,7 @@ impl TopPProcessor {
             .to_vec1::<f32>()
             .map_err(SamplingError::from)?;
         if output_vec.iter().any(|&x| x.is_nan()) {
-            return Err(SamplingError::NumericalInstability);
+            return Err(SamplingError::NumericalInstability("NaN values detected in nucleus sampling output".to_string()));
         }
 
         Ok(masked_tensor)
@@ -315,7 +315,7 @@ pub mod utils {
         tolerance: f32,
     ) -> Result<f32, SamplingError> {
         if target_diversity < 0.0 || target_diversity > 1.0 {
-            return Err(SamplingError::InvalidTopP(target_diversity));
+            return Err(SamplingError::InvalidTopP(target_diversity as f64));
         }
 
         let mut low = TopPProcessor::MIN_TOP_P;

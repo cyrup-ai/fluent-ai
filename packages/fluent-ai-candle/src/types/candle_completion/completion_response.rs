@@ -7,6 +7,15 @@ use serde::{Deserialize, Serialize};
 /// A response from a text completion request with zero-allocation design
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompletionResponse<'a> {
+    /// Unique identifier for this completion (optional, for compatibility)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    /// Object type identifier (optional, for compatibility)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub object: Option<String>,
+    /// Unix timestamp of when the completion was created (optional, for compatibility)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created: Option<u64>,
     /// The generated completion text
     pub text: Cow<'a, str>,
     /// The model that generated the completion
@@ -23,6 +32,27 @@ pub struct CompletionResponse<'a> {
     pub generation_time_ms: Option<u32>,
     /// Tokens per second throughput for performance tracking (optional)
     pub tokens_per_second: Option<f64>,
+}
+
+impl<'a> Default for CompletionResponse<'a> {
+    fn default() -> Self {
+        Self {
+            id: Some("default_response".into()), // Required field
+            object: Some("text_completion".into()), // Standard object type
+            created: Some(std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs()), // Current timestamp
+            text: Cow::Borrowed(""),
+            model: Cow::Borrowed(""),
+            provider: None,
+            usage: None,
+            finish_reason: None,
+            response_time_ms: None,
+            generation_time_ms: None,
+            tokens_per_second: None,
+        }
+    }
 }
 
 /// Builder for `CompletionResponse` with blazing-fast inline optimization
@@ -110,6 +140,12 @@ impl<'a> CompletionResponseBuilder<'a> {
     pub fn new() -> Self {
         Self {
             inner: CompletionResponse {
+                id: Some("builder_response".into()),
+                object: Some("text_completion".into()),
+                created: Some(std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs()),
                 text: Cow::Borrowed(""),
                 model: Cow::Borrowed(""),
                 provider: None,

@@ -59,7 +59,7 @@ impl ProcessingEngine {
         }
 
         let context = ProcessingContext::new(vocab_size, DEFAULT_CONTEXT_SIZE)?;
-        let processor = CompositeProcessor::new(Vec::new())?;
+        let processor = CompositeProcessor::new();
         let metrics = ProcessingMetrics::new();
 
         Ok(Self {
@@ -90,7 +90,7 @@ impl ProcessingEngine {
         }
 
         let context = ProcessingContext::new(vocab_size, context_size)?;
-        let processor = CompositeProcessor::new(Vec::new())?;
+        let processor = CompositeProcessor::new();
         let metrics = ProcessingMetrics::new();
 
         Ok(Self {
@@ -335,6 +335,7 @@ impl ProcessingEngineBuilder {
             penalty,
             frequency_penalty,
             presence_penalty,
+            0, // context_window (0 = use full context)
         )?);
         Ok(self.add_processor(processor))
     }
@@ -345,7 +346,7 @@ impl ProcessingEngineBuilder {
         let mut engine = ProcessingEngine::with_context_size(self.vocab_size, context_size)?;
 
         if !self.processors.is_empty() {
-            let composite = CompositeProcessor::new(self.processors)?;
+            let composite = CompositeProcessor::with_processors(self.processors)?;
             engine.set_processor(composite);
         }
 

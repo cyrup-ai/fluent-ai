@@ -127,21 +127,21 @@ impl TopKProcessor {
         let mut top_k: ArrayVec<(usize, f32), 8> = ArrayVec::new();
 
         // Find top k elements using linear scan
-        for (idx, &logit) in logits.iter().enumerate() {
+        for (idx, &logit_value) in logits.iter().enumerate() {
             if top_k.len() < self.k {
                 // Buffer not full, just add
-                if top_k.try_push((idx, logit)).is_err() {
+                if top_k.try_push((idx, logit_value)).is_err() {
                     return Err(ProcessingError::resource("Failed to push to top-k buffer"));
                 }
             } else {
                 // Buffer full, check if current is better than worst
-                if let Some((worst_idx, &worst_score)) = top_k.iter().enumerate().min_by(|a, b| {
+                if let Some((worst_idx, (_, worst_score))) = top_k.iter().enumerate().min_by(|a, b| {
                     a.1 .1
                         .partial_cmp(&b.1 .1)
                         .unwrap_or(std::cmp::Ordering::Equal)
                 }) {
-                    if logit > worst_score {
-                        top_k[worst_idx] = (idx, logit);
+                    if logit_value > *worst_score {
+                        top_k[worst_idx] = (idx, logit_value);
                     }
                 }
             }

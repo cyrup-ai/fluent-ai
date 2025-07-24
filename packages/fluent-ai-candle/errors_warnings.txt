@@ -1,0 +1,256 @@
+error[E0425]: cannot find value `sender` in this scope
+error[E0425]: cannot find value `sender` in this scope
+error[E0425]: cannot find value `sender` in this scope
+error[E0308]: mismatched types
+error[E0061]: this function takes 4 arguments but 2 arguments were supplied
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+error[E0308]: mismatched types
+error[E0599]: no method named `process` found for reference `&Box<dyn processing::traits::LogitsProcessor>` in the current scope
+error[E0277]: the trait bound `sampling::temperature::TemperatureProcessor: processing::traits::LogitsProcessor` is not satisfied
+error[E0277]: the trait bound `sampling::topk::TopKProcessor: processing::traits::LogitsProcessor` is not satisfied
+error[E0308]: mismatched types
+error[E0277]: the trait bound `nucleus::TopPProcessor: processing::traits::LogitsProcessor` is not satisfied
+error[E0277]: the trait bound `repetition::RepetitionPenaltyProcessor: processing::traits::LogitsProcessor` is not satisfied
+error[E0277]: the trait bound `TypicalSamplingProcessor: processing::traits::LogitsProcessor` is not satisfied
+error[E0277]: the trait bound `GumbelSoftmaxProcessor: processing::traits::LogitsProcessor` is not satisfied
+error[E0599]: no method named `map_err` found for struct `candle_core::Tensor` in the current scope
+error[E0599]: no method named `map_err` found for struct `candle_core::Tensor` in the current scope
+error[E0277]: the trait bound `Shape: From<&Vec<usize>>` is not satisfied
+error[E0277]: the trait bound `Shape: From<&Vec<usize>>` is not satisfied
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0609]: no field `temp_probs` on type `&mut mirostat::MirostatProcessor`
+error[E0609]: no field `temp_probs` on type `&mut mirostat::MirostatProcessor`
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0609]: no field `temp_probs` on type `&mut mirostat::MirostatProcessor`
+error[E0308]: mismatched types
+error[E0599]: no method named `unwrap_or` found for type `f32` in the current scope
+error[E0599]: no method named `unwrap_or` found for type `f32` in the current scope
+error[E0599]: no method named `is_some` found for type `usize` in the current scope
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0599]: no variant or associated item named `NotSupported` found for enum `fluent_ai_simd::SimdError` in the current scope
+error[E0599]: no variant or associated item named `Other` found for enum `error::CandleError` in the current scope
+error[E0609]: no field `inner` on type `&mut sampling::simd::CandleSimdProcessor`
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0599]: no method named `map_err` found for struct `SoftmaxProcessor` in the current scope
+error[E0308]: mismatched types
+error[E0599]: no method named `stats` found for struct `SoftmaxProcessor` in the current scope
+error[E0599]: no method named `map_err` found for struct `fluent_ai_simd::TemperatureProcessor` in the current scope
+error[E0599]: no method named `apply_temperature_inplace` found for struct `fluent_ai_simd::TemperatureProcessor` in the current scope
+error[E0599]: no method named `stats` found for struct `fluent_ai_simd::TemperatureProcessor` in the current scope
+error[E0277]: expected a `FnMut(usize)` closure, found `{float}`
+error[E0308]: arguments to this function are incorrect
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `Utf8Error` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0277]: the trait bound `f32: std::cmp::Eq` is not satisfied
+error[E0599]: no variant or associated item named `BackpressureError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0689]: can't call method `min` on ambiguous numeric type `{float}`
+error[E0689]: can't call method `min` on ambiguous numeric type `{float}`
+error[E0599]: no variant or associated item named `FlowControlError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `FlowControlError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `FlowControlError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0277]: the trait bound `StreamingTokenResponse: Serialize` is not satisfied
+error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0277]: the trait bound `StreamingTokenResponse: Serialize` is not satisfied
+error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0277]: the trait bound `StreamingTokenResponse: Serialize` is not satisfied
+error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0609]: no field `content` on type `&StreamingTokenResponse`
+error[E0609]: no field `token_id` on type `&StreamingTokenResponse`
+error[E0609]: no field `position` on type `&StreamingTokenResponse`
+error[E0609]: no field `content` on type `&StreamingTokenResponse`
+error[E0609]: no field `content` on type `&StreamingTokenResponse`
+error[E0609]: no field `position` on type `&StreamingTokenResponse`
+error[E0609]: no field `is_complete_token` on type `&StreamingTokenResponse`
+error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0609]: no field `position` on type `&StreamingTokenResponse`
+error[E0609]: no field `content` on type `&StreamingTokenResponse`
+error[E0609]: no field `is_complete_token` on type `&StreamingTokenResponse`
+error[E0609]: no field `probability` on type `&StreamingTokenResponse`
+error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no variant or associated item named `FormatError` found for enum `streaming::constants::StreamingError` in the current scope
+error[E0599]: no method named `as_str` found for enum `CandleMessageRole` in the current scope
+error[E0277]: `std::result::Result<(), CompactCompletionResponse>` is not a future
+error[E0308]: mismatched types
+error[E0599]: no variant named `InvalidRange` found for enum `model::error::ValidationError`
+error[E0599]: no variant named `InvalidRange` found for enum `model::error::ValidationError`
+error[E0599]: no variant named `InvalidRange` found for enum `model::error::ValidationError`
+error[E0599]: no variant named `InvalidRange` found for enum `model::error::ValidationError`
+error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: Serialize` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: Serialize` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: Serialize` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: Serialize` is not satisfied
+error[E0277]: the trait bound `SmallVec<SearchChatMessage, 6>: Serialize` is not satisfied
+error[E0277]: the trait bound `SmallVec<MatchPosition, 16>: Serialize` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<SearchChatMessage, 6>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<MatchPosition, 16>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<SearchChatMessage, 6>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<MatchPosition, 16>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 8>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<Arc<str>, 4>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<SearchChatMessage, 6>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0277]: the trait bound `SmallVec<MatchPosition, 16>: formats::_::_serde::Deserialize<'_>` is not satisfied
+error[E0599]: no method named `inc` found for struct `CachePadded<AtomicU64>` in the current scope
+error[E0609]: no field `statistics` on type `ChatSearchIndex`
+error[E0599]: no method named `inc` found for struct `CachePadded<AtomicU64>` in the current scope
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0609]: no field `statistics` on type `ChatSearchIndex`
+error[E0599]: no method named `try_read` found for struct `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>` in the current scope
+error[E0599]: no method named `try_write` found for struct `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>` in the current scope
+error[E0599]: no method named `try_write` found for struct `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>` in the current scope
+error[E0599]: no method named `try_write` found for struct `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>` in the current scope
+error[E0599]: no method named `try_write` found for struct `Arc<SkipMap<Arc<str>, Vec<Arc<str>>>>` in the current scope
+error[E0277]: the trait bound `AtomicUsize: Clone` is not satisfied
+error[E0277]: the trait bound `AtomicUsize: Clone` is not satisfied
+error[E0277]: the trait bound `AtomicU64: Clone` is not satisfied
+error[E0277]: the trait bound `AtomicU64: Clone` is not satisfied
+error[E0609]: no field `export_statistics` on type `HistoryExporter`
+error[E0277]: the trait bound `AtomicUsize: Clone` is not satisfied
+error[E0277]: the trait bound `AtomicU64: Clone` is not satisfied
+error[E0308]: mismatched types
+error[E0223]: ambiguous associated type
+error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope
+error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope
+error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope
+error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope
+error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope
+error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope
+error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope
+error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope
+error[E0599]: no variant named `ModelAlreadyExists` found for enum `model::error::ModelError`
+error[E0599]: no variant named `ModelAlreadyExists` found for enum `model::error::ModelError`
+error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope
+error[E0599]: no variant named `ModelNotFound` found for enum `model::error::ModelError`
+error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope
+error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope
+error[E0599]: no variant or associated item named `InvalidConfiguration` found for enum `model::error::ModelError` in the current scope
+error[E0599]: no variant named `ModelNotFound` found for enum `model::error::ModelError`
+error[E0599]: no variant named `ModelNotFound` found for enum `model::error::ModelError`
+error[E0277]: the trait bound `model::registry::ModelRegistry: Clone` is not satisfied
+error[E0599]: no method named `clone` found for struct `model::registry::ModelRegistry` in the current scope
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+error[E0061]: this method takes 1 argument but 2 arguments were supplied
+error[E0308]: mismatched types
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+error[E0061]: this method takes 1 argument but 2 arguments were supplied
+error[E0308]: mismatched types
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+error[E0061]: this method takes 1 argument but 2 arguments were supplied
+error[E0308]: mismatched types
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+error[E0061]: this method takes 1 argument but 2 arguments were supplied
+error[E0308]: mismatched types
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+error[E0061]: this method takes 1 argument but 2 arguments were supplied
+error[E0308]: mismatched types
+error[E0599]: no method named `find_all` found for reference `&model::registry::ModelRegistry` in the current scope
+error[E0599]: no variant named `ModelNotFound` found for enum `model::error::ModelError`
+error[E0369]: binary operation `==` cannot be applied to type `Vec<message::types::CandleMessage>`
+error[E0308]: mismatched types
+error[E0609]: no field `prompt` on type `candle_completion::request::CandleCompletionRequest`
+error[E0599]: `std::string::String` is not an iterator
+error[E0609]: no field `conversation_history` on type `candle_completion::request::CandleCompletionRequest`
+error[E0599]: the method `to_string` exists for reference `&tool_definition::ToolDefinition`, but its trait bounds were not satisfied
+error[E0609]: no field `metadata` on type `candle_completion::request::CandleCompletionRequest`
+error[E0609]: no field `prompt` on type `candle_completion::request::CandleCompletionRequest`
+error[E0599]: `std::string::String` is not an iterator
+error[E0609]: no field `conversation_history` on type `candle_completion::request::CandleCompletionRequest`
+error[E0599]: the method `to_string` exists for reference `&tool_definition::ToolDefinition`, but its trait bounds were not satisfied
+error[E0609]: no field `metadata` on type `candle_completion::request::CandleCompletionRequest`
+error[E0560]: struct `CandleVarBuilder<'a>` has no field named `safetensors`
+error[E0308]: mismatched types
+error[E0308]: mismatched types
+error[E0599]: no variant or associated item named `Msg` found for enum `error::CandleError` in the current scope
+error[E0599]: no variant or associated item named `Msg` found for enum `error::CandleError` in the current scope
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+error[E0609]: no field `safetensors` on type `CandleVarBuilder<'_>`
+error[E0599]: no method named `populate_metadata_safe` found for struct `CandleVarBuilder<'_>` in the current scope
+error[E0277]: the `?` operator can only be applied to values that implement `Try`
+error[E0308]: mismatched types
+error[E0599]: no method named `populate_metadata_from_tensors` found for struct `CandleVarBuilder<'_>` in the current scope
+error[E0599]: no function or associated item named `default` found for struct `AsyncTask` in the current scope
+error[E0599]: no method named `chat` found for type parameter `C` in the current scope
+error[E0599]: no function or associated item named `user` found for struct `message::types::CandleMessage` in the current scope
+error[E0599]: no function or associated item named `assistant` found for struct `message::types::CandleMessage` in the current scope
+error[E0515]: cannot return value referencing local variable `generator`
+error[E0596]: cannot borrow `rx` as mutable, as it is not declared as mutable
+error[E0596]: cannot borrow `rx` as mutable, as it is not declared as mutable
+error[E0521]: borrowed data escapes outside of method
+error[E0716]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
+error[E0502]: cannot borrow `shards` as mutable because it is also borrowed as immutable
+error[E0597]: `shards` does not live long enough
+error[E0505]: cannot move out of `shards` because it is borrowed
+error[E0521]: borrowed data escapes outside of function
+error[E0597]: `indexed` does not live long enough
+error[E0716]: temporary value dropped while borrowed
+error[E0716]: temporary value dropped while borrowed
+error[E0004]: non-exhaustive patterns: `&processing::error::ProcessingError::BufferOverflow(_)` and `&processing::error::ProcessingError::InvalidInput(_)` not covered
+error[E0004]: non-exhaustive patterns: `&processing::error::ProcessingError::BufferOverflow(_)` and `&processing::error::ProcessingError::InvalidInput(_)` not covered
+error[E0004]: non-exhaustive patterns: `&processing::error::ProcessingError::BufferOverflow(_)` and `&processing::error::ProcessingError::InvalidInput(_)` not covered
+error[E0004]: non-exhaustive patterns: `processing::error::ProcessingError::BufferOverflow(_)` and `processing::error::ProcessingError::InvalidInput(_)` not covered

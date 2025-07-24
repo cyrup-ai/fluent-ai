@@ -63,7 +63,7 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
     }
 
     fn extract_from(&self, text: &str) -> AsyncStream<T> {
-        let agent = self.agent.clone();
+        let _agent = self.agent.clone();
         let system_prompt = self.system_prompt.clone();
         let text = text.to_string();
 

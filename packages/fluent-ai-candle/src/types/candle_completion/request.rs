@@ -73,8 +73,8 @@ impl CandleCompletionRequest {
         // Validate temperature
         if !TEMPERATURE_RANGE.contains(&self.temperature) {
             return Err(ValidationError::InvalidRange {
-                field: "temperature".into(),
-                value: self.temperature.to_string(),
+                parameter: "temperature".into(),
+                actual: self.temperature.to_string(),
                 expected: format!(
                     "between {:.1} and {:.1}",
                     TEMPERATURE_RANGE.start(),
@@ -87,8 +87,8 @@ impl CandleCompletionRequest {
         if let Some(max_tokens) = self.max_tokens {
             if max_tokens.get() > MAX_TOKENS {
                 return Err(ValidationError::InvalidRange {
-                    field: "max_tokens".into(),
-                    value: max_tokens.to_string(),
+                    parameter: "max_tokens".into(),
+                    actual: max_tokens.to_string(),
                     expected: format!("less than or equal to {}", MAX_TOKENS),
                 });
             }
@@ -98,8 +98,8 @@ impl CandleCompletionRequest {
         if let Some(chunk_size) = self.chunk_size {
             if chunk_size == 0 || chunk_size > MAX_CHUNK_SIZE {
                 return Err(ValidationError::InvalidRange {
-                    field: "chunk_size".into(),
-                    value: chunk_size.to_string(),
+                    parameter: "chunk_size".into(),
+                    actual: chunk_size.to_string(),
                     expected: format!("between 1 and {}", MAX_CHUNK_SIZE),
                 });
             }

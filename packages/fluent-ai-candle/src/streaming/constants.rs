@@ -36,10 +36,26 @@ pub enum StreamingError {
     /// Timeout error
     #[error("Timeout after {seconds} seconds")]
     Timeout { seconds: u64 },
+    
+    /// UTF-8 encoding/decoding error
+    #[error("UTF-8 error: {0}")]
+    Utf8Error(String),
+    
+    /// Backpressure handling error
+    #[error("Backpressure error: {0}")]
+    BackpressureError(String),
+    
+    /// Flow control error
+    #[error("Flow control error: {0}")]
+    FlowControlError(String),
+    
+    /// Format conversion error
+    #[error("Format error: {0}")]
+    FormatError(String),
 }
 
 /// Response for streaming token operations
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct StreamingTokenResponse {
     /// Token text
     pub text: String,

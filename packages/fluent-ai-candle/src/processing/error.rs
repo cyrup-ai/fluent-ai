@@ -65,6 +65,16 @@ pub enum ProcessingError {
     #[error("External system error: {0}")]
     ExternalError(String),
 
+    /// Tensor operation failure
+    ///
+    /// Covers tensor computation and manipulation errors such as:
+    /// - Tensor creation from slice failures
+    /// - Shape mismatch in operations
+    /// - Device compatibility issues
+    /// - Memory layout conversion errors
+    #[error("Tensor operation failed: {0}")]
+    TensorOperationFailed(String),
+
     /// Processor chain composition or execution error
     ///
     /// Covers errors in processor chain management such as:
@@ -84,6 +94,26 @@ pub enum ProcessingError {
     /// - Data integrity failures
     #[error("Input validation error: {0}")]
     ValidationError(String),
+
+    /// Buffer overflow or capacity violation
+    ///
+    /// Covers buffer management issues such as:
+    /// - Array capacity violations during processing
+    /// - Stack overflow conditions
+    /// - Fixed-size buffer limitations exceeded
+    /// - Memory buffer overflow protection
+    #[error("Buffer overflow: {0}")]
+    BufferOverflow(String),
+
+    /// Invalid input data or parameters
+    ///
+    /// Covers input validation failures such as:
+    /// - Malformed input data
+    /// - Invalid parameter combinations
+    /// - Out-of-range input values
+    /// - Incompatible data formats
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
 
     /// Internal processing logic error
     ///
@@ -140,6 +170,24 @@ impl ProcessingError {
         Self::ValidationError(message.into())
     }
 
+    /// Create buffer overflow error
+    #[inline(always)]
+    pub fn buffer_overflow<S: Into<String>>(message: S) -> Self {
+        Self::BufferOverflow(message.into())
+    }
+
+    /// Create invalid input error
+    #[inline(always)]
+    pub fn invalid_input<S: Into<String>>(message: S) -> Self {
+        Self::InvalidInput(message.into())
+    }
+
+    /// Create tensor operation error
+    #[inline(always)]
+    pub fn tensor_operation<S: Into<String>>(message: S) -> Self {
+        Self::TensorOperationFailed(message.into())
+    }
+
     /// Create internal error (should be rare)
     #[inline(always)]
     pub fn internal<S: Into<String>>(message: S) -> Self {
@@ -157,6 +205,9 @@ impl ProcessingError {
             Self::ExternalError(_) => ErrorCategory::External,
             Self::ProcessorChainError(_) => ErrorCategory::ProcessorChain,
             Self::ValidationError(_) => ErrorCategory::Validation,
+            Self::BufferOverflow(_) => ErrorCategory::Resource,
+            Self::InvalidInput(_) => ErrorCategory::Validation,
+            Self::TensorOperationFailed(_) => ErrorCategory::External,
             Self::InternalError(_) => ErrorCategory::Internal,
         }
     }
@@ -172,6 +223,9 @@ impl ProcessingError {
             Self::ExternalError(_) => true,         // External issue might resolve
             Self::ProcessorChainError(_) => false,  // Chain must be rebuilt
             Self::ValidationError(_) => false,      // Input must be corrected
+            Self::BufferOverflow(_) => true,        // Might work with smaller input
+            Self::InvalidInput(_) => false,         // Input must be corrected
+            Self::TensorOperationFailed(_) => true, // Different tensor ops might work
             Self::InternalError(_) => false,        // Internal bug, not recoverable
         }
     }
@@ -187,6 +241,9 @@ impl ProcessingError {
             Self::ExternalError(_) => ErrorSeverity::Medium,
             Self::ProcessorChainError(_) => ErrorSeverity::High,
             Self::ValidationError(_) => ErrorSeverity::Low,
+            Self::BufferOverflow(_) => ErrorSeverity::High,
+            Self::InvalidInput(_) => ErrorSeverity::Low,
+            Self::TensorOperationFailed(_) => ErrorSeverity::Medium,
             Self::InternalError(_) => ErrorSeverity::Critical,
         }
     }
@@ -202,6 +259,9 @@ impl ProcessingError {
             Self::ExternalError(_) => "Check external system status and retry",
             Self::ProcessorChainError(_) => "Rebuild processor chain with valid processors",
             Self::ValidationError(_) => "Validate and correct input data",
+            Self::BufferOverflow(_) => "Reduce input size or increase buffer capacity",
+            Self::InvalidInput(_) => "Validate and correct input data format",
+            Self::TensorOperationFailed(_) => "Check tensor shapes and try different tensor operations",
             Self::InternalError(_) => "Report as bug, restart system if necessary",
         }
     }
@@ -223,6 +283,9 @@ impl ProcessingError {
             Self::ValidationError(msg) => {
                 Self::ValidationError(format!("{}: {}", context_str, msg))
             }
+            Self::BufferOverflow(msg) => Self::BufferOverflow(format!("{}: {}", context_str, msg)),
+            Self::InvalidInput(msg) => Self::InvalidInput(format!("{}: {}", context_str, msg)),
+            Self::TensorOperationFailed(msg) => Self::TensorOperationFailed(format!("{}: {}", context_str, msg)),
             Self::InternalError(msg) => Self::InternalError(format!("{}: {}", context_str, msg)),
         }
     }

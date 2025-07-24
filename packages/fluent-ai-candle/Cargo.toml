@@ -61,7 +61,7 @@ cpal = { version = "0.16.0", optional = true }
 # Zero-allocation data structures
 arrayvec = "0.7.6"
 arraystring = "0.3.0"
-smallvec = "2.0.0-alpha.11"
+smallvec = { version = "2.0.0-alpha.11", features = ["serde"] }
 
 # Lock-free concurrency
 crossbeam = "0.8.4"

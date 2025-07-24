@@ -10,7 +10,7 @@ pub mod candle_utils;
 // Re-export specific types to avoid ambiguous glob re-exports and ensure proper exports
 // Chat types
 pub use candle_chat::message::{CandleMessage, CandleMessageRole, SearchChatMessage as CandleSearchChatMessage};
-pub use candle_chat::{Conversation as CandleChat, ConversationBuilder as CandleChatBuilder};
+pub use candle_chat::conversation::{CandleChat, Conversation, ConversationBuilder as CandleChatBuilder};
 
 // Completion types  
 pub use candle_completion::{

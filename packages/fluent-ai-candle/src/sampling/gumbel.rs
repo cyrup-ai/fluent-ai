@@ -167,18 +167,21 @@ impl GumbelSoftmaxProcessor {
 
         // Apply straight-through estimator: hard sample for forward pass,
         // but use scaled_logits gradients for backward pass
-        let straight_through = (&hard_sample - soft_sample)
-            .map_err(|e| SamplingError::TensorError(e.to_string()))?
-            .detach()
-            .map_err(|e| SamplingError::TensorError(e.to_string()))?;
+        let straight_through = match (&hard_sample - soft_sample).map_err(|e| SamplingError::TensorError(e.to_string())) {
+            Ok(result) => result.detach(),
+            Err(e) => return Err(e),
+        };
 
-        let result = (soft_sample + &straight_through)
-            .map_err(|e| SamplingError::TensorError(e.to_string()))?;
+        let result = match (soft_sample + &straight_through).map_err(|e| SamplingError::TensorError(e.to_string())) {
+            Ok(result) => result,
+            Err(e) => return Err(e),
+        };
 
         // Use scaled_logits for temperature information in gradient computation
-        let temperature_adjusted = scaled_logits
-            .broadcast_mul(&result)
-            .map_err(|e| SamplingError::TensorError(e.to_string()))?;
+        let temperature_adjusted = match scaled_logits.broadcast_mul(&result).map_err(|e| SamplingError::TensorError(e.to_string())) {
+            Ok(result) => result,
+            Err(e) => return Err(e),
+        };
 
         Ok(temperature_adjusted)
     }
@@ -190,7 +193,8 @@ impl GumbelSoftmaxProcessor {
         output_shape.push(vocab_size);
 
         // Create zeros tensor
-        let mut one_hot = Tensor::zeros(&output_shape, DType::F32, &self.device)
+        let shape = candle_core::Shape::from_dims(&output_shape);
+        let mut one_hot = Tensor::zeros(shape, DType::F32, &self.device)
             .map_err(|e| SamplingError::TensorError(e.to_string()))?;
 
         // Set appropriate indices to 1.0
@@ -209,7 +213,7 @@ impl GumbelSoftmaxProcessor {
             }
         }
 
-        Tensor::from_vec(one_hot_vec, &output_shape, &self.device)
+        Tensor::from_vec(one_hot_vec, candle_core::Shape::from_dims(&output_shape), &self.device)
             .map_err(|e| SamplingError::TensorError(e.to_string()))
     }
 
@@ -247,26 +251,58 @@ impl GumbelSoftmaxProcessor {
     }
 }
 
-// TODO: Update to new LogitsProcessor API that uses process_logits() instead of process()
-// impl LogitsProcessor for GumbelSoftmaxProcessor {
-//     fn process_logits(&mut self, logits: &mut [f32], context: &ProcessingContext) -> ProcessingResult<()> {
-//         // Implementation needed for new API
-//     }
-//
-//     fn validate(&self) -> ProcessingResult<()> {
-//         // Implementation needed for new API
-//     }
-//
-//     #[inline(always)]
-//     fn name(&self) -> &'static str {
-//         "GumbelSoftmaxProcessor"
-//     }
-//
-//     #[inline(always)]
-//     fn is_identity(&self) -> bool {
-//         false // Gumbel-Softmax always modifies the distribution
-//     }
-// }
+use crate::processing::traits::{LogitsProcessor, ProcessingResult};
+use crate::processing::context::ProcessingContext;
+
+impl LogitsProcessor for GumbelSoftmaxProcessor {
+    fn process_logits(&mut self, logits: &mut [f32], _context: &ProcessingContext) -> ProcessingResult<()> {
+        if logits.is_empty() {
+            return Ok(());
+        }
+
+        // Generate Gumbel noise
+        let mut rng = self.rng.lock().unwrap();
+        let gumbel_noise: Vec<f32> = (0..logits.len())
+            .map(|_| {
+                let u: f32 = rng.random();
+                // Gumbel(0,1) = -ln(-ln(U)) where U ~ Uniform(0,1)
+                -(-(u.max(1e-20))).ln().ln()
+            })
+            .collect();
+
+        // Apply Gumbel-Softmax: (logits + gumbel) / temperature
+        for (i, logit) in logits.iter_mut().enumerate() {
+            *logit = (*logit + gumbel_noise[i]) * self.inv_temperature;
+        }
+
+        // Apply softmax for normalization
+        let max_logit = logits.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+        let mut sum = 0.0f32;
+        
+        for logit in logits.iter_mut() {
+            *logit = (*logit - max_logit).exp();
+            sum += *logit;
+        }
+        
+        if sum > 0.0 {
+            for logit in logits.iter_mut() {
+                *logit /= sum;
+            }
+        }
+
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn name(&self) -> &'static str {
+        "GumbelSoftmaxProcessor"
+    }
+
+    #[inline(always)]
+    fn is_identity(&self) -> bool {
+        false // Gumbel-Softmax always modifies the distribution
+    }
+}
 
 /// Builder for Gumbel-Softmax processor
 #[derive(Debug, Clone)]

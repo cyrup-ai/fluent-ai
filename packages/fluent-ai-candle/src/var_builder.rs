@@ -1174,7 +1174,7 @@ impl<'a> CandleVarBuilder<'a> {
     }
 
     /// Optimize tensor placement based on device hints
-    fn optimize_tensor_placement(&self, tensor: Tensor, name: &str) -> Result<Tensor> {
+    fn optimize_tensor_placement(&self, tensor: Tensor, _name: &str) -> Result<Tensor> {
         // For now, return tensor as-is
         // In a full implementation, this would apply device-specific optimizations
         Ok(tensor)
@@ -1313,7 +1313,7 @@ pub mod utils {
     pub fn validate_architecture(metadata: &ModelMetadata, expected: &str) -> Result<()> {
         match metadata.architecture() {
             Some(arch) if arch == expected => Ok(()),
-            Some(arch) => Err(CandleError::ProcessingError("Architecture mismatch")),
+            Some(_arch) => Err(CandleError::ProcessingError("Architecture mismatch")),
             None => {
                 // Architecture not specified, assume compatible
                 Ok(())

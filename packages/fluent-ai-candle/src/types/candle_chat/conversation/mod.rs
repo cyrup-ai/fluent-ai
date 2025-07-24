@@ -9,7 +9,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 
 // REMOVED: use fluent_ai_async::AsyncStream::with_channel;
-use crate::types::ZeroOneOrMany;
+use crate::types::{ZeroOneOrMany, CandleMessage};
+
+/// Trait for chat implementations that can process conversations
+pub trait CandleChat {
+    /// Process a chat prompt with conversation history and return a stream of messages
+    fn chat(&self, prompt: String, history: Vec<CandleMessage>) -> AsyncStream<CandleMessage>;
+}
 
 /// Immutable message in a conversation
 #[derive(Debug, Clone, PartialEq, Eq)]

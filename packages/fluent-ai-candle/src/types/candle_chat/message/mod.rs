@@ -15,7 +15,7 @@ pub mod types {
     use serde::{Deserialize, Serialize};
 
     /// Represents a chat message with role and content
-    #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub struct CandleMessage {
         /// The role of the message sender (user, assistant, system, etc.)
         pub role: CandleMessageRole,
@@ -41,6 +41,18 @@ pub mod types {
         Tool,
     }
 
+    impl CandleMessageRole {
+        /// Convert the role to its string representation
+        pub fn as_str(&self) -> &'static str {
+            match self {
+                CandleMessageRole::System => "system",
+                CandleMessageRole::User => "user",
+                CandleMessageRole::Assistant => "assistant",
+                CandleMessageRole::Tool => "tool",
+            }
+        }
+    }
+
     impl CandleMessage {
         /// Create a new message with the given role and content
         pub fn new(id: u64, role: CandleMessageRole, content: &[u8]) -> Self {
@@ -48,6 +60,51 @@ pub mod types {
                 role,
                 content: String::from_utf8_lossy(content).to_string(),
                 id: Some(id.to_string()),
+                timestamp: Some(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                ),
+            }
+        }
+
+        /// Create a user message
+        pub fn user(content: impl Into<String>) -> Self {
+            Self {
+                role: CandleMessageRole::User,
+                content: content.into(),
+                id: None,
+                timestamp: Some(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                ),
+            }
+        }
+
+        /// Create an assistant message
+        pub fn assistant(content: impl Into<String>) -> Self {
+            Self {
+                role: CandleMessageRole::Assistant,
+                content: content.into(),
+                id: None,
+                timestamp: Some(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                ),
+            }
+        }
+
+        /// Create a system message
+        pub fn system(content: impl Into<String>) -> Self {
+            Self {
+                role: CandleMessageRole::System,
+                content: content.into(),
+                id: None,
                 timestamp: Some(
                     std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)

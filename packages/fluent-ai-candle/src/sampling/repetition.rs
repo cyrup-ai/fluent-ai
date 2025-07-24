@@ -298,24 +298,18 @@ mod tests {
     #[test]
     fn test_repetition_penalty_validation() {
         // Valid penalties
-        assert!(RepetitionPenaltyProcessor::new(1.0, 64).is_ok());
-        assert!(RepetitionPenaltyProcessor::new(1.1, 64).is_ok());
-        assert!(RepetitionPenaltyProcessor::new(2.0, 64).is_ok());
+        assert!(RepetitionPenaltyProcessor::new(1.0, 0.0, 0.0, 64).is_ok());
+        assert!(RepetitionPenaltyProcessor::new(1.1, 0.0, 0.0, 64).is_ok());
+        assert!(RepetitionPenaltyProcessor::new(2.0, 0.0, 0.0, 64).is_ok());
 
         // Invalid penalties
-        assert!(matches!(
-            RepetitionPenaltyProcessor::new(0.9, 64),
-            Err(SamplingError::InvalidRepetitionPenalty(0.9))
-        ));
-        assert!(matches!(
-            RepetitionPenaltyProcessor::new(-1.0, 64),
-            Err(SamplingError::InvalidRepetitionPenalty(-1.0))
-        ));
+        assert!(RepetitionPenaltyProcessor::new(0.9, 0.0, 0.0, 64).is_err());
+        assert!(RepetitionPenaltyProcessor::new(-1.0, 0.0, 0.0, 64).is_err());
     }
 
     #[test]
     fn test_identity_penalty() {
-        let processor = RepetitionPenaltyProcessor::new(1.0, 64).expect("valid penalty");
+        let processor = RepetitionPenaltyProcessor::new(1.0, 0.0, 0.0, 64).expect("valid penalty");
         assert!(processor.is_identity());
 
         let mut logits = create_test_logits();
@@ -336,7 +330,7 @@ mod tests {
 
     #[test]
     fn test_repetition_penalty_application() {
-        let processor = RepetitionPenaltyProcessor::new(2.0, 64).expect("valid penalty");
+        let processor = RepetitionPenaltyProcessor::new(2.0, 0.0, 0.0, 64).expect("valid penalty");
 
         let mut logits = create_test_logits();
         let original_vec = logits.to_vec1::<f32>().expect("conversion");
@@ -364,7 +358,7 @@ mod tests {
 
     #[test]
     fn test_context_window() {
-        let processor = RepetitionPenaltyProcessor::new(1.5, 3).expect("valid penalty");
+        let processor = RepetitionPenaltyProcessor::new(1.5, 0.0, 0.0, 3).expect("valid penalty");
 
         // Test with long token history, only last 3 should matter
         let long_history = vec![0, 0, 0, 1, 2, 3]; // Only [1, 2, 3] should be considered
@@ -375,7 +369,7 @@ mod tests {
 
     #[test]
     fn test_processor_trait_methods() {
-        let processor = RepetitionPenaltyProcessor::new(1.3, 128).expect("valid penalty");
+        let processor = RepetitionPenaltyProcessor::new(1.3, 0.0, 0.0, 128).expect("valid penalty");
 
         assert_eq!(processor.name(), "RepetitionPenaltyProcessor");
         assert!(processor.validate().is_ok());

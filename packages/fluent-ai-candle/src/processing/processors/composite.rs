@@ -583,7 +583,12 @@ mod tests {
             .unwrap();
 
         let mut context = ProcessingContext::default();
-        context.token_history = vec![1, 2, 3, 1, 2]; // Some repeated tokens
+        // Some repeated tokens
+        context.add_token(1).unwrap();
+        context.add_token(2).unwrap();
+        context.add_token(3).unwrap();
+        context.add_token(1).unwrap();
+        context.add_token(2).unwrap();
 
         let mut logits = vec![2.0, 1.5, 1.0, 0.5, 0.1, 0.05, 0.01];
         let original = logits.clone();

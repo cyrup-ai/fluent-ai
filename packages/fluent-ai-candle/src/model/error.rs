@@ -19,6 +19,10 @@ pub enum ValidationError {
     #[error("Invalid parameter value for {parameter}: {value}")]
     InvalidParameter { parameter: String, value: String },
     
+    /// Invalid range value
+    #[error("Invalid range for {parameter}: expected {expected}, got {actual}")]
+    InvalidRange { parameter: String, expected: String, actual: String },
+    
     /// Model not found
     #[error("Model not found: {model_name}")]
     ModelNotFound { model_name: String },
@@ -73,6 +77,27 @@ pub enum ModelError {
     /// Device error (GPU/CPU)
     #[error("Device error: {message}")]
     Device { message: String },
+    
+    /// Invalid configuration error
+    #[error("Invalid configuration: {0}")]
+    InvalidConfiguration(std::borrow::Cow<'static, str>),
+    
+    /// Operation not supported error
+    #[error("Operation not supported: {0}")]
+    OperationNotSupported(std::borrow::Cow<'static, str>),
+    
+    /// Model not found error
+    #[error("Model not found: {provider}::{name}")]
+    ModelNotFound {
+        provider: std::borrow::Cow<'static, str>,
+        name: std::borrow::Cow<'static, str>,
+    },
+    
+    /// Model already exists error
+    #[error("Model already exists: {name}")]
+    ModelAlreadyExists {
+        name: std::borrow::Cow<'static, str>,
+    },
 }
 
 /// Result type for model operations

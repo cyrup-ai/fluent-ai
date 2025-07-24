@@ -118,14 +118,15 @@ impl RepetitionPenaltyProcessor {
         self.token_frequencies.clear();
         self.overflow_frequencies.clear();
 
-        let tokens = if self.context_window > 0 && self.context_window < context.token_history.len()
+        let token_history = context.token_history();
+        let tokens = if self.context_window > 0 && self.context_window < token_history.len()
         {
             // Use only recent tokens from context window
-            let start_idx = context.token_history.len() - self.context_window;
-            &context.token_history[start_idx..]
+            let start_idx = token_history.len() - self.context_window;
+            &token_history[start_idx..]
         } else {
             // Use full token history
-            &context.token_history
+            token_history
         };
 
         // Count token frequencies with hybrid stack/heap storage
@@ -387,7 +388,13 @@ mod tests {
 
         // Create context with repeated tokens
         let mut context = ProcessingContext::default();
-        context.token_history = vec![1, 2, 3, 1, 2, 1]; // Token 1 appears 3 times, token 2 twice, token 3 once
+        // Token 1 appears 3 times, token 2 twice, token 3 once
+        context.add_token(1).unwrap();
+        context.add_token(2).unwrap();
+        context.add_token(3).unwrap();
+        context.add_token(1).unwrap();
+        context.add_token(2).unwrap();
+        context.add_token(1).unwrap();
 
         processor.update_token_frequencies(&context);
 
@@ -402,7 +409,13 @@ mod tests {
         let mut processor = RepetitionPenaltyProcessor::new(1.2, 0.0, 0.0, 3).unwrap(); // Window of 3
 
         let mut context = ProcessingContext::default();
-        context.token_history = vec![1, 2, 3, 4, 5, 1]; // Only last 3 tokens: [4, 5, 1]
+        // Only last 3 tokens: [4, 5, 1]
+        context.add_token(1).unwrap();
+        context.add_token(2).unwrap();
+        context.add_token(3).unwrap();
+        context.add_token(4).unwrap();
+        context.add_token(5).unwrap();
+        context.add_token(1).unwrap();
 
         processor.update_token_frequencies(&context);
 
@@ -418,7 +431,10 @@ mod tests {
         let mut processor = RepetitionPenaltyProcessor::new(2.0, 0.1, 0.05, 0).unwrap();
 
         let mut context = ProcessingContext::default();
-        context.token_history = vec![0, 1, 0]; // Token 0 appears twice, token 1 once
+        // Token 0 appears twice, token 1 once
+        context.add_token(0).unwrap();
+        context.add_token(1).unwrap();
+        context.add_token(0).unwrap();
 
         let mut logits = vec![1.0, 0.5, 2.0]; // 3 tokens
         let original = logits.clone();
@@ -436,7 +452,11 @@ mod tests {
         // Test frequency penalty (scales with frequency)
         let mut freq_processor = RepetitionPenaltyProcessor::new(1.0, 0.1, 0.0, 0).unwrap();
         let mut context = ProcessingContext::default();
-        context.token_history = vec![0, 0, 0, 1]; // Token 0 appears 3 times, token 1 once
+        // Token 0 appears 3 times, token 1 once
+        context.add_token(0).unwrap();
+        context.add_token(0).unwrap();
+        context.add_token(0).unwrap();
+        context.add_token(1).unwrap();
 
         let mut logits = vec![1.0, 1.0];
         freq_processor

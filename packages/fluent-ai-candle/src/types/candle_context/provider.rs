@@ -13,7 +13,8 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, SystemTime};
 
-use fluent_ai_async::{AsyncStream, AsyncStreamSender, spawn_task};
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
+use glob;
 // Local macro definitions removed - using fluent_ai_async macros instead
 // Streaming primitives from fluent-ai-async
 // Macros now available from fluent_ai_async crate
@@ -427,62 +428,62 @@ impl StreamingContextProcessor {
         AsyncStream::with_channel(move |sender| {
             let start_time = SystemTime::now();
 
-            // Emit context load started event
-            if let Some(ref events) = event_sender {
-                let _ = events.send(ContextEvent::ContextLoadStarted {
-                    context_type: "File".to_string(),
-                    source: context.path.clone(),
-                    timestamp: start_time,
-                });
-            }
-
-            // Validate input
-            if let Err(validation_error) = Self::validate_file_context(&context) {
-                let error = ContextError::ValidationError(validation_error.to_string());
-                fluent_ai_async::handle_error!(error, "File context validation failed");
-
-                // Emit validation failed event
+                // Emit context load started event
                 if let Some(ref events) = event_sender {
-                    let _ = events.send(ContextEvent::ValidationFailed {
-                        validation_type: "FileContext".to_string(),
-                        error: error.to_string(),
-                        timestamp: SystemTime::now(),
+                    let _ = events.send(ContextEvent::ContextLoadStarted {
+                        context_type: "File".to_string(),
+                        source: context.path.clone(),
+                        timestamp: start_time,
                     });
                 }
-                return;
-            }
 
-            // Process file context
-            match Self::load_file_document(&context) {
-                Ok(document) => {
-                    let duration = start_time.elapsed().unwrap_or(Duration::ZERO);
-                    let _ = sender.send(document);
+                // Validate input
+                if let Err(validation_error) = Self::validate_file_context(&context) {
+                    let error = ContextError::ValidationError(validation_error.to_string());
+                    fluent_ai_async::handle_error!(error, "File context validation failed");
 
-                    // Emit context load completed event
+                    // Emit validation failed event
                     if let Some(ref events) = event_sender {
-                        let _ = events.send(ContextEvent::ContextLoadCompleted {
-                            context_type: "File".to_string(),
-                            source: context.path.clone(),
-                            documents_loaded: 1,
-                            duration_nanos: duration.as_nanos() as u64,
-                            timestamp: SystemTime::now(),
-                        });
-                    }
-                }
-                Err(error) => {
-                    fluent_ai_async::handle_error!(error, "File document loading failed");
-
-                    // Emit context load failed event
-                    if let Some(ref events) = event_sender {
-                        let _ = events.send(ContextEvent::ContextLoadFailed {
-                            context_type: "File".to_string(),
-                            source: context.path.clone(),
+                        let _ = events.send(ContextEvent::ValidationFailed {
+                            validation_type: "FileContext".to_string(),
                             error: error.to_string(),
                             timestamp: SystemTime::now(),
                         });
                     }
+                    return;
                 }
-            }
+
+                // Process file context
+                match Self::load_file_document(&context) {
+                    Ok(document) => {
+                        let duration = start_time.elapsed().unwrap_or(Duration::ZERO);
+                        let _ = sender.send(document);
+
+                        // Emit context load completed event
+                        if let Some(ref events) = event_sender {
+                            let _ = events.send(ContextEvent::ContextLoadCompleted {
+                                context_type: "File".to_string(),
+                                source: context.path.clone(),
+                                documents_loaded: 1,
+                                duration_nanos: duration.as_nanos() as u64,
+                                timestamp: SystemTime::now(),
+                            });
+                        }
+                    }
+                    Err(error) => {
+                        fluent_ai_async::handle_error!(error, "File document loading failed");
+
+                        // Emit context load failed event
+                        if let Some(ref events) = event_sender {
+                            let _ = events.send(ContextEvent::ContextLoadFailed {
+                                context_type: "File".to_string(),
+                                source: context.path.clone(),
+                                error: error.to_string(),
+                                timestamp: SystemTime::now(),
+                            });
+                        }
+                    }
+                }
         })
     }
 
@@ -687,67 +688,65 @@ impl Context<Files> {
     #[inline]
     pub fn load(self) -> AsyncStream<ZeroOneOrMany<CandleDocument>> {
         AsyncStream::with_channel(move |sender| {
-            spawn_task(move || {
-                match self.source {
-                    ContextSourceType::Files(files_context) => {
-                        // Expand glob pattern and load files
-                        match glob::glob(&files_context.pattern) {
-                            Ok(paths) => {
-                                let mut documents = Vec::new();
-                                for entry in paths.flatten() {
-                                    if let Ok(content) = std::fs::read_to_string(&entry) {
-                                        let document = CandleDocument {
-                                            data: content,
-                                            format: Some(crate::types::candle_context::ContentFormat::Text),
-                                            media_type: Some(
-                                                crate::types::candle_context::DocumentMediaType::TXT,
-                                            ),
-                                            additional_props: {
-                                                let mut props = HashMap::new();
-                                                props.insert(
-                                                    "id".to_string(),
-                                                    serde_json::Value::String(
-                                                        Uuid::new_v4().to_string(),
-                                                    ),
-                                                );
-                                                props.insert(
-                                                    "path".to_string(),
-                                                    serde_json::Value::String(
-                                                        entry.to_string_lossy().to_string(),
-                                                    ),
-                                                );
-                                                props
-                                            },
-                                        };
-                                        documents.push(document);
-                                    }
+            match self.source {
+                ContextSourceType::Files(files_context) => {
+                    // Expand glob pattern and load files
+                    match glob::glob(&files_context.pattern) {
+                        Ok(paths) => {
+                            let mut documents = Vec::new();
+                            for entry in paths.flatten() {
+                                if let Ok(content) = std::fs::read_to_string(&entry) {
+                                    let document = CandleDocument {
+                                        data: content,
+                                        format: Some(crate::types::candle_context::ContentFormat::Text),
+                                        media_type: Some(
+                                            crate::types::candle_context::DocumentMediaType::TXT,
+                                        ),
+                                        additional_props: {
+                                            let mut props = HashMap::new();
+                                            props.insert(
+                                                "id".to_string(),
+                                                serde_json::Value::String(
+                                                    Uuid::new_v4().to_string(),
+                                                ),
+                                            );
+                                            props.insert(
+                                                "path".to_string(),
+                                                serde_json::Value::String(
+                                                    entry.to_string_lossy().to_string(),
+                                                ),
+                                            );
+                                            props
+                                        },
+                                    };
+                                    documents.push(document);
                                 }
-                                let result = match documents.len() {
-                                    0 => ZeroOneOrMany::None,
-                                    1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
-                                    _ => ZeroOneOrMany::Many(documents),
-                                };
-                                let _ = sender.send(result);
                             }
-                            Err(e) => {
-                                fluent_ai_async::handle_error!(
-                                    ContextError::ContextNotFound(format!(
-                                        "Glob pattern error: {}",
-                                        e
-                                    )),
-                                    "Glob pattern expansion failed"
-                                );
-                            }
+                            let result = match documents.len() {
+                                0 => ZeroOneOrMany::None,
+                                1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
+                                _ => ZeroOneOrMany::Many(documents),
+                            };
+                            let _ = sender.send(result);
+                        }
+                        Err(e) => {
+                            fluent_ai_async::handle_error!(
+                                ContextError::ContextNotFound(format!(
+                                    "Glob pattern error: {}",
+                                    e
+                                )),
+                                "Glob pattern expansion failed"
+                            );
                         }
                     }
-                    _ => {
-                        fluent_ai_async::handle_error!(
-                            ContextError::ContextNotFound("Invalid context type".to_string()),
-                            "Invalid context type for files loading"
-                        );
-                    }
                 }
-            });
+                _ => {
+                    fluent_ai_async::handle_error!(
+                        ContextError::ContextNotFound("Invalid context type".to_string()),
+                        "Invalid context type for files loading"
+                    );
+                }
+            }
         })
     }
 }
@@ -772,9 +771,9 @@ impl Context<Directory> {
     #[inline]
     pub fn load(self) -> AsyncStream<ZeroOneOrMany<CandleDocument>> {
         AsyncStream::with_channel(move |sender| {
-            spawn_task(move || {
+            Box::pin(async move {
                 match self.source {
-                    ContextSourceType::Directory(directory_context) => {
+                ContextSourceType::Directory(directory_context) => {
                         // Traverse directory and load files
                         let mut documents = Vec::new();
 
@@ -864,7 +863,7 @@ impl Context<Directory> {
                                     1 => ZeroOneOrMany::One(documents.into_iter().next().unwrap()),
                                     _ => ZeroOneOrMany::Many(documents),
                                 };
-                                let _ = sender.send(result);
+                                let _ = sender.send(result).await;
                             }
                             Err(e) => {
                                 fluent_ai_async::handle_error!(
@@ -884,7 +883,7 @@ impl Context<Directory> {
                         );
                     }
                 }
-            });
+            })
         })
     }
 }
@@ -908,8 +907,8 @@ impl Context<Github> {
     /// Load documents asynchronously with streaming - returns unwrapped values
     #[inline]
     pub fn load(self) -> AsyncStream<ZeroOneOrMany<CandleDocument>> {
-        AsyncStream::with_channel(move |sender| {
-            spawn_task(move || {
+        AsyncStream::with_channel(move |_sender: AsyncStreamSender<ZeroOneOrMany<CandleDocument>>| {
+            Box::pin(async move {
                 match self.source {
                     ContextSourceType::Github(github_context) => {
                         // GitHub repository file loading implementation
@@ -920,7 +919,7 @@ impl Context<Github> {
                                 ),
                                 "GitHub repository URL missing"
                             );
-                            return;
+                            return Ok(());
                         }
 
                         // For now, return a meaningful error indicating GitHub integration needs external dependencies
@@ -943,7 +942,7 @@ impl Context<Github> {
                         );
                     }
                 }
-            });
+            })
         })
     }
 }

@@ -43,6 +43,12 @@ impl CompactCompletionResponse {
     /// Convert back to a standard CompletionResponse with zero-allocation optimization where possible
     pub fn into_standard(self) -> super::completion_response::CompletionResponse<'static> {
         super::completion_response::CompletionResponse {
+            id: Some("compact_response".into()), // Required field
+            object: Some("text_completion".into()), // Standard object type
+            created: Some(std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs()), // Current timestamp
             text: Cow::Owned((*self.content).to_owned()),
             model: Cow::Owned((*self.model).to_owned()),
             provider: Some(Cow::Owned((*self.provider).to_owned())),
@@ -164,12 +170,9 @@ impl CompactCompletionResponseBuilder {
         };
 
         Ok(AsyncStream::with_channel(move |sender| {
-            Box::pin(async move {
-                if sender.send(response).await.is_err() {
-                    // Channel closed, which is fine - no error to propagate
-                }
-                Ok(())
-            })
+            if sender.send(response).is_err() {
+                // Channel closed, which is fine - no error to propagate
+            }
         }))
     }
 

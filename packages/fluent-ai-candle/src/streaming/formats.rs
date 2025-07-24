@@ -131,17 +131,17 @@ impl StreamingFormatter {
     /// Format as plain text (content only)
     #[inline]
     fn format_plain_text(&self, response: &StreamingTokenResponse) -> Result<String, StreamingError> {
-        Ok(response.content.clone())
+        Ok(response.text.clone())
     }
 
     /// Format as raw data with minimal overhead
     #[inline]
     fn format_raw(&self, response: &StreamingTokenResponse) -> Result<String, StreamingError> {
-        // Raw format: token_id|position|content
+        // Raw format: sequence_id|timestamp|text
         Ok(format!("{}|{}|{}", 
-            response.token_id.unwrap_or(0),
-            response.position,
-            response.content
+            response.sequence_id,
+            response.timestamp,
+            response.text
         ))
     }
 
@@ -152,9 +152,9 @@ impl StreamingFormatter {
             "minimal_json" => {
                 // Minimal JSON with only essential fields
                 let minimal = serde_json::json!({
-                    "content": response.content,
-                    "position": response.position,
-                    "is_complete": response.is_complete_token
+                    "text": response.text,
+                    "sequence_id": response.sequence_id,
+                    "is_final": response.is_final
                 });
                 serde_json::to_string(&minimal)
                     .map_err(|e| StreamingError::FormatError(format!("Custom JSON serialization failed: {}", e)))
@@ -162,10 +162,10 @@ impl StreamingFormatter {
             "csv" => {
                 // CSV format: position,content,is_complete,probability
                 Ok(format!("{},{},{},{}", 
-                    response.position,
-                    response.content.replace(',', "\\,"), // Escape commas
-                    response.is_complete_token,
-                    response.probability.unwrap_or(0.0)
+                    response.sequence_id,
+                    response.text.replace(',', "\\,"), // Escape commas
+                    response.is_final,
+                    1.0 // Default probability since not available in struct
                 ))
             },
             _ => Err(StreamingError::FormatError(

@@ -7,6 +7,7 @@ use candle_core::Tensor;
 
 use super::SamplingError;
 use crate::processing::traits::LogitsProcessor;
+use crate::processing::context::ProcessingContext;
 
 /// Composite processor that chains multiple logits processors in sequence
 ///
@@ -117,8 +118,31 @@ impl CompositeProcessor {
             }
 
             // Execute processor with comprehensive error context
+            // Convert tensor to f32 slice for processing
+            let logits_data = logits.flatten_all().map_err(|e| {
+                SamplingError::ProcessorChainError(format!(
+                    "Failed to flatten logits tensor: {}",
+                    e
+                ))
+            })?;
+            let mut logits_vec = logits_data.to_vec1::<f32>().map_err(|e| {
+                SamplingError::ProcessorChainError(format!(
+                    "Failed to convert logits to f32 vector: {}",
+                    e
+                ))
+            })?;
+            
+            // Create processing context
+            let context = ProcessingContext::new(50000, 1024).map_err(|e| {
+                SamplingError::ProcessorChainError(format!(
+                    "Failed to create processing context: {}",
+                    e
+                ))
+            })?;
+            
+            // Process logits using the correct trait method
             processor
-                .process(logits, token_ids, position)
+                .process_logits(&mut logits_vec, &context)
                 .map_err(|e| {
                     SamplingError::ProcessorChainError(format!(
                         "Processor {} ({}) failed: {}",
@@ -127,6 +151,14 @@ impl CompositeProcessor {
                         e
                     ))
                 })?;
+            
+            // Convert back to tensor
+            *logits = Tensor::from_vec(logits_vec, logits.shape(), logits.device()).map_err(|e| {
+                SamplingError::ProcessorChainError(format!(
+                    "Failed to convert processed logits back to tensor: {}",
+                    e
+                ))
+            })?;
 
             // Validate tensor integrity after each processor
             if let Err(validation_error) = self.validate_tensor_integrity(logits) {
@@ -204,7 +236,7 @@ impl CompositeProcessorBuilder {
     /// Add temperature processor
     #[inline(always)]
     pub fn temperature(self, temperature: f64) -> Result<Self, SamplingError> {
-        use super::temperature::TemperatureProcessor;
+        use crate::processing::processors::temperature::TemperatureProcessor;
         let processor = TemperatureProcessor::new(temperature as f32)?;
         Ok(self.add_processor(Box::new(processor)))
     }
@@ -212,7 +244,7 @@ impl CompositeProcessorBuilder {
     /// Add top-k processor
     #[inline(always)]
     pub fn top_k(self, k: usize) -> Result<Self, SamplingError> {
-        use super::topk::TopKProcessor;
+        use crate::processing::processors::top_k::TopKProcessor;
         let processor = TopKProcessor::new(k)?;
         Ok(self.add_processor(Box::new(processor)))
     }
@@ -220,8 +252,8 @@ impl CompositeProcessorBuilder {
     /// Add top-p processor
     #[inline(always)]
     pub fn top_p(self, p: f64) -> Result<Self, SamplingError> {
-        use super::nucleus::TopPProcessor;
-        let processor = TopPProcessor::new(p)?;
+        use crate::processing::processors::top_p::TopPProcessor;
+        let processor = TopPProcessor::new(p as f32)?;
         Ok(self.add_processor(Box::new(processor)))
     }
 
@@ -232,8 +264,10 @@ impl CompositeProcessorBuilder {
         penalty: f64,
         context_size: usize,
     ) -> Result<Self, SamplingError> {
-        use super::repetition::RepetitionPenaltyProcessor;
-        let processor = RepetitionPenaltyProcessor::new(penalty, context_size)?;
+        use crate::processing::processors::repetition_penalty::RepetitionPenaltyProcessor;
+        let processor = RepetitionPenaltyProcessor::new(
+            penalty as f32, 0.0, 0.0, context_size // repetition_penalty, frequency_penalty, presence_penalty, context_window
+        )?;
         Ok(self.add_processor(Box::new(processor)))
     }
 

@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use crate::streaming::StreamingError;
 
 /// Backpressure strategies for handling flow control
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BackpressureStrategy {
     /// No backpressure handling (fire and forget)
     None,
@@ -322,9 +322,9 @@ impl FlowController {
         // Calculate trend
         let trend = if self.adaptive_params.buffer_history.len() >= 2 {
             let recent_avg = self.adaptive_params.buffer_history.iter()
-                .rev().take(5).sum::<f32>() / 5.0.min(self.adaptive_params.buffer_history.len() as f32);
+                .rev().take(5).sum::<f32>() / 5.0_f32.min(self.adaptive_params.buffer_history.len() as f32);
             let older_avg = self.adaptive_params.buffer_history.iter()
-                .rev().skip(5).take(5).sum::<f32>() / 5.0.min((self.adaptive_params.buffer_history.len().saturating_sub(5)) as f32);
+                .rev().skip(5).take(5).sum::<f32>() / 5.0_f32.min((self.adaptive_params.buffer_history.len().saturating_sub(5)) as f32);
             recent_avg - older_avg
         } else {
             0.0
