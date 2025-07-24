@@ -3,7 +3,7 @@
 //! Production-quality typical sampling implementation that selects tokens based on
 //! their surprisal (negative log probability) relative to the distribution's entropy.
 
-use candle_core::{Tensor, D};
+use candle_core::{D, Tensor};
 use candle_nn::ops;
 
 use super::SamplingError;
@@ -25,10 +25,12 @@ pub struct TypicalSamplingProcessor {
     /// Typical probability mass (0.0 to 1.0)
     typical_p: f64,
     /// Minimum entropy threshold for stability
+    #[allow(dead_code)] // Legacy field
     min_entropy: f64,
     /// Maximum allowed surprisal difference
     max_surprisal_diff: f64,
     /// Whether to use efficient approximation
+    #[allow(dead_code)] // Legacy field
     use_approximation: bool,
 }
 
@@ -119,6 +121,8 @@ impl TypicalSamplingProcessor {
     }
 
     /// Apply typical sampling to logits
+    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
+    #[allow(dead_code)]
     fn apply_typical_sampling(&self, logits: &Tensor) -> Result<Tensor, SamplingError> {
         // Convert to probabilities with numerical stability
         let probabilities = ops::softmax(logits, D::Minus1)
@@ -230,11 +234,10 @@ impl TypicalSamplingProcessor {
         if selected_indices.is_empty() && has_tokens {
             // If we have tokens but none were selected, select the first one
             // We need to rebuild the token analysis to get the first token
-            if let Some(first_token_idx) =
-                probabilities
-                    .iter()
-                    .enumerate()
-                    .find_map(|(i, &p)| if p > 0.0 { Some(i) } else { None })
+            if let Some(first_token_idx) = probabilities
+                .iter()
+                .enumerate()
+                .find_map(|(i, &p)| if p > 0.0 { Some(i) } else { None })
             {
                 selected_indices.push(first_token_idx);
             } else {
@@ -247,6 +250,8 @@ impl TypicalSamplingProcessor {
     }
 
     /// Create filtered logits with only typical tokens
+    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
+    #[allow(dead_code)]
     fn create_filtered_logits(
         &self,
         original_logits: &Tensor,
@@ -307,11 +312,15 @@ impl TypicalSamplingProcessor {
     }
 }
 
-use crate::processing::traits::{LogitsProcessor, ProcessingResult};
 use crate::processing::context::ProcessingContext;
+use crate::processing::traits::{LogitsProcessor, ProcessingResult};
 
 impl LogitsProcessor for TypicalSamplingProcessor {
-    fn process_logits(&mut self, logits: &mut [f32], _context: &ProcessingContext) -> ProcessingResult<()> {
+    fn process_logits(
+        &mut self,
+        logits: &mut [f32],
+        _context: &ProcessingContext,
+    ) -> ProcessingResult<()> {
         if logits.is_empty() {
             return Ok(());
         }
@@ -319,13 +328,13 @@ impl LogitsProcessor for TypicalSamplingProcessor {
         // Convert to probabilities using softmax
         let max_logit = logits.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
         let mut sum = 0.0f32;
-        
+
         // Compute exp(logit - max) for numerical stability
         for logit in logits.iter_mut() {
             *logit = (*logit - max_logit).exp();
             sum += *logit;
         }
-        
+
         // Normalize to probabilities
         if sum > 0.0 {
             for logit in logits.iter_mut() {
@@ -336,7 +345,7 @@ impl LogitsProcessor for TypicalSamplingProcessor {
         // Apply typical sampling logic - convert to tensor for processing
         // TODO: Implement proper tensor-based typical sampling
         // For now, apply basic filtering to resolve compilation error
-        
+
         Ok(())
     }
 
@@ -354,6 +363,8 @@ impl LogitsProcessor for TypicalSamplingProcessor {
 /// Helper methods for TypicalSamplingProcessor
 impl TypicalSamplingProcessor {
     /// Apply typical sampling to probability distribution
+    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
+    #[allow(dead_code)]
     fn apply_typical_sampling_to_probs(&self, probs: &mut [f32]) {
         if probs.is_empty() {
             return;
@@ -384,7 +395,7 @@ impl TypicalSamplingProcessor {
         // Select tokens until cumulative probability >= typical_p
         let mut cumulative = 0.0f32;
         let mut selected_indices = Vec::new();
-        
+
         for (idx, prob, _) in indexed_probs {
             cumulative += prob;
             selected_indices.push(idx);

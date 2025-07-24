@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use crate::types::candle_chat::{templates::core::{TemplateError, TemplateResult, TemplateValue}};
+use crate::types::candle_chat::templates::core::{TemplateError, TemplateResult, TemplateValue};
 
 /// Template filter function type
 pub type FilterFunction =

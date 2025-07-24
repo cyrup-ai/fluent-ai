@@ -2,9 +2,7 @@
 
 use std::fmt;
 
-use crate::types::{
-    CandleCompletionError,
-};
+use crate::types::CandleCompletionError;
 
 // Type aliases for missing error types
 #[allow(dead_code)] // Used in multiple modules but flagged incorrectly by compiler
@@ -212,9 +210,7 @@ impl From<CompletionRequestError> for CandleError {
             CompletionRequestError::GenerationFailed { reason: _ } => {
                 Self::ProcessingError("Generation failed during completion request")
             }
-            _ => {
-                Self::Configuration("Completion request processing failed")
-            }
+            _ => Self::Configuration("Completion request processing failed"),
         }
     }
 }
@@ -505,84 +501,115 @@ impl From<CandleError> for CandleCompletionError {
             CandleError::Msg(msg) => CandleCompletionError::Internal { message: msg },
             CandleError::ModelNotFound(_msg) => CandleCompletionError::ModelNotLoaded,
             CandleError::ModelLoadError(_msg) => CandleCompletionError::ModelNotLoaded,
-            CandleError::ProcessingError(msg) => CandleCompletionError::GenerationFailed { reason: msg.to_string() },
-            CandleError::InvalidConfiguration(msg) => CandleCompletionError::InvalidRequest { message: msg.to_string() },
-            CandleError::Tokenization(msg) => CandleCompletionError::TokenizationFailed { message: msg.to_string() },
-            CandleError::Io(msg) => CandleCompletionError::Internal { message: msg.clone() },
-            CandleError::InvalidModelFormat(_msg) => {
-                CandleCompletionError::ModelNotLoaded
-            }
-            CandleError::TensorOperation(msg) => {
-                CandleCompletionError::GenerationFailed { reason: msg.to_string() }
-            }
-            CandleError::DeviceOperation(msg) => {
-                CandleCompletionError::GenerationFailed { reason: msg.to_string() }
-            }
-            CandleError::MemoryAllocation(msg) => {
-                CandleCompletionError::GenerationFailed { reason: msg.to_string() }
-            }
-            CandleError::GenerationFailed(msg) => {
-                CandleCompletionError::GenerationFailed { reason: msg.to_string() }
-            }
-            CandleError::TokenizerError(msg) => {
-                CandleCompletionError::GenerationFailed { reason: msg.to_string() }
-            }
-            CandleError::ConfigurationError(msg) => {
-                CandleCompletionError::InvalidRequest { message: msg.to_string() }
-            }
-            CandleError::UnsupportedOperation(msg) => {
-                CandleCompletionError::InvalidRequest { message: msg.to_string() }
-            }
+            CandleError::ProcessingError(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::InvalidConfiguration(msg) => CandleCompletionError::InvalidRequest {
+                message: msg.to_string(),
+            },
+            CandleError::Tokenization(msg) => CandleCompletionError::TokenizationFailed {
+                message: msg.to_string(),
+            },
+            CandleError::Io(msg) => CandleCompletionError::Internal {
+                message: msg.clone(),
+            },
+            CandleError::InvalidModelFormat(_msg) => CandleCompletionError::ModelNotLoaded,
+            CandleError::TensorOperation(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::DeviceOperation(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::MemoryAllocation(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::GenerationFailed(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::TokenizerError(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::ConfigurationError(msg) => CandleCompletionError::InvalidRequest {
+                message: msg.to_string(),
+            },
+            CandleError::UnsupportedOperation(msg) => CandleCompletionError::InvalidRequest {
+                message: msg.to_string(),
+            },
             CandleError::ContextLengthExceeded { current, max } => {
                 CandleCompletionError::ContextLengthExceeded { current, max }
             }
             CandleError::VocabularyMismatch { expected, actual } => {
-                CandleCompletionError::GenerationFailed { 
-                    reason: format!(
-                        "Vocabulary mismatch: expected {}, got {}",
-                        expected, actual
-                    )
+                CandleCompletionError::GenerationFailed {
+                    reason: format!("Vocabulary mismatch: expected {}, got {}", expected, actual),
                 }
             }
-            CandleError::IncompatibleTokenizer(msg) => {
-                CandleCompletionError::GenerationFailed { reason: msg.to_string() }
-            }
-            CandleError::SafeTensors(msg) => {
-                CandleCompletionError::ModelLoadingFailed { message: msg.to_string() }
-            }
-            CandleError::Quantization(msg) => {
-                CandleCompletionError::ModelLoadingFailed { message: msg.to_string() }
-            }
-            CandleError::Tokenizer(msg) => CandleCompletionError::GenerationFailed { reason: msg.to_string() },
-            CandleError::MemoryMapping(msg) => {
-                CandleCompletionError::ModelLoadingFailed { message: msg.to_string() }
-            }
-            CandleError::LoadingTimeout => {
-                CandleCompletionError::ModelLoadingFailed { message: "Model loading timeout".to_string() }
-            }
-            CandleError::UnsupportedArchitecture(arch) => {
-                CandleCompletionError::InvalidRequest { message: format!("Unsupported architecture: {}", arch) }
-            }
-            CandleError::Configuration(msg) => CandleCompletionError::InvalidRequest { message: msg.to_string() },
+            CandleError::IncompatibleTokenizer(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::SafeTensors(msg) => CandleCompletionError::ModelLoadingFailed {
+                message: msg.to_string(),
+            },
+            CandleError::Quantization(msg) => CandleCompletionError::ModelLoadingFailed {
+                message: msg.to_string(),
+            },
+            CandleError::Tokenizer(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::MemoryMapping(msg) => CandleCompletionError::ModelLoadingFailed {
+                message: msg.to_string(),
+            },
+            CandleError::LoadingTimeout => CandleCompletionError::ModelLoadingFailed {
+                message: "Model loading timeout".to_string(),
+            },
+            CandleError::UnsupportedArchitecture(arch) => CandleCompletionError::InvalidRequest {
+                message: format!("Unsupported architecture: {}", arch),
+            },
+            CandleError::Configuration(msg) => CandleCompletionError::InvalidRequest {
+                message: msg.to_string(),
+            },
             // Handle missing patterns
-            CandleError::DeviceAllocation(msg) => {
-                CandleCompletionError::GenerationFailed { reason: msg.to_string() }
+            CandleError::DeviceAllocation(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::TokenizationError(msg) => CandleCompletionError::TokenizationFailed {
+                message: msg.clone(),
+            },
+            CandleError::CacheOverflow => CandleCompletionError::GenerationFailed {
+                reason: "Cache overflow".to_string(),
+            },
+            CandleError::InvalidInput(msg) => CandleCompletionError::InvalidRequest {
+                message: msg.to_string(),
+            },
+            CandleError::Progress(msg) => CandleCompletionError::Internal {
+                message: msg.to_string(),
+            },
+            CandleError::Cache(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::InitializationError(msg) => CandleCompletionError::Internal {
+                message: msg.to_string(),
+            },
+            CandleError::ProgressHubError(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::BackendError(msg) => CandleCompletionError::Internal {
+                message: msg.to_string(),
+            },
+            CandleError::NetworkError(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::ValidationError(msg) => CandleCompletionError::GenerationFailed {
+                reason: msg.to_string(),
+            },
+            CandleError::ModelNotLoaded(msg) => {
+                CandleCompletionError::ModelLoadingFailed { message: msg }
             }
-            CandleError::TokenizationError(msg) => CandleCompletionError::TokenizationFailed { message: msg.clone() },
-            CandleError::CacheOverflow => {
-                CandleCompletionError::GenerationFailed { reason: "Cache overflow".to_string() }
+            CandleError::TensorError(msg) => {
+                CandleCompletionError::GenerationFailed { reason: msg }
             }
-            CandleError::InvalidInput(msg) => CandleCompletionError::InvalidRequest { message: msg.to_string() },
-            CandleError::Progress(msg) => CandleCompletionError::Internal { message: msg.to_string() },
-            CandleError::Cache(msg) => CandleCompletionError::GenerationFailed { reason: msg.to_string() },
-            CandleError::InitializationError(msg) => CandleCompletionError::Internal { message: msg.to_string() },
-            CandleError::ProgressHubError(msg) => CandleCompletionError::GenerationFailed { reason: msg.to_string() },
-            CandleError::BackendError(msg) => CandleCompletionError::Internal { message: msg.to_string() },
-            CandleError::NetworkError(msg) => CandleCompletionError::GenerationFailed { reason: msg.to_string() },
-            CandleError::ValidationError(msg) => CandleCompletionError::GenerationFailed { reason: msg.to_string() },
-            CandleError::ModelNotLoaded(msg) => CandleCompletionError::ModelLoadingFailed { message: msg },
-            CandleError::TensorError(msg) => CandleCompletionError::GenerationFailed { reason: msg },
-            CandleError::ModelInferenceError(msg) => CandleCompletionError::GenerationFailed { reason: msg },
+            CandleError::ModelInferenceError(msg) => {
+                CandleCompletionError::GenerationFailed { reason: msg }
+            }
             CandleError::CacheError(msg) => CandleCompletionError::GenerationFailed { reason: msg },
         }
     }

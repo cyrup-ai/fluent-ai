@@ -6,12 +6,12 @@
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
+use fluent_ai_async::{AsyncStream, AsyncTask, spawn_task};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::types::{CandleCompletionRequest, CandleCompletionResponse, ZeroOneOrMany};
 use crate::model::ValidationError;
-use fluent_ai_async::{AsyncStream, AsyncTask, spawn_task};
+use crate::types::{CandleCompletionRequest, CandleCompletionResponse, ZeroOneOrMany};
 
 /// Handle errors in streaming context without panicking
 macro_rules! handle_error {
@@ -192,8 +192,6 @@ impl EngineConfig {
 
 // Removed old duplicate CandleCompletionRequest impl - use CandleCandleCompletionRequest from types module instead
 
-
-
 /// Core engine implementation with lock-free atomic operations
 pub struct Engine {
     config: EngineConfig,
@@ -297,7 +295,7 @@ impl Engine {
         };
         let tools: Vec<String> = match &request.tools {
             ZeroOneOrMany::None => Vec::new(),
-            ZeroOneOrMany::One(tool) => vec![format!("{:?}", tool)], // ToolDefinition doesn't have Display
+            ZeroOneOrMany::One(tool) => vec![format!("{:?}", tool)], /* ToolDefinition doesn't have Display */
             ZeroOneOrMany::Many(tools) => tools.iter().map(|t| format!("{:?}", t)).collect(),
         };
         let metadata = request.additional_params.as_ref().map(|v| v.to_string());
@@ -398,7 +396,7 @@ impl Engine {
         };
         let tools: Vec<String> = match &request.tools {
             ZeroOneOrMany::None => Vec::new(),
-            ZeroOneOrMany::One(tool) => vec![format!("{:?}", tool)], // ToolDefinition doesn't have Display
+            ZeroOneOrMany::One(tool) => vec![format!("{:?}", tool)], /* ToolDefinition doesn't have Display */
             ZeroOneOrMany::Many(tools) => tools.iter().map(|t| format!("{:?}", t)).collect(),
         };
         let metadata = request.additional_params.as_ref().map(|v| v.to_string());

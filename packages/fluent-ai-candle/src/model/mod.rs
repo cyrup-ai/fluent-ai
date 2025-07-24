@@ -32,11 +32,14 @@ pub use loading::{
     LoadingStage, ModelLoader, ModelMetadata, ProgressCallback, RecoveryStrategy, TensorInfo,
 };
 pub use metrics::{GenerationMetrics, ModelMetrics, ModelPerformanceStats};
-pub use registry::{ModelRegistry, RegistryError, global_registry, register_model, get_model, list_models, model_exists};
 pub use model_trait::Model;
+pub use registry::{
+    ModelRegistry, RegistryError, get_model, global_registry, list_models, model_exists,
+    register_model,
+};
 // All model traits are now defined in the canonical types module with Candle prefix:
 // - CandleLoadableModel (was LoadableModel)
-// - CandleUsageTrackingModel (was UsageTrackingModel)  
+// - CandleUsageTrackingModel (was UsageTrackingModel)
 // - CandleCompletionModel
 // - CandleConfigurableModel
 // - CandleTokenizerModel

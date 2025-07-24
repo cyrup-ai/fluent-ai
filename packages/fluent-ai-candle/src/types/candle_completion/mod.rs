@@ -15,11 +15,12 @@ pub mod streaming;
 pub mod tool_definition;
 
 // Re-export main types for convenience - organized by concept
+pub use core::*;
+
 pub use compact_completion_response::*;
 pub use completion_params::*;
 pub use completion_response::*;
 pub use constants::*;
-pub use core::*;
 pub use error::*;
 pub use model_params::*;
 pub use request::*;

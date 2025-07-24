@@ -5,19 +5,21 @@
 
 use std::{
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering as AtomicOrdering},
         Arc,
+        atomic::{AtomicBool, AtomicU64, Ordering as AtomicOrdering},
     },
     time::Instant,
 };
 
 use crossbeam_channel::{Sender, TrySendError};
-use crate::{error::{CandleError, CandleResult}, types::FinishReason};
+
 use super::{
-    streaming_config::StreamingConfig,
-    streaming_metrics::StreamingMetrics,
-    token_chunk::TokenChunk,
-    token_metadata::TokenMetadata,
+    streaming_config::StreamingConfig, streaming_metrics::StreamingMetrics,
+    token_chunk::TokenChunk, token_metadata::TokenMetadata,
+};
+use crate::{
+    error::{CandleError, CandleResult},
+    types::FinishReason,
 };
 
 /// Token stream sender for producer side
@@ -81,9 +83,13 @@ impl TokenStreamSender {
                 self.metrics.record_buffer_overflow();
                 let chunk_size = std::mem::size_of_val(&chunk);
                 if chunk_size > 1024 {
-                    Err(CandleError::streaming_error("Stream buffer overflow - chunk too large"))
+                    Err(CandleError::streaming_error(
+                        "Stream buffer overflow - chunk too large",
+                    ))
                 } else {
-                    Err(CandleError::streaming_error("Stream buffer overflow - failed to send chunk"))
+                    Err(CandleError::streaming_error(
+                        "Stream buffer overflow - failed to send chunk",
+                    ))
                 }
             }
             Err(TrySendError::Disconnected(_)) => {
@@ -103,12 +109,16 @@ impl TokenStreamSender {
     /// Terminate stream gracefully
     #[inline(always)]
     pub fn terminate(&self, reason: FinishReason) -> CandleResult<()> {
-        if !self.terminated.compare_exchange(
-            false,
-            true,
-            AtomicOrdering::Relaxed,
-            AtomicOrdering::Relaxed,
-        ).is_ok() {
+        if !self
+            .terminated
+            .compare_exchange(
+                false,
+                true,
+                AtomicOrdering::Relaxed,
+                AtomicOrdering::Relaxed,
+            )
+            .is_ok()
+        {
             return Ok(()); // Already terminated
         }
 
@@ -116,9 +126,9 @@ impl TokenStreamSender {
         let sequence_id = self.sequence_counter.fetch_add(1, AtomicOrdering::Relaxed);
         let mut metadata = TokenMetadata::default();
         metadata.finish_reason = Some(reason);
-        
+
         let termination_chunk = TokenChunk::empty(sequence_id)?;
-        
+
         match self.sender.try_send(termination_chunk) {
             Ok(()) => {
                 self.metrics.record_chunk_sent();
@@ -147,6 +157,15 @@ impl TokenStreamSender {
     #[inline(always)]
     pub fn metrics(&self) -> &StreamingMetrics {
         &self.metrics
+    }
+    /// Get streaming configuration (uses the config field)
+    pub fn get_config(&self) -> &StreamingConfig {
+        &self.config
+    }
+
+    /// Check if buffering is enabled according to config
+    pub fn is_buffering_enabled(&self) -> bool {
+        self.config.buffer_size > 0
     }
 }
 

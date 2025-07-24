@@ -10,11 +10,8 @@ use fluent_ai_simd::{
     config::ProcessorConfig,
     context::ProcessingContext,
     error::SimdError,
-    logits::{
-        processing::apply_temperature_scaling_simd,
-        topk::topk_filtering_simd,
-    },
-    ops::{compute_softmax_inplace, SoftmaxProcessor, TemperatureProcessor},
+    logits::{processing::apply_temperature_scaling_simd, topk::topk_filtering_simd},
+    ops::{SoftmaxProcessor, TemperatureProcessor, compute_softmax_inplace},
 };
 
 use crate::error::CandleError;
@@ -39,9 +36,7 @@ impl From<SimdError> for CandleError {
             SimdError::ProcessingError(_msg) => {
                 CandleError::ProcessingError("SIMD processing failed")
             }
-            SimdError::NumericalError(_msg) => {
-                CandleError::ProcessingError("SIMD numerical error")
-            }
+            SimdError::NumericalError(_msg) => CandleError::ProcessingError("SIMD numerical error"),
             SimdError::UnsupportedOperation(_msg) => {
                 CandleError::ProcessingError("SIMD operation not supported")
             }
@@ -49,7 +44,7 @@ impl From<SimdError> for CandleError {
                 CandleError::TensorOperation("SIMD tensor operation failed")
             }
             // Handle any other variants with a catch-all
-            _ => CandleError::ProcessingError("Unknown SIMD error")
+            _ => CandleError::ProcessingError("Unknown SIMD error"),
         }
     }
 }
@@ -72,9 +67,7 @@ impl CandleSimdProcessor {
     /// Create processor with custom configuration
     #[inline(always)]
     pub fn with_config(config: ProcessorConfig) -> CandleResult<Self> {
-        Ok(Self {
-            config,
-        })
+        Ok(Self { config })
     }
 
     /// Process logits with SIMD acceleration (zero allocation)
@@ -92,14 +85,16 @@ impl CandleSimdProcessor {
     /// Apply temperature scaling with SIMD optimization
     #[inline(always)]
     pub fn apply_temperature(&self, logits: &mut [f32], temperature: f32) -> CandleResult<()> {
-        apply_temperature_scaling_simd(logits, temperature)
-            .map_err(|e| candle_core::Error::Msg(format!("SIMD temperature scaling failed: {:?}", e)))
+        apply_temperature_scaling_simd(logits, temperature).map_err(|e| {
+            candle_core::Error::Msg(format!("SIMD temperature scaling failed: {:?}", e))
+        })
     }
 
     /// Apply top-k filtering with SIMD optimization
     #[inline(always)]
     pub fn apply_topk(&self, logits: &mut [f32], k: usize) -> Result<(), candle_core::Error> {
-        topk_filtering_simd(logits, k).map_err(|e| candle_core::Error::Msg(format!("Top-k filtering failed: {}", e)))
+        topk_filtering_simd(logits, k)
+            .map_err(|e| candle_core::Error::Msg(format!("Top-k filtering failed: {}", e)))
     }
 
     /// Get current configuration
@@ -134,7 +129,8 @@ impl CandleSoftmaxProcessor {
     /// Compute softmax in-place with SIMD acceleration
     #[inline(always)]
     pub fn softmax_inplace(&mut self, logits: &mut [f32]) -> Result<(), candle_core::Error> {
-        compute_softmax_inplace(logits).map_err(|e| candle_core::Error::Msg(format!("Softmax failed: {}", e)))
+        compute_softmax_inplace(logits)
+            .map_err(|e| candle_core::Error::Msg(format!("Softmax failed: {}", e)))
     }
 
     /// Get processing statistics (zero allocation)
@@ -211,10 +207,7 @@ pub mod utils {
     }
 
     /// Benchmark SIMD vs scalar performance (zero allocation)
-    pub fn benchmark_simd_performance(
-        _size: usize,
-        _iterations: u32,
-    ) -> Result<(), String> {
+    pub fn benchmark_simd_performance(_size: usize, _iterations: u32) -> Result<(), String> {
         // TODO: Fix benchmark function signature once fluent_ai_simd API is clarified
         // For now, return a simple result to resolve compilation error
         Ok(())

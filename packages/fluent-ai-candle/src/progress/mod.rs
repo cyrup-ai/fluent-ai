@@ -1263,6 +1263,21 @@ impl MetricsAggregator {
             .iter()
             .any(|s| s.session_id() == session_id)
     }
+
+    /// Get session-specific statistics (uses SessionInfo.duration_nanos and average_latency_nanos)
+    pub fn get_session_stats(&self, session_id: &str) -> Option<SessionStats> {
+        let sessions = self.active_sessions.read();
+        sessions
+            .iter()
+            .find(|s| s.session_id() == session_id)
+            .map(|session| SessionStats {
+                session_id: session.session_id().to_string(),
+                duration_nanos: session.duration_nanos(),
+                average_latency_nanos: session.average_latency_nanos(),
+                tokens_generated: session.tokens_generated,
+                operations_count: session.operations_count,
+            })
+    }
 }
 
 impl Default for MetricsAggregator {
@@ -1385,6 +1400,21 @@ impl InferenceMetrics {
             memory_usage_bytes: 0,
         }
     }
+}
+
+/// Per-session statistics
+#[derive(Debug, Clone)]
+pub struct SessionStats {
+    /// Session identifier
+    pub session_id: String,
+    /// Session duration in nanoseconds
+    pub duration_nanos: u64,
+    /// Average latency for this session in nanoseconds
+    pub average_latency_nanos: u64,
+    /// Total tokens generated in this session
+    pub tokens_generated: u64,
+    /// Number of operations in this session
+    pub operations_count: u64,
 }
 
 /// Aggregated statistics across all sessions

@@ -490,9 +490,11 @@ mod tests {
         assert_eq!(processor.len(), 3);
 
         // Test invalid indices
-        assert!(processor
-            .insert_processor(10, Box::new(IdentityProcessor))
-            .is_err());
+        assert!(
+            processor
+                .insert_processor(10, Box::new(IdentityProcessor))
+                .is_err()
+        );
         assert!(processor.remove_processor(10).is_err());
     }
 

@@ -6,9 +6,9 @@
 use arrayvec::ArrayVec;
 
 use crate::processing::traits::{
-    utils::{clamp_for_stability, validate_logits},
     ConfigurableProcessor, LogitsProcessor, NumericallyStableProcessor, ProcessingResult,
     ZeroAllocationProcessor,
+    utils::{clamp_for_stability, validate_logits},
 };
 use crate::processing::{ProcessingContext, ProcessingError};
 
@@ -135,11 +135,13 @@ impl TopKProcessor {
                 }
             } else {
                 // Buffer full, check if current is better than worst
-                if let Some((worst_idx, (_, worst_score))) = top_k.iter().enumerate().min_by(|a, b| {
-                    a.1 .1
-                        .partial_cmp(&b.1 .1)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                }) {
+                if let Some((worst_idx, (_, worst_score))) =
+                    top_k.iter().enumerate().min_by(|a, b| {
+                        a.1.1
+                            .partial_cmp(&b.1.1)
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    })
+                {
                     if logit_value > *worst_score {
                         top_k[worst_idx] = (idx, logit_value);
                     }

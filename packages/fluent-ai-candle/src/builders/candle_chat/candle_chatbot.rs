@@ -12,11 +12,7 @@
 use std::io::{self, Write};
 
 // Note: termcolor items not available, using standard logging instead
-
-use crate::types::{
-    CandleMessage, CandleCompletionError,
-    CandleChat,
-};
+use crate::types::{CandleChat, CandleCompletionError, CandleMessage};
 
 /// Run a blocking terminal REPL around any `Chat` engine.
 ///
@@ -53,7 +49,7 @@ where
         // Get chat response using blocking collection pattern
         // ------------------------------------------------------------------
         let stream = chatbot.chat(prompt.to_string(), chat_log.clone()); // AsyncStream<CandleMessage>
-        
+
         // Use blocking collection to get the result without async/await
         let messages = stream.collect(); // Returns Vec<CandleMessage>
         let reply = match messages.first() {

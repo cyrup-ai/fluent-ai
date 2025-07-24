@@ -13,8 +13,8 @@ pub mod usage;
 pub mod validation;
 
 // Generated modules - created by build system
-pub mod providers;
 pub mod models;
+pub mod providers;
 
 // Re-export commonly used types
 pub use capabilities::*;

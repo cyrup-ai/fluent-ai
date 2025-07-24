@@ -4,9 +4,9 @@
 
 use fluent_ai_async::AsyncStream;
 
-use super::request::CandleCompletionRequest;
 use super::completion_response::CompletionResponse;
-use crate::types::{CandleCompletionParams, CandleCompletionChunk};
+use super::request::CandleCompletionRequest;
+use crate::types::{CandleCompletionChunk, CandleCompletionParams};
 
 /// Core trait for completion models
 pub trait CandleCompletionModel: Send + Sync + 'static {
@@ -18,7 +18,11 @@ pub trait CandleCompletionModel: Send + Sync + 'static {
     ///
     /// # Returns
     /// Stream of completion chunks
-    fn prompt(&self, prompt: &str, params: &CandleCompletionParams) -> AsyncStream<CandleCompletionChunk>;
+    fn prompt(
+        &self,
+        prompt: &str,
+        params: &CandleCompletionParams,
+    ) -> AsyncStream<CandleCompletionChunk>;
 }
 
 /// Backend for completion processing

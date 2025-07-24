@@ -4,9 +4,9 @@
 
 use std::sync::Arc;
 
-use crate::types::candle_chat::{templates::core::{
+use crate::types::candle_chat::templates::core::{
     ChatTemplate, TemplateContext, TemplateError, TemplateResult, TemplateValue,
-}};
+};
 
 /// Template rendering engine trait
 pub trait TemplateEngine: Send + Sync {

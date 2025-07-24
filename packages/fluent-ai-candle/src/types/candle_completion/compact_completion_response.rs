@@ -43,12 +43,14 @@ impl CompactCompletionResponse {
     /// Convert back to a standard CompletionResponse with zero-allocation optimization where possible
     pub fn into_standard(self) -> super::completion_response::CompletionResponse<'static> {
         super::completion_response::CompletionResponse {
-            id: Some("compact_response".into()), // Required field
+            id: Some("compact_response".into()),    // Required field
             object: Some("text_completion".into()), // Standard object type
-            created: Some(std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs()), // Current timestamp
+            created: Some(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
+            ), // Current timestamp
             text: Cow::Owned((*self.content).to_owned()),
             model: Cow::Owned((*self.model).to_owned()),
             provider: Some(Cow::Owned((*self.provider).to_owned())),

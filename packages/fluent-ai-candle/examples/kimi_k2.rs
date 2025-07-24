@@ -42,7 +42,7 @@ pub struct KimiK2Example {
 
 impl KimiK2Example {
     /// Create a new Kimi K2 example with model loading
-    pub fn new(device: Device, quant_format: QuantFormat) -> AsyncStream<CandleResult<Self>> {
+    pub fn new(device: Device, quant_format: QuantFormat) -> AsyncStream<Self> {
         AsyncStream::new(move |y| async move {
             // Configuration
             let config = match quant_format {
@@ -136,7 +136,7 @@ impl KimiK2Example {
     }
 
     /// Stream generation for longer responses
-    pub fn stream_chat(&self, messages: &[ChatMessage]) -> AsyncStream<CandleResult<String>> {
+    pub fn stream_chat(&self, messages: &[ChatMessage]) -> AsyncStream<String> {
         let messages = messages.to_vec();
         let model = self.model.clone();
         let tokenizer = self.tokenizer.clone();

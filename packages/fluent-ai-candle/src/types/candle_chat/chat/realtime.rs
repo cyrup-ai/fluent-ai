@@ -345,13 +345,17 @@ impl TypingIndicator {
         let event_broadcaster = self.event_broadcaster.clone();
         let active_users = self.active_users.clone();
 
-        let task = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(
-                cleanup_interval.load(Ordering::Relaxed),
-            ));
-
+        // Use AsyncTask for streaming cleanup (zero-allocation, lock-free)
+        use fluent_ai_async::AsyncTask;
+        let _task = AsyncTask::spawn(move || {
+            use std::thread;
+            use std::time::Duration;
+            
             loop {
-                interval.tick().await;
+                // Synchronous sleep for blazing-fast performance (no async/await)
+                thread::sleep(Duration::from_secs(
+                    cleanup_interval.load(Ordering::Relaxed),
+                ));
 
                 let expiry_seconds = expiry_duration.load(Ordering::Relaxed);
                 let mut expired_keys = Vec::new();

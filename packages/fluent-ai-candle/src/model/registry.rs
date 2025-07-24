@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+
 use crate::types::CandleModel as Model;
 
 /// Registry for managing available models
@@ -11,7 +12,7 @@ use crate::types::CandleModel as Model;
 pub struct ModelRegistry {
     /// Registered models by name
     models: RwLock<HashMap<String, Arc<dyn Model>>>,
-    
+
     /// Model information by name
     info: RwLock<HashMap<String, &'static crate::types::CandleModelInfo>>,
 }
@@ -24,99 +25,104 @@ impl ModelRegistry {
             info: RwLock::new(HashMap::new()),
         }
     }
-    
+
     /// Register a model in the registry
     pub fn register<M: Model>(&self, name: String, model: M) -> Result<(), RegistryError> {
         let model = Arc::new(model);
         let info = model.info();
-        
+
         {
             let mut models = self.models.write().map_err(|_| RegistryError::LockError)?;
             let mut info_map = self.info.write().map_err(|_| RegistryError::LockError)?;
-            
+
             if models.contains_key(&name) {
                 return Err(RegistryError::ModelAlreadyExists { name });
             }
-            
+
             models.insert(name.clone(), model);
             info_map.insert(name, info);
         }
-        
+
         Ok(())
     }
-    
+
     /// Get a model by name
     pub fn get(&self, name: &str) -> Result<Arc<dyn Model>, RegistryError> {
         let models = self.models.read().map_err(|_| RegistryError::LockError)?;
-        
-        models.get(name)
+
+        models
+            .get(name)
             .cloned()
-            .ok_or_else(|| RegistryError::ModelNotFound { 
-                name: name.to_string() 
+            .ok_or_else(|| RegistryError::ModelNotFound {
+                name: name.to_string(),
             })
     }
-    
+
     /// Get model information by name
-    pub fn info(&self, name: &str) -> Result<&'static crate::types::CandleModelInfo, RegistryError> {
+    pub fn info(
+        &self,
+        name: &str,
+    ) -> Result<&'static crate::types::CandleModelInfo, RegistryError> {
         let info = self.info.read().map_err(|_| RegistryError::LockError)?;
-        
+
         info.get(name)
             .copied()
-            .ok_or_else(|| RegistryError::ModelNotFound { 
-                name: name.to_string() 
+            .ok_or_else(|| RegistryError::ModelNotFound {
+                name: name.to_string(),
             })
     }
-    
+
     /// List all registered model names
     pub fn list(&self) -> Result<Vec<String>, RegistryError> {
         let models = self.models.read().map_err(|_| RegistryError::LockError)?;
         Ok(models.keys().cloned().collect())
     }
-    
+
     /// Check if a model is registered
     pub fn contains(&self, name: &str) -> Result<bool, RegistryError> {
         let models = self.models.read().map_err(|_| RegistryError::LockError)?;
         Ok(models.contains_key(name))
     }
-    
+
     /// Unregister a model
     pub fn unregister(&self, name: &str) -> Result<Arc<dyn Model>, RegistryError> {
         let mut models = self.models.write().map_err(|_| RegistryError::LockError)?;
         let mut info = self.info.write().map_err(|_| RegistryError::LockError)?;
-        
-        let model = models.remove(name)
-            .ok_or_else(|| RegistryError::ModelNotFound { 
-                name: name.to_string() 
+
+        let model = models
+            .remove(name)
+            .ok_or_else(|| RegistryError::ModelNotFound {
+                name: name.to_string(),
             })?;
-        
+
         info.remove(name);
-        
+
         Ok(model)
     }
-    
+
     /// Clear all registered models
     pub fn clear(&self) -> Result<(), RegistryError> {
         let mut models = self.models.write().map_err(|_| RegistryError::LockError)?;
         let mut info = self.info.write().map_err(|_| RegistryError::LockError)?;
-        
+
         models.clear();
         info.clear();
-        
+
         Ok(())
     }
-    
+
     /// Get the number of registered models
     pub fn len(&self) -> Result<usize, RegistryError> {
         let models = self.models.read().map_err(|_| RegistryError::LockError)?;
         Ok(models.len())
     }
-    
+
     /// Check if the registry is empty
     pub fn is_empty(&self) -> Result<bool, RegistryError> {
         let models = self.models.read().map_err(|_| RegistryError::LockError)?;
         Ok(models.is_empty())
     }
-    
+
     /// Find all models (returning all registered models)
     pub fn find_all(&self) -> Result<Vec<Arc<dyn Model>>, RegistryError> {
         let models = self.models.read().map_err(|_| RegistryError::LockError)?;
@@ -136,15 +142,15 @@ pub enum RegistryError {
     /// Model not found in registry
     #[error("Model not found: {name}")]
     ModelNotFound { name: String },
-    
+
     /// Model already exists in registry
     #[error("Model already exists: {name}")]
     ModelAlreadyExists { name: String },
-    
+
     /// Lock error (internal synchronization issue)
     #[error("Lock error: failed to acquire registry lock")]
     LockError,
-    
+
     /// Invalid model name
     #[error("Invalid model name: {name}")]
     InvalidName { name: String },
@@ -183,7 +189,7 @@ impl Clone for ModelRegistry {
         // Clone the data from the RwLocks
         let models = self.models.read().unwrap().clone();
         let info = self.info.read().unwrap().clone();
-        
+
         Self {
             models: RwLock::new(models),
             info: RwLock::new(info),

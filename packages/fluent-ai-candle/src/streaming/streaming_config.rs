@@ -3,8 +3,8 @@
 //! Provides StreamingConfig structure with validation and zero-allocation
 //! patterns for configuring streaming performance and behavior.
 
-use crate::error::{CandleError, CandleResult};
 use super::constants::{DEFAULT_BUFFER_SIZE, MAX_BUFFER_SIZE, MAX_CHUNK_TEXT_SIZE};
+use crate::error::{CandleError, CandleResult};
 
 /// Flush policy for batching behavior
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -113,7 +113,9 @@ impl StreamingConfig {
     /// Set maximum merge attempts with validation
     pub fn max_merge_attempts(mut self, attempts: u8) -> CandleResult<Self> {
         if attempts == 0 {
-            return Err(CandleError::configuration("Max merge attempts cannot be zero"));
+            return Err(CandleError::configuration(
+                "Max merge attempts cannot be zero",
+            ));
         }
         self.max_merge_attempts = attempts;
         Ok(self)
@@ -137,7 +139,9 @@ impl StreamingConfig {
             return Err(CandleError::configuration("Max chunk size exceeds limit"));
         }
         if self.max_merge_attempts == 0 {
-            return Err(CandleError::configuration("Max merge attempts cannot be zero"));
+            return Err(CandleError::configuration(
+                "Max merge attempts cannot be zero",
+            ));
         }
         Ok(())
     }

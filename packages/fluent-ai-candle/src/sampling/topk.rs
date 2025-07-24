@@ -17,6 +17,7 @@ use super::SamplingError;
 #[derive(Debug, Clone)]
 pub struct TopKProcessor {
     top_k: usize,
+    #[allow(dead_code)] // Legacy field for optimization
     is_identity: bool, // Optimization when top_k >= vocab_size
 }
 
@@ -59,6 +60,8 @@ impl TopKProcessor {
     /// - Small k: Partial sort (quickselect-based)
     /// - Large k: Full sort with early termination
     /// - k >= vocab_size: No-op (identity)
+    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
+    #[allow(dead_code)]
     fn apply_top_k_filtering(&self, logits: &Tensor) -> Result<Tensor, SamplingError> {
         let logits_vec = logits
             .to_vec1::<f32>()
@@ -86,6 +89,8 @@ impl TopKProcessor {
     ///
     /// Uses quickselect for O(n) expected time complexity when k is small,
     /// falls back to partial sort for larger k values.
+    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
+    #[allow(dead_code)]
     #[inline(always)]
     fn find_kth_largest(&self, values: &[f32]) -> Result<f32, SamplingError> {
         let mut sorted_values = values.to_vec();
@@ -102,6 +107,8 @@ impl TopKProcessor {
         }
     }
 
+    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
+    #[allow(dead_code)]
     #[inline(always)]
     fn quickselect_kth_largest(&self, values: &mut [f32]) -> Result<f32, SamplingError> {
         // Use nth_element equivalent (partial_sort to find k-th largest)
@@ -119,6 +126,8 @@ impl TopKProcessor {
         Ok(values[k_index])
     }
 
+    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
+    #[allow(dead_code)]
     #[inline(always)]
     fn partial_sort_kth_largest(&self, values: &mut [f32]) -> Result<f32, SamplingError> {
         let k_index = self.top_k - 1;
@@ -134,6 +143,8 @@ impl TopKProcessor {
     }
 
     /// Apply threshold mask to zero out tokens below k-th largest
+    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
+    #[allow(dead_code)]
     #[inline(always)]
     fn apply_threshold_mask(
         &self,

@@ -24,31 +24,31 @@ pub enum StreamingError {
     /// Buffer overflow error
     #[error("Buffer overflow: {0}")]
     BufferOverflow(String),
-    
+
     /// Encoding error
     #[error("Encoding error: {0}")]
     EncodingError(String),
-    
+
     /// Network error
     #[error("Network error: {0}")]
     NetworkError(String),
-    
+
     /// Timeout error
     #[error("Timeout after {seconds} seconds")]
     Timeout { seconds: u64 },
-    
+
     /// UTF-8 encoding/decoding error
     #[error("UTF-8 error: {0}")]
     Utf8Error(String),
-    
+
     /// Backpressure handling error
     #[error("Backpressure error: {0}")]
     BackpressureError(String),
-    
+
     /// Flow control error
     #[error("Flow control error: {0}")]
     FlowControlError(String),
-    
+
     /// Format conversion error
     #[error("Format error: {0}")]
     FormatError(String),

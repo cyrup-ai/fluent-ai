@@ -3,8 +3,9 @@
 //! Handles partial byte sequences and maintains state across decode operations
 //! for proper UTF-8 streaming without character boundary corruption.
 
-use super::StreamingError;
 use std::mem;
+
+use super::StreamingError;
 
 /// State of the incremental decoder
 #[derive(Debug, Clone, PartialEq)]
@@ -88,12 +89,15 @@ impl StreamingDecoder {
     }
 
     /// Decode with full state management for partial sequences
-    fn decode_with_state_management(&mut self, new_bytes: &[u8]) -> Result<(String, bool), StreamingError> {
+    fn decode_with_state_management(
+        &mut self,
+        new_bytes: &[u8],
+    ) -> Result<(String, bool), StreamingError> {
         // Combine pending bytes from previous calls with new bytes
         let input_bytes = self.combine_with_pending(new_bytes);
 
         // Find the longest valid UTF-8 prefix
-        let (complete_bytes, remaining_bytes, is_complete) = 
+        let (complete_bytes, remaining_bytes, is_complete) =
             self.find_complete_utf8_prefix(&input_bytes)?;
 
         // Decode the complete portion
@@ -107,7 +111,7 @@ impl StreamingDecoder {
         self.update_state_after_decode(remaining_bytes, is_complete);
 
         self.total_chars_decoded += decoded.chars().count();
-        
+
         Ok((decoded, is_complete))
     }
 
@@ -126,7 +130,10 @@ impl StreamingDecoder {
     /// Find the longest valid UTF-8 prefix in the input bytes
     ///
     /// Returns (complete_bytes, remaining_bytes, is_complete)
-    fn find_complete_utf8_prefix(&mut self, bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>, bool), StreamingError> {
+    fn find_complete_utf8_prefix(
+        &mut self,
+        bytes: &[u8],
+    ) -> Result<(Vec<u8>, Vec<u8>, bool), StreamingError> {
         if !self.enable_incremental {
             // Simple mode: validate entire input
             return self.validate_complete_sequence(bytes);
@@ -166,7 +173,10 @@ impl StreamingDecoder {
     }
 
     /// Validate entire sequence as complete UTF-8
-    fn validate_complete_sequence(&self, bytes: &[u8]) -> Result<(Vec<u8>, Vec<u8>, bool), StreamingError> {
+    fn validate_complete_sequence(
+        &self,
+        bytes: &[u8],
+    ) -> Result<(Vec<u8>, Vec<u8>, bool), StreamingError> {
         if self.validate_utf8 {
             match std::str::from_utf8(bytes) {
                 Ok(_) => Ok((bytes.to_vec(), Vec::new(), true)),
@@ -180,7 +190,8 @@ impl StreamingDecoder {
                         Ok((complete, remaining, false))
                     } else {
                         Err(StreamingError::Utf8Error(format!(
-                            "UTF-8 validation failed: {}", e
+                            "UTF-8 validation failed: {}",
+                            e
                         )))
                     }
                 }
@@ -201,7 +212,9 @@ impl StreamingDecoder {
         let char_len = if first_byte < 0x80 {
             1 // ASCII
         } else if first_byte < 0xC0 {
-            return Err(StreamingError::Utf8Error("Invalid UTF-8 start byte".to_string()));
+            return Err(StreamingError::Utf8Error(
+                "Invalid UTF-8 start byte".to_string(),
+            ));
         } else if first_byte < 0xE0 {
             2 // 2-byte sequence
         } else if first_byte < 0xF0 {
@@ -209,7 +222,9 @@ impl StreamingDecoder {
         } else if first_byte < 0xF8 {
             4 // 4-byte sequence
         } else {
-            return Err(StreamingError::Utf8Error("Invalid UTF-8 start byte".to_string()));
+            return Err(StreamingError::Utf8Error(
+                "Invalid UTF-8 start byte".to_string(),
+            ));
         };
 
         Ok(char_len)
@@ -243,7 +258,7 @@ impl StreamingDecoder {
     /// Handle decode error based on configuration
     fn handle_decode_error(&mut self, error_msg: &str) -> Result<(), StreamingError> {
         self.decode_errors += 1;
-        
+
         if self.validate_utf8 {
             self.state = DecoderState::Error {
                 error: error_msg.to_string(),
@@ -275,11 +290,11 @@ impl StreamingDecoder {
         match mem::take(&mut self.state) {
             DecoderState::Partial { pending_bytes } => {
                 self.state = DecoderState::Ready;
-                
+
                 if self.validate_utf8 {
                     // In validating mode, partial sequences at end are errors
                     Err(StreamingError::Utf8Error(
-                        "Incomplete UTF-8 sequence at end of stream".to_string()
+                        "Incomplete UTF-8 sequence at end of stream".to_string(),
                     ))
                 } else {
                     // In non-validating mode, return what we can decode
@@ -362,8 +377,10 @@ mod tests {
     #[test]
     fn test_ascii_decoding() {
         let mut decoder = StreamingDecoder::new(true, true);
-        let (result, complete) = decoder.decode_incremental(b"Hello World").expect("decode success");
-        
+        let (result, complete) = decoder
+            .decode_incremental(b"Hello World")
+            .expect("decode success");
+
         assert_eq!(result, "Hello World");
         assert!(complete);
         assert_eq!(decoder.state, DecoderState::Ready);
@@ -373,8 +390,10 @@ mod tests {
     fn test_utf8_decoding() {
         let mut decoder = StreamingDecoder::new(true, true);
         let utf8_bytes = "Hello 世界".as_bytes();
-        let (result, complete) = decoder.decode_incremental(utf8_bytes).expect("decode success");
-        
+        let (result, complete) = decoder
+            .decode_incremental(utf8_bytes)
+            .expect("decode success");
+
         assert_eq!(result, "Hello 世界");
         assert!(complete);
     }
@@ -382,18 +401,22 @@ mod tests {
     #[test]
     fn test_partial_utf8_sequence() {
         let mut decoder = StreamingDecoder::new(true, true);
-        
+
         // Chinese character "世" in UTF-8 is [228, 184, 150]
         let full_bytes = "世".as_bytes(); // [228, 184, 150]
-        
+
         // Send partial sequence
-        let (result1, complete1) = decoder.decode_incremental(&full_bytes[..2]).expect("decode partial");
+        let (result1, complete1) = decoder
+            .decode_incremental(&full_bytes[..2])
+            .expect("decode partial");
         assert_eq!(result1, "");
         assert!(!complete1);
         assert!(matches!(decoder.state, DecoderState::Partial { .. }));
-        
+
         // Send remaining byte
-        let (result2, complete2) = decoder.decode_incremental(&full_bytes[2..]).expect("decode complete");
+        let (result2, complete2) = decoder
+            .decode_incremental(&full_bytes[2..])
+            .expect("decode complete");
         assert_eq!(result2, "世");
         assert!(complete2);
         assert_eq!(decoder.state, DecoderState::Ready);
@@ -404,7 +427,7 @@ mod tests {
         let mut decoder = StreamingDecoder::new(true, true);
         let mixed = "ABC世界DEF";
         let bytes = mixed.as_bytes();
-        
+
         let (result, complete) = decoder.decode_incremental(bytes).expect("decode success");
         assert_eq!(result, mixed);
         assert!(complete);
@@ -415,22 +438,22 @@ mod tests {
         let mut decoder = StreamingDecoder::new(true, true);
         let full_text = "Hello 世界 Testing";
         let bytes = full_text.as_bytes();
-        
+
         let mut decoded_parts = Vec::new();
         let chunk_size = 3;
-        
+
         for chunk in bytes.chunks(chunk_size) {
             let (part, _) = decoder.decode_incremental(chunk).expect("decode chunk");
             if !part.is_empty() {
                 decoded_parts.push(part);
             }
         }
-        
+
         // Flush any remaining
         if let Some(remaining) = decoder.flush_pending().expect("flush success") {
             decoded_parts.push(remaining);
         }
-        
+
         let reconstructed = decoded_parts.join("");
         assert_eq!(reconstructed, full_text);
     }
@@ -439,7 +462,7 @@ mod tests {
     fn test_invalid_utf8_with_validation() {
         let mut decoder = StreamingDecoder::new(true, true);
         let invalid_bytes = vec![0xFF, 0xFE, 0xFD]; // Invalid UTF-8
-        
+
         let result = decoder.decode_incremental(&invalid_bytes);
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), StreamingError::Utf8Error(_)));
@@ -449,9 +472,11 @@ mod tests {
     fn test_invalid_utf8_without_validation() {
         let mut decoder = StreamingDecoder::new(false, true);
         let invalid_bytes = vec![0xFF, 0xFE, 0xFD]; // Invalid UTF-8
-        
+
         // Should not fail when validation is disabled
-        let (result, complete) = decoder.decode_incremental(&invalid_bytes).expect("decode without validation");
+        let (result, complete) = decoder
+            .decode_incremental(&invalid_bytes)
+            .expect("decode without validation");
         assert!(!result.is_empty()); // Will contain replacement chars or raw bytes
         assert!(complete);
     }
@@ -460,7 +485,7 @@ mod tests {
     fn test_empty_input() {
         let mut decoder = StreamingDecoder::new(true, true);
         let (result, complete) = decoder.decode_incremental(&[]).expect("empty decode");
-        
+
         assert_eq!(result, "");
         assert!(complete);
         assert_eq!(decoder.state, DecoderState::Ready);
@@ -469,12 +494,12 @@ mod tests {
     #[test]
     fn test_decoder_reset() {
         let mut decoder = StreamingDecoder::new(true, true);
-        
+
         // Create partial state
         let partial_bytes = "世".as_bytes();
         let _ = decoder.decode_incremental(&partial_bytes[..2]);
         assert!(matches!(decoder.state, DecoderState::Partial { .. }));
-        
+
         // Reset should clear state
         decoder.reset();
         assert_eq!(decoder.state, DecoderState::Ready);
@@ -483,10 +508,10 @@ mod tests {
     #[test]
     fn test_decoder_stats() {
         let mut decoder = StreamingDecoder::new(true, true);
-        
+
         let _ = decoder.decode_incremental(b"Hello");
         let _ = decoder.decode_incremental(" World".as_bytes());
-        
+
         let stats = decoder.get_stats();
         assert_eq!(stats.total_bytes_processed, 11);
         assert_eq!(stats.total_chars_decoded, 11); // All ASCII
@@ -496,17 +521,21 @@ mod tests {
     #[test]
     fn test_4_byte_utf8_character() {
         let mut decoder = StreamingDecoder::new(true, true);
-        
+
         // Emoji "🌟" is 4 bytes in UTF-8: [240, 159, 140, 159]
         let emoji_bytes = "🌟".as_bytes();
-        
+
         // Send partial (3 bytes)
-        let (result1, complete1) = decoder.decode_incremental(&emoji_bytes[..3]).expect("partial decode");
+        let (result1, complete1) = decoder
+            .decode_incremental(&emoji_bytes[..3])
+            .expect("partial decode");
         assert_eq!(result1, "");
         assert!(!complete1);
-        
+
         // Send final byte
-        let (result2, complete2) = decoder.decode_incremental(&emoji_bytes[3..]).expect("complete decode");
+        let (result2, complete2) = decoder
+            .decode_incremental(&emoji_bytes[3..])
+            .expect("complete decode");
         assert_eq!(result2, "🌟");
         assert!(complete2);
     }
@@ -514,11 +543,11 @@ mod tests {
     #[test]
     fn test_flush_pending_with_validation() {
         let mut decoder = StreamingDecoder::new(true, true);
-        
+
         // Create partial state
         let partial_bytes = "世".as_bytes();
         let _ = decoder.decode_incremental(&partial_bytes[..2]);
-        
+
         // Flushing partial should error in validation mode
         let result = decoder.flush_pending();
         assert!(result.is_err());
@@ -527,11 +556,11 @@ mod tests {
     #[test]
     fn test_flush_pending_without_validation() {
         let mut decoder = StreamingDecoder::new(false, true);
-        
+
         // Create partial state
         let partial_bytes = "世".as_bytes();
         let _ = decoder.decode_incremental(&partial_bytes[..2]);
-        
+
         // Flushing partial should succeed in non-validation mode
         let result = decoder.flush_pending().expect("flush success");
         assert!(result.is_some());
@@ -540,14 +569,14 @@ mod tests {
     #[test]
     fn test_pending_byte_count() {
         let mut decoder = StreamingDecoder::new(true, true);
-        
+
         assert_eq!(decoder.pending_byte_count(), 0);
         assert!(!decoder.has_pending());
-        
+
         // Create partial state
         let partial_bytes = "世".as_bytes(); // 3 bytes
         let _ = decoder.decode_incremental(&partial_bytes[..2]);
-        
+
         assert_eq!(decoder.pending_byte_count(), 2);
         assert!(decoder.has_pending());
     }

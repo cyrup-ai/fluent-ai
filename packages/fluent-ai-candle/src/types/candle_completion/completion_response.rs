@@ -37,12 +37,14 @@ pub struct CompletionResponse<'a> {
 impl<'a> Default for CompletionResponse<'a> {
     fn default() -> Self {
         Self {
-            id: Some("default_response".into()), // Required field
+            id: Some("default_response".into()),    // Required field
             object: Some("text_completion".into()), // Standard object type
-            created: Some(std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs()), // Current timestamp
+            created: Some(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs(),
+            ), // Current timestamp
             text: Cow::Borrowed(""),
             model: Cow::Borrowed(""),
             provider: None,
@@ -142,10 +144,12 @@ impl<'a> CompletionResponseBuilder<'a> {
             inner: CompletionResponse {
                 id: Some("builder_response".into()),
                 object: Some("text_completion".into()),
-                created: Some(std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs()),
+                created: Some(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                ),
                 text: Cow::Borrowed(""),
                 model: Cow::Borrowed(""),
                 provider: None,

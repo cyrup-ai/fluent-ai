@@ -24,15 +24,15 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use arraystring::{typenum::U64, ArrayString};
+use arraystring::{ArrayString, typenum::U64};
 use arrayvec::ArrayVec;
 use candle_core::{Result as CandleResult, Tensor};
 use fastrand::Rng;
 
 use crate::logits::SamplingConfig;
-use crate::processing::traits::LogitsProcessor;
 use crate::processing::context::ProcessingContext;
 use crate::processing::error::{ProcessingError, ProcessingResult};
+use crate::processing::traits::LogitsProcessor;
 
 /// Maximum perplexity history for moving average (stack allocated)
 const MAX_PERPLEXITY_HISTORY: usize = 32;
@@ -90,7 +90,9 @@ impl MirostatConfig {
     #[inline(always)]
     pub fn v1(tau: f32, learning_rate: f32) -> CandleResult<Self> {
         if tau < MIN_TAU || tau > MAX_TAU {
-            return Err(candle_core::Error::Msg("Tau out of valid range".to_string()));
+            return Err(candle_core::Error::Msg(
+                "Tau out of valid range".to_string(),
+            ));
         }
 
         if learning_rate < MIN_LEARNING_RATE || learning_rate > MAX_LEARNING_RATE {
@@ -106,11 +108,15 @@ impl MirostatConfig {
     #[inline(always)]
     pub fn v2(tau: f32, eta: f32) -> CandleResult<Self> {
         if tau < MIN_TAU || tau > MAX_TAU {
-            return Err(candle_core::Error::Msg("Tau out of valid range".to_string()));
+            return Err(candle_core::Error::Msg(
+                "Tau out of valid range".to_string(),
+            ));
         }
 
         if eta < MIN_ETA || eta > MAX_ETA {
-            return Err(candle_core::Error::Msg("Eta out of valid range".to_string()));
+            return Err(candle_core::Error::Msg(
+                "Eta out of valid range".to_string(),
+            ));
         }
 
         Ok(Self::V2 { tau, eta })
@@ -176,6 +182,8 @@ impl PerplexityState {
     }
 
     /// Add new perplexity sample with exponential moving average
+    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
+    #[allow(dead_code)]
     #[inline(always)]
     fn add_sample(&mut self, perplexity: f32) {
         if !perplexity.is_finite() || perplexity <= 0.0 {
@@ -401,17 +409,21 @@ impl MirostatProcessor {
 
     /// Apply Mirostat filtering to probability distribution slice
     #[inline(always)]
-    fn apply_mirostat_filtering(&mut self, probabilities: &mut [f32], tau: f32) -> ProcessingResult<()> {
+    fn apply_mirostat_filtering(
+        &mut self,
+        probabilities: &mut [f32],
+        tau: f32,
+    ) -> ProcessingResult<()> {
         // Simple Mirostat implementation: suppress low-probability tokens based on tau
         // This is a simplified version - full Mirostat is more complex
-        
+
         if probabilities.is_empty() {
             return Ok(());
         }
-        
+
         // Find threshold based on tau (simplified approach)
         let threshold = 1.0 / (tau * probabilities.len() as f32);
-        
+
         // Suppress probabilities below threshold
         let mut _total_suppressed = 0.0f32;
         for prob in probabilities.iter_mut() {
@@ -420,7 +432,7 @@ impl MirostatProcessor {
                 *prob = 0.0;
             }
         }
-        
+
         // Renormalize remaining probabilities
         let remaining_sum: f32 = probabilities.iter().sum();
         if remaining_sum > 0.0 {
@@ -429,11 +441,12 @@ impl MirostatProcessor {
                 *prob *= scale;
             }
         }
-        
+
         Ok(())
     }
 
     /// Apply Mirostat sampling to probability distribution
+    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
     #[inline(always)]
     fn apply_mirostat_sampling(
         &self,
@@ -482,7 +495,11 @@ impl MirostatProcessor {
 }
 
 impl LogitsProcessor for MirostatProcessor {
-    fn process_logits(&mut self, logits: &mut [f32], _context: &ProcessingContext) -> ProcessingResult<()> {
+    fn process_logits(
+        &mut self,
+        logits: &mut [f32],
+        _context: &ProcessingContext,
+    ) -> ProcessingResult<()> {
         // Apply Mirostat algorithm directly to logits
         if logits.is_empty() {
             return Err(ProcessingError::validation("Empty logits array"));
@@ -491,33 +508,36 @@ impl LogitsProcessor for MirostatProcessor {
         // Convert logits to probabilities using softmax
         let max_logit = logits.iter().copied().fold(f32::NEG_INFINITY, f32::max);
         let mut sum = 0.0f32;
-        
+
         // Compute softmax probabilities
         for logit in logits.iter_mut() {
             *logit = (*logit - max_logit).exp();
             sum += *logit;
         }
-        
+
         if sum <= 0.0 {
-            return Err(ProcessingError::numerical("Invalid probability distribution"));
+            return Err(ProcessingError::numerical(
+                "Invalid probability distribution",
+            ));
         }
-        
+
         // Normalize probabilities
         for prob in logits.iter_mut() {
             *prob /= sum;
         }
-        
+
         // Calculate current perplexity
-        let current_perplexity = self.calculate_perplexity(logits)
-            .map_err(|e| ProcessingError::external(format!("Perplexity calculation failed: {}", e)))?;
-        
+        let current_perplexity = self.calculate_perplexity(logits).map_err(|e| {
+            ProcessingError::external(format!("Perplexity calculation failed: {}", e))
+        })?;
+
         // Update tau based on perplexity feedback
         self.update_tau(current_perplexity);
-        
+
         // Apply Mirostat filtering with current tau
         let current_tau = Self::atomic_u64_to_f32(self.current_tau.load(Ordering::Relaxed));
         self.apply_mirostat_filtering(logits, current_tau)?;
-        
+
         self.tokens_processed += 1;
         Ok(())
     }

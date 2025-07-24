@@ -11,9 +11,9 @@ use dashmap::{DashMap, DashSet};
 use once_cell::sync::Lazy;
 
 use crate::model::error::ModelError;
-use crate::types::{CandleCompletionResult as Result};
-use crate::types::CandleModelInfo as ModelInfo;
+use crate::types::CandleCompletionResult as Result;
 use crate::types::CandleModel;
+use crate::types::CandleModelInfo as ModelInfo;
 
 /// A type-erased model reference
 struct ModelHandle {
@@ -104,7 +104,8 @@ impl ModelRegistry {
         if provider_models.contains_key(model_name) {
             return Err(ModelError::ModelAlreadyExists {
                 name: format!("{}::{}", provider, model_name).into(),
-            }.into());
+            }
+            .into());
         }
 
         // Register the model
@@ -153,7 +154,8 @@ impl ModelRegistry {
         if handle.as_any().downcast_ref::<M>().is_none() {
             return Err(ModelError::InvalidConfiguration(
                 "model type does not match requested type".into(),
-            ).into());
+            )
+            .into());
         }
 
         Ok(Some(RegisteredModel {
@@ -175,11 +177,13 @@ impl ModelRegistry {
         provider: &'static str,
         name: &'static str,
     ) -> Result<RegisteredModel<M>> {
-        self.get(provider, name)?
-            .ok_or_else(|| ModelError::ModelNotFound {
+        self.get(provider, name)?.ok_or_else(|| {
+            ModelError::ModelNotFound {
                 provider: provider.into(),
                 name: name.into(),
-            }.into())
+            }
+            .into()
+        })
     }
 
     /// Find all models of a specific type
@@ -249,7 +253,8 @@ impl ModelRegistry {
                     name, provider
                 )
                 .into(),
-            ).into()),
+            )
+            .into()),
         }
     }
 
@@ -303,11 +308,13 @@ impl ModelRegistry {
     where
         T: Send + Sync + Sized,
     {
-        self.get_as(provider, name)?
-            .ok_or_else(|| ModelError::ModelNotFound {
+        self.get_as(provider, name)?.ok_or_else(|| {
+            ModelError::ModelNotFound {
                 provider: provider.into(),
                 name: name.into(),
-            }.into())
+            }
+            .into()
+        })
     }
 
     /// Get a model as a boxed trait object, returning an error if not found
@@ -326,11 +333,13 @@ impl ModelRegistry {
     where
         T: Send + Sync + Sized,
     {
-        self.get_boxed(provider, name)?
-            .ok_or_else(|| ModelError::ModelNotFound {
+        self.get_boxed(provider, name)?.ok_or_else(|| {
+            ModelError::ModelNotFound {
                 provider: provider.into(),
                 name: name.into(),
-            }.into())
+            }
+            .into()
+        })
     }
 }
 
@@ -415,7 +424,7 @@ impl<M: CandleModel + 'static> ModelBuilder<M> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::info::ModelInfoBuilder;
+    use crate::types::candle_model::info::ModelInfoBuilder;
 
     struct TestModel {
         info: &'static ModelInfo,

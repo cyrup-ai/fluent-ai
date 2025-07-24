@@ -81,7 +81,7 @@ impl TopPProcessor {
 
                 if self.buffer.is_full() {
                     return Err(ProcessingError::buffer_overflow(
-                        "Vocabulary size exceeds maximum supported tokens (32768)"
+                        "Vocabulary size exceeds maximum supported tokens (32768)",
                     ));
                 }
 
@@ -130,7 +130,7 @@ impl TopPProcessor {
 
         if logits.len() > kept_indices.len() {
             return Err(ProcessingError::buffer_overflow(
-                "Vocabulary size exceeds maximum supported tokens"
+                "Vocabulary size exceeds maximum supported tokens",
             ));
         }
 
@@ -276,15 +276,19 @@ mod tests {
 
         // Test with large logit values
         let mut large_logits = vec![100.0, 99.0, 98.0, 1.0, 0.0];
-        assert!(processor
-            .process_logits(&mut large_logits, &context)
-            .is_ok());
+        assert!(
+            processor
+                .process_logits(&mut large_logits, &context)
+                .is_ok()
+        );
 
         // Test with small logit values
         let mut small_logits = vec![-100.0, -101.0, -102.0, -103.0, -104.0];
-        assert!(processor
-            .process_logits(&mut small_logits, &context)
-            .is_ok());
+        assert!(
+            processor
+                .process_logits(&mut small_logits, &context)
+                .is_ok()
+        );
     }
 
     #[test]

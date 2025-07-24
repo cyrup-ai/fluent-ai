@@ -64,7 +64,7 @@ impl JsonState {
     fn push_stack(&mut self, item: JsonStackItem) -> CandleResult<()> {
         if self.stack_len >= MAX_DEPTH {
             return Err(crate::error::CandleError::ProcessingError(
-                "JSON depth exceeds maximum"
+                "JSON depth exceeds maximum",
             ));
         }
         self.stack[self.stack_len] = Some(item);
@@ -104,26 +104,47 @@ impl JsonState {
         self.current = match self.current {
             S::ExpectValue => match b {
                 b' ' | b'\t' | b'\n' | b'\r' => S::ExpectValue,
-                b'{' => { self.push_stack(JsonStackItem::Object)?; S::ExpectObjectKey }
-                b'[' => { self.push_stack(JsonStackItem::Array)?; S::ExpectValue }
-                b'"' => S::InString { escape: false, is_key: false },
+                b'{' => {
+                    self.push_stack(JsonStackItem::Object)?;
+                    S::ExpectObjectKey
+                }
+                b'[' => {
+                    self.push_stack(JsonStackItem::Array)?;
+                    S::ExpectValue
+                }
+                b'"' => S::InString {
+                    escape: false,
+                    is_key: false,
+                },
                 b't' => S::InTrue { pos: 1 },
                 b'f' => S::InFalse { pos: 1 },
                 b'n' => S::InNull { pos: 1 },
-                b'-' => S::InNumber { state: NumberState::AfterSign },
-                b'0' => S::InNumber { state: NumberState::AfterZero },
-                b'1'..=b'9' => S::InNumber { state: NumberState::AfterIntDigit },
-                _ => return Err(crate::error::CandleError::ValidationError(
-                    format!("Invalid value start: {}", b as char)
-                )),
+                b'-' => S::InNumber {
+                    state: NumberState::AfterSign,
+                },
+                b'0' => S::InNumber {
+                    state: NumberState::AfterZero,
+                },
+                b'1'..=b'9' => S::InNumber {
+                    state: NumberState::AfterIntDigit,
+                },
+                _ => {
+                    return Err(crate::error::CandleError::ValidationError(format!(
+                        "Invalid value start: {}",
+                        b as char
+                    )));
+                }
             },
             S::ExpectObjectKey => match b {
                 b' ' | b'\t' | b'\n' | b'\r' => S::ExpectObjectKey,
-                b'"' => S::InString { escape: false, is_key: true },
+                b'"' => S::InString {
+                    escape: false,
+                    is_key: true,
+                },
                 b'}' => {
                     if self.pop_stack() != Some(JsonStackItem::Object) {
                         return Err(crate::error::CandleError::ProcessingError(
-                            "Mismatched object close"
+                            "Mismatched object close",
                         ));
                     }
                     match self.top_stack() {
@@ -132,16 +153,22 @@ impl JsonState {
                         None => S::ExpectValue,
                     }
                 }
-                _ => return Err(crate::error::CandleError::ValidationError(
-                    format!("Invalid key start: {}", b as char)
-                )),
+                _ => {
+                    return Err(crate::error::CandleError::ValidationError(format!(
+                        "Invalid key start: {}",
+                        b as char
+                    )));
+                }
             },
             S::ExpectColon => match b {
                 b' ' | b'\t' | b'\n' | b'\r' => S::ExpectColon,
                 b':' => S::ExpectValue,
-                _ => return Err(crate::error::CandleError::ValidationError(
-                    format!("Expected colon, got: {}", b as char)
-                )),
+                _ => {
+                    return Err(crate::error::CandleError::ValidationError(format!(
+                        "Expected colon, got: {}",
+                        b as char
+                    )));
+                }
             },
             S::ExpectCommaOrObjectEnd => match b {
                 b' ' | b'\t' | b'\n' | b'\r' => S::ExpectCommaOrObjectEnd,
@@ -149,7 +176,7 @@ impl JsonState {
                 b'}' => {
                     if self.pop_stack() != Some(JsonStackItem::Object) {
                         return Err(crate::error::CandleError::ProcessingError(
-                            "Mismatched object close"
+                            "Mismatched object close",
                         ));
                     }
                     match self.top_stack() {
@@ -158,9 +185,12 @@ impl JsonState {
                         None => S::ExpectValue,
                     }
                 }
-                _ => return Err(crate::error::CandleError::ValidationError(
-                    format!("Expected comma or object end: {}", b as char)
-                )),
+                _ => {
+                    return Err(crate::error::CandleError::ValidationError(format!(
+                        "Expected comma or object end: {}",
+                        b as char
+                    )));
+                }
             },
             S::ExpectCommaOrArrayEnd => match b {
                 b' ' | b'\t' | b'\n' | b'\r' => S::ExpectCommaOrArrayEnd,
@@ -168,7 +198,7 @@ impl JsonState {
                 b']' => {
                     if self.pop_stack() != Some(JsonStackItem::Array) {
                         return Err(crate::error::CandleError::ProcessingError(
-                            "Mismatched array close"
+                            "Mismatched array close",
                         ));
                     }
                     match self.top_stack() {
@@ -177,88 +207,186 @@ impl JsonState {
                         None => S::ExpectValue,
                     }
                 }
-                _ => return Err(crate::error::CandleError::ValidationError(
-                    format!("Expected comma or array end: {}", b as char)
-                )),
-            },
-            S::InString { escape, is_key } => if escape {
-                match b {
-                    b'"' | b'\\' | b'/' | b'b' | b'f' | b'n' | b'r' | b't' | b'u' => S::InString { escape: false, is_key },
-                    _ => return Err(crate::error::CandleError::ValidationError(
-                        format!("Invalid escape char: {}", b as char)
-                    )),
-                }
-            } else {
-                match b {
-                    b'\\' => S::InString { escape: true, is_key },
-                    b'"' => if is_key { S::ExpectColon } else { self.set_after_value(); self.current },
-                    b if b >= 32 && b <= 126 => S::InString { escape: false, is_key },
-                    _ => return Err(crate::error::CandleError::ValidationError(
-                        format!("Invalid string char: {}", b as char)
-                    )),
+                _ => {
+                    return Err(crate::error::CandleError::ValidationError(format!(
+                        "Expected comma or array end: {}",
+                        b as char
+                    )));
                 }
             },
+            S::InString { escape, is_key } => {
+                if escape {
+                    match b {
+                        b'"' | b'\\' | b'/' | b'b' | b'f' | b'n' | b'r' | b't' | b'u' => {
+                            S::InString {
+                                escape: false,
+                                is_key,
+                            }
+                        }
+                        _ => {
+                            return Err(crate::error::CandleError::ValidationError(format!(
+                                "Invalid escape char: {}",
+                                b as char
+                            )));
+                        }
+                    }
+                } else {
+                    match b {
+                        b'\\' => S::InString {
+                            escape: true,
+                            is_key,
+                        },
+                        b'"' => {
+                            if is_key {
+                                S::ExpectColon
+                            } else {
+                                self.set_after_value();
+                                self.current
+                            }
+                        }
+                        b if b >= 32 && b <= 126 => S::InString {
+                            escape: false,
+                            is_key,
+                        },
+                        _ => {
+                            return Err(crate::error::CandleError::ValidationError(format!(
+                                "Invalid string char: {}",
+                                b as char
+                            )));
+                        }
+                    }
+                }
+            }
             S::InNumber { state } => match state {
                 NumberState::AfterSign => match b {
-                    b'0' => S::InNumber { state: NumberState::AfterZero },
-                    b'1'..=b'9' => S::InNumber { state: NumberState::AfterIntDigit },
-                    _ => return Err(crate::error::CandleError::ValidationError(
-                        format!("Expected digit after sign: {}", b as char)
-                    )),
+                    b'0' => S::InNumber {
+                        state: NumberState::AfterZero,
+                    },
+                    b'1'..=b'9' => S::InNumber {
+                        state: NumberState::AfterIntDigit,
+                    },
+                    _ => {
+                        return Err(crate::error::CandleError::ValidationError(format!(
+                            "Expected digit after sign: {}",
+                            b as char
+                        )));
+                    }
                 },
                 NumberState::AfterZero => match b {
-                    b'0'..=b'9' => return Err(crate::error::CandleError::ProcessingError(
-                        "No leading zeros"
-                    )),
-                    b'.' => S::InNumber { state: NumberState::AfterDot },
-                    b'e' | b'E' => S::InNumber { state: NumberState::AfterE },
-                    _ if Self::is_end_char(b) => { self.set_after_value(); self.advance(b)?; self.current }
-                    _ => return Err(crate::error::CandleError::ValidationError(
-                        format!("Invalid after zero: {}", b as char)
-                    )),
+                    b'0'..=b'9' => {
+                        return Err(crate::error::CandleError::ProcessingError(
+                            "No leading zeros",
+                        ));
+                    }
+                    b'.' => S::InNumber {
+                        state: NumberState::AfterDot,
+                    },
+                    b'e' | b'E' => S::InNumber {
+                        state: NumberState::AfterE,
+                    },
+                    _ if Self::is_end_char(b) => {
+                        self.set_after_value();
+                        self.advance(b)?;
+                        self.current
+                    }
+                    _ => {
+                        return Err(crate::error::CandleError::ValidationError(format!(
+                            "Invalid after zero: {}",
+                            b as char
+                        )));
+                    }
                 },
                 NumberState::AfterIntDigit => match b {
-                    b'0'..=b'9' => S::InNumber { state: NumberState::AfterIntDigit },
-                    b'.' => S::InNumber { state: NumberState::AfterDot },
-                    b'e' | b'E' => S::InNumber { state: NumberState::AfterE },
-                    _ if Self::is_end_char(b) => { self.set_after_value(); self.advance(b)?; self.current }
-                    _ => return Err(crate::error::CandleError::ValidationError(
-                        format!("Invalid after int digit: {}", b as char)
-                    )),
+                    b'0'..=b'9' => S::InNumber {
+                        state: NumberState::AfterIntDigit,
+                    },
+                    b'.' => S::InNumber {
+                        state: NumberState::AfterDot,
+                    },
+                    b'e' | b'E' => S::InNumber {
+                        state: NumberState::AfterE,
+                    },
+                    _ if Self::is_end_char(b) => {
+                        self.set_after_value();
+                        self.advance(b)?;
+                        self.current
+                    }
+                    _ => {
+                        return Err(crate::error::CandleError::ValidationError(format!(
+                            "Invalid after int digit: {}",
+                            b as char
+                        )));
+                    }
                 },
                 NumberState::AfterDot => match b {
-                    b'0'..=b'9' => S::InNumber { state: NumberState::AfterFracDigit },
-                    _ => return Err(crate::error::CandleError::ValidationError(
-                        format!("Expected digit after dot: {}", b as char)
-                    )),
+                    b'0'..=b'9' => S::InNumber {
+                        state: NumberState::AfterFracDigit,
+                    },
+                    _ => {
+                        return Err(crate::error::CandleError::ValidationError(format!(
+                            "Expected digit after dot: {}",
+                            b as char
+                        )));
+                    }
                 },
                 NumberState::AfterFracDigit => match b {
-                    b'0'..=b'9' => S::InNumber { state: NumberState::AfterFracDigit },
-                    b'e' | b'E' => S::InNumber { state: NumberState::AfterE },
-                    _ if Self::is_end_char(b) => { self.set_after_value(); self.advance(b)?; self.current }
-                    _ => return Err(crate::error::CandleError::ValidationError(
-                        format!("Invalid after frac digit: {}", b as char)
-                    )),
+                    b'0'..=b'9' => S::InNumber {
+                        state: NumberState::AfterFracDigit,
+                    },
+                    b'e' | b'E' => S::InNumber {
+                        state: NumberState::AfterE,
+                    },
+                    _ if Self::is_end_char(b) => {
+                        self.set_after_value();
+                        self.advance(b)?;
+                        self.current
+                    }
+                    _ => {
+                        return Err(crate::error::CandleError::ValidationError(format!(
+                            "Invalid after frac digit: {}",
+                            b as char
+                        )));
+                    }
                 },
                 NumberState::AfterE => match b {
-                    b'+' | b'-' => S::InNumber { state: NumberState::AfterExpSign },
-                    b'0'..=b'9' => S::InNumber { state: NumberState::AfterExpDigit },
-                    _ => return Err(crate::error::CandleError::ValidationError(
-                        format!("Expected exp sign or digit: {}", b as char)
-                    )),
+                    b'+' | b'-' => S::InNumber {
+                        state: NumberState::AfterExpSign,
+                    },
+                    b'0'..=b'9' => S::InNumber {
+                        state: NumberState::AfterExpDigit,
+                    },
+                    _ => {
+                        return Err(crate::error::CandleError::ValidationError(format!(
+                            "Expected exp sign or digit: {}",
+                            b as char
+                        )));
+                    }
                 },
                 NumberState::AfterExpSign => match b {
-                    b'0'..=b'9' => S::InNumber { state: NumberState::AfterExpDigit },
-                    _ => return Err(crate::error::CandleError::ValidationError(
-                        format!("Expected exp digit: {}", b as char)
-                    )),
+                    b'0'..=b'9' => S::InNumber {
+                        state: NumberState::AfterExpDigit,
+                    },
+                    _ => {
+                        return Err(crate::error::CandleError::ValidationError(format!(
+                            "Expected exp digit: {}",
+                            b as char
+                        )));
+                    }
                 },
                 NumberState::AfterExpDigit => match b {
-                    b'0'..=b'9' => S::InNumber { state: NumberState::AfterExpDigit },
-                    _ if Self::is_end_char(b) => { self.set_after_value(); self.advance(b)?; self.current }
-                    _ => return Err(crate::error::CandleError::ValidationError(
-                        "Invalid character after exponential digit in number".to_string()
-                    )),
+                    b'0'..=b'9' => S::InNumber {
+                        state: NumberState::AfterExpDigit,
+                    },
+                    _ if Self::is_end_char(b) => {
+                        self.set_after_value();
+                        self.advance(b)?;
+                        self.current
+                    }
+                    _ => {
+                        return Err(crate::error::CandleError::ValidationError(
+                            "Invalid character after exponential digit in number".to_string(),
+                        ));
+                    }
                 },
             },
             S::InTrue { pos } => {
@@ -272,7 +400,7 @@ impl JsonState {
                     }
                 } else {
                     return Err(crate::error::CandleError::ProcessingError(
-                        "Invalid 'true' sequence"
+                        "Invalid 'true' sequence",
                     ));
                 }
             }
@@ -287,7 +415,7 @@ impl JsonState {
                     }
                 } else {
                     return Err(crate::error::CandleError::ProcessingError(
-                        "Invalid 'false' sequence"
+                        "Invalid 'false' sequence",
                     ));
                 }
             }
@@ -302,7 +430,7 @@ impl JsonState {
                     }
                 } else {
                     return Err(crate::error::CandleError::ProcessingError(
-                        "Invalid 'null' sequence"
+                        "Invalid 'null' sequence",
                     ));
                 }
             }
@@ -320,7 +448,7 @@ pub struct JsonConstraint {
 
 impl JsonConstraint {
     /// Create a new JSON constraint from tokenizer vocabulary
-    /// 
+    ///
     /// Note: In the user's original code, this takes a tokenizer reference,
     /// but we adapt it to work with pre-computed token mappings for fluent_ai_candle
     pub fn new() -> Self {
@@ -332,22 +460,25 @@ impl JsonConstraint {
     }
 
     /// Initialize with tokenizer vocabulary
-    pub fn initialize_with_tokenizer(&mut self, tokenizer_tokens: &[(u32, Vec<u8>)]) -> CandleResult<()> {
+    pub fn initialize_with_tokenizer(
+        &mut self,
+        tokenizer_tokens: &[(u32, Vec<u8>)],
+    ) -> CandleResult<()> {
         self.vocab_size = tokenizer_tokens.len();
         self.token_bytes = vec![Vec::new(); self.vocab_size];
-        
+
         // Build token->bytes mapping
         for (token_id, bytes) in tokenizer_tokens {
             if (*token_id as usize) < self.vocab_size {
                 self.token_bytes[*token_id as usize] = bytes.clone();
-                
+
                 if !bytes.is_empty() {
                     let first_byte = bytes[0] as usize;
                     self.tokens_per_start_byte[first_byte].push(*token_id);
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -373,10 +504,10 @@ impl GenerationConstraint for JsonConstraint {
     fn update(&self, state: &mut Self::State, token: u32) -> CandleResult<bool> {
         if (token as usize) >= self.token_bytes.len() {
             return Err(crate::error::CandleError::ProcessingError(
-                "Token ID exceeds vocabulary size"
+                "Token ID exceeds vocabulary size",
             ));
         }
-        
+
         let bytes = &self.token_bytes[token as usize];
         for &byte in bytes {
             state.advance(byte)?;
@@ -388,7 +519,7 @@ impl GenerationConstraint for JsonConstraint {
         if (token as usize) >= self.token_bytes.len() {
             return Ok(false);
         }
-        
+
         let mut s = state.clone();
         let bytes = &self.token_bytes[token as usize];
         for &byte in bytes {
@@ -406,12 +537,12 @@ impl GenerationConstraint for JsonConstraint {
     fn get_deterministic_sequence(&self, state: &Self::State) -> CandleResult<Vec<u32>> {
         let mut seq = Vec::with_capacity(32);
         let mut current = state.clone();
-        
+
         loop {
             let poss_bytes = self.possible_next_bytes(&current);
             let mut count = 0;
             let mut the_token: Option<u32> = None;
-            
+
             'outer: for byte_idx in 0..256 {
                 if !poss_bytes[byte_idx] {
                     continue;
@@ -437,11 +568,11 @@ impl GenerationConstraint for JsonConstraint {
                     }
                 }
             }
-            
+
             if count == 1 {
-                let t = the_token.ok_or_else(|| crate::error::CandleError::ProcessingError(
-                    "No token found despite count 1"
-                ))?;
+                let t = the_token.ok_or_else(|| {
+                    crate::error::CandleError::ProcessingError("No token found despite count 1")
+                })?;
                 seq.push(t);
                 let bytes = &self.token_bytes[t as usize];
                 for &b in bytes {

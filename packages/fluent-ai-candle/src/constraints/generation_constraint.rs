@@ -17,7 +17,7 @@ pub trait GenerationConstraint {
     fn new_state(&self) -> Self::State;
 
     /// Update constraint state with a validated token
-    /// 
+    ///
     /// Returns true if the constraint is now complete
     fn update(&self, state: &mut Self::State, token: u32) -> CandleResult<bool>;
 
@@ -28,7 +28,7 @@ pub trait GenerationConstraint {
     fn is_done(&self, state: &Self::State) -> bool;
 
     /// Get deterministic token sequence for batch processing optimization
-    /// 
+    ///
     /// Returns tokens that must be generated next when only one valid path exists
     fn get_deterministic_sequence(&self, state: &Self::State) -> CandleResult<Vec<u32>>;
 }

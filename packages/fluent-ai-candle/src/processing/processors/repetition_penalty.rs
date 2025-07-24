@@ -119,8 +119,7 @@ impl RepetitionPenaltyProcessor {
         self.overflow_frequencies.clear();
 
         let token_history = context.token_history();
-        let tokens = if self.context_window > 0 && self.context_window < token_history.len()
-        {
+        let tokens = if self.context_window > 0 && self.context_window < token_history.len() {
             // Use only recent tokens from context window
             let start_idx = token_history.len() - self.context_window;
             &token_history[start_idx..]
@@ -536,9 +535,11 @@ mod tests {
         // Empty context
         let empty_context = ProcessingContext::default();
         let mut logits = vec![1.0, 2.0, 3.0];
-        assert!(processor
-            .process_logits(&mut logits, &empty_context)
-            .is_ok());
+        assert!(
+            processor
+                .process_logits(&mut logits, &empty_context)
+                .is_ok()
+        );
     }
 
     #[test]

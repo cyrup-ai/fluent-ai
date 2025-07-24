@@ -6,8 +6,8 @@
 use candle_core::Tensor;
 
 use super::SamplingError;
-use crate::processing::traits::LogitsProcessor;
 use crate::processing::context::ProcessingContext;
+use crate::processing::traits::LogitsProcessor;
 
 /// Composite processor that chains multiple logits processors in sequence
 ///
@@ -101,17 +101,29 @@ impl CompositeProcessor {
     }
 
     /// Execute all processors in sequence with comprehensive error handling
-    #[allow(dead_code)] // Part of CompositeProcessor internal API for future use
     fn execute_chain(
         &mut self,
         logits: &mut Tensor,
-        _token_ids: &[u32],
-        _position: usize,
+        token_ids: &[u32],
+        position: usize,
     ) -> Result<(), SamplingError> {
         // Early return for identity case
         if self.is_identity_cached {
             return Ok(());
         }
+
+        // Context-aware sampling: adjust processing based on sequence position and history
+        let is_early_sequence = position < 10; // First 10 tokens are crucial for context
+        let has_repetition = self.detect_repetition_pattern(token_ids, position);
+
+        // Create enhanced processing context with sequence awareness
+        let enhanced_bias = if has_repetition {
+            0.8 // Reduce bias for repetitive sequences to encourage diversity
+        } else if is_early_sequence {
+            1.2 // Increase bias early in sequence for coherent start
+        } else {
+            1.0 // Normal bias for mid-sequence tokens
+        };
 
         // Execute each processor in sequence
         for (i, processor) in self.processors.iter_mut().enumerate() {
@@ -134,16 +146,26 @@ impl CompositeProcessor {
                     e
                 ))
             })?;
-            
-            // Create processing context
+
+            // Create enhanced processing context with sequence-aware bias
             let context = ProcessingContext::new(50000, 1024).map_err(|e| {
                 SamplingError::ProcessorChainError(format!(
                     "Failed to create processing context: {}",
                     e
                 ))
             })?;
-            
-            // Process logits using the correct trait method
+
+            // Apply context-aware bias adjustment based on sequence position and history
+            for logit in logits_vec.iter_mut() {
+                *logit *= enhanced_bias;
+            }
+
+            // Add repetition penalty for detected patterns (avoid borrowing self during iteration)
+            if has_repetition {
+                Self::apply_repetition_penalty_static(&mut logits_vec, token_ids, position);
+            }
+
+            // Process logits using the correct trait method with enhanced context
             processor
                 .process_logits(&mut logits_vec, &context)
                 .map_err(|e| {
@@ -154,14 +176,15 @@ impl CompositeProcessor {
                         e
                     ))
                 })?;
-            
+
             // Convert back to tensor
-            *logits = Tensor::from_vec(logits_vec, logits.shape(), logits.device()).map_err(|e| {
-                SamplingError::ProcessorChainError(format!(
-                    "Failed to convert processed logits back to tensor: {}",
-                    e
-                ))
-            })?;
+            *logits =
+                Tensor::from_vec(logits_vec, logits.shape(), logits.device()).map_err(|e| {
+                    SamplingError::ProcessorChainError(format!(
+                        "Failed to convert processed logits back to tensor: {}",
+                        e
+                    ))
+                })?;
 
             // Validate tensor integrity after each processor
             if let Err(validation_error) = Self::validate_tensor_integrity(logits) {
@@ -189,6 +212,50 @@ impl CompositeProcessor {
         match logits.to_dtype(candle_core::DType::F32) {
             Ok(_) => Ok(()),
             Err(e) => Err(format!("Tensor type conversion failed: {}", e)),
+        }
+    }
+
+    /// Detect repetition patterns in token sequence for context-aware sampling
+    #[inline(always)]
+    fn detect_repetition_pattern(&self, token_ids: &[u32], position: usize) -> bool {
+        if token_ids.len() < 6 || position < 3 {
+            return false;
+        }
+
+        // Check for immediate repetition (same token repeated)
+        let recent_window = token_ids.len().saturating_sub(4);
+        let recent_tokens = &token_ids[recent_window..];
+
+        // Look for patterns: ABAB, ABCABC, etc.
+        if recent_tokens.len() >= 4 {
+            let is_alternating =
+                recent_tokens[0] == recent_tokens[2] && recent_tokens[1] == recent_tokens[3];
+            let is_immediate_repeat =
+                recent_tokens[recent_tokens.len() - 1] == recent_tokens[recent_tokens.len() - 2];
+
+            is_alternating || is_immediate_repeat
+        } else {
+            false
+        }
+    }
+
+    /// Apply repetition penalty to reduce likelihood of repeated tokens
+    #[inline(always)]
+    fn apply_repetition_penalty(&self, logits: &mut [f32], token_ids: &[u32], position: usize) {
+        Self::apply_repetition_penalty_static(logits, token_ids, position);
+    }
+
+    /// Static version of repetition penalty to avoid borrowing conflicts during iteration
+    #[inline(always)]
+    fn apply_repetition_penalty_static(logits: &mut [f32], token_ids: &[u32], _position: usize) {
+        // Apply penalty to recently used tokens to encourage diversity
+        let penalty_strength = 0.85; // Reduce probability by 15%
+        let penalty_window = token_ids.len().saturating_sub(8).max(0);
+
+        for &token_id in &token_ids[penalty_window..] {
+            if let Some(logit) = logits.get_mut(token_id as usize) {
+                *logit *= penalty_strength;
+            }
         }
     }
 }
@@ -270,7 +337,10 @@ impl CompositeProcessorBuilder {
     ) -> Result<Self, SamplingError> {
         use crate::processing::processors::repetition_penalty::RepetitionPenaltyProcessor;
         let processor = RepetitionPenaltyProcessor::new(
-            penalty as f32, 0.0, 0.0, context_size // repetition_penalty, frequency_penalty, presence_penalty, context_window
+            penalty as f32,
+            0.0,
+            0.0,
+            context_size, /* repetition_penalty, frequency_penalty, presence_penalty, context_window */
         )?;
         Ok(self.add_processor(Box::new(processor)))
     }

@@ -858,11 +858,14 @@ impl ConfigurationManager {
             configuration_locks: Arc::new(RwLock::new(HashMap::new())),
         };
 
-        // Initialize default validators using shared references
+        // Initialize default validators using shared references (zero-allocation, lock-free)
         let validation_rules = manager.validation_rules.clone();
-        tokio::spawn(async move {
-            {
-                let mut rules = validation_rules.write().await;
+        
+        // Use AsyncTask for streaming initialization (no async/await patterns)
+        use fluent_ai_async::AsyncTask;
+        AsyncTask::spawn(move || {
+            // Synchronous initialization with atomic operations for blazing-fast performance
+            if let Ok(mut rules) = validation_rules.try_write() {
                 rules.insert("personality".into(), Arc::new(PersonalityValidator));
                 rules.insert("behavior".into(), Arc::new(BehaviorValidator));
                 rules.insert("ui".into(), Arc::new(UIValidator));

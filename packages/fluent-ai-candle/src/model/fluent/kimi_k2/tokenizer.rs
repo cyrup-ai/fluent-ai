@@ -29,13 +29,14 @@
 //!
 //! The template terminates with `[EOS]` after assistant generation is complete.
 
-use crate::{types::candle_chat::message::CandleMessage, tokenizer::CandleTokenizer};
-use crate::error::{CandleError, CandleResult};
-use arrayvec::ArrayVec;
-
-use fluent_ai_http3::client::HttpClient;
-use fluent_ai_async::AsyncStream;
 use std::sync::Arc;
+
+use arrayvec::ArrayVec;
+use fluent_ai_async::{AsyncStream, handle_error};
+use fluent_ai_http3::client::HttpClient;
+
+use crate::error::{CandleError, CandleResult};
+use crate::{tokenizer::CandleTokenizer, types::candle_chat::message::CandleMessage};
 
 /// Special token literals as per `tokenizer_config.json`.
 const BOS: &str = "[BOS]";
@@ -61,23 +62,16 @@ impl KimiK2Tokenizer {
     ///
     /// This is a convenience helper; downstream code should ideally cache the
     /// resulting tokenizer instance.
-    pub fn from_hub() -> AsyncStream<CandleResult<Self>> {
-        AsyncStream::with_channel(|y| {
+    pub fn from_hub() -> AsyncStream<Self> {
+        AsyncStream::with_channel(|_sender| {
             // Use http3 client for zero-allocation download of tokenizer files.
             let _client = HttpClient::default();
-            let model_id = "moonshotai/Kimi-K2-Instruct";
-            
-            // Use streaming pattern instead of async/await
-            let _tokenizer_stream = CandleTokenizer::from_hub(model_id, Default::default());
-            
-            // Process the stream without async/await
-            std::thread::spawn(move || {
-                // TODO: Implement proper streaming tokenizer loading
-                // For now, send an error indicating this needs implementation
-                let _ = y.send(Err(CandleError::InitializationError(
-                    "Tokenizer streaming loading not yet implemented".to_string()
-                )));
-            });
+            let _model_id = "moonshotai/Kimi-K2-Instruct";
+
+            // TODO: Implement proper streaming tokenizer loading
+            let error =
+                CandleError::ModelLoadError("Tokenizer loading not yet implemented".to_string());
+            handle_error!(error, "Tokenizer loading not implemented");
         })
     }
 
@@ -112,7 +106,9 @@ impl KimiK2Tokenizer {
             // Expect user
             let user_msg = &messages[idx];
             if user_msg.role != crate::types::candle_chat::message::CandleMessageRole::User {
-                return Err(CandleError::Tokenizer("Expected user role in chat sequence"));
+                return Err(CandleError::Tokenizer(
+                    "Expected user role in chat sequence",
+                ));
             }
             Self::push_pair(&mut buf, IM_USER, "")?; // tag only
             Self::push_line(&mut buf, &user_msg.content)?;
@@ -122,7 +118,10 @@ impl KimiK2Tokenizer {
             idx += 1;
 
             // If assistant response exists, append and <|im_end|>
-            if idx < messages.len() && messages[idx].role == crate::types::candle_chat::message::CandleMessageRole::Assistant {
+            if idx < messages.len()
+                && messages[idx].role
+                    == crate::types::candle_chat::message::CandleMessageRole::Assistant
+            {
                 let assist_msg = &messages[idx];
                 Self::push_line(&mut buf, &assist_msg.content)?;
                 Self::push_line(&mut buf, IM_END)?;
@@ -137,20 +136,27 @@ impl KimiK2Tokenizer {
     }
 
     #[inline(always)]
-    fn push_pair(buf: &mut ArrayVec<u8, MAX_PROMPT_BUFFER>, first: &str, second: &str) -> CandleResult<()> {
+    fn push_pair(
+        buf: &mut ArrayVec<u8, MAX_PROMPT_BUFFER>,
+        first: &str,
+        second: &str,
+    ) -> CandleResult<()> {
         Self::push_str(buf, first)?;
         if !second.is_empty() {
-            buf.try_push(b' ').map_err(|_| CandleError::tokenization("Prompt buffer overflow"))?;
+            buf.try_push(b' ')
+                .map_err(|_| CandleError::tokenization("Prompt buffer overflow"))?;
             Self::push_str(buf, second)?;
         }
-        buf.try_push(b'\n').map_err(|_| CandleError::tokenization("Prompt buffer overflow"))?;
+        buf.try_push(b'\n')
+            .map_err(|_| CandleError::tokenization("Prompt buffer overflow"))?;
         Ok(())
     }
 
     #[inline(always)]
     fn push_line(buf: &mut ArrayVec<u8, MAX_PROMPT_BUFFER>, line: &str) -> CandleResult<()> {
         Self::push_str(buf, line)?;
-        buf.try_push(b'\n').map_err(|_| CandleError::tokenization("Prompt buffer overflow"))?;
+        buf.try_push(b'\n')
+            .map_err(|_| CandleError::tokenization("Prompt buffer overflow"))?;
         Ok(())
     }
 

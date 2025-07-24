@@ -4,7 +4,7 @@
 //! selecting from the smallest set of tokens whose cumulative probability
 //! exceeds the threshold p.
 
-use candle_core::{Tensor, D};
+use candle_core::{D, Tensor};
 use candle_nn::ops;
 
 use super::SamplingError;
@@ -75,6 +75,8 @@ impl TopPProcessor {
     }
 
     /// Apply nucleus sampling with efficient sorting and cumulative probability calculation
+    #[deprecated = "Legacy sampling module - use crate::processing::processors instead"]
+    #[allow(dead_code)]
     fn apply_nucleus_sampling(&self, logits: &Tensor) -> Result<Tensor, SamplingError> {
         if self.is_identity {
             // Identity case - no filtering needed
@@ -141,7 +143,9 @@ impl TopPProcessor {
             .to_vec1::<f32>()
             .map_err(SamplingError::from)?;
         if output_vec.iter().any(|&x| x.is_nan()) {
-            return Err(SamplingError::NumericalInstability("NaN values detected in nucleus sampling output".to_string()));
+            return Err(SamplingError::NumericalInstability(
+                "NaN values detected in nucleus sampling output".to_string(),
+            ));
         }
 
         Ok(masked_tensor)

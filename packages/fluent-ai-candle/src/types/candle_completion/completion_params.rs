@@ -4,8 +4,8 @@ use std::num::NonZeroU64;
 
 use serde::{Deserialize, Serialize};
 
+use super::constants::{MAX_TOKENS, TEMPERATURE_RANGE};
 use crate::model::{ValidationError, ValidationResult};
-use super::constants::{TEMPERATURE_RANGE, MAX_TOKENS};
 
 /// Parameters for completion generation
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -29,7 +29,7 @@ impl Default for CompletionParams {
             Some(val) => val,
             None => unreachable!(), // Compile-time guarantee that 1 is non-zero
         };
-        
+
         Self {
             temperature: 1.0,
             max_tokens: None,
@@ -47,7 +47,7 @@ impl CompletionParams {
             Some(val) => val,
             None => unreachable!(), // Compile-time guarantee
         };
-        
+
         Self {
             temperature: 1.0,
             max_tokens: None,

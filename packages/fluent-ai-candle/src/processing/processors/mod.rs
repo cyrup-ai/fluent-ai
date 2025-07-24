@@ -40,14 +40,11 @@ pub mod priorities {
 
 /// Common processor configurations for different use cases
 pub mod presets {
-    use crate::processing::{traits::LogitsProcessor, ProcessingResult};
     use super::{
-        CompositeProcessor,
-        RepetitionPenaltyProcessor,
-        TemperatureProcessor,
-        TopKProcessor,
+        CompositeProcessor, RepetitionPenaltyProcessor, TemperatureProcessor, TopKProcessor,
         TopPProcessor,
     };
+    use crate::processing::{ProcessingResult, traits::LogitsProcessor};
 
     /// Create standard text generation processor chain
     pub fn text_generation(
@@ -61,7 +58,8 @@ pub mod presets {
         // Add repetition penalty first (context-dependent)
         if let Some(penalty) = repetition_penalty {
             processors.push(Box::new(RepetitionPenaltyProcessor::new(
-                penalty, 0.0, 0.0, 0, // repetition_penalty, frequency_penalty, presence_penalty, context_window
+                penalty, 0.0, 0.0,
+                0, // repetition_penalty, frequency_penalty, presence_penalty, context_window
             )?));
         }
 
@@ -130,7 +128,7 @@ pub mod presets {
 
 /// Utility functions for processor management
 pub mod utils {
-    use crate::processing::{traits::LogitsProcessor, ProcessingError, ProcessingResult};
+    use crate::processing::{ProcessingError, ProcessingResult, traits::LogitsProcessor};
 
     /// Validate processor compatibility
     ///

@@ -261,7 +261,9 @@ impl ProcessingError {
             Self::ValidationError(_) => "Validate and correct input data",
             Self::BufferOverflow(_) => "Reduce input size or increase buffer capacity",
             Self::InvalidInput(_) => "Validate and correct input data format",
-            Self::TensorOperationFailed(_) => "Check tensor shapes and try different tensor operations",
+            Self::TensorOperationFailed(_) => {
+                "Check tensor shapes and try different tensor operations"
+            }
             Self::InternalError(_) => "Report as bug, restart system if necessary",
         }
     }
@@ -285,7 +287,9 @@ impl ProcessingError {
             }
             Self::BufferOverflow(msg) => Self::BufferOverflow(format!("{}: {}", context_str, msg)),
             Self::InvalidInput(msg) => Self::InvalidInput(format!("{}: {}", context_str, msg)),
-            Self::TensorOperationFailed(msg) => Self::TensorOperationFailed(format!("{}: {}", context_str, msg)),
+            Self::TensorOperationFailed(msg) => {
+                Self::TensorOperationFailed(format!("{}: {}", context_str, msg))
+            }
             Self::InternalError(msg) => Self::InternalError(format!("{}: {}", context_str, msg)),
         }
     }

@@ -17,13 +17,13 @@ use arrayvec::ArrayVec;
 use crate::error::{CandleError, CandleResult};
 // Re-export the new unified system for compatibility
 pub use crate::processing::{
+    ProcessingContext, ProcessingEngine, ProcessingResult,
     error::ProcessingError,
     processors::{
-        presets, CompositeProcessor, CompositeProcessorBuilder, RepetitionPenaltyProcessor,
-        TemperatureProcessor, TopKProcessor, TopPProcessor,
+        CompositeProcessor, CompositeProcessorBuilder, RepetitionPenaltyProcessor,
+        TemperatureProcessor, TopKProcessor, TopPProcessor, presets,
     },
     traits::LogitsProcessor,
-    ProcessingContext, ProcessingEngine, ProcessingResult,
 };
 
 /// Maximum vocabulary size for zero-allocation processing
@@ -164,7 +164,8 @@ impl LogitsSampler {
     /// Add token to context after generation - DEPRECATED
     #[inline(always)]
     pub fn add_generated_token(&mut self, token: u32) -> CandleResult<()> {
-        self.engine.add_token(token)
+        self.engine
+            .add_token(token)
             .map_err(|_| CandleError::configuration("Failed to add token to context"))?;
         Ok(())
     }

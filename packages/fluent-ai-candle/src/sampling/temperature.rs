@@ -3,7 +3,7 @@
 //! Implements temperature scaling for logits with comprehensive validation,
 //! numerical stability guarantees, and zero-allocation tensor operations.
 
-use candle_core::{Tensor, D};
+use candle_core::{D, Tensor};
 use candle_nn::ops;
 
 use super::SamplingError;
@@ -112,7 +112,9 @@ impl TemperatureProcessor {
         let has_inf = logits_vec.iter().any(|&x| x.is_infinite());
 
         if has_nan {
-            return Err(SamplingError::NumericalInstability("NaN values detected in logits".to_string()));
+            return Err(SamplingError::NumericalInstability(
+                "NaN values detected in logits".to_string(),
+            ));
         }
 
         // Handle infinite values by clamping to prevent overflow after scaling
@@ -150,7 +152,9 @@ impl TemperatureProcessor {
         let output_has_nan = output_vec.iter().any(|&x| x.is_nan());
 
         if output_has_nan {
-            return Err(SamplingError::NumericalInstability("NaN values detected in temperature scaling output".to_string()));
+            return Err(SamplingError::NumericalInstability(
+                "NaN values detected in temperature scaling output".to_string(),
+            ));
         }
 
         Ok(scaled)

@@ -9,6 +9,6 @@ pub mod json;
 // Re-export core types for ergonomic usage
 pub use generation_constraint::GenerationConstraint;
 pub use json::{
-    JsonConstraint, JsonState, JsonCurrentState, JsonStackItem, NumberState,
-    create_json_constraint_for_tokenizer
+    JsonConstraint, JsonCurrentState, JsonStackItem, JsonState, NumberState,
+    create_json_constraint_for_tokenizer,
 };

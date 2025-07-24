@@ -6,7 +6,9 @@ use std::sync::Arc;
 
 use crossbeam_skiplist::SkipMap;
 
-use crate::types::candle_chat::templates::core::{ChatTemplate, TemplateError, TemplateInfo, TemplateResult};
+use crate::types::candle_chat::templates::core::{
+    ChatTemplate, TemplateError, TemplateInfo, TemplateResult,
+};
 
 /// Template manager for storing and managing templates
 #[derive(Debug)]

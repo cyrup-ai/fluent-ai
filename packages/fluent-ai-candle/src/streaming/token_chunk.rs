@@ -4,10 +4,12 @@
 //! bounded memory usage, and blazing-fast token processing.
 
 use std::time::{SystemTime, UNIX_EPOCH};
+
 use arrayvec::ArrayString;
 use candle_core::Tensor;
-use crate::error::{CandleError, CandleResult};
+
 use super::{constants::MAX_CHUNK_TEXT_SIZE, token_metadata::TokenMetadata};
+use crate::error::{CandleError, CandleResult};
 
 /// Token chunk with bounded text storage and metadata
 #[derive(Debug, Clone)]

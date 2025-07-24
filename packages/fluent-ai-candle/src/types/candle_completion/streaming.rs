@@ -9,22 +9,22 @@ use serde::{Deserialize, Serialize};
 pub struct CandleStreamingResponse {
     /// Unique identifier for this completion
     pub id: String,
-    
+
     /// Object type (always "chat.completion.chunk")
     pub object: String,
-    
+
     /// Unix timestamp of when the completion was created
     pub created: u64,
-    
+
     /// Model used for the completion
     pub model: String,
-    
+
     /// List of completion choices
     pub choices: Vec<CandleStreamingChoice>,
-    
+
     /// Token usage information (only present in final chunk)
     pub usage: Option<crate::types::CandleUsage>,
-    
+
     /// System fingerprint for reproducibility
     pub system_fingerprint: Option<String>,
 }
@@ -34,13 +34,13 @@ pub struct CandleStreamingResponse {
 pub struct CandleStreamingChoice {
     /// Index of this choice
     pub index: u32,
-    
+
     /// Delta containing the incremental content
     pub delta: CandleStreamingDelta,
-    
+
     /// Reason why the completion finished (if finished)
     pub finish_reason: Option<CandleFinishReason>,
-    
+
     /// Log probabilities for the tokens (if requested)
     pub logprobs: Option<CandleLogProbs>,
 }
@@ -50,13 +50,13 @@ pub struct CandleStreamingChoice {
 pub struct CandleStreamingDelta {
     /// Role of the message (usually only in first chunk)
     pub role: Option<String>,
-    
+
     /// Incremental content
     pub content: Option<String>,
-    
+
     /// Tool calls (if any)
     pub tool_calls: Option<Vec<CandleToolCallDelta>>,
-    
+
     /// Function call (deprecated, use tool_calls)
     pub function_call: Option<CandleFunctionCallDelta>,
 }
@@ -66,14 +66,14 @@ pub struct CandleStreamingDelta {
 pub struct CandleToolCallDelta {
     /// Index of this tool call
     pub index: u32,
-    
+
     /// Unique identifier for this tool call
     pub id: Option<String>,
-    
+
     /// Type of tool call (usually "function")
     #[serde(rename = "type")]
     pub tool_type: Option<String>,
-    
+
     /// Function call details
     pub function: Option<CandleFunctionCallDelta>,
 }
@@ -83,7 +83,7 @@ pub struct CandleToolCallDelta {
 pub struct CandleFunctionCallDelta {
     /// Name of the function (usually only in first chunk)
     pub name: Option<String>,
-    
+
     /// Incremental arguments as JSON string
     pub arguments: Option<String>,
 }
@@ -118,13 +118,13 @@ pub struct CandleLogProbs {
 pub struct CandleTokenLogProb {
     /// The token
     pub token: String,
-    
+
     /// Log probability of the token
     pub logprob: f64,
-    
+
     /// Raw bytes of the token (if available)
     pub bytes: Option<Vec<u8>>,
-    
+
     /// Top alternative tokens with their log probabilities
     pub top_logprobs: Vec<CandleTopLogProb>,
 }
@@ -134,10 +134,10 @@ pub struct CandleTokenLogProb {
 pub struct CandleTopLogProb {
     /// The token
     pub token: String,
-    
+
     /// Log probability of the token
     pub logprob: f64,
-    
+
     /// Raw bytes of the token (if available)
     pub bytes: Option<Vec<u8>>,
 }
@@ -155,28 +155,27 @@ impl CandleStreamingResponse {
             system_fingerprint: None,
         }
     }
-    
+
     /// Add a choice to the response
     pub fn add_choice(&mut self, choice: CandleStreamingChoice) {
         self.choices.push(choice);
     }
-    
+
     /// Check if this is the final chunk (has usage information)
     pub fn is_final(&self) -> bool {
-        self.usage.is_some() || 
-        self.choices.iter().any(|c| c.finish_reason.is_some())
+        self.usage.is_some() || self.choices.iter().any(|c| c.finish_reason.is_some())
     }
-    
+
     /// Get the content from the first choice, if any
     pub fn content(&self) -> Option<&str> {
-        self.choices.first()
+        self.choices
+            .first()
             .and_then(|c| c.delta.content.as_deref())
     }
-    
+
     /// Check if this chunk contains a tool call
     pub fn has_tool_calls(&self) -> bool {
-        self.choices.iter()
-            .any(|c| c.delta.tool_calls.is_some())
+        self.choices.iter().any(|c| c.delta.tool_calls.is_some())
     }
 }
 
@@ -209,7 +208,7 @@ impl CandleStreamingChoice {
             logprobs: None,
         }
     }
-    
+
     /// Create a new streaming choice with role
     pub fn with_role(index: u32, role: String) -> Self {
         Self {
@@ -224,7 +223,7 @@ impl CandleStreamingChoice {
             logprobs: None,
         }
     }
-    
+
     /// Set the finish reason
     pub fn with_finish_reason(mut self, reason: CandleFinishReason) -> Self {
         self.finish_reason = Some(reason);

@@ -34,8 +34,8 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicU64, AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicU64, AtomicUsize, Ordering},
     },
 };
 
@@ -45,7 +45,6 @@ use candle_nn::{Init, VarBuilder};
 use crossbeam_skiplist::SkipMap;
 use memmap2::Mmap;
 use safetensors::SafeTensors;
-
 
 use crate::error::{CandleError, CandleResult as Result};
 
@@ -928,9 +927,8 @@ impl<'a> CandleVarBuilder<'a> {
 
         // Parse safetensors - we need to ensure the mmap data is valid for 'static
         // Since we keep the mmap Arc in the builder, we can safely cast the lifetime
-        let mmap_data: &'static [u8] = unsafe { 
-            std::mem::transmute::<&[u8], &'static [u8]>(&**mmap) 
-        };
+        let mmap_data: &'static [u8] =
+            unsafe { std::mem::transmute::<&[u8], &'static [u8]>(&**mmap) };
         let safetensors = SafeTensors::deserialize(mmap_data)
             .map_err(|e| CandleError::Msg(format!("Invalid safetensors file: {}", e)))?;
         let safetensors_arc = Arc::new(safetensors);
@@ -966,7 +964,8 @@ impl<'a> CandleVarBuilder<'a> {
                         convert_dtype(tensor_info.dtype()),
                         tensor_info.shape(),
                         &config.device,
-                    ).unwrap();
+                    )
+                    .unwrap();
                     (name.to_string(), tensor)
                 })
                 .collect(),

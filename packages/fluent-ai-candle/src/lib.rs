@@ -28,33 +28,46 @@ pub mod tokenizer;
 pub mod types;
 // Re-export specific types to avoid ambiguous glob re-exports
 pub use types::{
-    CandleMessage, CandleMessageRole, CandleCompletionRequest, CandleCompletionResponse,
-    CandleStreamingResponse, CandleFinishReason, CandleUsage, CandleDocument,
-    CandleCompletionError, CandleCompletionResult, CandleTokenStream,
-    CandleCompletionModel, CandleModelInfo,
+    CandleCompletionError,
+    // CandleTokenStream removed - converted to AsyncStream pattern
+    CandleCompletionModel,
+    CandleCompletionRequest,
+    CandleCompletionResponse,
+    CandleCompletionResult,
+    CandleDocument,
+    CandleFinishReason,
+    CandleMessage,
+    CandleMessageRole,
+    CandleModelInfo,
+    CandleStreamingResponse,
+    CandleUsage,
 };
 pub mod var_builder;
 
 pub mod builders;
 pub use builders::*;
-
 // Re-export core types for ergonomic usage
 pub use client::{CandleClientBuilder, CandleClientConfig, CandleCompletionClient};
+// Re-export constraint system for structured generation
+pub use constraints::{
+    GenerationConstraint, JsonConstraint, JsonCurrentState, JsonStackItem, JsonState, NumberState,
+    create_json_constraint_for_tokenizer,
+};
 pub use error::{CandleError, CandleResult};
 // Re-export completion types from local Candle types
 // Removed unused imports: CandleCompletionRequest, CandleCompletionResponse, CandleFinishReason
 pub use generator::{CandleGenerator, GenerationConfig};
 pub use hub::{
-    create_client, create_download_config, Backend, Client, DownloadConfig, DownloadEvent,
-    DownloadProgress, DownloadResult, ProgressData, ProgressHandler, ProgressHubConfig,
+    Backend, Client, DownloadConfig, DownloadEvent, DownloadProgress, DownloadResult, ProgressData,
+    ProgressHandler, ProgressHubConfig, create_client, create_download_config,
 };
 pub use kv_cache::{
     CacheStats, EvictionStrategy, KVCache, KVCacheBuilder, KVCacheConfig, KVCacheEntry,
 };
 pub use logits::{
-    sampling_metrics, CompositeProcessor, LogitsProcessor, LogitsSampler, ProcessingContext,
+    CompositeProcessor, LogitsProcessor, LogitsSampler, ProcessingContext,
     RepetitionPenaltyProcessor, SamplingConfig, SamplingMetrics, TemperatureProcessor,
-    TopKProcessor, TopPProcessor,
+    TopKProcessor, TopPProcessor, sampling_metrics,
 };
 pub use model::CandleModel;
 pub use progress::{
@@ -68,12 +81,6 @@ pub use tokenizer::{CandleTokenizer, TokenizerConfig};
 pub use var_builder::{
     CandleVarBuilder, LoadingStats, ModelMetadata, TensorEntry, VarBuilderConfig,
     VarBuilderConfigBuilder,
-};
-
-// Re-export constraint system for structured generation
-pub use constraints::{
-    GenerationConstraint, JsonConstraint, JsonState, JsonCurrentState, 
-    JsonStackItem, NumberState, create_json_constraint_for_tokenizer,
 };
 
 /// Device utilities for optimal device selection

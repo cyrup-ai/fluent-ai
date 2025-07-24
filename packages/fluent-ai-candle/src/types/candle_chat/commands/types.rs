@@ -7,10 +7,9 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
+use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-
-use fluent_ai_async::{AsyncStream, AsyncStreamSender};
 
 /// Command execution errors with minimal allocations
 #[derive(Error, Debug, Clone)]

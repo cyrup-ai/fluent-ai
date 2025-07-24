@@ -9,7 +9,7 @@ use std::path::PathBuf;
 pub use progresshub_client_selector::{Backend, Client, DownloadConfig};
 pub use progresshub_config::ConfigTrait as ProgressHubConfig;
 pub use progresshub_progress::{
-    create_progress_channel, DownloadProgress, DownloadResult, ProgressData, ProgressHandler,
+    DownloadProgress, DownloadResult, ProgressData, ProgressHandler, create_progress_channel,
 };
 
 use crate::error::{CandleError, CandleResult};

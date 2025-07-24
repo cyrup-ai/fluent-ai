@@ -4,9 +4,9 @@
 //! numerical stability guarantees, and zero-allocation in-place operations.
 
 use crate::processing::traits::{
-    utils::{clamp_for_stability, find_max_logit, validate_logits},
     ConfigurableProcessor, LogitsProcessor, NumericallyStableProcessor, ProcessingResult,
     ZeroAllocationProcessor,
+    utils::{clamp_for_stability, find_max_logit, validate_logits},
 };
 use crate::processing::{ProcessingContext, ProcessingError};
 

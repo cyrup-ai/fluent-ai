@@ -5,6 +5,7 @@
 
 use candle_core::Module;
 use memmap2::Mmap;
+
 use crate::model::types::ModelConfig;
 
 /// Model state for atomic swapping with zero-allocation design

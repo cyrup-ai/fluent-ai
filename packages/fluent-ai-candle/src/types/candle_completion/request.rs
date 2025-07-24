@@ -11,10 +11,10 @@ use thiserror::Error;
 
 use super::constants::{MAX_CHUNK_SIZE, MAX_TOKENS, TEMPERATURE_RANGE};
 use super::tool_definition::ToolDefinition;
+use crate::model::{ValidationError, ValidationResult};
+use crate::types::CandleDocument;
 use crate::types::ZeroOneOrMany;
 use crate::types::candle_chat::message::CandleMessage;
-use crate::types::{CandleDocument};
-use crate::model::{ValidationError, ValidationResult};
 
 /// A request for text completion
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -189,8 +189,6 @@ impl CompletionRequestBuilder {
         self.additional_params = params;
         self
     }
-
-
 
     /// Build the request
     pub fn build(self) -> Result<CandleCompletionRequest, CompletionRequestError> {

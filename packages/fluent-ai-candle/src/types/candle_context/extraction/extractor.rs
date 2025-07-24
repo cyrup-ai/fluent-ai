@@ -1,12 +1,12 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use fluent_ai_async::AsyncStream;
+use fluent_ai_async::{AsyncStream, handle_error};
 use serde::de::DeserializeOwned;
 use tokio_stream::StreamExt;
 
 use super::error::ExtractionError;
-use crate::types::{CandleCompletionModel};
+use crate::types::CandleCompletionModel;
 // Removed old incorrect imports - using Candle-prefixed types from types module instead
 
 /// Trait defining the core extraction interface
@@ -90,44 +90,49 @@ impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static>
 }
 
 impl<T: DeserializeOwned + Send + Sync + fmt::Debug + Clone + Default + 'static> ExtractorImpl<T> {
-    async fn execute_extraction(
+    fn execute_extraction(
         agent: Agent,
         completion_request: crate::types::CandleCompletionRequest,
         _text_input: String,
-    ) -> Result<T, ExtractionError> {
-        let model = AgentCompletionModel::new(agent);
-        let prompt = completion_request.system_prompt.to_string();
-        let params = crate::types::CandleCompletionParams {
-            temperature: completion_request.temperature,
-            max_tokens: completion_request.max_tokens,
-            n: std::num::NonZeroU8::new(1).unwrap(),
-            stream: true,
-        };
-        let mut stream = model.prompt(&prompt, &params);
+    ) -> AsyncStream<T> {
+        AsyncStream::with_channel(move |sender| {
+            let _model = AgentCompletionModel::new(agent);
+            let _prompt = completion_request.system_prompt.to_string();
+            let _params = crate::types::CandleCompletionParams {
+                temperature: completion_request.temperature,
+                max_tokens: completion_request.max_tokens,
+                n: std::num::NonZeroU8::new(1).unwrap(),
+                stream: true,
+            };
 
-        let mut full_response = String::new();
-        let mut finish_reason = None;
+            // TODO: Implement proper extraction - for now handle as not implemented
+            let error = ExtractionError::validation_failed("Extraction not yet implemented");
+            handle_error!(error, "Extraction not implemented");
 
-        while let Some(chunk) = stream.next().await {
-            // CandleCompletionChunk is CandleStreamingChoice struct with delta field
-            if let Some(content) = chunk.delta.content {
-                full_response.push_str(&content);
-            }
-            if let Some(reason) = chunk.finish_reason {
-                finish_reason = Some(reason);
-                break;
-            }
-        }
+            // Placeholder implementation - extraction not yet implemented
+            // Will be implemented with proper streaming completion calls later
+        })
+    }
 
-        if finish_reason == Some(crate::types::CandleFinishReason::Stop) || !full_response.is_empty() {
+    /// Process the extraction result synchronously
+    fn process_extraction_result(
+        full_response: String,
+        finish_reason: Option<crate::types::CandleFinishReason>,
+        sender: fluent_ai_async::AsyncStreamSender<T>,
+    ) {
+        use fluent_ai_async::{emit, handle_error};
+
+        if finish_reason == Some(crate::types::CandleFinishReason::Stop)
+            || !full_response.is_empty()
+        {
             match Self::parse_json_response(&full_response) {
-                Ok(result) => Ok(result),
-                Err(e) => Err(e),
+                Ok(result) => emit!(sender, result),
+                Err(e) => handle_error!(e, "JSON parsing failed"),
             }
         } else {
-            Err(ExtractionError::CompletionError(
-                "No valid response from model".to_string(),
-            ))
+            let error =
+                ExtractionError::CompletionError("No valid response from model".to_string());
+            handle_error!(error, "No valid model response");
         }
     }
 
@@ -205,16 +210,22 @@ impl crate::types::Model for AgentCompletionModel {
 }
 
 impl crate::types::CandleCompletionModel for AgentCompletionModel {
-    fn complete(&self, _request: crate::types::CandleCompletionRequest) -> crate::client::CandleCompletionBuilder<'_, ()> {
+    fn complete(
+        &self,
+        _request: crate::types::CandleCompletionRequest,
+    ) -> crate::client::CandleCompletionBuilder<'_, ()> {
         // TODO: Implement proper completion builder
         todo!("Implement completion builder")
     }
-    
-    fn stream_complete(&self, _request: crate::types::CandleCompletionRequest) -> crate::types::CandleStreamingResponse {
+
+    fn stream_complete(
+        &self,
+        _request: crate::types::CandleCompletionRequest,
+    ) -> crate::types::CandleStreamingResponse {
         // TODO: Implement proper streaming completion
         todo!("Implement streaming completion")
     }
-    
+
     fn prompt<'a>(
         &'a self,
         prompt: &str,

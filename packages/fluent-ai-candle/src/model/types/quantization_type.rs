@@ -48,8 +48,8 @@ impl QuantizationType {
     #[inline(always)]
     pub fn bytes_per_param(&self) -> u8 {
         match self {
-            Self::None => 4,        // F32
-            Self::Q8_0 => 1,        // Q8
+            Self::None => 4,              // F32
+            Self::Q8_0 => 1,              // Q8
             Self::Q4_0 | Self::Q4_1 => 1, // Q4 (packed)
         }
     }

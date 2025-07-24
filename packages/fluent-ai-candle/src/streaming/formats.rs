@@ -8,8 +8,10 @@
 //! - Raw format for high-performance scenarios
 
 use std::fmt;
-use serde::{Serialize, Deserialize};
-use crate::streaming::{StreamingTokenResponse, StreamingError};
+
+use serde::{Deserialize, Serialize};
+
+use crate::streaming::{StreamingError, StreamingTokenResponse};
 
 /// Supported output formats for streaming
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -73,9 +75,12 @@ impl StreamingFormatter {
 
     /// Format a streaming token response according to the configured format
     #[inline]
-    pub fn format_response(&mut self, response: &StreamingTokenResponse) -> Result<String, StreamingError> {
+    pub fn format_response(
+        &mut self,
+        response: &StreamingTokenResponse,
+    ) -> Result<String, StreamingError> {
         self.sequence_number += 1;
-        
+
         match &self.format {
             OutputFormat::Json => self.format_json(response),
             OutputFormat::ServerSentEvents => self.format_sse(response),
@@ -96,13 +101,17 @@ impl StreamingFormatter {
     /// Format as Server-Sent Events
     #[inline]
     fn format_sse(&self, response: &StreamingTokenResponse) -> Result<String, StreamingError> {
-        let data = serde_json::to_string(response)
-            .map_err(|e| StreamingError::FormatError(format!("SSE JSON serialization failed: {}", e)))?;
-        
+        let data = serde_json::to_string(response).map_err(|e| {
+            StreamingError::FormatError(format!("SSE JSON serialization failed: {}", e))
+        })?;
+
         let mut sse_message = String::with_capacity(data.len() + 100);
-        sse_message.push_str(&format!("id: {}-{}\n", self.event_id_prefix, self.sequence_number));
+        sse_message.push_str(&format!(
+            "id: {}-{}\n",
+            self.event_id_prefix, self.sequence_number
+        ));
         sse_message.push_str("event: token\n");
-        
+
         // Handle multi-line data by prefixing each line with "data: "
         for line in data.lines() {
             sse_message.push_str("data: ");
@@ -110,27 +119,34 @@ impl StreamingFormatter {
             sse_message.push('\n');
         }
         sse_message.push('\n'); // Extra newline to mark end of SSE event
-        
+
         Ok(sse_message)
     }
 
     /// Format as WebSocket message
     #[inline]
-    fn format_websocket(&self, response: &StreamingTokenResponse) -> Result<String, StreamingError> {
+    fn format_websocket(
+        &self,
+        response: &StreamingTokenResponse,
+    ) -> Result<String, StreamingError> {
         // WebSocket message with type indicator
         let message = serde_json::json!({
             "type": "token",
             "sequence": self.sequence_number,
             "data": response
         });
-        
-        serde_json::to_string(&message)
-            .map_err(|e| StreamingError::FormatError(format!("WebSocket JSON serialization failed: {}", e)))
+
+        serde_json::to_string(&message).map_err(|e| {
+            StreamingError::FormatError(format!("WebSocket JSON serialization failed: {}", e))
+        })
     }
 
     /// Format as plain text (content only)
     #[inline]
-    fn format_plain_text(&self, response: &StreamingTokenResponse) -> Result<String, StreamingError> {
+    fn format_plain_text(
+        &self,
+        response: &StreamingTokenResponse,
+    ) -> Result<String, StreamingError> {
         Ok(response.text.clone())
     }
 
@@ -138,16 +154,19 @@ impl StreamingFormatter {
     #[inline]
     fn format_raw(&self, response: &StreamingTokenResponse) -> Result<String, StreamingError> {
         // Raw format: sequence_id|timestamp|text
-        Ok(format!("{}|{}|{}", 
-            response.sequence_id,
-            response.timestamp,
-            response.text
+        Ok(format!(
+            "{}|{}|{}",
+            response.sequence_id, response.timestamp, response.text
         ))
     }
 
     /// Format with custom format (extensible for future formats)
     #[inline]
-    fn format_custom(&self, response: &StreamingTokenResponse, format_name: &str) -> Result<String, StreamingError> {
+    fn format_custom(
+        &self,
+        response: &StreamingTokenResponse,
+        format_name: &str,
+    ) -> Result<String, StreamingError> {
         match format_name {
             "minimal_json" => {
                 // Minimal JSON with only essential fields
@@ -156,21 +175,24 @@ impl StreamingFormatter {
                     "sequence_id": response.sequence_id,
                     "is_final": response.is_final
                 });
-                serde_json::to_string(&minimal)
-                    .map_err(|e| StreamingError::FormatError(format!("Custom JSON serialization failed: {}", e)))
-            },
+                serde_json::to_string(&minimal).map_err(|e| {
+                    StreamingError::FormatError(format!("Custom JSON serialization failed: {}", e))
+                })
+            }
             "csv" => {
                 // CSV format: position,content,is_complete,probability
-                Ok(format!("{},{},{},{}", 
+                Ok(format!(
+                    "{},{},{},{}",
                     response.sequence_id,
                     response.text.replace(',', "\\,"), // Escape commas
                     response.is_final,
                     1.0 // Default probability since not available in struct
                 ))
-            },
-            _ => Err(StreamingError::FormatError(
-                format!("Unknown custom format: {}", format_name)
-            ))
+            }
+            _ => Err(StreamingError::FormatError(format!(
+                "Unknown custom format: {}",
+                format_name
+            ))),
         }
     }
 
@@ -178,31 +200,34 @@ impl StreamingFormatter {
     #[inline]
     pub fn format_end_marker(&mut self) -> Result<String, StreamingError> {
         self.sequence_number += 1;
-        
+
         match &self.format {
-            OutputFormat::Json => Ok(serde_json::json!({"type": "end", "sequence": self.sequence_number}).to_string()),
-            OutputFormat::ServerSentEvents => {
-                Ok(format!("id: {}-{}\nevent: end\ndata: {{}}\n\n", self.event_id_prefix, self.sequence_number))
-            },
+            OutputFormat::Json => Ok(
+                serde_json::json!({"type": "end", "sequence": self.sequence_number}).to_string(),
+            ),
+            OutputFormat::ServerSentEvents => Ok(format!(
+                "id: {}-{}\nevent: end\ndata: {{}}\n\n",
+                self.event_id_prefix, self.sequence_number
+            )),
             OutputFormat::WebSocket => {
                 let message = serde_json::json!({
                     "type": "end",
                     "sequence": self.sequence_number
                 });
-                serde_json::to_string(&message)
-                    .map_err(|e| StreamingError::FormatError(format!("End marker serialization failed: {}", e)))
-            },
+                serde_json::to_string(&message).map_err(|e| {
+                    StreamingError::FormatError(format!("End marker serialization failed: {}", e))
+                })
+            }
             OutputFormat::PlainText => Ok("\n[END]\n".to_string()),
             OutputFormat::Raw => Ok("END|0|".to_string()),
-            OutputFormat::Custom(format_name) => {
-                match format_name.as_str() {
-                    "minimal_json" => Ok(serde_json::json!({"end": true}).to_string()),
-                    "csv" => Ok("END,,[END],0.0".to_string()),
-                    _ => Err(StreamingError::FormatError(
-                        format!("Unknown custom format for end marker: {}", format_name)
-                    ))
-                }
-            }
+            OutputFormat::Custom(format_name) => match format_name.as_str() {
+                "minimal_json" => Ok(serde_json::json!({"end": true}).to_string()),
+                "csv" => Ok("END,,[END],0.0".to_string()),
+                _ => Err(StreamingError::FormatError(format!(
+                    "Unknown custom format for end marker: {}",
+                    format_name
+                ))),
+            },
         }
     }
 
@@ -210,7 +235,7 @@ impl StreamingFormatter {
     #[inline]
     pub fn format_error(&mut self, error: &StreamingError) -> Result<String, StreamingError> {
         self.sequence_number += 1;
-        
+
         match &self.format {
             OutputFormat::Json => {
                 let error_response = serde_json::json!({
@@ -219,30 +244,37 @@ impl StreamingFormatter {
                     "error": error.to_string()
                 });
                 Ok(error_response.to_string())
-            },
-            OutputFormat::ServerSentEvents => {
-                Ok(format!("id: {}-{}\nevent: error\ndata: {{}}\n\n", self.event_id_prefix, self.sequence_number))
-            },
+            }
+            OutputFormat::ServerSentEvents => Ok(format!(
+                "id: {}-{}\nevent: error\ndata: {{}}\n\n",
+                self.event_id_prefix, self.sequence_number
+            )),
             OutputFormat::WebSocket => {
                 let message = serde_json::json!({
                     "type": "error",
                     "sequence": self.sequence_number,
                     "error": error.to_string()
                 });
-                serde_json::to_string(&message)
-                    .map_err(|e| StreamingError::FormatError(format!("Error message serialization failed: {}", e)))
-            },
+                serde_json::to_string(&message).map_err(|e| {
+                    StreamingError::FormatError(format!(
+                        "Error message serialization failed: {}",
+                        e
+                    ))
+                })
+            }
             OutputFormat::PlainText => Ok(format!("\n[ERROR: {}]\n", error)),
             OutputFormat::Raw => Ok(format!("ERROR|0|{}", error)),
-            OutputFormat::Custom(format_name) => {
-                match format_name.as_str() {
-                    "minimal_json" => Ok(serde_json::json!({"error": error.to_string()}).to_string()),
-                    "csv" => Ok(format!("ERROR,,[ERROR: {}],0.0", error.to_string().replace(',', "\\,"))),
-                    _ => Err(StreamingError::FormatError(
-                        format!("Unknown custom format for error: {}", format_name)
-                    ))
-                }
-            }
+            OutputFormat::Custom(format_name) => match format_name.as_str() {
+                "minimal_json" => Ok(serde_json::json!({"error": error.to_string()}).to_string()),
+                "csv" => Ok(format!(
+                    "ERROR,,[ERROR: {}],0.0",
+                    error.to_string().replace(',', "\\,")
+                )),
+                _ => Err(StreamingError::FormatError(format!(
+                    "Unknown custom format for error: {}",
+                    format_name
+                ))),
+            },
         }
     }
 
@@ -267,21 +299,21 @@ impl StreamingFormatter {
     /// Check if format supports metadata
     #[inline]
     pub fn supports_metadata(&self) -> bool {
-        matches!(self.format, 
-            OutputFormat::Json | 
-            OutputFormat::ServerSentEvents | 
-            OutputFormat::WebSocket |
-            OutputFormat::Custom(_)
+        matches!(
+            self.format,
+            OutputFormat::Json
+                | OutputFormat::ServerSentEvents
+                | OutputFormat::WebSocket
+                | OutputFormat::Custom(_)
         )
     }
 
     /// Check if format is suitable for web streaming
     #[inline]
     pub fn is_web_compatible(&self) -> bool {
-        matches!(self.format, 
-            OutputFormat::Json | 
-            OutputFormat::ServerSentEvents | 
-            OutputFormat::WebSocket
+        matches!(
+            self.format,
+            OutputFormat::Json | OutputFormat::ServerSentEvents | OutputFormat::WebSocket
         )
     }
 
@@ -294,13 +326,11 @@ impl StreamingFormatter {
             OutputFormat::WebSocket => "application/json", // WebSocket upgrade changes this
             OutputFormat::PlainText => "text/plain",
             OutputFormat::Raw => "application/octet-stream",
-            OutputFormat::Custom(format_name) => {
-                match format_name.as_str() {
-                    "minimal_json" => "application/json",
-                    "csv" => "text/csv",
-                    _ => "application/octet-stream"
-                }
-            }
+            OutputFormat::Custom(format_name) => match format_name.as_str() {
+                "minimal_json" => "application/json",
+                "csv" => "text/csv",
+                _ => "application/octet-stream",
+            },
         }
     }
 }
@@ -321,10 +351,11 @@ pub mod format_utils {
             custom if custom.starts_with("custom:") => {
                 let name = custom.strip_prefix("custom:").unwrap_or(custom);
                 Ok(OutputFormat::Custom(name.to_string()))
-            },
-            _ => Err(StreamingError::FormatError(
-                format!("Unknown output format: {}", format_str)
-            ))
+            }
+            _ => Err(StreamingError::FormatError(format!(
+                "Unknown output format: {}",
+                format_str
+            ))),
         }
     }
 
@@ -337,7 +368,10 @@ pub mod format_utils {
     /// Check if format requires buffering
     #[inline]
     pub fn requires_buffering(format: &OutputFormat) -> bool {
-        matches!(format, OutputFormat::ServerSentEvents | OutputFormat::WebSocket)
+        matches!(
+            format,
+            OutputFormat::ServerSentEvents | OutputFormat::WebSocket
+        )
     }
 
     /// Get optimal buffer size for format
@@ -357,7 +391,7 @@ pub mod format_utils {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::streaming::{TokenTiming, TokenMetadata};
+    use crate::streaming::{TokenMetadata, TokenTiming};
 
     fn create_test_response() -> StreamingTokenResponse {
         StreamingTokenResponse {
@@ -376,7 +410,7 @@ mod tests {
     fn test_json_formatting() {
         let mut formatter = StreamingFormatter::new(OutputFormat::Json);
         let response = create_test_response();
-        
+
         let formatted = formatter.format_response(&response).unwrap();
         assert!(formatted.contains("test token"));
         assert!(formatted.contains("123"));
@@ -387,7 +421,7 @@ mod tests {
     fn test_sse_formatting() {
         let mut formatter = StreamingFormatter::new(OutputFormat::ServerSentEvents);
         let response = create_test_response();
-        
+
         let formatted = formatter.format_response(&response).unwrap();
         assert!(formatted.starts_with("id: token-1"));
         assert!(formatted.contains("event: token"));
@@ -399,7 +433,7 @@ mod tests {
     fn test_websocket_formatting() {
         let mut formatter = StreamingFormatter::new(OutputFormat::WebSocket);
         let response = create_test_response();
-        
+
         let formatted = formatter.format_response(&response).unwrap();
         assert!(formatted.contains("\"type\":\"token\""));
         assert!(formatted.contains("\"sequence\":1"));
@@ -409,7 +443,7 @@ mod tests {
     fn test_plain_text_formatting() {
         let mut formatter = StreamingFormatter::new(OutputFormat::PlainText);
         let response = create_test_response();
-        
+
         let formatted = formatter.format_response(&response).unwrap();
         assert_eq!(formatted, "test token");
     }
@@ -418,16 +452,17 @@ mod tests {
     fn test_raw_formatting() {
         let mut formatter = StreamingFormatter::new(OutputFormat::Raw);
         let response = create_test_response();
-        
+
         let formatted = formatter.format_response(&response).unwrap();
         assert_eq!(formatted, "123|5|test token");
     }
 
     #[test]
     fn test_custom_formatting() {
-        let mut formatter = StreamingFormatter::new(OutputFormat::Custom("minimal_json".to_string()));
+        let mut formatter =
+            StreamingFormatter::new(OutputFormat::Custom("minimal_json".to_string()));
         let response = create_test_response();
-        
+
         let formatted = formatter.format_response(&response).unwrap();
         assert!(formatted.contains("test token"));
         assert!(formatted.contains("\"position\":5"));
@@ -438,7 +473,7 @@ mod tests {
     fn test_csv_custom_formatting() {
         let mut formatter = StreamingFormatter::new(OutputFormat::Custom("csv".to_string()));
         let response = create_test_response();
-        
+
         let formatted = formatter.format_response(&response).unwrap();
         assert_eq!(formatted, "5,test token,true,0.95");
     }
@@ -447,7 +482,7 @@ mod tests {
     fn test_end_marker_formatting() {
         let mut formatter = StreamingFormatter::new(OutputFormat::Json);
         let end_marker = formatter.format_end_marker().unwrap();
-        
+
         assert!(end_marker.contains("\"type\":\"end\""));
         assert!(end_marker.contains("\"sequence\":1"));
     }
@@ -456,7 +491,7 @@ mod tests {
     fn test_error_formatting() {
         let mut formatter = StreamingFormatter::new(OutputFormat::Json);
         let error = StreamingError::Utf8Error("test error".to_string());
-        
+
         let formatted = formatter.format_error(&error).unwrap();
         assert!(formatted.contains("\"type\":\"error\""));
         assert!(formatted.contains("test error"));
@@ -466,13 +501,13 @@ mod tests {
     fn test_sequence_numbering() {
         let mut formatter = StreamingFormatter::new(OutputFormat::Json);
         let response = create_test_response();
-        
+
         formatter.format_response(&response).unwrap();
         assert_eq!(formatter.sequence_number(), 1);
-        
+
         formatter.format_response(&response).unwrap();
         assert_eq!(formatter.sequence_number(), 2);
-        
+
         formatter.reset_sequence();
         assert_eq!(formatter.sequence_number(), 0);
     }
@@ -481,7 +516,7 @@ mod tests {
     fn test_metadata_support() {
         let json_formatter = StreamingFormatter::new(OutputFormat::Json);
         assert!(json_formatter.supports_metadata());
-        
+
         let text_formatter = StreamingFormatter::new(OutputFormat::PlainText);
         assert!(!text_formatter.supports_metadata());
     }
@@ -490,7 +525,7 @@ mod tests {
     fn test_web_compatibility() {
         let sse_formatter = StreamingFormatter::new(OutputFormat::ServerSentEvents);
         assert!(sse_formatter.is_web_compatible());
-        
+
         let raw_formatter = StreamingFormatter::new(OutputFormat::Raw);
         assert!(!raw_formatter.is_web_compatible());
     }
@@ -499,39 +534,62 @@ mod tests {
     fn test_content_type() {
         let json_formatter = StreamingFormatter::new(OutputFormat::Json);
         assert_eq!(json_formatter.content_type(), "application/json");
-        
+
         let sse_formatter = StreamingFormatter::new(OutputFormat::ServerSentEvents);
         assert_eq!(sse_formatter.content_type(), "text/event-stream");
     }
 
     #[test]
     fn test_format_parsing() {
-        assert_eq!(format_utils::parse_format("json").unwrap(), OutputFormat::Json);
-        assert_eq!(format_utils::parse_format("sse").unwrap(), OutputFormat::ServerSentEvents);
-        assert_eq!(format_utils::parse_format("websocket").unwrap(), OutputFormat::WebSocket);
-        assert_eq!(format_utils::parse_format("text").unwrap(), OutputFormat::PlainText);
-        assert_eq!(format_utils::parse_format("raw").unwrap(), OutputFormat::Raw);
-        
+        assert_eq!(
+            format_utils::parse_format("json").unwrap(),
+            OutputFormat::Json
+        );
+        assert_eq!(
+            format_utils::parse_format("sse").unwrap(),
+            OutputFormat::ServerSentEvents
+        );
+        assert_eq!(
+            format_utils::parse_format("websocket").unwrap(),
+            OutputFormat::WebSocket
+        );
+        assert_eq!(
+            format_utils::parse_format("text").unwrap(),
+            OutputFormat::PlainText
+        );
+        assert_eq!(
+            format_utils::parse_format("raw").unwrap(),
+            OutputFormat::Raw
+        );
+
         if let OutputFormat::Custom(name) = format_utils::parse_format("custom:test").unwrap() {
             assert_eq!(name, "test");
         } else {
             panic!("Expected custom format");
         }
-        
+
         assert!(format_utils::parse_format("invalid").is_err());
     }
 
     #[test]
     fn test_buffer_size_optimization() {
         assert_eq!(format_utils::optimal_buffer_size(&OutputFormat::Raw), 256);
-        assert_eq!(format_utils::optimal_buffer_size(&OutputFormat::PlainText), 512);
+        assert_eq!(
+            format_utils::optimal_buffer_size(&OutputFormat::PlainText),
+            512
+        );
         assert_eq!(format_utils::optimal_buffer_size(&OutputFormat::Json), 1024);
-        assert_eq!(format_utils::optimal_buffer_size(&OutputFormat::ServerSentEvents), 2048);
+        assert_eq!(
+            format_utils::optimal_buffer_size(&OutputFormat::ServerSentEvents),
+            2048
+        );
     }
 
     #[test]
     fn test_buffering_requirements() {
-        assert!(format_utils::requires_buffering(&OutputFormat::ServerSentEvents));
+        assert!(format_utils::requires_buffering(
+            &OutputFormat::ServerSentEvents
+        ));
         assert!(format_utils::requires_buffering(&OutputFormat::WebSocket));
         assert!(!format_utils::requires_buffering(&OutputFormat::PlainText));
         assert!(!format_utils::requires_buffering(&OutputFormat::Raw));

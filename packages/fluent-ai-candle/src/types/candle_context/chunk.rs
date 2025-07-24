@@ -221,7 +221,10 @@ impl DocumentChunk {
 }
 
 impl ChatMessageChunk {
-    pub fn new(content: impl Into<String>, role: crate::types::candle_chat::message::CandleMessageRole) -> Self {
+    pub fn new(
+        content: impl Into<String>,
+        role: crate::types::candle_chat::message::CandleMessageRole,
+    ) -> Self {
         Self {
             content: content.into(),
             role,

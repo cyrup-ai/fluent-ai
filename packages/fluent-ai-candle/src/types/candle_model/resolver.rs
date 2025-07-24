@@ -16,10 +16,10 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use strsim;
 
+use crate::types::CandleCompletionResult as Result;
 use crate::types::candle_model::error::ModelError;
-use crate::types::{CandleCompletionResult as Result};
-use crate::types::{CandleModelInfo as ModelInfo, CandleModel};
 use crate::types::candle_model::registry::{ModelRegistry, RegisteredModel};
+use crate::types::{CandleModel, CandleModelInfo as ModelInfo};
 // Removed unused import: strsim::jaro_winkler
 
 /// A pattern that can be used to match model names
@@ -422,7 +422,8 @@ impl ModelResolver {
             Err(ModelError::ModelNotFound {
                 provider: provider.unwrap_or("any").to_string().into(),
                 name: model_name.to_string().into(),
-            }.into())
+            }
+            .into())
         }
     }
 }
@@ -430,7 +431,7 @@ impl ModelResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::info::ModelInfoBuilder;
+    use crate::types::candle_model::info::ModelInfoBuilder;
 
     struct TestModel {
         info: &'static ModelInfo,

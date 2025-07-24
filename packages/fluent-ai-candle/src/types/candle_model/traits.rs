@@ -5,8 +5,8 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::error::CandleError;
-use crate::types::CandleUsage;
 use crate::types::CandleModelInfo;
+use crate::types::CandleUsage;
 
 /// Core trait for all AI models
 ///
@@ -316,10 +316,10 @@ pub type AnyEmbeddingCapable = Arc<dyn EmbeddingCapable + Send + Sync>;
 pub trait CandleLoadableModel: Model {
     /// Load the model from the given path with blazing-fast synchronous operation
     fn load(&mut self, path: &str) -> Result<(), CandleError>;
-    
+
     /// Unload the model with efficient resource cleanup
     fn unload(&mut self) -> Result<(), CandleError>;
-    
+
     /// Check if the model is currently loaded with zero-cost inline access
     fn is_loaded(&self) -> bool;
 }
@@ -328,7 +328,7 @@ pub trait CandleLoadableModel: Model {
 pub trait CandleUsageTrackingModel: Model {
     /// Get current usage statistics with zero-allocation access
     fn usage(&self) -> crate::types::CandleUsage;
-    
+
     /// Reset usage statistics with efficient state management
     fn reset_usage(&mut self);
 }
@@ -336,11 +336,17 @@ pub trait CandleUsageTrackingModel: Model {
 /// Trait for models that can perform completions with zero-allocation design
 pub trait CandleCompletionModel: Model {
     /// Generate a completion from a request with blazing-fast streaming builder pattern
-    fn complete(&self, request: crate::types::CandleCompletionRequest) -> crate::client::CandleCompletionBuilder<'_, ()>;
-    
+    fn complete(
+        &self,
+        request: crate::types::CandleCompletionRequest,
+    ) -> crate::client::CandleCompletionBuilder<'_, ()>;
+
     /// Generate streaming completions from a request with zero-allocation streaming builder
-    fn stream_complete(&self, request: crate::types::CandleCompletionRequest) -> crate::types::CandleStreamingResponse;
-    
+    fn stream_complete(
+        &self,
+        request: crate::types::CandleCompletionRequest,
+    ) -> crate::types::CandleStreamingResponse;
+
     /// Action method: generate completion from prompt with unwrapped AsyncStream
     fn prompt<'a>(
         &'a self,
@@ -353,10 +359,10 @@ pub trait CandleCompletionModel: Model {
 pub trait CandleConfigurableModel: Model {
     /// Configuration type for this model - generic for flexibility
     type Config;
-    
+
     /// Apply configuration to the model with blazing-fast synchronous operation
     fn configure(&mut self, config: Self::Config) -> Result<(), CandleError>;
-    
+
     /// Get current configuration with zero-allocation reference access
     fn config(&self) -> &Self::Config;
 }
@@ -365,10 +371,10 @@ pub trait CandleConfigurableModel: Model {
 pub trait CandleTokenizerModel: Model {
     /// Tokenize text into token IDs with blazing-fast synchronous operation
     fn tokenize(&self, text: &str) -> Result<smallvec::SmallVec<u32, 64>, CandleError>;
-    
+
     /// Convert token IDs back to text with efficient synchronous operation
     fn detokenize(&self, tokens: &[u32]) -> Result<Arc<str>, CandleError>;
-    
+
     /// Get the vocabulary size with zero-cost inline access
     fn vocab_size(&self) -> u32;
 }

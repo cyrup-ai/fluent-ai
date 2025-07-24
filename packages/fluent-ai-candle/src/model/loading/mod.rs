@@ -17,6 +17,7 @@ use candle_core::safetensors::MmapedSafetensors;
 use candle_core::{DType, Device};
 // Removed unused import: safetensors::tensor::Dtype as SafetensorsDtype
 use candle_nn::VarBuilder;
+use fluent_ai_async::{AsyncStream, emit, handle_error};
 
 use crate::constants::MAX_MODEL_FILE_SIZE;
 use crate::error::{CandleError, CandleResult};
@@ -141,6 +142,7 @@ pub enum RecoveryStrategy {
 }
 
 /// Sophisticated model loader with VarBuilder patterns and progressive loading
+#[derive(Clone)]
 pub struct ModelLoader {
     /// Target device for model loading
     pub device: Device,
@@ -284,7 +286,7 @@ impl ModelLoader {
                 "BF16" => (2, DType::BF16),
                 "I64" => (8, DType::I64),
                 "I32" => (4, DType::U32), // Map I32 to U32 as candle doesn't have I32
-                "I16" => (2, DType::U32), // Map I16 to U32 as candle doesn't have I16  
+                "I16" => (2, DType::U32), // Map I16 to U32 as candle doesn't have I16
                 "I8" => (1, DType::U8),   // Map I8 to U8 as candle doesn't have I8
                 "U8" => (1, DType::U8),
                 _ => (4, DType::F32), // Default to F32 for unknown types
@@ -404,71 +406,100 @@ impl ModelLoader {
     }
 
     /// Load model with sophisticated VarBuilder pattern and progressive loading
-    pub async fn load_model<P: AsRef<Path>>(
+    pub fn load_model<P: AsRef<Path> + Send + 'static>(
         &self,
         path: P,
-    ) -> CandleResult<(ModelMetadata, VarBuilder<'_>)> {
-        let path = path.as_ref();
+    ) -> AsyncStream<(ModelMetadata, VarBuilder<'static>)> {
+        let path = path.as_ref().to_path_buf();
+        let loader = self.clone();
 
-        // Stage 1: Validation (0-10%)
-        self.report_progress(LoadingStage::Validation, 0.0);
+        AsyncStream::with_channel(move |sender| {
+            // Stage 1: Validation (0-10%)
+            loader.report_progress(LoadingStage::Validation, 0.0);
 
-        // Validate device compatibility
-        if self.validate_compatibility {
-            self.validate_device_compatibility()?;
-        }
+            // Validate device compatibility
+            if loader.validate_compatibility {
+                if let Err(e) = loader.validate_device_compatibility() {
+                    handle_error!(e, "Device compatibility validation failed");
+                }
+            }
 
-        // Check file existence and basic properties
-        let metadata_fs = std::fs::metadata(path)
-            .map_err(|e| CandleError::ModelNotFound(format!("File not found: {}", e)))?;
+            // Check file existence and basic properties
+            let metadata_fs = match std::fs::metadata(&path) {
+                Ok(metadata) => metadata,
+                Err(e) => {
+                    handle_error!(
+                        CandleError::ModelNotFound(format!("File not found: {}", e)),
+                        "File metadata retrieval failed"
+                    );
+                }
+            };
 
-        if metadata_fs.len() > self.max_model_size {
-            return Err(CandleError::InvalidModelFormat("Model file too large"));
-        }
+            if metadata_fs.len() > loader.max_model_size {
+                handle_error!(
+                    CandleError::InvalidModelFormat("Model file too large"),
+                    "Model file size exceeds limit"
+                );
+            }
 
-        self.report_progress(LoadingStage::Validation, 1.0);
+            loader.report_progress(LoadingStage::Validation, 1.0);
 
-        // Stage 2: Memory Mapping (10-20%)
-        self.report_progress(LoadingStage::MemoryMapping, 0.0);
+            // Stage 2: Memory Mapping (10-20%)
+            loader.report_progress(LoadingStage::MemoryMapping, 0.0);
 
-        // Use MmapedSafetensors for sophisticated memory mapping
-        let mmaped_safetensors = unsafe { MmapedSafetensors::new(path) }.map_err(|e| {
-            CandleError::ModelLoadError(format!("Failed to memory map SafeTensors: {}", e))
-        })?;
+            // Use MmapedSafetensors for sophisticated memory mapping
+            let mmaped_safetensors = match unsafe { MmapedSafetensors::new(&path) } {
+                Ok(mmap) => mmap,
+                Err(e) => {
+                    handle_error!(
+                        CandleError::ModelLoadError(format!(
+                            "Failed to memory map SafeTensors: {}",
+                            e
+                        )),
+                        "Memory mapping failed"
+                    );
+                }
+            };
 
-        self.report_progress(LoadingStage::MemoryMapping, 1.0);
+            loader.report_progress(LoadingStage::MemoryMapping, 1.0);
 
-        // Stage 3: Tensor Parsing and Metadata Extraction (20-35%)
-        let model_metadata = if self.extract_metadata {
-            self.extract_model_metadata(&mmaped_safetensors)?
-        } else {
-            ModelMetadata::default()
-        };
+            // Stage 3: Tensor Parsing and Metadata Extraction (20-35%)
+            let model_metadata = if loader.extract_metadata {
+                match loader.extract_model_metadata(&mmaped_safetensors) {
+                    Ok(metadata) => metadata,
+                    Err(e) => {
+                        handle_error!(e, "Metadata extraction failed");
+                    }
+                }
+            } else {
+                ModelMetadata::default()
+            };
 
-        // Validate model compatibility
-        if self.validate_compatibility {
-            self.validate_model_compatibility(&model_metadata)?;
-        }
+            // Validate model compatibility
+            if loader.validate_compatibility {
+                if let Err(e) = loader.validate_model_compatibility(&model_metadata) {
+                    handle_error!(e, "Model compatibility validation failed");
+                }
+            }
 
-        // Stage 4: CandleVarBuilder Initialization (35-50%)
-        self.report_progress(LoadingStage::VarBuilderInit, 0.0);
+            // Stage 4: CandleVarBuilder Initialization (35-50%)
+            loader.report_progress(LoadingStage::VarBuilderInit, 0.0);
 
-        // Create VarBuilder from MmapedSafetensors
-        // Use a simple approach that works with the current API
-        let var_builder = VarBuilder::from_tensors(
-            HashMap::new(), // Empty tensor map - will load from safetensors
-            self.dtype,
-            &self.device,
-        );
+            // Create VarBuilder from MmapedSafetensors
+            // Use a simple approach that works with the current API
+            let var_builder = VarBuilder::from_tensors(
+                HashMap::new(), // Empty tensor map - will load from safetensors
+                loader.dtype,
+                &loader.device,
+            );
 
-        self.report_progress(LoadingStage::VarBuilderInit, 1.0);
+            loader.report_progress(LoadingStage::VarBuilderInit, 1.0);
 
-        // Stage 8: Finalization (95-100%)
-        self.report_progress(LoadingStage::Finalization, 0.0);
-        self.report_progress(LoadingStage::Finalization, 1.0);
+            // Stage 8: Finalization (95-100%)
+            loader.report_progress(LoadingStage::Finalization, 0.0);
+            loader.report_progress(LoadingStage::Finalization, 1.0);
 
-        Ok((model_metadata, var_builder))
+            emit!(sender, (model_metadata, var_builder));
+        })
     }
-
-
 }

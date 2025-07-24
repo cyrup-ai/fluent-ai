@@ -20,14 +20,13 @@ pub mod token_stream;
 
 // Re-export core types for ergonomic access
 pub use constants::{StreamingError, StreamingTokenResponse, *};
+// Re-export specific items from modules instead of the modules themselves
+pub use decoder::*;
+pub use flow_control::*;
+pub use formats::*;
 pub use streaming_config::{FlushPolicy, StreamingConfig};
 pub use streaming_metrics::StreamingMetrics;
 pub use token_chunk::TokenChunk;
 pub use token_metadata::TokenMetadata;
 pub use token_sender::TokenStreamSender;
-pub use token_stream::{create_token_stream, TokenOutputStream};
-
-// Re-export specific items from modules instead of the modules themselves
-pub use decoder::*;
-pub use flow_control::*;
-pub use formats::*;
+pub use token_stream::{TokenOutputStream, create_token_stream};

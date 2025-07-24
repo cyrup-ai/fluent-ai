@@ -7,8 +7,8 @@
 //! - LRU eviction with high/low watermarks
 //! - Comprehensive cache statistics
 
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
 use candle_core::Tensor;
 use crossbeam_skiplist::SkipMap;

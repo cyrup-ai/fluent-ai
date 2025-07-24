@@ -474,11 +474,7 @@ pub mod utils {
             .iter()
             .map(|&x| {
                 let prob = (x - max_logit).exp() / exp_sum;
-                if prob > 0.0 {
-                    -prob * prob.ln()
-                } else {
-                    0.0
-                }
+                if prob > 0.0 { -prob * prob.ln() } else { 0.0 }
             })
             .sum();
 

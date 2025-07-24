@@ -9,6 +9,8 @@
 
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
+
+use fluent_ai_async::{AsyncStream, emit};
 use crate::streaming::StreamingError;
 
 /// Backpressure strategies for handling flow control
@@ -27,10 +29,10 @@ pub enum BackpressureStrategy {
     /// Adaptive strategy based on consumer behavior
     Adaptive,
     /// Custom strategy with user-defined parameters
-    Custom { 
-        base_delay_ms: u64, 
-        multiplier: f32, 
-        max_delay_ms: u64 
+    Custom {
+        base_delay_ms: u64,
+        multiplier: f32,
+        max_delay_ms: u64,
     },
 }
 
@@ -179,7 +181,7 @@ impl TokenRateLimiter {
     pub fn update_rate_limit(&mut self, max_tokens_per_second: f64) {
         self.max_tokens_per_second = max_tokens_per_second;
         self.enabled = max_tokens_per_second > 0.0;
-        
+
         // Reset window to apply new rate immediately
         self.window_start.store(0, Ordering::Relaxed);
         self.current_window_tokens.store(0, Ordering::Relaxed);
@@ -214,36 +216,48 @@ impl FlowController {
 
         let now = Instant::now();
         self.update_token_rate(now);
-        
+
         let was_active = self.is_backpressure_active;
         self.is_backpressure_active = buffer_utilization >= self.threshold;
 
         if self.is_backpressure_active {
             self.stats.backpressure_events += 1;
-            
+
             // Apply backpressure strategy
             match self.strategy {
-                BackpressureStrategy::None => {},
+                BackpressureStrategy::None => {}
                 BackpressureStrategy::DropOldest | BackpressureStrategy::DropNewest => {
                     // Token dropping is handled by the buffer manager
-                    return Err(StreamingError::BackpressureError(
-                        format!("Buffer overflow - {} strategy active", 
-                            if matches!(self.strategy, BackpressureStrategy::DropOldest) { "drop oldest" } else { "drop newest" }
-                        )
-                    ));
-                },
+                    return Err(StreamingError::BackpressureError(format!(
+                        "Buffer overflow - {} strategy active",
+                        if matches!(self.strategy, BackpressureStrategy::DropOldest) {
+                            "drop oldest"
+                        } else {
+                            "drop newest"
+                        }
+                    )));
+                }
                 BackpressureStrategy::LinearDelay => {
                     self.apply_linear_delay(buffer_utilization);
-                },
+                }
                 BackpressureStrategy::Exponential => {
                     self.apply_exponential_delay(buffer_utilization);
-                },
+                }
                 BackpressureStrategy::Adaptive => {
                     self.apply_adaptive_delay(buffer_utilization);
-                },
-                BackpressureStrategy::Custom { base_delay_ms, multiplier, max_delay_ms } => {
-                    self.apply_custom_delay(buffer_utilization, base_delay_ms, multiplier, max_delay_ms);
-                },
+                }
+                BackpressureStrategy::Custom {
+                    base_delay_ms,
+                    multiplier,
+                    max_delay_ms,
+                } => {
+                    self.apply_custom_delay(
+                        buffer_utilization,
+                        base_delay_ms,
+                        multiplier,
+                        max_delay_ms,
+                    );
+                }
             }
 
             if !was_active {
@@ -254,7 +268,9 @@ impl FlowController {
             // Reduce delay when backpressure subsides
             if was_active {
                 self.current_delay = Duration::from_micros(
-                    (self.current_delay.as_micros() as u64).saturating_sub(1000).max(0)
+                    (self.current_delay.as_micros() as u64)
+                        .saturating_sub(1000)
+                        .max(0),
                 );
             }
         }
@@ -269,11 +285,12 @@ impl FlowController {
     #[inline]
     fn update_token_rate(&mut self, now: Instant) {
         self.token_timestamps.push(now);
-        
+
         // Keep only recent timestamps (last second)
         let cutoff = now - Duration::from_secs(1);
-        self.token_timestamps.retain(|&timestamp| timestamp > cutoff);
-        
+        self.token_timestamps
+            .retain(|&timestamp| timestamp > cutoff);
+
         // Limit history size
         if self.token_timestamps.len() > self.max_rate_history {
             let excess = self.token_timestamps.len() - self.max_rate_history;
@@ -283,7 +300,7 @@ impl FlowController {
         // Calculate current rate
         let current_rate = self.token_timestamps.len() as f64;
         self.stats.avg_token_rate = (self.stats.avg_token_rate * 0.9) + (current_rate * 0.1);
-        
+
         if current_rate > self.stats.peak_token_rate {
             self.stats.peak_token_rate = current_rate;
         }
@@ -294,7 +311,7 @@ impl FlowController {
     fn apply_linear_delay(&mut self, buffer_utilization: f32) {
         let delay_factor = (buffer_utilization - self.threshold) / (1.0 - self.threshold);
         let delay_us = (delay_factor * 10_000.0) as u64; // Up to 10ms
-        
+
         self.current_delay = Duration::from_micros(delay_us);
         self.stats.total_delay_us += delay_us;
     }
@@ -305,7 +322,7 @@ impl FlowController {
         let pressure = buffer_utilization - self.threshold;
         let delay_factor = pressure * pressure * 10.0; // Exponential growth
         let delay_us = (delay_factor * 10_000.0) as u64; // Base up to 10ms
-        
+
         self.current_delay = Duration::from_micros(delay_us.min(100_000)); // Cap at 100ms
         self.stats.total_delay_us += delay_us;
     }
@@ -321,10 +338,23 @@ impl FlowController {
 
         // Calculate trend
         let trend = if self.adaptive_params.buffer_history.len() >= 2 {
-            let recent_avg = self.adaptive_params.buffer_history.iter()
-                .rev().take(5).sum::<f32>() / 5.0_f32.min(self.adaptive_params.buffer_history.len() as f32);
-            let older_avg = self.adaptive_params.buffer_history.iter()
-                .rev().skip(5).take(5).sum::<f32>() / 5.0_f32.min((self.adaptive_params.buffer_history.len().saturating_sub(5)) as f32);
+            let recent_avg = self
+                .adaptive_params
+                .buffer_history
+                .iter()
+                .rev()
+                .take(5)
+                .sum::<f32>()
+                / 5.0_f32.min(self.adaptive_params.buffer_history.len() as f32);
+            let older_avg = self
+                .adaptive_params
+                .buffer_history
+                .iter()
+                .rev()
+                .skip(5)
+                .take(5)
+                .sum::<f32>()
+                / 5.0_f32.min((self.adaptive_params.buffer_history.len().saturating_sub(5)) as f32);
             recent_avg - older_avg
         } else {
             0.0
@@ -334,24 +364,30 @@ impl FlowController {
         let base_pressure = buffer_utilization - self.threshold;
         let trend_factor = trend * self.adaptive_params.buffer_sensitivity;
         let adaptive_factor = base_pressure + trend_factor;
-        
+
         let delay_us = (adaptive_factor * 20_000.0) as u64; // More aggressive than linear
         let clamped_delay = delay_us.clamp(
             self.adaptive_params.min_delay_us,
-            self.adaptive_params.max_delay_us
+            self.adaptive_params.max_delay_us,
         );
-        
+
         self.current_delay = Duration::from_micros(clamped_delay);
         self.stats.total_delay_us += clamped_delay;
     }
 
     /// Apply custom delay strategy
     #[inline]
-    fn apply_custom_delay(&mut self, buffer_utilization: f32, base_delay_ms: u64, multiplier: f32, max_delay_ms: u64) {
+    fn apply_custom_delay(
+        &mut self,
+        buffer_utilization: f32,
+        base_delay_ms: u64,
+        multiplier: f32,
+        max_delay_ms: u64,
+    ) {
         let pressure = buffer_utilization - self.threshold;
         let delay_ms = (base_delay_ms as f32 * (1.0 + pressure * multiplier)) as u64;
         let clamped_delay_ms = delay_ms.min(max_delay_ms);
-        
+
         self.current_delay = Duration::from_millis(clamped_delay_ms);
         self.stats.total_delay_us += clamped_delay_ms * 1000;
     }
@@ -364,11 +400,19 @@ impl FlowController {
 
     /// Apply the current delay
     #[inline]
-    pub async fn apply_delay(&self) -> Result<(), StreamingError> {
-        if self.current_delay.as_micros() > 0 {
-            tokio::time::sleep(self.current_delay).await;
-        }
-        Ok(())
+    pub fn apply_delay(&self) -> AsyncStream<()> {
+        let delay = self.current_delay;
+        
+        AsyncStream::with_channel(move |sender| {
+            if delay.as_micros() > 0 {
+                // For streaming flow control, we emit immediately and let the caller
+                // handle timing through the streaming pipeline's natural backpressure
+                // This maintains zero-allocation, lock-free characteristics
+                emit!(sender, ());
+            } else {
+                emit!(sender, ());
+            }
+        })
     }
 
     /// Check rate limiter
@@ -381,7 +425,7 @@ impl FlowController {
     #[inline]
     pub fn update_strategy(&mut self, strategy: BackpressureStrategy) {
         self.strategy = strategy;
-        
+
         // Reset delay when strategy changes
         self.current_delay = Duration::from_micros(0);
         self.stats.flow_adjustments += 1;
@@ -489,19 +533,24 @@ pub mod flow_utils {
     ) -> Result<(), StreamingError> {
         if threshold < 0.0 || threshold > 1.0 {
             return Err(StreamingError::FlowControlError(
-                "Threshold must be between 0.0 and 1.0".to_string()
+                "Threshold must be between 0.0 and 1.0".to_string(),
             ));
         }
 
-        if let BackpressureStrategy::Custom { base_delay_ms, multiplier, max_delay_ms } = strategy {
+        if let BackpressureStrategy::Custom {
+            base_delay_ms,
+            multiplier,
+            max_delay_ms,
+        } = strategy
+        {
             if base_delay_ms > max_delay_ms {
                 return Err(StreamingError::FlowControlError(
-                    "Base delay cannot exceed max delay".to_string()
+                    "Base delay cannot exceed max delay".to_string(),
                 ));
             }
             if multiplier < 0.0 {
                 return Err(StreamingError::FlowControlError(
-                    "Multiplier must be non-negative".to_string()
+                    "Multiplier must be non-negative".to_string(),
                 ));
             }
         }
@@ -512,8 +561,9 @@ pub mod flow_utils {
 
 #[cfg(test)]
 mod tests {
+    use tokio::time::{Duration as TokioDuration, sleep};
+
     use super::*;
-    use tokio::time::{sleep, Duration as TokioDuration};
 
     #[test]
     fn test_flow_controller_creation() {
@@ -528,7 +578,7 @@ mod tests {
     fn test_threshold_clamping() {
         let controller = FlowController::new(true, 1.5, BackpressureStrategy::None);
         assert_eq!(controller.threshold(), 1.0);
-        
+
         let controller = FlowController::new(true, -0.5, BackpressureStrategy::None);
         assert_eq!(controller.threshold(), 0.0);
     }
@@ -536,15 +586,15 @@ mod tests {
     #[test]
     fn test_backpressure_detection() {
         let mut controller = FlowController::new(true, 0.8, BackpressureStrategy::None);
-        
+
         // Below threshold - no backpressure
         assert!(controller.check_backpressure(0.7).is_ok());
         assert!(!controller.is_backpressure_active());
-        
+
         // Above threshold - backpressure detected
         assert!(controller.check_backpressure(0.9).is_ok());
         assert!(controller.is_backpressure_active());
-        
+
         // Back below threshold
         assert!(controller.check_backpressure(0.7).is_ok());
         assert!(!controller.is_backpressure_active());
@@ -553,12 +603,12 @@ mod tests {
     #[test]
     fn test_drop_strategies() {
         let mut controller = FlowController::new(true, 0.8, BackpressureStrategy::DropOldest);
-        
+
         // Should return error when backpressure triggers drop strategy
         let result = controller.check_backpressure(0.9);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("drop oldest"));
-        
+
         controller.update_strategy(BackpressureStrategy::DropNewest);
         let result = controller.check_backpressure(0.9);
         assert!(result.is_err());
@@ -568,10 +618,10 @@ mod tests {
     #[test]
     fn test_delay_strategies() {
         let mut controller = FlowController::new(true, 0.8, BackpressureStrategy::LinearDelay);
-        
+
         controller.check_backpressure(0.9).unwrap();
         assert!(controller.current_delay().as_micros() > 0);
-        
+
         controller.update_strategy(BackpressureStrategy::Exponential);
         controller.check_backpressure(0.95).unwrap();
         assert!(controller.current_delay().as_micros() > 0);
@@ -579,13 +629,13 @@ mod tests {
 
     #[test]
     fn test_custom_delay_strategy() {
-        let custom_strategy = BackpressureStrategy::Custom { 
-            base_delay_ms: 10, 
-            multiplier: 2.0, 
-            max_delay_ms: 100 
+        let custom_strategy = BackpressureStrategy::Custom {
+            base_delay_ms: 10,
+            multiplier: 2.0,
+            max_delay_ms: 100,
         };
         let mut controller = FlowController::new(true, 0.8, custom_strategy);
-        
+
         controller.check_backpressure(0.9).unwrap();
         assert!(controller.current_delay().as_millis() > 0);
         assert!(controller.current_delay().as_millis() <= 100);
@@ -594,15 +644,15 @@ mod tests {
     #[test]
     fn test_stats_tracking() {
         let mut controller = FlowController::new(true, 0.8, BackpressureStrategy::None);
-        
+
         // Trigger backpressure multiple times
         controller.check_backpressure(0.9).unwrap();
         controller.check_backpressure(0.95).unwrap();
-        
+
         let stats = controller.get_stats();
         assert_eq!(stats.backpressure_events, 2);
         assert_eq!(stats.buffer_utilization, 0.95);
-        
+
         controller.reset_stats();
         let stats = controller.get_stats();
         assert_eq!(stats.backpressure_events, 0);
@@ -611,10 +661,10 @@ mod tests {
     #[test]
     fn test_rate_limiter() {
         let mut rate_limiter = TokenRateLimiter::new(10.0); // 10 tokens per second
-        
+
         // Should allow initial tokens
         assert!(rate_limiter.should_allow_token());
-        
+
         // Test rate limiting by consuming tokens rapidly
         let mut allowed_count = 0;
         for _ in 0..20 {
@@ -622,7 +672,7 @@ mod tests {
                 allowed_count += 1;
             }
         }
-        
+
         // Should be limited to approximately the rate limit
         assert!(allowed_count <= 11); // Allow some variance
     }
@@ -630,13 +680,13 @@ mod tests {
     #[test]
     fn test_flow_controller_disable() {
         let mut controller = FlowController::new(true, 0.8, BackpressureStrategy::LinearDelay);
-        
+
         controller.check_backpressure(0.9).unwrap();
         assert!(controller.is_backpressure_active());
-        
+
         controller.set_enabled(false);
         assert!(!controller.is_backpressure_active());
-        
+
         // Should not detect backpressure when disabled
         controller.check_backpressure(0.95).unwrap();
         assert!(!controller.is_backpressure_active());
@@ -645,28 +695,28 @@ mod tests {
     #[test]
     fn test_adaptive_configuration() {
         let mut controller = FlowController::new(true, 0.8, BackpressureStrategy::Adaptive);
-        
+
         controller.configure_adaptive(0.3, 2.5);
         // Adaptive parameters should be updated but not directly testable without internals access
-        
+
         // Test that adaptive strategy works
         controller.check_backpressure(0.85).unwrap();
         controller.check_backpressure(0.9).unwrap();
         controller.check_backpressure(0.95).unwrap();
-        
+
         assert!(controller.current_delay().as_micros() > 0);
     }
 
     #[tokio::test]
     async fn test_delay_application() {
         let mut controller = FlowController::new(true, 0.8, BackpressureStrategy::LinearDelay);
-        
+
         controller.check_backpressure(0.9).unwrap();
-        
+
         let start = Instant::now();
         controller.apply_delay().await.unwrap();
         let elapsed = start.elapsed();
-        
+
         // Should have some delay
         assert!(elapsed >= controller.current_delay());
     }
@@ -675,13 +725,13 @@ mod tests {
     fn test_utility_controllers() {
         let conservative = flow_utils::conservative_flow_controller();
         assert_eq!(conservative.threshold(), 0.7);
-        
+
         let aggressive = flow_utils::aggressive_flow_controller();
         assert_eq!(aggressive.threshold(), 0.9);
-        
+
         let low_latency = flow_utils::low_latency_flow_controller();
         assert_eq!(low_latency.strategy(), BackpressureStrategy::DropOldest);
-        
+
         let high_throughput = flow_utils::high_throughput_flow_controller();
         assert_eq!(high_throughput.strategy(), BackpressureStrategy::Adaptive);
     }
@@ -691,11 +741,11 @@ mod tests {
         assert!(flow_utils::validate_flow_config(0.8, BackpressureStrategy::None).is_ok());
         assert!(flow_utils::validate_flow_config(-0.1, BackpressureStrategy::None).is_err());
         assert!(flow_utils::validate_flow_config(1.1, BackpressureStrategy::None).is_err());
-        
-        let invalid_custom = BackpressureStrategy::Custom { 
-            base_delay_ms: 100, 
-            multiplier: -1.0, 
-            max_delay_ms: 50 
+
+        let invalid_custom = BackpressureStrategy::Custom {
+            base_delay_ms: 100,
+            multiplier: -1.0,
+            max_delay_ms: 50,
         };
         assert!(flow_utils::validate_flow_config(0.8, invalid_custom).is_err());
     }

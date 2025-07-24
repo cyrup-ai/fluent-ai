@@ -4,8 +4,9 @@
 //! with zero-allocation patterns and blazing-fast atomic operations.
 
 use std::sync::atomic::Ordering;
-use crate::model::metrics::ModelMetrics;
+
 use super::CandleModel;
+use crate::model::metrics::ModelMetrics;
 
 impl CandleModel {
     /// Get comprehensive performance metrics with zero-allocation access

@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use fluent_ai_async::{AsyncStream, emit, handle_error};
 use serde_json::{Map, Value};
 use tokio::sync::mpsc;
 
@@ -433,9 +434,24 @@ impl StreamingReceiver {
         Self { receiver }
     }
 
-    /// Receive next streaming message
-    pub async fn recv(&mut self) -> Option<StreamingMessage> {
-        self.receiver.recv().await
+    /// Receive next streaming message with fluent-ai-async streaming architecture
+    pub fn recv(&mut self) -> AsyncStream<StreamingMessage> {
+        // Use zero-allocation, lock-free patterns for message reception
+        match self.receiver.try_recv() {
+            Ok(message) => {
+                AsyncStream::with_channel(move |sender| {
+                    emit!(sender, message);
+                })
+            }
+            Err(_) => {
+                AsyncStream::with_channel(move |sender| {
+                    handle_error!(
+                        "Receiver channel closed or empty",
+                        "Streaming message reception failed"
+                    );
+                })
+            }
+        }
     }
 }
 
