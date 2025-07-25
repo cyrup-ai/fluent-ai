@@ -6,7 +6,7 @@
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use fluent_ai_async::AsyncStream;
-use crate::types::candle_chat::message::SearchChatMessage;
+use crate::types::candle_chat::message::types::CandleMessage;
 
 /// Search query with advanced filtering options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,7 +78,7 @@ pub enum SortOrder {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResult {
     /// Message that matched
-    pub message: SearchChatMessage,
+    pub message: CandleMessage,
     /// Relevance score (0.0-1.0)
     pub relevance_score: f32,
     /// Matching terms
@@ -88,7 +88,7 @@ pub struct SearchResult {
     /// Associated tags
     pub tags: Vec<Arc<str>>,
     /// Context messages (before/after)
-    pub context: Vec<SearchChatMessage>,
+    pub context: Vec<CandleMessage>,
     /// Match positions in the content
     pub match_positions: Vec<MatchPosition>,
     /// Search metadata
@@ -198,6 +198,19 @@ pub enum SearchScope {
     TimeRange { start: u64, end: u64 },
     /// Search messages with specific tags
     Tagged(Vec<Arc<str>>),
+}
+
+/// Term frequency data structure for TF-IDF calculations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TermFrequency {
+    /// Term string
+    pub term: Arc<str>,
+    /// Frequency count
+    pub frequency: u32,
+    /// Document frequency
+    pub document_frequency: u32,
+    /// TF-IDF score
+    pub tf_idf_score: f64,
 }
 
 /// Stream collection trait to provide .collect() method for future-like behavior

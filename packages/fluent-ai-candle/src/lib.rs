@@ -71,7 +71,7 @@ pub use logits::{
 };
 pub use model::CandleModel;
 pub use progress::{
-    AggregateStats, InferenceMetrics, MetricsAggregator, ProgressHubReporter, ProgressReporter,
+    AggregatorStats, InferenceMetrics, MetricsAggregator, ProgressHubReporter, ProgressReporter,
 };
 pub use streaming::{
     FlushPolicy, StreamingConfig, StreamingMetrics, TokenChunk, TokenMetadata, TokenOutputStream,

@@ -24,16 +24,16 @@ pub trait EmbeddingService: Send + Sync {
     fn get_embedding(
         &self,
         content: &str,
-    ) -> AsyncStream<Result<Option<Vec<f32>>, VectorStoreError>>;
+    ) -> AsyncStream<Option<Vec<f32>>>;
 
     /// Get or compute embedding with zero-allocation caching
     fn get_or_compute_embedding(
         &self,
         content: &str,
-    ) -> AsyncStream<Result<Vec<f32>, VectorStoreError>>;
+    ) -> AsyncStream<Vec<f32>>;
 
     /// Precompute embeddings for batch content
-    fn precompute_batch(&self, content: &[&str]) -> AsyncStream<Result<(), VectorStoreError>>;
+    fn precompute_batch(&self, content: &[&str]) -> AsyncStream<()>;
 
     /// Get embedding dimensions
     fn embedding_dimension(&self) -> usize;

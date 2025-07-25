@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use atomic_counter::{AtomicCounter, ConsistentCounter};
 use crossbeam_queue::SegQueue;
 use crossbeam_skiplist::SkipMap;
+use fluent_ai_async::{AsyncStream, handle_error};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -471,7 +472,7 @@ impl MacroSystem {
             }
 
             let action = &macro_def.actions[session.current_action];
-            let result = self.execute_action(action, &mut session.context).await?;
+            let result = execute_action_sync(action, &mut session.context)?;
 
             session.current_action += 1;
 
@@ -503,45 +504,41 @@ impl MacroSystem {
         }
     }
 
-    /// Execute a single macro action
-    fn execute_action<'a>(
-        &'a self,
-        action: &'a MacroAction,
-        context: &'a mut MacroExecutionContext,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = Result<ActionExecutionResult, MacroSystemError>>
-                + Send
-                + 'a,
-        >,
-    > {
-        Box::pin(async move {
-            match action {
+    /// Execute a single macro action with streaming results
+    fn execute_action(
+        &self,
+        action: &MacroAction,
+        context: &mut MacroExecutionContext,
+    ) -> AsyncStream<ActionExecutionResult> {
+        let action = action.clone();
+        let context_variables = context.variables.clone();
+        let mut ctx = context.clone();
+        
+        AsyncStream::with_channel(move |sender| {
+            let result = match &action {
                 MacroAction::SendMessage {
                     content,
                     message_type,
                     ..
                 } => {
-                    let resolved_content = self.resolve_variables(content, &context.variables);
+                    let resolved_content = resolve_variables_sync(content, &context_variables);
                     // In a real implementation, this would send the message to the chat system
                     println!(
                         "Sending message: {} (type: {})",
                         resolved_content, message_type
                     );
-                    Ok(ActionExecutionResult::Success)
+                    Ok::<ActionExecutionResult, MacroSystemError>(ActionExecutionResult::Success)
                 }
                 MacroAction::ExecuteCommand { command, .. } => {
                     // In a real implementation, this would execute the command
                     println!("Executing command: {:?}", command);
-                    Ok(ActionExecutionResult::Success)
+                    Ok::<ActionExecutionResult, MacroSystemError>(ActionExecutionResult::Success)
                 }
                 MacroAction::Wait { duration, .. } => Ok(ActionExecutionResult::Wait(*duration)),
                 MacroAction::SetVariable { name, value, .. } => {
-                    let resolved_value = self.resolve_variables(value, &context.variables);
-                    context
-                        .variables
-                        .insert(name.clone(), resolved_value.into());
-                    Ok(ActionExecutionResult::Success)
+                    let resolved_value = resolve_variables_sync(value, &context_variables);
+                    ctx.variables.insert(name.clone(), resolved_value.into());
+                    Ok::<ActionExecutionResult, MacroSystemError>(ActionExecutionResult::Success)
                 }
                 MacroAction::Conditional {
                     condition,
@@ -549,25 +546,33 @@ impl MacroSystem {
                     else_actions,
                     ..
                 } => {
-                    let condition_result = self.evaluate_condition(condition, &context.variables);
+                    let condition_result = evaluate_condition_sync(condition, &context_variables);
 
                     let actions_to_execute = if condition_result {
                         then_actions
                     } else if let Some(else_actions) = else_actions {
                         else_actions
                     } else {
-                        return Ok(ActionExecutionResult::Success);
+                        let _ = sender.send(ActionExecutionResult::Success);
+                        return;
                     };
 
-                    // Execute conditional actions
+                    // Execute conditional actions synchronously
                     for action in actions_to_execute.iter() {
-                        let result = self.execute_action(action, context).await?;
-                        if let ActionExecutionResult::Error(error) = result {
-                            return Ok(ActionExecutionResult::Error(error));
+                        match execute_action_sync(action, &mut ctx) {
+                            Ok(ActionExecutionResult::Error(error)) => {
+                                let _ = sender.send(ActionExecutionResult::Error(error));
+                                return;
+                            }
+                            Err(e) => {
+                                handle_error!(e, "Action execution failed");
+                                return;
+                            }
+                            _ => continue,
                         }
                     }
 
-                    Ok(ActionExecutionResult::Success)
+                    Ok::<ActionExecutionResult, MacroSystemError>(ActionExecutionResult::Success)
                 }
                 MacroAction::Loop {
                     iterations,
@@ -581,20 +586,37 @@ impl MacroSystem {
                         end_action: actions.len(),
                     };
 
-                    context.loop_stack.push(loop_context);
+                    ctx.loop_stack.push(loop_context);
 
                     for _ in 0..*iterations {
                         for action in actions.iter() {
-                            let result = self.execute_action(action, context).await?;
-                            if let ActionExecutionResult::Error(error) = result {
-                                context.loop_stack.pop();
-                                return Ok(ActionExecutionResult::Error(error));
+                            match execute_action_sync(action, &mut ctx) {
+                                Ok(ActionExecutionResult::Error(error)) => {
+                                    ctx.loop_stack.pop();
+                                    let _ = sender.send(ActionExecutionResult::Error(error));
+                                    return;
+                                }
+                                Err(e) => {
+                                    ctx.loop_stack.pop();
+                                    handle_error!(e, "Loop action execution failed");
+                                    return;
+                                }
+                                _ => continue,
                             }
                         }
                     }
 
-                    context.loop_stack.pop();
-                    Ok(ActionExecutionResult::Success)
+                    ctx.loop_stack.pop();
+                    Ok::<ActionExecutionResult, MacroSystemError>(ActionExecutionResult::Success)
+                }
+            };
+            
+            match result {
+                Ok(action_result) => {
+                    let _ = sender.send(action_result);
+                }
+                Err(e) => {
+                    handle_error!(e, "Action execution failed");
                 }
             }
         })
@@ -1357,5 +1379,117 @@ impl MacroProcessor {
 impl Default for MacroProcessor {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Helper function for synchronous variable resolution
+fn resolve_variables_sync(content: &str, variables: &HashMap<Arc<str>, Arc<str>>) -> String {
+    let mut result = content.to_string();
+
+    for (key, value) in variables {
+        let placeholder = format!("{{{}}}", key);
+        result = result.replace(&placeholder, value);
+    }
+
+    result
+}
+
+/// Helper function for synchronous condition evaluation  
+fn evaluate_condition_sync(condition: &str, variables: &HashMap<Arc<str>, Arc<str>>) -> bool {
+    // Simple condition evaluation - in a real implementation, this would be more sophisticated
+    if condition.contains("==") {
+        let parts: Vec<&str> = condition.split("==").collect();
+        if parts.len() == 2 {
+            let left = resolve_variables_sync(parts[0].trim(), variables);
+            let right = resolve_variables_sync(parts[1].trim(), variables);
+            return left == right;
+        }
+    }
+
+    // Default to false for unsupported conditions
+    false
+}
+
+/// Helper function for synchronous action execution
+fn execute_action_sync(
+    action: &MacroAction,
+    context: &mut MacroExecutionContext,
+) -> Result<ActionExecutionResult, MacroSystemError> {
+    match action {
+        MacroAction::SendMessage {
+            content,
+            message_type,
+            ..
+        } => {
+            let resolved_content = resolve_variables_sync(content, &context.variables);
+            println!(
+                "Sending message: {} (type: {})",
+                resolved_content, message_type
+            );
+            Ok(ActionExecutionResult::Success)
+        }
+        MacroAction::ExecuteCommand { command, .. } => {
+            println!("Executing command: {:?}", command);
+            Ok(ActionExecutionResult::Success)
+        }
+        MacroAction::Wait { duration, .. } => Ok(ActionExecutionResult::Wait(*duration)),
+        MacroAction::SetVariable { name, value, .. } => {
+            let resolved_value = resolve_variables_sync(value, &context.variables);
+            context.variables.insert(name.clone(), resolved_value.into());
+            Ok(ActionExecutionResult::Success)
+        }
+        MacroAction::Conditional {
+            condition,
+            then_actions,
+            else_actions,
+            ..
+        } => {
+            let condition_result = evaluate_condition_sync(condition, &context.variables);
+
+            let actions_to_execute = if condition_result {
+                then_actions
+            } else if let Some(else_actions) = else_actions {
+                else_actions
+            } else {
+                return Ok(ActionExecutionResult::Success);
+            };
+
+            // Execute conditional actions
+            for action in actions_to_execute.iter() {
+                let result = execute_action_sync(action, context)?;
+                if let ActionExecutionResult::Error(error) = result {
+                    return Ok(ActionExecutionResult::Error(error));
+                }
+            }
+
+            Ok(ActionExecutionResult::Success)
+        }
+        MacroAction::Loop {
+            iterations,
+            actions,
+            ..
+        } => {
+            let loop_context = LoopContext {
+                iteration: 0,
+                max_iterations: *iterations,
+                start_action: 0,
+                end_action: actions.len(),
+            };
+
+            context.loop_stack.push(loop_context);
+
+            for _ in 0..*iterations {
+                for action in actions.iter() {
+                    let result = execute_action_sync(action, context)?;
+                    if let ActionExecutionResult::Error(error) = result {
+                        context.loop_stack.pop();
+                        return Ok(ActionExecutionResult::Error(error));
+                    }
+                }
+            }
+
+            context.loop_stack.pop();
+            Ok(ActionExecutionResult::Success)
+        }
     }
 }

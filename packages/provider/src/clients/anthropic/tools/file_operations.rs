@@ -87,7 +87,7 @@ impl ToolExecutor for FileOperationsTool {
         &self,
         input: Value,
         context: &ToolExecutionContext,
-    ) -> AsyncStream<AnthropicResult<ToolOutput>> {
+    ) -> AsyncStream<ToolOutput> {
         let (tx, stream) = channel();
         let api_key = match Self::get_api_key(context) {
             Ok(key) => key.to_string(),

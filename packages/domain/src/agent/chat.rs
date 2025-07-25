@@ -217,8 +217,8 @@ impl AgentRoleImpl {
 
         // Use StreamExt to properly consume AsyncStream
         let mut stream = store_stream;
-        if let Some(store_result) = stream.next().await {
-            store_result.map_err(|e| ChatError::Memory(e))?;
+        if let Some(_store_result) = stream.next().await {
+            // AsyncStream now returns unwrapped values, no error handling needed
         }
 
         if memorized_nodes.try_push(user_memory).is_err() {
@@ -238,8 +238,8 @@ impl AgentRoleImpl {
 
         // Use StreamExt to properly consume AsyncStream
         let mut stream = store_stream;
-        if let Some(store_result) = stream.next().await {
-            store_result.map_err(|e| ChatError::Memory(e))?;
+        if let Some(_store_result) = stream.next().await {
+            // AsyncStream now returns unwrapped values, no error handling needed
         }
 
         if memorized_nodes.try_push(assistant_memory).is_err() {
@@ -262,8 +262,8 @@ impl AgentRoleImpl {
 
         // Use StreamExt to properly consume AsyncStream
         let mut stream = store_stream;
-        if let Some(store_result) = stream.next().await {
-            store_result.map_err(|e| ChatError::Memory(e))?;
+        if let Some(_store_result) = stream.next().await {
+            // AsyncStream now returns unwrapped values, no error handling needed
         }
 
         if memorized_nodes.try_push(context_memory).is_err() {

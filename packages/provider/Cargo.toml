@@ -2,8 +2,7 @@
 name = "fluent_ai_provider"
 version = "0.1.0"
 edition = "2024"
-# Build script for code generation
-build = "build.rs"
+
 
 [dependencies]
 fluent-ai-workspace-hack = { path = "../../workspace-hack" }
@@ -40,7 +39,7 @@ termcolor = { path = "../termcolor" }
 
 # Missing dependencies that are causing compilation errors
 async-trait = "0.1.85"
-arc-swap = "1.7.1" 
+arc-swap = "1.7.1"
 smallvec = "2.0.0-alpha.11"
 crossbeam-channel = "0.5.15"
 crossbeam-queue = "0.3.12"
@@ -65,7 +64,7 @@ candle-flash-attn = { git = "https://github.com/huggingface/candle", branch = "m
 candle-onnx = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
 candle-datasets = { git = "https://github.com/huggingface/candle", branch = "main", default-features = false, optional = true }
 
-# Optional acceleration dependencies from fluent-ai-candle  
+# Optional acceleration dependencies from fluent-ai-candle
 wide = { version = "0.7.33", optional = true }
 parking_lot = { version = "0.12.4", optional = true }
 

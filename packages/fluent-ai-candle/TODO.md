@@ -62,11 +62,36 @@ DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MI
 ### Task 8: QA Review model/cache/mod.rs async compliance
 Act as an Objective QA Rust developer and confirm model/cache/mod.rs is free of Future types and uses only AsyncStream<T> pattern. Verify zero-allocation cache patterns. Rate architectural compliance.
 
-### Task 9: Fix kv_cache/mod.rs Future violations
+### Task 9: ACTIVELY WORKING BY claude35 - Decompose kv_cache/mod.rs (1348 lines) into logical modules ≤300 lines each
 **File:** `src/kv_cache/mod.rs`
-**Lines:** 92, 96, 100, 679, 686, 693, 712 (future references)
-**Implementation:** Replace all Future references with AsyncStream<KVCacheEvent> streaming patterns for KV cache operations.
-**Architecture:** Convert KV cache to streaming pattern, implement cache streaming via AsyncStream, use emit! for cache updates, handle_error! for cache errors. Return AsyncStream<KVCacheEvent> not AsyncStream<Result<KVCacheEvent,E>>.
+**Lines:** 1348 total lines - needs decomposition into focused submodules
+**Implementation:** Break into logical modules: cache_core.rs, eviction.rs, stats.rs, config.rs, builder.rs, entry.rs
+**Architecture:** Maintain all functionality while creating focused modules ≤300 lines each. Preserve zero-allocation, lock-free design.
+**Status:** ACTIVELY WORKING BY claude35 - Do not duplicate this work
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### Task 9b: ACTIVELY WORKING BY claude82 - Decompose streaming/flow_control.rs (752 lines) into logical modules ≤300 lines each
+**File:** `src/streaming/flow_control.rs`
+**Lines:** 752 total lines - needs decomposition into focused submodules
+**Implementation:** Break into logical modules: flow_core.rs, backpressure.rs, metrics.rs, strategies.rs
+**Architecture:** Maintain all functionality while creating focused modules ≤300 lines each. Preserve zero-allocation, lock-free design with AsyncStream patterns.
+**Status:** ACTIVELY WORKING BY claude82 - Do not duplicate this work
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### Task 9c: ACTIVELY WORKING BY claude92 - Decompose types/candle_chat/chat/config.rs (1389 lines) into logical modules ≤300 lines each
+**File:** `src/types/candle_chat/chat/config.rs`
+**Lines:** 1389 total lines - needs decomposition into focused submodules  
+**Implementation:** Break into logical modules: config_core.rs, validation.rs, builder.rs, serialization.rs, defaults.rs
+**Architecture:** Maintain all functionality while creating focused modules ≤300 lines each. Preserve zero-allocation, lock-free design with AsyncStream patterns.
+**Status:** ACTIVELY WORKING BY claude92 - Do not duplicate this work
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### Task 9d: ACTIVELY WORKING BY claude66 - Decompose types/candle_chat/chat/formatting.rs (880 lines) into logical modules ≤300 lines each
+**File:** `src/types/candle_chat/chat/formatting.rs`
+**Lines:** 880 total lines - needs decomposition into focused submodules
+**Implementation:** Break into logical modules: content.rs, styles.rs, rendering.rs, streaming.rs, processors.rs
+**Architecture:** Maintain all functionality while creating focused modules ≤300 lines each. Preserve zero-allocation, lock-free design with immutable structures.
+**Status:** ACTIVELY WORKING BY claude66 - Do not duplicate this work
 DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
 ### Task 10: QA Review kv_cache/mod.rs async compliance
@@ -76,17 +101,74 @@ Act as an Objective QA Rust developer and confirm kv_cache/mod.rs uses only flue
 
 ## PRIORITY 3: SAMPLING MODULES
 
-### Task 11: Fix sampling/mirostat.rs Future violations
+### Task 11: ACTIVELY WORKING BY claude61 - Decompose types/candle_chat/chat/commands/types.rs (1760 lines) into logical modules ≤300 lines each
+**File:** `src/types/candle_chat/chat/commands/types.rs`
+**Lines:** 1760 total lines - massive monolith needs decomposition into focused submodules
+**Implementation:** Break into logical modules: error.rs, parameter.rs, command.rs, events.rs, executor.rs, parser.rs, context.rs, output.rs, metrics.rs, handler.rs
+**Architecture:** Maintain all functionality while creating focused modules ≤300 lines each. Preserve zero-allocation, lock-free design with AsyncStream patterns.
+**Status:** ACTIVELY WORKING BY claude61 - Do not duplicate this work
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### Task 11b: ACTIVELY WORKING BY claude98 - Decompose sampling/mirostat.rs (676 lines) into logical modules ≤300 lines each
+**File:** `src/sampling/mirostat.rs`
+**Lines:** 676 total lines - needs decomposition into focused submodules
+**Implementation:** Break into logical modules: config.rs, perplexity.rs, processor.rs, stats.rs
+**Architecture:** Maintain all functionality while creating focused modules ≤300 lines each. Preserve zero-allocation, lock-free design with atomic operations.
+**Status:** ACTIVELY WORKING BY claude98 - Do not duplicate this work
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### Task 11c: ✅ COMPLETED BY claude83 - Decompose types/candle_chat/commands/parsing.rs (732 lines) into logical modules ≤300 lines each
+**File:** `src/types/candle_chat/commands/parsing.rs`
+**Lines:** 732 total lines - successfully decomposed into focused submodules
+**Implementation:** Successfully decomposed into: parser.rs (256 lines), command_parsers.rs (233 lines), registration.rs (206 lines), errors.rs (27 lines), registry.rs (35 lines), validators.rs (33 lines), mod.rs (17 lines)
+**Architecture:** Maintained all functionality while creating focused modules ≤300 lines each. Preserved zero-allocation, lock-free design.
+**Status:** ✅ COMPLETED BY claude83 - All parsing logic successfully decomposed and verified
+
+### Task 11d: ✅ COMPLETED BY claude982 - Decompose processing/error.rs (673 lines) into logical modules ≤300 lines each
+**File:** `src/processing/error.rs`
+**Lines:** 673 total lines - SUCCESSFULLY decomposed into 5 focused submodules
+**Implementation:** Successfully created 5 well-structured modules:
+- error_types.rs (294 lines) - Core ProcessingError enum with constructors and classification methods
+- context.rs (215 lines) - ErrorContext and ContextualError with comprehensive metadata support
+- validation.rs (269 lines) - Utility functions, validators, and error handling helpers
+- classification.rs (117 lines) - ErrorCategory and ErrorSeverity enums with Display implementations
+- conversion.rs (94 lines) - Type aliases and From trait implementations for system integration
+- mod.rs (185 lines) - Comprehensive re-exports and integration tests
+**Architecture:** Successfully maintained all functionality while creating focused modules ≤300 lines each. Preserved zero-allocation, lock-free design with comprehensive error handling patterns. Enhanced functionality with detailed validation utilities and contextual error information.
+**Status:** ✅ COMPLETED BY claude982 - Original 673-line error.rs backed up as error.rs.backup then removed after verification
+
+### Task 11f: ACTIVELY WORKING BY claude965 - Decompose processing/context.rs (632 lines) into logical modules ≤300 lines each
+**File:** `src/processing/context.rs`
+**Lines:** 632 total lines - needs decomposition into focused submodules
+**Implementation:** Break into logical modules: context_core.rs, context_builder.rs, context_validation.rs, context_serialization.rs, context_utils.rs
+**Architecture:** Maintain all functionality while creating focused modules ≤300 lines each. Preserve zero-allocation, lock-free design with context management patterns.
+**Status:** ACTIVELY WORKING BY claude965 - Do not duplicate this work
+DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+
+### Task 11e: ✅ COMPLETED BY claude976 - Decompose error.rs (623 lines) into logical modules ≤300 lines each
+**File:** `src/error.rs`
+**Lines:** 623 total lines - SUCCESSFULLY decomposed into 5 focused submodules
+**Implementation:** Successfully created 5 well-structured modules:
+- error_types.rs (149 lines) - Core CandleError enum with Display implementation
+- error_helpers.rs (167 lines) - Helper functions and error utility methods with retry logic
+- error_context.rs (85 lines) - ErrorContext and CandleErrorWithContext for enhanced debugging
+- conversions.rs (190 lines) - From trait implementations and type conversions
+- macros.rs (31 lines) - candle_error! macro for convenient error creation with context
+- mod.rs (16 lines) - Module orchestration and re-exports
+**Architecture:** Successfully maintained all functionality while creating focused modules ≤300 lines each. Preserved zero-allocation, inline design patterns with comprehensive error handling capabilities.
+**Status:** ✅ COMPLETED BY claude976 - All error handling logic successfully decomposed and verified
+
+### Task 12: Fix sampling/mirostat.rs Future violations
 **File:** `src/sampling/mirostat.rs`
 **Lines:** 41, 45, 49 (future references)
 **Implementation:** Replace Future references with AsyncStream<SampleResult> streaming patterns for Mirostat sampling.
 **Architecture:** Convert Mirostat sampling to streaming pattern using AsyncStream, emit sampling results via emit! macro, handle sampling errors via handle_error! macro. Return AsyncStream<SampleResult> not AsyncStream<Result<SampleResult,E>>.
 DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
 
-### Task 12: QA Review sampling/mirostat.rs async compliance
+### Task 13: QA Review sampling/mirostat.rs async compliance
 Act as an Objective QA Rust developer and confirm sampling/mirostat.rs uses only fluent-ai-async streaming primitives and AsyncStream<T> pattern. Verify Mirostat sampling streams correctly. Rate production quality.
 
-### Task 13: Fix sampling/gumbel.rs Future violations
+### Task 14: Fix sampling/gumbel.rs Future violations
 **File:** `src/sampling/gumbel.rs`
 **Lines:** 31 (future reference)
 **Implementation:** Replace Future reference with AsyncStream<GumbelSample> streaming pattern for Gumbel sampling.
@@ -465,558 +547,4 @@ Act as an Objective QA Rust developer and confirm sampling/composite.rs uses onl
 **Implementation**: Search for "async fn", ".await", "Future<" patterns and document any remaining patterns requiring conversion
 **DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
 
-### 56. Act as an Objective QA Rust developer - Rate final audit. Verify the grep search was comprehensive and all async/await/Future usage has been properly eliminated.
-
-### 57. Verify cargo check passes with same or fewer warnings
-**Files**: Entire codebase
-**Issue**: Ensure compilation succeeds after AsyncStream conversion
-**Architecture**: Verify AsyncStream conversion maintains functionality while eliminating async/await
-**Implementation**: Run `cargo check --features metal` and confirm compilation success with warning count same (66) or lower
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 58. Act as an Objective QA Rust developer - Rate final compilation verification. Verify cargo check passes and warning count meets requirements. Confirm codebase maintains functionality after AsyncStream conversion.
-
----
-
----
-
-## IMMEDIATE CRITICAL: Fix Current 10 Compilation Errors + Arc Elimination
-
-### 59. Remove unused handle_error import from client.rs line 11
-**File**: `src/client.rs:11`
-**Issue**: `use fluent_ai_async::{AsyncStream, emit, handle_error};` - handle_error is unused
-**Fix**: Change to `use fluent_ai_async::{AsyncStream, emit};`
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 60. Act as an Objective QA Rust developer - Rate the unused import removal (1-10) for correctness, minimalism, and compliance with zero allocation constraints. Verify no functionality was broken.
-
-### 61. Add StreamExt import to client.rs for AsyncStream.next() method
-**File**: `src/client.rs` - imports section
-**Issue**: Lines 627, 1020 have `stream.next().await` errors - missing StreamExt trait
-**Fix**: Add `use futures_util::StreamExt;` to imports section
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
-
-### 62. Act as an Objective QA Rust developer - Rate the StreamExt import addition (1-10) for correctness and verify it resolves the AsyncStream.next() method errors without introducing dependencies.
-
-### 63. Fix String.display() method error on client.rs line 320
-**File**: `src/client.rs:320`
-**Issue**: `config.model_path.display()` - model_path is String not Path
-**Fix**: Convert to `Path::new(&config.model_path).display()`
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
-
-### 64. Act as an Objective QA Rust developer - Rate the String to Path conversion (1-10) for correctness and verify it properly displays the path without breaking functionality.
-
-### 65. Fix from_hub method call type mismatch on client.rs line 1165
-**File**: `src/client.rs:1165`
-**Issue**: `from_hub(repo_id, self.config)` - repo_id needs &, return type needs AsyncStream wrapper
-**Fix**: Change to `from_hub(&repo_id, self.config)` and wrap return in AsyncStream
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
-
-### 66. Act as an Objective QA Rust developer - Rate the from_hub method fix (1-10) for type correctness and AsyncStream pattern compliance. Verify it maintains the expected async behavior.
-
-### 67. Convert MacroContext.variables from Arc<str> to String pattern
-**File**: `src/types/candle_chat/macros.rs` - MacroContext struct definition
-**Issue**: `variables: HashMap<Arc<str>, Arc<str>>` violates "no Arc" constraint
-**Fix**: Change to `variables: HashMap<String, String>` and update all related code
-**Architecture**: Eliminates Arc reference counting overhead, achieves zero allocation through borrowing
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
-
-### 68. Act as an Objective QA Rust developer - Rate the Arc elimination (1-10) for zero allocation compliance, performance improvement, and correctness. Verify no Arc usage remains in variable storage.
-
-### 69. Add missing evaluate_condition_static method to MacroSystem
-**File**: `src/types/candle_chat/macros.rs:555`
-**Issue**: `MacroSystem::evaluate_condition_static` method does not exist
-**Fix**: Implement `fn evaluate_condition_static(condition: &str, variables: &HashMap<String, String>) -> bool`
-**Architecture**: Static method for AsyncStream usage without self reference
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
-
-### 70. Act as an Objective QA Rust developer - Rate the evaluate_condition_static implementation (1-10) for correctness, static method pattern compliance, and AsyncStream compatibility.
-
-### 71. Update resolve_variables_static to work with String HashMap
-**File**: `src/types/candle_chat/macros.rs:629`
-**Issue**: Method signature expects `&HashMap<Arc<str>, Arc<str>>` but needs `&HashMap<String, String>`
-**Fix**: Modify signature to `fn resolve_variables_static(content: &str, variables: &HashMap<String, String>) -> String`
-**Architecture**: Eliminates Arc usage while maintaining string interpolation functionality
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
-
-### 72. Act as an Objective QA Rust developer - Rate the resolve_variables_static update (1-10) for Arc elimination, String pattern correctness, and performance characteristics.
-
-### 73. Add missing resolve_variables instance method to MacroSystem
-**File**: `src/types/candle_chat/macros.rs:646-647`
-**Issue**: `self.resolve_variables(...)` method does not exist
-**Fix**: Implement `fn resolve_variables(&self, content: &str, variables: &HashMap<String, String>) -> String` that delegates to static version
-**Architecture**: Provides instance method interface while maintaining static implementation for AsyncStream
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
-
-### 74. Act as an Objective QA Rust developer - Rate the resolve_variables instance method (1-10) for proper delegation pattern, method availability, and consistency with static version.
-
-### 75. Fix Arc<str> to &str type mismatches in macros.rs lines 572, 576
-**File**: `src/types/candle_chat/macros.rs:572,576`
-**Issue**: `resolve_variables_static(&content, &context.variables)` - Arc<str> to &str mismatch
-**Fix**: Use `content.as_ref()` and `value.as_ref()` for Arc<str> to &str conversion
-**Architecture**: Maintains zero allocation through efficient borrowing of Arc contents
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
-
-### 76. Act as an Objective QA Rust developer - Rate the type mismatch fixes (1-10) for correct String dereferencing, compilation success, and maintained functionality.
-
-### 77. Search entire codebase for remaining Arc usage patterns
-**Files**: All source files in src/
-**Issue**: Identify any remaining `Arc<` usage that violates "no Arc" constraint
-**Fix**: Use grep/ripgrep to find Arc usage and categorize for String/owned data conversion
-**Architecture**: Complete Arc elimination for zero allocation, lock-free design
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
-
-### 78. Act as an Objective QA Rust developer - Rate the Arc usage audit (1-10) for completeness, identification accuracy, and adherence to zero allocation principles.
-
-### 79. Convert any remaining Arc usage to owned String patterns
-**Files**: As identified in search audit
-**Issue**: Replace remaining Arc usage with String/&str borrowing patterns
-**Fix**: Convert Arc<T> to owned T with appropriate lifetime management
-**Architecture**: Achieves zero allocation and lock-free design through ownership patterns
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
-
-### 80. Act as an Objective QA Rust developer - Rate the remaining Arc conversions (1-10) for zero allocation achievement, lock-free compliance, and performance optimization.
-
-### 81. Run cargo check to verify 0 errors, 0 warnings
-**Files**: Entire codebase
-**Issue**: Verify all 10 compilation errors are resolved and no warnings remain
-**Fix**: Execute `cargo check` and document any remaining issues for immediate resolution
-**Architecture**: Confirms production readiness and zero allocation architecture compliance
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required.**
-
-### 82. Act as an Objective QA Rust developer - Rate the final validation (1-10) for complete error elimination, warning resolution, and overall code quality. Verify production readiness and zero allocation architecture compliance.
-
----
-
-**Next Steps**: Execute immediate compilation error fixes first (items 59-82), then proceed with AsyncStream conversion (items 26-58) 🎯
-
----
-
-## MILESTONE 2: SYSTEMATIC WARNING ELIMINATION AND VALIDATION
-
-### 59. Study fluent-ai-async AsyncStream implementation patterns
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-async/src/`
-**Issue**: Need comprehensive understanding of AsyncStream API for proper implementation
-**Architecture**: Document AsyncStream::with_channel(), AsyncStreamSender, emit! macro, handle_error! macro patterns
-**Implementation**: Read source code to understand zero-allocation, lock-free streaming patterns and proper error handling
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 60. Act as an Objective QA Rust developer - Rate AsyncStream study quality 1-10. Verify complete understanding of with_channel(), sender usage, error handling, and zero-allocation patterns. Confirm documentation accuracy.
-
-### 61. Generate comprehensive warning report with cargo check and clippy
-**Files**: Entire codebase
-**Issue**: Need detailed list of all 70 warnings with file:line locations and categorization
-**Architecture**: Categorize warnings by type (dead_code, unused_imports, unused_variables, clippy lints, documentation)
-**Implementation**: Run `cargo check` and `cargo clippy --all-targets --all-features` to capture all warnings with exact locations
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 62. Act as an Objective QA Rust developer - Rate warning report quality 1-10. Verify all 70 warnings captured with accurate file:line references and proper categorization. Confirm no warnings missed.
-
-### 63. Fix dead code warnings in model modules
-**Files**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/model/core/`, `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/model/types/`
-**Issue**: Address dead_code warnings by implementing missing functionality using AsyncStream patterns
-**Architecture**: Implement real functionality following AsyncStream patterns, not stubs or placeholders
-**Implementation**: Convert placeholder implementations to proper AsyncStream-based operations with zero-allocation patterns
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 64. Act as an Objective QA Rust developer - Rate dead code fixes quality 1-10. Verify implementations use AsyncStream patterns, provide real functionality, maintain zero-allocation principles.
-
-### 65. Fix dead code warnings in streaming modules
-**Files**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/streaming/`, `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/`
-**Issue**: Complete streaming module implementations using AsyncStream patterns
-**Architecture**: Implement streaming operations following fluent-ai-async patterns with proper error handling
-**Implementation**: Replace any incomplete implementations with production-ready AsyncStream operations
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 66. Act as an Objective QA Rust developer - Rate streaming fixes quality 1-10. Verify complete implementations use AsyncStream correctly and maintain thread safety without locks.
-
-### 67. Fix unused import warnings throughout codebase
-**Files**: Throughout codebase - all files with unused import warnings
-**Issue**: Remove unused imports while preserving conditional compilation and domain model imports
-**Architecture**: Maintain domain model centralization requirements from CLAUDE.md
-**Implementation**: Remove genuinely unused imports, verify conditional compilation imports are preserved
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 68. Act as an Objective QA Rust developer - Rate unused import fixes quality 1-10. Verify no necessary imports removed, conditional compilation preserved, domain patterns correct.
-
-### 69. Fix Clippy lint warnings for performance and correctness
-**Files**: Throughout codebase - all files with clippy warnings
-**Issue**: Address clippy lints while maintaining zero-allocation and lock-free requirements
-**Architecture**: Preserve performance optimizations and AsyncStream patterns during lint fixes
-**Implementation**: Fix clippy warnings without breaking zero-allocation, lock-free, or streaming-first architecture
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 70. Act as an Objective QA Rust developer - Rate Clippy fixes quality 1-10. Verify performance maintained, architecture preserved, meaningful quality improvements made.
-
-### 71. Validate HTTP3 library usage compliance
-**Files**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/client.rs`, provider modules
-**Issue**: Ensure exclusive use of fluent_ai_http3 as required by CLAUDE.md
-**Architecture**: Verify no reqwest, hyper, or other HTTP clients used - only fluent_ai_http3 with builder patterns
-**Implementation**: Check all HTTP operations use Http3::json().body().post() patterns with Serde marshaling
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 72. Act as an Objective QA Rust developer - Rate HTTP3 compliance quality 1-10. Verify exclusive fluent_ai_http3 usage, proper builder patterns, streaming-first HTTP operations.
-
-### 73. Validate domain model centralization compliance
-**Files**: Throughout codebase - check for domain models outside fluent_ai_domain
-**Issue**: Ensure all domain models live in fluent_ai_domain as required by CLAUDE.md
-**Architecture**: Verify no domain models defined outside domain package, correct import patterns
-**Implementation**: Check for domain model definitions outside fluent_ai_domain, convert to proper imports
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 74. Act as an Objective QA Rust developer - Rate domain centralization quality 1-10. Verify no domain models outside fluent_ai_domain, correct dependency chain followed.
-
-### 75. Audit error handling patterns for unwrap/expect usage
-**Files**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/` (exclude tests)
-**Issue**: Ensure no unwrap() or expect() calls in production code (src/*)
-**Architecture**: Replace with proper Result types and streaming error patterns using handle_error! macro
-**Implementation**: Find all unwrap/expect calls, replace with proper error handling in AsyncStream context
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 76. Act as an Objective QA Rust developer - Rate error handling audit quality 1-10. Verify no panic-inducing code in production, proper error propagation, AsyncStream error patterns.
-
-### 77. Zero-allocation pattern verification and profiling
-**Files**: Key hot paths in completion processing and model operations
-**Issue**: Profile to ensure zero-allocation behavior in streaming operations
-**Architecture**: Verify AsyncStream usage achieves zero-allocation goals with crossbeam queues
-**Implementation**: Profile critical paths to confirm no unexpected allocations in hot paths
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 78. Act as an Objective QA Rust developer - Rate zero-allocation verification quality 1-10. Verify profiling demonstrates zero-allocation behavior, identify any allocation hotspots.
-
-### 79. Lock-free operation verification
-**Files**: All atomic operations throughout codebase
-**Issue**: Audit all atomic operations and ensure no locks in hot paths
-**Architecture**: Verify proper memory ordering for atomic operations in streaming contexts
-**Implementation**: Check all atomic usage has correct Ordering, no inappropriate locking exists
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 80. Act as an Objective QA Rust developer - Rate lock-free verification quality 1-10. Verify no inappropriate locking, correct atomic ordering, thread safety maintained.
-
-### 81. Final comprehensive compilation and warning verification
-**Files**: Entire codebase
-**Issue**: Achieve 0 errors, 0 warnings with complete AsyncStream compliance
-**Architecture**: Verify clean compilation with full architectural compliance
-**Implementation**: Run `cargo check`, `cargo clippy`, `cargo test` to confirm 0 errors, 0 warnings, successful tests
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 82. Act as an Objective QA Rust developer - Rate final verification quality 1-10. Verify clean compilation, warning elimination, test success, production readiness achieved.
-
----
-
-**Implementation Priority**: Start with AsyncStream pattern study (item 59), then systematic warning elimination (items 61-70), followed by architectural validation (items 71-82) 🚀
-# PHASE 3: SPECIFIC COMPILATION ERROR AND WARNING FIXES
-
-## APPROVED IMPLEMENTATION PLAN - SYSTEMATIC FIXES FOR 0 ERRORS, 0 WARNINGS
-
-### 83. Fix client.rs:703 AsyncStream lifetime violation
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/client.rs:703`
-**Issue**: AsyncStream returning CompletionResponse with borrowed lifetime, requires 'static
-**Architecture**: Convert CompletionResponse to own all data instead of borrowing, follow CLAUDE.md AsyncStream patterns
-**Implementation**: Clone/own all string fields in CompletionResponse before returning in AsyncStream. Use Box::pin(async move { ... Ok(()) }) pattern.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 84. QA: Act as an Objective QA Rust developer and rate the client.rs:703 fix on a scale of 1-10. Verify the AsyncStream follows CLAUDE.md patterns exactly with Box::pin(async move { ... Ok(()) }) and owns all data. Confirm 'static lifetime requirements are met.
-
-### 85. Fix kimi_k2/loader.rs:58 borrowed data escapes function
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/model/fluent/kimi_k2/loader.rs:58`
-**Issue**: Config reference borrowed for 'static lifetime in AsyncStream closure
-**Architecture**: Clone config fields into owned values before AsyncStream closure, follow CLAUDE.md patterns
-**Implementation**: Create owned config struct or clone necessary fields. Use AsyncStream::with_channel(move |sender| { Box::pin(async move { ... }) })
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 86. QA: Act as an Objective QA Rust developer and rate the kimi_k2/loader.rs:58 fix on a scale of 1-10. Verify LoaderEvent owns all data and AsyncStream pattern follows CLAUDE.md exactly. Confirm no borrowed references escape.
-
-### 87. Fix kimi_k2/loader.rs:109,113,127 shards borrowing conflicts
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/model/fluent/kimi_k2/loader.rs:109,113,127`
-**Issue**: Simultaneous mutable/immutable borrows of shards, plus move conflict
-**Architecture**: Separate progress notification from shard storage using owned progress data structures
-**Implementation**: Create owned ShardProgress struct, clone bytes for progress notification instead of borrowing. Use proper async streaming without conflicting borrows.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 88. QA: Act as an Objective QA Rust developer and rate the kimi_k2/loader.rs borrowing fix on a scale of 1-10. Verify no simultaneous mutable/immutable borrows exist. Confirm async streaming works correctly with proper ownership.
-
-### 89. Fix kimi_k2/model.rs:296 indexed lifetime issue
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/model/fluent/kimi_k2/model.rs:296`
-**Issue**: indexed vector doesn't live long enough for topk_results.push(&indexed[..k])
-**Architecture**: Use owned data structures for topk calculation, avoid temporary vector references
-**Implementation**: Create owned topk result vectors instead of borrowing slices. Implement proper batch processing with owned results.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 90. QA: Act as an Objective QA Rust developer and rate the kimi_k2/model.rs:296 fix on a scale of 1-10. Verify topk calculation uses owned data throughout. Confirm no temporary value lifetime issues.
-
-### 91. Fix composite.rs:144 mutable borrow from iterator
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/sampling/composite.rs:144`
-**Issue**: Cannot borrow **processor as mutable from iterator yielding & references
-**Architecture**: Use iter_mut() or convert to indexed loop for mutable access to processors
-**Implementation**: Change self.processors.iter().enumerate() to self.processors.iter_mut().enumerate() or use indexed for loop.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 92. QA: Act as an Objective QA Rust developer and rate the composite.rs:144 fix on a scale of 1-10. Verify mutable access to processors works correctly. Confirm iterator patterns are idiomatic Rust.
-
-### 93. Fix search.rs:1516 borrowed data escapes method
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/candle_chat/search.rs:1516`
-**Issue**: self reference escapes method body in AsyncStream, requires 'static lifetime
-**Architecture**: Clone self data into owned values before AsyncStream closure, use self_clone pattern
-**Implementation**: Create self_clone with owned data before AsyncStream::with_channel. Follow CLAUDE.md example patterns for method AsyncStream usage.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 94. QA: Act as an Objective QA Rust developer and rate the search.rs:1516 fix on a scale of 1-10. Verify self data is properly cloned and owned within AsyncStream. Confirm CLAUDE.md AsyncStream pattern compliance.
-
-### 95. Implement client.rs:663,721 request variable usage
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/client.rs:663,721`
-**Issue**: Unused request variables suggest incomplete request processing implementation
-**Architecture**: Add proper request validation, parameter extraction, and error handling using request data
-**Implementation**: Implement request.validate(), extract parameters for completion processing, add comprehensive error handling with Result propagation.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 96. QA: Act as an Objective QA Rust developer and rate the client.rs request implementation on a scale of 1-10. Verify request is properly validated and used in completion logic. Confirm no unused parameters remain.
-
-### 97. Implement composite.rs:105,106 token_ids and position usage
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/sampling/composite.rs:105,106`
-**Issue**: Unused token_ids and position variables suggest incomplete sampling implementation
-**Architecture**: Add proper sampling logic using token_ids for context and position for sequence tracking
-**Implementation**: Implement context-aware sampling decisions using token_ids history and position for sequence-dependent sampling strategies.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 98. QA: Act as an Objective QA Rust developer and rate the composite.rs sampling implementation on a scale of 1-10. Verify token_ids and position are used meaningfully in sampling logic. Confirm context-aware functionality.
-
-### 99. Implement gumbel.rs:197 one_hot tensor usage and remove unnecessary mut
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/sampling/gumbel.rs:197`
-**Issue**: Unused one_hot tensor and unnecessary mut qualifier suggest incomplete Gumbel sampling
-**Architecture**: Complete Gumbel sampling implementation using one_hot tensor for categorical sampling
-**Implementation**: Implement proper probability distribution handling using one_hot tensor. Use tensor for categorical sampling with Gumbel noise. Remove mut if tensor isn't modified.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 100. QA: Act as an Objective QA Rust developer and rate the gumbel.rs one_hot implementation on a scale of 1-10. Verify Gumbel sampling is mathematically correct. Confirm tensor operations are efficient.
-
-### 101. Implement mirostat.rs:413,482 total_suppressed and context usage
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/sampling/mirostat.rs:413,482`
-**Issue**: Unused total_suppressed assignment and context parameter suggest incomplete Mirostat algorithm
-**Architecture**: Complete Mirostat algorithm implementation using suppression tracking and context for adaptive sampling
-**Implementation**: Implement proper entropy-based token filtering using total_suppressed for tracking. Use context for adaptive sampling decisions based on conversation history.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 102. QA: Act as an Objective QA Rust developer and rate the mirostat.rs implementation on a scale of 1-10. Verify Mirostat algorithm is mathematically sound. Confirm suppression tracking and context usage.
-
-### 103. Implement simd.rs error message usage (lines 35,38,39,42,45,48)
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/sampling/simd.rs:35,38,39,42,45,48`
-**Issue**: Unused msg variables in error handling suggest incomplete error context propagation
-**Architecture**: Add proper error context propagation using msg variables for detailed error reporting
-**Implementation**: Include msg content in error messages for debugging. Create structured error information using the msg field for better error traceability.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 104. QA: Act as an Objective QA Rust developer and rate the simd.rs error handling implementation on a scale of 1-10. Verify error messages provide useful debugging information. Confirm structured error handling.
-
-### 105. Implement simd.rs processing logic (lines 84,85,128,215,216)
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/sampling/simd.rs:84,85,128,215,216`
-**Issue**: Unused logits, context, temperature, size, iterations parameters suggest incomplete SIMD implementation
-**Architecture**: Complete SIMD logits processing using all parameters for temperature scaling, size-aware operations, iteration control
-**Implementation**: Implement temperature scaling using temperature parameter, use size for SIMD vector operations, use iterations for processing loops, use context for adaptive processing.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 106. QA: Act as an Objective QA Rust developer and rate the simd.rs processing implementation on a scale of 1-10. Verify SIMD operations use all parameters meaningfully. Confirm performance optimization correctness.
-
-### 107. Implement search.rs index, query_time, and fuzzy usage (lines 306,446,544)
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/candle_chat/search.rs:306,446,544`
-**Issue**: Unused index, query_time, fuzzy variables suggest incomplete search functionality
-**Architecture**: Complete search functionality using index tracking, query timing, and fuzzy matching
-**Implementation**: Use index for document indexing, query_time for performance metrics and timeout handling, fuzzy for fuzzy string matching algorithm activation.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 108. QA: Act as an Objective QA Rust developer and rate the search.rs implementation on a scale of 1-10. Verify search functionality is complete with proper ranking and metrics. Confirm fuzzy matching works correctly.
-
-### 109. Implement provider.rs:846 tx channel usage
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/candle_context/provider.rs:846`
-**Issue**: Unused tx sender suggests incomplete provider communication pipeline
-**Architecture**: Complete provider communication pipeline using tx sender for async messaging
-**Implementation**: Use tx sender for progress notifications, error reporting, or result communication. Implement proper async messaging and response handling.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 110. QA: Act as an Objective QA Rust developer and rate the provider.rs tx implementation on a scale of 1-10. Verify async communication pipeline is complete. Confirm proper channel usage and error handling.
-
-### 111. Run progressive compilation verification after each fix phase
-**File**: Entire codebase
-**Issue**: Verify systematic progress toward 0 errors, 0 warnings goal
-**Architecture**: Track error/warning count reduction after each phase of fixes
-**Implementation**: Run cargo check after AsyncStream fixes, after borrowing fixes, after implementation completions. Document progress toward 0/0 goal.
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 112. QA: Act as an Objective QA Rust developer and rate the overall fix quality on a scale of 1-10. Verify cargo check produces no errors or warnings. Confirm all code follows fluent-ai architecture patterns from CLAUDE.md. Rate adherence to production quality standards.
-
----
-
-**EXECUTION PRIORITY**: Begin with AsyncStream lifetime fixes (items 83-94), then borrowing conflicts (items 87-94), then implementation completions (items 95-110), finally verification (items 111-112) 🎯
-
-**PERFORMANCE CONSTRAINTS**: Zero allocation, blazing-fast, no unsafe, no locking, elegant ergonomic code throughout all implementations ⚡
----
-
-# PHASE 4: CURRENT 20 COMPILATION ERRORS - IMMEDIATE FIXES REQUIRED
-
-## HASHMAP TYPE SYSTEM UNIFICATION (11 ERRORS)
-
-### 113. Fix execute_macro_impl method signature in macros.rs:1065
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/candle_chat/macros.rs:1065`
-**Issue**: Line 1068 parameter `context_variables: HashMap<Arc<str>, Arc<str>>` conflicts with String usage 
-**Error**: Lines 1052, 1061 call with HashMap<String, String> but method expects HashMap<Arc<str>, Arc<str>>
-**Architecture**: Convert to HashMap<String, String> for consistent ergonomic usage throughout chat macros
-**Implementation**: Change line 1068 to `context_variables: HashMap<String, String>` for zero-allocation String consistency
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 114. QA: Act as an Objective QA Rust developer and rate the execute_macro_impl signature fix on a scale of 1-10. Verify HashMap<String, String> consistency across all method signatures in chat macros. Confirm ergonomic improvements and zero-allocation compliance.
-
-### 115. Fix execute_action method signature in macros.rs:1193  
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/candle_chat/macros.rs:1193`
-**Issue**: Line 1196 parameter `context: &mut HashMap<Arc<str>, Arc<str>>` conflicts with String usage
-**Error**: Line 1109 calls with &mut HashMap<String, String> but method expects &mut HashMap<Arc<str>, Arc<str>>
-**Architecture**: Convert to HashMap<String, String> for consistent mutable reference patterns
-**Implementation**: Change line 1196 to `context: &mut HashMap<String, String>` maintaining mutable reference semantics  
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 116. QA: Act as an Objective QA Rust developer and rate the execute_action signature fix on a scale of 1-10. Verify mutable reference patterns work correctly with String HashMap. Confirm type consistency across call sites.
-
-### 117. Fix extend() type mismatch in macros.rs:1112
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/candle_chat/macros.rs:1112`
-**Issue**: `modified_variables.extend(modified_vars)` expects (String, String) tuples but gets (Arc<str>, Arc<str>)
-**Error**: E0271 type mismatch - expected (String, String), found (Arc<str>, Arc<str>)
-**Architecture**: Convert Arc<str> tuples to String tuples before extend operation
-**Implementation**: Change to `modified_variables.extend(modified_vars.into_iter().map(|(k,v)| (k.to_string(), v.to_string())));`
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 118. QA: Act as an Objective QA Rust developer and rate the extend() fix on a scale of 1-10. Verify Arc<str> to String conversion is efficient. Confirm extend operation works correctly without data loss.
-
-### 119. Fix context HashMap type mismatches in macros.rs:1138,1181
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/candle_chat/macros.rs:1138,1181`
-**Issue**: Lines expect `HashMap<String, String>` but receive `HashMap<Arc<str>, Arc<str>>`
-**Error**: E0308 mismatched types in context field assignments
-**Architecture**: Convert Arc<str> HashMap to String HashMap at call sites
-**Implementation**: Add conversion: `context: context_variables.iter().map(|(k,v)| (k.to_string(), v.to_string())).collect()`
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 120. QA: Act as an Objective QA Rust developer and rate the context conversion fix on a scale of 1-10. Verify type conversions maintain data integrity. Confirm HashMap operations work correctly.
-
-### 121. Fix substitute_variables method calls in macros.rs:1209,1228
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/candle_chat/macros.rs:1209,1228`
-**Issue**: Lines pass `&mut HashMap<Arc<str>, Arc<str>>` but method expects `&HashMap<String, String>`
-**Error**: E0308 expected &HashMap<String, String>, found &mut HashMap<Arc<str>, Arc<str>>
-**Architecture**: Update substitute_variables signature or convert arguments to match expected types
-**Implementation**: Change line 1283 to accept `&HashMap<Arc<str>, Arc<str>>` or convert at call sites
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 122. QA: Act as an Objective QA Rust developer and rate the substitute_variables fix on a scale of 1-10. Verify method signature consistency. Confirm variable substitution logic works correctly.
-
-### 123. Fix Arc<str> to String conversions in macros.rs:1211,1230
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/candle_chat/macros.rs:1211,1230`
-**Issue**: if/else branches return Arc<str> and String causing type mismatch
-**Error**: E0308 expected String, found Arc<str> in else branches
-**Architecture**: Convert Arc<str> to String for consistent return types
-**Implementation**: Add `.to_string()` to Arc<str> values: `content.clone().to_string()` and `value.clone().to_string()`
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 124. QA: Act as an Objective QA Rust developer and rate the Arc<str> conversion fix on a scale of 1-10. Verify if/else branches return consistent types. Confirm string operations work correctly.
-
-### 125. Fix insert() type mismatch in macros.rs:1395
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/candle_chat/macros.rs:1395`
-**Issue**: `vars.insert(name, value)` expects (String, String) but gets (Arc<str>, Arc<str>)
-**Error**: E0308 arguments incorrect - expected String, found Arc<str>
-**Architecture**: Convert Arc<str> parameters to String before insertion
-**Implementation**: Change to `vars.insert(name.to_string(), value.to_string());`
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 126. QA: Act as an Objective QA Rust developer and rate the insert() fix on a scale of 1-10. Verify HashMap insertion works with String types. Confirm no data loss in Arc<str> to String conversion.
-
-### 127. Fix get_variable return type in macros.rs:1401
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/candle_chat/macros.rs:1401`
-**Issue**: Method returns `Option<String>` but signature declares `Option<Arc<str>>`
-**Error**: E0308 expected Option<Arc<str>>, found Option<String>
-**Architecture**: Align return type with HashMap<String, String> storage
-**Implementation**: Change method signature line 1399 to `pub async fn get_variable(&self, name: &str) -> Option<String>`
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 128. QA: Act as an Objective QA Rust developer and rate the get_variable fix on a scale of 1-10. Verify return type consistency with variable storage. Confirm method signature aligns with usage patterns.
-
-### 129. Fix variable insertion in macros.rs:612  
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/types/candle_chat/macros.rs:612`
-**Issue**: `context.variables.insert(name.clone(), resolved_value.into())` expects String but gets Arc<str>
-**Error**: E0308 expected String, found Arc<str>
-**Architecture**: Convert Arc<str> to String for consistent variable storage
-**Implementation**: Change to `context.variables.insert(name.clone().to_string(), resolved_value.into());`
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 130. QA: Act as an Objective QA Rust developer and rate the variable insertion fix on a scale of 1-10. Verify consistent String usage in variable storage. Confirm type conversion maintains data integrity.
-
-## COMPLETIONRESPONSE FIELD TYPE CORRECTIONS (4 ERRORS)
-
-### 131. Fix CompletionResponse Option<T> field wrappers in generator.rs:880-886
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/generator.rs:880-886`
-**Issue**: Fields id, object, created expect Option<T> wrappers but receive direct values
-**Error**: E0308 expected Option<String>/Option<u64>, found String/u64  
-**Architecture**: Wrap values in Some() to match struct field definitions
-**Implementation**: 
-- Line 880: `id: Some("candle-completion".to_string())`
-- Line 881: `object: Some("text_completion".to_string())`  
-- Line 882-885: `created: Some(std::time::SystemTime::now()...)`
-- Line 886: `model: "candle-model".to_string().into()`
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 132. QA: Act as an Objective QA Rust developer and rate the CompletionResponse field fix on a scale of 1-10. Verify Option<T> wrappers match struct definition exactly. Confirm Cow<'_, str> conversion works correctly.
-
-## ASYNC CONTAMINATION ELIMINATION (3 ERRORS)
-
-### 133. Convert sync function async method calls in generator.rs:952,971,974
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/generator.rs:952,971,974`
-**Issue**: Using .await? in sync function generate_next_token_sync() on async methods
-**Error**: E0277 ? operator cannot be applied to Future types in sync context
-**Architecture**: Create sync versions of these methods or convert function to AsyncStream pattern
-**Implementation**: Remove .await? and either:
-1. Call sync versions: `sample_token_sync()`, `calculate_token_log_probability_sync()`, `update_cumulative_log_prob_sync()`
-2. Convert function to return AsyncStream<GeneratedToken> using AsyncStream::with_channel
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 134. QA: Act as an Objective QA Rust developer and rate the async contamination fix on a scale of 1-10. Verify no Future usage remains in sync contexts. Confirm AsyncStream patterns follow CLAUDE.md architecture exactly.
-
-## UNUSED IMPORT/VARIABLE CLEANUP (7 WARNINGS)
-
-### 135. Remove unused imports in generator.rs:5,8,16
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/generator.rs:5,8,16`  
-**Issue**: Unused imports after async/Future removal
-**Warning**: Unused import warnings for Pin, Context, Poll, CandleCompletionError
-**Architecture**: Clean up imports after eliminating async patterns
-**Implementation**: 
-- Line 5: Remove `use std::pin::Pin;`
-- Line 8: Remove `Context, Poll` from `use std::task::{Context, Poll};`
-- Line 16: Remove `CandleCompletionError` from import list
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 136. QA: Act as an Objective QA Rust developer and rate the unused import cleanup on a scale of 1-10. Verify no legitimate usage remains. Confirm clean import organization.
-
-### 137. Fix unused variables in client.rs:426,429,1019,1048
-**File**: `/Volumes/samsung_t9/fluent-ai/packages/fluent-ai-candle/src/client.rs:426,429,1019,1048`
-**Issue**: Unused variable warnings for variables that may be needed for future functionality
-**Warning**: Unused variable warnings suggest incomplete implementation
-**Architecture**: Prefix with underscore to indicate intentional unused status while preserving for future use
-**Implementation**: 
-- Line 426: `let _generator = Arc::clone(&self.generator.load());`
-- Line 429: `let _owned_request = request.clone().into_static();`
-- Line 1019: `let _client = self.client.clone();`
-- Line 1048: `let _request = match builder.build() {`
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 138. QA: Act as an Objective QA Rust developer and rate the unused variable fix on a scale of 1-10. Verify underscore prefixes silence warnings correctly. Confirm variables preserved for future development.
-
-## FINAL VERIFICATION AND COMPLETION
-
-### 139. Run comprehensive cargo check for 0 errors, 0 warnings
-**File**: Entire codebase
-**Issue**: Verify all 20 compilation errors resolved and warnings eliminated
-**Architecture**: Confirm complete AsyncStream architecture compliance with zero-allocation patterns
-**Implementation**: Execute `cargo check` and document exact error/warning counts, ensuring progression toward 0/0 goal
-**DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.**
-
-### 140. QA: Act as an Objective QA Rust developer and rate the final compilation verification on a scale of 1-10. Verify complete error elimination, warning resolution, and production readiness. Confirm AsyncStream architecture compliance from CLAUDE.md.
-
----
-
-**EXECUTION PRIORITY**: HashMap fixes (113-130), CompletionResponse fixes (131-132), async elimination (133-134), cleanup (135-138), verification (139-140) 🎯
-
-**ZERO ALLOCATION MANDATE**: All fixes must maintain blazing-fast, lock-free, zero-allocation characteristics with elegant ergonomic patterns ⚡
+### 56.

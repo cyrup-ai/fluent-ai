@@ -39,33 +39,19 @@ impl PortableSimdSimilarity {
 
         // Process full chunks
         for (a_chunk, b_chunk) in chunks.zip(b_chunks) {
-            let a_simd = if a_chunk.len() == 8 {
-                f32x8::new([
-                    a_chunk[0], a_chunk[1], a_chunk[2], a_chunk[3], a_chunk[4], a_chunk[5],
-                    a_chunk[6], a_chunk[7],
-                ])
-            } else {
-                // Handle partial chunks by padding with zeros
-                let mut padded = [0.0f32; 8];
-                padded[..a_chunk.len()].copy_from_slice(a_chunk);
-                f32x8::new(padded)
-            };
+            let a_simd = f32x8::new([
+                a_chunk[0], a_chunk[1], a_chunk[2], a_chunk[3], a_chunk[4], a_chunk[5], a_chunk[6],
+                a_chunk[7],
+            ]);
 
-            let b_simd = if b_chunk.len() == 8 {
-                f32x8::new([
-                    b_chunk[0], b_chunk[1], b_chunk[2], b_chunk[3], b_chunk[4], b_chunk[5],
-                    b_chunk[6], b_chunk[7],
-                ])
-            } else {
-                // Handle partial chunks by padding with zeros
-                let mut padded = [0.0f32; 8];
-                padded[..b_chunk.len()].copy_from_slice(b_chunk);
-                f32x8::new(padded)
-            };
+            let b_simd = f32x8::new([
+                b_chunk[0], b_chunk[1], b_chunk[2], b_chunk[3], b_chunk[4], b_chunk[5], b_chunk[6],
+                b_chunk[7],
+            ]);
 
-            dot = a_simd.mul_add(b_simd, dot);
-            norm_a = a_simd.mul_add(a_simd, norm_a);
-            norm_b = b_simd.mul_add(b_simd, norm_b);
+            dot = (a_simd * b_simd) + dot;
+            norm_a = (a_simd * a_simd) + norm_a;
+            norm_b = (b_simd * b_simd) + norm_b;
         }
 
         // Reduce SIMD vectors to scalars

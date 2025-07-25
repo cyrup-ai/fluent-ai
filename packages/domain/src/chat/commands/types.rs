@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{AsyncStream, AsyncStreamSender};
+use fluent_ai_async::emit;
 
 /// Command execution errors with minimal allocations
 #[derive(Error, Debug, Clone)]
@@ -445,6 +446,23 @@ pub enum OutputType {
     Binary,
 }
 
+/// Streaming parse token for command tokenization
+#[derive(Debug, Clone)]
+pub enum ParseToken {
+    /// Command name token
+    CommandName(String),
+    /// Argument token
+    Argument(String),
+    /// Flag token (starts with --)
+    Flag(String),
+    /// Value token for flag
+    Value(String),
+    /// Parsing completed successfully
+    ParseComplete(ImmutableChatCommand),
+    /// Parsing failed with error
+    ParseError(String),
+}
+
 /// Search-related enums
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SearchScope {
@@ -863,7 +881,65 @@ impl CommandParser {
         })
     }
 
-    /// Parse config command
+    /// Parse config command with streaming tokenization (zero-allocation)
+    pub fn parse_config_command_stream(args: Vec<String>) -> AsyncStream<ParseToken> {
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                // Emit command name token
+                emit!(sender, ParseToken::CommandName("config".to_string()));
+
+                let mut show = false;
+                let mut reset = false;
+                let mut key: Option<String> = None;
+                let mut value: Option<String> = None;
+
+                // Stream tokenization with zero allocation
+                let mut i = 0;
+                while i < args.len() {
+                    let arg = &args[i];
+                    
+                    if arg.starts_with("--") || arg.starts_with("-") {
+                        // Emit flag token
+                        emit!(sender, ParseToken::Flag(arg.clone()));
+                        
+                        match arg.as_str() {
+                            "--show" | "-s" => {
+                                show = true;
+                            }
+                            "--reset" | "-r" => {
+                                reset = true;
+                            }
+                            _ => {
+                                emit!(sender, ParseToken::ParseError(format!("Unknown flag: {}", arg)));
+                                return;
+                            }
+                        }
+                    } else {
+                        // Emit argument token
+                        emit!(sender, ParseToken::Argument(arg.clone()));
+                        
+                        if key.is_none() {
+                            key = Some(arg.clone());
+                        } else if value.is_none() {
+                            emit!(sender, ParseToken::Value(arg.clone()));
+                            value = Some(arg.clone());
+                        }
+                    }
+                    i += 1;
+                }
+
+                // Emit completion token with parsed command
+                emit!(sender, ParseToken::ParseComplete(ImmutableChatCommand::Config {
+                    key,
+                    value,
+                    show,
+                    reset,
+                }));
+            });
+        })
+    }
+
+    /// Parse config command (legacy compatibility)  
     #[inline]
     fn parse_config_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
         let show = args.contains(&"--show") || args.contains(&"-s");
@@ -885,42 +961,157 @@ impl CommandParser {
         })
     }
 
-    /// Parse search command
-    #[inline]
-    fn parse_search_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
-        let query = if args.is_empty() {
-            String::new()
-        } else {
-            args[0].to_string()
-        };
+    /// Parse search command with streaming tokenization (zero-allocation)
+    pub fn parse_search_command_stream(args: Vec<String>) -> AsyncStream<ParseToken> {
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                // Emit command name token
+                emit!(sender, ParseToken::CommandName("search".to_string()));
 
-        let scope = if args.contains(&"--current") {
-            SearchScope::Current
-        } else if args.contains(&"--recent") {
-            SearchScope::Recent
-        } else if args.contains(&"--bookmarked") {
-            SearchScope::Bookmarked
-        } else {
-            SearchScope::All
-        };
+                let mut query = String::new();
+                let mut scope = SearchScope::All;
+                let mut limit: Option<usize> = None;
+                let mut include_context = false;
 
-        let limit = args
-            .iter()
-            .position(|&arg| arg == "--limit")
-            .and_then(|pos| args.get(pos + 1))
-            .and_then(|s| s.parse().ok());
+                // Stream tokenization with zero allocation
+                let mut i = 0;
+                while i < args.len() {
+                    let arg = &args[i];
+                    
+                    if arg.starts_with("--") {
+                        // Emit flag token
+                        emit!(sender, ParseToken::Flag(arg.clone()));
+                        
+                        match arg.as_str() {
+                            "--current" => {
+                                scope = SearchScope::Current;
+                            }
+                            "--recent" => {
+                                scope = SearchScope::Recent;
+                            }
+                            "--bookmarked" => {
+                                scope = SearchScope::Bookmarked;
+                            }
+                            "--context" => {
+                                include_context = true;
+                            }
+                            "--limit" => {
+                                if let Some(limit_str) = args.get(i + 1) {
+                                    emit!(sender, ParseToken::Value(limit_str.clone()));
+                                    if let Ok(parsed_limit) = limit_str.parse::<usize>() {
+                                        limit = Some(parsed_limit);
+                                        i += 1; // Skip the value in next iteration
+                                    } else {
+                                        emit!(sender, ParseToken::ParseError(format!("Invalid limit value: {}", limit_str)));
+                                        return;
+                                    }
+                                }
+                            }
+                            _ => {
+                                emit!(sender, ParseToken::ParseError(format!("Unknown flag: {}", arg)));
+                                return;
+                            }
+                        }
+                    } else {
+                        // Emit argument token
+                        emit!(sender, ParseToken::Argument(arg.clone()));
+                        if query.is_empty() {
+                            query = arg.clone();
+                        }
+                    }
+                    i += 1;
+                }
 
-        let include_context = args.contains(&"--context");
-
-        Ok(ImmutableChatCommand::Search {
-            query,
-            scope,
-            limit,
-            include_context,
+                // Emit completion token with parsed command
+                emit!(sender, ParseToken::ParseComplete(ImmutableChatCommand::Search {
+                    query,
+                    scope,
+                    limit,
+                    include_context,
+                }));
+            });
         })
     }
 
-    /// Parse template command
+    /// Parse template command with streaming tokenization (zero-allocation)
+    pub fn parse_template_command_stream(args: Vec<String>) -> AsyncStream<ParseToken> {
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                // Emit command name token
+                emit!(sender, ParseToken::CommandName("template".to_string()));
+
+                let mut action = TemplateAction::Use;
+                let mut name: Option<String> = None;
+                let mut content: Option<String> = None;
+                let mut variables = HashMap::new();
+
+                // Stream tokenization with zero allocation
+                let mut i = 0;
+                while i < args.len() {
+                    let arg = &args[i];
+                    
+                    if arg.starts_with("--") {
+                        // Emit flag token
+                        emit!(sender, ParseToken::Flag(arg.clone()));
+                        
+                        match arg.as_str() {
+                            "--list" => {
+                                action = TemplateAction::List;
+                            }
+                            "--create" => {
+                                action = TemplateAction::Create;
+                            }
+                            "--delete" => {
+                                action = TemplateAction::Delete;
+                            }
+                            "--edit" => {
+                                action = TemplateAction::Edit;
+                            }
+                            "--var" => {
+                                // Handle variable assignments like --var key=value
+                                if let Some(var_assignment) = args.get(i + 1) {
+                                    emit!(sender, ParseToken::Value(var_assignment.clone()));
+                                    if let Some(eq_pos) = var_assignment.find('=') {
+                                        let key = var_assignment[..eq_pos].to_string();
+                                        let value = var_assignment[eq_pos + 1..].to_string();
+                                        variables.insert(key, value);
+                                        i += 1; // Skip the value in next iteration
+                                    } else {
+                                        emit!(sender, ParseToken::ParseError(format!("Invalid variable assignment: {}", var_assignment)));
+                                        return;
+                                    }
+                                }
+                            }
+                            _ => {
+                                emit!(sender, ParseToken::ParseError(format!("Unknown flag: {}", arg)));
+                                return;
+                            }
+                        }
+                    } else {
+                        // Emit argument token
+                        emit!(sender, ParseToken::Argument(arg.clone()));
+                        
+                        if name.is_none() {
+                            name = Some(arg.clone());
+                        } else if content.is_none() {
+                            content = Some(arg.clone());
+                        }
+                    }
+                    i += 1;
+                }
+
+                // Emit completion token with parsed command
+                emit!(sender, ParseToken::ParseComplete(ImmutableChatCommand::Template {
+                    action,
+                    name,
+                    content,
+                    variables,
+                }));
+            });
+        })
+    }
+
+    /// Parse template command (legacy compatibility)
     #[inline]
     fn parse_template_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
         let action = if args.contains(&"--list") {
@@ -954,7 +1145,73 @@ impl CommandParser {
         })
     }
 
-    /// Parse macro command
+    /// Parse macro command with streaming tokenization (zero-allocation)
+    pub fn parse_macro_command_stream(args: Vec<String>) -> AsyncStream<ParseToken> {
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                // Emit command name token
+                emit!(sender, ParseToken::CommandName("macro".to_string()));
+
+                let mut action = MacroAction::Execute;
+                let mut name: Option<String> = None;
+                let mut commands: Vec<String> = Vec::new();
+                let auto_execute = false;
+
+                // Stream tokenization with zero allocation
+                let mut i = 0;
+                let mut found_name = false;
+                while i < args.len() {
+                    let arg = &args[i];
+                    
+                    if arg.starts_with("--") {
+                        // Emit flag token
+                        emit!(sender, ParseToken::Flag(arg.clone()));
+                        
+                        match arg.as_str() {
+                            "--list" => {
+                                action = MacroAction::List;
+                            }
+                            "--create" => {
+                                action = MacroAction::Create;
+                            }
+                            "--delete" => {
+                                action = MacroAction::Delete;
+                            }
+                            "--edit" => {
+                                action = MacroAction::Edit;
+                            }
+                            _ => {
+                                emit!(sender, ParseToken::ParseError(format!("Unknown flag: {}", arg)));
+                                return;
+                            }
+                        }
+                    } else {
+                        // Emit argument token
+                        emit!(sender, ParseToken::Argument(arg.clone()));
+                        
+                        if !found_name && name.is_none() {
+                            name = Some(arg.clone());
+                            found_name = true;
+                        } else {
+                            // Remaining arguments are commands
+                            commands.push(arg.clone());
+                        }
+                    }
+                    i += 1;
+                }
+
+                // Emit completion token with parsed command
+                emit!(sender, ParseToken::ParseComplete(ImmutableChatCommand::Macro {
+                    action,
+                    name,
+                    auto_execute,
+                    commands,
+                }));
+            });
+        })
+    }
+
+    /// Parse macro command (legacy compatibility)
     #[inline]
     fn parse_macro_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
         let action = if args.contains(&"--list") {
@@ -1021,7 +1278,79 @@ impl CommandParser {
         })
     }
 
-    /// Parse session command
+    /// Parse session command with streaming tokenization (zero-allocation)
+    pub fn parse_session_command_stream(args: Vec<String>) -> AsyncStream<ParseToken> {
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                // Emit command name token
+                emit!(sender, ParseToken::CommandName("session".to_string()));
+
+                let mut action = SessionAction::List;
+                let mut name: Option<String> = None;
+                let mut include_config = false;
+
+                // Stream tokenization with zero allocation
+                let mut i = 0;
+                while i < args.len() {
+                    let arg = &args[i];
+                    
+                    if arg.starts_with("--") {
+                        // Emit flag token
+                        emit!(sender, ParseToken::Flag(arg.clone()));
+                        
+                        if arg.contains('=') {
+                            // Handle --key=value format for config
+                            let parts: Vec<&str> = arg.splitn(2, '=').collect();
+                            if parts.len() == 2 {
+                                let key = &parts[0][2..]; // Remove "--" prefix
+                                let value = parts[1];
+                                emit!(sender, ParseToken::Value(format!("{}={}", key, value)));
+                                include_config = true;
+                            }
+                        } else {
+                            match arg.as_str() {
+                                "--new" => {
+                                    action = SessionAction::New;
+                                }
+                                "--switch" => {
+                                    action = SessionAction::Switch;
+                                }
+                                "--delete" => {
+                                    action = SessionAction::Delete;
+                                }
+                                "--export" => {
+                                    action = SessionAction::Export;
+                                }
+                                "--import" => {
+                                    action = SessionAction::Import;
+                                }
+                                _ => {
+                                    emit!(sender, ParseToken::ParseError(format!("Unknown flag: {}", arg)));
+                                    return;
+                                }
+                            }
+                        }
+                    } else {
+                        // Emit argument token
+                        emit!(sender, ParseToken::Argument(arg.clone()));
+                        if name.is_none() {
+                            name = Some(arg.clone());
+                        }
+                    }
+                    i += 1;
+                }
+
+                // Emit completion token with parsed command
+                emit!(sender, ParseToken::ParseComplete(ImmutableChatCommand::Session {
+                    action,
+                    name,
+                    include_config,
+                }));
+            });
+        })
+    }
+
+    /// Parse session command (legacy compatibility)
     #[inline]
     fn parse_session_command(args: &[&str]) -> CommandResult<ImmutableChatCommand> {
         let action = if args.contains(&"--new") {
@@ -1043,12 +1372,27 @@ impl CommandParser {
             .find(|&&arg| !arg.starts_with("--"))
             .map(|s| s.to_string());
 
-        let config: std::collections::HashMap<String, String> = std::collections::HashMap::new(); // Empty config for now
+        // Parse configuration key-value pairs from arguments (--key=value format)
+        let config: std::collections::HashMap<String, String> = args
+            .iter()
+            .filter_map(|&arg| {
+                if arg.starts_with("--") && arg.contains('=') {
+                    let parts: Vec<&str> = arg.splitn(2, '=').collect();
+                    if parts.len() == 2 {
+                        Some((parts[0][2..].to_string(), parts[1].to_string()))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         Ok(ImmutableChatCommand::Session {
             action,
             name,
-            include_config: false,
+            include_config: !config.is_empty(),
         })
     }
 

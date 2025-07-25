@@ -439,9 +439,8 @@ impl StreamingContextProcessor {
             // Validate input
             if let Err(validation_error) = Self::validate_file_context(&context) {
                 let error = ContextError::ValidationError(validation_error.to_string());
-                fluent_ai_async::handle_error!(error, "File context validation failed");
-
-                // Emit validation failed event
+                
+                // Emit validation failed event before terminating
                 if let Some(ref events) = event_sender {
                     let _ = events.send(ContextEvent::ValidationFailed {
                         validation_type: "FileContext".to_string(),
@@ -449,7 +448,8 @@ impl StreamingContextProcessor {
                         timestamp: SystemTime::now(),
                     });
                 }
-                return;
+                
+                fluent_ai_async::handle_error!(error, "File context validation failed");
             }
 
             // Process file context
@@ -470,9 +470,7 @@ impl StreamingContextProcessor {
                     }
                 }
                 Err(error) => {
-                    fluent_ai_async::handle_error!(error, "File document loading failed");
-
-                    // Emit context load failed event
+                    // Emit context load failed event before terminating
                     if let Some(ref events) = event_sender {
                         let _ = events.send(ContextEvent::ContextLoadFailed {
                             context_type: "File".to_string(),
@@ -481,6 +479,8 @@ impl StreamingContextProcessor {
                             timestamp: SystemTime::now(),
                         });
                     }
+                    
+                    fluent_ai_async::handle_error!(error, "File document loading failed");
                 }
             }
         })
@@ -920,7 +920,6 @@ impl Context<Github> {
                                 ),
                                 "GitHub repository URL missing"
                             );
-                            return;
                         }
 
                         // For now, return a meaningful error indicating GitHub integration needs external dependencies

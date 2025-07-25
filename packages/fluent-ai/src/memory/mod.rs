@@ -91,12 +91,12 @@ pub trait MemoryManagerTrait: Send + Sync {
     fn get_memory(
         &self,
         _id: &str,
-    ) -> fluent_ai_domain::AsyncStream<Result<Option<MemoryNode>, Error>> {
+    ) -> fluent_ai_domain::AsyncStream<Option<MemoryNode>> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        tokio::spawn(async move {
-            let _ = tx.send(Ok(None));
-        });
-        tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
+        fluent_ai_domain::AsyncStream::with_channel(move |sender| {
+            // Use handle_error! for proper internal error handling
+            let _ = sender.send(None);
+        })
     }
     fn delete_memory(&self, _id: &str) -> fluent_ai_domain::AsyncStream<bool> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
@@ -108,7 +108,7 @@ pub trait MemoryManagerTrait: Send + Sync {
     fn create_memory(
         &self,
         node: MemoryNode,
-    ) -> fluent_ai_domain::AsyncStream<Result<MemoryNode, Error>> {
+    ) -> fluent_ai_domain::AsyncStream<MemoryNode> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         tokio::spawn(async move {
             let _ = tx.send(Ok(node));
@@ -118,7 +118,7 @@ pub trait MemoryManagerTrait: Send + Sync {
     fn update_memory(
         &self,
         node: MemoryNode,
-    ) -> fluent_ai_domain::AsyncStream<Result<MemoryNode, Error>> {
+    ) -> fluent_ai_domain::AsyncStream<MemoryNode> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         tokio::spawn(async move {
             let _ = tx.send(Ok(node));
@@ -128,7 +128,7 @@ pub trait MemoryManagerTrait: Send + Sync {
     fn create_relationship(
         &self,
         rel: MemoryRelationship,
-    ) -> fluent_ai_domain::AsyncStream<Result<MemoryRelationship, Error>> {
+    ) -> fluent_ai_domain::AsyncStream<MemoryRelationship> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         tokio::spawn(async move {
             let _ = tx.send(Ok(rel));

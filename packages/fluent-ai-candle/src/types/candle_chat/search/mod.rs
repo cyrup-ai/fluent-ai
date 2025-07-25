@@ -12,6 +12,7 @@ pub mod index;
 pub mod tags;
 pub mod export;
 pub mod error;
+pub mod history_export;
 
 // Re-export public types for convenience
 pub use types::{
@@ -21,7 +22,11 @@ pub use types::{
 };
 
 pub use index::{
-    ChatSearchIndex, TermFrequency, IndexEntry,
+    ChatSearchIndex, IndexEntry,
+};
+
+pub use types::{
+    TermFrequency,
 };
 
 pub use tags::{
@@ -38,10 +43,9 @@ pub use error::{
 
 use std::sync::Arc;
 use fluent_ai_async::AsyncStream;
+use crate::types::candle_chat::message::types::CandleMessage;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
-
-use crate::types::candle_chat::SearchChatMessage;
 
 /// Enhanced history management system
 ///
@@ -89,7 +93,7 @@ impl EnhancedHistoryManager {
     }
 
     /// Add a message to both search index and tagging system
-    pub fn add_message_stream(&self, message: SearchChatMessage) -> AsyncStream<()> {
+    pub fn add_message_stream(&self, message: CandleMessage) -> AsyncStream<()> {
         let search_index = Arc::clone(&self.search_index);
         let tagger = Arc::clone(&self.tagger);
         let statistics = Arc::clone(&self.statistics);
@@ -150,7 +154,7 @@ impl EnhancedHistoryManager {
     /// Export conversation history with full options
     pub fn export_history_stream(
         &self,
-        messages: Vec<SearchChatMessage>,
+        messages: Vec<CandleMessage>,
         options: ExportOptions,
     ) -> AsyncStream<String> {
         let exporter = Arc::clone(&self.exporter);

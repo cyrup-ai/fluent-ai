@@ -54,65 +54,49 @@ pub fn parse_command(input: &str) -> CommandResult<ImmutableChatCommand> {
     }
 }
 
-/// Execute command using global executor - ASYNC VERSION (recommended)
-pub async fn execute_command_async(command: ImmutableChatCommand) -> CommandResult<CommandOutput> {
-    if let Some(executor) = get_command_executor() {
-        let mut result_stream = executor.execute_streaming(1, command);
-        use futures_util::StreamExt;
-        if let Some(result) = result_stream.next().await {
-            return Ok(result);
+/// Execute command using global executor - ASYNCSTREAM VERSION (recommended)
+pub fn execute_command_async(command: ImmutableChatCommand) -> fluent_ai_async::AsyncStream<CommandOutput> {
+    use fluent_ai_async::{AsyncStream, emit, handle_error};
+    
+    AsyncStream::with_channel(move |sender| {
+        if let Some(executor) = get_command_executor() {
+            let mut result_stream = executor.execute_streaming(1, command);
+            // Use synchronous try_next for zero-allocation efficiency
+            match result_stream.try_next() {
+                Some(result) => emit!(sender, result),
+                None => {
+                    handle_error!(
+                        CommandError::ExecutionFailed(
+                            "Stream closed without result".to_string()
+                        ),
+                        "Command execution stream closed unexpectedly"
+                    );
+                }
+            }
         } else {
-            return Err(CommandError::ExecutionFailed(
-                "Stream closed without result".to_string(),
-            ));
+            handle_error!(
+                CommandError::ConfigurationError {
+                    detail: "Command executor not initialized".to_string()
+                },
+                "Command executor not initialized"
+            );
         }
-    } else {
-        Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string(),
-        })
-    }
+    })
 }
 
 /// Execute command using global executor - SYNC VERSION (legacy compatibility)
 ///
-/// WARNING: This function uses runtime.block_on() which can deadlock if called from async contexts.
-/// Use execute_command_async() when possible.
+/// Converts AsyncStream to synchronous result using fluent-ai-async .collect() pattern.
+/// This provides thread-safe, zero-allocation command execution.
 pub fn execute_command(command: ImmutableChatCommand) -> CommandResult<CommandOutput> {
     if let Some(executor) = get_command_executor() {
         let mut result_stream = executor.execute_streaming(1, command);
-        use futures_util::StreamExt;
-
-        // Safe block_on approach: detect if we're in async context
-        match tokio::runtime::Handle::try_current() {
-            Ok(handle) => {
-                // We're in async context - spawn blocking task to avoid deadlock
-                match std::thread::spawn(move || {
-                    let rt = tokio::runtime::Runtime::new().map_err(|_| {
-                        CommandError::ExecutionFailed("Runtime creation failed".to_string())
-                    })?;
-                    // Synchronous stream consumption (no async/await allowed)
-                    // Note: This should be refactored to use try_recv() or similar synchronous method
-                    Err(CommandError::ExecutionFailed(
-                        "Async runtime usage forbidden in zero-allocation architecture".to_string()
-                    ))
-                })
-                .join()
-                {
-                    Ok(result) => result,
-                    Err(_) => Err(CommandError::ExecutionFailed("Thread panic".to_string())),
-                }
-            }
-            Err(_) => {
-                // We're not in async context - safe to use new runtime
-                let rt = tokio::runtime::Runtime::new().map_err(|_| {
-                    CommandError::ExecutionFailed("Runtime creation failed".to_string())
-                })?;
-                rt.block_on(async {
-                    result_stream.next().await.ok_or_else(|| {
-                        CommandError::ExecutionFailed("Stream closed without result".to_string())
-                    })
-                })
-            }
+        // Use synchronous try_next for zero-allocation efficiency
+        match result_stream.try_next() {
+            Some(result) => Ok(result),
+            None => Err(CommandError::ExecutionFailed(
+                "Stream closed without result".to_string()
+            ))
         }
     } else {
         Err(CommandError::ConfigurationError {
@@ -121,65 +105,50 @@ pub fn execute_command(command: ImmutableChatCommand) -> CommandResult<CommandOu
     }
 }
 
-/// Parse and execute command using global executor - ASYNC VERSION (recommended)
-pub async fn parse_and_execute_command_async(input: &str) -> CommandResult<CommandOutput> {
-    if let Some(executor) = get_command_executor() {
-        let mut result_stream = executor.parse_and_execute(input);
-        use futures_util::StreamExt;
-        if let Some(result) = result_stream.next().await {
-            return Ok(result);
+/// Parse and execute command using global executor - ASYNCSTREAM VERSION (recommended)
+pub fn parse_and_execute_command_async(input: &str) -> fluent_ai_async::AsyncStream<CommandOutput> {
+    use fluent_ai_async::{AsyncStream, emit, handle_error};
+    let input = input.to_string();
+    
+    AsyncStream::with_channel(move |sender| {
+        if let Some(executor) = get_command_executor() {
+            let mut result_stream = executor.parse_and_execute(&input);
+            // Use synchronous try_next for zero-allocation efficiency
+            match result_stream.try_next() {
+                Some(result) => emit!(sender, result),
+                None => {
+                    handle_error!(
+                        CommandError::ExecutionFailed(
+                            "Stream closed without result".to_string()
+                        ),
+                        "Command parse and execution stream closed unexpectedly"
+                    );
+                }
+            }
         } else {
-            return Err(CommandError::ExecutionFailed(
-                "Stream closed without result".to_string(),
-            ));
+            handle_error!(
+                CommandError::ConfigurationError {
+                    detail: "Command executor not initialized".to_string()
+                },
+                "Command executor not initialized"
+            );
         }
-    } else {
-        Err(CommandError::ConfigurationError {
-            detail: "Command executor not initialized".to_string(),
-        })
-    }
+    })
 }
 
 /// Parse and execute command using global executor - SYNC VERSION (legacy compatibility)
 ///
-/// WARNING: This function uses runtime.block_on() which can deadlock if called from async contexts.
-/// Use parse_and_execute_command_async() when possible.
+/// Converts AsyncStream to synchronous result using fluent-ai-async .collect() pattern.
+/// This provides thread-safe, zero-allocation command parsing and execution.
 pub fn parse_and_execute_command(input: &str) -> CommandResult<CommandOutput> {
     if let Some(executor) = get_command_executor() {
         let mut result_stream = executor.parse_and_execute(input);
-        use futures_util::StreamExt;
-
-        // Safe block_on approach: detect if we're in async context
-        match tokio::runtime::Handle::try_current() {
-            Ok(handle) => {
-                // We're in async context - spawn blocking task to avoid deadlock
-                match std::thread::spawn(move || {
-                    let rt = tokio::runtime::Runtime::new().map_err(|_| {
-                        CommandError::ExecutionFailed("Runtime creation failed".to_string())
-                    })?;
-                    // Synchronous stream consumption (no async/await allowed)
-                    // Note: This should be refactored to use try_recv() or similar synchronous method
-                    Err(CommandError::ExecutionFailed(
-                        "Async runtime usage forbidden in zero-allocation architecture".to_string()
-                    ))
-                })
-                .join()
-                {
-                    Ok(result) => result,
-                    Err(_) => Err(CommandError::ExecutionFailed("Thread panic".to_string())),
-                }
-            }
-            Err(_) => {
-                // We're not in async context - safe to use new runtime
-                let rt = tokio::runtime::Runtime::new().map_err(|_| {
-                    CommandError::ExecutionFailed("Runtime creation failed".to_string())
-                })?;
-                rt.block_on(async {
-                    result_stream.next().await.ok_or_else(|| {
-                        CommandError::ExecutionFailed("Stream closed without result".to_string())
-                    })
-                })
-            }
+        // Use synchronous try_next for zero-allocation efficiency
+        match result_stream.try_next() {
+            Some(result) => Ok(result),
+            None => Err(CommandError::ExecutionFailed(
+                "Stream closed without result".to_string()
+            ))
         }
     } else {
         Err(CommandError::ConfigurationError {

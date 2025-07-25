@@ -40,8 +40,9 @@ fn apply_repetition_penalty(
     token_history: &[u32],
     penalty: f32,
 ) -> LogitsResult<()> {
+    let mut seen = std::collections::HashSet::new();
     for &token in token_history {
-        if (token as usize) < logits.len() {
+        if (token as usize) < logits.len() && seen.insert(token) {
             if logits[token as usize] > 0.0 {
                 logits[token as usize] /= penalty;
             } else {
@@ -59,7 +60,7 @@ fn apply_frequency_penalty(
     penalty: f32,
 ) -> LogitsResult<()> {
     // Count token frequencies
-    let mut freqs = SmallVec::<[u32; 512]>::from_elem(0, logits.len().min(512));
+    let mut freqs = SmallVec::<u32, 512>::from_elem(0, logits.len().min(512));
     for &token in token_history {
         if (token as usize) < freqs.len() {
             freqs[token as usize] += 1;
@@ -104,10 +105,10 @@ mod tests {
     #[test]
     fn test_repetition_penalty() {
         let mut logits = vec![1.0, 2.0, 3.0];
-        let history = vec![0, 2];
+        let history = vec![0, 2, 0]; // Test with duplicate
         apply_repetition_penalty(&mut logits, &history, 2.0).unwrap();
 
-        // First and third elements should be penalized
+        // First and third elements should be penalized once each
         assert_float_eq!(logits[0], 0.5, abs <= 1e-6); // 1.0 / 2.0
         assert_float_eq!(logits[1], 2.0, abs <= 1e-6); // No penalty
         assert_float_eq!(logits[2], 1.5, abs <= 1e-6); // 3.0 / 2.0

@@ -20,7 +20,7 @@ pub trait Tool: Send + Sync + fmt::Debug + Clone {
     fn parameters(&self) -> &Value;
 
     /// Execute the tool with given arguments
-    fn execute(&self, args: Value) -> AsyncStream<Result<Value, String>>;
+    fn execute(&self, args: Value) -> AsyncStream<Value>;
 }
 
 /// MCP tool trait - extends Tool with MCP-specific functionality

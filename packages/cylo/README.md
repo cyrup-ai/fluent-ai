@@ -25,7 +25,7 @@ cylo (Iron Executor) is a secure service for executing code snippets in multiple
   - rust-script (for Rust code execution)
   - Python 3 (for Python code execution)
   - Node.js (for JavaScript execution)
-  
+
 ### Linux System Requirements
 
 - Kernel 5.11 or newer recommended
@@ -38,10 +38,10 @@ cylo (Iron Executor) is a secure service for executing code snippets in multiple
   ```bash
   # Enable user namespaces
   sudo sysctl -w kernel.unprivileged_userns_clone=1
-  
+
   # For permanent change:
   echo 'kernel.unprivileged_userns_clone=1' | sudo tee /etc/sysctl.d/00-local-userns.conf
-  
+
   # If using AppArmor, set the profile to complain mode:
   sudo aa-complain /usr/bin/cargo
   ```
@@ -133,7 +133,7 @@ docker run -it --rm cylo exec --lang python "print('Hello from Docker!')"
 
 ## Architecture
 
-For detailed information about the project's architecture, please see [ARCHITECTURE.md](ARCHITECTURE.md).
+For detailed information about the project's architecture, please see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Contributing
 

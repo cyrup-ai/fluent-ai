@@ -138,7 +138,7 @@ impl CommandMiddleware for SecurityMiddleware {
         &'a self,
         command: &'a ChatCommand,
         _context: &'a CommandContext,
-    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>> {
+    ) -> fluent_ai_domain::AsyncStream<()> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let rate_limiter = self.rate_limiter.clone();
         let policy = self.policy.clone();
@@ -164,12 +164,12 @@ impl CommandMiddleware for SecurityMiddleware {
         _command: &'a ChatCommand,
         _context: &'a CommandContext,
         _result: &'a CommandResult<CommandOutput>,
-    ) -> fluent_ai_domain::AsyncStream<Result<(), CommandError>> {
+    ) -> fluent_ai_domain::AsyncStream<()> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         tokio::spawn(async move {
             // Security post-processing if needed
-            let _ = tx.send(Ok(()));
+            let _ = tx.send(());
         });
 
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)

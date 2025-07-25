@@ -201,8 +201,8 @@ impl CandleModel {
     /// Synchronous hub model loading implementation
     fn load_from_hub_sync(
         &self,
-        repo_id: &str,
-        filename: &str,
+        _repo_id: &str,
+        _filename: &str,
         kimi_config: crate::model::fluent::kimi_k2::model::KimiK2Config,
         var_builder: candle_nn::VarBuilder,
     ) -> CandleResult<()> {

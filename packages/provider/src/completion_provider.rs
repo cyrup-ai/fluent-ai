@@ -29,7 +29,7 @@ pub struct Ready;
 pub use CompletionCoreError as CompletionError;
 
 /// Chunk handler with cyrup_sugars pattern matching
-pub type ChunkHandler = Box<dyn Fn(Result<CompletionChunk, CompletionError>) + Send + Sync>;
+pub type ChunkHandler = Box<dyn Fn(CompletionChunk) + Send + Sync>;
 
 /// Automatic API key discovery using provider's env_api_keys() method
 #[inline(always)]
@@ -349,7 +349,7 @@ pub struct StreamingResponse<T> {
     /// The raw provider-specific streaming response
     pub raw_response: T,
     /// Stream of completion chunks
-    pub stream: AsyncStream<Result<CompletionChunk, CompletionError>>,
+    pub stream: AsyncStream<CompletionChunk>,
     /// Response metadata (filled as chunks arrive)
     pub metadata: ResponseMetadata,
 }
@@ -359,7 +359,7 @@ impl<T> StreamingResponse<T> {
     #[inline(always)]
     pub fn new(
         raw_response: T,
-        stream: AsyncStream<Result<CompletionChunk, CompletionError>>,
+        stream: AsyncStream<CompletionChunk>,
     ) -> Self {
         Self {
             raw_response,

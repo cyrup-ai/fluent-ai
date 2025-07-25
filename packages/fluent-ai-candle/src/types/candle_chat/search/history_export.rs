@@ -10,7 +10,7 @@ use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::core_types::{SearchQuery, DateRange};
+use super::types::{SearchQuery, DateRange};
 use crate::types::CandleSearchChatMessage;
 
 /// Handle errors in streaming context without panicking

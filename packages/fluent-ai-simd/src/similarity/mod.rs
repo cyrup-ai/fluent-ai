@@ -5,7 +5,7 @@
 
 #![allow(dead_code)] // Temporary until all implementations are added
 
-mod metrics;
+pub mod metrics;
 mod scalar;
 mod simd;
 mod traits;
@@ -13,7 +13,7 @@ mod traits;
 use std::sync::Arc;
 
 use lazy_static::lazy_static;
-pub use metrics::{get_similarity_metrics, reset_similarity_metrics, SimilarityMetricsSnapshot};
+pub use metrics::SimilarityMetricsSnapshot;
 pub use scalar::ScalarSimilarity;
 pub use simd::portable::PortableSimdSimilarity;
 pub use traits::{CosineSimilarity, RuntimeSelectable, SimilarityBuilder};

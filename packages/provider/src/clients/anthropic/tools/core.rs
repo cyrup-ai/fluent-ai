@@ -27,7 +27,7 @@ pub enum SchemaType {
 
 /// Zero-allocation closure storage types for event handlers
 pub type InvocationHandler<D, Req, Res> =
-    Box<dyn Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<AnthropicResult<()>> + Send + Sync>;
+    Box<dyn Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<()> + Send + Sync>;
 pub type ErrorHandler<D> =
     Box<dyn Fn(&Conversation, &ChainControl, AnthropicError, &D) + Send + Sync>;
 pub type ResultHandler<D, Res> =
@@ -106,7 +106,7 @@ pub trait ToolExecutor: Send + Sync {
         &self,
         input: Value,
         context: &ToolExecutionContext,
-    ) -> AsyncStream<AnthropicResult<Value>>;
+    ) -> AsyncStream<Value>;
 }
 
 /// Tool execution context with zero-allocation access to conversation state

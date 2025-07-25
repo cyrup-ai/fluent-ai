@@ -21,7 +21,7 @@ use once_cell::sync::Lazy;
 pub use parsing::{CommandParser, ParseError, ParseResult};
 pub use registry::CommandRegistry;
 pub use response::ResponseFormatter;
-pub use types::*;
+pub use types::{ImmutableChatCommand, CommandError, CommandResult, CommandContext, CommandOutput};
 pub use validation::CommandValidator;
 
 /// Global command executor instance - PURE SYNC (no futures)
@@ -85,44 +85,17 @@ pub fn execute_command_async(command: ImmutableChatCommand) -> AsyncStream<Comma
 
 /// Execute command using global executor - SYNC VERSION (legacy compatibility)
 ///
-/// WARNING: This function uses runtime.block_on() which can deadlock if called from async contexts.
-/// Use execute_command_async() when possible.
+/// Converts AsyncStream to synchronous result using fluent-ai-async .collect() pattern.
+/// This provides thread-safe, zero-allocation command execution.
 pub fn execute_command(command: ImmutableChatCommand) -> CommandResult<CommandOutput> {
     if let Some(executor) = get_command_executor() {
         let mut result_stream = executor.execute_streaming(1, command);
-        use futures_util::StreamExt;
-
-        // Safe block_on approach: detect if we're in async context
-        match tokio::runtime::Handle::try_current() {
-            Ok(_handle) => {
-                // We're in async context - spawn blocking task to avoid deadlock
-                match std::thread::spawn(move || {
-                    let rt = tokio::runtime::Runtime::new().map_err(|_| {
-                        CommandError::ExecutionFailed("Runtime creation failed".to_string())
-                    })?;
-                    // Synchronous stream consumption (no async/await allowed)
-                    // Note: This should be refactored to use try_recv() or similar synchronous method
-                    Err(CommandError::ExecutionFailed(
-                        "Async runtime usage forbidden in zero-allocation architecture".to_string()
-                    ))
-                })
-                .join()
-                {
-                    Ok(result) => result,
-                    Err(_) => Err(CommandError::ExecutionFailed("Thread panic".to_string())),
-                }
-            }
-            Err(_) => {
-                // We're not in async context - safe to use new runtime
-                let rt = tokio::runtime::Runtime::new().map_err(|_| {
-                    CommandError::ExecutionFailed("Runtime creation failed".to_string())
-                })?;
-                rt.block_on(async {
-                    result_stream.next().await.ok_or_else(|| {
-                        CommandError::ExecutionFailed("Stream closed without result".to_string())
-                    })
-                })
-            }
+        // Use synchronous try_next for zero-allocation efficiency
+        match result_stream.try_next() {
+            Some(result) => Ok(result),
+            None => Err(CommandError::ExecutionFailed(
+                "Stream closed without result".to_string()
+            ))
         }
     } else {
         Err(CommandError::ConfigurationError {
@@ -163,44 +136,17 @@ pub fn parse_and_execute_command_async(input: &str) -> AsyncStream<CommandOutput
 
 /// Parse and execute command using global executor - SYNC VERSION (legacy compatibility)
 ///
-/// WARNING: This function uses runtime.block_on() which can deadlock if called from async contexts.
-/// Use parse_and_execute_command_async() when possible.
+/// Converts AsyncStream to synchronous result using fluent-ai-async .collect() pattern.
+/// This provides thread-safe, zero-allocation command parsing and execution.
 pub fn parse_and_execute_command(input: &str) -> CommandResult<CommandOutput> {
     if let Some(executor) = get_command_executor() {
         let mut result_stream = executor.parse_and_execute(input);
-        use futures_util::StreamExt;
-
-        // Safe block_on approach: detect if we're in async context
-        match tokio::runtime::Handle::try_current() {
-            Ok(_handle) => {
-                // We're in async context - spawn blocking task to avoid deadlock
-                match std::thread::spawn(move || {
-                    let rt = tokio::runtime::Runtime::new().map_err(|_| {
-                        CommandError::ExecutionFailed("Runtime creation failed".to_string())
-                    })?;
-                    // Synchronous stream consumption (no async/await allowed)
-                    // Note: This should be refactored to use try_recv() or similar synchronous method
-                    Err(CommandError::ExecutionFailed(
-                        "Async runtime usage forbidden in zero-allocation architecture".to_string()
-                    ))
-                })
-                .join()
-                {
-                    Ok(result) => result,
-                    Err(_) => Err(CommandError::ExecutionFailed("Thread panic".to_string())),
-                }
-            }
-            Err(_) => {
-                // We're not in async context - safe to use new runtime
-                let rt = tokio::runtime::Runtime::new().map_err(|_| {
-                    CommandError::ExecutionFailed("Runtime creation failed".to_string())
-                })?;
-                rt.block_on(async {
-                    result_stream.next().await.ok_or_else(|| {
-                        CommandError::ExecutionFailed("Stream closed without result".to_string())
-                    })
-                })
-            }
+        // Use synchronous try_next for zero-allocation efficiency
+        match result_stream.try_next() {
+            Some(result) => Ok(result),
+            None => Err(CommandError::ExecutionFailed(
+                "Stream closed without result".to_string()
+            ))
         }
     } else {
         Err(CommandError::ConfigurationError {

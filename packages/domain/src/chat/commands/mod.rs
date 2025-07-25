@@ -29,7 +29,7 @@ static COMMAND_EXECUTOR: Lazy<Arc<RwLock<Option<CommandExecutor>>>> =
 
 /// Initialize global command executor - PURE SYNC (no futures)
 pub fn initialize_command_executor(context: CommandContext) {
-    let executor = CommandExecutor::new();
+    let executor = CommandExecutor::with_context(&context);
     if let Ok(mut writer) = COMMAND_EXECUTOR.write() {
         *writer = Some(executor);
     }
@@ -84,7 +84,7 @@ pub fn execute_command(command: ImmutableChatCommand) -> CommandResult<CommandOu
 
         // Safe block_on approach: detect if we're in async context
         match tokio::runtime::Handle::try_current() {
-            Ok(handle) => {
+            Ok(_handle) => {
                 // We're in async context - spawn blocking task to avoid deadlock
                 match std::thread::spawn(move || {
                     let rt = tokio::runtime::Runtime::new().map_err(|_| {
@@ -153,7 +153,7 @@ pub fn parse_and_execute_command(input: &str) -> CommandResult<CommandOutput> {
 
         // Safe block_on approach: detect if we're in async context
         match tokio::runtime::Handle::try_current() {
-            Ok(handle) => {
+            Ok(_handle) => {
                 // We're in async context - spawn blocking task to avoid deadlock
                 match std::thread::spawn(move || {
                     let rt = tokio::runtime::Runtime::new().map_err(|_| {

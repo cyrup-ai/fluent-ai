@@ -301,7 +301,7 @@ impl<D, Req, Res> WithResultSchema for ToolBuilder<WithResultSchemaState, D, Req
     #[inline(always)]
     fn on_invocation<F>(self, handler: F) -> Self::WithInvocationBuilder
     where
-        F: Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<AnthropicResult<()>>
+        F: Fn(&Conversation, &Emitter, Req, &D) -> AsyncStream<()>
             + Send
             + Sync
             + 'static,
@@ -438,7 +438,7 @@ where
         conversation: &Conversation,
         emitter: &Emitter,
         request: Value,
-    ) -> AsyncStream<AnthropicResult<()>> {
+    ) -> AsyncStream<()> {
         let (tx, stream) = channel();
         let invocation_handler = self.handlers.invocation.clone();
         let dependency = self.dependency.clone();
@@ -524,7 +524,7 @@ impl<const N: usize> ToolExecutor<N> {
         &self,
         name: String,
         input: Value,
-    ) -> AsyncStream<AnthropicResult<ToolOutput>> {
+    ) -> AsyncStream<ToolOutput> {
         let (tx, stream) = channel();
         if let Some(tool) = self.tools.get(&name) {
             let conversation = Conversation {

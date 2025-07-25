@@ -46,7 +46,7 @@ impl GeminiStreamProcessor {
         request_body: GenerateContentRequest,
         model_name: &str,
         api_key: &str,
-    ) -> GeminiResult<crate::AsyncStream<Result<CompletionChunk, CompletionError>>> {
+    ) -> GeminiResult<crate::AsyncStream<CompletionChunk>> {
         let start_time = Instant::now();
 
         // Serialize request to bytes (single allocation)
@@ -113,7 +113,7 @@ impl GeminiStreamProcessor {
     fn create_streaming_pipeline(
         &self,
         response: HttpResponse,
-    ) -> GeminiResult<crate::AsyncStream<Result<CompletionChunk, CompletionError>>> {
+    ) -> GeminiResult<crate::AsyncStream<CompletionChunk>> {
         // Create high-throughput channel for chunks using the crate's async stream system
         let (chunk_sender, chunk_receiver) = crate::channel();
 

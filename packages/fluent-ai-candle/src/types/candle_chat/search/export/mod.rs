@@ -18,6 +18,9 @@ use super::types::{SearchResult, SearchStatistics};
 // Re-export all format-related types
 pub use formats::{ExportFormat, ExportOptions, ExportMetadata, ExportData, ExportError};
 
+// Re-export HistoryExporter from parent module
+pub use super::history_export::HistoryExporter;
+
 // Sub-modules
 pub mod formats;
 pub mod json;

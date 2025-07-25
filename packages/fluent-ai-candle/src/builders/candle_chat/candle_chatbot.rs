@@ -10,9 +10,49 @@
 // ============================================================================
 
 use std::io::{self, Write};
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-// Note: termcolor items not available, using standard logging instead
 use crate::types::{CandleChat, CandleCompletionError, CandleMessage};
+
+/// Cyrup.ai color theme
+mod theme {
+    use termcolor::Color;
+    
+    pub const PRIMARY: Color = Color::Cyan;
+    pub const SECONDARY: Color = Color::Blue;
+    pub const ACCENT: Color = Color::Magenta;
+    pub const SUCCESS: Color = Color::Green;
+    pub const WARNING: Color = Color::Yellow;
+    pub const ERROR: Color = Color::Red;
+    pub const TEXT: Color = Color::White;
+    pub const MUTED: Color = Color::Rgb(150, 150, 150);
+}
+
+/// Print styled text to stdout
+fn print_styled(text: &str, color: Color, bold: bool) -> io::Result<()> {
+    let mut stdout = StandardStream::stdout(ColorChoice::Always);
+    stdout.set_color(
+        ColorSpec::new()
+            .set_fg(Some(color))
+            .set_bold(bold)
+            .set_intense(true),
+    )?;
+    writeln!(&mut stdout, "{text}")?;
+    stdout.reset()
+}
+
+/// Print a header with Cyrup.ai styling
+fn print_header(title: &str) -> io::Result<()> {
+    let mut stdout = StandardStream::stdout(ColorChoice::Always);
+    stdout.set_color(
+        ColorSpec::new()
+            .set_fg(Some(theme::PRIMARY))
+            .set_bold(true)
+            .set_underline(true),
+    )?;
+    writeln!(&mut stdout, "\n=== {title} ===\n")?;
+    stdout.reset()
+}
 
 /// Run a blocking terminal REPL around any `Chat` engine.
 ///
@@ -25,8 +65,9 @@ where
     let mut chat_log = Vec::new();
 
     // Display welcome message with Cyrup.ai branding
-    println!("=== Candle Chat ===");
-    println!("Type 'exit' or 'quit' to leave the chat");
+    print_header("Candle Chat").unwrap_or_else(|_| println!("=== Candle Chat ===\n"));
+    print_styled("Type 'exit' or 'quit' to leave the chat", theme::MUTED, false)
+        .unwrap_or_else(|_| println!("Type 'exit' or 'quit' to leave the chat"));
 
     loop {
         // Standard prompt

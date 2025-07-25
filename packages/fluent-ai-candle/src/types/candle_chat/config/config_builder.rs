@@ -10,7 +10,10 @@ use fluent_ai_async::AsyncStream;
 use serde::{Deserialize, Serialize};
 
 use super::model_config::{ModelConfig, ModelParameters, ModelRetryConfig, ModelPerformanceConfig, ValidationResult};
-use super::chat_config::{ChatConfig, PersonalityConfig, BehaviorConfig, UIConfig, IntegrationConfig};
+use super::chat_core::{ChatConfig, PersonalityConfig};
+use super::behavior::BehaviorConfig;
+use super::ui::UIConfig;
+use super::integration::IntegrationConfig;
 use super::config_manager::ConfigurationManager;
 
 /// Handle errors in streaming context without panicking
@@ -163,7 +166,7 @@ impl PersonalityConfigBuilder {
     }
 
     /// Set response style
-    pub fn with_response_style(mut self, style: super::chat_config::ResponseStyle) -> Self {
+    pub fn with_response_style(mut self, style: super::chat_core::ResponseStyle) -> Self {
         self.config.response_style = style;
         self.builder_state.fields_set.push("response_style".to_string());
         self.update_progress();
@@ -243,7 +246,7 @@ impl PersonalityConfigBuilder {
     }
 
     /// Add personality example
-    pub fn with_example(mut self, example: super::chat_config::PersonalityExample) -> Self {
+    pub fn with_example(mut self, example: super::chat_core::PersonalityExample) -> Self {
         self.config.examples.push(example);
         self.builder_state.fields_set.push("example".to_string());
         self.update_progress();
@@ -348,7 +351,7 @@ impl PersonalityConfigBuilder {
                 "professional" => PersonalityConfig {
                     name: Arc::from("Professional Assistant"),
                     description: Some("A professional and business-oriented assistant".to_string()),
-                    response_style: super::chat_config::ResponseStyle::Professional,
+                    response_style: super::chat_core::ResponseStyle::Professional,
                     formality_level: 0.9,
                     enthusiasm_level: 0.4,
                     helpfulness_level: 0.9,
@@ -361,7 +364,7 @@ impl PersonalityConfigBuilder {
                 "friendly" => PersonalityConfig {
                     name: Arc::from("Friendly Assistant"),
                     description: Some("A warm and approachable assistant".to_string()),
-                    response_style: super::chat_config::ResponseStyle::Casual,
+                    response_style: super::chat_core::ResponseStyle::Casual,
                     formality_level: 0.3,
                     enthusiasm_level: 0.8,
                     helpfulness_level: 0.9,
@@ -374,7 +377,7 @@ impl PersonalityConfigBuilder {
                 "technical" => PersonalityConfig {
                     name: Arc::from("Technical Expert"),
                     description: Some("A precise and technically-focused assistant".to_string()),
-                    response_style: super::chat_config::ResponseStyle::Technical,
+                    response_style: super::chat_core::ResponseStyle::Technical,
                     formality_level: 0.7,
                     enthusiasm_level: 0.5,
                     helpfulness_level: 0.9,
@@ -387,7 +390,7 @@ impl PersonalityConfigBuilder {
                 "creative" => PersonalityConfig {
                     name: Arc::from("Creative Assistant"),
                     description: Some("An imaginative and artistic assistant".to_string()),
-                    response_style: super::chat_config::ResponseStyle::Creative,
+                    response_style: super::chat_core::ResponseStyle::Creative,
                     formality_level: 0.2,
                     enthusiasm_level: 0.9,
                     helpfulness_level: 0.8,

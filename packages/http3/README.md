@@ -44,18 +44,18 @@ use fluent_ai_http3::HttpClient;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = HttpClient::new()?;
-    
+
     // Simple GET request
     let response = client
         .get("https://api.openai.com/v1/models")
         .bearer_token("your-api-key")
         .send()
         .await?;
-    
+
     // For traditional behavior, collect the response
     let text = response.text().await?;
     println!("Response: {}", text);
-    
+
     Ok(())
 }
 ```
@@ -69,7 +69,7 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = HttpClient::new()?;
-    
+
     // Streaming response - this is the primary use case
     let stream = client
         .post("https://api.openai.com/v1/chat/completions")
@@ -81,7 +81,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }))?
         .send_stream()
         .await?;
-    
+
     // Process streaming response
     let mut sse_stream = stream.sse();
     while let Some(event) = sse_stream.next().await {
@@ -95,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => eprintln!("Stream error: {}", e),
         }
     }
-    
+
     Ok(())
 }
 ```
@@ -125,7 +125,7 @@ struct Delta {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = HttpClient::new()?;
-    
+
     let stream = client
         .post("https://api.anthropic.com/v1/messages")
         .bearer_token("your-api-key")
@@ -137,7 +137,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }))?
         .send_stream()
         .await?;
-    
+
     // Process JSON lines stream
     let mut json_stream = stream.json_lines::<ChatChunk>();
     while let Some(chunk) = json_stream.next().await {
@@ -151,7 +151,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => eprintln!("JSON parsing error: {}", e),
         }
     }
-    
+
     Ok(())
 }
 ```
@@ -236,7 +236,7 @@ let mut chunk_count = 0;
 while let Some(chunk) = stream.next().await {
     buffer.push(chunk?);
     chunk_count += 1;
-    
+
     // Process in batches of 10
     if chunk_count >= 10 {
         process_batch(&buffer).await?;
@@ -433,7 +433,7 @@ See the `/examples` directory for comprehensive examples:
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions are welcome! Please see [./CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📄 License
 

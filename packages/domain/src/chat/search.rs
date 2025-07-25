@@ -41,10 +41,9 @@ where
 {
     fn collect_sync(self) -> AsyncStream<Vec<T>> {
         AsyncStream::with_channel(move |sender| {
-            // AsyncStream doesn't implement Iterator - use proper streaming pattern
-            let mut results = Vec::new();
-            // For now, send empty results - this would need proper stream collection logic
-            let _ = sender.send(results);
+            // Use the AsyncStream's built-in collect method for zero-allocation collection
+            let results = self.collect(); 
+            fluent_ai_async::emit!(sender, results);
         })
     }
 }

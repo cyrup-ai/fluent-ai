@@ -44,11 +44,7 @@ pub use constants::{SIMD_WIDTH_8, VERSION};
 pub use error::{SimdError, SimdResult};
 // Logits operations are handled by the ops module
 // Re-export ops (temperature and softmax operations)
-pub use ops::{
-    apply_temperature_scaling, apply_temperature_scaling_inplace, compute_log_softmax,
-    compute_softmax, compute_softmax_inplace, SoftmaxProcessor, SoftmaxStats, TemperatureProcessor,
-    TemperatureStats,
-};
+pub use ops::{argmax, scale_temperature, softmax};
 // Re-export runtime CPU detection
 pub use runtime::{get_cpu_features, get_cpu_info, should_use_simd, CpuFeatures, CpuInfo};
 pub use similarity::{cosine_similarity, simd_cosine_similarity, smart_cosine_similarity};

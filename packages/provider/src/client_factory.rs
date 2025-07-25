@@ -100,7 +100,7 @@ pub trait UnifiedClient: Send + Sync {
         &self,
         request: &serde_json::Value,
     ) -> crate::AsyncTask<
-        ClientFactoryResult<crate::AsyncStream<ClientFactoryResult<serde_json::Value>>>,
+        crate::AsyncStream<serde_json::Value>,
     >;
 
     /// Send an embedding request
@@ -183,7 +183,7 @@ impl UnifiedClient for OpenAIUnifiedClient {
         &self,
         request: &serde_json::Value,
     ) -> crate::AsyncTask<
-        ClientFactoryResult<crate::AsyncStream<ClientFactoryResult<serde_json::Value>>>,
+        crate::AsyncStream<serde_json::Value>,
     > {
         let self_clone = self.clone();
         let request_clone = request.clone();
@@ -354,7 +354,7 @@ impl UnifiedClient for AnthropicUnifiedClient {
         &self,
         request: &serde_json::Value,
     ) -> crate::AsyncTask<
-        ClientFactoryResult<crate::AsyncStream<ClientFactoryResult<serde_json::Value>>>,
+        crate::AsyncStream<serde_json::Value>,
     > {
         let self_clone = self.clone();
         let request_clone = request.clone();
@@ -454,7 +454,7 @@ impl UnifiedClient for GeminiUnifiedClient {
         &self,
         _request: &serde_json::Value,
     ) -> crate::AsyncTask<
-        ClientFactoryResult<crate::AsyncStream<ClientFactoryResult<serde_json::Value>>>,
+        crate::AsyncStream<serde_json::Value>,
     > {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
@@ -513,7 +513,7 @@ impl UnifiedClient for MistralUnifiedClient {
         &self,
         _request: &serde_json::Value,
     ) -> crate::AsyncTask<
-        ClientFactoryResult<crate::AsyncStream<ClientFactoryResult<serde_json::Value>>>,
+        crate::AsyncStream<serde_json::Value>,
     > {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
@@ -571,7 +571,7 @@ impl UnifiedClient for GroqUnifiedClient {
         &self,
         _request: &serde_json::Value,
     ) -> crate::AsyncTask<
-        ClientFactoryResult<crate::AsyncStream<ClientFactoryResult<serde_json::Value>>>,
+        crate::AsyncStream<serde_json::Value>,
     > {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
@@ -627,7 +627,7 @@ impl UnifiedClient for PerplexityUnifiedClient {
         &self,
         _request: &serde_json::Value,
     ) -> crate::AsyncTask<
-        ClientFactoryResult<crate::AsyncStream<ClientFactoryResult<serde_json::Value>>>,
+        crate::AsyncStream<serde_json::Value>,
     > {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {
@@ -683,7 +683,7 @@ impl UnifiedClient for XAIUnifiedClient {
         &self,
         _request: &serde_json::Value,
     ) -> crate::AsyncTask<
-        ClientFactoryResult<crate::AsyncStream<ClientFactoryResult<serde_json::Value>>>,
+        crate::AsyncStream<serde_json::Value>,
     > {
         crate::spawn_async(async {
             Err(ClientFactoryError::ConfigurationError {

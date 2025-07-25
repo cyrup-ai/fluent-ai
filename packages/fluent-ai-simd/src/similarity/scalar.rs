@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use super::metrics::{MetricsGuard, SimilarityMetrics, SimilarityMetricsSnapshot};
 use super::traits::{CosineSimilarity, RuntimeSelectable, WithMetrics};
+use crate::similarity::metrics::{MetricsGuard, SimilarityMetrics, SimilarityMetricsSnapshot};
 
 /// Scalar implementation of cosine similarity
 pub struct ScalarSimilarity {

@@ -444,7 +444,7 @@ impl StreamingReceiver {
                 })
             }
             Err(_) => {
-                AsyncStream::with_channel(move |sender| {
+                AsyncStream::with_channel(move |_sender| {
                     handle_error!(
                         "Receiver channel closed or empty",
                         "Streaming message reception failed"

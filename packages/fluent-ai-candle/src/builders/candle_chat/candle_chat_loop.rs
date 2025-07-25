@@ -1,3 +1,46 @@
+use std::io;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+
+/// Cyrup.ai color theme
+mod theme {
+    use termcolor::Color;
+    
+    pub const PRIMARY: Color = Color::Cyan;
+    pub const SECONDARY: Color = Color::Blue;
+    pub const ACCENT: Color = Color::Magenta;
+    pub const SUCCESS: Color = Color::Green;
+    pub const WARNING: Color = Color::Yellow;
+    pub const ERROR: Color = Color::Red;
+    pub const TEXT: Color = Color::White;
+    pub const MUTED: Color = Color::Rgb(150, 150, 150);
+}
+
+/// Print styled text to stdout
+fn print_styled(text: &str, color: Color, bold: bool) -> io::Result<()> {
+    let mut stdout = StandardStream::stdout(ColorChoice::Always);
+    stdout.set_color(
+        ColorSpec::new()
+            .set_fg(Some(color))
+            .set_bold(bold)
+            .set_intense(true),
+    )?;
+    writeln!(&mut stdout, "{text}")?;
+    stdout.reset()
+}
+
+/// Print a header with Cyrup.ai styling
+fn print_header(title: &str) -> io::Result<()> {
+    let mut stdout = StandardStream::stdout(ColorChoice::Always);
+    stdout.set_color(
+        ColorSpec::new()
+            .set_fg(Some(theme::PRIMARY))
+            .set_bold(true)
+            .set_underline(true),
+    )?;
+    writeln!(&mut stdout, "\n=== {title} ===\n")?;
+    stdout.reset()
+}
+
 /// Control flow enum for chat closures - provides explicit conversation management
 #[derive(Debug, Clone, PartialEq)]
 pub enum ChatLoop {

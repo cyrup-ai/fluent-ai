@@ -767,12 +767,11 @@ pub trait StreamingImageProcessor {
         &self,
         stream: ImageStream,
         first_chunk: Vec<u8>,
-    ) -> fluent_ai_domain::AsyncStream<ImageProcessingResult<ProcessedImageStream>> {
+    ) -> fluent_ai_domain::AsyncStream<ProcessedImageStream> {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         tokio::spawn(async move {
-            let _ = tx.send(Err(ImageProcessingError::ProcessingError(
-                "Not implemented".to_string(),
-            )));
+            // Use handle_error! macro for proper internal error handling
+            handle_error!(ImageProcessingError::ProcessingError("Not implemented".to_string()), "Image processing not implemented");
         });
         tokio_stream::wrappers::UnboundedReceiverStream::new(rx)
     }
@@ -903,7 +902,7 @@ impl StreamingImageProcessor for PngStreamingProcessor {
         &self,
         mut stream: ImageStream,
         first_chunk: Vec<u8>,
-    ) -> fluent_ai_domain::AsyncStream<ImageProcessingResult<ProcessedImageStream>> {
+    ) -> fluent_ai_domain::AsyncStream<ProcessedImageStream> {
         let config = self.config.clone();
         let (result_tx, result_rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -969,7 +968,7 @@ impl StreamingImageProcessor for JpegStreamingProcessor {
         &self,
         mut stream: ImageStream,
         first_chunk: Vec<u8>,
-    ) -> fluent_ai_domain::AsyncStream<ImageProcessingResult<ProcessedImageStream>> {
+    ) -> fluent_ai_domain::AsyncStream<ProcessedImageStream> {
         let config = self.config.clone();
         let (result_tx, result_rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -1035,7 +1034,7 @@ impl StreamingImageProcessor for WebPStreamingProcessor {
         &self,
         mut stream: ImageStream,
         first_chunk: Vec<u8>,
-    ) -> fluent_ai_domain::AsyncStream<ImageProcessingResult<ProcessedImageStream>> {
+    ) -> fluent_ai_domain::AsyncStream<ProcessedImageStream> {
         let config = self.config.clone();
         let (result_tx, result_rx) = tokio::sync::mpsc::unbounded_channel();
 

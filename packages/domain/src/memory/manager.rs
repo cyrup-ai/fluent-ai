@@ -429,11 +429,10 @@ impl Memory {
     ///
     /// # Returns
     /// AsyncStream that completes when the memory is stored
-    pub fn store_memory(&self, _memory_node: &MemoryNode) -> AsyncStream<Result<(), MemoryError>> {
+    pub fn store_memory(&self, _memory_node: &MemoryNode) -> AsyncStream<()> {
         AsyncStream::with_channel(move |sender| {
             // Stub implementation - always return success
-            let result = Ok(());
-            let _ = sender.send(result);
+            let _ = sender.send(());
         })
     }
 

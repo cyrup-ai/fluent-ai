@@ -1,118 +1,156 @@
-//! Metrics collection and tracking for similarity operations
+//! Lock-free metrics tracking for similarity operations
+//!
+//! This module provides production-quality, zero-overhead metrics collection
+//! using atomic counters for high-performance similarity computations.
+//! All operations are lock-free and use relaxed memory ordering where possible
+//! for optimal performance in concurrent environments.
 
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Instant;
 
-/// Tracks metrics for similarity operations
-#[derive(Debug, Default)]
-pub(crate) struct SimilarityMetrics {
-    /// Total similarity calculations performed
+/// Lock-free metrics collector for similarity operations
+#[derive(Default, Debug)]
+pub struct SimilarityMetrics {
+    /// Total number of similarity calculations performed
     total_calculations: AtomicU64,
-    /// Total vector elements processed
+    /// Total number of vector elements processed
     total_elements_processed: AtomicU64,
-    /// Total time spent in SIMD operations (nanoseconds)
-    simd_time_ns: AtomicU64,
 }
 
 impl SimilarityMetrics {
-    /// Record a similarity calculation with timing information
-    #[inline]
-    pub(crate) fn record_calculation(&self, elements: usize, duration: std::time::Duration) {
+    /// Increment the calculation counter (relaxed ordering)
+    #[inline(always)]
+    pub fn increment_calculations(&self) {
         self.total_calculations.fetch_add(1, Ordering::Relaxed);
-        self.total_elements_processed
-            .fetch_add(elements as u64, Ordering::Relaxed);
-        self.simd_time_ns
-            .fetch_add(duration.as_nanos() as u64, Ordering::Relaxed);
     }
 
-    /// Get a snapshot of current metrics
-    pub(crate) fn get_metrics(&self) -> SimilarityMetricsSnapshot {
+    /// Add to the elements processed counter (relaxed ordering)
+    #[inline(always)]
+    pub fn add_elements(&self, count: u64) {
+        self.total_elements_processed
+            .fetch_add(count, Ordering::Relaxed);
+    }
+
+    /// Get a consistent snapshot of current metrics (uses SeqCst for consistency)
+    #[inline]
+    pub fn get_metrics(&self) -> SimilarityMetricsSnapshot {
         SimilarityMetricsSnapshot {
-            total_calculations: self.total_calculations.load(Ordering::Relaxed),
-            total_elements_processed: self.total_elements_processed.load(Ordering::Relaxed),
-            simd_time_ns: self.simd_time_ns.load(Ordering::Relaxed),
+            total_calculations: self.total_calculations.load(Ordering::SeqCst),
+            total_elements_processed: self.total_elements_processed.load(Ordering::SeqCst),
         }
     }
 
-    /// Reset all metrics to zero
-    pub(crate) fn reset(&self) {
-        self.total_calculations.store(0, Ordering::Relaxed);
-        self.total_elements_processed.store(0, Ordering::Relaxed);
-        self.simd_time_ns.store(0, Ordering::Relaxed);
+    /// Reset all metrics to zero (SeqCst for consistency)
+    #[inline]
+    pub fn reset(&self) {
+        self.total_calculations.store(0, Ordering::SeqCst);
+        self.total_elements_processed.store(0, Ordering::SeqCst);
     }
 }
 
-/// A snapshot of similarity metrics at a point in time
-#[derive(Debug, Clone, Copy)]
+/// Snapshot of metrics at a point in time
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SimilarityMetricsSnapshot {
-    /// Total similarity calculations performed
+    /// Total similarity calculations
     pub total_calculations: u64,
-    /// Total vector elements processed
+    /// Total elements processed
     pub total_elements_processed: u64,
-    /// Total time spent in SIMD operations (nanoseconds)
-    pub simd_time_ns: u64,
 }
 
 impl SimilarityMetricsSnapshot {
-    /// Calculate the average time per similarity calculation in nanoseconds
-    pub fn avg_time_ns(&self) -> f64 {
-        if self.total_calculations > 0 {
-            self.simd_time_ns as f64 / self.total_calculations as f64
-        } else {
+    /// Compute average vector length from snapshot
+    #[inline]
+    pub fn average_vector_length(&self) -> f64 {
+        if self.total_calculations == 0 {
             0.0
-        }
-    }
-
-    /// Calculate the average elements processed per second
-    pub fn elements_per_second(&self) -> f64 {
-        if self.simd_time_ns > 0 {
-            (self.total_elements_processed as f64 * 1_000_000_000.0) / self.simd_time_ns as f64
         } else {
-            0.0
+            self.total_elements_processed as f64 / self.total_calculations as f64
         }
     }
 }
 
-/// A guard that records the duration of a similarity calculation
-pub(crate) struct MetricsGuard<'a> {
+/// RAII guard for automatic metrics collection
+///
+/// Increments counters on creation and can be used for timing if extended.
+pub struct MetricsGuard<'a> {
     metrics: &'a SimilarityMetrics,
-    start: Instant,
-    elements: usize,
 }
 
 impl<'a> MetricsGuard<'a> {
-    /// Create a new metrics guard that will record the duration when dropped
-    pub(crate) fn new(metrics: &'a SimilarityMetrics, elements: usize) -> Self {
-        Self {
-            metrics,
-            start: Instant::now(),
-            elements,
-        }
+    /// Create a new guard and increment counters
+    #[inline]
+    pub fn new(metrics: &'a SimilarityMetrics, elements: usize) -> Self {
+        metrics.increment_calculations();
+        metrics.add_elements(elements as u64);
+        Self { metrics }
     }
 }
 
-impl Drop for MetricsGuard<'_> {
+impl<'a> Drop for MetricsGuard<'a> {
+    #[inline]
     fn drop(&mut self) {
-        let duration = self.start.elapsed();
-        self.metrics.record_calculation(self.elements, duration);
+        // Currently no-op; can be extended for timing metrics
     }
 }
 
-// Global metrics instance
-use std::sync::Arc;
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
 
-use lazy_static::lazy_static;
+    use super::*;
 
-lazy_static! {
-    static ref GLOBAL_METRICS: Arc<SimilarityMetrics> = Arc::new(SimilarityMetrics::default());
-}
+    #[test]
+    fn test_metrics_collection() {
+        let metrics = Arc::new(SimilarityMetrics::default());
 
-/// Get global similarity metrics
-pub fn get_similarity_metrics() -> SimilarityMetricsSnapshot {
-    GLOBAL_METRICS.get_metrics()
-}
+        {
+            let _guard = MetricsGuard::new(&metrics, 8);
+        }
 
-/// Reset global similarity metrics
-pub fn reset_similarity_metrics() {
-    GLOBAL_METRICS.reset();
+        let snapshot = metrics.get_metrics();
+        assert_eq!(snapshot.total_calculations, 1);
+        assert_eq!(snapshot.total_elements_processed, 8);
+        assert_eq!(snapshot.average_vector_length(), 8.0);
+
+        {
+            let _guard = MetricsGuard::new(&metrics, 4);
+        }
+
+        let snapshot = metrics.get_metrics();
+        assert_eq!(snapshot.total_calculations, 2);
+        assert_eq!(snapshot.total_elements_processed, 12);
+        assert_eq!(snapshot.average_vector_length(), 6.0);
+
+        metrics.reset();
+        let snapshot = metrics.get_metrics();
+        assert_eq!(snapshot.total_calculations, 0);
+        assert_eq!(snapshot.total_elements_processed, 0);
+        assert_eq!(snapshot.average_vector_length(), 0.0);
+    }
+
+    #[test]
+    fn test_concurrent_metrics() {
+        use std::thread;
+
+        let metrics = Arc::new(SimilarityMetrics::default());
+
+        let handles: Vec<_> = (0..10)
+            .map(|_| {
+                let metrics = metrics.clone();
+                thread::spawn(move || {
+                    for _ in 0..100 {
+                        let _guard = MetricsGuard::new(&metrics, 16);
+                    }
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            handle.join().unwrap();
+        }
+
+        let snapshot = metrics.get_metrics();
+        assert_eq!(snapshot.total_calculations, 1000);
+        assert_eq!(snapshot.total_elements_processed, 16000);
+        assert_eq!(snapshot.average_vector_length(), 16.0);
+    }
 }

@@ -1,7 +1,4 @@
 //! Chat searcher with caching and advanced search capabilities
-//!
-//! This module provides the main chat search interface with caching,
-//! result ranking, and performance optimization features.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -15,11 +12,9 @@ use super::types::SearchOptions;
 use super::search_index::ChatSearchIndex;
 use crate::types::CandleSearchChatMessage;
 
-/// Handle errors in streaming context without panicking
 macro_rules! handle_error {
     ($error:expr, $context:literal) => {
         eprintln!("Streaming error in {}: {}", $context, $error);
-        // Continue processing instead of returning error
     };
 }
 
@@ -47,41 +42,25 @@ impl std::fmt::Debug for ChatSearcher {
     }
 }
 
-/// Cached search result with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CachedSearchResult {
-    /// Search results
     pub results: Vec<SearchResult>,
-    /// Cache timestamp
     pub cached_at: chrono::DateTime<chrono::Utc>,
-    /// Cache hit count
     pub hit_count: usize,
-    /// Query hash
     pub query_hash: String,
-    /// Result metadata
     pub metadata: SearchResultMetadata,
 }
 
-/// Match position within content
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MatchPosition {
-    /// Start position
     pub start: usize,
-    /// End position
     pub end: usize,
-    /// Matched term
     pub term: String,
-    /// Match type
     pub match_type: super::core_types::MatchType,
-    /// Confidence score
     pub confidence: f32,
-    /// Context before match
     pub context_before: Option<String>,
-    /// Context after match
     pub context_after: Option<String>,
-    /// Line number
     pub line_number: Option<usize>,
-    /// Column number
     pub column_number: Option<usize>,
 }
 
@@ -102,35 +81,22 @@ pub struct SearchResultMetadata {
     pub extra_metadata: HashMap<String, serde_json::Value>,
 }
 
-/// Statistics for chat searcher
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatSearcherStats {
-    /// Total searches performed
     pub total_searches: usize,
-    /// Cache hits
     pub cache_hits: usize,
-    /// Cache misses
     pub cache_misses: usize,
-    /// Cache hit rate
     pub cache_hit_rate: f32,
-    /// Average search time
     pub avg_search_time_ms: f64,
-    /// Total results returned
     pub total_results_returned: usize,
-    /// Most common queries
     pub common_queries: Vec<(String, usize)>,
-    /// Performance metrics
     pub performance_metrics: HashMap<String, f64>,
-    /// Last search timestamp
     pub last_search: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-/// Query processor for advanced query handling
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryProcessor {
-    /// Processing configuration
     pub config: HashMap<String, String>,
-    /// Processing statistics
     pub stats: HashMap<String, usize>,
 }
 

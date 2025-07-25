@@ -4,9 +4,14 @@
 //! with zero-allocation streaming patterns and lock-free operations.
 
 pub mod model_config;
-pub mod chat_config;
 pub mod config_manager;
 pub mod config_builder;
+
+// Decomposed chat configuration modules
+pub mod chat_core;
+pub mod behavior;
+pub mod ui;
+pub mod integration;
 
 // Re-export core configuration types
 pub use model_config::{
@@ -14,14 +19,24 @@ pub use model_config::{
     CompressionType, ValidationResult, ConfigUpdate, UpdateResult, ConfigSummary
 };
 
-// Re-export chat configuration types
-pub use chat_config::{
-    ChatConfig, SessionConfig, PersonalityConfig, BehaviorConfig, UIConfig, IntegrationConfig,
-    ResponseStyle, PersonalityExample, TypingIndicatorConfig, ErrorHandlingConfig,
-    ContentFilteringConfig, ConversationFlowConfig, BehaviorRule, ThemeConfig, FontConfig,
-    LayoutConfig, AnimationConfig, AccessibilityConfig, WebhookConfig, PluginConfig,
-    HistoryConfig, SecurityConfig, PerformanceConfig, FontWeight, SidebarPosition,
-    EasingFunction, WebhookAuth, ErrorLoggingLevel, ContentFilter, FilterAction
+// Re-export decomposed chat configuration types
+pub use chat_core::{
+    ChatConfig, SessionConfig, PersonalityConfig, ResponseStyle, PersonalityExample
+};
+
+pub use behavior::{
+    BehaviorConfig, TypingIndicatorConfig, ErrorHandlingConfig, ErrorLoggingLevel,
+    ContentFilteringConfig, ContentFilter, FilterAction, ConversationFlowConfig, BehaviorRule
+};
+
+pub use ui::{
+    UIConfig, ThemeConfig, FontConfig, FontWeight, LayoutConfig, SidebarPosition,
+    AnimationConfig, EasingFunction, AccessibilityConfig
+};
+
+pub use integration::{
+    IntegrationConfig, WebhookConfig, WebhookAuth, PluginConfig,
+    HistoryConfig, SecurityConfig, SessionSecurityConfig, PerformanceConfig
 };
 
 // Re-export configuration management types

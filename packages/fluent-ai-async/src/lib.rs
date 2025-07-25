@@ -13,6 +13,8 @@ pub mod thread_pool;
 pub use stream::{AsyncStream, AsyncStreamSender};
 pub use task::{spawn_task, AsyncTask};
 
+// Macros are exported via #[macro_export] in macros.rs
+
 // DEPRECATED: Use AsyncStream::with_channel() instead
 /// Marker trait ensuring types cannot contain Result types
 ///

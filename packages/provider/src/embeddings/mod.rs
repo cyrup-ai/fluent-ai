@@ -391,7 +391,7 @@ pub struct StreamingEmbeddingResponse<T> {
     /// The raw provider-specific streaming response
     pub raw_response: T,
     /// Stream of embedding chunks
-    pub stream: AsyncStream<Result<EmbeddingChunk, EmbeddingError>>,
+    pub stream: AsyncStream<EmbeddingChunk>,
     /// Response metadata (filled as chunks arrive)
     pub metadata: EmbeddingMetadata,
 }
@@ -401,7 +401,7 @@ impl<T> StreamingEmbeddingResponse<T> {
     #[inline(always)]
     pub fn new(
         raw_response: T,
-        stream: AsyncStream<Result<EmbeddingChunk, EmbeddingError>>,
+        stream: AsyncStream<EmbeddingChunk>,
     ) -> Self {
         Self {
             raw_response,
@@ -421,13 +421,8 @@ impl<T> StreamingEmbeddingResponse<T> {
     pub async fn collect(mut self) -> Result<Vec<f32>> {
         let mut embedding = Vec::new();
 
-        while let Some(chunk_result) = futures_util::StreamExt::next(&mut self.stream).await {
-            match chunk_result {
-                Ok(chunk) => {
-                    embedding.extend_from_slice(&chunk.vector);
-                }
-                Err(e) => return Err(e),
-            }
+        while let Some(chunk) = futures_util::StreamExt::next(&mut self.stream).await {
+            embedding.extend_from_slice(&chunk.vector);
         }
 
         Ok(embedding)

@@ -418,7 +418,7 @@ impl GeminiCompletionBuilder {
         &self,
         prompt: String,
     ) -> GeminiResult<
-        crate::AsyncStream<Result<CompletionChunk, crate::completion_provider::CompletionError>>,
+        crate::AsyncStream<CompletionChunk>,
     > {
         let request_body = self.build_gemini_request(&prompt)?;
 
@@ -550,7 +550,7 @@ impl GeminiCompletionBuilder {
         &self,
         prompt: String,
     ) -> GeminiResult<
-        AsyncStream<Result<CompletionChunk, crate::completion_provider::CompletionError>>,
+        AsyncStream<CompletionChunk>,
     > {
         let request_body = self.build_gemini_request(&prompt)?;
 

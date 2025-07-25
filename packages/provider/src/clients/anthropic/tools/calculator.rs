@@ -26,7 +26,7 @@ impl ToolExecutor for CalculatorTool {
         &self,
         input: Value,
         _context: &ToolExecutionContext,
-    ) -> AsyncStream<AnthropicResult<Value>> {
+    ) -> AsyncStream<Value> {
         let (tx, stream) = channel();
         tokio::spawn(async move {
             let result = async {

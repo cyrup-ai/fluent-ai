@@ -97,33 +97,46 @@ pub fn process_logits_scalar(
     // Apply nucleus sampling if enabled
     if let Some(p) = context.top_p.filter(|_| config.top_p.is_some()) {
         if p > 0.0 && p < 1.0 {
-            // Sort logits in descending order
-            let mut sorted_indices: Vec<usize> = (0..logits.len()).collect();
-            sorted_indices.sort_unstable_by(|&i, &j| {
-                logits[j]
-                    .partial_cmp(&logits[i])
-                    .unwrap_or(std::cmp::Ordering::Equal)
+            // Find max logit for numerical stability (zero allocation)
+            let max_logit = logits.iter().fold(f32::NEG_INFINITY, |acc, &x| acc.max(x));
+
+            // Create SmallVec of (index, logit) pairs
+            let mut sorted: SmallVec<[(usize, f32); 512]> =
+                logits.iter().enumerate().map(|(i, &v)| (i, v)).collect();
+
+            // Sort in descending order by logit value
+            sorted.sort_unstable_by(|a, b| {
+                b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
             });
 
-            // Calculate cumulative probability
-            let mut cumulative = 0.0;
-            let mut cutoff = logits.len();
+            // Compute total sum of exp(shifted) without allocation
+            let mut total_sum = 0.0f64;
+            for &logit in logits.iter() {
+                total_sum += ((logit - max_logit) as f64).exp();
+            }
 
-            // First, get the logits values for the sorted indices
-            let sorted_values: Vec<f32> = sorted_indices.iter().map(|&i| logits[i]).collect();
+            // Now find cutoff using cumulative normalized prob
+            let mut cumsum = 0.0f64;
+            let mut cutoff = sorted.len();
 
-            // Find the cutoff point where cumulative probability exceeds p
-            for (i, &value) in sorted_values.iter().enumerate() {
-                cumulative += value.exp();
-                if cumulative > p {
+            for (i, &(_, logit)) in sorted.iter().enumerate() {
+                let prob = ((logit - max_logit) as f64).exp() / total_sum;
+                cumsum += prob;
+                if cumsum >= p as f64 {
                     cutoff = i + 1;
                     break;
                 }
             }
 
-            // Set all elements after cutoff to negative infinity
-            for &idx in &sorted_indices[cutoff..] {
-                logits[idx] = f32::NEG_INFINITY;
+            // Collect indices to keep (using SmallVec to avoid alloc if small)
+            let mut keep_indices: SmallVec<[usize; 512]> =
+                sorted[..cutoff].iter().map(|&(idx, _)| idx).collect();
+
+            // Mask logits not in keep (in-place, zero alloc)
+            for (i, logit) in logits.iter_mut().enumerate() {
+                if !keep_indices.contains(&i) {
+                    *logit = f32::NEG_INFINITY;
+                }
             }
         }
     }
@@ -160,18 +173,27 @@ mod tests {
         // Only top 2 values should remain non-negative infinity
         let non_inf = logits.iter().filter(|&&x| x > f32::NEG_INFINITY).count();
         assert_eq!(non_inf, 2);
+        // Check specific values
+        let mut sorted = logits.clone();
+        sorted.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        assert!(logits.contains(&sorted[0]));
+        assert!(logits.contains(&sorted[1]));
     }
 
     #[test]
     fn test_nucleus_sampling() {
-        let mut logits = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let context = ProcessingContext::new().with_top_p(Some(0.6));
+        let mut logits = vec![0.1, 0.2, 0.3, 0.4];
+        let context = ProcessingContext::new().with_top_p(Some(0.5));
         let config = ProcessorConfig::default();
 
         process_logits_scalar(&mut logits, &context, &config).unwrap();
 
-        // At least one value should be set to negative infinity
-        let has_inf = logits.iter().any(|&x| x == f32::NEG_INFINITY);
+        // Verify correct masking (indices 0 and 1 masked for top_p=0.5)
+        let has_inf = logits.iter().filter(|&&x| x == f32::NEG_INFINITY).count() == 2;
         assert!(has_inf);
+        assert_eq!(logits[0], f32::NEG_INFINITY);
+        assert_eq!(logits[1], f32::NEG_INFINITY);
+        assert!(logits[2] > f32::NEG_INFINITY);
+        assert!(logits[3] > f32::NEG_INFINITY);
     }
 }

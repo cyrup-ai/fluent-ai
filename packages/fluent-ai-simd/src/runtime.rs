@@ -1,9 +1,6 @@
-//! Runtime CPU feature detection and SIMD dispatch system
-//!
-//! Provides zero-cost runtime dispatch to optimal SIMD implementations based on
-//! detected CPU capabilities. Supports AVX2, NEON, and scalar fallbacks.
-
 use std::sync::atomic::{AtomicU8, Ordering};
+
+use once_cell::sync::Lazy;
 
 /// CPU capability flags for runtime dispatch
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -13,17 +10,19 @@ pub enum CpuFeatures {
     Scalar = 0,
     /// ARM NEON SIMD support
     Neon = 1,
-    /// x86 SSE4.1 support  
+    /// x86 SSE4.1 support
     Sse41 = 2,
-    /// x86 AVX2 support (highest performance)
+    /// x86 AVX2 support (high performance)
     Avx2 = 3,
+    /// x86 AVX512 support (highest performance)
+    Avx512 = 4,
 }
 
 impl CpuFeatures {
     /// Check if this feature level supports SIMD operations
     #[inline(always)]
     pub const fn has_simd(self) -> bool {
-        matches!(self, Self::Neon | Self::Sse41 | Self::Avx2)
+        matches!(self, Self::Neon | Self::Sse41 | Self::Avx2 | Self::Avx512)
     }
 
     /// Get SIMD vector width in f32 elements
@@ -33,6 +32,7 @@ impl CpuFeatures {
             Self::Scalar => 1,
             Self::Neon | Self::Sse41 => 4,
             Self::Avx2 => 8,
+            Self::Avx512 => 16,
         }
     }
 
@@ -43,12 +43,25 @@ impl CpuFeatures {
             Self::Scalar => 1,
             Self::Neon | Self::Sse41 => 16, // 4 vectors of 4 elements
             Self::Avx2 => 32,               // 4 vectors of 8 elements
+            Self::Avx512 => 64,             // 4 vectors of 16 elements
         }
     }
 }
 
 /// Cached CPU feature detection result
 static CPU_FEATURES: AtomicU8 = AtomicU8::new(0xFF); // 0xFF = uninitialized
+
+/// Static lazy initialization for CPU features with AVX512 check
+static HAS_AVX512: Lazy<bool> = Lazy::new(|| {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        is_x86_feature_detected!("avx512f")
+    }
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+    {
+        false
+    }
+});
 
 /// Runtime CPU feature detection with caching
 #[inline]
@@ -67,10 +80,13 @@ pub fn get_cpu_features() -> CpuFeatures {
 /// Detect available CPU features at runtime
 #[cold]
 fn detect_cpu_features() -> CpuFeatures {
-    // Priority order: AVX2 > SSE4.1 > NEON > Scalar
+    // Priority order: AVX512 > AVX2 > SSE4.1 > NEON > Scalar
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
+        if *HAS_AVX512 {
+            return CpuFeatures::Avx512;
+        }
         if is_x86_feature_detected!("avx2") {
             return CpuFeatures::Avx2;
         }
@@ -90,13 +106,18 @@ fn detect_cpu_features() -> CpuFeatures {
 }
 
 /// Function pointer type for temperature scaling operations
-pub type TemperatureScaleFn = fn(&mut [f32], f32) -> crate::error::SimdResult<()>;
+pub type TemperatureScaleFn = unsafe fn(&mut [f32], f32) -> crate::error::SimdResult<()>;
 
-/// Function pointer type for softmax operations  
-pub type SoftmaxFn = fn(&[f32]) -> crate::error::SimdResult<Vec<f32>>;
+/// Function pointer type for softmax operations
+pub type SoftmaxFn = unsafe fn(&[f32]) -> crate::error::SimdResult<Vec<f32>>;
+
+/// Function pointer type for argmax operations
+pub type ArgmaxFn = unsafe fn(&[f32]) -> crate::error::SimdResult<usize>;
 
 /// Runtime dispatch table for temperature scaling
 pub struct TemperatureDispatch {
+    /// AVX512 optimized temperature scaling function
+    pub avx512: Option<TemperatureScaleFn>,
     /// AVX2 optimized temperature scaling function
     pub avx2: Option<TemperatureScaleFn>,
     /// SSE4.1 optimized temperature scaling function
@@ -109,6 +130,8 @@ pub struct TemperatureDispatch {
 
 /// Runtime dispatch table for softmax operations
 pub struct SoftmaxDispatch {
+    /// AVX512 optimized softmax function
+    pub avx512: Option<SoftmaxFn>,
     /// AVX2 optimized softmax function
     pub avx2: Option<SoftmaxFn>,
     /// SSE4.1 optimized softmax function
@@ -119,16 +142,37 @@ pub struct SoftmaxDispatch {
     pub scalar: SoftmaxFn,
 }
 
+/// Runtime dispatch table for argmax operations
+pub struct ArgmaxDispatch {
+    /// AVX512 optimized argmax function
+    pub avx512: Option<ArgmaxFn>,
+    /// AVX2 optimized argmax function
+    pub avx2: Option<ArgmaxFn>,
+    /// SSE4.1 optimized argmax function
+    pub sse41: Option<ArgmaxFn>,
+    /// ARM NEON optimized argmax function
+    pub neon: Option<ArgmaxFn>,
+    /// Scalar fallback argmax function
+    pub scalar: ArgmaxFn,
+}
+
 impl TemperatureDispatch {
     /// Get optimal function for current CPU
     #[inline]
     pub fn get_fn(&self) -> TemperatureScaleFn {
         match get_cpu_features() {
+            CpuFeatures::Avx512 => self.avx512.unwrap_or(self.scalar),
             CpuFeatures::Avx2 => self.avx2.unwrap_or(self.scalar),
             CpuFeatures::Sse41 => self.sse41.unwrap_or(self.scalar),
             CpuFeatures::Neon => self.neon.unwrap_or(self.scalar),
             CpuFeatures::Scalar => self.scalar,
         }
+    }
+
+    /// Safe wrapper to call the temperature scaling function
+    #[inline]
+    pub fn call(&self, logits: &mut [f32], temperature: f32) -> crate::error::SimdResult<()> {
+        unsafe { (self.get_fn())(logits, temperature) }
     }
 }
 
@@ -137,11 +181,38 @@ impl SoftmaxDispatch {
     #[inline]
     pub fn get_fn(&self) -> SoftmaxFn {
         match get_cpu_features() {
+            CpuFeatures::Avx512 => self.avx512.unwrap_or(self.scalar),
             CpuFeatures::Avx2 => self.avx2.unwrap_or(self.scalar),
             CpuFeatures::Sse41 => self.sse41.unwrap_or(self.scalar),
             CpuFeatures::Neon => self.neon.unwrap_or(self.scalar),
             CpuFeatures::Scalar => self.scalar,
         }
+    }
+
+    /// Safe wrapper to call the softmax function
+    #[inline]
+    pub fn call(&self, logits: &[f32]) -> crate::error::SimdResult<Vec<f32>> {
+        unsafe { (self.get_fn())(logits) }
+    }
+}
+
+impl ArgmaxDispatch {
+    /// Get optimal function for current CPU
+    #[inline]
+    pub fn get_fn(&self) -> ArgmaxFn {
+        match get_cpu_features() {
+            CpuFeatures::Avx512 => self.avx512.unwrap_or(self.scalar),
+            CpuFeatures::Avx2 => self.avx2.unwrap_or(self.scalar),
+            CpuFeatures::Sse41 => self.sse41.unwrap_or(self.scalar),
+            CpuFeatures::Neon => self.neon.unwrap_or(self.scalar),
+            CpuFeatures::Scalar => self.scalar,
+        }
+    }
+
+    /// Safe wrapper to call the argmax function
+    #[inline]
+    pub fn call(&self, logits: &[f32]) -> crate::error::SimdResult<usize> {
+        unsafe { (self.get_fn())(logits) }
     }
 }
 
@@ -213,7 +284,11 @@ mod tests {
         // Should detect some valid feature set
         assert!(matches!(
             features,
-            CpuFeatures::Scalar | CpuFeatures::Neon | CpuFeatures::Sse41 | CpuFeatures::Avx2
+            CpuFeatures::Scalar
+                | CpuFeatures::Neon
+                | CpuFeatures::Sse41
+                | CpuFeatures::Avx2
+                | CpuFeatures::Avx512
         ));
     }
 
@@ -223,6 +298,7 @@ mod tests {
         assert_eq!(CpuFeatures::Neon.vector_width(), 4);
         assert_eq!(CpuFeatures::Sse41.vector_width(), 4);
         assert_eq!(CpuFeatures::Avx2.vector_width(), 8);
+        assert_eq!(CpuFeatures::Avx512.vector_width(), 16);
     }
 
     #[test]

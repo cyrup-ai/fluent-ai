@@ -20,11 +20,11 @@ impl CandleModel {
     #[inline(always)]
     pub fn load_with_loader<P: AsRef<Path> + Send + 'static>(
         &self,
-        path: P,
-        loader: ModelLoader,
+        _path: P,
+        _loader: ModelLoader,
     ) -> AsyncStream<ModelMetadata> {
         let _model_ref = self.clone();
-        AsyncStream::with_channel(move |sender| {
+        AsyncStream::with_channel(move |_sender| {
             // SYNCHRONOUS implementation only (async patterns forbidden per CLAUDE.md)
             // For now, provide placeholder functionality that handles error properly
             let error = CandleError::ModelLoadError(

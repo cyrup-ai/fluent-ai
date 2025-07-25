@@ -144,7 +144,7 @@ impl AnthropicStreamingProcessor {
         &self,
         http3_request: Http3Request,
     ) -> AnthropicResult<
-        AsyncStream<Result<AnthropicStreamChunk, crate::providers::anthropic::AnthropicError>>,
+        AsyncStream<AnthropicStreamChunk>,
     > {
         let client = self.client.clone();
 

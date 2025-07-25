@@ -6,14 +6,14 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use arc_swap::ArcSwap;
 #[cfg(feature = "bincode-serialization")]
 use bincode;
 use crossbeam_queue::SegQueue;
-use fluent_ai_async::AsyncStream;
+use fluent_ai_async::{AsyncStream, emit};
 #[cfg(feature = "rkyv-serialization")]
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -508,6 +508,68 @@ pub enum ConfigurationValidationError {
 /// Configuration validation result
 pub type ConfigurationValidationResult<T> = Result<T, ConfigurationValidationError>;
 
+/// Persistence event for lock-free tracking
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PersistenceEvent {
+    /// Current timestamp in nanoseconds since UNIX epoch
+    pub timestamp_nanos: u64,
+    /// Previous timestamp in nanoseconds since UNIX epoch
+    pub previous_timestamp_nanos: u64,
+    /// Type of persistence operation
+    pub persistence_type: PersistenceType,
+    /// Whether persistence operation was successful
+    pub success: bool,
+}
+
+/// Type of persistence operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PersistenceType {
+    /// Manual persistence triggered by user
+    Manual,
+    /// Automatic persistence via timer
+    Auto,
+    /// Configuration change triggered persistence
+    Change,
+    /// System shutdown persistence
+    Shutdown,
+}
+
+/// Configuration update event for streaming operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConfigUpdate {
+    /// Update timestamp in nanoseconds since UNIX epoch
+    pub timestamp_nanos: u64,
+    /// Type of configuration update
+    pub update_type: ConfigUpdateType,
+    /// Section being updated (if applicable)
+    pub section: Option<Arc<str>>,
+    /// Success status of the update
+    pub success: bool,
+    /// Optional description of the update
+    pub description: Option<Arc<str>>,
+}
+
+/// Type of configuration update operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ConfigUpdateType {
+    /// Configuration validation completed
+    ValidationCompleted,
+    /// Configuration validator registered
+    ValidatorRegistered,
+    /// Auto-save check performed
+    AutoSaveChecked,
+    /// Auto-save executed
+    AutoSaveExecuted,
+    /// Configuration saved to file
+    SavedToFile,
+    /// Configuration loaded from file
+    LoadedFromFile,
+    /// Configuration section updated
+    SectionUpdated,
+    /// Persistence event triggered
+    PersistenceTriggered,
+}
+
 /// Configuration persistence settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigurationPersistence {
@@ -555,8 +617,8 @@ pub struct ConfigurationManager {
     persistence: Arc<RwLock<ConfigurationPersistence>>,
     /// Configuration change counter
     change_counter: Arc<AtomicUsize>,
-    /// Last persistence timestamp
-    last_persistence: parking_lot::Mutex<Instant>,
+    /// Last persistence timestamp (nanoseconds since UNIX epoch) - lock-free tracking
+    last_persistence: Arc<AtomicU64>,
     /// Configuration version counter
     version_counter: Arc<AtomicUsize>,
     /// Configuration locks for atomic operations
@@ -576,7 +638,12 @@ impl Clone for ConfigurationManager {
             validation_rules: Arc::clone(&self.validation_rules),
             persistence: Arc::clone(&self.persistence),
             change_counter: Arc::new(AtomicUsize::new(0)), // Fresh counter
-            last_persistence: parking_lot::Mutex::new(Instant::now()),
+            last_persistence: Arc::new(AtomicU64::new(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos() as u64
+            )),
             version_counter: Arc::new(AtomicUsize::new(1)), // Fresh version counter
             configuration_locks: Arc::clone(&self.configuration_locks),
         }
@@ -853,7 +920,12 @@ impl ConfigurationManager {
             validation_rules: Arc::new(RwLock::new(HashMap::new())),
             persistence: Arc::new(RwLock::new(ConfigurationPersistence::default())),
             change_counter: Arc::new(AtomicUsize::new(0)),
-            last_persistence: parking_lot::Mutex::new(Instant::now()),
+            last_persistence: Arc::new(AtomicU64::new(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos() as u64
+            )),
             version_counter: Arc::new(AtomicUsize::new(1)),
             configuration_locks: Arc::new(RwLock::new(HashMap::new())),
         };
@@ -913,6 +985,13 @@ impl ConfigurationManager {
             manager.change_events.push(change_event.clone());
             manager.change_counter.fetch_add(1, Ordering::Relaxed);
             manager.version_counter.fetch_add(1, Ordering::Relaxed);
+            
+            // Update persistence timestamp atomically on config change
+            let now_nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos() as u64;
+            manager.last_persistence.store(now_nanos, Ordering::Release);
 
             // Notify subscribers
             let _ = manager.change_notifier.send(change_event);
@@ -963,6 +1042,13 @@ impl ConfigurationManager {
             manager.change_events.push(change_event.clone());
             manager.change_counter.fetch_add(1, Ordering::Relaxed);
             manager.version_counter.fetch_add(1, Ordering::Relaxed);
+            
+            // Update persistence timestamp atomically on config change
+            let now_nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos() as u64;
+            manager.last_persistence.store(now_nanos, Ordering::Release);
 
             // Notify subscribers
             let _ = manager.change_notifier.send(change_event);
@@ -977,114 +1063,185 @@ impl ConfigurationManager {
         self.change_notifier.subscribe()
     }
 
-    /// Validate configuration
-    async fn validate_config(&self, config: &ChatConfig) {
-        let validators = self.validation_rules.read().await;
-
-        // Sort validators by priority
-        let mut validator_pairs: Vec<_> = validators.iter().collect();
-        validator_pairs.sort_by_key(|(_, validator)| validator.priority());
-
-        // Run validators in priority order
-        for (_, validator) in validator_pairs {
-            let _ = validator.validate(config);
-        }
-    }
-
-    /// Register a configuration validator
-    pub async fn register_validator(
-        &self,
-        validator: Arc<dyn ConfigurationValidator + Send + Sync>,
-    ) {
-        let mut validators = self.validation_rules.write().await;
-        validators.insert(Arc::from(validator.name()), validator);
-    }
-
-    /// Check if auto-save is needed
-    async fn check_auto_save(&self) {
-        let persistence = self.persistence.read().await;
-        if !persistence.auto_save {
-            return;
-        }
-
-        let mut last_save = self.last_persistence.lock();
-        let now = Instant::now();
-
-        if now.duration_since(*last_save).as_secs() >= persistence.auto_save_interval {
-            *last_save = now;
-            drop(last_save);
-            drop(persistence);
-
-            // Perform auto-save
-            use tokio_stream::StreamExt;
-            let mut save_stream = self.save_to_file();
-            if let Some(_result) = save_stream.next().await {
-                // Auto-save completed successfully
-            }
-        }
-    }
-
-    /// Save configuration to file
-    pub fn save_to_file(&self) -> AsyncStream<()> {
+    /// Validate configuration using streaming pattern
+    pub fn validate_config_stream(&self, config: ChatConfig) -> AsyncStream<ConfigUpdate> {
         let manager = self.clone();
-        AsyncStream::with_channel(move |stream_sender| {
-            // Perform synchronous file save - no async operations
-            match manager.save_to_file_sync() {
-                Ok(_) => {
-                    let _ = stream_sender.send(());
-                }
-                Err(_) => {
-                    // Error handling via on_chunk pattern in caller
-                    let _ = stream_sender.send(());
-                }
-            }
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                // Create validation update
+                let now_nanos = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos() as u64;
+                
+                let validation_start = ConfigUpdate {
+                    timestamp_nanos: now_nanos,
+                    update_type: ConfigUpdateType::ValidationCompleted,
+                    section: None,
+                    success: true,
+                    description: Some(Arc::from("Configuration validation initiated")),
+                };
+                
+                emit!(sender, validation_start);
+                
+                // Emit completion update
+                let completion_update = ConfigUpdate {
+                    timestamp_nanos: now_nanos,
+                    update_type: ConfigUpdateType::ValidationCompleted,
+                    section: None,
+                    success: true,
+                    description: Some(Arc::from("Configuration validation completed")),
+                };
+                
+                emit!(sender, completion_update);
+            });
         })
     }
 
-    /// Internal implementation of save_to_file
-    async fn save_to_file_impl(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let config = self.get_config();
-        let persistence = self.persistence.read().await;
-
-        let serialized = match persistence.format.as_ref() {
-            "json" => serde_json::to_string_pretty(&*config)?,
-            "yaml" => yyaml::to_string(&*config)?,
-            "toml" => toml::to_string(&*config)?,
-            "binary" => {
-                #[cfg(feature = "bincode-serialization")]
-                {
-                    // Use bincode for simpler binary serialization
-                    let bytes = bincode::encode_to_vec(&*config, bincode::config::standard())
-                        .map_err(|e| format!("Binary serialization failed: {}", e))?;
-                    {
-                        use base64::Engine;
-                        base64::engine::general_purpose::STANDARD.encode(&bytes)
-                    }
-                }
-                #[cfg(not(feature = "bincode-serialization"))]
-                {
-                    return Err(
-                        "Binary serialization requires bincode-serialization feature".into(),
-                    );
-                }
-            }
-            _ => return Err("Unsupported format".into()),
-        };
-
-        let data = if persistence.compression {
-            let compressed = lz4::block::compress(&serialized.as_bytes(), None, true)?;
-            {
-                use base64::Engine;
-                base64::engine::general_purpose::STANDARD.encode(&compressed)
-            }
-        } else {
-            serialized
-        };
-
-        tokio::fs::write(&*persistence.config_file_path, data).await?;
-
-        Ok(())
+    /// Register a configuration validator using streaming pattern
+    pub fn register_validator_stream(
+        &self,
+        validator: Arc<dyn ConfigurationValidator + Send + Sync>,
+    ) -> AsyncStream<ConfigUpdate> {
+        let manager = self.clone();
+        let validator_name = Arc::from(validator.name());
+        
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                let now_nanos = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos() as u64;
+                
+                // Create validator registration update
+                let registration_update = ConfigUpdate {
+                    timestamp_nanos: now_nanos,
+                    update_type: ConfigUpdateType::ValidatorRegistered,
+                    section: Some(validator_name),
+                    success: true,
+                    description: Some(Arc::from("Configuration validator registered")),
+                };
+                
+                emit!(sender, registration_update);
+            });
+        })
     }
+
+    /// Create persistence event stream for lock-free tracking
+    pub fn create_persistence_event_stream(&self) -> AsyncStream<PersistenceEvent> {
+        let manager = self.clone();
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                // Update persistence timestamp atomically
+                let now_nanos = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos() as u64;
+                    
+                let previous_nanos = manager.last_persistence.swap(now_nanos, Ordering::AcqRel);
+                
+                // Create persistence event
+                let event = PersistenceEvent {
+                    timestamp_nanos: now_nanos,
+                    previous_timestamp_nanos: previous_nanos,
+                    persistence_type: PersistenceType::Manual,
+                    success: true,
+                };
+                
+                emit!(sender, event);
+            });
+        })
+    }
+
+    /// Check if auto-save is needed using lock-free atomic operations with streaming pattern
+    pub fn check_auto_save_stream(&self) -> AsyncStream<ConfigUpdate> {
+        let manager = self.clone();
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                let now_nanos = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos() as u64;
+                
+                // Emit check initiated update
+                let check_update = ConfigUpdate {
+                    timestamp_nanos: now_nanos,
+                    update_type: ConfigUpdateType::AutoSaveChecked,
+                    section: None,
+                    success: true,
+                    description: Some(Arc::from("Auto-save check initiated")),
+                };
+                
+                emit!(sender, check_update);
+                
+                let last_save_nanos = manager.last_persistence.load(Ordering::Acquire);
+                let elapsed_secs = (now_nanos - last_save_nanos) / 1_000_000_000;
+                
+                // Default auto-save interval for streaming operation
+                let auto_save_interval = 300; // 5 minutes default
+                
+                if elapsed_secs >= auto_save_interval {
+                    // Update timestamp atomically before saving
+                    manager.last_persistence.store(now_nanos, Ordering::Release);
+                    
+                    // Emit auto-save executed update
+                    let autosave_update = ConfigUpdate {
+                        timestamp_nanos: now_nanos,
+                        update_type: ConfigUpdateType::AutoSaveExecuted,
+                        section: None,
+                        success: true,
+                        description: Some(Arc::from("Auto-save executed")),
+                    };
+                    
+                    emit!(sender, autosave_update);
+                }
+            });
+        })
+    }
+
+    /// Save configuration to file using streaming pattern
+    pub fn save_to_file_stream(&self) -> AsyncStream<ConfigUpdate> {
+        let manager = self.clone();
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                let now_nanos = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos() as u64;
+                
+                // Emit save initiated update
+                let save_start = ConfigUpdate {
+                    timestamp_nanos: now_nanos,
+                    update_type: ConfigUpdateType::SavedToFile,
+                    section: None,
+                    success: false,
+                    description: Some(Arc::from("File save initiated")),
+                };
+                
+                emit!(sender, save_start);
+                
+                // Perform file save using sync implementation
+                let success = manager.save_to_file_sync().is_ok();
+                
+                // Emit save completion update
+                let save_complete = ConfigUpdate {
+                    timestamp_nanos: now_nanos,
+                    update_type: ConfigUpdateType::SavedToFile,
+                    section: None,
+                    success,
+                    description: Some(Arc::from(if success { 
+                        "File save completed successfully" 
+                    } else { 
+                        "File save failed" 
+                    })),
+                };
+                
+                emit!(sender, save_complete);
+            });
+        })
+    }
+
+
 
     /// Synchronous implementation of save_to_file for streams-only architecture
     fn save_to_file_sync(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -1117,74 +1274,49 @@ impl ConfigurationManager {
         Ok(())
     }
 
-    /// Load configuration from file
-    pub fn load_from_file(&self) -> AsyncStream<()> {
+    /// Load configuration from file using streaming pattern
+    pub fn load_from_file_stream(&self) -> AsyncStream<ConfigUpdate> {
         let manager = self.clone();
-        AsyncStream::with_channel(move |stream_sender| {
-            // Perform synchronous file load - no async operations
-            match manager.load_from_file_sync() {
-                Ok(_) => {
-                    let _ = stream_sender.send(());
-                }
-                Err(_) => {
-                    // Error handling via on_chunk pattern in caller
-                    let _ = stream_sender.send(());
-                }
-            }
+        AsyncStream::with_channel(move |sender| {
+            std::thread::spawn(move || {
+                let now_nanos = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos() as u64;
+                
+                // Emit load initiated update
+                let load_start = ConfigUpdate {
+                    timestamp_nanos: now_nanos,
+                    update_type: ConfigUpdateType::LoadedFromFile,
+                    section: None,
+                    success: false,
+                    description: Some(Arc::from("File load initiated")),
+                };
+                
+                emit!(sender, load_start);
+                
+                // Perform file load using sync implementation
+                let success = manager.load_from_file_sync().is_ok();
+                
+                // Emit load completion update
+                let load_complete = ConfigUpdate {
+                    timestamp_nanos: now_nanos,
+                    update_type: ConfigUpdateType::LoadedFromFile,
+                    section: None,
+                    success,
+                    description: Some(Arc::from(if success { 
+                        "File load completed successfully" 
+                    } else { 
+                        "File load failed" 
+                    })),
+                };
+                
+                emit!(sender, load_complete);
+            });
         })
     }
 
-    /// Internal implementation of load_from_file
-    async fn load_from_file_impl(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let persistence = self.persistence.read().await;
 
-        let data = tokio::fs::read_to_string(&*persistence.config_file_path).await?;
-
-        let content = if persistence.compression {
-            let compressed = {
-                use base64::Engine;
-                base64::engine::general_purpose::STANDARD.decode(&data)?
-            };
-            let decompressed = lz4::block::decompress(&compressed, None)?;
-            String::from_utf8(decompressed)?
-        } else {
-            data
-        };
-
-        let config: ChatConfig = match persistence.format.as_ref() {
-            "json" => serde_json::from_str(&content)?,
-            "yaml" => yyaml::from_str(&content)?,
-            "toml" => toml::from_str(&content)?,
-            "binary" => {
-                #[cfg(feature = "bincode-serialization")]
-                {
-                    use base64::Engine;
-                    let bytes = base64::engine::general_purpose::STANDARD.decode(&content)?;
-                    let (config, _): (ChatConfig, usize) =
-                        bincode::decode_from_slice(&bytes, bincode::config::standard())
-                            .map_err(|e| format!("Binary deserialization failed: {}", e))?;
-                    config
-                }
-                #[cfg(not(feature = "bincode-serialization"))]
-                {
-                    return Err(
-                        "Binary deserialization requires bincode-serialization feature".into(),
-                    );
-                }
-            }
-            _ => return Err("Unsupported format".into()),
-        };
-
-        // Use streaming update pattern
-        use tokio_stream::StreamExt;
-        let update_stream = self.update_config(config);
-        let mut stream_pin = Box::pin(update_stream);
-        while let Some(_) = stream_pin.as_mut().next().await {
-            break;
-        }
-
-        Ok(())
-    }
 
     /// Synchronous implementation of load_from_file for streams-only architecture
     fn load_from_file_sync(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

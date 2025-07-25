@@ -404,7 +404,7 @@ impl AnthropicCompletionBuilder {
     async fn execute_streaming_completion(
         &self,
         prompt: String,
-    ) -> Result<AsyncStream<Result<CompletionChunk, CompletionError>>, CompletionError> {
+    ) -> Result<AsyncStream<CompletionChunk>, CompletionError> {
         let request_body = self.build_request(&prompt)?;
 
         // Use centralized serialization with zero allocation where possible

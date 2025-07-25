@@ -177,6 +177,9 @@ impl ConversationTagger {
         category: Arc<str>,
     ) -> AsyncStream<Arc<str>> {
         let parent_id_clone = parent_id.clone();
+        let tags_clone = self.tags.clone();
+        let tag_hierarchy_clone = self.tag_hierarchy.clone();
+        let statistics_clone = self.statistics.clone();
         
         AsyncStream::with_channel(move |sender| {
             let mut tag = ConversationTag::new(name, description, category);
@@ -184,23 +187,22 @@ impl ConversationTagger {
             let tag_id = tag.id.clone();
 
             // Update parent tag
-            if let Some(parent_entry) = self.tags.get(&parent_id_clone) {
+            if let Some(parent_entry) = tags_clone.get(&parent_id_clone) {
                 let mut parent_tag = parent_entry.value().clone();
                 parent_tag.add_child(tag_id.clone());
-                self.tags.insert(parent_id_clone.clone(), parent_tag);
+                tags_clone.insert(parent_id_clone.clone(), parent_tag);
             }
 
             // Add to hierarchy
-            let mut children = self
-                .tag_hierarchy
+            let mut children = tag_hierarchy_clone
                 .get(&parent_id_clone)
                 .map(|c| c.value().clone())
                 .unwrap_or_default();
             children.push(tag_id.clone());
-            self.tag_hierarchy.insert(parent_id_clone, children);
+            tag_hierarchy_clone.insert(parent_id_clone, children);
 
-            self.tags.insert(tag_id.clone(), tag);
-            self.tag_counter.inc();
+            tags_clone.insert(tag_id.clone(), tag);
+            statistics_clone.total_tags.inc();
 
             let _ = sender.send(tag_id);
         })
@@ -212,38 +214,42 @@ impl ConversationTagger {
         message_id: Arc<str>,
         tag_ids: Vec<Arc<str>>,
     ) -> AsyncStream<()> {
+        let message_tags_clone = self.message_tags.clone();
+        let tag_messages_clone = self.tag_messages.clone();
+        let tags_clone = self.tags.clone();
+        let statistics_clone = self.statistics.clone();
+        
         AsyncStream::with_channel(move |sender| {
             // Update message tags mapping
-            self.message_tags.insert(message_id.clone(), tag_ids.clone());
+            message_tags_clone.insert(message_id.clone(), tag_ids.clone());
 
             // Update tag messages mapping and usage counts
             for tag_id in &tag_ids {
                 // Add message to tag's message list
-                let mut messages = self
-                    .tag_messages
+                let mut messages = tag_messages_clone
                     .get(tag_id)
                     .map(|m| m.value().clone())
                     .unwrap_or_default();
                 if !messages.contains(&message_id) {
                     messages.push(message_id.clone());
-                    self.tag_messages.insert(tag_id.clone(), messages);
+                    tag_messages_clone.insert(tag_id.clone(), messages);
                 }
 
                 // Update tag usage count
-                if let Some(tag_entry) = self.tags.get(tag_id) {
+                if let Some(tag_entry) = tags_clone.get(tag_id) {
                     let mut tag = tag_entry.value().clone();
                     tag.increment_usage();
-                    self.tags.insert(tag_id.clone(), tag);
+                    tags_clone.insert(tag_id.clone(), tag);
                 }
             }
 
-            self.tagging_counter.inc();
+            statistics_clone.total_tagged_messages.inc();
             let _ = sender.send(());
         })
     }
 
     /// Auto-tag message based on content (streaming)
-    pub fn auto_tag_message_stream(&self, message: SearchChatMessage) -> AsyncStream<Arc<str>> {
+    pub fn auto_tag_message_stream(&self, message: CandleMessage) -> AsyncStream<Arc<str>> {
         AsyncStream::with_channel(move |sender| {
             let content = message.message.content.to_lowercase();
 
@@ -273,8 +279,10 @@ impl ConversationTagger {
         pattern: Arc<str>,
         tag_ids: Vec<Arc<str>>,
     ) -> AsyncStream<()> {
+        let auto_tagging_rules_clone = self.auto_tagging_rules.clone();
+        
         AsyncStream::with_channel(move |sender| {
-            if let Ok(mut rules) = self.auto_tagging_rules.try_write() {
+            if let Ok(mut rules) = auto_tagging_rules_clone.try_write() {
                 rules.insert(pattern, tag_ids);
             }
             let _ = sender.send(());
@@ -283,8 +291,10 @@ impl ConversationTagger {
 
     /// Remove auto-tagging rule (streaming)
     pub fn remove_auto_tagging_rule_stream(&self, pattern: Arc<str>) -> AsyncStream<()> {
+        let auto_tagging_rules_clone = self.auto_tagging_rules.clone();
+        
         AsyncStream::with_channel(move |sender| {
-            if let Ok(mut rules) = self.auto_tagging_rules.try_write() {
+            if let Ok(mut rules) = auto_tagging_rules_clone.try_write() {
                 rules.remove(&pattern);
             }
             let _ = sender.send(());
